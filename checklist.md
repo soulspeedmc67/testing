@@ -146,6 +146,6 @@ cancellation withint 2 minutes (add timer )also add the ability to add or remove
 
 nightime : no cash on delivery 
 
-no cod for guys who didnt pick up the call last time (honor system )scrcpy
+no cod for guys who didnt pick up the call last time (honor system )
 
 the ui should be like blinkit ,very easy to use but the colour schem should be like i said above 
