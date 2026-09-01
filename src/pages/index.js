@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, LayoutDashboard, Navigation, Sparkles, SlidersHorizontal } from "lucide-react";
+import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, LayoutDashboard, Navigation, ShoppingBag } from "lucide-react";
 import LocationPickerModal from "../components/LocationPickerModal";
+import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -27,9 +28,6 @@ export default function StorefrontHome() {
   const [selectedCat, setSelectedCat] = useState("all");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState("upi");
-  const [couponCode, setCouponCode] = useState("");
-  const [discountAmount, setDiscountAmount] = useState(0);
 
   const [activeLocation, setActiveLocation] = useState({
     nickname: "Home",
@@ -41,19 +39,20 @@ export default function StorefrontHome() {
 
   const [currentHour] = useState(new Date().getHours());
   const isBakeryTimeOnly = currentHour >= 6 && currentHour < 8;
-  const isNightTime = currentHour >= 22 || currentHour < 6;
-
-  const [activeOrder, setActiveOrder] = useState(null);
-  const [cancellationSeconds, setCancellationSeconds] = useState(120);
-  const [showThankYou, setShowThankYou] = useState(false);
 
   useEffect(() => {
-    let timer;
-    if (activeOrder && cancellationSeconds > 0) {
-      timer = setInterval(() => setCancellationSeconds((prev) => prev - 1), 1000);
+    const savedCart = localStorage.getItem("dashit_cart");
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {}
     }
-    return () => clearInterval(timer);
-  }, [activeOrder, cancellationSeconds]);
+  }, []);
+
+  const saveCartToStorage = (updatedCart) => {
+    setCart(updatedCart);
+    localStorage.setItem("dashit_cart", JSON.stringify(updatedCart));
+  };
 
   const filteredProducts = PRODUCTS.filter((p) => {
     const matchesCat = selectedCat === "all" || p.category === selectedCat;
@@ -66,61 +65,32 @@ export default function StorefrontHome() {
       alert("Only Bakery items are available between 6:00 AM and 8:00 AM.");
       return;
     }
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) => (item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
-      }
-      return [...prev, { ...product, qty: 1 }];
-    });
+    const existing = cart.find((item) => item.id === product.id);
+    let updated;
+    if (existing) {
+      updated = cart.map((item) => (item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+    } else {
+      updated = [...cart, { ...product, qty: 1 }];
+    }
+    saveCartToStorage(updated);
   };
 
   const updateCartQty = (id, delta) => {
-    setCart((prev) =>
-      prev
-        .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
-        .filter((item) => item.qty > 0)
-    );
+    const updated = cart
+      .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
+      .filter((item) => item.qty > 0);
+    saveCartToStorage(updated);
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const originalSubtotal = cart.reduce((sum, item) => sum + item.originalPrice * item.qty, 0);
-  const totalSavings = (originalSubtotal - subtotal) + discountAmount;
-  const deliveryFee = subtotal >= 399 || subtotal >= 200 ? 0 : 25;
-  const finalTotal = Math.max(0, subtotal + deliveryFee - discountAmount);
-
-  const applyCoupon = () => {
-    if (couponCode.toUpperCase() === "ANANTNAG10") {
-      setDiscountAmount(20);
-      alert("Coupon ANANTNAG10 Applied! ₹20 Discount Added.");
-    } else {
-      alert("Invalid Coupon Code! Try ANANTNAG10");
-    }
-  };
-
-  const handleCheckout = () => {
-    if (cart.length === 0) return;
-    const newOrderId = "DASH-" + Math.floor(100000 + Math.random() * 900000);
-    setActiveOrder({
-      orderId: newOrderId,
-      items: cart,
-      totalAmount: finalTotal,
-      savings: totalSavings,
-      method: paymentMethod,
-      location: activeLocation,
-      otp: Math.floor(1000 + Math.random() * 9000)
-    });
-    setCancellationSeconds(120);
-    setShowThankYou(true);
-    setCart([]);
-  };
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+  const cartSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased pb-36">
-      {/* Sticky Header with Navigation Portals & Clean Logo */}
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased pb-32">
+      {/* Header */}
       <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-xl border-b border-zinc-800/80 px-4 py-3">
         <div className="max-w-md mx-auto space-y-2.5">
-          {/* Quick Navigation Bar */}
+          {/* Quick Access Portal links */}
           <div className="flex items-center justify-between text-[11px] bg-zinc-900/90 px-3 py-1.5 rounded-xl border border-zinc-800/80">
             <span className="text-zinc-400 font-medium">Quick Access:</span>
             <div className="flex items-center space-x-3">
@@ -138,24 +108,20 @@ export default function StorefrontHome() {
           {/* Logo & Location Bar */}
           <div className="flex items-center justify-between">
             <div>
-              {/* Minimal Brand Logo */}
               <div className="flex items-baseline space-x-0.5 text-2xl font-black tracking-tight">
                 <span className="text-orange-500">DASH</span>
                 <span className="text-sky-400">it</span>
                 <span className="text-[9px] text-zinc-400 font-mono ml-2 uppercase tracking-wider bg-zinc-900 px-2 py-0.5 rounded-full border border-zinc-800">10-MIN</span>
               </div>
-
-              {/* Delivery ETA indicator */}
               <div className="flex items-center space-x-1.5 text-xs text-zinc-400 mt-0.5">
                 <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                <span>Delivery in <strong className="text-zinc-200">13 Mins (10+3 mins)</strong></span>
+                <span>Delivery in <strong className="text-zinc-200">13 Mins</strong></span>
               </div>
             </div>
 
-            {/* Location Selector Button */}
             <button
               onClick={() => setIsLocationModalOpen(true)}
-              className="flex items-center space-x-1.5 text-xs bg-zinc-900 hover:bg-zinc-800/80 text-zinc-200 px-3 py-2 rounded-xl border border-zinc-800/90 transition-all shadow-sm"
+              className="flex items-center space-x-1.5 text-xs bg-zinc-900 hover:bg-zinc-800/80 text-zinc-200 px-3 py-2 rounded-xl border border-zinc-800/90 transition-all"
             >
               <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
               <span className="font-semibold max-w-[100px] truncate">{activeLocation.nickname}</span>
@@ -177,57 +143,14 @@ export default function StorefrontHome() {
         </div>
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
-        {/* Interactive Location Picker Modal */}
         <LocationPickerModal
           isOpen={isLocationModalOpen}
           onClose={() => setIsLocationModalOpen(false)}
           onSelectLocation={(newLoc) => setActiveLocation(newLoc)}
           currentLocation={activeLocation}
         />
-
-        {/* Active Order Driver Tracking */}
-        {activeOrder && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 space-y-3 shadow-xl">
-            <div className="flex items-center justify-between text-xs">
-              <div>
-                <span className="font-bold text-orange-500">Order #{activeOrder.orderId}</span>
-                <p className="text-[11px] text-zinc-400 mt-0.5">OTP Code: <b className="text-zinc-100 font-mono">{activeOrder.otp}</b></p>
-              </div>
-
-              {cancellationSeconds > 0 && !isNightTime ? (
-                <div className="text-right">
-                  <span className="text-[10px] text-zinc-500 block">Edit / Cancel Window</span>
-                  <span className="text-xs font-mono font-bold text-amber-400">{Math.floor(cancellationSeconds / 60)}:{cancellationSeconds % 60 < 10 ? '0' : ''}{cancellationSeconds % 60}s</span>
-                </div>
-              ) : (
-                <span className="text-[10px] text-emerald-400 bg-zinc-800 px-2 py-0.5 rounded font-medium">In Transit</span>
-              )}
-            </div>
-
-            <MapTracking orderId={activeOrder.orderId} initialLat={activeLocation.lat} initialLng={activeLocation.lng} />
-
-            {cancellationSeconds > 0 && !isNightTime && (
-              <button
-                onClick={() => { setActiveOrder(null); setShowThankYou(false); alert("Order cancelled."); }}
-                className="w-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold py-2 rounded-xl hover:bg-rose-500 hover:text-white transition-all"
-              >
-                Cancel Order ({cancellationSeconds}s)
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Thank You Card */}
-        {showThankYou && activeOrder && (
-          <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 text-center space-y-1.5">
-            <CheckCircle2 className="w-7 h-7 text-orange-500 mx-auto" />
-            <h3 className="font-bold text-sm text-zinc-100">Order Placed Successfully!</h3>
-            <p className="text-xs text-zinc-400">Delivering to: <b className="text-zinc-200">{activeLocation.address}</b></p>
-            <p className="text-xs font-bold text-orange-400">Saved ₹{activeOrder.savings} on this order!</p>
-          </div>
-        )}
 
         {/* Category Filter Pills */}
         <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-none">
@@ -246,7 +169,7 @@ export default function StorefrontHome() {
           ))}
         </div>
 
-        {/* Product Cards Grid */}
+        {/* Product Grid */}
         <div className="grid grid-cols-2 gap-3">
           {filteredProducts.map((p) => {
             const inCart = cart.find((item) => item.id === p.id);
@@ -289,70 +212,27 @@ export default function StorefrontHome() {
         </div>
       </main>
 
-      {/* Cart Fixed Bottom Drawer */}
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-[#09090b]/95 backdrop-blur-xl border-t border-zinc-800/90 shadow-2xl">
-          <div className="max-w-md mx-auto space-y-2.5">
-            {/* Coupon Box */}
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                placeholder="Coupon Code (e.g. ANANTNAG10)..."
-                value={couponCode}
-                onChange={(e) => setCouponCode(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 text-xs px-3 py-2 rounded-xl text-white grow focus:outline-none focus:border-sky-500/50"
-              />
-              <button onClick={applyCoupon} className="bg-sky-500/10 border border-sky-500/40 text-sky-400 text-xs font-bold px-3 py-2 rounded-xl hover:bg-sky-500 hover:text-zinc-950 transition-all">
-                APPLY
-              </button>
+      {/* Floating View Cart Banner */}
+      {cartCount > 0 && (
+        <div className="fixed bottom-16 left-4 right-4 z-40 max-w-md mx-auto">
+          <Link
+            href="/cart"
+            className="flex items-center justify-between bg-orange-500 text-zinc-950 p-3 rounded-2xl shadow-2xl hover:bg-orange-400 transition-all"
+          >
+            <div className="flex items-center space-x-2">
+              <ShoppingBag className="w-5 h-5" />
+              <span className="text-xs font-bold">{cartCount} ITEMS • ₹{cartSubtotal}</span>
             </div>
-
-            {/* Payment Method Selector */}
-            <div className="flex items-center justify-between text-xs text-zinc-300 bg-zinc-900/90 p-2 rounded-xl border border-zinc-800/80">
-              <span className="font-semibold">Payment:</span>
-              <div className="flex space-x-1.5">
-                <button
-                  onClick={() => setPaymentMethod("upi")}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${paymentMethod === "upi" ? "bg-orange-500 text-zinc-950" : "bg-zinc-800 text-zinc-400"}`}
-                >
-                  ⚡ UPI
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("card")}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${paymentMethod === "card" ? "bg-orange-500 text-zinc-950" : "bg-zinc-800 text-zinc-400"}`}
-                >
-                  💳 Card
-                </button>
-                <button
-                  onClick={() => setPaymentMethod("cod")}
-                  disabled={isNightTime}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                    paymentMethod === "cod" ? "bg-orange-500 text-zinc-950" : "bg-zinc-800 text-zinc-400"
-                  } ${isNightTime ? "opacity-40 cursor-not-allowed" : ""}`}
-                >
-                  💵 COD
-                </button>
-              </div>
+            <div className="flex items-center space-x-1 text-xs font-bold">
+              <span>View Cart</span>
+              <ArrowRight className="w-4 h-4" />
             </div>
-
-            {/* Checkout CTA */}
-            <div className="flex items-center justify-between bg-orange-500 text-zinc-950 p-3 rounded-xl shadow-xl">
-              <div>
-                <p className="text-xs font-bold">{cart.reduce((s, i) => s + i.qty, 0)} ITEMS • ₹{finalTotal}</p>
-                <p className="text-[10px] text-zinc-950/80 font-semibold">Saved ₹{totalSavings} today</p>
-              </div>
-
-              <button
-                onClick={handleCheckout}
-                className="bg-zinc-950 text-orange-400 px-4 py-2 rounded-lg text-xs font-bold flex items-center space-x-1 hover:bg-zinc-900 transition-colors"
-              >
-                <span>Checkout</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
+          </Link>
         </div>
       )}
+
+      {/* Persistent Bottom Navigation */}
+      <BottomNav cartCount={cartCount} />
     </div>
   );
 }
