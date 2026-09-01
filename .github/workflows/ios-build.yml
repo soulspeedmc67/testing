@@ -1,4 +1,4 @@
-name: Build & Release iOS App Store IPA
+name: Build iOS IPA (GitHub Actions Cloud Mac)
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS IPA (No Physical Mac Required)
+    name: Build iOS Native Project (macos-latest)
     runs-on: macos-latest
 
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
       - name: Setup Node.js
@@ -23,37 +23,27 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Install Apple Certificate & Provisioning Profile
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
-          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      - name: Next.js Production Build
+        run: npx next build
+
+      - name: Ensure Web Assets for Capacitor
         run: |
-          # Create temporary keychain
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          mkdir -p out
+          cp -r .next/server/pages/* out/ 2>/dev/null || true
+          cp -r public/* out/ 2>/dev/null || true
 
-          # Import certificate and provisioning profile from secrets
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
-          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o $PP_PATH
+      - name: Add and Sync Capacitor iOS Assets
+        run: |
+          npx cap add ios || true
+          npx cap sync ios
 
-          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 3600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+      - name: Build Xcode iOS Project (Archive)
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -derivedDataPath build -archivePath build/App.xcarchive archive CODE_SIGNING_ALLOWED=NO
 
-          security import $CERTIFICATE_PATH -k $KEYCHAIN_PATH -P "$P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
-
-      - name: Build Web App & Export Native Bundle
-        run: npm run build
-
-      - name: Upload IPA Artifact
+      - name: Upload iOS Archive / App Bundle Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: district-blinkit-ios-app
-          path: output/*.ipa
+          name: DASHit-Anantnag-iOS-Bundle
+          path: ios/App/build/App.xcarchive

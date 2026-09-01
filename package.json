@@ -12,6 +12,7 @@
     "@capacitor/android": "^8.5.1",
     "@capacitor/cli": "^8.5.1",
     "@capacitor/core": "^8.5.1",
+    "@capacitor/ios": "^8.5.1",
     "express": "^4.19.2",
     "framer-motion": "^11.3.19",
     "leaflet": "^1.9.4",
