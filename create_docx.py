@@ -3,8 +3,6 @@ from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml import parse_xml, OxmlElement
-from docx.oxml.ns import nsdecls, qn
 
 doc = Document()
 
@@ -34,7 +32,7 @@ sub_run.font.color.rgb = RGBColor(194, 65, 12)
 # Meta Table
 meta_p = doc.add_paragraph()
 meta_p.add_run("Agreement Date: ").bold = True
-meta_p.add_run("2nd September 2026\n")
+meta_p.add_run("1st September 2026\n")
 meta_p.add_run("Project Name: ").bold = True
 meta_p.add_run("DASHit Quick Commerce App & Website\n")
 meta_p.add_run("Fixed Developer Fee: ").bold = True
@@ -137,8 +135,8 @@ add_heading("SIGNATURES & ELECTRONIC ACCEPTANCE", 2)
 
 sig_table = doc.add_table(rows=1, cols=2)
 sig_cells = sig_table.rows[0].cells
-sig_cells[0].text = "DEVELOPER / CONTRACTOR\n\nSignature: ___________________________\nName: Muhammad Aleem Kanyu\nDate: _______________________________"
-sig_cells[1].text = "CLIENT ACCEPTANCE\n\nSignature: ___________________________\nName: Azan Iqbal Mir\nDate: _______________________________"
+sig_cells[0].text = "DEVELOPER / CONTRACTOR\n\nSignature: ___________________________\nName: Muhammad Aleem Kanyu\nDate: 1st September 2026"
+sig_cells[1].text = "CLIENT ACCEPTANCE\n\nSignature: ___________________________\nName: Azan Iqbal Mir\nDate: 1st September 2026"
 
 doc.save("DASHit_Contract_Version1.docx")
-print("DASHit_Contract_Version1.docx created successfully!")
+print("DASHit_Contract_Version1.docx updated with today's date!")
