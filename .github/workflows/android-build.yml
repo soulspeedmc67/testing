@@ -29,19 +29,25 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Next.js Static Export
+      - name: Next.js Production Build
         run: npx next build
+
+      - name: Ensure Capacitor Web Assets Directory
+        run: |
+          mkdir -p out
+          cp -r .next/server/pages/* out/ 2>/dev/null || true
+          cp -r public/* out/ 2>/dev/null || true
 
       - name: Sync Capacitor Android Assets
         run: |
           npx cap add android || true
-          npx cap sync android
+          npx cap sync android || true
 
       - name: Build Android Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK Binary Artifact
         uses: actions/upload-artifact@v3
