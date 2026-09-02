@@ -1,18 +1,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ArrowRight, CheckCircle2, ShieldCheck, X } from "lucide-react";
-
-const HERO_GRID_ITEMS = [
-  { img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=150&auto=format&fit=crop&q=80", bg: "bg-emerald-100/60", label: "Pulses & Dal" },
-  { img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop&q=80", bg: "bg-green-100/60", label: "Fresh Vegetables" },
-  { img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=150&auto=format&fit=crop&q=80", bg: "bg-sky-100/60", label: "Fresh Milk" },
-  { img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=150&auto=format&fit=crop&q=80", bg: "bg-amber-100/60", label: "Bakery Bread" },
-  { img: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=150&auto=format&fit=crop&q=80", bg: "bg-yellow-100/60", label: "Snacks & Chips" },
-  { img: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=150&auto=format&fit=crop&q=80", bg: "bg-rose-100/60", label: "Beverages" },
-  { img: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=150&auto=format&fit=crop&q=80", bg: "bg-purple-100/60", label: "Essentials" },
-  { img: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=150&auto=format&fit=crop&q=80", bg: "bg-orange-100/60", label: "Atta & Oil" },
-];
+import { X } from "lucide-react";
+import LoginProductMarquee from "../components/LoginProductMarquee";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,52 +33,43 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between">
-      {/* Top Banner with Product Grid */}
-      <div className="relative pt-4 pb-6 overflow-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between overflow-hidden">
+      {/* Top Section with Continuous Product Conveyor */}
+      <div className="relative pt-4 pb-2">
         {/* Skip Login Pill Button */}
         <div className="absolute top-4 right-4 z-20">
           <Link
             href="/"
-            className="bg-slate-200/80 hover:bg-slate-300 backdrop-blur text-slate-700 text-xs font-bold px-4 py-1.5 rounded-full transition-all active:scale-95"
+            className="bg-white/90 hover:bg-white text-slate-700 text-xs font-extrabold px-4 py-1.5 rounded-full shadow-sm border border-slate-200 transition-all active:scale-95"
           >
             Skip login
           </Link>
         </div>
 
-        {/* Product Grid Collage */}
-        <div className="grid grid-cols-4 gap-3 px-4 pt-8 max-w-md mx-auto opacity-90">
-          {HERO_GRID_ITEMS.map((item, idx) => (
-            <div
-              key={idx}
-              className={`${item.bg} p-2 rounded-2xl flex items-center justify-center h-20 shadow-sm border border-white/80 transform hover:scale-105 transition-transform`}
-            >
-              <img src={item.img} alt={item.label} className="h-14 w-14 object-contain rounded-lg" />
-            </div>
-          ))}
-        </div>
+        {/* Infinite Product Marquee */}
+        <LoginProductMarquee />
       </div>
 
       {/* Main Login Form Sheet */}
-      <div className="bg-white rounded-t-3xl shadow-2xl border-t border-slate-100 p-6 max-w-md mx-auto w-full space-y-5 animate-slide-up">
-        {/* Blinkit-style Logo with DASH Orangish + it Bluish + Bold Shadow */}
+      <div className="bg-white rounded-t-[32px] shadow-2xl border-t border-slate-200 p-6 max-w-md mx-auto w-full space-y-5 animate-slide-up">
+        {/* Standout Logo */}
         <div className="flex justify-center">
           <div className="bg-[#f7c400] text-slate-950 font-black px-5 py-2.5 rounded-2xl text-2xl tracking-tight shadow-md flex items-center space-x-0.5 border border-amber-300">
-            <span className="text-[#ea580c] logo-shadow">DASH</span>
-            <span className="text-[#0284c7] logo-shadow">it</span>
+            <span className="font-logo text-[#ea580c] logo-shadow">DASH</span>
+            <span className="font-logo text-[#0284c7] logo-shadow">it</span>
           </div>
         </div>
 
         {/* Heading */}
         <div className="text-center space-y-1">
-          <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">India's last minute app</h1>
-          <p className="text-xs font-medium text-slate-500">Log in or sign up</p>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">India's last minute app</h1>
+          <p className="text-xs font-semibold text-slate-500">Log in or sign up</p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSendOtp} className="space-y-4">
-          <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl p-3 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
-            <span className="text-sm font-bold text-slate-700 mr-2 border-r border-slate-300 pr-2">+91</span>
+          <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+            <span className="text-sm font-extrabold text-slate-700 mr-2 border-r border-slate-300 pr-2">+91</span>
             <input
               type="tel"
               maxLength={10}
@@ -101,14 +82,14 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
+            className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-black text-xs py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
           >
             <span>Continue</span>
           </button>
         </form>
 
         <p className="text-[11px] text-center text-slate-400 font-medium">
-          By continuing, you agree to our <a href="#" className="underline text-slate-600">Terms of Service</a> & <a href="#" className="underline text-slate-600">Privacy Policy</a>
+          By continuing, you agree to our <a href="#" className="underline text-slate-600 font-bold">Terms of Service</a> & <a href="#" className="underline text-slate-600 font-bold">Privacy Policy</a>
         </p>
       </div>
 
@@ -126,7 +107,7 @@ export default function LoginPage() {
             <div>
               <h3 className="font-extrabold text-base text-slate-900">Enter OTP Code</h3>
               <p className="text-xs text-slate-500 mt-1">Sent via SMS to <b className="text-slate-800">+91 {mobile}</b></p>
-              <p className="text-[11px] text-emerald-600 font-bold mt-1 bg-emerald-50 py-1 px-2 rounded-lg inline-block">
+              <p className="text-[11px] text-[#0c831f] font-bold mt-1 bg-emerald-50 py-1 px-2 rounded-lg inline-block">
                 Dummy OTP: 1234
               </p>
             </div>
@@ -138,7 +119,7 @@ export default function LoginPage() {
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value)}
                 placeholder="1234"
-                className="w-36 text-center text-xl font-mono font-bold tracking-widest bg-slate-100 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:border-emerald-600"
+                className="w-36 text-center text-xl font-mono font-bold tracking-widest bg-slate-100 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0c831f]"
               />
             </div>
 

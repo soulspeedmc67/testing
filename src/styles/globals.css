@@ -1,7 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Caveat:wght@700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --primary-green: #0c831f;
+  --brand-yellow: #f7c400;
+  --primary-text: #0f172a;
+  --secondary-text: #64748b;
+  --bg-slate: #f8fafc;
+}
 
 @layer base {
   body {
@@ -10,22 +18,60 @@
   }
 }
 
-/* Creative Logo Font */
 .font-logo {
   font-family: 'Outfit', sans-serif;
   letter-spacing: -0.04em;
 }
 
-/* Custom Text Shadow for Logo */
+.font-handwritten {
+  font-family: 'Caveat', cursive;
+}
+
+/* Custom Text Shadow for Standout Logo */
 .logo-shadow {
-  text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2), 0px 1px 2px rgba(0, 0, 0, 0.1);
+  text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.18), 0px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .logo-box-shadow {
   box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.08);
 }
 
-/* Bottom Sheet Slide Up Animation */
+/* Infinite Marquee Animations for Login Screen */
+@keyframes marqueeLeft {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes marqueeRight {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0%); }
+}
+
+.animate-marquee-left {
+  animation: marqueeLeft 28s linear infinite;
+}
+
+.animate-marquee-right {
+  animation: marqueeRight 32s linear infinite;
+}
+
+/* Search Bar Placeholder Vertical Motion */
+@keyframes searchSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-search-text {
+  animation: searchSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Bottom Sheet & Modal Keyframes */
 @keyframes bottomSheetUp {
   0% {
     opacity: 0;

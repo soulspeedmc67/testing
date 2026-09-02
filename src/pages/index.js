@@ -1,52 +1,34 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, Mic, User, ShoppingBag, AlertCircle, RefreshCw, X, Filter } from "lucide-react";
+import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, Mic, User, ShoppingBag, Coins, Sparkles, Heart } from "lucide-react";
 import LocationPickerModal from "../components/LocationPickerModal";
 import LocationPermissionModal from "../components/LocationPermissionModal";
+import AnimatedSearchBar from "../components/AnimatedSearchBar";
+import CategoryNavigationTabs from "../components/CategoryNavigationTabs";
+import PromoCardsCarousel from "../components/PromoCardsCarousel";
+import CampaignSection from "../components/CampaignSection";
+import FloatingDeliveryBanner from "../components/FloatingDeliveryBanner";
 import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
-const CATEGORY_SECTIONS = [
-  {
-    title: "Grocery & Kitchen",
-    items: [
-      { id: "Vegetables & Fruits", name: "Vegetables & Fruits", img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50/80" },
-      { id: "Atta, Rice & Dal", name: "Atta, Rice & Dal", img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50/80" },
-      { id: "Oil, Ghee & Masala", name: "Oil, Ghee & Masala", img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&auto=format&fit=crop&q=80", bg: "bg-yellow-50/80" },
-      { id: "Dairy, Bread & Eggs", name: "Dairy, Bread & Eggs", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50/80" },
-      { id: "Bakery & Biscuits", name: "Bakery & Biscuits", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=200&auto=format&fit=crop&q=80", bg: "bg-orange-50/80" },
-      { id: "Instant Food", name: "Instant Food", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=200&auto=format&fit=crop&q=80", bg: "bg-rose-50/80" }
-    ]
-  },
-  {
-    title: "Snacks & Drinks",
-    items: [
-      { id: "Chips & Namkeen", name: "Chips & Namkeen", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50/80" },
-      { id: "Sweets & Chocolates", name: "Sweets & Chocolates", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=200&auto=format&fit=crop&q=80", bg: "bg-purple-50/80" },
-      { id: "Drinks & Juices", name: "Drinks & Juices", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50/80" },
-      { id: "Tea, Coffee & Milk", name: "Tea, Coffee & Milk", img: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50/80" }
-    ]
-  }
-];
-
 const PRODUCTS = [
-  { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Chips & Namkeen" },
-  { id: 2, name: "Fresh Kashmiri Lavas Bread (4 pcs)", unit: "4 pcs", price: 30, originalPrice: 40, time: "10 mins", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=300&auto=format&fit=crop&q=80", cat: "Bakery & Biscuits" },
-  { id: 3, name: "Amul Taaza Fresh Toned Milk 1L", unit: "1L", price: 66, originalPrice: 70, time: "10 mins", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80", cat: "Dairy, Bread & Eggs" },
-  { id: 4, name: "Fresh Kashmiri Red Apples (1kg)", unit: "1 kg", price: 140, originalPrice: 170, time: "10 mins", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&auto=format&fit=crop&q=80", cat: "Vegetables & Fruits" },
-  { id: 5, name: "Cadbury Dairy Milk Silk Chocolate", unit: "150g", price: 175, originalPrice: 190, time: "8 mins", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&auto=format&fit=crop&q=80", cat: "Sweets & Chocolates" },
-  { id: 6, name: "Maggi 2-Minute Masala Noodles (4-Pack)", unit: "280g", price: 56, originalPrice: 60, time: "8 mins", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&auto=format&fit=crop&q=80", cat: "Instant Food" },
-  { id: 7, name: "Coca-Cola Original Soft Drink", unit: "750ml", price: 45, originalPrice: 50, time: "10 mins", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80", cat: "Drinks & Juices" },
-  { id: 8, name: "Amul Pasteurised Butter", unit: "100g", price: 58, originalPrice: 60, time: "10 mins", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80", cat: "Dairy, Bread & Eggs" }
+  { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Electronics" },
+  { id: 2, name: "Fresh Kashmiri Lavas Bread (4 pcs)", unit: "4 pcs", price: 30, originalPrice: 40, time: "10 mins", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=300&auto=format&fit=crop&q=80", cat: "Beauty" },
+  { id: 3, name: "Amul Taaza Fresh Toned Milk 1L", unit: "1L", price: 66, originalPrice: 70, time: "10 mins", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80", cat: "Ganeshotsav" },
+  { id: 4, name: "Fresh Kashmiri Red Apples (1kg)", unit: "1 kg", price: 140, originalPrice: 170, time: "10 mins", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&auto=format&fit=crop&q=80", cat: "Gifting" },
+  { id: 5, name: "Cadbury Dairy Milk Silk Chocolate", unit: "150g", price: 175, originalPrice: 190, time: "8 mins", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&auto=format&fit=crop&q=80", cat: "Gifting" },
+  { id: 6, name: "Maggi 2-Minute Masala Noodles (4-Pack)", unit: "280g", price: 56, originalPrice: 60, time: "8 mins", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&auto=format&fit=crop&q=80", cat: "Electronics" }
 ];
 
 export default function StorefrontHome() {
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [activeTab, setActiveTab] = useState("All");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [cart, setCart] = useState([]);
+  const [favorites, setFavorites] = useState({});
+
   const [activeLocation, setActiveLocation] = useState({
     nickname: "Home",
     address: "Nai Basti, Near Petrol Pump, Anantnag",
@@ -107,19 +89,15 @@ export default function StorefrontHome() {
     saveCart(updated);
   };
 
+  const toggleFav = (id) => {
+    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const cancelOrder = () => {
     if (confirm("Are you sure you want to cancel this order? The 2-minute packing window is active.")) {
       localStorage.removeItem("dashit_active_order");
       setActiveOrder(null);
       alert("Order cancelled successfully.");
-    }
-  };
-
-  const handleSelectCategory = (catName) => {
-    setSelectedCategory(catName);
-    const target = document.getElementById("products-grid-title");
-    if (target) {
-      target.scrollIntoView({ behavior: "smooth" });
     }
   };
 
@@ -154,72 +132,75 @@ export default function StorefrontHome() {
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  // Filter products by selected category & search query
   const filteredProducts = PRODUCTS.filter((p) => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = selectedCategory === "All" || p.cat === selectedCategory;
-    return matchesSearch && matchesCategory;
+    const matchesTab = activeTab === "All" || p.cat === activeTab;
+    return matchesSearch && matchesTab;
   });
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Creative Stylish Top Bar Header */}
-      <header className="bg-[#f7c400] px-4 pt-3 pb-4 shadow-md transition-all duration-300">
+      {/* 1. Header (Matching Brief Section 2) */}
+      <header className="bg-[#f7c400] px-4 pt-3.5 pb-4 shadow-md transition-colors duration-300">
         <div className="max-w-md mx-auto space-y-3">
-          {/* Top Row: Stylish Logo & Delivery Pill & Profile Link */}
+          {/* Top Row: Delivery ETA (Blinkit/DASHit in 25 minutes) & Status Pill & Rewards & Profile */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              {/* Creative Outfit Font Logo Badge */}
-              <div className="bg-white px-3.5 py-1 rounded-2xl logo-box-shadow border border-white flex items-center space-x-0.5 transform hover:scale-105 transition-transform cursor-pointer">
+              {/* Creative Outfit Logo Badge */}
+              <div className="bg-white px-3 py-1 rounded-2xl logo-box-shadow border border-white flex items-center space-x-0.5">
                 <span className="font-logo font-black text-xl text-[#ea580c] logo-shadow">DASH</span>
                 <span className="font-logo font-black text-xl text-[#0284c7] logo-shadow">it</span>
               </div>
 
               <div>
                 <div className="flex items-baseline space-x-1">
-                  <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-900">delivering in</span>
-                  <span className="text-xs font-black text-slate-900 tracking-tight bg-white/80 px-2 py-0.5 rounded-full border border-amber-300">
-                    ⚡ 10 minutes
+                  <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-900">in</span>
+                  <span className="text-sm font-black text-slate-900 tracking-tight">25 minutes</span>
+                  <span className="bg-emerald-800 text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider">
+                    SURGE
                   </span>
                 </div>
                 <button
                   onClick={() => setIsLocationModalOpen(true)}
                   className="flex items-center space-x-1 text-[11px] font-extrabold text-slate-800 hover:text-slate-950 mt-0.5"
                 >
-                  <span className="truncate max-w-[140px]">{activeLocation.nickname} - {activeLocation.address}</span>
+                  <span className="truncate max-w-[130px]">{activeLocation.nickname} - {activeLocation.address}</span>
                   <span className="text-[9px]">▼</span>
                 </button>
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
-              <Link href="/login" className="p-2.5 bg-white rounded-2xl text-slate-900 shadow-sm hover:bg-slate-100 transition-all active:scale-95">
+              <div className="p-2 bg-amber-100 text-amber-900 rounded-2xl flex items-center space-x-1 shadow-sm border border-amber-300">
+                <Coins className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
+                <span className="text-[11px] font-black font-mono">₹0</span>
+              </div>
+
+              <Link href="/login" className="p-2 bg-white rounded-2xl text-slate-900 shadow-sm hover:bg-slate-100 transition-all active:scale-95">
                 <User className="w-4 h-4" />
               </Link>
             </div>
           </div>
 
-          {/* Search Input Bar with Smooth Focus Ring & Voice Icon */}
-          <div className={`relative flex items-center bg-white rounded-2xl p-2.5 shadow-md border border-amber-200/80 transition-all duration-300 ${
-            isSearchFocused ? "ring-2 ring-[#0c831f] scale-[1.01]" : ""
-          }`}>
-            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
-            <input
-              type="text"
-              placeholder='Search "lavas bread", "lays", "milk"...'
-              value={search}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => setIsSearchFocused(false)}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400"
-            />
-            <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer hover:text-[#0c831f] transition-colors" />
-          </div>
+          {/* 2. Animated Search Bar */}
+          <AnimatedSearchBar
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
+            isFocused={isSearchFocused}
+          />
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="max-w-md mx-auto px-4 mt-4 space-y-5">
+      <main className="max-w-md mx-auto px-4 mt-3 space-y-5">
+        {/* 3. Category Navigation Tabs */}
+        <CategoryNavigationTabs
+          activeTab={activeTab}
+          onSelectTab={(tabId) => setActiveTab(tabId)}
+        />
+
         {/* Initial Location Permission Modal */}
         <LocationPermissionModal
           isOpen={isPermissionModalOpen}
@@ -228,7 +209,7 @@ export default function StorefrontHome() {
           onClose={() => setIsPermissionModalOpen(false)}
         />
 
-        {/* Interactive Location Picker Modal */}
+        {/* Location Selection Sheet */}
         <LocationPickerModal
           isOpen={isLocationModalOpen}
           onClose={() => setIsLocationModalOpen(false)}
@@ -236,7 +217,7 @@ export default function StorefrontHome() {
           currentLocation={activeLocation}
         />
 
-        {/* ACTIVE ORDER PROCESSING & 2-MINUTE CANCELLATION WINDOW CARD */}
+        {/* ACTIVE ORDER PACKING CARD */}
         {activeOrder && (
           <div className="bg-amber-50/90 border-2 border-amber-400 rounded-3xl p-4 space-y-3 shadow-md animate-slide-up">
             <div className="flex items-center justify-between">
@@ -285,87 +266,67 @@ export default function StorefrontHome() {
           </div>
         )}
 
-        {/* CATEGORY GRID SECTIONS WITH INSTANT STATE SYNC */}
-        {CATEGORY_SECTIONS.map((sec, secIdx) => (
-          <div key={secIdx} className="space-y-3">
-            <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">{sec.title}</h2>
-            <div className="grid grid-cols-4 gap-2.5">
-              {sec.items.map((cat) => {
-                const isSelected = selectedCategory === cat.name;
-                return (
-                  <div
-                    key={cat.id}
-                    onClick={() => handleSelectCategory(cat.name)}
-                    className={`${cat.bg} p-2 rounded-2xl flex flex-col items-center justify-between h-24 border ${
-                      isSelected ? "border-[#0c831f] ring-2 ring-[#0c831f]/30 scale-105" : "border-slate-200/60"
-                    } shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 active:scale-95`}
-                  >
-                    <img src={cat.img} alt={cat.name} className="h-12 w-12 object-contain rounded-lg transform hover:scale-105 transition-transform" />
-                    <span className={`text-[10px] font-bold text-center leading-tight line-clamp-2 ${
-                      isSelected ? "text-[#0c831f] font-black" : "text-slate-800"
-                    }`}>
-                      {cat.name}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+        {/* 4. Horizontal Promotional Cards (Tall rounded cards with partial right reveal) */}
+        <PromoCardsCarousel />
 
-        {/* BESTSELLERS & PRODUCT GRID */}
-        <div id="products-grid-title" className="space-y-3 pt-2">
+        {/* 5. Teacher's Day / Ganeshotsav Themed Campaign Section */}
+        <CampaignSection onAddToCart={addToCart} cart={cart} />
+
+        {/* 6. Top Deals Product Rails (Matching Brief Section 5) */}
+        <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">
-                {selectedCategory === "All" ? "Market Bestsellers" : selectedCategory}
-              </h2>
-              {selectedCategory !== "All" && (
-                <button
-                  onClick={() => setSelectedCategory("All")}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1"
-                >
-                  <span>Reset</span>
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-            <span
-              onClick={() => setSelectedCategory("All")}
-              className="text-xs font-bold text-[#0c831f] cursor-pointer hover:underline"
-            >
-              See all &rarr;
-            </span>
+            <h2 className="font-black text-base text-slate-900 tracking-tight">Top Deals</h2>
+            <span className="text-xs font-extrabold text-[#0c831f] cursor-pointer hover:underline">See all &rarr;</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex space-x-3 overflow-x-auto scrollbar-none pb-2">
             {filteredProducts.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
+              const isFav = favorites[p.id];
               return (
-                <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.99] animate-modal-pop">
-                  {/* Product Image Box */}
-                  <div className="relative bg-slate-100/70 rounded-2xl p-4 flex items-center justify-center mb-2 h-32 overflow-hidden">
-                    <img src={p.img} alt={p.name} className="h-24 w-24 object-contain transform hover:scale-105 transition-transform duration-300" />
-                    <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-                      ⚡ {p.time}
-                    </span>
+                <div
+                  key={p.id}
+                  className="w-[145px] shrink-0 bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all relative"
+                >
+                  {/* Product Image Container */}
+                  <div className="relative bg-slate-50 rounded-2xl p-3 flex items-center justify-center h-32 overflow-hidden mb-1">
+                    <button
+                      onClick={() => toggleFav(p.id)}
+                      className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full shadow-sm text-slate-400 hover:text-rose-500 transition-colors"
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-rose-500 text-rose-500" : ""}`} />
+                    </button>
+
+                    <Link href={`/product/${p.id}`}>
+                      <img src={p.img} alt={p.name} className="h-24 w-24 object-contain rounded-lg transform hover:scale-105 transition-transform" />
+                    </Link>
+
+                    <div className="absolute bottom-1 flex space-x-1">
+                      <div className="w-1 h-1 bg-slate-900 rounded-full" />
+                      <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                      <div className="w-1 h-1 bg-slate-300 rounded-full" />
+                    </div>
                   </div>
 
-                  {/* Product Details */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold text-slate-400">{p.unit}</span>
-                    <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">{p.name}</h4>
+                  {/* Quantity Unit & Title */}
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-extrabold text-slate-400">{p.unit}</span>
+                    <Link href={`/product/${p.id}`}>
+                      <h4 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2 hover:text-[#0c831f]">
+                        {p.name}
+                      </h4>
+                    </Link>
                   </div>
 
-                  {/* Price & Add Button */}
-                  <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
+                  {/* Price & ADD Button with Spring Motion Physics */}
+                  <div className="mt-3 flex items-center justify-between pt-1 border-t border-slate-100">
                     <div>
-                      <span className="text-xs font-extrabold text-slate-900">₹{p.price}</span>
-                      <span className="text-[10px] text-slate-400 line-through ml-1">₹{p.originalPrice}</span>
+                      <span className="text-xs font-black text-slate-900">₹{p.price}</span>
+                      <span className="text-[9px] text-slate-400 line-through block">₹{p.originalPrice}</span>
                     </div>
 
                     {inCart ? (
-                      <div className="flex items-center space-x-1.5 bg-[#0c831f] text-white rounded-xl px-2 py-1 font-bold text-xs shadow">
+                      <div className="flex items-center space-x-1 bg-[#0c831f] text-white rounded-xl px-2 py-1 font-extrabold text-xs shadow">
                         <button onClick={() => updateQty(p.id, -1)} className="hover:opacity-80">
                           <Minus className="w-3.5 h-3.5" />
                         </button>
@@ -377,7 +338,7 @@ export default function StorefrontHome() {
                     ) : (
                       <button
                         onClick={() => addToCart(p)}
-                        className="bg-emerald-50 hover:bg-[#0c831f] hover:text-white text-[#0c831f] border border-emerald-300 font-extrabold text-xs px-3.5 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
+                        className="bg-emerald-50 hover:bg-[#0c831f] hover:text-white text-[#0c831f] border border-emerald-300 font-black text-xs px-3.5 py-1.5 rounded-xl transition-all shadow-sm active:scale-[0.94]"
                       >
                         ADD
                       </button>
@@ -390,26 +351,10 @@ export default function StorefrontHome() {
         </div>
       </main>
 
-      {/* Floating View Cart Banner */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-16 left-4 right-4 z-40 max-w-md mx-auto animate-slide-up">
-          <Link
-            href="/cart"
-            className="flex items-center justify-between bg-[#0c831f] text-white p-3.5 rounded-2xl shadow-xl hover:bg-emerald-800 transition-all active:scale-95"
-          >
-            <div className="flex items-center space-x-2">
-              <ShoppingBag className="w-5 h-5" />
-              <span className="text-xs font-extrabold">{cartCount} ITEMS • ₹{cartTotal}</span>
-            </div>
-            <div className="flex items-center space-x-1 text-xs font-extrabold">
-              <span>View Cart</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
-        </div>
-      )}
+      {/* 8. Floating Free Delivery Banner */}
+      <FloatingDeliveryBanner />
 
-      {/* Compact Sleek Floating Bottom Navigation Bar */}
+      {/* 7. Floating Bottom Navigation */}
       <BottomNav cartCount={cartCount} />
     </div>
   );
