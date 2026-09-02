@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,13 +10,19 @@
   }
 }
 
+/* Creative Logo Font */
+.font-logo {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.04em;
+}
+
 /* Custom Text Shadow for Logo */
 .logo-shadow {
-  text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.25), 0px 1px 2px rgba(0, 0, 0, 0.15);
+  text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2), 0px 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .logo-box-shadow {
-  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.08);
 }
 
 /* Custom Smooth Animations */
@@ -42,25 +48,12 @@
   }
 }
 
-@keyframes searchExpand {
-  0% {
-    transform: scale(0.98);
-  }
-  100% {
-    transform: scale(1.01);
-  }
-}
-
 .animate-modal-pop {
   animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-slide-up {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-search-focus {
-  animation: searchExpand 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .scrollbar-none::-webkit-scrollbar {

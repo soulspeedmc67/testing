@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, Mic, User, ShoppingBag, AlertCircle, RefreshCw, X, Zap } from "lucide-react";
+import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, Mic, User, ShoppingBag, AlertCircle, RefreshCw, X, Filter } from "lucide-react";
 import LocationPickerModal from "../components/LocationPickerModal";
 import LocationPermissionModal from "../components/LocationPermissionModal";
 import BottomNav from "../components/BottomNav";
@@ -12,38 +12,39 @@ const CATEGORY_SECTIONS = [
   {
     title: "Grocery & Kitchen",
     items: [
-      { id: "cat-veg", name: "Vegetables & Fruits", img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50/80" },
-      { id: "cat-dal", name: "Atta, Rice & Dal", img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50/80" },
-      { id: "cat-oil", name: "Oil, Ghee & Masala", img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&auto=format&fit=crop&q=80", bg: "bg-yellow-50/80" },
-      { id: "cat-dairy", name: "Dairy, Bread & Eggs", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50/80" },
-      { id: "cat-bakery", name: "Bakery & Biscuits", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=200&auto=format&fit=crop&q=80", bg: "bg-orange-50/80" },
-      { id: "cat-instant", name: "Instant Food", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=200&auto=format&fit=crop&q=80", bg: "bg-rose-50/80" }
+      { id: "Vegetables & Fruits", name: "Vegetables & Fruits", img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50/80" },
+      { id: "Atta, Rice & Dal", name: "Atta, Rice & Dal", img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50/80" },
+      { id: "Oil, Ghee & Masala", name: "Oil, Ghee & Masala", img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&auto=format&fit=crop&q=80", bg: "bg-yellow-50/80" },
+      { id: "Dairy, Bread & Eggs", name: "Dairy, Bread & Eggs", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50/80" },
+      { id: "Bakery & Biscuits", name: "Bakery & Biscuits", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=200&auto=format&fit=crop&q=80", bg: "bg-orange-50/80" },
+      { id: "Instant Food", name: "Instant Food", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=200&auto=format&fit=crop&q=80", bg: "bg-rose-50/80" }
     ]
   },
   {
     title: "Snacks & Drinks",
     items: [
-      { id: "cat-chips", name: "Chips & Namkeen", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50/80" },
-      { id: "cat-sweets", name: "Sweets & Chocolates", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=200&auto=format&fit=crop&q=80", bg: "bg-purple-50/80" },
-      { id: "cat-drinks", name: "Drinks & Juices", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50/80" },
-      { id: "cat-tea", name: "Tea, Coffee & Milk", img: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50/80" }
+      { id: "Chips & Namkeen", name: "Chips & Namkeen", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50/80" },
+      { id: "Sweets & Chocolates", name: "Sweets & Chocolates", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=200&auto=format&fit=crop&q=80", bg: "bg-purple-50/80" },
+      { id: "Drinks & Juices", name: "Drinks & Juices", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50/80" },
+      { id: "Tea, Coffee & Milk", name: "Tea, Coffee & Milk", img: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50/80" }
     ]
   }
 ];
 
 const PRODUCTS = [
-  { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Snacks" },
-  { id: 2, name: "Fresh Kashmiri Lavas Bread (4 pcs)", unit: "4 pcs", price: 30, originalPrice: 40, time: "10 mins", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=300&auto=format&fit=crop&q=80", cat: "Bakery" },
-  { id: 3, name: "Amul Taaza Fresh Toned Milk 1L", unit: "1L", price: 66, originalPrice: 70, time: "10 mins", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80", cat: "Dairy" },
-  { id: 4, name: "Fresh Kashmiri Red Apples (1kg)", unit: "1 kg", price: 140, originalPrice: 170, time: "10 mins", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&auto=format&fit=crop&q=80", cat: "Produce" },
-  { id: 5, name: "Cadbury Dairy Milk Silk Chocolate", unit: "150g", price: 175, originalPrice: 190, time: "8 mins", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&auto=format&fit=crop&q=80", cat: "Sweets" },
-  { id: 6, name: "Maggi 2-Minute Masala Noodles (4-Pack)", unit: "280g", price: 56, originalPrice: 60, time: "8 mins", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&auto=format&fit=crop&q=80", cat: "Instant" },
-  { id: 7, name: "Coca-Cola Original Soft Drink", unit: "750ml", price: 45, originalPrice: 50, time: "10 mins", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80", cat: "Drinks" },
-  { id: 8, name: "Amul Pasteurised Butter", unit: "100g", price: 58, originalPrice: 60, time: "10 mins", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80", cat: "Dairy" }
+  { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Chips & Namkeen" },
+  { id: 2, name: "Fresh Kashmiri Lavas Bread (4 pcs)", unit: "4 pcs", price: 30, originalPrice: 40, time: "10 mins", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=300&auto=format&fit=crop&q=80", cat: "Bakery & Biscuits" },
+  { id: 3, name: "Amul Taaza Fresh Toned Milk 1L", unit: "1L", price: 66, originalPrice: 70, time: "10 mins", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80", cat: "Dairy, Bread & Eggs" },
+  { id: 4, name: "Fresh Kashmiri Red Apples (1kg)", unit: "1 kg", price: 140, originalPrice: 170, time: "10 mins", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&auto=format&fit=crop&q=80", cat: "Vegetables & Fruits" },
+  { id: 5, name: "Cadbury Dairy Milk Silk Chocolate", unit: "150g", price: 175, originalPrice: 190, time: "8 mins", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&auto=format&fit=crop&q=80", cat: "Sweets & Chocolates" },
+  { id: 6, name: "Maggi 2-Minute Masala Noodles (4-Pack)", unit: "280g", price: 56, originalPrice: 60, time: "8 mins", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&auto=format&fit=crop&q=80", cat: "Instant Food" },
+  { id: 7, name: "Coca-Cola Original Soft Drink", unit: "750ml", price: 45, originalPrice: 50, time: "10 mins", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80", cat: "Drinks & Juices" },
+  { id: 8, name: "Amul Pasteurised Butter", unit: "100g", price: 58, originalPrice: 60, time: "10 mins", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80", cat: "Dairy, Bread & Eggs" }
 ];
 
 export default function StorefrontHome() {
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [cart, setCart] = useState([]);
   const [activeLocation, setActiveLocation] = useState({
@@ -114,6 +115,14 @@ export default function StorefrontHome() {
     }
   };
 
+  const handleSelectCategory = (catName) => {
+    setSelectedCategory(catName);
+    const target = document.getElementById("products-grid-title");
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   const handleGrantLocation = () => {
     localStorage.setItem("dashit_location_asked", "true");
     setIsPermissionModalOpen(false);
@@ -145,45 +154,54 @@ export default function StorefrontHome() {
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
+  // Filter products by selected category & search query
+  const filteredProducts = PRODUCTS.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || p.cat === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Blinkit-Style Yellow Top Header Banner */}
-      <header className="bg-[#f7c400] px-4 pt-3.5 pb-4 shadow-md transition-all duration-300">
+      {/* Creative Stylish Top Bar Header */}
+      <header className="bg-[#f7c400] px-4 pt-3 pb-4 shadow-md transition-all duration-300">
         <div className="max-w-md mx-auto space-y-3">
-          {/* Top Bar: Brand Logo (DASH Orangish + it Bluish + Bold Shadow) & Location & Profile */}
+          {/* Top Row: Stylish Logo & Delivery Pill & Profile Link */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              {/* Standout Logo */}
-              <div className="bg-white/95 backdrop-blur px-3 py-1 rounded-2xl logo-box-shadow border border-white flex items-center space-x-0.5">
-                <span className="font-black text-lg text-[#ea580c] tracking-tight logo-shadow">DASH</span>
-                <span className="font-black text-lg text-[#0284c7] tracking-tight logo-shadow">it</span>
+              {/* Creative Outfit Font Logo Badge */}
+              <div className="bg-white px-3.5 py-1 rounded-2xl logo-box-shadow border border-white flex items-center space-x-0.5 transform hover:scale-105 transition-transform cursor-pointer">
+                <span className="font-logo font-black text-xl text-[#ea580c] logo-shadow">DASH</span>
+                <span className="font-logo font-black text-xl text-[#0284c7] logo-shadow">it</span>
               </div>
 
               <div>
                 <div className="flex items-baseline space-x-1">
-                  <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-900">in</span>
-                  <span className="text-sm font-black text-slate-900 tracking-tight">10 minutes</span>
+                  <span className="text-[9px] uppercase tracking-wider font-extrabold text-slate-900">delivering in</span>
+                  <span className="text-xs font-black text-slate-900 tracking-tight bg-white/80 px-2 py-0.5 rounded-full border border-amber-300">
+                    ⚡ 10 minutes
+                  </span>
                 </div>
                 <button
                   onClick={() => setIsLocationModalOpen(true)}
-                  className="flex items-center space-x-1 text-[11px] font-extrabold text-slate-800 hover:text-slate-950"
+                  className="flex items-center space-x-1 text-[11px] font-extrabold text-slate-800 hover:text-slate-950 mt-0.5"
                 >
-                  <span className="truncate max-w-[150px]">{activeLocation.nickname} - {activeLocation.address}</span>
+                  <span className="truncate max-w-[140px]">{activeLocation.nickname} - {activeLocation.address}</span>
                   <span className="text-[9px]">▼</span>
                 </button>
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
-              <Link href="/login" className="p-2.5 bg-white/95 rounded-2xl text-slate-900 shadow-sm hover:bg-white transition-all active:scale-95">
+              <Link href="/login" className="p-2.5 bg-white rounded-2xl text-slate-900 shadow-sm hover:bg-slate-100 transition-all active:scale-95">
                 <User className="w-4 h-4" />
               </Link>
             </div>
           </div>
 
-          {/* Search Input Bar with Smooth Expansion & Voice Mic */}
-          <div className={`relative flex items-center bg-white rounded-2xl p-2.5 shadow-lg border border-amber-200/80 transition-all duration-300 ${
-            isSearchFocused ? "ring-2 ring-emerald-600 scale-[1.01]" : ""
+          {/* Search Input Bar with Smooth Focus Ring & Voice Icon */}
+          <div className={`relative flex items-center bg-white rounded-2xl p-2.5 shadow-md border border-amber-200/80 transition-all duration-300 ${
+            isSearchFocused ? "ring-2 ring-[#0c831f] scale-[1.01]" : ""
           }`}>
             <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <input
@@ -195,7 +213,7 @@ export default function StorefrontHome() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400"
             />
-            <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer hover:text-emerald-600 transition-colors" />
+            <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer hover:text-[#0c831f] transition-colors" />
           </div>
         </div>
       </header>
@@ -267,39 +285,64 @@ export default function StorefrontHome() {
           </div>
         )}
 
-        {/* CATEGORY GRID SECTIONS */}
+        {/* CATEGORY GRID SECTIONS WITH INSTANT STATE SYNC */}
         {CATEGORY_SECTIONS.map((sec, secIdx) => (
           <div key={secIdx} className="space-y-3">
             <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">{sec.title}</h2>
             <div className="grid grid-cols-4 gap-2.5">
-              {sec.items.map((cat) => (
-                <div
-                  key={cat.id}
-                  onClick={() => setSearch(cat.name.split(" ")[0])}
-                  className={`${cat.bg} p-2 rounded-2xl flex flex-col items-center justify-between h-24 border border-slate-200/60 shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 active:scale-95`}
-                >
-                  <img src={cat.img} alt={cat.name} className="h-12 w-12 object-contain rounded-lg transform hover:scale-105 transition-transform" />
-                  <span className="text-[10px] font-bold text-slate-800 text-center leading-tight line-clamp-2">
-                    {cat.name}
-                  </span>
-                </div>
-              ))}
+              {sec.items.map((cat) => {
+                const isSelected = selectedCategory === cat.name;
+                return (
+                  <div
+                    key={cat.id}
+                    onClick={() => handleSelectCategory(cat.name)}
+                    className={`${cat.bg} p-2 rounded-2xl flex flex-col items-center justify-between h-24 border ${
+                      isSelected ? "border-[#0c831f] ring-2 ring-[#0c831f]/30 scale-105" : "border-slate-200/60"
+                    } shadow-sm cursor-pointer hover:shadow-md transition-all duration-200 active:scale-95`}
+                  >
+                    <img src={cat.img} alt={cat.name} className="h-12 w-12 object-contain rounded-lg transform hover:scale-105 transition-transform" />
+                    <span className={`text-[10px] font-bold text-center leading-tight line-clamp-2 ${
+                      isSelected ? "text-[#0c831f] font-black" : "text-slate-800"
+                    }`}>
+                      {cat.name}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
 
         {/* BESTSELLERS & PRODUCT GRID */}
-        <div className="space-y-3 pt-2">
+        <div id="products-grid-title" className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">Market Bestsellers</h2>
-            <span className="text-xs font-bold text-[#0c831f] cursor-pointer hover:underline">See all &rarr;</span>
+            <div className="flex items-center space-x-2">
+              <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">
+                {selectedCategory === "All" ? "Market Bestsellers" : selectedCategory}
+              </h2>
+              {selectedCategory !== "All" && (
+                <button
+                  onClick={() => setSelectedCategory("All")}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center space-x-1"
+                >
+                  <span>Reset</span>
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            <span
+              onClick={() => setSelectedCategory("All")}
+              className="text-xs font-bold text-[#0c831f] cursor-pointer hover:underline"
+            >
+              See all &rarr;
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).map((p) => {
+            {filteredProducts.map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               return (
-                <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.99]">
+                <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-200 active:scale-[0.99] animate-modal-pop">
                   {/* Product Image Box */}
                   <div className="relative bg-slate-100/70 rounded-2xl p-4 flex items-center justify-center mb-2 h-32 overflow-hidden">
                     <img src={p.img} alt={p.name} className="h-24 w-24 object-contain transform hover:scale-105 transition-transform duration-300" />
@@ -349,7 +392,7 @@ export default function StorefrontHome() {
 
       {/* Floating View Cart Banner */}
       {cartCount > 0 && (
-        <div className="fixed bottom-20 left-4 right-4 z-40 max-w-md mx-auto animate-slide-up">
+        <div className="fixed bottom-16 left-4 right-4 z-40 max-w-md mx-auto animate-slide-up">
           <Link
             href="/cart"
             className="flex items-center justify-between bg-[#0c831f] text-white p-3.5 rounded-2xl shadow-xl hover:bg-emerald-800 transition-all active:scale-95"
@@ -366,7 +409,7 @@ export default function StorefrontHome() {
         </div>
       )}
 
-      {/* Persistent Floating Bottom Navigation Bar */}
+      {/* Compact Sleek Floating Bottom Navigation Bar */}
       <BottomNav cartCount={cartCount} />
     </div>
   );
