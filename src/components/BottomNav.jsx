@@ -19,23 +19,18 @@ export default function BottomNav({ cartCount = 0 }) {
       <div className="max-w-md mx-auto flex items-center justify-around">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive =
-            (item.id === "home" && currentPath === "/") ||
-            (item.id === "orders" && currentPath === "/orders") ||
-            (item.id === "account" && currentPath === "/account") ||
-            (item.id === "categories" && router.asPath.includes("#categories")) ||
-            (item.id === "search" && router.query.search === "true");
+          const isActive = currentPath === item.path || (item.id === "home" && currentPath === "/");
 
           return (
             <Link
               key={item.id}
               href={item.path}
-              className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-200 active:scale-95 ${
-                isActive ? "text-[#ea580c] font-black" : "text-slate-500 hover:text-slate-800 font-semibold"
+              className={`flex flex-col items-center justify-center py-1 px-2 transition-all duration-150 active:scale-95 ${
+                isActive ? "text-[#ea580c] font-black" : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-[#ea580c] stroke-[2.5px]" : "text-slate-500 stroke-[1.8px]"}`} />
-              <span className="text-[10px] mt-0.5 tracking-tight font-extrabold">{item.label}</span>
+              <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5px]" : "stroke-[1.8px]"}`} />
+              <span className="text-[10px] mt-0.5 font-bold tracking-tight">{item.label}</span>
             </Link>
           );
         })}
