@@ -129,7 +129,7 @@ export default function StorefrontHome() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-36">
       {/* Dark Navy Blue Top Header Bar matching reference screenshot */}
       <header className="bg-[#061838] px-4 pt-3.5 pb-4 text-white shadow-lg">
         <div className="max-w-md mx-auto space-y-3">
@@ -280,28 +280,28 @@ export default function StorefrontHome() {
       {/* Floating Free Delivery Banner */}
       <FloatingDeliveryBanner />
 
-      {/* Floating View Cart Banner matching reference screenshot */}
+      {/* Floating View Cart Banner (Hovering cleanly above floating bottom nav) */}
       {cartCount > 0 && (
-        <div className="fixed bottom-[65px] left-4 right-4 z-40 max-w-md mx-auto animate-bottom-sheet">
+        <div className="fixed bottom-[76px] left-4 right-4 z-40 max-w-xs mx-auto animate-bottom-sheet">
           <Link
             href="/cart"
-            className="flex items-center justify-between bg-[#061838] text-white p-3.5 rounded-2xl shadow-2xl hover:bg-slate-900 transition-all active:scale-95 border border-slate-700"
+            className="flex items-center justify-between bg-[#061838] text-white p-3 rounded-full shadow-2xl hover:bg-slate-900 transition-all active:scale-95 border-2 border-white"
           >
-            <div className="flex items-center space-x-3 pl-1">
-              <div className="w-10 h-10 rounded-xl bg-slate-800 overflow-hidden shrink-0 border border-slate-700 flex items-center justify-center">
-                <ShoppingBag className="w-5 h-5 text-amber-400" />
+            <div className="flex items-center space-x-2.5 pl-2">
+              <div className="p-1.5 bg-amber-500 text-slate-950 rounded-full animate-bounce">
+                <ShoppingBag className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-xs font-black tracking-tight block">View cart</span>
-                <span className="text-[11px] font-semibold text-slate-300">{cartCount} items · ₹{cartTotal}.00</span>
+                <span className="text-[10px] font-semibold text-slate-300">{cartCount} items · ₹{cartTotal}.00</span>
               </div>
             </div>
-            <ArrowRight className="w-5 h-5 text-white pr-1" />
+            <ArrowRight className="w-4 h-4 text-white pr-2" />
           </Link>
         </div>
       )}
 
-      {/* Floating Bottom Navigation (5 Tabs) */}
+      {/* True Floating Pill Bottom Navigation (Hovering above bottom edge) */}
       <BottomNav cartCount={cartCount} />
     </div>
   );
