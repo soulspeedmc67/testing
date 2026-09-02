@@ -50,7 +50,7 @@ export default function LoginPage() {
         <div className="absolute top-4 right-4 z-20">
           <Link
             href="/"
-            className="bg-slate-200/80 hover:bg-slate-300 backdrop-blur text-slate-700 text-xs font-semibold px-4 py-1.5 rounded-full transition-all"
+            className="bg-slate-200/80 hover:bg-slate-300 backdrop-blur text-slate-700 text-xs font-bold px-4 py-1.5 rounded-full transition-all active:scale-95"
           >
             Skip login
           </Link>
@@ -70,12 +70,12 @@ export default function LoginPage() {
       </div>
 
       {/* Main Login Form Sheet */}
-      <div className="bg-white rounded-t-3xl shadow-2xl border-t border-slate-100 p-6 max-w-md mx-auto w-full space-y-5">
-        {/* Blinkit-style Yellow Badge Logo */}
+      <div className="bg-white rounded-t-3xl shadow-2xl border-t border-slate-100 p-6 max-w-md mx-auto w-full space-y-5 animate-slide-up">
+        {/* Blinkit-style Logo with DASH Orangish + it Bluish + Bold Shadow */}
         <div className="flex justify-center">
-          <div className="bg-[#f7c400] text-slate-950 font-black px-4 py-2 rounded-2xl text-xl tracking-tight shadow-md flex items-center space-x-1">
-            <span>dash</span>
-            <span className="text-emerald-700">it</span>
+          <div className="bg-[#f7c400] text-slate-950 font-black px-5 py-2.5 rounded-2xl text-2xl tracking-tight shadow-md flex items-center space-x-0.5 border border-amber-300">
+            <span className="text-[#ea580c] logo-shadow">DASH</span>
+            <span className="text-[#0284c7] logo-shadow">it</span>
           </div>
         </div>
 
@@ -87,7 +87,7 @@ export default function LoginPage() {
 
         {/* Form */}
         <form onSubmit={handleSendOtp} className="space-y-4">
-          <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl p-3 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+          <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl p-3 focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
             <span className="text-sm font-bold text-slate-700 mr-2 border-r border-slate-300 pr-2">+91</span>
             <input
               type="tel"
@@ -101,7 +101,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full bg-[#9c9fa6] hover:bg-slate-800 text-white font-bold text-sm py-3.5 rounded-2xl shadow-md transition-all flex items-center justify-center space-x-2"
+            className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
           >
             <span>Continue</span>
           </button>
@@ -115,7 +115,7 @@ export default function LoginPage() {
       {/* Dummy OTP Verification Modal */}
       {showOtpModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-xs space-y-4 text-center shadow-2xl border border-slate-100">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-xs space-y-4 text-center shadow-2xl border border-slate-100 animate-modal-pop">
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Verify Mobile</span>
               <button onClick={() => setShowOtpModal(false)} className="p-1 text-slate-400 hover:text-slate-700">
@@ -138,13 +138,13 @@ export default function LoginPage() {
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value)}
                 placeholder="1234"
-                className="w-36 text-center text-xl font-mono font-bold tracking-widest bg-slate-100 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:border-emerald-500"
+                className="w-36 text-center text-xl font-mono font-bold tracking-widest bg-slate-100 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:border-emerald-600"
               />
             </div>
 
             <button
               onClick={handleVerifyOtp}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl shadow-md transition-colors"
+              className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all active:scale-95"
             >
               Verify & Login
             </button>
