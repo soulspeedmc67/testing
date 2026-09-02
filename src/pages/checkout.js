@@ -55,7 +55,7 @@ export default function CheckoutPage() {
       localStorage.removeItem("dashit_checkout_data");
 
       setIsProcessing(false);
-      router.push("/account?placed=true");
+      router.push("/orders");
     }, 1500);
   };
 
