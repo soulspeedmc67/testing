@@ -1,11 +1,10 @@
-import { Sparkles, Zap, Gift, Smartphone, Heart } from "lucide-react";
+import { Sparkles, Smartphone, Heart, Utensils } from "lucide-react";
 
 const CATEGORY_TABS = [
   { id: "All", label: "All", icon: null },
-  { id: "Ganeshotsav", label: "Ganeshotsav", icon: Sparkles, isNew: true },
   { id: "Electronics", label: "Electronics", icon: Smartphone },
   { id: "Beauty", label: "Beauty", icon: Heart },
-  { id: "Gifting", label: "Gifting", icon: Gift },
+  { id: "Grocery", label: "Grocery & Kitchen", icon: Utensils, isNew: true },
 ];
 
 export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
@@ -26,7 +25,7 @@ export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
               {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#0c831f]" : "text-slate-400"}`} />}
               <span>{tab.label}</span>
               {tab.isNew && (
-                <span className="bg-rose-500 text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-0.5 shadow-sm animate-pulse">
+                <span className="bg-[#0c831f] text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-0.5 shadow-sm animate-pulse">
                   NEW
                 </span>
               )}
