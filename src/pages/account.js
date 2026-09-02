@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { User, Phone, MapPin, Package, Clock, PhoneCall, ShieldAlert, ChevronRight, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
+import confetti from "canvas-confetti";
 import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
 export default function AccountPage() {
+  const router = useRouter();
   const [activeOrder, setActiveOrder] = useState(null);
   const [cancellationSeconds, setCancellationSeconds] = useState(120);
   const [orderHistory, setOrderHistory] = useState([]);
@@ -29,7 +32,17 @@ export default function AccountPage() {
     if (history) {
       try { setOrderHistory(JSON.parse(history)); } catch (e) {}
     }
-  }, []);
+
+    if (router.query.placed === "true") {
+      try {
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.5 }
+        });
+      } catch (e) {}
+    }
+  }, [router.query]);
 
   useEffect(() => {
     let timer;
@@ -83,7 +96,7 @@ export default function AccountPage() {
           <div>
             <h2 className="font-extrabold text-sm text-slate-900">{user.name || "Azan Iqbal Mir"}</h2>
             <div className="flex items-center space-x-2 text-xs text-slate-500 font-semibold mt-0.5">
-              <Phone className="w-3.5 h-3.5 text-emerald-600" />
+              <Phone className="w-3.5 h-3.5 text-[#0c831f]" />
               <span className="font-mono">{user.mobile || "9622720283"}</span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">Nai Basti, Near Petrol Pump, Anantnag</p>
@@ -126,11 +139,11 @@ export default function AccountPage() {
               </p>
             </div>
 
-            {/* Action Buttons */}
+            {/* Action Buttons: Navigate to Storefront Home (/) to browse products */}
             <div className="flex space-x-2 pt-0.5">
               <Link
-                href="/cart"
-                className="grow bg-emerald-700 hover:bg-emerald-800 text-white text-center text-xs font-extrabold py-3 rounded-2xl transition-all shadow-md active:scale-95"
+                href="/"
+                className="grow bg-[#0c831f] hover:bg-emerald-800 text-white text-center text-xs font-extrabold py-3 rounded-2xl transition-all shadow-md active:scale-95"
               >
                 + Add More Items to Order
               </Link>
@@ -176,8 +189,8 @@ export default function AccountPage() {
                     <p className="text-[11px] text-slate-500 font-medium">{ord.date} • {ord.items?.length || 1} Items</p>
                   </div>
                   <div className="text-right">
-                    <span className="font-extrabold font-mono text-emerald-700">₹{ord.totalAmount}</span>
-                    <span className="block text-[10px] text-emerald-600 font-bold">Delivered</span>
+                    <span className="font-extrabold font-mono text-[#0c831f]">₹{ord.totalAmount}</span>
+                    <span className="block text-[10px] text-[#0c831f] font-bold">Delivered</span>
                   </div>
                 </div>
               ))}
@@ -192,7 +205,7 @@ export default function AccountPage() {
             className="flex items-center justify-between p-2.5 rounded-2xl text-slate-800 hover:bg-slate-50 transition-colors"
           >
             <div className="flex items-center space-x-2.5">
-              <PhoneCall className="w-4 h-4 text-emerald-600" />
+              <PhoneCall className="w-4 h-4 text-[#0c831f]" />
               <span className="font-bold">Contact Customer Support (6006990032)</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />

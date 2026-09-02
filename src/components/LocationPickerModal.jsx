@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Search, Crosshair, Plus, MessageSquare, ChevronRight, X, Home, Pin, MoreHorizontal, Share2 } from "lucide-react";
+import { useState } from "react";
+import { Search, Crosshair, Plus, MessageSquare, ChevronRight, X, Home, Pin } from "lucide-react";
 
 export default function LocationPickerModal({ isOpen, onClose, onSelectLocation, currentLocation }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,12 +41,18 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end justify-center sm:items-center p-0 sm:p-4">
-      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 p-5 space-y-4">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end justify-center sm:items-center p-0 sm:p-4 animate-fade-in">
+      <div className="bg-white rounded-t-[32px] sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 p-6 space-y-4 animate-bottom-sheet">
+        {/* Handle bar for drag visual */}
+        <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-1" />
+
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-          <h2 className="font-extrabold text-base text-slate-900">Select delivery location</h2>
-          <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+          <h2 className="font-black text-base text-slate-900 tracking-tight">Select delivery location</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -59,7 +65,7 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
             placeholder="Search for area, street name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 pl-10 pr-4 py-2.5 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 pl-10 pr-4 py-3 rounded-2xl focus:outline-none focus:border-[#0c831f] focus:ring-1 focus:ring-[#0c831f] transition-all"
           />
         </div>
 
@@ -69,13 +75,13 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
           <button
             onClick={handleUseCurrentLocation}
             disabled={isGeolocating}
-            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
+            className="w-full bg-slate-50 hover:bg-emerald-50/60 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left group active:scale-95"
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+              <div className="p-2.5 bg-emerald-100 text-[#0c831f] rounded-xl group-hover:bg-[#0c831f] group-hover:text-white transition-colors">
                 <Crosshair className={`w-4 h-4 ${isGeolocating ? "animate-spin" : ""}`} />
               </div>
-              <span className="text-xs font-bold text-emerald-700">
+              <span className="text-xs font-extrabold text-[#0c831f]">
                 {isGeolocating ? "Locating GPS..." : "Use your current location"}
               </span>
             </div>
@@ -91,52 +97,37 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
                 onClose();
               }
             }}
-            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left active:scale-95"
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+              <div className="p-2.5 bg-emerald-100 text-[#0c831f] rounded-xl">
                 <Plus className="w-4 h-4" />
               </div>
-              <span className="text-xs font-bold text-emerald-700">Add new address</span>
+              <span className="text-xs font-extrabold text-[#0c831f]">Add new address</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </button>
 
-          {/* 3. Request address from someone else */}
+          {/* 3. Request address */}
           <button
             onClick={() => alert("Link copied to clipboard! Share on WhatsApp to request address.")}
-            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left active:scale-95"
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-500 text-white rounded-xl">
+              <div className="p-2.5 bg-emerald-600 text-white rounded-xl">
                 <MessageSquare className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-slate-800">Request address from someone else</span>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </button>
-
-          {/* 4. Import addresses */}
-          <button
-            onClick={() => alert("Addresses synced!")}
-            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-rose-500 text-white font-black rounded-xl text-[10px]">
-                DASH
-              </div>
-              <span className="text-xs font-bold text-slate-800">Import your addresses from DASHit</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-          </button>
         </div>
 
-        {/* Your Saved Addresses */}
+        {/* Saved Address */}
         <div className="pt-2 space-y-2">
-          <h3 className="text-xs font-bold text-slate-500 tracking-tight">Your saved addresses</h3>
+          <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Your saved addresses</h3>
 
-          {/* Saved Address Card */}
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 relative">
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-4 space-y-2 relative">
             <div className="flex items-start space-x-3">
               <div className="p-2.5 bg-yellow-100 text-yellow-700 rounded-2xl flex flex-col items-center">
                 <Home className="w-5 h-5 fill-yellow-500 text-yellow-600" />
@@ -156,7 +147,7 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
               </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-2 pt-1 border-t border-slate-200/60">
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200/60">
               <button
                 onClick={() => {
                   onSelectLocation({
@@ -167,7 +158,7 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
                   });
                   onClose();
                 }}
-                className="bg-emerald-600 text-white font-bold text-xs px-4 py-1.5 rounded-xl hover:bg-emerald-700 transition-colors"
+                className="bg-[#0c831f] text-white font-extrabold text-xs px-5 py-2 rounded-xl hover:bg-emerald-800 transition-all shadow-md active:scale-95"
               >
                 Deliver Here
               </button>

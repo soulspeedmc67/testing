@@ -25,7 +25,23 @@
   box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.08);
 }
 
-/* Custom Smooth Animations */
+/* Bottom Sheet Slide Up Animation */
+@keyframes bottomSheetUp {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInOverlay {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 @keyframes modalPop {
   0% {
     opacity: 0;
@@ -37,23 +53,16 @@
   }
 }
 
-@keyframes slideUp {
-  0% {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.animate-bottom-sheet {
+  animation: bottomSheetUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeInOverlay 0.25s ease-out forwards;
 }
 
 .animate-modal-pop {
   animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .scrollbar-none::-webkit-scrollbar {
