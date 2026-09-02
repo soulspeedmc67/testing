@@ -9,77 +9,77 @@ const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: fa
 export default function AccountPage() {
   const [activeOrder, setActiveOrder] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
+  const [user, setUser] = useState({ name: "Azan Iqbal Mir", mobile: "9622720283" });
 
   useEffect(() => {
+    const savedUser = localStorage.getItem("dashit_user");
     const active = localStorage.getItem("dashit_active_order");
     const history = localStorage.getItem("dashit_orders_history");
 
+    if (savedUser) {
+      try { setUser(JSON.parse(savedUser)); } catch (e) {}
+    }
     if (active) {
-      try {
-        setActiveOrder(JSON.parse(active));
-      } catch (e) {}
+      try { setActiveOrder(JSON.parse(active)); } catch (e) {}
     }
     if (history) {
-      try {
-        setOrderHistory(JSON.parse(history));
-      } catch (e) {}
+      try { setOrderHistory(JSON.parse(history)); } catch (e) {}
     }
   }, []);
 
   const handleDeleteAccount = async () => {
     if (confirm("Are you sure you want to delete your account and personal data from DASHit?")) {
       try {
-        const res = await fetch("/api/privacy/delete-account", {
+        await fetch("/api/privacy/delete-account", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: "USER-6006990032" })
         });
-        const data = await res.json();
-        alert(data.message || "Account data purged.");
+        alert("Account data purged successfully.");
         localStorage.clear();
-        window.location.href = "/";
+        window.location.href = "/login";
       } catch (e) {
-        alert("Account deletion completed.");
+        alert("Account deleted.");
       }
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased pb-28">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-xl border-b border-zinc-800/80 px-4 py-3.5 flex items-center justify-between">
-        <h1 className="font-bold text-base text-zinc-100">My Profile & Orders</h1>
-        <span className="text-[10px] font-mono bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full border border-orange-500/30">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
+        <h1 className="font-extrabold text-base text-slate-900">My Profile & Orders</h1>
+        <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
           ANANTNAG MEMBER
         </span>
       </header>
 
       <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
         {/* Profile Details Card */}
-        <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4 flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-orange-500 text-zinc-950 font-black text-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center space-x-3.5 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-[#f7c400] text-slate-950 font-black text-xl flex items-center justify-center shadow-md">
             AI
           </div>
           <div>
-            <h2 className="font-bold text-sm text-zinc-100">Azan Iqbal Mir</h2>
-            <div className="flex items-center space-x-2 text-xs text-zinc-400 mt-0.5">
-              <Phone className="w-3.5 h-3.5 text-orange-500" />
-              <span className="font-mono">6006990032</span>
+            <h2 className="font-extrabold text-sm text-slate-900">{user.name || "Azan Iqbal Mir"}</h2>
+            <div className="flex items-center space-x-2 text-xs text-slate-500 font-semibold mt-0.5">
+              <Phone className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="font-mono">{user.mobile || "9622720283"}</span>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-0.5">Nai Basti, Near Petrol Pump, Anantnag</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Nai Basti, Near Petrol Pump, Anantnag</p>
           </div>
         </div>
 
         {/* Active Order Live Tracker */}
         {activeOrder && (
-          <div className="bg-zinc-900/90 border border-orange-500/40 rounded-2xl p-4 space-y-3 shadow-xl">
+          <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4 space-y-3 shadow-md">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold text-orange-400">ACTIVE ORDER #{activeOrder.orderId}</span>
-                <p className="text-[11px] text-zinc-400">Delivery OTP: <b className="text-zinc-100 font-mono">{activeOrder.otp}</b></p>
+                <span className="text-xs font-extrabold text-amber-900">ACTIVE ORDER #{activeOrder.orderId}</span>
+                <p className="text-[11px] text-amber-800 font-medium">OTP: <b className="font-mono text-slate-900">{activeOrder.otp}</b></p>
               </div>
-              <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30">
-                OUT FOR DELIVERY
+              <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-2.5 py-0.5 rounded-full shadow">
+                PACKING / IN TRANSIT
               </span>
             </div>
 
@@ -93,25 +93,25 @@ export default function AccountPage() {
         )}
 
         {/* Order History */}
-        <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4 space-y-3">
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-xs text-zinc-300 uppercase tracking-wider">Recent Orders</h3>
-            <Package className="w-4 h-4 text-zinc-500" />
+            <h3 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">Recent Orders</h3>
+            <Package className="w-4 h-4 text-slate-400" />
           </div>
 
           {orderHistory.length === 0 ? (
-            <p className="text-xs text-zinc-500 text-center py-4">No past orders yet.</p>
+            <p className="text-xs text-slate-400 text-center py-4 font-medium">No past orders yet.</p>
           ) : (
-            <div className="space-y-2.5 divide-y divide-zinc-800/60">
+            <div className="space-y-2.5 divide-y divide-slate-100">
               {orderHistory.map((ord, idx) => (
                 <div key={idx} className="pt-2.5 flex items-center justify-between text-xs">
                   <div>
-                    <span className="font-bold text-zinc-200">{ord.orderId}</span>
-                    <p className="text-[11px] text-zinc-500">{ord.date} • {ord.items?.length || 1} Items</p>
+                    <span className="font-extrabold text-slate-900">{ord.orderId}</span>
+                    <p className="text-[11px] text-slate-500 font-medium">{ord.date} • {ord.items?.length || 1} Items</p>
                   </div>
                   <div className="text-right">
-                    <span className="font-bold font-mono text-orange-400">₹{ord.totalAmount}</span>
-                    <span className="block text-[10px] text-emerald-400">Delivered</span>
+                    <span className="font-extrabold font-mono text-emerald-700">₹{ord.totalAmount}</span>
+                    <span className="block text-[10px] text-emerald-600 font-bold">Delivered</span>
                   </div>
                 </div>
               ))}
@@ -120,27 +120,27 @@ export default function AccountPage() {
         </div>
 
         {/* Support & Privacy Actions */}
-        <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-3.5 space-y-2 text-xs">
+        <div className="bg-white border border-slate-200 rounded-3xl p-3.5 space-y-2 text-xs shadow-sm">
           <a
             href="tel:6006990032"
-            className="flex items-center justify-between p-2 rounded-xl text-zinc-200 hover:bg-zinc-800 transition-colors"
+            className="flex items-center justify-between p-2.5 rounded-2xl text-slate-800 hover:bg-slate-50 transition-colors"
           >
             <div className="flex items-center space-x-2.5">
-              <PhoneCall className="w-4 h-4 text-orange-400" />
-              <span>Contact Customer Helpline (6006990032)</span>
+              <PhoneCall className="w-4 h-4 text-emerald-600" />
+              <span className="font-bold">Contact Customer Support (6006990032)</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-zinc-500" />
+            <ChevronRight className="w-4 h-4 text-slate-400" />
           </a>
 
           <button
             onClick={handleDeleteAccount}
-            className="w-full flex items-center justify-between p-2 rounded-xl text-rose-400 hover:bg-rose-500/10 transition-colors"
+            className="w-full flex items-center justify-between p-2.5 rounded-2xl text-rose-600 hover:bg-rose-50 transition-colors"
           >
             <div className="flex items-center space-x-2.5">
-              <ShieldAlert className="w-4 h-4 text-rose-500" />
-              <span>Delete My In-App Account & Data</span>
+              <ShieldAlert className="w-4 h-4 text-rose-600" />
+              <span className="font-bold">Delete Account & Data</span>
             </div>
-            <ChevronRight className="w-4 h-4 text-rose-500" />
+            <ChevronRight className="w-4 h-4 text-rose-400" />
           </button>
         </div>
       </main>

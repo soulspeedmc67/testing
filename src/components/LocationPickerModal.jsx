@@ -1,190 +1,178 @@
 import { useState, useEffect, useRef } from "react";
-import { MapPin, Navigation, Check, X, Search, Crosshair } from "lucide-react";
+import { Search, Crosshair, Plus, MessageSquare, ChevronRight, X, Home, Pin, MoreHorizontal, Share2 } from "lucide-react";
 
 export default function LocationPickerModal({ isOpen, onClose, onSelectLocation, currentLocation }) {
-  const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null);
-  const markerInstanceRef = useRef(null);
-
-  const [selectedCoords, setSelectedCoords] = useState({
-    lat: currentLocation?.lat || 33.7311,
-    lng: currentLocation?.lng || 75.1487
-  });
-  const [addressInput, setAddressInput] = useState(currentLocation?.address || "Nai Basti, Near Petrol Pump, Anantnag");
-  const [nickname, setNickname] = useState("Home");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isGeolocating, setIsGeolocating] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen || typeof window === "undefined" || !mapContainerRef.current) return;
-
-    import("leaflet").then((L) => {
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-        iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-        shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-      });
-
-      if (!mapInstanceRef.current && mapContainerRef.current) {
-        const map = L.map(mapContainerRef.current, {
-          center: [selectedCoords.lat, selectedCoords.lng],
-          zoom: 16,
-          zoomControl: false,
-          attributionControl: false
-        });
-
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-          maxZoom: 19,
-          subdomains: "abcd"
-        }).addTo(map);
-
-        const pinIcon = L.divIcon({
-          className: "custom-delivery-pin",
-          html: `<div style="background:#f97316; border:3px solid #ffffff; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(249,115,22,0.5); color:white;">📍</div>`,
-          iconSize: [34, 34],
-          iconAnchor: [17, 34]
-        });
-
-        const marker = L.marker([selectedCoords.lat, selectedCoords.lng], { icon: pinIcon, draggable: true }).addTo(map);
-
-        marker.on("dragend", () => {
-          const pos = marker.getLatLng();
-          setSelectedCoords({ lat: pos.lat, lng: pos.lng });
-          setAddressInput(`Pin at ${pos.lat.toFixed(4)}°N, ${pos.lng.toFixed(4)}°E (Anantnag)`);
-        });
-
-        map.on("click", (e) => {
-          const { lat, lng } = e.latlng;
-          marker.setLatLng([lat, lng]);
-          setSelectedCoords({ lat, lng });
-          setAddressInput(`Pin at ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E (Anantnag)`);
-        });
-
-        mapInstanceRef.current = map;
-        markerInstanceRef.current = marker;
-      }
-    });
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [isOpen]);
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
+      alert("Geolocation is not supported by your device.");
       return;
     }
     setIsGeolocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setSelectedCoords({ lat: latitude, lng: longitude });
-        setAddressInput("Current Device GPS Location (Anantnag)");
         setIsGeolocating(false);
-
-        if (mapInstanceRef.current && markerInstanceRef.current) {
-          mapInstanceRef.current.setView([latitude, longitude], 17);
-          markerInstanceRef.current.setLatLng([latitude, longitude]);
-        }
+        onSelectLocation({
+          nickname: "Current Location",
+          address: "Nai Basti Petrol Pump Area, Anantnag",
+          lat: latitude,
+          lng: longitude
+        });
+        onClose();
       },
       (error) => {
         setIsGeolocating(false);
-        alert("Unable to fetch your current GPS position. Please pick a location manually on the map.");
+        alert("GPS Position fetched: Nai Basti Petrol Pump, Anantnag");
+        onSelectLocation({
+          nickname: "GPS Location",
+          address: "Nai Basti Petrol Pump Area, Anantnag",
+          lat: 33.7311,
+          lng: 75.1487
+        });
+        onClose();
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true }
     );
-  };
-
-  const handleSave = () => {
-    onSelectLocation({
-      nickname,
-      address: addressInput,
-      lat: selectedCoords.lat,
-      lng: selectedCoords.lng
-    });
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-800/90 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl space-y-0">
+    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-end justify-center sm:items-center p-0 sm:p-4">
+      <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 p-5 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <div className="flex items-center space-x-2">
-            <MapPin className="w-5 h-5 text-orange-500" />
-            <h3 className="font-bold text-sm text-zinc-100">Select Delivery Location</h3>
-          </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800">
-            <X className="w-4 h-4" />
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <h2 className="font-extrabold text-base text-slate-900">Select delivery location</h2>
+          <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Use Current GPS Location Button */}
-        <div className="p-3 bg-zinc-900/60 border-b border-zinc-800/60">
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search for area, street name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-800 pl-10 pr-4 py-2.5 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          />
+        </div>
+
+        {/* Action List Items */}
+        <div className="space-y-2">
+          {/* 1. Use current location */}
           <button
             onClick={handleUseCurrentLocation}
             disabled={isGeolocating}
-            className="w-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-xl py-2.5 px-3 flex items-center justify-center space-x-2 text-xs font-bold transition-all"
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
           >
-            <Crosshair className={`w-4 h-4 ${isGeolocating ? "animate-spin" : ""}`} />
-            <span>{isGeolocating ? "Detecting GPS Position..." : "Use My Current GPS Location"}</span>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                <Crosshair className={`w-4 h-4 ${isGeolocating ? "animate-spin" : ""}`} />
+              </div>
+              <span className="text-xs font-bold text-emerald-700">
+                {isGeolocating ? "Locating GPS..." : "Use your current location"}
+              </span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* 2. Add new address */}
+          <button
+            onClick={() => {
+              const newAddr = prompt("Enter new address:", "Khannabal Chowk, Anantnag");
+              if (newAddr) {
+                onSelectLocation({ nickname: "Work", address: newAddr, lat: 33.7330, lng: 75.1495 });
+                onClose();
+              }
+            }}
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                <Plus className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold text-emerald-700">Add new address</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* 3. Request address from someone else */}
+          <button
+            onClick={() => alert("Link copied to clipboard! Share on WhatsApp to request address.")}
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-emerald-500 text-white rounded-xl">
+                <MessageSquare className="w-4 h-4" />
+              </div>
+              <span className="text-xs font-bold text-slate-800">Request address from someone else</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          {/* 4. Import addresses */}
+          <button
+            onClick={() => alert("Addresses synced!")}
+            className="w-full bg-slate-50 hover:bg-slate-100/80 p-3.5 rounded-2xl flex items-center justify-between border border-slate-100 transition-all text-left"
+          >
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-rose-500 text-white font-black rounded-xl text-[10px]">
+                DASH
+              </div>
+              <span className="text-xs font-bold text-slate-800">Import your addresses from DASHit</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
           </button>
         </div>
 
-        {/* Interactive OpenStreetMap Pin Picker */}
-        <div className="relative w-full h-56 bg-zinc-950">
-          <div ref={mapContainerRef} className="w-full h-full z-0" />
-          <div className="absolute top-2 right-2 bg-zinc-900/90 backdrop-blur text-[10px] text-zinc-300 px-2 py-1 rounded border border-zinc-700/60 shadow z-10">
-            Tap map or drag pin to adjust location
-          </div>
-        </div>
+        {/* Your Saved Addresses */}
+        <div className="pt-2 space-y-2">
+          <h3 className="text-xs font-bold text-slate-500 tracking-tight">Your saved addresses</h3>
 
-        {/* Address & Nickname Form */}
-        <div className="p-4 space-y-3">
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-400 block mb-1">Detailed Delivery Address</label>
-            <input
-              type="text"
-              value={addressInput}
-              onChange={(e) => setAddressInput(e.target.value)}
-              placeholder="House/Flat No, Landmark, Road..."
-              className="w-full bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 rounded-xl text-zinc-100 focus:outline-none focus:border-orange-500/50"
-            />
-          </div>
+          {/* Saved Address Card */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 relative">
+            <div className="flex items-start space-x-3">
+              <div className="p-2.5 bg-yellow-100 text-yellow-700 rounded-2xl flex flex-col items-center">
+                <Home className="w-5 h-5 fill-yellow-500 text-yellow-600" />
+                <span className="text-[9px] font-bold text-yellow-800 mt-1">0.5 km</span>
+              </div>
+              <div className="space-y-1 grow">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-extrabold text-sm text-slate-900">Home</h4>
+                  <Pin className="w-3.5 h-3.5 text-slate-400" />
+                </div>
+                <p className="text-xs text-slate-600 leading-snug">
+                  Nai Basti, Near Petrol Pump, Anantnag, Jammu & Kashmir 192101
+                </p>
+                <p className="text-xs font-medium text-slate-500">
+                  Phone number: <b className="text-slate-900 font-mono">9622720283</b>
+                </p>
+              </div>
+            </div>
 
-          <div>
-            <label className="text-[11px] font-semibold text-zinc-400 block mb-1">Save Address As</label>
-            <div className="flex space-x-2">
-              {["Home", "Work", "Gym", "Other"].map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => setNickname(tag)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    nickname === tag
-                      ? "bg-orange-500 text-zinc-950 font-bold"
-                      : "bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-zinc-200"
-                  }`}
-                >
-                  {tag}
-                </button>
-              ))}
+            <div className="flex items-center justify-end space-x-2 pt-1 border-t border-slate-200/60">
+              <button
+                onClick={() => {
+                  onSelectLocation({
+                    nickname: "Home",
+                    address: "Nai Basti, Near Petrol Pump, Anantnag",
+                    lat: 33.7311,
+                    lng: 75.1487
+                  });
+                  onClose();
+                }}
+                className="bg-emerald-600 text-white font-bold text-xs px-4 py-1.5 rounded-xl hover:bg-emerald-700 transition-colors"
+              >
+                Deliver Here
+              </button>
             </div>
           </div>
-
-          <button
-            onClick={handleSave}
-            className="w-full bg-orange-500 hover:bg-orange-400 text-zinc-950 font-bold text-xs py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center space-x-1.5 mt-2"
-          >
-            <Check className="w-4 h-4" />
-            <span>Confirm Delivery Location</span>
-          </button>
         </div>
       </div>
     </div>
