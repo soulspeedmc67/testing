@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { User, Phone, MapPin, Package, Clock, PhoneCall, ShieldAlert, ChevronRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { User, Phone, MapPin, Package, Clock, PhoneCall, ShieldAlert, ChevronRight, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
 export default function AccountPage() {
   const [activeOrder, setActiveOrder] = useState(null);
+  const [cancellationSeconds, setCancellationSeconds] = useState(120);
   const [orderHistory, setOrderHistory] = useState([]);
   const [user, setUser] = useState({ name: "Azan Iqbal Mir", mobile: "9622720283" });
 
@@ -20,12 +21,31 @@ export default function AccountPage() {
       try { setUser(JSON.parse(savedUser)); } catch (e) {}
     }
     if (active) {
-      try { setActiveOrder(JSON.parse(active)); } catch (e) {}
+      try {
+        const parsed = JSON.parse(active);
+        setActiveOrder(parsed);
+      } catch (e) {}
     }
     if (history) {
       try { setOrderHistory(JSON.parse(history)); } catch (e) {}
     }
   }, []);
+
+  useEffect(() => {
+    let timer;
+    if (activeOrder && cancellationSeconds > 0) {
+      timer = setInterval(() => setCancellationSeconds((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [activeOrder, cancellationSeconds]);
+
+  const handleCancelOrder = () => {
+    if (confirm("Are you sure you want to cancel this order? The 2-minute packing window is active.")) {
+      localStorage.removeItem("dashit_active_order");
+      setActiveOrder(null);
+      alert("Order cancelled successfully.");
+    }
+  };
 
   const handleDeleteAccount = async () => {
     if (confirm("Are you sure you want to delete your account and personal data from DASHit?")) {
@@ -45,7 +65,7 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
         <h1 className="font-extrabold text-base text-slate-900">My Profile & Orders</h1>
@@ -70,25 +90,71 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* Active Order Live Tracker */}
+        {/* ORDER PROCESSING IN DARKSTORE CARD (EXACTLY MATCHING SCREENSHOT) */}
         {activeOrder && (
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4 space-y-3 shadow-md">
+          <div className="bg-amber-50/90 border-2 border-amber-400 rounded-3xl p-4 space-y-3.5 shadow-md animate-slide-up">
             <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-extrabold text-amber-900">ACTIVE ORDER #{activeOrder.orderId}</span>
-                <p className="text-[11px] text-amber-800 font-medium">OTP: <b className="font-mono text-slate-900">{activeOrder.otp}</b></p>
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 bg-amber-500 text-slate-950 rounded-2xl font-bold">
+                  <Clock className="w-4 h-4 animate-spin" />
+                </div>
+                <div>
+                  <h3 className="font-black text-xs text-amber-950 tracking-tight">ORDER PROCESSING IN DARKSTORE</h3>
+                  <p className="text-[11px] text-amber-800 font-semibold">
+                    Order #{activeOrder.orderId} • OTP: <b className="font-mono text-slate-950">{activeOrder.otp}</b>
+                  </p>
+                </div>
               </div>
-              <span className="text-[10px] bg-emerald-600 text-white font-extrabold px-2.5 py-0.5 rounded-full shadow">
-                PACKING / IN TRANSIT
+
+              <span className="bg-amber-200/90 text-amber-950 font-black text-xs px-3 py-1 rounded-full border border-amber-300 font-mono shadow-sm">
+                {cancellationSeconds > 0
+                  ? `${Math.floor(cancellationSeconds / 60)}:${cancellationSeconds % 60 < 10 ? '0' : ''}${cancellationSeconds % 60}s`
+                  : "Packed"}
               </span>
             </div>
 
-            {/* Socket.io Live Map Tracking */}
-            <MapTracking
-              orderId={activeOrder.orderId}
-              initialLat={activeOrder.location?.lat || 33.7311}
-              initialLng={activeOrder.location?.lng || 75.1487}
-            />
+            {/* Inner Window Box */}
+            <div className="bg-white rounded-2xl p-3.5 text-xs space-y-1.5 border border-amber-200 shadow-sm">
+              <div className="flex items-center space-x-1.5 text-slate-900 font-extrabold">
+                <span className="text-amber-500">⚡</span>
+                <span>2-Minute Edit & Cancel Window Active</span>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                {cancellationSeconds > 0
+                  ? "Your order is being packed right now! You can add more items to your cart or cancel the order before the 2-minute packing window expires."
+                  : "Order packing complete! Awaiting darkstore admin dispatch for delivery."}
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex space-x-2 pt-0.5">
+              <Link
+                href="/cart"
+                className="grow bg-emerald-700 hover:bg-emerald-800 text-white text-center text-xs font-extrabold py-3 rounded-2xl transition-all shadow-md active:scale-95"
+              >
+                + Add More Items to Order
+              </Link>
+
+              {cancellationSeconds > 0 && (
+                <button
+                  onClick={handleCancelOrder}
+                  className="bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-700 font-extrabold text-xs px-4 py-3 rounded-2xl transition-all active:scale-95"
+                >
+                  Cancel Order
+                </button>
+              )}
+            </div>
+
+            {/* Live Socket.io Map Tracking (shown only after 2-minute packing completes) */}
+            {cancellationSeconds === 0 && (
+              <div className="pt-2 border-t border-amber-200">
+                <MapTracking
+                  orderId={activeOrder.orderId}
+                  initialLat={activeOrder.location?.lat || 33.7311}
+                  initialLng={activeOrder.location?.lng || 75.1487}
+                />
+              </div>
+            )}
           </div>
         )}
 
