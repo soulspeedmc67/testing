@@ -1,16 +1,17 @@
-import { Sparkles, Smartphone, Heart, Utensils } from "lucide-react";
+import { Utensils, Cookie, GlassWater, Croissant } from "lucide-react";
 
 const CATEGORY_TABS = [
   { id: "All", label: "All", icon: null },
-  { id: "Electronics", label: "Electronics", icon: Smartphone },
-  { id: "Beauty", label: "Beauty", icon: Heart },
   { id: "Grocery", label: "Grocery & Kitchen", icon: Utensils, isNew: true },
+  { id: "Snacks", label: "Snacks & Munchies", icon: Cookie },
+  { id: "Drinks", label: "Drinks & Juices", icon: GlassWater },
+  { id: "Bakery", label: "Bakery & Biscuits", icon: Croissant },
 ];
 
 export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
   return (
     <div className="relative border-b border-slate-200/80 pt-1 pb-0 overflow-x-auto scrollbar-none">
-      <div className="flex items-center space-x-6 px-1 min-w-max">
+      <div className="flex items-center space-x-5 px-1 min-w-max">
         {CATEGORY_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -19,7 +20,7 @@ export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
               className={`relative flex items-center space-x-1.5 pb-2.5 text-xs font-extrabold transition-colors active:scale-95 ${
-                isActive ? "text-slate-900 font-black" : "text-slate-500 hover:text-slate-800"
+                isActive ? "text-[#061838] font-black" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#0c831f]" : "text-slate-400"}`} />}
@@ -32,7 +33,7 @@ export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
 
               {/* Sliding Dark Active Underline */}
               {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-full transition-all duration-300" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#061838] rounded-full transition-all duration-300" />
               )}
             </button>
           );

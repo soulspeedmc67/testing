@@ -1,9 +1,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ShoppingBag, ArrowRight, MapPin, Plus, Minus, Trash2, ArrowLeft, Tag, ShieldCheck } from "lucide-react";
+import { ShoppingBag, ArrowRight, MapPin, Plus, Minus, Trash2, ArrowLeft, Tag, ShieldCheck, Sparkles } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import LocationPickerModal from "../components/LocationPickerModal";
+
+const CART_SUGGESTIONS = [
+  { id: 10, name: "Amul Pasteurised Salted Butter 100g", price: 58, originalPrice: 60, unit: "100g", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=200&auto=format&fit=crop&q=80" },
+  { id: 11, name: "Fresh Kashmiri Lavas Bread (4 pcs)", price: 30, originalPrice: 40, unit: "4 pcs", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=200&auto=format&fit=crop&q=80" },
+  { id: 12, name: "Lay's Magic Masala Potato Chips", price: 20, originalPrice: 20, unit: "50g", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&auto=format&fit=crop&q=80" },
+  { id: 13, name: "Cadbury Dairy Milk Silk Chocolate", price: 175, originalPrice: 190, unit: "150g", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=200&auto=format&fit=crop&q=80" }
+];
 
 export default function CartPage() {
   const router = useRouter();
@@ -26,12 +33,27 @@ export default function CartPage() {
     }
   }, []);
 
+  const saveCartState = (updated) => {
+    setCart(updated);
+    localStorage.setItem("dashit_cart", JSON.stringify(updated));
+  };
+
   const updateQty = (id, delta) => {
     const updated = cart
       .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
       .filter((item) => item.qty > 0);
-    setCart(updated);
-    localStorage.setItem("dashit_cart", JSON.stringify(updated));
+    saveCartState(updated);
+  };
+
+  const addSuggestedItem = (prod) => {
+    const existing = cart.find((i) => i.id === prod.id);
+    let updated;
+    if (existing) {
+      updated = cart.map((i) => (i.id === prod.id ? { ...i, qty: i.qty + 1 } : i));
+    } else {
+      updated = [...cart, { ...prod, qty: 1 }];
+    }
+    saveCartState(updated);
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
@@ -198,6 +220,38 @@ export default function CartPage() {
               </div>
               <div className="bg-emerald-50 text-[#0c831f] text-[11px] font-extrabold px-3 py-2 rounded-2xl text-center border border-emerald-200">
                 🎉 You are saving ₹{totalSavings} on this order!
+              </div>
+            </div>
+
+            {/* ITEM SUGGESTIONS UNDER BILL DETAILS */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm">
+              <div className="flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <h3 className="font-black text-xs text-slate-900 uppercase tracking-wider">Frequently Added Together</h3>
+              </div>
+
+              <div className="flex space-x-3 overflow-x-auto scrollbar-none pb-1">
+                {CART_SUGGESTIONS.map((sug) => (
+                  <div
+                    key={sug.id}
+                    className="w-[130px] shrink-0 bg-slate-50 border border-slate-200 rounded-2xl p-2.5 flex flex-col justify-between space-y-1.5"
+                  >
+                    <img src={sug.img} alt={sug.name} className="w-16 h-16 object-contain mx-auto bg-white rounded-xl p-1" />
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-400">{sug.unit}</span>
+                      <h4 className="font-bold text-[11px] text-slate-900 leading-tight line-clamp-2">{sug.name}</h4>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                      <span className="text-xs font-black text-slate-900 font-mono">₹{sug.price}</span>
+                      <button
+                        onClick={() => addSuggestedItem(sug)}
+                        className="bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-[10px] px-2.5 py-1 rounded-xl shadow-sm active:scale-95"
+                      >
+                        + ADD
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
