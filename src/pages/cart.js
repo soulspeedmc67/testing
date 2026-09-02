@@ -36,7 +36,7 @@ export default function CartPage() {
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const originalSubtotal = cart.reduce((sum, item) => sum + (item.originalPrice || item.price + 10) * item.qty, 0);
-  const deliveryFee = subtotal >= 200 || subtotal === 0 ? 0 : 25;
+  const deliveryFee = subtotal >= 399 || subtotal === 0 ? 0 : 25;
   const handlingFee = subtotal > 0 ? 5 : 0;
   const totalSavings = (originalSubtotal - subtotal) + discount;
   const grandTotal = Math.max(0, subtotal + deliveryFee + handlingFee - discount);
@@ -77,7 +77,7 @@ export default function CartPage() {
         </div>
         <button
           onClick={() => setIsLocationModalOpen(true)}
-          className="flex items-center space-x-1 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 font-bold"
+          className="flex items-center space-x-1 text-xs text-[#0c831f] bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 font-bold"
         >
           <MapPin className="w-3.5 h-3.5" />
           <span>{location.nickname}</span>
@@ -99,7 +99,7 @@ export default function CartPage() {
             <p className="text-xs text-slate-500">Explore products and add items to your cart</p>
             <Link
               href="/"
-              className="inline-block bg-emerald-600 text-white font-bold text-xs px-5 py-2.5 rounded-2xl mt-2 hover:bg-emerald-700 transition-colors shadow-md"
+              className="inline-block bg-[#0c831f] text-white font-bold text-xs px-5 py-2.5 rounded-2xl mt-2 hover:bg-emerald-800 transition-colors shadow-md"
             >
               Browse Storefront
             </Link>
@@ -109,7 +109,7 @@ export default function CartPage() {
             {/* Delivery Address Card */}
             <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center space-x-3">
-                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl">
+                <div className="p-2.5 bg-emerald-100 text-[#0c831f] rounded-2xl">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
@@ -119,7 +119,7 @@ export default function CartPage() {
               </div>
               <button
                 onClick={() => setIsLocationModalOpen(true)}
-                className="text-xs font-bold text-emerald-600 hover:underline"
+                className="text-xs font-bold text-[#0c831f] hover:underline"
               >
                 Change
               </button>
@@ -138,7 +138,7 @@ export default function CartPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl px-2 py-1 font-bold">
+                  <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-[#0c831f] rounded-xl px-2 py-1 font-bold">
                     <button onClick={() => updateQty(item.id, -1)} className="hover:opacity-80">
                       <Minus className="w-3.5 h-3.5" />
                     </button>
@@ -165,7 +165,7 @@ export default function CartPage() {
               />
               <button
                 onClick={applyCoupon}
-                className="bg-emerald-50 text-emerald-700 text-xs font-extrabold px-4 py-2 rounded-2xl border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                className="bg-emerald-50 text-[#0c831f] text-xs font-extrabold px-4 py-2 rounded-2xl border border-emerald-200 hover:bg-[#0c831f] hover:text-white transition-all shadow-sm"
               >
                 APPLY
               </button>
@@ -179,38 +179,38 @@ export default function CartPage() {
                 <span className="text-slate-900 font-bold font-mono">₹{subtotal}</span>
               </div>
               <div className="flex justify-between text-slate-600 font-medium">
-                <span>Delivery Charge (Anantnag Darkstore)</span>
-                <span className="text-emerald-600 font-bold font-mono">{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span>
+                <span>Delivery Charge (Free above ₹399)</span>
+                <span className="text-[#0c831f] font-bold font-mono">{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span>
               </div>
               <div className="flex justify-between text-slate-600 font-medium">
                 <span>Handling & Store Charge</span>
                 <span className="text-slate-900 font-bold font-mono">₹{handlingFee}</span>
               </div>
               {discount > 0 && (
-                <div className="flex justify-between text-emerald-600 font-bold">
+                <div className="flex justify-between text-[#0c831f] font-bold">
                   <span>Coupon Discount</span>
                   <span className="font-mono">-₹{discount}</span>
                 </div>
               )}
               <div className="pt-2 border-t border-slate-100 flex justify-between font-extrabold text-sm text-slate-900">
                 <span>To Pay</span>
-                <span className="text-emerald-700 font-mono text-base">₹{grandTotal}</span>
+                <span className="text-[#0c831f] font-mono text-base">₹{grandTotal}</span>
               </div>
-              <div className="bg-emerald-50 text-emerald-700 text-[11px] font-extrabold px-3 py-2 rounded-2xl text-center border border-emerald-200">
+              <div className="bg-emerald-50 text-[#0c831f] text-[11px] font-extrabold px-3 py-2 rounded-2xl text-center border border-emerald-200">
                 🎉 You are saving ₹{totalSavings} on this order!
               </div>
             </div>
 
             {/* Security Badge */}
             <div className="flex items-center justify-center space-x-1.5 text-[11px] font-semibold text-slate-500 py-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-4 h-4 text-[#0c831f]" />
               <span>100% Safe & Contactless Delivery</span>
             </div>
 
             {/* Proceed to Payment CTA */}
             <button
               onClick={proceedToCheckout}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2"
+              className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
             >
               <span>Proceed to Payment (₹{grandTotal})</span>
               <ArrowRight className="w-4 h-4" />
