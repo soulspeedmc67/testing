@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
-import { Package, Clock, ArrowLeft, CheckCircle2, ChevronRight, PhoneCall, ShoppingBag, X } from "lucide-react";
-import confetti from "canvas-confetti";
+import { Package, Clock, ArrowLeft, CheckCircle2, ChevronRight, ShoppingBag, X } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
@@ -50,22 +49,23 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-3">
-          <Link href="/" className="p-1 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100">
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <h1 className="font-extrabold text-base text-slate-900">My Orders</h1>
-        </div>
+      <header className="sticky top-0 z-40 bg-[#061838] px-4 py-4 text-white shadow-md">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Link href="/" className="p-1 rounded-full text-slate-300 hover:text-white">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <h1 className="font-extrabold text-base text-white">My Orders</h1>
+          </div>
 
-        {/* Dedicated Past Orders Button */}
-        <button
-          onClick={() => setShowPastOrdersModal(true)}
-          className="flex items-center space-x-1 text-xs text-[#0c831f] bg-emerald-50 hover:bg-[#0c831f] hover:text-white px-3 py-1.5 rounded-full border border-emerald-200 font-bold transition-all shadow-sm active:scale-95"
-        >
-          <Package className="w-3.5 h-3.5" />
-          <span>Past Orders ({orderHistory.length})</span>
-        </button>
+          <button
+            onClick={() => setShowPastOrdersModal(true)}
+            className="flex items-center space-x-1 text-xs text-amber-300 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full font-bold border border-white/20 transition-all active:scale-95"
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>Past Orders ({orderHistory.length})</span>
+          </button>
+        </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
@@ -86,9 +86,7 @@ export default function OrdersPage() {
               </div>
 
               <span className="bg-amber-200/90 text-amber-950 font-black text-xs px-3 py-1 rounded-full border border-amber-300 font-mono shadow-sm">
-                {cancellationSeconds > 0
-                  ? `${cancellationSeconds}s`
-                  : "Packed"}
+                {cancellationSeconds > 0 ? `${cancellationSeconds}s` : "Packed"}
               </span>
             </div>
 
@@ -161,6 +159,33 @@ export default function OrdersPage() {
             </Link>
           </div>
         )}
+
+        {/* Past Orders Section */}
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="font-black text-xs text-slate-900 uppercase tracking-wider">Past Order Receipts</h3>
+            <Package className="w-4 h-4 text-slate-400" />
+          </div>
+
+          {orderHistory.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-4 font-medium">No past order receipts yet.</p>
+          ) : (
+            <div className="space-y-3 divide-y divide-slate-100">
+              {orderHistory.map((ord, idx) => (
+                <div key={idx} className="pt-3 space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-slate-900">{ord.orderId}</span>
+                    <span className="font-black font-mono text-[#0c831f]">₹{ord.totalAmount}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold">
+                    <span>{ord.date} • {ord.items?.length || 1} Items</span>
+                    <span className="text-[#0c831f] font-bold">Delivered</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       {/* PAST ORDERS MODAL SHEET */}
