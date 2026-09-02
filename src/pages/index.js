@@ -3,6 +3,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, Mic, User, ShoppingBag, AlertCircle, RefreshCw, X } from "lucide-react";
 import LocationPickerModal from "../components/LocationPickerModal";
+import LocationPermissionModal from "../components/LocationPermissionModal";
 import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
@@ -50,7 +51,9 @@ export default function StorefrontHome() {
     lat: 33.7311,
     lng: 75.1487
   });
+
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
 
   const [activeOrder, setActiveOrder] = useState(null);
   const [cancellationSeconds, setCancellationSeconds] = useState(120);
@@ -62,9 +65,12 @@ export default function StorefrontHome() {
     }
     const savedActiveOrder = localStorage.getItem("dashit_active_order");
     if (savedActiveOrder) {
-      try {
-        setActiveOrder(JSON.parse(savedActiveOrder));
-      } catch (e) {}
+      try { setActiveOrder(JSON.parse(savedActiveOrder)); } catch (e) {}
+    }
+
+    const hasAskedLocation = localStorage.getItem("dashit_location_asked");
+    if (!hasAskedLocation) {
+      setIsPermissionModalOpen(true);
     }
   }, []);
 
@@ -107,12 +113,40 @@ export default function StorefrontHome() {
     }
   };
 
+  const handleGrantLocation = () => {
+    localStorage.setItem("dashit_location_asked", "true");
+    setIsPermissionModalOpen(false);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setActiveLocation({
+            nickname: "Current Location",
+            address: "Nai Basti Petrol Pump Area, Anantnag",
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
+          });
+        },
+        () => {
+          setIsLocationModalOpen(true);
+        }
+      );
+    } else {
+      setIsLocationModalOpen(true);
+    }
+  };
+
+  const handleSetManually = () => {
+    localStorage.setItem("dashit_location_asked", "true");
+    setIsPermissionModalOpen(false);
+    setIsLocationModalOpen(true);
+  };
+
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Blinkit-Style Yellow Top Header Banner (Screenshot 3 & 4) */}
+      {/* Blinkit-Style Yellow Top Header Banner */}
       <header className="bg-[#f7c400] px-4 pt-3 pb-4 shadow-sm">
         <div className="max-w-md mx-auto space-y-2.5">
           {/* Top Bar: Delivery Time & Location Selector & Profile Link */}
@@ -132,7 +166,7 @@ export default function StorefrontHome() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Link href="/login" className="p-2 bg-white/90 rounded-full text-slate-900 shadow-sm hover:bg-white">
+              <Link href="/login" className="p-2 bg-white/90 rounded-full text-slate-900 shadow-sm hover:bg-white transition-all active:scale-95">
                 <User className="w-4 h-4" />
               </Link>
             </div>
@@ -148,13 +182,21 @@ export default function StorefrontHome() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400"
             />
-            <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer" />
+            <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer hover:text-emerald-600 transition-colors" />
           </div>
         </div>
       </header>
 
       {/* Main Content Area */}
       <main className="max-w-md mx-auto px-4 mt-4 space-y-5">
+        {/* Initial Location Permission Modal */}
+        <LocationPermissionModal
+          isOpen={isPermissionModalOpen}
+          onGrantLocation={handleGrantLocation}
+          onSetManually={handleSetManually}
+          onClose={() => setIsPermissionModalOpen(false)}
+        />
+
         {/* Interactive Location Picker Modal */}
         <LocationPickerModal
           isOpen={isLocationModalOpen}
@@ -165,42 +207,45 @@ export default function StorefrontHome() {
 
         {/* ACTIVE ORDER PROCESSING & 2-MINUTE CANCELLATION WINDOW CARD */}
         {activeOrder && (
-          <div className="bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 space-y-3 shadow-md">
+          <div className="bg-amber-50/90 border-2 border-amber-400 rounded-3xl p-4 space-y-3 shadow-md animate-slide-up">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="p-2 bg-amber-500 text-slate-950 rounded-xl font-bold">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 bg-amber-500 text-slate-950 rounded-2xl font-bold">
                   <Clock className="w-4 h-4 animate-spin" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-xs text-amber-900">ORDER PROCESSING IN DARKSTORE</h3>
-                  <p className="text-[11px] text-amber-800 font-medium">Order #{activeOrder.orderId} • OTP: <b className="font-mono">{activeOrder.otp}</b></p>
+                  <h3 className="font-extrabold text-xs text-amber-950">ORDER PROCESSING IN DARKSTORE</h3>
+                  <p className="text-[11px] text-amber-800 font-semibold">Order #{activeOrder.orderId} • OTP: <b className="font-mono text-slate-950">{activeOrder.otp}</b></p>
                 </div>
               </div>
-              <span className="bg-amber-200 text-amber-950 font-black text-xs px-2.5 py-1 rounded-full border border-amber-300 font-mono">
+              <span className="bg-amber-200/90 text-amber-950 font-black text-xs px-3 py-1 rounded-full border border-amber-300 font-mono shadow-sm">
                 {cancellationSeconds > 0 ? `${Math.floor(cancellationSeconds / 60)}:${cancellationSeconds % 60 < 10 ? '0' : ''}${cancellationSeconds % 60}s` : "Packed"}
               </span>
             </div>
 
-            <div className="bg-white/90 rounded-2xl p-3 text-xs space-y-1.5 border border-amber-200">
-              <p className="font-bold text-slate-900">⚡ 2-Minute Edit & Cancel Window Active</p>
-              <p className="text-[11px] text-slate-600">
+            <div className="bg-white rounded-2xl p-3 text-xs space-y-1.5 border border-amber-200 shadow-sm">
+              <div className="flex items-center space-x-1 font-extrabold text-slate-900">
+                <span className="text-amber-500">⚡</span>
+                <span>2-Minute Edit & Cancel Window Active</span>
+              </div>
+              <p className="text-[11px] text-slate-600 font-medium leading-relaxed">
                 {cancellationSeconds > 0
                   ? "Your order is being packed right now! You can add more items to your cart or cancel the order before the 2-minute packing window expires."
-                  : "Order packed & out for delivery by Scooter Rider!"}
+                  : "Order packing complete! Awaiting darkstore admin dispatch for delivery."}
               </p>
             </div>
 
-            <div className="flex space-x-2 pt-1">
+            <div className="flex space-x-2 pt-0.5">
               <Link
                 href="/cart"
-                className="grow bg-emerald-600 text-white text-center text-xs font-bold py-2 rounded-xl hover:bg-emerald-700 transition-colors"
+                className="grow bg-emerald-700 text-white text-center text-xs font-extrabold py-2.5 rounded-2xl hover:bg-emerald-800 transition-all shadow-md active:scale-95"
               >
                 + Add More Items to Order
               </Link>
               {cancellationSeconds > 0 && (
                 <button
                   onClick={cancelOrder}
-                  className="bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                  className="bg-rose-100 hover:bg-rose-600 hover:text-white text-rose-700 text-xs font-extrabold px-3 py-2.5 rounded-2xl transition-all active:scale-95"
                 >
                   Cancel Order
                 </button>
@@ -209,7 +254,7 @@ export default function StorefrontHome() {
           </div>
         )}
 
-        {/* CATEGORY GRID SECTIONS (Matching Screenshot 4) */}
+        {/* CATEGORY GRID SECTIONS */}
         {CATEGORY_SECTIONS.map((sec, secIdx) => (
           <div key={secIdx} className="space-y-3">
             <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">{sec.title}</h2>
@@ -218,7 +263,7 @@ export default function StorefrontHome() {
                 <div
                   key={cat.id}
                   onClick={() => setSearch(cat.name.split(" ")[0])}
-                  className={`${cat.bg} p-2 rounded-2xl flex flex-col items-center justify-between h-24 border border-slate-200/60 shadow-sm cursor-pointer hover:shadow-md transition-all`}
+                  className={`${cat.bg} p-2 rounded-2xl flex flex-col items-center justify-between h-24 border border-slate-200/60 shadow-sm cursor-pointer hover:shadow-md transition-all active:scale-95`}
                 >
                   <img src={cat.img} alt={cat.name} className="h-12 w-12 object-contain rounded-lg" />
                   <span className="text-[10px] font-bold text-slate-800 text-center leading-tight line-clamp-2">
@@ -230,18 +275,18 @@ export default function StorefrontHome() {
           </div>
         ))}
 
-        {/* BESTSELLERS & PRODUCT GRID (Matching Screenshot 3) */}
+        {/* BESTSELLERS & PRODUCT GRID */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
             <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">Market Bestsellers</h2>
-            <span className="text-xs font-bold text-emerald-600 cursor-pointer">See all &rarr;</span>
+            <span className="text-xs font-bold text-emerald-600 cursor-pointer hover:underline">See all &rarr;</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).map((p) => {
               const inCart = cart.find((i) => i.id === p.id);
               return (
-                <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all active:scale-[0.99]">
                   {/* Product Image Box */}
                   <div className="relative bg-slate-100/70 rounded-2xl p-4 flex items-center justify-center mb-2 h-32 overflow-hidden">
                     <img src={p.img} alt={p.name} className="h-24 w-24 object-contain transform hover:scale-105 transition-transform" />
@@ -276,7 +321,7 @@ export default function StorefrontHome() {
                     ) : (
                       <button
                         onClick={() => addToCart(p)}
-                        className="bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-300 font-extrabold text-xs px-3.5 py-1.5 rounded-xl transition-all shadow-sm"
+                        className="bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-300 font-extrabold text-xs px-3.5 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
                       >
                         ADD
                       </button>
@@ -291,10 +336,10 @@ export default function StorefrontHome() {
 
       {/* Floating View Cart Banner */}
       {cartCount > 0 && (
-        <div className="fixed bottom-16 left-4 right-4 z-40 max-w-md mx-auto">
+        <div className="fixed bottom-20 left-4 right-4 z-40 max-w-md mx-auto">
           <Link
             href="/cart"
-            className="flex items-center justify-between bg-emerald-600 text-white p-3.5 rounded-2xl shadow-xl hover:bg-emerald-700 transition-all"
+            className="flex items-center justify-between bg-emerald-700 text-white p-3.5 rounded-2xl shadow-xl hover:bg-emerald-800 transition-all active:scale-95"
           >
             <div className="flex items-center space-x-2">
               <ShoppingBag className="w-5 h-5" />
@@ -308,7 +353,7 @@ export default function StorefrontHome() {
         </div>
       )}
 
-      {/* Persistent Bottom Navigation Bar */}
+      {/* Persistent Floating Bottom Navigation Bar */}
       <BottomNav cartCount={cartCount} />
     </div>
   );

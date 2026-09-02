@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Home, RefreshCw, LayoutGrid, User, ShoppingBag } from "lucide-react";
+import { Home, ShoppingBag, User } from "lucide-react";
 
 export default function BottomNav({ cartCount = 0 }) {
   const router = useRouter();
@@ -13,8 +13,8 @@ export default function BottomNav({ cartCount = 0 }) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-4 shadow-lg">
-      <div className="max-w-md mx-auto flex items-center justify-around">
+    <div className="fixed bottom-4 left-4 right-4 z-50 max-w-md mx-auto">
+      <nav className="bg-white/95 backdrop-blur-xl border border-slate-200/80 shadow-2xl rounded-full px-6 py-2.5 flex items-center justify-around transition-all">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.href;
@@ -22,23 +22,24 @@ export default function BottomNav({ cartCount = 0 }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center space-y-1 relative py-1 px-3 rounded-2xl transition-all ${
-                isActive ? "text-slate-900 font-extrabold" : "text-slate-400 hover:text-slate-700"
+              className={`flex flex-col items-center space-y-0.5 relative py-1 px-4 rounded-2xl transition-all duration-200 active:scale-95 ${
+                isActive ? "text-emerald-700 font-extrabold" : "text-slate-400 hover:text-slate-700"
               }`}
             >
               <div className="relative">
-                <Icon className={`w-5 h-5 ${isActive ? "text-emerald-600" : "text-slate-500"}`} />
+                <Icon className={`w-5 h-5 transition-transform duration-200 ${isActive ? "text-emerald-600 scale-110" : "text-slate-400"}`} />
                 {item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 bg-emerald-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border border-white">
+                  <span className="absolute -top-1.5 -right-3 bg-emerald-600 text-white text-[10px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                     {item.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-bold tracking-tight">{item.label}</span>
+              <span className="text-[10px] font-bold tracking-tight">{item.label}</span>
+              {isActive && <div className="w-1 h-1 bg-emerald-600 rounded-full mt-0.5 animate-pulse" />}
             </Link>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
