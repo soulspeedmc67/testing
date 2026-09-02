@@ -1,13 +1,18 @@
 #!/bin/bash
 set -e
 
-echo "=== 1. Building Next.js Web App ==="
+echo "=== 1. Cleaning Cache & Building Next.js Web App ==="
+rm -rf .next out
 npx next build
 
 echo "=== 2. Preparing Static Web Assets for Capacitor ==="
 mkdir -p out
 cp -r .next/server/pages/* out/ 2>/dev/null || true
 cp -r public/* out/ 2>/dev/null || true
+if [ -d ".next/static" ]; then
+  mkdir -p out/_next
+  cp -r .next/static out/_next/
+fi
 
 echo "=== 3. Syncing Capacitor Android ==="
 npx cap copy android
@@ -19,10 +24,11 @@ export ANDROID_HOME=/home/aleemkanyu/Android/Sdk
 export PATH=$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH
 
 cd android
-./gradlew assembleDebug
+./gradlew clean assembleDebug
 
 echo "=== 5. Installing Fresh APK on Device ==="
+cd ..
 adb devices
-adb install -r app/build/outputs/apk/debug/app-debug.apk || true
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk || true
 
 echo "=== SUCCESS! Fresh App Installed on Android Device ==="
