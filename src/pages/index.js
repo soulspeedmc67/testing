@@ -1,34 +1,49 @@
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, LayoutDashboard, Navigation, ShoppingBag } from "lucide-react";
+import { Search, Clock, MapPin, ArrowRight, CheckCircle2, Plus, Minus, Mic, User, ShoppingBag, AlertCircle, RefreshCw, X } from "lucide-react";
 import LocationPickerModal from "../components/LocationPickerModal";
 import BottomNav from "../components/BottomNav";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
-const CATEGORIES = [
-  { id: "all", name: "All Items" },
-  { id: "bakery", name: "Fresh Bakery (6-8 AM)" },
-  { id: "groceries", name: "Fresh Groceries" },
-  { id: "snacks", name: "Snacks & Drinks" },
-  { id: "essentials", name: "Daily Essentials" }
+const CATEGORY_SECTIONS = [
+  {
+    title: "Grocery & Kitchen",
+    items: [
+      { id: "cat-veg", name: "Vegetables & Fruits", img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50" },
+      { id: "cat-dal", name: "Atta, Rice & Dal", img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50" },
+      { id: "cat-oil", name: "Oil, Ghee & Masala", img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=200&auto=format&fit=crop&q=80", bg: "bg-yellow-50" },
+      { id: "cat-dairy", name: "Dairy, Bread & Eggs", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50" },
+      { id: "cat-bakery", name: "Bakery & Biscuits", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=200&auto=format&fit=crop&q=80", bg: "bg-orange-50" },
+      { id: "cat-instant", name: "Instant Food", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=200&auto=format&fit=crop&q=80", bg: "bg-rose-50" }
+    ]
+  },
+  {
+    title: "Snacks & Drinks",
+    items: [
+      { id: "cat-chips", name: "Chips & Namkeen", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&auto=format&fit=crop&q=80", bg: "bg-sky-50" },
+      { id: "cat-sweets", name: "Sweets & Chocolates", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=200&auto=format&fit=crop&q=80", bg: "bg-purple-50" },
+      { id: "cat-drinks", name: "Drinks & Juices", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200&auto=format&fit=crop&q=80", bg: "bg-emerald-50" },
+      { id: "cat-tea", name: "Tea, Coffee & Milk", img: "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=200&auto=format&fit=crop&q=80", bg: "bg-amber-50" }
+    ]
+  }
 ];
 
 const PRODUCTS = [
-  { id: 1, name: "Fresh Kashmiri Lavas Bread (4 pcs)", category: "bakery", price: 30, originalPrice: 40, time: "10 mins", tag: "Bakery", emoji: "🥐" },
-  { id: 2, name: "Fresh Milk 1L", category: "groceries", price: 66, originalPrice: 75, time: "10 mins", tag: "Dairy", emoji: "🥛" },
-  { id: 3, name: "Fresh Kashmiri Apples (1kg)", category: "groceries", price: 120, originalPrice: 150, time: "10 mins", tag: "Produce", emoji: "🍎" },
-  { id: 4, name: "Potato Chips - Salted", category: "snacks", price: 20, originalPrice: 25, time: "8 mins", tag: "Snacks", emoji: "🥔" },
-  { id: 5, name: "Cold Drink (750ml)", category: "snacks", price: 45, originalPrice: 55, time: "10 mins", tag: "Beverage", emoji: "🥤" },
-  { id: 6, name: "Lays Magic Masala", category: "snacks", price: 20, originalPrice: 20, time: "8 mins", tag: "Snacks", emoji: "🍟" }
+  { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Snacks" },
+  { id: 2, name: "Fresh Kashmiri Lavas Bread (4 pcs)", unit: "4 pcs", price: 30, originalPrice: 40, time: "10 mins", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=300&auto=format&fit=crop&q=80", cat: "Bakery" },
+  { id: 3, name: "Amul Taaza Fresh Toned Milk 1L", unit: "1L", price: 66, originalPrice: 70, time: "10 mins", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { id: 4, name: "Fresh Kashmiri Red Apples (1kg)", unit: "1 kg", price: 140, originalPrice: 170, time: "10 mins", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&auto=format&fit=crop&q=80", cat: "Produce" },
+  { id: 5, name: "Cadbury Dairy Milk Silk Chocolate", unit: "150g", price: 175, originalPrice: 190, time: "8 mins", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&auto=format&fit=crop&q=80", cat: "Sweets" },
+  { id: 6, name: "Maggi 2-Minute Masala Noodles (4-Pack)", unit: "280g", price: 56, originalPrice: 60, time: "8 mins", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&auto=format&fit=crop&q=80", cat: "Instant" },
+  { id: 7, name: "Coca-Cola Original Soft Drink", unit: "750ml", price: 45, originalPrice: 50, time: "10 mins", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&auto=format&fit=crop&q=80", cat: "Drinks" },
+  { id: 8, name: "Amul Pasteurised Butter", unit: "100g", price: 58, originalPrice: 60, time: "10 mins", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80", cat: "Dairy" }
 ];
 
 export default function StorefrontHome() {
-  const [selectedCat, setSelectedCat] = useState("all");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState([]);
-
   const [activeLocation, setActiveLocation] = useState({
     nickname: "Home",
     address: "Nai Basti, Near Petrol Pump, Anantnag",
@@ -37,178 +52,240 @@ export default function StorefrontHome() {
   });
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
 
-  const [currentHour] = useState(new Date().getHours());
-  const isBakeryTimeOnly = currentHour >= 6 && currentHour < 8;
+  const [activeOrder, setActiveOrder] = useState(null);
+  const [cancellationSeconds, setCancellationSeconds] = useState(120);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("dashit_cart");
     if (savedCart) {
+      try { setCart(JSON.parse(savedCart)); } catch (e) {}
+    }
+    const savedActiveOrder = localStorage.getItem("dashit_active_order");
+    if (savedActiveOrder) {
       try {
-        setCart(JSON.parse(savedCart));
+        setActiveOrder(JSON.parse(savedActiveOrder));
       } catch (e) {}
     }
   }, []);
 
-  const saveCartToStorage = (updatedCart) => {
-    setCart(updatedCart);
-    localStorage.setItem("dashit_cart", JSON.stringify(updatedCart));
+  useEffect(() => {
+    let timer;
+    if (activeOrder && cancellationSeconds > 0) {
+      timer = setInterval(() => setCancellationSeconds((prev) => prev - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [activeOrder, cancellationSeconds]);
+
+  const saveCart = (newCart) => {
+    setCart(newCart);
+    localStorage.setItem("dashit_cart", JSON.stringify(newCart));
   };
 
-  const filteredProducts = PRODUCTS.filter((p) => {
-    const matchesCat = selectedCat === "all" || p.category === selectedCat;
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
-
   const addToCart = (product) => {
-    if (isBakeryTimeOnly && product.category !== "bakery") {
-      alert("Only Bakery items are available between 6:00 AM and 8:00 AM.");
-      return;
-    }
-    const existing = cart.find((item) => item.id === product.id);
+    const existing = cart.find((i) => i.id === product.id);
     let updated;
     if (existing) {
-      updated = cart.map((item) => (item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+      updated = cart.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1 } : i));
     } else {
       updated = [...cart, { ...product, qty: 1 }];
     }
-    saveCartToStorage(updated);
+    saveCart(updated);
   };
 
-  const updateCartQty = (id, delta) => {
+  const updateQty = (id, delta) => {
     const updated = cart
-      .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
-      .filter((item) => item.qty > 0);
-    saveCartToStorage(updated);
+      .map((i) => (i.id === id ? { ...i, qty: i.qty + delta } : i))
+      .filter((i) => i.qty > 0);
+    saveCart(updated);
+  };
+
+  const cancelOrder = () => {
+    if (confirm("Are you sure you want to cancel this order? The 2-minute cancellation window is active.")) {
+      localStorage.removeItem("dashit_active_order");
+      setActiveOrder(null);
+      alert("Order cancelled successfully.");
+    }
   };
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
-  const cartSubtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased pb-32">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-xl border-b border-zinc-800/80 px-4 py-3">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
+      {/* Blinkit-Style Yellow Top Header Banner (Screenshot 3 & 4) */}
+      <header className="bg-[#f7c400] px-4 pt-3 pb-4 shadow-sm">
         <div className="max-w-md mx-auto space-y-2.5">
-          {/* Quick Access Portal links */}
-          <div className="flex items-center justify-between text-[11px] bg-zinc-900/90 px-3 py-1.5 rounded-xl border border-zinc-800/80">
-            <span className="text-zinc-400 font-medium">Quick Access:</span>
-            <div className="flex items-center space-x-3">
-              <Link href="/admin" className="text-orange-400 font-semibold hover:underline flex items-center space-x-1">
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                <span>Admin</span>
-              </Link>
-              <Link href="/driver" className="text-sky-400 font-semibold hover:underline flex items-center space-x-1">
-                <Navigation className="w-3.5 h-3.5" />
-                <span>Rider</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Logo & Location Bar */}
+          {/* Top Bar: Delivery Time & Location Selector & Profile Link */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="flex items-baseline space-x-0.5 text-2xl font-black tracking-tight">
-                <span className="text-orange-500">DASH</span>
-                <span className="text-sky-400">it</span>
-                <span className="text-[9px] text-zinc-400 font-mono ml-2 uppercase tracking-wider bg-zinc-900 px-2 py-0.5 rounded-full border border-zinc-800">10-MIN</span>
+              <div className="flex items-baseline space-x-1">
+                <span className="text-[10px] uppercase tracking-wider font-extrabold text-slate-900">dashit in</span>
+                <span className="text-xl font-black text-slate-900 tracking-tight">10 minutes</span>
               </div>
-              <div className="flex items-center space-x-1.5 text-xs text-zinc-400 mt-0.5">
-                <Clock className="w-3.5 h-3.5 text-orange-500 animate-pulse" />
-                <span>Delivery in <strong className="text-zinc-200">13 Mins</strong></span>
-              </div>
+              <button
+                onClick={() => setIsLocationModalOpen(true)}
+                className="flex items-center space-x-1 text-xs font-extrabold text-slate-800 hover:text-slate-950 mt-0.5"
+              >
+                <span className="truncate max-w-[180px]">{activeLocation.nickname} - {activeLocation.address}</span>
+                <span className="text-[10px]">▼</span>
+              </button>
             </div>
 
-            <button
-              onClick={() => setIsLocationModalOpen(true)}
-              className="flex items-center space-x-1.5 text-xs bg-zinc-900 hover:bg-zinc-800/80 text-zinc-200 px-3 py-2 rounded-xl border border-zinc-800/90 transition-all"
-            >
-              <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-              <span className="font-semibold max-w-[100px] truncate">{activeLocation.nickname}</span>
-              <span className="text-[10px] text-orange-400 font-bold">Edit</span>
-            </button>
+            <div className="flex items-center space-x-2">
+              <Link href="/login" className="p-2 bg-white/90 rounded-full text-slate-900 shadow-sm hover:bg-white">
+                <User className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
 
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-zinc-500" />
+          {/* Search Input Bar with Voice Mic */}
+          <div className="relative flex items-center bg-white rounded-2xl p-2.5 shadow-md border border-amber-200">
+            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <input
               type="text"
-              placeholder="Search apples, Kashmiri lavas, milk..."
+              placeholder='Search "lavas bread", "lays", "milk"...'
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-zinc-900 text-zinc-100 pl-10 pr-4 py-2 rounded-xl text-xs border border-zinc-800/90 focus:outline-none focus:border-orange-500/50"
+              className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400"
             />
+            <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer" />
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
+      {/* Main Content Area */}
+      <main className="max-w-md mx-auto px-4 mt-4 space-y-5">
+        {/* Interactive Location Picker Modal */}
         <LocationPickerModal
           isOpen={isLocationModalOpen}
           onClose={() => setIsLocationModalOpen(false)}
-          onSelectLocation={(newLoc) => setActiveLocation(newLoc)}
+          onSelectLocation={(loc) => setActiveLocation(loc)}
           currentLocation={activeLocation}
         />
 
-        {/* Category Filter Pills */}
-        <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-none">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCat(cat.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCat === cat.id
-                  ? "bg-orange-500 text-zinc-950 font-bold shadow-md shadow-orange-500/20"
-                  : "bg-zinc-900 text-zinc-400 border border-zinc-800/80 hover:text-zinc-200"
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Product Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {filteredProducts.map((p) => {
-            const inCart = cart.find((item) => item.id === p.id);
-            return (
-              <div key={p.id} className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-3 flex flex-col justify-between hover:border-zinc-700 transition-all">
-                <div className="text-4xl text-center py-5 bg-zinc-950/60 rounded-xl mb-2.5">{p.emoji}</div>
+        {/* ACTIVE ORDER PROCESSING & 2-MINUTE CANCELLATION WINDOW CARD */}
+        {activeOrder && (
+          <div className="bg-amber-50 border-2 border-amber-400 rounded-3xl p-4 space-y-3 shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="p-2 bg-amber-500 text-slate-950 rounded-xl font-bold">
+                  <Clock className="w-4 h-4 animate-spin" />
+                </div>
                 <div>
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
-                    <span>⚡ {p.time}</span>
-                    <span className="bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded text-[9px]">{p.tag}</span>
+                  <h3 className="font-extrabold text-xs text-amber-900">ORDER PROCESSING IN DARKSTORE</h3>
+                  <p className="text-[11px] text-amber-800 font-medium">Order #{activeOrder.orderId} • OTP: <b className="font-mono">{activeOrder.otp}</b></p>
+                </div>
+              </div>
+              <span className="bg-amber-200 text-amber-950 font-black text-xs px-2.5 py-1 rounded-full border border-amber-300 font-mono">
+                {cancellationSeconds > 0 ? `${Math.floor(cancellationSeconds / 60)}:${cancellationSeconds % 60 < 10 ? '0' : ''}${cancellationSeconds % 60}s` : "Packed"}
+              </span>
+            </div>
+
+            <div className="bg-white/90 rounded-2xl p-3 text-xs space-y-1.5 border border-amber-200">
+              <p className="font-bold text-slate-900">⚡ 2-Minute Edit & Cancel Window Active</p>
+              <p className="text-[11px] text-slate-600">
+                {cancellationSeconds > 0
+                  ? "Your order is being packed right now! You can add more items to your cart or cancel the order before the 2-minute packing window expires."
+                  : "Order packed & out for delivery by Scooter Rider!"}
+              </p>
+            </div>
+
+            <div className="flex space-x-2 pt-1">
+              <Link
+                href="/cart"
+                className="grow bg-emerald-600 text-white text-center text-xs font-bold py-2 rounded-xl hover:bg-emerald-700 transition-colors"
+              >
+                + Add More Items to Order
+              </Link>
+              {cancellationSeconds > 0 && (
+                <button
+                  onClick={cancelOrder}
+                  className="bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                >
+                  Cancel Order
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* CATEGORY GRID SECTIONS (Matching Screenshot 4) */}
+        {CATEGORY_SECTIONS.map((sec, secIdx) => (
+          <div key={secIdx} className="space-y-3">
+            <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">{sec.title}</h2>
+            <div className="grid grid-cols-4 gap-2.5">
+              {sec.items.map((cat) => (
+                <div
+                  key={cat.id}
+                  onClick={() => setSearch(cat.name.split(" ")[0])}
+                  className={`${cat.bg} p-2 rounded-2xl flex flex-col items-center justify-between h-24 border border-slate-200/60 shadow-sm cursor-pointer hover:shadow-md transition-all`}
+                >
+                  <img src={cat.img} alt={cat.name} className="h-12 w-12 object-contain rounded-lg" />
+                  <span className="text-[10px] font-bold text-slate-800 text-center leading-tight line-clamp-2">
+                    {cat.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {/* BESTSELLERS & PRODUCT GRID (Matching Screenshot 3) */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-extrabold text-sm text-slate-900 tracking-tight">Market Bestsellers</h2>
+            <span className="text-xs font-bold text-emerald-600 cursor-pointer">See all &rarr;</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())).map((p) => {
+              const inCart = cart.find((i) => i.id === p.id);
+              return (
+                <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm hover:shadow-md transition-all">
+                  {/* Product Image Box */}
+                  <div className="relative bg-slate-100/70 rounded-2xl p-4 flex items-center justify-center mb-2 h-32 overflow-hidden">
+                    <img src={p.img} alt={p.name} className="h-24 w-24 object-contain transform hover:scale-105 transition-transform" />
+                    <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
+                      ⚡ {p.time}
+                    </span>
                   </div>
-                  <h4 className="font-semibold text-xs text-zinc-100 mt-1 line-clamp-1">{p.name}</h4>
-                  <div className="flex items-baseline space-x-1.5 mt-1">
-                    <span className="text-xs font-bold text-zinc-100">₹{p.price}</span>
-                    <span className="text-[10px] text-zinc-500 line-through">₹{p.originalPrice}</span>
+
+                  {/* Product Details */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400">{p.unit}</span>
+                    <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">{p.name}</h4>
+                  </div>
+
+                  {/* Price & Add Button */}
+                  <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100">
+                    <div>
+                      <span className="text-xs font-extrabold text-slate-900">₹{p.price}</span>
+                      <span className="text-[10px] text-slate-400 line-through ml-1">₹{p.originalPrice}</span>
+                    </div>
+
+                    {inCart ? (
+                      <div className="flex items-center space-x-1.5 bg-emerald-600 text-white rounded-xl px-2 py-1 font-bold text-xs shadow">
+                        <button onClick={() => updateQty(p.id, -1)} className="hover:opacity-80">
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span>{inCart.qty}</span>
+                        <button onClick={() => updateQty(p.id, 1)} className="hover:opacity-80">
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => addToCart(p)}
+                        className="bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-300 font-extrabold text-xs px-3.5 py-1.5 rounded-xl transition-all shadow-sm"
+                      >
+                        ADD
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                {inCart ? (
-                  <div className="mt-3 flex items-center justify-between bg-orange-500 text-zinc-950 rounded-xl p-1 font-bold text-xs">
-                    <button onClick={() => updateCartQty(p.id, -1)} className="p-1 hover:bg-orange-600 rounded-lg">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span>{inCart.qty}</span>
-                    <button onClick={() => updateCartQty(p.id, 1)} className="p-1 hover:bg-orange-600 rounded-lg">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => addToCart(p)}
-                    className="mt-3 w-full bg-zinc-800 hover:bg-orange-500 hover:text-zinc-950 text-zinc-200 text-xs font-bold py-2 rounded-xl border border-zinc-700/60 transition-all"
-                  >
-                    ADD
-                  </button>
-                )}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </main>
 
@@ -217,13 +294,13 @@ export default function StorefrontHome() {
         <div className="fixed bottom-16 left-4 right-4 z-40 max-w-md mx-auto">
           <Link
             href="/cart"
-            className="flex items-center justify-between bg-orange-500 text-zinc-950 p-3 rounded-2xl shadow-2xl hover:bg-orange-400 transition-all"
+            className="flex items-center justify-between bg-emerald-600 text-white p-3.5 rounded-2xl shadow-xl hover:bg-emerald-700 transition-all"
           >
             <div className="flex items-center space-x-2">
               <ShoppingBag className="w-5 h-5" />
-              <span className="text-xs font-bold">{cartCount} ITEMS • ₹{cartSubtotal}</span>
+              <span className="text-xs font-extrabold">{cartCount} ITEMS • ₹{cartTotal}</span>
             </div>
-            <div className="flex items-center space-x-1 text-xs font-bold">
+            <div className="flex items-center space-x-1 text-xs font-extrabold">
               <span>View Cart</span>
               <ArrowRight className="w-4 h-4" />
             </div>
@@ -231,7 +308,7 @@ export default function StorefrontHome() {
         </div>
       )}
 
-      {/* Persistent Bottom Navigation */}
+      {/* Persistent Bottom Navigation Bar */}
       <BottomNav cartCount={cartCount} />
     </div>
   );

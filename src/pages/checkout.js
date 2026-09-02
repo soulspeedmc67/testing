@@ -16,9 +16,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const data = localStorage.getItem("dashit_checkout_data");
     if (data) {
-      try {
-        setCheckoutData(JSON.parse(data));
-      } catch (e) {}
+      try { setCheckoutData(JSON.parse(data)); } catch (e) {}
     }
   }, []);
 
@@ -40,7 +38,6 @@ export default function CheckoutPage() {
         status: "Packing"
       };
 
-      // Save order to history
       const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
       localStorage.setItem("dashit_orders_history", JSON.stringify([newOrder, ...existingOrders]));
       localStorage.setItem("dashit_active_order", JSON.stringify(newOrder));
@@ -54,9 +51,9 @@ export default function CheckoutPage() {
 
   if (!checkoutData) {
     return (
-      <div className="min-h-screen bg-[#09090b] text-zinc-100 p-6 flex flex-col items-center justify-center space-y-3">
-        <p className="text-xs text-zinc-400">No active checkout session found.</p>
-        <Link href="/" className="bg-orange-500 text-zinc-950 font-bold text-xs px-4 py-2 rounded-xl">
+      <div className="min-h-screen bg-slate-50 text-slate-900 p-6 flex flex-col items-center justify-center space-y-3">
+        <p className="text-xs text-slate-500 font-semibold">No active checkout session found.</p>
+        <Link href="/" className="bg-emerald-600 text-white font-bold text-xs px-4 py-2.5 rounded-2xl shadow">
           Return to Storefront
         </Link>
       </div>
@@ -64,106 +61,106 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 font-sans antialiased pb-28">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#09090b]/90 backdrop-blur-xl border-b border-zinc-800/80 px-4 py-3.5 flex items-center space-x-3">
-        <Link href="/cart" className="p-1 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center space-x-3 shadow-sm">
+        <Link href="/cart" className="p-1 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100">
           <ArrowLeft className="w-5 h-5" />
         </Link>
         <div>
-          <h1 className="font-bold text-base text-zinc-100">Select Payment Method</h1>
-          <p className="text-[11px] text-zinc-400">Amount to pay: <b className="text-orange-400 font-mono">₹{checkoutData.grandTotal}</b></p>
+          <h1 className="font-extrabold text-base text-slate-900">Select Payment Method</h1>
+          <p className="text-[11px] text-slate-500 font-medium">Amount to pay: <b className="text-emerald-700 font-mono">₹{checkoutData.grandTotal}</b></p>
         </div>
       </header>
 
       <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
         {/* Delivery ETA & Address Banner */}
-        <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4 space-y-2">
-          <div className="flex items-center space-x-2 text-xs font-bold text-zinc-200">
-            <Clock className="w-4 h-4 text-orange-500" />
-            <span>Guaranteed 10-Minute Delivery (ETA: 13 mins)</span>
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-2 shadow-sm">
+          <div className="flex items-center space-x-2 text-xs font-extrabold text-slate-900">
+            <Clock className="w-4 h-4 text-emerald-600" />
+            <span>Guaranteed 10-Minute Delivery in Anantnag</span>
           </div>
-          <div className="flex items-start space-x-2 text-xs text-zinc-400 pt-1 border-t border-zinc-800/60">
-            <MapPin className="w-4 h-4 text-orange-400 shrink-0 mt-0.5" />
-            <span>Deliver to <b className="text-zinc-200">{checkoutData.location.nickname}</b>: {checkoutData.location.address}</span>
+          <div className="flex items-start space-x-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+            <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <span>Deliver to <b className="text-slate-900">{checkoutData.location.nickname}</b>: {checkoutData.location.address}</span>
           </div>
         </div>
 
         {/* Payment Methods */}
-        <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-4 space-y-3">
-          <h3 className="font-bold text-xs text-zinc-300 uppercase tracking-wider">Payment Gateway Options</h3>
+        <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm">
+          <h3 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider">Payment Options</h3>
 
           {/* Option 1: Instant UPI */}
           <div
             onClick={() => setSelectedMethod("upi")}
-            className={`p-3.5 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
+            className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
               selectedMethod === "upi"
-                ? "bg-orange-500/10 border-orange-500/50 text-zinc-100"
-                : "bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700"
+                ? "bg-emerald-50 border-emerald-500 text-slate-900"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
             }`}
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-500 text-zinc-950 rounded-xl font-black text-xs">
+              <div className="p-2.5 bg-emerald-600 text-white rounded-2xl font-black text-xs">
                 <Zap className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-bold text-xs text-zinc-100">Instant UPI (PhonePe / GPay / Paytm)</h4>
-                <p className="text-[11px] text-zinc-400">Zero extra charges • Fastest checkout</p>
+                <h4 className="font-bold text-xs text-slate-900">Instant UPI (PhonePe / GPay / Paytm)</h4>
+                <p className="text-[11px] text-slate-500">Zero extra charges • Fastest checkout</p>
               </div>
             </div>
-            {selectedMethod === "upi" && <CheckCircle2 className="w-5 h-5 text-orange-500" />}
+            {selectedMethod === "upi" && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
           </div>
 
           {/* Option 2: Cards */}
           <div
             onClick={() => setSelectedMethod("card")}
-            className={`p-3.5 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
+            className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
               selectedMethod === "card"
-                ? "bg-orange-500/10 border-orange-500/50 text-zinc-100"
-                : "bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700"
+                ? "bg-emerald-50 border-emerald-500 text-slate-900"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
             }`}
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-sky-500 text-zinc-950 rounded-xl font-black text-xs">
+              <div className="p-2.5 bg-sky-600 text-white rounded-2xl font-black text-xs">
                 <CreditCard className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-bold text-xs text-zinc-100">Credit / Debit Card</h4>
-                <p className="text-[11px] text-zinc-400">Visa, Mastercard, RuPay supported</p>
+                <h4 className="font-bold text-xs text-slate-900">Credit / Debit Card</h4>
+                <p className="text-[11px] text-slate-500">Visa, Mastercard, RuPay supported</p>
               </div>
             </div>
-            {selectedMethod === "card" && <CheckCircle2 className="w-5 h-5 text-orange-500" />}
+            {selectedMethod === "card" && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
           </div>
 
           {/* Option 3: Cash on Delivery */}
           <div
             onClick={() => !isNightTime && setSelectedMethod("cod")}
-            className={`p-3.5 rounded-xl border flex items-center justify-between transition-all ${
-              isNightTime ? "opacity-40 cursor-not-allowed bg-zinc-950/40 border-zinc-800" : "cursor-pointer"
+            className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+              isNightTime ? "opacity-40 cursor-not-allowed bg-slate-100 border-slate-200" : "cursor-pointer"
             } ${
               selectedMethod === "cod"
-                ? "bg-orange-500/10 border-orange-500/50 text-zinc-100"
-                : "bg-zinc-950/60 border-zinc-800/80 text-zinc-400 hover:border-zinc-700"
+                ? "bg-emerald-50 border-emerald-500 text-slate-900"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
             }`}
           >
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-emerald-500 text-zinc-950 rounded-xl font-black text-xs">
+              <div className="p-2.5 bg-amber-500 text-white rounded-2xl font-black text-xs">
                 <Banknote className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="font-bold text-xs text-zinc-100">Cash on Delivery (COD)</h4>
-                <p className="text-[11px] text-zinc-400">
+                <h4 className="font-bold text-xs text-slate-900">Cash on Delivery (COD)</h4>
+                <p className="text-[11px] text-slate-500">
                   {isNightTime ? "Disabled during Night Hours (10 PM - 6 AM)" : "Pay cash directly to rider upon doorstep delivery"}
                 </p>
               </div>
             </div>
-            {selectedMethod === "cod" && <CheckCircle2 className="w-5 h-5 text-orange-500" />}
+            {selectedMethod === "cod" && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
           </div>
         </div>
 
         {/* Security Info */}
-        <div className="flex items-center justify-center space-x-2 text-[11px] text-zinc-500">
-          <ShieldCheck className="w-4 h-4 text-emerald-500" />
+        <div className="flex items-center justify-center space-x-2 text-[11px] text-slate-500 font-medium">
+          <ShieldCheck className="w-4 h-4 text-emerald-600" />
           <span>Encrypted Razorpay Payment Gateway Protection</span>
         </div>
 
@@ -171,7 +168,7 @@ export default function CheckoutPage() {
         <button
           onClick={handlePlaceOrder}
           disabled={isProcessing}
-          className="w-full bg-orange-500 hover:bg-orange-400 text-zinc-950 font-bold text-sm py-3.5 rounded-xl shadow-xl transition-all flex items-center justify-center space-x-2"
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2"
         >
           {isProcessing ? (
             <span>Processing Order...</span>
