@@ -192,14 +192,15 @@ app.post("/api/user/address", (req, res) => {
 
 // Create New Order (From Checkout)
 app.post("/api/orders", (req, res) => {
-  const { items, totalAmount, paymentMethod, address, location, customerName, mobile } = req.body;
+  const { items, totalAmount, paymentMethod, address, location, customerName, mobile, orderId: clientOrderId, otp: clientOtp } = req.body;
 
   if (!items || items.length === 0) {
     return res.status(400).json({ success: false, message: "Cart is empty" });
   }
 
-  const orderId = "DASH-" + Math.floor(100000 + Math.random() * 900000);
-  const otp = Math.floor(1000 + Math.random() * 9000).toString();
+  const orderId = clientOrderId || ("DASH-" + Math.floor(100000 + Math.random() * 900000));
+  const otp = (clientOtp || Math.floor(1000 + Math.random() * 9000)).toString();
+  const finalAddress = address || (location && location.address) || "Nai Basti, Anantnag";
 
   const newOrder = {
     orderId,
@@ -209,9 +210,9 @@ app.post("/api/orders", (req, res) => {
     paymentMethod: paymentMethod || "Google Pay UPI",
     status: "Packing",
     otp,
-    customerName: customerName || "Customer",
+    customerName: customerName || "Azan Iqbal Mir",
     mobile: mobile || "9622720283",
-    address: address || "Nai Basti, Anantnag",
+    address: finalAddress,
     location: location || { lat: 33.7385, lng: 75.1565 },
     createdAt: new Date().toISOString()
   };
