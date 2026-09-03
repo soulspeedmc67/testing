@@ -72,6 +72,11 @@ jobs:
                       except Exception as e:
                           print("Error:", e)
           '
+          # Re-sign modified xcframeworks with ad-hoc signature so Xcode signature verification passes
+          for fw in $(find "$HOME/Library/Developer/Xcode/DerivedData" -name "*.xcframework"); do
+            echo "Re-signing $fw"
+            codesign --force --deep --sign - "$fw" || true
+          done
 
       - name: Build Xcode Archive
         run: |
