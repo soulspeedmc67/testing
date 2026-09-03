@@ -11,6 +11,7 @@ import { Card, CardContent } from "../components/ui/card";
 import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
+import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
 import io from "socket.io-client";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
@@ -315,9 +316,9 @@ export default function OrdersPage() {
                 />
               </div>
             ) : (
-              <div className="bg-blue-50/70 border border-blue-200/80 rounded-3xl p-5 space-y-3.5 text-center">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-white shadow-md border border-blue-100 flex items-center justify-center text-[#061838]">
-                  <Package className="w-7 h-7 stroke-[2] animate-bounce" />
+              <div className="bg-gradient-to-b from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-3xl p-5 space-y-3.5 text-center shadow-xs">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-white shadow-[0_8px_24px_rgba(6,24,56,0.1)] border border-slate-200/80 flex items-center justify-center p-2">
+                  <DashitAnimatedLogo size="md" showGlow={true} />
                 </div>
                 <div>
                   <h3 className="font-black text-sm text-slate-900">
