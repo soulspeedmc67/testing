@@ -11,6 +11,7 @@ import { Card, CardContent } from "../components/ui/card";
 import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
+import io from "socket.io-client";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -37,6 +38,40 @@ export default function OrdersPage() {
       setShowPastOrdersModal(true);
     }
   }, [router.query]);
+
+  // Real-time status sync with Admin Dashboard & Driver via WebSockets
+  useEffect(() => {
+    let socket;
+    try {
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5001";
+      socket = io(socketUrl);
+      if (activeOrder?.orderId) {
+        socket.emit("join_order_room", activeOrder.orderId);
+      }
+      socket.on("order_status_changed", (data) => {
+        if (data.orderId === activeOrder?.orderId) {
+          setActiveOrder((prev) => {
+            const updated = { ...prev, status: data.status };
+            try { localStorage.setItem("dashit_active_order", JSON.stringify(updated)); } catch (e) {}
+            return updated;
+          });
+        }
+      });
+      socket.on("order_status_updated", (data) => {
+        if (data.orderId === activeOrder?.orderId) {
+          setActiveOrder((prev) => {
+            const updated = { ...prev, status: data.status };
+            try { localStorage.setItem("dashit_active_order", JSON.stringify(updated)); } catch (e) {}
+            return updated;
+          });
+        }
+      });
+    } catch (e) {}
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [activeOrder?.orderId]);
 
   useEffect(() => {
     let timer;

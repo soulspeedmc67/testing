@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import { ShieldCheck, Phone, Navigation, Clock, CheckCircle2, Bike } from "lucide-react";
+import { fetchRoadRoute } from "../lib/maps";
 
 let socket;
 
@@ -21,7 +22,7 @@ export default function MapTracking({
 
   // Delivery radius guaranteed within 5km, ETA strictly under 10 mins (e.g. 7 mins)
   const [etaMinutes, setEtaMinutes] = useState(7);
-  const [distanceKm, setDistanceKm] = useState(2.3);
+  const [distanceKm, setDistanceKm] = useState(1.7);
   const [riderLocation, setRiderLocation] = useState({ lat: initialLat, lng: initialLng });
   const [riderName, setRiderName] = useState("Tariq Ahmad");
   const [riderStatus, setRiderStatus] = useState("On the way on Scooter");
@@ -29,7 +30,7 @@ export default function MapTracking({
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
-    import("leaflet").then((L) => {
+    import("leaflet").then(async (L) => {
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -38,23 +39,10 @@ export default function MapTracking({
       });
 
       if (!mapInstanceRef.current && mapContainerRef.current) {
-        // Calculate intermediate curved route points between rider and customer
-        const startPoint = [initialLat, initialLng];
-        const endPoint = [customerLat, customerLng];
-
-        // Realistic curved waypoints along Anantnag roads within 5km radius
-        const midLat1 = initialLat + (customerLat - initialLat) * 0.35 + 0.0012;
-        const midLng1 = initialLng + (customerLng - initialLng) * 0.28 - 0.0008;
-
-        const midLat2 = initialLat + (customerLat - initialLat) * 0.72 - 0.0006;
-        const midLng2 = initialLng + (customerLng - initialLng) * 0.78 + 0.0010;
-
-        const routePoints = [
-          startPoint,
-          [midLat1, midLng1],
-          [midLat2, midLng2],
-          endPoint
-        ];
+        // Query real turn-by-turn road coordinates across Anantnag
+        const roadRoute = await fetchRoadRoute(initialLat, initialLng, customerLat, customerLng);
+        setEtaMinutes(roadRoute.durationMins);
+        setDistanceKm(roadRoute.distanceKm);
 
         // Initialize fancy light map
         const map = L.map(mapContainerRef.current, {
@@ -70,14 +58,18 @@ export default function MapTracking({
           attribution: "© OpenStreetMap"
         }).addTo(map);
 
-        // Clean, minimalist route line
-        const coreLine = L.polyline(routePoints, {
+        // Accurate road-hugging polyline
+        const coreLine = L.polyline(roadRoute.points, {
           color: "#0c831f",
           weight: 4,
           opacity: 0.9,
           lineCap: "round",
           lineJoin: "round"
         }).addTo(map);
+
+        try {
+          map.fitBounds(coreLine.getBounds(), { padding: [45, 45], maxZoom: 16 });
+        } catch (e) {}
 
         // Minimalist Scooter Rider Marker (Clean SVG)
         const riderIcon = L.divIcon({
