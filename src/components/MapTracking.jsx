@@ -64,11 +64,10 @@ export default function MapTracking({
           attributionControl: false
         });
 
-        // CartoDB Voyager clean light tiles for modern iOS/Apple Maps look
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        // Clean OpenStreetMap tiles
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19,
-          subdomains: "abcd",
-          attribution: "© CartoDB"
+          attribution: "© OpenStreetMap"
         }).addTo(map);
 
         // Clean, minimalist route line
