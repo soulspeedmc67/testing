@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ArrowLeft, Search, Share2, Clock, CheckCircle2, ChevronRight, ChevronUp, ShieldCheck, Plus, Minus, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Search, Share2, Clock, CheckCircle2, ChevronRight, ChevronUp, ShieldCheck, Plus, Minus, ShoppingBag, Users, Tag, Sparkles, UserCheck } from "lucide-react";
 import confetti from "canvas-confetti";
 import PaymentMethodModal from "../components/PaymentMethodModal";
 import LocationPickerModal from "../components/LocationPickerModal";
+import CheckoutLoginModal from "../components/CheckoutLoginModal";
+import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
+import CouponsDrawer from "../components/CouponsDrawer";
+import FreeDeliveryCelebrationModal from "../components/FreeDeliveryCelebrationModal";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 
@@ -53,6 +57,13 @@ export default function CheckoutPage() {
   const [selectedMethod, setSelectedMethod] = useState({ id: "gpay", label: "Google Pay UPI" });
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isOrderingForSomeoneElseOpen, setIsOrderingForSomeoneElseOpen] = useState(false);
+  const [receiverDetails, setReceiverDetails] = useState(null);
+  const [isCouponsOpen, setIsCouponsOpen] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [isFreeDeliveryModalOpen, setIsFreeDeliveryModalOpen] = useState(false);
+  const [hasShownFreeDelivery, setHasShownFreeDelivery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cartItems, setCartItems] = useState([]);
 
@@ -67,21 +78,34 @@ export default function CheckoutPage() {
         const savedCart = localStorage.getItem("dashit_cart");
         if (savedCart) {
           const cart = JSON.parse(savedCart);
-          const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+          const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
           setCartItems(cart);
           setCheckoutData({
             cart,
-            subtotal,
-            grandTotal: subtotal + 30,
+            subtotal: sub,
+            grandTotal: sub + 25,
             location: {
               nickname: "Home",
-              address: "b-3,jamia appqrtment,flat no 207,okhla, Abul Fazal Enclave Part 1, Okhla, Anantnag"
+              address: "Nai Basti, Near Petrol Pump, Anantnag"
             }
           });
         }
       }
     } catch (e) {}
   }, []);
+
+  const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const deliveryFee = subtotal >= 199 || appliedCoupon?.code === "FREEDEL" ? 0 : 25;
+  const couponDiscount = appliedCoupon ? Math.min(subtotal, appliedCoupon.discount) : 0;
+  const grandTotal = Math.max(0, subtotal + deliveryFee - couponDiscount);
+
+  // Trigger Free Delivery Celebration when cart reaches ₹199 (matching screenshot 5)
+  useEffect(() => {
+    if (subtotal >= 199 && !hasShownFreeDelivery) {
+      setIsFreeDeliveryModalOpen(true);
+      setHasShownFreeDelivery(true);
+    }
+  }, [subtotal, hasShownFreeDelivery]);
 
   const updateItemQty = (id, delta) => {
     if (delta > 0) {
@@ -107,13 +131,27 @@ export default function CheckoutPage() {
     }
   };
 
-  const grandTotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0) + (cartItems.length > 0 ? 30 : 0);
-
   const handlePlaceOrder = () => {
+    if (!cartItems || cartItems.length === 0) {
+      alert("Your cart is empty! Please add items before placing an order.");
+      return;
+    }
+    
     if (cartItems.length === 0 || isProcessing) return;
-    setIsProcessing(true);
 
-    // Trigger Highest Intensity Celebration Haptics
+    // Check if user authenticated in this checkout session
+    const isAuthenticated = sessionStorage.getItem("dashit_checkout_authenticated");
+    if (!isAuthenticated) {
+      // Trigger iOS-style Bottom Sheet Login (Skippable)
+      setIsLoginModalOpen(true);
+      return;
+    }
+
+    executeOrderPlacement();
+  };
+
+  const executeOrderPlacement = (authenticatedUser) => {
+    setIsProcessing(true);
     hapticOrderPlaced();
 
     try {
@@ -122,16 +160,27 @@ export default function CheckoutPage() {
 
     setTimeout(() => {
       const newOrderId = "DASH-" + Math.floor(100000 + Math.random() * 900000);
+      let userObj = authenticatedUser;
+      if (!userObj) {
+        try {
+          const u = localStorage.getItem("dashit_user");
+          if (u) userObj = JSON.parse(u);
+        } catch (e) {}
+      }
+
       const newOrder = {
         orderId: newOrderId,
         date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
         items: cartItems,
         totalAmount: grandTotal,
-        savings: 140,
+        savings: 140 + couponDiscount,
         paymentMethod: selectedMethod.label,
         location: checkoutData?.location || { nickname: "Home", address: "Anantnag" },
         otp: Math.floor(1000 + Math.random() * 9000),
-        status: "Packing"
+        status: "Packing",
+        customerName: userObj?.name || "Azan Iqbal Mir",
+        mobile: userObj?.mobile || "9622720283",
+        receiverContact: receiverDetails
       };
 
       const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
@@ -185,7 +234,26 @@ export default function CheckoutPage() {
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="max-w-md mx-auto p-4 space-y-4">
+      {cartItems.length === 0 ? (
+        <main className="max-w-md mx-auto p-6 py-20 text-center space-y-4">
+          <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-[#0c831f] mx-auto flex items-center justify-center border border-emerald-100 shadow-sm">
+            <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-black text-slate-900">Your cart is empty</h2>
+            <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto">
+              You haven't added any items to your cart yet. Explore our fresh categories to order in 8 mins!
+            </p>
+          </div>
+          <Link
+            href="/"
+            className="inline-block bg-[#0c831f] hover:bg-emerald-800 text-white font-black text-xs px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-all"
+          >
+            Browse Storefront →
+          </Link>
+        </main>
+      ) : (
+        <main className="max-w-md mx-auto p-4 space-y-4">
         {/* 2. DELIVERY IN 12 MINUTES BANNER */}
         <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3">
           <div className="flex items-start space-x-3">
@@ -266,9 +334,55 @@ export default function CheckoutPage() {
           </div>
         </div>
 
+        {/* Coupons & Offers Banner matching Screenshot 3 */}
+        <div
+          onClick={() => setIsCouponsOpen(true)}
+          className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-4 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99] transition-transform"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center border border-blue-200 dark:border-blue-900">
+              <Tag className="w-4 h-4 stroke-[2.5]" />
+            </div>
+            <div>
+              <span className="text-xs font-black text-slate-900 dark:text-white block">
+                {appliedCoupon ? `Coupon '${appliedCoupon.code}' Applied!` : "Avail Offers and Coupons"}
+              </span>
+              <span className="text-[11px] font-bold text-[#0c831f] block">
+                {appliedCoupon ? `You are saving ₹${couponDiscount} with this order` : "Save up to ₹50 with GET30 & DASHIT50"}
+              </span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </div>
+
+        {/* Bill Details */}
+        <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-4 space-y-2.5 shadow-2xs text-xs">
+          <h4 className="font-black text-slate-900 dark:text-white text-xs">Bill Details</h4>
+          <div className="flex justify-between text-slate-600 dark:text-zinc-400">
+            <span>Items total</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-white">₹{subtotal}</span>
+          </div>
+          <div className="flex justify-between text-slate-600 dark:text-zinc-400">
+            <span>Delivery fee</span>
+            <span className="font-mono font-bold text-[#0c831f]">
+              {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
+            </span>
+          </div>
+          {couponDiscount > 0 && (
+            <div className="flex justify-between text-[#0c831f] font-bold">
+              <span>Coupon discount ({appliedCoupon?.code})</span>
+              <span className="font-mono">-₹{couponDiscount}</span>
+            </div>
+          )}
+          <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex justify-between font-black text-sm text-slate-900 dark:text-white">
+            <span>To Pay</span>
+            <span className="font-mono text-[#0c831f]">₹{grandTotal}</span>
+          </div>
+        </div>
+
         {/* 3. "YOU MIGHT ALSO LIKE" CAROUSEL matching media_1788424288168.png */}
         <section className="space-y-2.5">
-          <h3 className="font-black text-sm text-slate-900 tracking-tight px-1">
+          <h3 className="font-black text-sm text-slate-900 dark:text-white tracking-tight px-1">
             You might also like
           </h3>
 
@@ -276,7 +390,7 @@ export default function CheckoutPage() {
             {YOU_MIGHT_ALSO_LIKE.map((sug) => (
               <div
                 key={sug.id}
-                className="w-[170px] shrink-0 bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs"
+                className="w-[170px] shrink-0 bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs"
               >
                 <div className="relative">
                   <span className="absolute top-0 left-0 bg-amber-100 text-amber-900 font-black text-[9px] px-2 py-0.5 rounded-md">
@@ -285,13 +399,13 @@ export default function CheckoutPage() {
                   <img
                     src={sug.img}
                     alt={sug.name}
-                    className="w-24 h-24 object-contain mx-auto bg-slate-50 rounded-2xl p-2 mt-2"
+                    className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-zinc-800 rounded-2xl p-2 mt-2"
                   />
                 </div>
 
                 <div>
                   <span className="text-[10px] font-bold text-slate-400">{sug.spec}</span>
-                  <h4 className="font-bold text-xs text-slate-900 leading-tight line-clamp-2 mt-0.5">
+                  <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-2 mt-0.5">
                     {sug.name}
                   </h4>
                   <div className="flex items-center space-x-1 mt-1 text-[10px] text-amber-500 font-black">
@@ -300,12 +414,12 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
                   <div>
                     <span className="text-[9px] font-black text-blue-600 block leading-none">
                       {sug.discount}
                     </span>
-                    <span className="text-xs font-black text-slate-900 font-mono">
+                    <span className="text-xs font-black text-slate-900 dark:text-white font-mono">
                       ₹{sug.price}
                     </span>
                   </div>
@@ -321,7 +435,7 @@ export default function CheckoutPage() {
                         window.dispatchEvent(new Event("dashit_cart_updated"));
                       }
                     }}
-                    className="bg-white border-2 border-[#0c831f] text-[#0c831f] font-black text-xs px-3.5 py-1 rounded-xl hover:bg-emerald-50 active:scale-95 shadow-2xs"
+                    className="bg-white dark:bg-zinc-800 border-2 border-[#0c831f] text-[#0c831f] font-black text-xs px-3.5 py-1 rounded-xl hover:bg-emerald-50 active:scale-95 shadow-2xs"
                   >
                     ADD
                   </button>
@@ -331,35 +445,52 @@ export default function CheckoutPage() {
           </div>
         </section>
       </main>
+      )}
 
-      {/* 4. STICKY BOTTOM BAR matching media_1788424288168.png */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200/90 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-[max(12px,env(safe-area-inset-bottom,12px))]">
+      {/* 4. STICKY BOTTOM BAR (Only visible when items are in cart) */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-slate-200/90 dark:border-zinc-800 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-[max(12px,env(safe-area-inset-bottom,12px))]">
         <div className="max-w-md mx-auto">
           {/* Address Strip */}
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center space-x-2.5 overflow-hidden">
-              <span className="text-xl shrink-0">🏡</span>
-              <div className="overflow-hidden">
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-xs font-black text-slate-900">
-                    Delivering to {checkoutData?.location?.nickname || "Home"}
-                  </span>
+          <div className="px-4 py-2 border-b border-slate-100 dark:border-zinc-800 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2.5 overflow-hidden">
+                <span className="text-xl shrink-0">🏡</span>
+                <div className="overflow-hidden">
+                  <div className="flex items-center space-x-1.5">
+                    <span className="text-xs font-black text-slate-900 dark:text-white">
+                      Delivering to {checkoutData?.location?.nickname || "Home"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium truncate max-w-[220px]">
+                    {checkoutData?.location?.address || "Nai Basti, Anantnag"}
+                  </p>
                 </div>
-                <p className="text-[11px] text-slate-500 font-medium truncate max-w-[220px]">
-                  {checkoutData?.location?.address || "b-3,jamia appqrtment, Anantnag"}
-                </p>
-                <p className="text-[10px] text-amber-700 font-bold leading-none truncate">
-                  Selected address is 0.8 km away from your location
-                </p>
               </div>
+
+              <button
+                onClick={() => setIsLocationModalOpen(true)}
+                className="text-xs font-black text-[#0c831f] hover:underline shrink-0 pl-2"
+              >
+                Change
+              </button>
             </div>
 
-            <button
-              onClick={() => setIsLocationModalOpen(true)}
-              className="text-xs font-black text-[#0c831f] hover:underline shrink-0 pl-2"
-            >
-              Change
-            </button>
+            {/* Ordering for someone else button matching Screenshot 2 */}
+            <div className="pt-1 flex items-center justify-between border-t border-slate-100 dark:border-zinc-800/80">
+              <button
+                type="button"
+                onClick={() => setIsOrderingForSomeoneElseOpen(true)}
+                className="flex items-center space-x-1.5 text-[11px] font-black text-[#0c831f] hover:underline"
+              >
+                <Users className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>
+                  {receiverDetails
+                    ? `Recipient: ${receiverDetails.name} (${receiverDetails.phone})`
+                    : "Ordering for someone else?"}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Payment Method & Dual Place Order CTA */}
@@ -375,7 +506,7 @@ export default function CheckoutPage() {
               </span>
               <div className="flex items-center space-x-1.5 mt-0.5">
                 <span className="text-xs font-black text-blue-600">G</span>
-                <span className="text-xs font-black text-slate-900">{selectedMethod.label}</span>
+                <span className="text-xs font-black text-slate-900 dark:text-white">{selectedMethod.label}</span>
               </div>
             </button>
 
@@ -404,8 +535,9 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Modals */}
+      {/* Modals & Bottom Sheets */}
       <PaymentMethodModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
@@ -423,6 +555,40 @@ export default function CheckoutPage() {
           setCheckoutData(updated);
           localStorage.setItem("dashit_checkout_data", JSON.stringify(updated));
         }}
+      />
+
+      {/* Skippable iOS Login Bottom Sheet */}
+      <CheckoutLoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onAuthenticated={(user) => {
+          try {
+            sessionStorage.setItem("dashit_checkout_authenticated", "true");
+          } catch (e) {}
+          executeOrderPlacement(user);
+        }}
+      />
+
+      {/* Ordering For Someone Else Modal (Screenshot 2) */}
+      <OrderingForSomeoneElseModal
+        isOpen={isOrderingForSomeoneElseOpen}
+        onClose={() => setIsOrderingForSomeoneElseOpen(false)}
+        onSaveReceiver={(details) => setReceiverDetails(details)}
+      />
+
+      {/* Coupons Drawer (Screenshot 3) */}
+      <CouponsDrawer
+        isOpen={isCouponsOpen}
+        onClose={() => setIsCouponsOpen(false)}
+        cartTotal={subtotal}
+        appliedCoupon={appliedCoupon}
+        onApplyCoupon={(coupon) => setAppliedCoupon(coupon)}
+      />
+
+      {/* Free Delivery Celebration Popup (Screenshot 5) */}
+      <FreeDeliveryCelebrationModal
+        isOpen={isFreeDeliveryModalOpen}
+        onClose={() => setIsFreeDeliveryModalOpen(false)}
       />
     </div>
   );

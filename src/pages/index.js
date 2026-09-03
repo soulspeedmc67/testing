@@ -12,6 +12,7 @@ import QuickProductSheet from "../components/QuickProductSheet";
 import LocationPickerModal from "../components/LocationPickerModal";
 import InteractiveMapModal from "../components/InteractiveMapModal";
 import { ALL_PRODUCTS } from "../data/products";
+import { reverseGeocodeCoords } from "../lib/maps";
 
 export default function StorefrontHome() {
   const router = useRouter();
@@ -43,8 +44,69 @@ export default function StorefrontHome() {
       if (savedCart) setCart(JSON.parse(savedCart));
 
       const savedAddress = localStorage.getItem("dashit_user_address");
-      if (savedAddress) setLocation(JSON.parse(savedAddress));
+      if (savedAddress) {
+        setLocation(JSON.parse(savedAddress));
+      } else if (navigator.geolocation) {
+        // Auto self-locate user when they open the app for the first time
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const geocoded = await reverseGeocodeCoords(lat, lng);
+            const userLoc = {
+              nickname: geocoded.area || "CURRENT LOCATION",
+              address: geocoded.address,
+              lat,
+              lng
+            };
+            setLocation(userLoc);
+            try {
+              localStorage.setItem("dashit_user_address", JSON.stringify(userLoc));
+            } catch (e) {}
+          },
+          () => {},
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      }
     } catch (e) {}
+
+    const handleAddressUpdate = () => {
+      try {
+        const savedAddress = localStorage.getItem("dashit_user_address");
+        if (savedAddress) setLocation(JSON.parse(savedAddress));
+      } catch (e) {}
+    };
+    window.addEventListener("dashit_address_updated", handleAddressUpdate);
+    return () => window.removeEventListener("dashit_address_updated", handleAddressUpdate);
+  }, []);
+
+  const [productsList, setProductsList] = useState(ALL_PRODUCTS);
+
+  useEffect(() => {
+    const loadLiveProducts = async () => {
+      try {
+        const res = await fetch("http://192.168.217.22:5001/api/products");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.products && data.products.length > 0) {
+            setProductsList(data.products);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      try {
+        const res = await fetch("http://localhost:5001/api/products");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.products && data.products.length > 0) {
+            setProductsList(data.products);
+          }
+        }
+      } catch (e) {}
+    };
+
+    loadLiveProducts();
   }, []);
 
   // Support ?cat=Snacks navigation from categories page
@@ -63,33 +125,33 @@ export default function StorefrontHome() {
   };
 
   const handleAddToCart = (product) => {
-    const existing = cart.find((i) => i.id === product.id);
+    const pId = String(product.id || product.barcode);
+    const existing = cart.find((i) => String(i.id || i.barcode) === pId);
     if (existing) {
-      saveCart(cart.map((i) => (i.id === product.id ? { ...i, qty: i.qty + 1 } : i)));
+      saveCart(cart.map((i) => (String(i.id || i.barcode) === pId ? { ...i, qty: i.qty + 1 } : i)));
     } else {
-      saveCart([...cart, { ...product, qty: 1 }]);
+      saveCart([...cart, { ...product, id: pId, qty: 1 }]);
     }
   };
 
   const handleUpdateQty = (productId, delta) => {
-    const item = cart.find((i) => i.id === productId);
+    const pId = String(productId);
+    const item = cart.find((i) => String(i.id || i.barcode) === pId);
     if (!item) return;
     const newQty = item.qty + delta;
     if (newQty <= 0) {
-      saveCart(cart.filter((i) => i.id !== productId));
+      saveCart(cart.filter((i) => String(i.id || i.barcode) !== pId));
     } else {
-      saveCart(cart.map((i) => (i.id === productId ? { ...i, qty: newQty } : i)));
+      saveCart(cart.map((i) => (String(i.id || i.barcode) === pId ? { ...i, qty: newQty } : i)));
     }
   };
 
-  const filteredProducts = ALL_PRODUCTS.filter((p) => {
+  const filteredProducts = productsList.filter((p) => {
     if (activeCategory === "All") return true;
-    if (activeCategory === "Snacks") return p.cat === "Snacks";
-    if (activeCategory === "Grocery") return p.cat === "Grocery";
-    if (activeCategory === "Bakery") return p.cat === "Bakery";
-    if (activeCategory === "Dairy") return p.cat === "Dairy";
-    if (activeCategory === "Drinks") return p.cat === "Drinks";
-    return p.cat.toLowerCase().includes(activeCategory.toLowerCase());
+    if (!p.cat) return true;
+    const catLower = p.cat.toLowerCase();
+    const activeLower = activeCategory.toLowerCase();
+    return catLower === activeLower || catLower.includes(activeLower) || activeLower.includes(catLower);
   });
 
   return (
@@ -164,15 +226,17 @@ export default function StorefrontHome() {
 
           <div className="grid grid-cols-2 gap-3">
             {filteredProducts.map((p) => {
-              const inCart = cart.find((i) => i.id === p.id);
+              const pId = String(p.id || p.barcode);
+              const inCart = cart.find((i) => String(i.id || i.barcode) === pId);
               return (
                 <ProductCard
-                  key={p.id}
+                  key={pId}
                   product={p}
                   qty={inCart ? inCart.qty : 0}
                   onAdd={() => handleAddToCart(p)}
-                  onIncrement={() => handleUpdateQty(p.id, 1)}
-                  onDecrement={() => handleUpdateQty(p.id, -1)}
+                  onUpdateQty={(id, delta) => handleUpdateQty(id, delta)}
+                  onIncrement={() => handleUpdateQty(pId, 1)}
+                  onDecrement={() => handleUpdateQty(pId, -1)}
                   onQuickView={() => setSelectedQuickProduct(p)}
                 />
               );

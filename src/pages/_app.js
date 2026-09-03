@@ -20,15 +20,17 @@ export default function App({ Component, pageProps }) {
   useEffect(() => {
     currentPathRef.current = router.pathname;
 
-    const syncStatusBar = async () => {
+    const syncThemeAndStatusBar = async () => {
       try {
+        // Force Light Mode as requested
+        document.documentElement.classList.remove("dark");
         const isHome = router.pathname === '/' || router.pathname === '';
         const topColor = isHome ? '#FFFDF5' : '#FFFFFF';
         await StatusBar.setBackgroundColor({ color: topColor });
         await StatusBar.setStyle({ style: Style.Light });
       } catch (e) {}
     };
-    syncStatusBar();
+    syncThemeAndStatusBar();
   }, [router.pathname]);
 
   useEffect(() => {

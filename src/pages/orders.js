@@ -144,7 +144,7 @@ export default function OrdersPage() {
                 </span>
                 <div>
                   <h2 className="font-extrabold text-xs text-slate-900 tracking-tight">
-                    {cancellationSeconds > 0 ? "Packing in Darkstore" : "Rider Dispatched"}
+                    {activeOrder.status === "Out for Delivery" ? "Rider Dispatched" : "Processing in the dark store"}
                   </h2>
                   <span className="text-[10px] font-semibold text-slate-400 font-mono">
                     #{activeOrder.orderId}
@@ -220,23 +220,54 @@ export default function OrdersPage() {
               </div>
             )}
 
-            {/* Minimalist Delivery Route Map with under 10min ETA */}
-            <div className="pt-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Live Delivery Route</span>
-                <Badge variant="success">
-                  Guaranteed Under 10 Mins
-                </Badge>
+            {/* Darkstore Processing State vs Out for Delivery Map */}
+            {activeOrder.status === "Out for Delivery" ? (
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Live Delivery Route</span>
+                  <Badge variant="success">
+                    Rider En Route
+                  </Badge>
+                </div>
+                <MapTracking
+                  orderId={activeOrder.orderId}
+                  initialLat={33.7311}
+                  initialLng={75.1487}
+                  customerLat={activeOrder.location?.lat || 33.7385}
+                  customerLng={activeOrder.location?.lng || 75.1565}
+                  destinationName={activeOrder.location?.address || "Your Doorstep"}
+                />
               </div>
-              <MapTracking
-                orderId={activeOrder.orderId}
-                initialLat={33.7311}
-                initialLng={75.1487}
-                customerLat={activeOrder.location?.lat || 33.7385}
-                customerLng={activeOrder.location?.lng || 75.1565}
-                destinationName={activeOrder.location?.address || "Your Doorstep"}
-              />
-            </div>
+            ) : (
+              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-3xl p-5 space-y-3.5 text-center">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-white shadow-md border border-emerald-100 flex items-center justify-center text-[#0c831f]">
+                  <Package className="w-7 h-7 stroke-[2] animate-bounce" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm text-slate-900">
+                    Processing in the Dark Store
+                  </h3>
+                  <p className="text-xs text-slate-600 font-medium mt-1 max-w-xs mx-auto">
+                    Our team at Nai Basti Hub is picking and packing your fresh items.
+                  </p>
+                </div>
+
+                <div className="bg-white/80 backdrop-blur-xs rounded-2xl p-3 border border-emerald-100 text-left space-y-2">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>Order received & confirmed</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span>Picking items from shelves & packing</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs font-medium text-slate-400">
+                    <span className="w-2 h-2 rounded-full bg-slate-300" />
+                    <span>Live GPS map unlocks when rider departs</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Minimal Collapsible Items Summary */}
             <div className="bg-slate-50/80 rounded-2xl border border-slate-100 overflow-hidden">

@@ -1,13 +1,21 @@
-import { Flame, Cookie, Apple, Croissant, Milk, Coffee } from "lucide-react";
+import { Flame, Cookie, Apple, Croissant, Milk, Coffee, Sparkles, Utensils, Heart, Home, Package } from "lucide-react";
 import { hapticLight } from "../lib/haptics";
 
 export const CATEGORY_STRIP = [
   { id: "All", label: "All", icon: Flame },
+  { id: "Chips", label: "Chips", icon: Sparkles },
+  { id: "Biscuits", label: "Biscuits", icon: Cookie },
   { id: "Snacks", label: "Snacks", icon: Cookie },
-  { id: "Grocery", label: "Groceries", icon: Apple },
-  { id: "Bakery", label: "Bakery", icon: Croissant },
+  { id: "Beverages", label: "Beverages", icon: Coffee },
   { id: "Dairy", label: "Dairy & Eggs", icon: Milk },
-  { id: "Drinks", label: "Cold Drinks", icon: Coffee },
+  { id: "Instant Food", label: "Instant Food", icon: Utensils },
+  { id: "Vegetables", label: "Vegetables", icon: Apple },
+  { id: "Fruits", label: "Fruits", icon: Apple },
+  { id: "Staples", label: "Staples & Atta", icon: Package },
+  { id: "Spices", label: "Spices", icon: Sparkles },
+  { id: "Personal Care", label: "Personal Care", icon: Heart },
+  { id: "Household Items", label: "Household", icon: Home },
+  { id: "Bakery", label: "Bakery", icon: Croissant },
 ];
 
 export default function CategoryScroller({ activeCategory = "All", onSelectCategory }) {
