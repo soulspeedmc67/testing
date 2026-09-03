@@ -44,8 +44,8 @@ export async function showOrderLiveNotification({ orderId = "DASH-98214", etaMin
       notifications: [
         {
           id: 9821,
-          title: `DASHit · Arriving in ${etaMinutes} mins`,
-          body: `${riderName} is on the way with order #${orderId}`,
+          title: `On time · Arriving in ${etaMinutes} min${etaMinutes !== 1 ? "s" : ""}`,
+          body: `Dashit Darkstore: Preparing your order for delivery`,
           channelId: "live_order_tracking_v2",
           ongoing: true,
           autoCancel: false,

@@ -93,7 +93,7 @@ export default function CartPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-28">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">
           <button
             onClick={() => {

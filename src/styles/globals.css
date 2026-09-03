@@ -9,6 +9,16 @@
   --primary-text: #0f172a;
   --secondary-text: #64748b;
   --bg-slate: #f8fafc;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top-padding {
+  padding-top: max(8px, env(safe-area-inset-top, 0px));
+}
+
+.safe-bottom-padding {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
 html {

@@ -43,7 +43,7 @@ export default function AccountPage() {
   return (
     <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32">
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
-      <header className="bg-white px-4 pt-3.5 pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
+      <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
         <button
           type="button"
           onClick={() => router.back()}

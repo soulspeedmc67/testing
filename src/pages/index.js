@@ -39,6 +39,13 @@ export default function StorefrontHome() {
     } catch (e) {}
   }, []);
 
+  // Support ?cat=Snacks navigation from categories page
+  useEffect(() => {
+    if (router.query.cat) {
+      setActiveCategory(router.query.cat);
+    }
+  }, [router.query.cat]);
+
   const saveCart = (newCart) => {
     setCart(newCart);
     try {
@@ -132,11 +139,18 @@ export default function StorefrontHome() {
           <CategoryGridSixPack onSelectCategory={(cat) => setActiveCategory(cat)} />
         </section>
 
-        {/* 6. BESTSELLERS SECTION */}
+        {/* 6. PRODUCT SECTION */}
         <section className="space-y-3 pt-2">
           <div className="flex items-center justify-between px-1">
-            <h3 className="font-black text-base text-slate-900 tracking-tight">Bestsellers</h3>
-            <span className="text-xs font-extrabold text-[#0c831f]">See all</span>
+            <h3 className="font-black text-base text-slate-900 tracking-tight">
+              {activeCategory === "All" ? "Bestsellers" : activeCategory}
+            </h3>
+            <button
+              onClick={() => setActiveCategory("All")}
+              className={`text-xs font-extrabold transition-colors ${activeCategory === "All" ? "text-slate-300" : "text-[#0c831f]"}`}
+            >
+              {activeCategory === "All" ? "" : "See all"}
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
