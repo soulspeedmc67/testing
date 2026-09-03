@@ -65,6 +65,12 @@ export default function BottomNav({ forceHide = false }) {
 
   const isStorefront = STOREFRONT_TABS.includes(currentPath);
   const shouldHide = !isNavVisible || isKeyboardOpen || forceHide || !isStorefront;
+  const [animatingTab, setAnimatingTab] = useState(null);
+
+  const triggerIconAnimation = (tabId) => {
+    setAnimatingTab(tabId);
+    setTimeout(() => setAnimatingTab(null), 600);
+  };
 
   return (
     <motion.div
@@ -86,6 +92,7 @@ export default function BottomNav({ forceHide = false }) {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path || (item.id === "home" && currentPath === "/");
+          const isAnimating = animatingTab === item.id || isActive;
 
           return (
             <motion.button
@@ -96,6 +103,7 @@ export default function BottomNav({ forceHide = false }) {
               transition={{ type: "spring", stiffness: 450, damping: 24 }}
               onClick={() => {
                 hapticLight();
+                triggerIconAnimation(item.id);
                 if (currentPath !== item.path) {
                   router.push(item.path);
                 }
@@ -105,20 +113,21 @@ export default function BottomNav({ forceHide = false }) {
               }`}
             >
               <motion.div
+                key={`${item.id}-${animatingTab === item.id ? "anim" : "static"}`}
                 className="flex items-center justify-center relative"
                 animate={
-                  isActive
-                    ? item.id === "home"
-                      ? { scale: [1, 1.25, 1.08], y: [0, -3.5, 0] }
+                  isAnimating
+                    ? item.id === "order-again"
+                      ? { rotate: [0, -180, -360], scale: [1, 1.25, 1] }
                       : item.id === "categories"
-                      ? { scale: [1, 1.25, 1.08], rotate: [0, -10, 8, 0] }
-                      : { scale: [1, 1.26, 1.08], rotate: [0, -120, -60, 0] }
+                      ? { scale: [1, 1.22, 1], rotate: [0, -8, 6, 0] }
+                      : { scale: [1, 1.2, 1], y: [0, -3.5, 0] }
                     : { scale: 1, y: 0, rotate: 0 }
                 }
                 transition={{
                   type: "spring",
-                  stiffness: 380,
-                  damping: 18,
+                  stiffness: 350,
+                  damping: 20,
                   mass: 0.6,
                 }}
               >

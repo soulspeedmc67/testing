@@ -1,120 +1,167 @@
-import Link from "next/link";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { Sparkles, ArrowRight, Zap, ChevronRight } from "lucide-react";
+import { hapticLight } from "../lib/haptics";
+
+const CURATED_COLLECTIONS = [
+  {
+    id: "snack-express",
+    cat: "Snacks",
+    tag: "POPULAR NOW",
+    tagColor: "bg-[#FF6B00] text-white",
+    title: "Munchies & Crisps",
+    desc: "Lay's, Kurkure & artisanal namkeen",
+    priceText: "From ₹20",
+    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=240&auto=format&fit=crop&q=80",
+    bg: "bg-gradient-to-b from-amber-50/90 to-white",
+    border: "border-amber-200/70"
+  },
+  {
+    id: "bakery-fresh",
+    cat: "Bakery",
+    tag: "LOCAL FAVORITE",
+    tagColor: "bg-[#061838] text-white",
+    title: "Kashmiri Breads & Toast",
+    desc: "Fresh morning lavas, croissants & buns",
+    priceText: "From ₹30",
+    img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=240&auto=format&fit=crop&q=80",
+    bg: "bg-gradient-to-b from-stone-50 to-white",
+    border: "border-stone-200/80"
+  },
+  {
+    id: "dairy-essentials",
+    cat: "Dairy",
+    tag: "FARM FRESH",
+    tagColor: "bg-blue-600 text-white",
+    title: "Daily Dairy & Butter",
+    desc: "Amul milk, rich curd & salted butter",
+    priceText: "From ₹35",
+    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=240&auto=format&fit=crop&q=80",
+    bg: "bg-gradient-to-b from-sky-50/70 to-white",
+    border: "border-sky-200/70"
+  },
+  {
+    id: "drinks-chilled",
+    cat: "Drinks",
+    tag: "INSTANT CHILL",
+    tagColor: "bg-emerald-600 text-white",
+    title: "Cold Drinks & Juices",
+    desc: "Real fruit sips, iced teas & sodas",
+    priceText: "Up to 25% OFF",
+    img: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=240&auto=format&fit=crop&q=80",
+    bg: "bg-gradient-to-b from-emerald-50/70 to-white",
+    border: "border-emerald-200/70"
+  },
+];
 
 export default function PromoBanner({ onSelectPromo }) {
-  return (
-    <div className="w-full bg-gradient-to-b from-[#FFFDF5] to-[#F0FDFA] rounded-3xl p-3.5 border border-teal-100/80 shadow-sm space-y-3">
-      {/* Sponsor/Branding Row */}
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center space-x-1 text-[10px] font-black uppercase tracking-wider text-slate-800">
-          <Sparkles className="w-3 h-3 stroke-[2.5] text-[#FF6B00]" />
-          <span>Snacks & Munchies Hub · Express Store</span>
-        </div>
-        <span className="text-[10px] font-extrabold text-[#061838] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
-          Up to 40% OFF
-        </span>
-      </div>
+  const handleSelect = (category) => {
+    hapticLight();
+    if (onSelectPromo) onSelectPromo(category);
+  };
 
-      {/* Multi-Tile Grid */}
-      <div className="grid grid-cols-3 gap-2">
-        {/* Large Featured Left Card */}
-        <div
-          onClick={() => onSelectPromo && onSelectPromo("Snacks")}
-          className="col-span-1 bg-gradient-to-b from-sky-200 to-sky-400 rounded-2xl p-2.5 flex flex-col justify-between cursor-pointer hover:shadow-md transition-all active:scale-[0.98] text-white relative overflow-hidden"
-        >
-          <div>
-            <h3 className="font-black text-xs leading-tight drop-shadow-sm">
-              Chips & Crisps
-            </h3>
-            <div className="mt-1 inline-flex items-center space-x-1 bg-amber-400 text-slate-950 font-black text-[10px] px-1.5 py-0.5 rounded-md shadow-sm">
-              <span>₹40</span>
-              <span className="text-[8px] line-through text-slate-700">₹60</span>
+  return (
+    <section className="w-full space-y-3 select-none">
+      {/* 1. HERO SPOTLIGHT CARD — Distinctive Dashit Panoramic Presentation */}
+      <motion.div
+        whileTap={{ scale: 0.985 }}
+        onClick={() => handleSelect("Snacks")}
+        className="relative w-full rounded-3xl overflow-hidden bg-gradient-to-br from-[#061838] via-[#0A2558] to-[#040E22] text-white p-4.5 shadow-[0_12px_32px_rgba(6,24,56,0.2)] border border-slate-700/60 cursor-pointer group"
+      >
+        {/* Subtle Ambient Decorative Circles */}
+        <div className="absolute -right-8 -top-8 w-44 h-44 rounded-full bg-[#FF6B00]/15 blur-2xl pointer-events-none" />
+        <div className="absolute -left-8 -bottom-8 w-36 h-36 rounded-full bg-blue-500/10 blur-xl pointer-events-none" />
+
+        <div className="relative z-10 flex items-center justify-between">
+          {/* Left Content Column */}
+          <div className="max-w-[62%] space-y-1.5">
+            <div className="inline-flex items-center space-x-1.5 bg-white/10 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/15">
+              <Sparkles className="w-3 h-3 text-[#FF6B00] stroke-[2.5]" />
+              <span className="text-[9.5px] font-black tracking-wider uppercase text-amber-200">
+                Dashit Spotlight
+              </span>
             </div>
-            <p className="text-[9px] font-bold text-sky-100 mt-1 line-clamp-1">
-              Snack Break
+
+            <h3 className="text-base font-black tracking-tight text-white leading-tight">
+              Express Snacks & Sips Hub
+            </h3>
+
+            <p className="text-[11px] font-medium text-slate-300 leading-snug line-clamp-2">
+              Chilled cold drinks, crisps, and evening treats delivered in 8 mins.
             </p>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <span className="text-xs font-black font-mono text-[#FF6B00] bg-white px-2 py-0.5 rounded-lg shadow-xs">
+                Starting ₹20
+              </span>
+              <span className="inline-flex items-center text-[10px] font-bold text-slate-200 group-hover:translate-x-0.5 transition-transform">
+                <span>Shop now</span>
+                <ArrowRight className="w-3 h-3 ml-0.5" />
+              </span>
+            </div>
           </div>
 
-          <div className="mt-2 w-full h-24 flex items-center justify-center">
+          {/* Right Floating Product Visual */}
+          <div className="w-[34%] h-24 relative flex items-center justify-center">
             <img
-              src="https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=200&auto=format&fit=crop&q=80"
-              alt="Chips & Namkeen"
-              className="max-h-full max-w-full object-contain drop-shadow-md rounded-lg"
+              src="https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=280&auto=format&fit=crop&q=80"
+              alt="Dashit Spotlight"
+              className="max-h-full max-w-full object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)] group-hover:scale-105 transition-transform duration-300"
             />
           </div>
         </div>
+      </motion.div>
 
-        {/* 4 Small Sub-Tiles */}
-        <div className="col-span-2 grid grid-cols-2 gap-2">
-          {/* Tile 1 */}
-          <div
-            onClick={() => onSelectPromo && onSelectPromo("Snacks")}
-            className="bg-gradient-to-br from-amber-100 to-amber-200 rounded-2xl p-2 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all"
-          >
-            <h4 className="font-extrabold text-[11px] text-amber-950 leading-tight">
-              Namkeen & Sev
+      {/* 2. HORIZONTAL CURATED DISCOVERY RAIL — Breathable, Editorial Cards */}
+      <div>
+        <div className="flex items-center justify-between px-1 mb-2">
+          <div className="flex items-center space-x-1.5">
+            <Zap className="w-3.5 h-3.5 text-[#FF6B00] stroke-[2.5]" />
+            <h4 className="text-xs font-black text-[#061838] tracking-tight">
+              Curated Everyday Rails
             </h4>
-            <div className="h-14 flex items-center justify-center mt-1">
-              <img
-                src="https://images.unsplash.com/photo-1599785209707-a456fc1337bb?w=150&auto=format&fit=crop&q=80"
-                alt="Namkeen"
-                className="max-h-full max-w-full object-contain rounded-md"
-              />
-            </div>
           </div>
+          <span className="text-[10px] font-bold text-slate-400 tracking-tight">
+            Hand-packed fresh
+          </span>
+        </div>
 
-          {/* Tile 2 */}
-          <div
-            onClick={() => onSelectPromo && onSelectPromo("Bakery")}
-            className="bg-gradient-to-br from-blue-100 to-sky-200 rounded-2xl p-2 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all"
-          >
-            <h4 className="font-extrabold text-[11px] text-sky-950 leading-tight">
-              Cookies & Toast
-            </h4>
-            <div className="h-14 flex items-center justify-center mt-1">
-              <img
-                src="https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=150&auto=format&fit=crop&q=80"
-                alt="Cookies"
-                className="max-h-full max-w-full object-contain rounded-md"
-              />
-            </div>
-          </div>
+        <div className="flex space-x-2.5 overflow-x-auto scrollbar-none pb-1 -mx-4 px-4">
+          {CURATED_COLLECTIONS.map((item) => (
+            <motion.div
+              key={item.id}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => handleSelect(item.cat)}
+              className={`w-[172px] shrink-0 rounded-2xl ${item.bg} border ${item.border} p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow cursor-pointer`}
+            >
+              <div className="flex items-center justify-between">
+                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${item.tagColor} tracking-wider`}>
+                  {item.tag}
+                </span>
+                <span className="text-[9.5px] font-black font-mono text-slate-900">
+                  {item.priceText}
+                </span>
+              </div>
 
-          {/* Tile 3 */}
-          <div
-            onClick={() => onSelectPromo && onSelectPromo("Snacks")}
-            className="bg-gradient-to-br from-rose-100 to-pink-200 rounded-2xl p-2 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all"
-          >
-            <h4 className="font-extrabold text-[11px] text-pink-950 leading-tight">
-              Chocolates
-            </h4>
-            <div className="h-14 flex items-center justify-center mt-1">
-              <img
-                src="https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=150&auto=format&fit=crop&q=80"
-                alt="Chocolates"
-                className="max-h-full max-w-full object-contain rounded-md"
-              />
-            </div>
-          </div>
+              <div className="w-full h-20 my-1 flex items-center justify-center overflow-hidden">
+                <img
+                  src={item.img}
+                  alt={item.title}
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
 
-          {/* Tile 4 */}
-          <div
-            onClick={() => onSelectPromo && onSelectPromo("Drinks")}
-            className="bg-gradient-to-br from-emerald-100 to-teal-200 rounded-2xl p-2 flex flex-col justify-between cursor-pointer active:scale-[0.98] transition-all"
-          >
-            <h4 className="font-extrabold text-[11px] text-teal-950 leading-tight">
-              Cold Soda & Juice
-            </h4>
-            <div className="h-14 flex items-center justify-center mt-1">
-              <img
-                src="https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=150&auto=format&fit=crop&q=80"
-                alt="Drinks"
-                className="max-h-full max-w-full object-contain rounded-md"
-              />
-            </div>
-          </div>
+              <div>
+                <h5 className="text-[11px] font-extrabold text-slate-900 leading-tight">
+                  {item.title}
+                </h5>
+                <p className="text-[9.5px] font-medium text-slate-500 line-clamp-1 mt-0.5">
+                  {item.desc}
+                </p>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
