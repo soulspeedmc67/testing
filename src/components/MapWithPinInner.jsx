@@ -31,6 +31,7 @@ export default function MapWithPinInner({ pos, onChangePos, onDragStateChange, m
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        maxZoom={19}
       />
       <MapEventsHandler onChangePos={onChangePos} onDragStateChange={onDragStateChange} />
     </MapContainer>
