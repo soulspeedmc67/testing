@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Search, Crosshair, MapPin, Check } from "lucide-react";
+import { reverseGeocodeCoords } from "../lib/maps";
 
 const MapWithPin = dynamic(() => import("../components/MapWithPinInner"), { ssr: false });
 
@@ -36,15 +37,16 @@ export default function ConfirmLocationPage() {
     if (!navigator.geolocation) return;
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         setIsLocating(false);
         const newCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setSelectedPos(newCoords);
-        setAreaTitle("Current Location");
-        setAddressSubtitle(`Lat: ${newCoords.lat.toFixed(4)}, Lng: ${newCoords.lng.toFixed(4)}`);
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([newCoords.lat, newCoords.lng], 16, { animate: true });
         }
+        const geocoded = await reverseGeocodeCoords(newCoords.lat, newCoords.lng);
+        setAreaTitle(geocoded.area);
+        setAddressSubtitle(geocoded.address);
       },
       () => {
         setIsLocating(false);
@@ -89,12 +91,11 @@ export default function ConfirmLocationPage() {
       <div className="relative w-full h-full grow bg-slate-100 overflow-hidden">
         <MapWithPin
           pos={selectedPos}
-          onChangePos={(newPos) => {
+          onChangePos={async (newPos) => {
             setSelectedPos(newPos);
-            if (newPos.lat !== DARKSTORE_POS.lat) {
-              setAreaTitle("Kurhama");
-              setAddressSubtitle("Gulshan Mohalla, Safapore 191131. (Kurhama)");
-            }
+            const geocoded = await reverseGeocodeCoords(newPos.lat, newPos.lng);
+            setAreaTitle(geocoded.area);
+            setAddressSubtitle(geocoded.address);
           }}
           onDragStateChange={(dragging) => setIsDragging(dragging)}
           mapRef={mapInstanceRef}

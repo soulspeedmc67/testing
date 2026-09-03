@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Search, Crosshair, MapPin, Check } from "lucide-react";
+import { ArrowLeft, Search, Crosshair, MapPin, Check, Loader2 } from "lucide-react";
+import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
 
 // Dynamically import Leaflet Map to prevent SSR window issues
 const MapWithPin = dynamic(() => import("./MapWithPinInner"), { ssr: false });
@@ -12,11 +13,39 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
   const [areaTitle, setAreaTitle] = useState("Kurhama");
   const [addressSubtitle, setAddressSubtitle] = useState("Gulshan Mohalla, Safapore 191131. (Kurhama)");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const mapInstanceRef = useRef(null);
 
   if (!isOpen) return null;
+
+  const handleSearchChange = async (val) => {
+    setSearchQuery(val);
+    if (val.trim().length >= 2) {
+      setIsSearching(true);
+      const res = await searchPlacesAutocomplete(val);
+      setSearchResults(res);
+      setIsSearching(false);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const handleSelectSearchResult = (res) => {
+    setSearchResults([]);
+    setSearchQuery("");
+    if (res.lat && res.lng) {
+      const newCoords = { lat: res.lat, lng: res.lng };
+      setSelectedPos(newCoords);
+      setAreaTitle(res.title);
+      setAddressSubtitle(res.subtitle);
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.setView([res.lat, res.lng], 16, { animate: true });
+      }
+    }
+  };
 
   const handleConfirm = () => {
     onConfirmLocation({
@@ -32,15 +61,16 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
     if (!navigator.geolocation) return;
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         setIsLocating(false);
         const newCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setSelectedPos(newCoords);
-        setAreaTitle("Current Location");
-        setAddressSubtitle(`Lat: ${newCoords.lat.toFixed(4)}, Lng: ${newCoords.lng.toFixed(4)}`);
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([newCoords.lat, newCoords.lng], 16, { animate: true });
         }
+        const geocoded = await reverseGeocodeCoords(newCoords.lat, newCoords.lng);
+        setAreaTitle(geocoded.area);
+        setAddressSubtitle(geocoded.address);
       },
       () => {
         setIsLocating(false);
@@ -56,38 +86,62 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
   return (
     <div className="fixed inset-0 z-[300] bg-slate-900/60 backdrop-blur-xs flex flex-col justify-between">
       {/* 1. TOP FLOATING BAR matching media_1788424288259.png */}
-      <div className="absolute top-0 left-0 right-0 z-[1000] p-4 pt-[max(14px,env(safe-area-inset-top,14px))] flex items-center space-x-3 pointer-events-none">
-        <button
-          type="button"
-          onClick={onClose}
-          className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-        </button>
+      <div className="absolute top-0 left-0 right-0 z-[1000] p-4 pt-[max(14px,env(safe-area-inset-top,14px))] flex flex-col space-y-2 pointer-events-none">
+        <div className="flex items-center space-x-3 w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+          </button>
 
-        <div className="pointer-events-auto grow relative">
-          <input
-            type="text"
-            placeholder="Search an area or address"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
-          />
-          <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none" />
+          <div className="pointer-events-auto grow relative">
+            <input
+              type="text"
+              placeholder="Search an area or address"
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
+            />
+            {isSearching ? (
+              <Loader2 className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 animate-spin pointer-events-none" />
+            ) : (
+              <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none" />
+            )}
+          </div>
         </div>
+
+        {/* Autocomplete Results Dropdown */}
+        {searchResults.length > 0 && (
+          <div className="pointer-events-auto bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden divide-y divide-slate-100 max-h-60 overflow-y-auto ml-14">
+            {searchResults.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleSelectSearchResult(item)}
+                className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-emerald-50/50"
+              >
+                <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
+                <div className="overflow-hidden">
+                  <span className="font-bold text-xs text-slate-900 block truncate">{item.title}</span>
+                  <span className="text-[11px] text-slate-500 truncate block">{item.subtitle}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 2. FULLSCREEN MAP WITH FIXED CENTER PIN */}
       <div className="relative w-full h-full grow bg-slate-100 overflow-hidden">
         <MapWithPin
           pos={selectedPos}
-          onChangePos={(newPos) => {
+          onChangePos={async (newPos) => {
             setSelectedPos(newPos);
-            // Simulate reverse geocoding on drag
-            if (newPos.lat !== DARKSTORE_POS.lat) {
-              setAreaTitle("Kurhama");
-              setAddressSubtitle("Gulshan Mohalla, Safapore 191131. (Kurhama)");
-            }
+            const geocoded = await reverseGeocodeCoords(newPos.lat, newPos.lng);
+            setAreaTitle(geocoded.area);
+            setAddressSubtitle(geocoded.address);
           }}
           onDragStateChange={(dragging) => setIsDragging(dragging)}
           mapRef={mapInstanceRef}
