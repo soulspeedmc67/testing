@@ -48,8 +48,6 @@ export default function CategoriesPage() {
           ))}
         </div>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

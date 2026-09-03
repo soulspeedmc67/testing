@@ -5,6 +5,7 @@ import { ArrowLeft, Search, Share2, Clock, CheckCircle2, ChevronRight, ChevronUp
 import confetti from "canvas-confetti";
 import PaymentMethodModal from "../components/PaymentMethodModal";
 import LocationPickerModal from "../components/LocationPickerModal";
+import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 
 const YOU_MIGHT_ALSO_LIKE = [
   {
@@ -82,6 +83,16 @@ export default function CheckoutPage() {
   }, []);
 
   const updateItemQty = (id, delta) => {
+    if (delta > 0) {
+      hapticLight();
+    } else {
+      const current = cartItems.find((i) => i.id === id);
+      if (current && current.qty <= 1) {
+        hapticMedium();
+      } else {
+        hapticLight();
+      }
+    }
     const updated = cartItems
       .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
       .filter((item) => item.qty > 0);
@@ -91,7 +102,7 @@ export default function CheckoutPage() {
       window.dispatchEvent(new Event("dashit_cart_updated"));
     } catch (e) {}
     if (updated.length === 0) {
-      router.push("/cart");
+      router.push("/");
     }
   };
 
@@ -100,6 +111,9 @@ export default function CheckoutPage() {
   const handlePlaceOrder = () => {
     if (cartItems.length === 0 || isProcessing) return;
     setIsProcessing(true);
+
+    // Trigger Highest Intensity Celebration Haptics
+    hapticOrderPlaced();
 
     try {
       confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });

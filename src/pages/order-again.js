@@ -129,7 +129,6 @@ export default function OrderAgainPage() {
       />
 
 
-      <BottomNav />
     </div>
   );
 }

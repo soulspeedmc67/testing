@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, ChevronRight } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
 import { useScrollChrome } from "../context/ScrollChromeContext";
+import { hapticMedium } from "../lib/haptics";
 
 const STOREFRONT_ROUTES = ["/", "/order-again", "/categories", "/search"];
 
@@ -76,7 +77,10 @@ export default function FloatingCartBar() {
       className="fixed left-0 right-0 z-[55] flex justify-center pointer-events-none px-4"
     >
       <div
-        onClick={() => router.push("/cart")}
+        onClick={() => {
+          hapticMedium();
+          router.push("/checkout");
+        }}
         role="button"
         tabIndex={0}
         className="pointer-events-auto bg-[#0c831f] hover:bg-[#0a6f1a] text-white rounded-full py-1.5 px-2.5 shadow-[0_8px_24px_rgba(12,131,31,0.4)] flex items-center space-x-2.5 transition-transform active:scale-[0.97] cursor-pointer select-none border border-emerald-400/30"

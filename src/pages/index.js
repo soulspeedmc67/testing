@@ -212,8 +212,6 @@ export default function StorefrontHome() {
       />
 
 
-      {/* 11. FLOATING BOTTOM NAVIGATION */}
-      <BottomNav />
     </div>
   );
 }

@@ -1,10 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
 import { triggerFlyToCart } from "./FlyingBadgeOverlay";
+import { hapticMedium, hapticLight, hapticHeavy } from "../lib/haptics";
 
 export default function ProductCardStepper({ product, qty = 0, onAdd, onUpdateQty, className = "", subtext = "" }) {
   const handleAdd = (e) => {
     e.stopPropagation();
+    hapticMedium();
     if (product?.img) {
       const rect = e.currentTarget.getBoundingClientRect();
       triggerFlyToCart(product.img, rect);
@@ -54,6 +56,11 @@ export default function ProductCardStepper({ product, qty = 0, onAdd, onUpdateQt
               transition={{ type: "spring", stiffness: 350, damping: 18 }}
               onClick={(e) => {
                 e.stopPropagation();
+                if (qty === 1) {
+                  hapticHeavy();
+                } else {
+                  hapticLight();
+                }
                 onUpdateQty(product.id, -1);
               }}
               className="p-1 rounded-md hover:bg-emerald-800 transition-colors flex items-center justify-center"
@@ -78,6 +85,7 @@ export default function ProductCardStepper({ product, qty = 0, onAdd, onUpdateQt
               transition={{ type: "spring", stiffness: 350, damping: 18 }}
               onClick={(e) => {
                 e.stopPropagation();
+                hapticLight();
                 if (product?.img) {
                   const rect = e.currentTarget.getBoundingClientRect();
                   triggerFlyToCart(product.img, rect);

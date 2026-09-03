@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Search, Crosshair, MapPin, Check, Loader2 } from "lucide-react";
 import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
+import { hapticHeavy, hapticLight } from "../lib/haptics";
 
 // Dynamically import Leaflet Map to prevent SSR window issues
 const MapWithPin = dynamic(() => import("./MapWithPinInner"), { ssr: false });
@@ -48,6 +49,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
   };
 
   const handleConfirm = () => {
+    hapticHeavy();
     onConfirmLocation({
       nickname: "Home",
       address: `${areaTitle}, ${addressSubtitle}`,
@@ -58,6 +60,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
   };
 
   const handleRecenterGPS = () => {
+    hapticLight();
     if (!navigator.geolocation) return;
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
