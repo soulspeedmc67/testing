@@ -6,6 +6,7 @@ import confetti from "canvas-confetti";
 import PaymentMethodModal from "../components/PaymentMethodModal";
 import LocationPickerModal from "../components/LocationPickerModal";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
+import { submitOrder } from "../lib/api";
 
 const YOU_MIGHT_ALSO_LIKE = [
   {
@@ -136,6 +137,7 @@ export default function CheckoutPage() {
       const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
       localStorage.setItem("dashit_orders_history", JSON.stringify([newOrder, ...existingOrders]));
       localStorage.setItem("dashit_active_order", JSON.stringify(newOrder));
+      submitOrder(newOrder);
       localStorage.removeItem("dashit_cart");
       localStorage.removeItem("dashit_checkout_data");
       window.dispatchEvent(new Event("dashit_cart_updated"));

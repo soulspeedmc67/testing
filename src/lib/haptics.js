@@ -1,56 +1,45 @@
+import { Capacitor } from "@capacitor/core";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 
 /**
- * Premium iOS & Android Haptic Feedback Engine
- * Scaled intensity based on the user interaction.
+ * Premium iOS Haptic Feedback Engine
+ * Exclusively active on iOS Taptic Engine for subtle, crisp tactile responses.
+ * Completely disabled on Android to avoid strong/harsh motor vibrations.
  */
 
-// 1. Light haptic: for tab switches, search tap, subtle UI touches
+const isIOS = () => {
+  if (typeof window === "undefined") return false;
+  return Capacitor.getPlatform() === "ios";
+};
+
+// 1. Light subtle haptic: for tab switches, search tap, subtle UI touches (iOS only)
 export async function hapticLight() {
+  if (!isIOS()) return;
   try {
     await Haptics.impact({ style: ImpactStyle.Light });
-  } catch (e) {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(8);
-    }
-  }
+  } catch (e) {}
 }
 
-// 2. Medium haptic: for adding items to cart, category taps
+// 2. Medium subtle haptic: for adding items to cart, category taps (iOS only)
 export async function hapticMedium() {
+  if (!isIOS()) return;
   try {
-    await Haptics.impact({ style: ImpactStyle.Medium });
-  } catch (e) {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(20);
-    }
-  }
+    await Haptics.impact({ style: ImpactStyle.Light });
+  } catch (e) {}
 }
 
-// 3. Heavy haptic: for removing items from cart, confirming address, modal actions
+// 3. Crisp selection haptic: for removing items or selecting options (iOS only)
 export async function hapticHeavy() {
+  if (!isIOS()) return;
   try {
-    await Haptics.impact({ style: ImpactStyle.Heavy });
-  } catch (e) {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(40);
-    }
-  }
+    await Haptics.selectionChanged();
+  } catch (e) {}
 }
 
-// 4. Order Placed Celebration haptic: Highest intensity, rich pleasant sequence
+// 4. Order Placed Celebration haptic: Subtle success tick on iOS (iOS only)
 export async function hapticOrderPlaced() {
+  if (!isIOS()) return;
   try {
     await Haptics.notification({ type: NotificationType.Success });
-    // Follow-up micro celebration tap
-    setTimeout(async () => {
-      try {
-        await Haptics.impact({ style: ImpactStyle.Heavy });
-      } catch (err) {}
-    }, 120);
-  } catch (e) {
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate([40, 50, 80]);
-    }
-  }
+  } catch (e) {}
 }
