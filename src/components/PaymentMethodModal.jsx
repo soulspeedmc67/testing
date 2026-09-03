@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, CreditCard, Plus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
+import { hapticMedium } from "../lib/haptics";
+
 export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, onSelectMethod, grandTotal }) {
   if (!isOpen) return null;
 
   const handleSelect = (methodId, label) => {
+    hapticMedium();
     onSelectMethod({ id: methodId, label });
     onClose();
   };

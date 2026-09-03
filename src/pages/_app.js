@@ -8,6 +8,7 @@ import 'leaflet/dist/leaflet.css';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import LiveOrderFloatingTracker from '../components/LiveOrderFloatingTracker';
 import FloatingCartBar from '../components/FloatingCartBar';
+import BottomNav from '../components/BottomNav';
 import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
 import { initNotificationPermissions } from '../lib/notifications';
@@ -80,6 +81,7 @@ export default function App({ Component, pageProps }) {
       <FlyingBadgeOverlay />
       <LiveOrderFloatingTracker />
       <FloatingCartBar />
+      <BottomNav />
       <motion.div
         key={router.asPath}
         initial={{ opacity: 0.85, scale: 0.996 }}

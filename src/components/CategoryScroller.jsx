@@ -1,4 +1,5 @@
 import { Flame, Cookie, Apple, Croissant, Milk, Coffee } from "lucide-react";
+import { hapticLight } from "../lib/haptics";
 
 export const CATEGORY_STRIP = [
   { id: "All", label: "All", icon: Flame },
@@ -20,7 +21,10 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
           return (
             <button
               key={cat.id}
-              onClick={() => onSelectCategory && onSelectCategory(cat.id)}
+              onClick={() => {
+                hapticLight();
+                if (onSelectCategory) onSelectCategory(cat.id);
+              }}
               className="flex flex-col items-center shrink-0 space-y-1 relative pb-1 group focus:outline-none select-none"
             >
               <div

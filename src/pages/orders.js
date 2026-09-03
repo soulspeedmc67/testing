@@ -371,8 +371,6 @@ export default function OrdersPage() {
           </div>
         )}
       </DraggableSheet>
-
-      <BottomNav />
     </div>
   );
 }

@@ -182,10 +182,6 @@ export default function SearchPage() {
         onUpdateQty={updateQty}
       />
 
-      {/* Blinkit-Grade Floating Persistent Cart Bar */}
-      {!isInputFocused && <FloatingCartBar cart={cart} />}
-
-      <BottomNav forceHide={isInputFocused} cartCount={cartCount} />
     </div>
   );
 }
