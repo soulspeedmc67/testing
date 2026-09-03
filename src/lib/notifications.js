@@ -62,7 +62,7 @@ export async function showOrderLiveNotification({
           id: 9821,
           title,
           body,
-          summaryText: "Dashit Darkstore · Anantnag",
+          summaryText: "Dashit Express Hub · Anantnag",
           channelId: "live_order_tracking_v3",
           ongoing: status !== "Delivered",
           autoCancel: status === "Delivered",

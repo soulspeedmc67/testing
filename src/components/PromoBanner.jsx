@@ -6,11 +6,11 @@ export default function PromoBanner({ onSelectPromo }) {
     <div className="w-full bg-gradient-to-b from-[#FFFDF5] to-[#F0FDFA] rounded-3xl p-3.5 border border-teal-100/80 shadow-sm space-y-3">
       {/* Sponsor/Branding Row */}
       <div className="flex items-center justify-between px-1">
-        <div className="flex items-center space-x-1 text-[10px] font-black uppercase tracking-wider text-teal-800">
-          <Sparkles className="w-3 h-3 stroke-[2.5] text-teal-600" />
-          <span>Snacks & Munchies Hub · Powered by Darkstore</span>
+        <div className="flex items-center space-x-1 text-[10px] font-black uppercase tracking-wider text-slate-800">
+          <Sparkles className="w-3 h-3 stroke-[2.5] text-[#FF6B00]" />
+          <span>Snacks & Munchies Hub · Express Store</span>
         </div>
-        <span className="text-[10px] font-extrabold text-teal-700 bg-teal-100/70 px-2 py-0.5 rounded-full">
+        <span className="text-[10px] font-extrabold text-[#061838] bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-full">
           Up to 40% OFF
         </span>
       </div>

@@ -84,7 +84,7 @@ export default function UnserviceableAreaScreen({
         </div>
 
         <div
-          onClick={() => alert("Dashit: Superfast 10-minute grocery delivery darkstore in Anantnag, Kashmir.")}
+          onClick={() => alert("Dashit: Superfast 10-minute grocery delivery in Anantnag, Kashmir.")}
           className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/80 dark:border-zinc-800 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99]"
         >
           <div className="flex items-center space-x-3">

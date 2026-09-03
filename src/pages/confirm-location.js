@@ -7,11 +7,11 @@ import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
 
 const MapWithPin = dynamic(() => import("../components/MapWithPinInner"), { ssr: false });
 
-const DARKSTORE_POS = { lat: 33.7311, lng: 75.1487 }; // Nai Basti, Anantnag
+const HUB_POS = { lat: 33.7311, lng: 75.1487 }; // Nai Basti, Anantnag
 
 export default function ConfirmLocationPage() {
   const router = useRouter();
-  const [selectedPos, setSelectedPos] = useState(DARKSTORE_POS);
+  const [selectedPos, setSelectedPos] = useState(HUB_POS);
   const [areaTitle, setAreaTitle] = useState("Kurhama");
   const [addressSubtitle, setAddressSubtitle] = useState("Gulshan Mohalla, Safapore 191131. (Kurhama)");
   const [searchQuery, setSearchQuery] = useState("");
@@ -106,11 +106,11 @@ export default function ConfirmLocationPage() {
       },
       async () => {
         setIsLocating(false);
-        setSelectedPos(DARKSTORE_POS);
+        setSelectedPos(HUB_POS);
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.setView([DARKSTORE_POS.lat, DARKSTORE_POS.lng], 16, { animate: true });
+          mapInstanceRef.current.setView([HUB_POS.lat, HUB_POS.lng], 16, { animate: true });
         }
-        const geocoded = await reverseGeocodeCoords(DARKSTORE_POS.lat, DARKSTORE_POS.lng);
+        const geocoded = await reverseGeocodeCoords(HUB_POS.lat, HUB_POS.lng);
         setAreaTitle(geocoded.area);
         setAddressSubtitle(geocoded.address);
       },

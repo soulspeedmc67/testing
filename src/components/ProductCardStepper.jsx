@@ -78,11 +78,11 @@ export default function ProductCardStepper({
             whileHover={{ scale: 1.02 }}
             transition={{ type: "spring", stiffness: 450, damping: 25 }}
             onClick={handleAdd}
-            className="w-full h-full bg-white hover:bg-emerald-50 text-[#0c831f] border-[1.5px] border-[#0c831f] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5"
+            className="w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5"
           >
             <span className="leading-tight">ADD</span>
             {subtext && (
-              <span className="text-[7.5px] font-semibold text-emerald-700/80 -mt-0.5 normal-case">
+              <span className="text-[7.5px] font-semibold text-slate-500 -mt-0.5 normal-case">
                 {subtext}
               </span>
             )}
@@ -94,14 +94,14 @@ export default function ProductCardStepper({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
             transition={{ type: "spring", stiffness: 450, damping: 25 }}
-            className="w-full h-full bg-[#0c831f] text-white rounded-xl flex items-center justify-between px-1.5 shadow-sm"
+            className="w-full h-full bg-[#061838] text-white rounded-xl flex items-center justify-between px-1.5 shadow-sm"
           >
             <motion.button
               type="button"
               whileTap={{ scale: 0.75 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
               onClick={handleMinus}
-              className="w-6 h-6 rounded-lg hover:bg-emerald-800 transition-colors flex items-center justify-center active:bg-emerald-900"
+              className="w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900"
             >
               <Minus className="w-3.5 h-3.5 stroke-[3]" />
             </motion.button>
@@ -121,7 +121,7 @@ export default function ProductCardStepper({
               whileTap={{ scale: 0.75 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
               onClick={handlePlus}
-              className="w-6 h-6 rounded-lg hover:bg-emerald-800 transition-colors flex items-center justify-center active:bg-emerald-900"
+              className="w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
             </motion.button>

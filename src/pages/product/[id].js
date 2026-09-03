@@ -144,10 +144,10 @@ export default function ProductDetailPage() {
 
         {/* Seller Info Card */}
         <div className="bg-white rounded-3xl p-4 border border-slate-200 shadow-sm flex items-center space-x-3">
-          <ShieldCheck className="w-6 h-6 text-[#0c831f]" />
+          <ShieldCheck className="w-6 h-6 text-[#061838]" />
           <div>
             <h4 className="font-extrabold text-xs text-slate-900">Guaranteed Original Product</h4>
-            <p className="text-[11px] text-slate-500 font-medium">Sold by Anantnag Central Darkstore Hub</p>
+            <p className="text-[11px] text-slate-500 font-medium">Sold by Anantnag Central Hub</p>
           </div>
         </div>
       </main>

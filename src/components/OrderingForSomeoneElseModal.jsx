@@ -115,7 +115,7 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
                     hapticLight();
                     setShowInputForm(true);
                   }}
-                  className="w-full py-4 rounded-2xl bg-[#0c831f] hover:bg-[#0a6f1a] text-white font-black text-sm shadow-md transition-transform active:scale-[0.98]"
+                  className="w-full py-4 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-sm shadow-md transition-transform active:scale-[0.98]"
                 >
                   Yes, add receiver’s details!
                 </button>
@@ -148,7 +148,7 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
                     value={receiverName}
                     onChange={(e) => setReceiverName(e.target.value)}
                     placeholder="e.g. Sahil Mir"
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
+                    className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#061838]"
                   />
                 </div>
 
@@ -163,13 +163,13 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
                     value={receiverPhone}
                     onChange={(e) => setReceiverPhone(e.target.value.replace(/\D/g, ""))}
                     placeholder="e.g. 9622XXXXXX"
-                    className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
+                    className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#061838]"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full mt-2 py-3.5 rounded-2xl bg-[#0c831f] hover:bg-[#0a6f1a] text-white font-black text-xs shadow-md transition-transform active:scale-[0.98]"
+                  className="w-full mt-2 py-3.5 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-xs shadow-md transition-transform active:scale-[0.98]"
                 >
                   Save Receiver Details
                 </button>

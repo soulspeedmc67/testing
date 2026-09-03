@@ -144,7 +144,7 @@ export default function OrdersPage() {
                 </span>
                 <div>
                   <h2 className="font-extrabold text-xs text-slate-900 tracking-tight">
-                    {activeOrder.status === "Out for Delivery" ? "Rider Dispatched" : "Processing in the dark store"}
+                    {activeOrder.status === "Out for Delivery" ? "Rider Dispatched" : "Packing at Dashit Central Hub"}
                   </h2>
                   <span className="text-[10px] font-semibold text-slate-400 font-mono">
                     #{activeOrder.orderId}
@@ -229,7 +229,7 @@ export default function OrdersPage() {
               </div>
             )}
 
-            {/* Darkstore Processing State vs Out for Delivery Map */}
+            {/* Fulfilment Processing State vs Out for Delivery Map */}
             {activeOrder.status === "Out for Delivery" ? (
               <div className="pt-1">
                 <div className="flex items-center justify-between mb-2">
@@ -248,13 +248,13 @@ export default function OrdersPage() {
                 />
               </div>
             ) : (
-              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-3xl p-5 space-y-3.5 text-center">
-                <div className="w-14 h-14 mx-auto rounded-2xl bg-white shadow-md border border-emerald-100 flex items-center justify-center text-[#0c831f]">
+              <div className="bg-blue-50/70 border border-blue-200/80 rounded-3xl p-5 space-y-3.5 text-center">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-white shadow-md border border-blue-100 flex items-center justify-center text-[#061838]">
                   <Package className="w-7 h-7 stroke-[2] animate-bounce" />
                 </div>
                 <div>
                   <h3 className="font-black text-sm text-slate-900">
-                    Processing in the Dark Store
+                    Packing at Dashit Central Hub
                   </h3>
                   <p className="text-xs text-slate-600 font-medium mt-1 max-w-xs mx-auto">
                     Our team at Nai Basti Hub is picking and packing your fresh items.

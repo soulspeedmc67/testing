@@ -218,7 +218,7 @@ export default function EasyAdminDashboard() {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="font-black text-lg text-slate-900 tracking-tight">DASHit Darkstore Admin Desk</h1>
+              <h1 className="font-black text-lg text-slate-900 tracking-tight">DASHit Fulfilment Admin Desk</h1>
               <p className="text-xs text-slate-500 font-medium">Anantnag Store #01 Manager</p>
             </div>
           </div>

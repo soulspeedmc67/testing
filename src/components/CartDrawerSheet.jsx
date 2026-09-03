@@ -51,7 +51,7 @@ export default function CartDrawerSheet({
         if (!open) onClose();
       }}
       title={`My Cart (${cart.reduce((s, i) => s + i.qty, 0)})`}
-      description="Delivery in 10 minutes from Anantnag Central Darkstore"
+      description="Delivery in 10 minutes from Anantnag Central Hub"
     >
       <div className="space-y-4 pt-1">
         {cart.length === 0 ? (
@@ -61,7 +61,7 @@ export default function CartDrawerSheet({
             {/* Delivery Address Pill */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 flex items-center justify-between text-xs">
               <div className="flex items-center space-x-2.5">
-                <MapPin className="w-4 h-4 text-[#0c831f] shrink-0" />
+                <MapPin className="w-4 h-4 text-[#FF6B00] shrink-0" />
                 <div>
                   <span className="font-extrabold text-slate-900">Deliver to {location.nickname}</span>
                   <p className="text-[10px] text-slate-500 font-medium truncate max-w-[210px]">{location.address}</p>
@@ -147,7 +147,7 @@ export default function CartDrawerSheet({
             {/* Checkout CTA */}
             <button
               onClick={proceedToCheckout}
-              className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
+              className="w-full bg-[#061838] hover:bg-[#0c2552] text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
             >
               <span>Proceed to Checkout (₹{grandTotal})</span>
               <ArrowRight className="w-4 h-4" />

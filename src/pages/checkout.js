@@ -242,7 +242,7 @@ export default function CheckoutPage() {
       {/* MAIN CONTENT */}
       {cartItems.length === 0 ? (
         <main className="max-w-md mx-auto p-6 py-20 text-center space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-[#0c831f] mx-auto flex items-center justify-center border border-emerald-100 shadow-sm">
+          <div className="w-20 h-20 rounded-3xl bg-blue-50 text-[#061838] mx-auto flex items-center justify-center border border-blue-100 shadow-sm">
             <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
           </div>
           <div className="space-y-1">
@@ -253,7 +253,7 @@ export default function CheckoutPage() {
           </div>
           <Link
             href="/"
-            className="inline-block bg-[#0c831f] hover:bg-emerald-800 text-white font-black text-xs px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-all"
+            className="inline-block bg-[#061838] hover:bg-slate-900 text-white font-black text-xs px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-all"
           >
             Browse Storefront →
           </Link>
@@ -263,7 +263,7 @@ export default function CheckoutPage() {
         {/* 2. DELIVERY IN 12 MINUTES BANNER */}
         <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3">
           <div className="flex items-start space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-[#0c831f] flex items-center justify-center shrink-0 border border-emerald-100">
+            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
               <Clock className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
@@ -277,13 +277,13 @@ export default function CheckoutPage() {
           </div>
 
           {/* Open box delivery badge */}
-          <div className="bg-[#e8f5e9]/70 border border-emerald-200/60 rounded-2xl p-3">
+          <div className="bg-[#f0f7ff] border border-blue-200/60 rounded-2xl p-3">
             <span className="font-extrabold text-xs text-slate-900 block leading-tight">
               Open box delivery eligible
             </span>
             <div className="flex items-center justify-between text-[11px] text-slate-600 mt-0.5">
               <span>Check & accept at doorstep</span>
-              <span className="text-[#0c831f] font-bold underline cursor-pointer">Know more</span>
+              <span className="text-blue-600 font-bold underline cursor-pointer">Know more</span>
             </div>
           </div>
 
@@ -309,14 +309,14 @@ export default function CheckoutPage() {
                       addToWishlist(item);
                       updateItemQty(item.id, -item.qty);
                     }}
-                    className="text-[11px] font-bold text-slate-400 hover:text-emerald-700 underline mt-1 text-left active:scale-95 transition-transform"
+                    className="text-[11px] font-bold text-slate-400 hover:text-[#061838] underline mt-1 text-left active:scale-95 transition-transform"
                   >
                     Move to wishlist
                   </button>
                 </div>
 
                 <div className="flex flex-col items-end space-y-1.5 shrink-0">
-                  <div className="flex items-center space-x-2 bg-[#0c831f] text-white rounded-xl px-2.5 py-1 font-bold text-xs shadow-xs">
+                  <div className="flex items-center space-x-2 bg-[#061838] text-white rounded-xl px-2.5 py-1 font-bold text-xs shadow-xs">
                     <button
                       onClick={() => updateItemQty(item.id, -1)}
                       className="p-0.5 active:scale-75 transition-transform"
@@ -359,7 +359,7 @@ export default function CheckoutPage() {
               <span className="text-xs font-black text-slate-900 dark:text-white block">
                 {appliedCoupon ? `Coupon '${appliedCoupon.code}' Applied!` : "Avail Offers and Coupons"}
               </span>
-              <span className="text-[11px] font-bold text-[#0c831f] block">
+              <span className="text-[11px] font-bold text-[#FF6B00] block">
                 {appliedCoupon ? `You are saving ₹${couponDiscount} with this order` : "Save up to ₹50 with GET30 & DASHIT50"}
               </span>
             </div>
@@ -376,19 +376,19 @@ export default function CheckoutPage() {
           </div>
           <div className="flex justify-between text-slate-600 dark:text-zinc-400">
             <span>Delivery fee</span>
-            <span className="font-mono font-bold text-[#0c831f]">
+            <span className="font-mono font-bold text-[#2563EB]">
               {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
             </span>
           </div>
           {couponDiscount > 0 && (
-            <div className="flex justify-between text-[#0c831f] font-bold">
+            <div className="flex justify-between text-[#FF6B00] font-bold">
               <span>Coupon discount ({appliedCoupon?.code})</span>
               <span className="font-mono">-₹{couponDiscount}</span>
             </div>
           )}
           <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex justify-between font-black text-sm text-slate-900 dark:text-white">
             <span>To Pay</span>
-            <span className="font-mono text-[#0c831f]">₹{grandTotal}</span>
+            <span className="font-mono text-[#061838] dark:text-white">₹{grandTotal}</span>
           </div>
         </div>
 
@@ -447,7 +447,7 @@ export default function CheckoutPage() {
                         window.dispatchEvent(new Event("dashit_cart_updated"));
                       }
                     }}
-                    className="bg-white dark:bg-zinc-800 border-2 border-[#0c831f] text-[#0c831f] font-black text-xs px-3.5 py-1 rounded-xl hover:bg-emerald-50 active:scale-95 shadow-2xs"
+                    className="bg-white dark:bg-zinc-800 border-2 border-[#061838] text-[#061838] font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 active:scale-95 shadow-2xs"
                   >
                     ADD
                   </button>
@@ -482,7 +482,7 @@ export default function CheckoutPage() {
 
               <button
                 onClick={() => setIsLocationModalOpen(true)}
-                className="text-xs font-black text-[#0c831f] hover:underline shrink-0 pl-2"
+                className="text-xs font-black text-[#FF6B00] hover:underline shrink-0 pl-2"
               >
                 Change
               </button>
@@ -493,7 +493,7 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 onClick={() => setIsOrderingForSomeoneElseOpen(true)}
-                className="flex items-center space-x-1.5 text-[11px] font-black text-[#0c831f] hover:underline"
+                className="flex items-center space-x-1.5 text-[11px] font-black text-[#061838] hover:underline"
               >
                 <Users className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>
@@ -522,17 +522,17 @@ export default function CheckoutPage() {
               </div>
             </button>
 
-            {/* Right: Dual Green CTA Button */}
+            {/* Right: Dual Trust Navy CTA Button */}
             <button
               onClick={handlePlaceOrder}
               disabled={isProcessing}
-              className="grow bg-[#0c831f] hover:bg-emerald-800 text-white rounded-2xl py-3 px-4 shadow-lg active:scale-[0.98] transition-all flex items-center justify-between"
+              className="grow bg-gradient-to-r from-[#061838] via-[#0A2558] to-[#061838] hover:opacity-95 text-white rounded-2xl py-3 px-4 shadow-[0_8px_24px_rgba(6,24,56,0.28)] border border-slate-700/60 active:scale-[0.98] transition-all flex items-center justify-between"
             >
               <div className="text-left pr-3 border-r border-white/25">
                 <span className="font-mono font-black text-sm block leading-tight">
                   ₹{grandTotal}
                 </span>
-                <span className="text-[9px] font-extrabold text-emerald-100 uppercase tracking-wider block leading-tight">
+                <span className="text-[9px] font-extrabold text-amber-200 uppercase tracking-wider block leading-tight">
                   TOTAL
                 </span>
               </div>

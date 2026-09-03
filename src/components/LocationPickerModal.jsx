@@ -52,8 +52,8 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
               className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group active:bg-emerald-50/50"
             >
               <div className="flex items-center space-x-3">
-                <Plus className="w-5 h-5 text-[#0c831f] stroke-[2.8]" />
-                <span className="text-xs font-black text-[#0c831f]">
+                <Plus className="w-5 h-5 text-[#FF6B00] stroke-[2.8]" />
+                <span className="text-xs font-black text-[#FF6B00]">
                   Add new address
                 </span>
               </div>
@@ -112,12 +112,12 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
               <div className="flex items-start space-x-3">
                 {/* House Icon with Active Check badge & distance tag */}
                 <div className="relative shrink-0">
-                  <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex flex-col items-center justify-center border border-emerald-100">
+                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex flex-col items-center justify-center border border-blue-100">
                     <span className="text-lg">🏡</span>
-                    <span className="text-[7.5px] font-black text-emerald-800">0.8 km</span>
+                    <span className="text-[7.5px] font-black text-blue-900">0.8 km</span>
                   </div>
                   {/* Selected check badge */}
-                  <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-[#0c831f] text-white rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
+                  <div className="absolute -top-1.5 -left-1.5 w-4 h-4 bg-[#061838] text-white rounded-full flex items-center justify-center ring-2 ring-white shadow-xs">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
                 </div>
@@ -157,7 +157,7 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
                     });
                     onClose();
                   }}
-                  className="bg-[#0c831f] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl hover:bg-emerald-800 transition-all shadow-sm active:scale-95"
+                  className="bg-[#061838] text-white font-extrabold text-xs px-5 py-2.5 rounded-xl hover:bg-slate-900 transition-all shadow-sm active:scale-95"
                 >
                   Deliver Here
                 </button>

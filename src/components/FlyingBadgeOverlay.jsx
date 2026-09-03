@@ -75,7 +75,7 @@ export default function FlyingBadgeOverlay() {
               ease: [0.22, 1, 0.36, 1],
             }}
             onAnimationComplete={() => handleAnimationComplete(item.id)}
-            className="absolute w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.18)] border-2 border-[#16a34a] overflow-hidden flex items-center justify-center p-1"
+            className="absolute w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.18)] border-2 border-[#061838] overflow-hidden flex items-center justify-center p-1"
           >
             <img
               src={item.imgUrl}

@@ -88,7 +88,7 @@ export const DeliveryScooterComposition = ({ etaMinutes = 7, riderName = "Tariq 
             </span>
           </div>
           <span style={{ fontSize: "10px", fontWeight: "600", color: "#64748b" }}>
-            5 km radius express darkstore delivery
+            5 km radius express doorstep delivery
           </span>
         </div>
       </div>

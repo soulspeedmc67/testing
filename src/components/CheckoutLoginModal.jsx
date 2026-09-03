@@ -91,7 +91,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           <div className="text-center mb-5">
             <div className="w-14 h-14 rounded-2xl bg-[#061838] text-white flex items-center justify-center mx-auto mb-3 shadow-md relative">
               <Phone className="w-6 h-6 text-[#FF6B00] stroke-[2.5]" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#0c831f] border-2 border-white flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF6B00] border-2 border-white flex items-center justify-center">
                 <CheckCircle2 className="w-3 h-3 text-white stroke-[3]" />
               </span>
             </div>
@@ -221,7 +221,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                 <button
                   type="submit"
                   disabled={loading || otp.length < 4}
-                  className="w-full py-3.5 rounded-2xl bg-[#0c831f] hover:bg-[#0a6f1a] text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
+                  className="w-full py-3.5 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4 stroke-[2.5]" />
                   <span>{loading ? "Verifying..." : "Verify & Complete Order"}</span>
