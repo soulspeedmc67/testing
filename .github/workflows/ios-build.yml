@@ -49,6 +49,29 @@ jobs:
         run: |
           npx cap sync ios
 
+      - name: Patch SPM Packages for NonescapableTypes
+        run: |
+          python3 -c '
+          import os, glob
+          targets = glob.glob("node_modules/@capacitor/*/Package.swift") + ["ios/App/CapApp-SPM/Package.swift"]
+          for p in targets:
+              if os.path.exists(p):
+                  with open(p, "r") as f:
+                      content = f.read()
+                  if "NonescapableTypes" not in content:
+                      content = content.replace(
+                          "path: \"ios/Sources/",
+                          "swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")],\n            path: \"ios/Sources/"
+                      )
+                      content = content.replace(
+                          "dependencies: [\n                .product(name: \"Capacitor\"",
+                          "swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")],\n            dependencies: [\n                .product(name: \"Capacitor\""
+                      )
+                      with open(p, "w") as f:
+                          f.write(content)
+                  print(f"Verified & patched: {p}")
+          '
+
       - name: Build Xcode Archive
         run: |
           cd ios/App
