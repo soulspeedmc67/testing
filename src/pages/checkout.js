@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { ArrowLeft, CheckCircle2, ShieldCheck, CreditCard, Banknote, Zap, MapPin, Clock } from "lucide-react";
 import confetti from "canvas-confetti";
-import BottomNav from "../components/BottomNav";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -187,8 +186,6 @@ export default function CheckoutPage() {
           )}
         </button>
       </main>
-
-      <BottomNav />
     </div>
   );
 }

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Home, Bike } from "lucide-react";
@@ -52,94 +51,103 @@ export default function LiveOrderFloatingTracker() {
     return () => clearInterval(t);
   }, [activeOrder]);
 
-  if (!activeOrder || isDismissed || router.pathname === "/orders") return null;
+  // Don't render on /orders or /checkout page
+  if (!activeOrder || isDismissed || router.pathname === "/orders" || router.pathname === "/checkout") return null;
 
-  const progressPct = [10, 28, 58, 80][stageIndex] ?? 28;
+  const progressPct = [12, 32, 60, 82][stageIndex] ?? 32;
   const statusLabel = STATUS_STAGES[stageIndex]?.label ?? "Preparing your order";
 
   return (
     <AnimatePresence>
       <motion.div
         key="zomato-tracker"
-        initial={{ y: -110, opacity: 0 }}
+        initial={{ y: -120, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -110, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 340, damping: 30 }}
-        className="fixed left-4 right-4 z-[200] max-w-md mx-auto pointer-events-none"
-        style={{ top: "max(12px, env(safe-area-inset-top, 12px))" }}
+        exit={{ y: -120, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+        className="fixed left-3 right-3 z-[200] max-w-md mx-auto pointer-events-none"
+        style={{ top: "max(12px, calc(env(safe-area-inset-top, 0px) + 8px))" }}
       >
-        <div className="pointer-events-auto bg-[#1c1c1e] backdrop-blur-2xl text-white rounded-[24px] px-4 py-3.5 shadow-[0_20px_60px_rgba(0,0,0,0.55)] border border-white/10 overflow-hidden">
-          {/* TOP ROW */}
-          <div className="flex items-center justify-between mb-0.5">
-            <span className="text-[11px] font-semibold text-slate-400 tracking-tight">
+        <div className="pointer-events-auto bg-[#18181b] text-white rounded-[26px] px-5 py-4 shadow-[0_24px_64px_rgba(0,0,0,0.6)] border border-white/10 overflow-hidden select-none">
+          {/* TOP ROW: Outlet name + Brand */}
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[12px] font-semibold text-zinc-400 tracking-tight">
               Dashit Darkstore · Anantnag
             </span>
             <div className="flex items-center space-x-2">
-              <span className="text-[11px] font-black text-white tracking-tighter">dashit</span>
+              <span className="text-[13px] font-black text-white tracking-tighter lowercase">dashit</span>
               <button
-                onClick={() => setIsDismissed(true)}
-                className="p-0.5 text-slate-500 hover:text-white rounded-full transition-colors active:scale-90"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDismissed(true);
+                }}
+                className="p-1 text-zinc-500 hover:text-white rounded-full transition-colors active:scale-90"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* STATUS + ETA */}
-          <Link href="/orders" className="block">
-            <h2 className="text-[17px] font-black text-white tracking-tight leading-snug mt-0.5">
+          {/* STATUS + ETA (Click to view live order details) */}
+          <div
+            onClick={() => router.push("/orders")}
+            className="cursor-pointer active:opacity-90 transition-opacity"
+          >
+            <h2 className="text-[19px] font-black text-white tracking-tight leading-tight mt-0.5">
               {statusLabel}
             </h2>
-            <div className="flex items-center space-x-1.5 mt-0.5">
-              <span className="text-[#34c759] font-extrabold text-[12px]">On time</span>
-              <span className="text-slate-600 text-[12px] font-semibold">|</span>
-              <span className="text-slate-300 text-[12px] font-semibold">
+            <div className="flex items-center space-x-1.5 mt-1">
+              <span className="text-[#22c55e] font-extrabold text-[13px]">On time</span>
+              <span className="text-zinc-600 text-[13px] font-semibold">|</span>
+              <span className="text-zinc-300 text-[13px] font-medium">
                 Arriving in {etaMinutes} minute{etaMinutes !== 1 ? "s" : ""}
               </span>
             </div>
 
-            {/* PROGRESS TRACK */}
-            <div className="relative mt-3.5 h-[36px]">
-              {/* Background dashed line */}
-              <div className="absolute top-1/2 -translate-y-1/2 left-5 right-5 flex items-center h-[2px]">
-                {[...Array(18)].map((_, i) => (
+            {/* PROGRESS TRACK (Zomato Style) */}
+            <div className="relative mt-4 h-[32px] flex items-center">
+              {/* Dotted / dashed track behind */}
+              <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 flex items-center justify-between pointer-events-none">
+                {[...Array(16)].map((_, i) => (
                   <span
                     key={i}
-                    className="shrink-0 h-[2px] rounded-full bg-white/18"
-                    style={{ width: "8px", marginRight: "3px" }}
+                    className="shrink-0 h-[2.5px] rounded-full bg-zinc-700"
+                    style={{ width: "8px" }}
                   />
                 ))}
               </div>
 
-              {/* Filled progress */}
+              {/* Filled progress bar */}
               <motion.div
-                className="absolute top-1/2 -translate-y-1/2 left-5 h-[2px] bg-white/40 rounded-full"
+                className="absolute left-6 top-1/2 -translate-y-1/2 h-[2.5px] bg-zinc-400 rounded-full"
                 initial={{ width: "0%" }}
                 animate={{ width: `${progressPct}%` }}
                 transition={{ duration: 1.2, ease: "easeInOut" }}
               />
 
-              {/* Courier bike icon */}
+              {/* Origin badge (store point) */}
+              <div className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+              </div>
+
+              {/* Animated Courier Bike icon */}
               <motion.div
-                className="absolute top-1/2 -translate-y-1/2"
-                initial={{ left: "4%" }}
-                animate={{ left: `calc(${progressPct}% - 10px)` }}
+                className="absolute top-1/2 -translate-y-1/2 z-10"
+                initial={{ left: "6%" }}
+                animate={{ left: `calc(${progressPct}% + 10px)` }}
                 transition={{ duration: 1.2, ease: "easeInOut" }}
               >
-                <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-lg">
-                  <Bike className="w-3.5 h-3.5 stroke-[2.5] text-[#1c1c1e]" />
+                <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-lg ring-2 ring-zinc-800">
+                  <Bike className="w-3.5 h-3.5 stroke-[2.8] text-[#18181b]" />
                 </div>
               </motion.div>
 
-              {/* Origin dot */}
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/30" />
-
-              {/* Home destination */}
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                <Home className="w-3.5 h-3.5 stroke-[2.2] text-white/60" />
+              {/* Destination (white circle with home icon) */}
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white flex items-center justify-center shadow-md">
+                <Home className="w-3.5 h-3.5 stroke-[2.8] text-[#18181b]" />
               </div>
             </div>
-          </Link>
+          </div>
         </div>
       </motion.div>
     </AnimatePresence>
