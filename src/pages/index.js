@@ -13,6 +13,7 @@ import BottomNav from "../components/BottomNav";
 import QuickProductSheet from "../components/QuickProductSheet";
 import LocationPickerModal from "../components/LocationPickerModal";
 import InteractiveMapModal from "../components/InteractiveMapModal";
+import VariantSelectorModal from "../components/VariantSelectorModal";
 import { ALL_PRODUCTS } from "../data/products";
 import { reverseGeocodeCoords } from "../lib/maps";
 
@@ -30,6 +31,7 @@ export default function StorefrontHome() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [cart, setCart] = useState([]);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
+  const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isInteractiveMapOpen, setIsInteractiveMapOpen] = useState(false);
   const [isSearchPulsing, setIsSearchPulsing] = useState(false);
@@ -351,6 +353,7 @@ export default function StorefrontHome() {
                         onIncrement={() => handleUpdateQty(pId, 1)}
                         onDecrement={() => handleUpdateQty(pId, -1)}
                         onQuickView={() => setSelectedQuickProduct(p)}
+                        onSelectVariants={(prod) => setSelectedVariantProduct(prod)}
                       />
                     );
                   })}
@@ -389,6 +392,15 @@ export default function StorefrontHome() {
         isOpen={isInteractiveMapOpen}
         onClose={() => setIsInteractiveMapOpen(false)}
         onConfirmLocation={handleSelectLocation}
+      />
+
+      {/* 10. VARIANT SELECTOR MODAL (Clean size/price selection for multi-option products) */}
+      <VariantSelectorModal
+        isOpen={Boolean(selectedVariantProduct)}
+        onClose={() => setSelectedVariantProduct(null)}
+        product={selectedVariantProduct}
+        cart={cart}
+        onAddToCart={handleAddToCart}
       />
 
 

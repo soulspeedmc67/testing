@@ -11,13 +11,20 @@ export default function ProductCardStepper({
   onIncrement,
   onDecrement,
   className = "",
-  subtext = ""
+  subtext = "",
+  onSelectVariants
 }) {
   const prodId = product?.id || product?.barcode;
 
   const handleAdd = (e) => {
     e.stopPropagation();
     hapticMedium();
+
+    if (product?.variants && product.variants.length > 1 && onSelectVariants) {
+      onSelectVariants(product);
+      return;
+    }
+
     const imgSrc = product?.img || product?.image;
     if (imgSrc) {
       const rect = e.currentTarget.getBoundingClientRect();

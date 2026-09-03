@@ -26,8 +26,9 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
           const isActive = activeCategory === cat.id;
 
           return (
-            <button
+            <motion.button
               key={cat.id}
+              whileTap={{ scale: 0.92 }}
               onClick={(e) => {
                 hapticLight();
                 e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -38,29 +39,29 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
               <div
                 className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all duration-300 ${
                   isActive
-                    ? "bg-[#061838] text-white shadow-sm scale-105"
+                    ? "bg-[#061838] text-white shadow-sm ring-2 ring-[#061838]/10 scale-105"
                     : "bg-white text-slate-700 border border-slate-200/90 group-hover:border-slate-400"
                 }`}
               >
-                <Icon className="w-4 h-4 stroke-[2.5]" />
+                <Icon className={`w-4 h-4 ${isActive ? "stroke-[2.8] text-white" : "stroke-[2.2] text-slate-700"}`} />
               </div>
               <span
-                className={`text-[10px] font-bold tracking-tight whitespace-nowrap transition-colors duration-300 ${
-                  isActive ? "text-[#061838] font-black" : "text-slate-600"
+                className={`text-[10px] tracking-tight whitespace-nowrap transition-colors duration-300 ${
+                  isActive ? "text-[#061838] font-black" : "text-slate-600 font-semibold"
                 }`}
               >
                 {cat.label}
               </span>
 
-              {/* Active Underline Pill with Smooth Layout Physics */}
+              {/* Active Underline Pill with Dashit Orange */}
               {isActive && (
                 <motion.span
                   layoutId="categoryUnderline"
-                  className="absolute -bottom-0.5 w-5 h-1 bg-[#061838] rounded-full"
-                  transition={{ type: "spring", stiffness: 220, damping: 24 }}
+                  className="absolute -bottom-0.5 w-4 h-1 bg-[#FF6B00] rounded-full shadow-[0_1px_4px_rgba(255,107,0,0.4)]"
+                  transition={{ type: "spring", stiffness: 260, damping: 24 }}
                 />
               )}
-            </button>
+            </motion.button>
           );
         })}
       </div>
