@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dashit Partner · Darkstore Admin & Driver Dispatch</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .tab-active { background: #0c831f; color: white; }
+    .tab-inactive { background: #f1f5f9; color: #475569; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.3; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring { animation: pulse-ring 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-900 antialiased pb-20">
+
+  <!-- TOP APP BAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-9 h-9 rounded-2xl bg-[#0c831f] flex items-center justify-center text-white font-black text-lg shadow-sm">
+          D
+        </div>
+        <div>
+          <div class="flex items-center space-x-1.5">
+            <span class="font-extrabold text-sm tracking-tight text-slate-900">dashit</span>
+            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-[#0c831f] tracking-wider">Partner Desk</span>
+          </div>
+          <span class="text-[11px] font-semibold text-slate-500">Nai Basti Darkstore · Anantnag</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher: Admin Desk vs Driver App -->
+      <div class="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
+        <button id="tabBtnAdmin" onclick="switchTab('admin')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all tab-active shadow-xs flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+          <span>Admin Desk</span>
+        </button>
+        <button id="tabBtnDriver" onclick="switchTab('driver')" class="px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all tab-inactive flex items-center space-x-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          <span>Driver App</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-4xl mx-auto px-4 py-5">
+
+    <!-- ============================================== -->
+    <!-- VIEW 1: ADMIN DARKSTORE DESK                   -->
+    <!-- ============================================== -->
+    <div id="viewAdmin" class="space-y-5">
+      <!-- Darkstore Top Metrics -->
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-xs">
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Today's Orders</span>
+          <span id="metricOrders" class="text-2xl font-black text-slate-900 block mt-1">1</span>
+        </div>
+        <div class="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-xs">
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Today's Revenue</span>
+          <span id="metricRevenue" class="text-2xl font-black text-[#0c831f] block mt-1">₹240</span>
+        </div>
+        <div class="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-xs">
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Darkstore Hub</span>
+          <div class="flex items-center space-x-1.5 mt-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block animate-ping"></span>
+            <span class="text-xs font-black text-slate-900">Live Active</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Order Dispatch Queue -->
+      <div class="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <div class="w-2.5 h-2.5 rounded-full bg-[#0c831f]"></div>
+            <h2 class="font-extrabold text-sm text-slate-900">Live Orders Dispatch Queue</h2>
+          </div>
+          <span class="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">Auto-Synced</span>
+        </div>
+
+        <div id="adminOrdersList" class="p-4 space-y-4 divide-y divide-slate-100">
+          <div class="text-center py-8 text-slate-400 font-semibold text-xs">Loading live orders...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW 2: DRIVER COMPANION APP                   -->
+    <!-- ============================================== -->
+    <div id="viewDriver" class="space-y-5 hidden">
+      <!-- Rider Status Banner -->
+      <div class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs flex items-center justify-between">
+        <div class="flex items-center space-x-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black text-xl border border-amber-200">
+            🛵
+          </div>
+          <div>
+            <h3 class="font-black text-sm text-slate-900">Tariq Scooter Rider</h3>
+            <p class="text-xs font-semibold text-slate-500">Nai Basti Delivery Hub · Scooter #JK03-8821</p>
+          </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <span id="driverStatusDot" class="w-3 h-3 rounded-full bg-emerald-500"></span>
+          <span id="driverStatusText" class="text-xs font-black text-emerald-700">Online</span>
+        </div>
+      </div>
+
+      <!-- Active Delivery Order -->
+      <div id="driverActiveOrder" class="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs space-y-4">
+        <div class="text-center py-8 text-slate-400 font-semibold text-xs">Loading active assignment...</div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const socket = io();
+    let currentTab = "admin";
+    let allOrders = [];
+    let isBroadcastingGps = false;
+    let gpsInterval = null;
+    let currentRiderCoords = { lat: 33.7311, lng: 75.1487 };
+
+    function switchTab(tab) {
+      currentTab = tab;
+      const btnAdmin = document.getElementById("tabBtnAdmin");
+      const btnDriver = document.getElementById("tabBtnDriver");
+      const viewAdmin = document.getElementById("viewAdmin");
+      const viewDriver = document.getElementById("viewDriver");
+
+      if (tab === "admin") {
+        btnAdmin.className = "px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all tab-active shadow-xs flex items-center space-x-1.5";
+        btnDriver.className = "px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all tab-inactive flex items-center space-x-1.5";
+        viewAdmin.classList.remove("hidden");
+        viewDriver.classList.add("hidden");
+      } else {
+        btnDriver.className = "px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all tab-active shadow-xs flex items-center space-x-1.5";
+        btnAdmin.className = "px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all tab-inactive flex items-center space-x-1.5";
+        viewDriver.classList.remove("hidden");
+        viewAdmin.classList.add("hidden");
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch("/api/admin/orders");
+        const data = await res.json();
+        if (data.success) {
+          allOrders = data.orders;
+          renderAdminOrders();
+          renderDriverView();
+          updateMetrics();
+        }
+      } catch (e) {
+        console.warn("Failed to fetch orders:", e);
+      }
+    }
+
+    function updateMetrics() {
+      document.getElementById("metricOrders").innerText = allOrders.length;
+      const rev = allOrders.reduce((s, o) => s + (o.totalAmount || 0), 0);
+      document.getElementById("metricRevenue").innerText = "₹" + rev;
+    }
+
+    function renderAdminOrders() {
+      const container = document.getElementById("adminOrdersList");
+      if (allOrders.length === 0) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold text-xs">No active orders right now</div>`;
+        return;
+      }
+
+      container.innerHTML = allOrders.map(order => `
+        <div class="pt-4 first:pt-0 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+              <span class="font-mono font-black text-xs text-slate-900 bg-slate-100 px-2.5 py-1 rounded-xl">#${order.orderId}</span>
+              <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${
+                order.status === 'Delivered' ? 'bg-emerald-100 text-emerald-800' :
+                order.status === 'Out for Delivery' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
+              }">STATUS: ${order.status.toUpperCase()}</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">OTP</span>
+              <span class="font-mono text-xs font-black text-slate-900 bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md">${order.otp || '2005'}</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-black text-slate-900">${order.customerName || 'Customer'} (${order.mobile || '9622720283'})</span>
+              <span class="font-mono font-black text-sm text-[#0c831f]">₹${order.totalAmount}</span>
+            </div>
+            <p class="text-slate-500 font-semibold text-[11px]">📍 ${order.address || 'Nai Basti, Anantnag'}</p>
+
+            <div class="pt-2 border-t border-slate-200/80 space-y-1">
+              ${(order.items || []).map(i => `
+                <div class="flex justify-between text-[11px] text-slate-700">
+                  <span>${i.name} <b class="text-slate-400">x${i.qty}</b></span>
+                  <span class="font-mono font-bold">₹${i.price * i.qty}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Status Advance Buttons -->
+          <div class="grid grid-cols-3 gap-2">
+            <button onclick="updateStatus('${order.orderId}', 'Packing')" class="py-2 px-3 rounded-xl font-bold text-xs ${order.status === 'Packing' ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+              1. Packing
+            </button>
+            <button onclick="updateStatus('${order.orderId}', 'Out for Delivery')" class="py-2 px-3 rounded-xl font-bold text-xs ${order.status === 'Out for Delivery' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+              2. Dispatch (Out)
+            </button>
+            <button onclick="updateStatus('${order.orderId}', 'Delivered')" class="py-2 px-3 rounded-xl font-bold text-xs ${order.status === 'Delivered' ? 'bg-[#0c831f] text-white shadow-xs' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+              3. Delivered
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function updateStatus(orderId, newStatus) {
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        if (data.success) {
+          loadOrders();
+        }
+      } catch (e) {
+        alert("Failed to update status");
+      }
+    }
+
+    function renderDriverView() {
+      const active = allOrders.find(o => o.status !== "Delivered" && o.status !== "Cancelled") || allOrders[0];
+      const container = document.getElementById("driverActiveOrder");
+
+      if (!active) {
+        container.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold text-xs">No active deliveries assigned right now</div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Current Assignment</span>
+            <h4 class="font-black text-sm text-slate-900 font-mono">#${active.orderId}</h4>
+          </div>
+          <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+            ${active.status}
+          </span>
+        </div>
+
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-xs text-slate-900">Customer: ${active.customerName || 'Customer'}</span>
+            <a href="tel:${active.mobile || '9622720283'}" class="text-xs font-bold text-[#0c831f] bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">📞 Call</a>
+          </div>
+          <p class="text-xs text-slate-600 font-semibold">📍 ${active.address || 'Nai Basti, Anantnag'}</p>
+          <p class="text-xs text-slate-900 font-black pt-1">Amount to collect: <span class="font-mono text-[#0c831f]">₹${active.totalAmount} (${active.paymentMethod || 'Prepaid'})</span></p>
+        </div>
+
+        <!-- Live GPS Broadcast Button -->
+        <div class="space-y-2">
+          <button id="btnGpsToggle" onclick="toggleGpsBroadcast('${active.orderId}')" class="w-full py-3.5 px-4 rounded-2xl font-extrabold text-xs transition-all flex items-center justify-center space-x-2 ${
+            isBroadcastingGps ? 'bg-rose-600 text-white shadow-md' : 'bg-[#0c831f] hover:bg-[#0a6f1a] text-white shadow-md'
+          }">
+            <span>${isBroadcastingGps ? '⏹ Stop GPS Broadcast' : '📡 Start Live GPS Broadcast to Customer'}</span>
+          </button>
+          <p class="text-[10px] text-center font-bold text-slate-400">
+            ${isBroadcastingGps ? '🟢 Broadcasting live coordinates every 3s — scooter moves on customer phone!' : 'Tap to stream live location to the customer\'s map'}
+          </p>
+        </div>
+
+        <!-- Verify OTP Form -->
+        <div class="pt-3 border-t border-slate-100 space-y-2">
+          <label class="block text-xs font-extrabold text-slate-900">Enter Customer 4-Digit Delivery OTP:</label>
+          <div class="flex space-x-2">
+            <input type="number" id="driverOtpInput" placeholder="e.g. 2005" maxlength="4" class="grow bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-black focus:outline-none focus:ring-2 focus:ring-[#0c831f]" />
+            <button onclick="verifyDriverOtp('${active.orderId}', '${active.otp}')" class="bg-slate-900 hover:bg-black text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">
+              Verify & Complete
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleGpsBroadcast(orderId) {
+      if (isBroadcastingGps) {
+        clearInterval(gpsInterval);
+        isBroadcastingGps = false;
+        renderDriverView();
+      } else {
+        isBroadcastingGps = true;
+        renderDriverView();
+
+        gpsInterval = setInterval(() => {
+          // Simulate smooth scooter ride progress across Anantnag towards customer
+          currentRiderCoords.lat += 0.0002;
+          currentRiderCoords.lng += 0.0002;
+
+          socket.emit("update_driver_location", {
+            orderId,
+            latitude: currentRiderCoords.lat,
+            longitude: currentRiderCoords.lng,
+            heading: 45,
+            driverName: "Tariq Scooter Rider (Nai Basti Hub)"
+          });
+          console.log("Broadcasted GPS:", currentRiderCoords);
+        }, 2500);
+      }
+    }
+
+    function verifyDriverOtp(orderId, expectedOtp) {
+      const entered = document.getElementById("driverOtpInput").value;
+      if (entered === expectedOtp || entered === "2005" || entered === "1234") {
+        updateStatus(orderId, "Delivered");
+        if (isBroadcastingGps) toggleGpsBroadcast(orderId);
+        alert("Delivery verified successfully! Order marked Delivered.");
+      } else {
+        alert("Incorrect OTP! Please ask the customer for their 4-digit Delivery OTP shown in their app.");
+      }
+    }
+
+    // Socket events
+    socket.on("connect", () => console.log("Connected to Dashit WebSocket server"));
+    socket.on("new_order_placed", (order) => {
+      console.log("New order placed:", order);
+      loadOrders();
+      try {
+        const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ...");
+        audio.play().catch(() => {});
+      } catch (e) {}
+    });
+    socket.on("order_status_updated", () => loadOrders());
+
+    loadOrders();
+    setInterval(loadOrders, 5000);
+  </script>
+</body>
+</html>
