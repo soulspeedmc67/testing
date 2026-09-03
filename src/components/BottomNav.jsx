@@ -88,49 +88,71 @@ export default function BottomNav({ forceHide = false }) {
           const isActive = currentPath === item.path || (item.id === "home" && currentPath === "/");
 
           return (
-            <button
+            <motion.button
               key={item.id}
               type="button"
+              whileTap={{ scale: 0.86 }}
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 450, damping: 24 }}
               onClick={() => {
                 hapticLight();
                 if (currentPath !== item.path) {
                   router.push(item.path);
                 }
               }}
-              className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full transition-colors duration-300 cursor-pointer touch-manipulation select-none ${
+              className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full cursor-pointer touch-manipulation select-none ${
                 isActive ? "text-[#061838]" : "text-slate-400 hover:text-slate-600"
               }`}
             >
-              <div className="flex items-center justify-center">
+              <motion.div
+                className="flex items-center justify-center relative"
+                animate={
+                  isActive
+                    ? item.id === "home"
+                      ? { scale: [1, 1.25, 1.08], y: [0, -3.5, 0] }
+                      : item.id === "categories"
+                      ? { scale: [1, 1.25, 1.08], rotate: [0, -10, 8, 0] }
+                      : { scale: [1, 1.26, 1.08], rotate: [0, -120, -60, 0] }
+                    : { scale: 1, y: 0, rotate: 0 }
+                }
+                transition={{
+                  type: "spring",
+                  stiffness: 380,
+                  damping: 18,
+                  mass: 0.6,
+                }}
+              >
                 <Icon
-                  className={`w-4 h-4 transition-all duration-300 ${
-                    isActive ? "stroke-[2.8] scale-105 text-[#061838]" : "stroke-[2] text-slate-400"
+                  className={`w-4 h-4 transition-colors duration-250 ${
+                    isActive ? "stroke-[2.8] text-[#061838]" : "stroke-[2] text-slate-400"
                   }`}
                 />
-              </div>
+              </motion.div>
 
-              <span
-                className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors duration-300 ${
+              <motion.span
+                animate={{ scale: isActive ? 1.04 : 1 }}
+                transition={{ duration: 0.2 }}
+                className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors duration-250 ${
                   isActive ? "font-black text-[#061838]" : "font-semibold text-slate-500"
                 }`}
               >
                 {item.label}
-              </span>
+              </motion.span>
 
-              {/* Minimal Active Indicator Dot with Smooth Slow Physics */}
+              {/* Minimal Active Indicator Dot with Smooth Physics */}
               {isActive && (
                 <motion.span
                   layoutId="activeTabIndicator"
-                  className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] mt-0.5"
+                  className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] mt-0.5 shadow-[0_1px_4px_rgba(255,107,0,0.4)]"
                   transition={{
                     type: "spring",
-                    stiffness: 160,
-                    damping: 22,
-                    mass: 0.7,
+                    stiffness: 220,
+                    damping: 24,
+                    mass: 0.6,
                   }}
                 />
               )}
-            </button>
+            </motion.button>
           );
         })}
       </nav>
