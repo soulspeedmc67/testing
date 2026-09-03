@@ -73,9 +73,13 @@ export default function SearchPage() {
       {/* Search Header Bar with iOS Safe Area Top Inset */}
       <header className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(14px,calc(12px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md">
         <div className="max-w-md mx-auto flex items-center space-x-3">
-          <Link href="/" className="p-1 rounded-full text-slate-300 hover:text-white">
+          <button
+            type="button"
+            onClick={() => router.push("/")}
+            className="p-1 rounded-full text-slate-300 hover:text-white active:scale-90 transition-transform cursor-pointer"
+          >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
 
           <div className="relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner">
             <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />

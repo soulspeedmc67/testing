@@ -114,7 +114,6 @@ export default function FloatingCartBar() {
   return (
     <motion.div
       key="global-floating-cart-bar"
-      id="global-cart-bar-target"
       initial={isFirstAppearance ? { y: 60, opacity: 0, scale: 0.8 } : false}
       animate={{
         // When navbar is visible: docked above navbar with a clean 12px breathing gap (-70px).
@@ -137,6 +136,7 @@ export default function FloatingCartBar() {
       }}
     >
       <div
+        id="global-cart-bar-target"
         onClick={() => {
           hapticMedium();
           router.push("/checkout");

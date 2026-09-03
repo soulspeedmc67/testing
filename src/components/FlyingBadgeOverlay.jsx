@@ -17,13 +17,14 @@ export default function FlyingBadgeOverlay() {
       const id = Date.now() + Math.random();
 
       // Locate the actual View Cart bar thumbnail on screen
-      let destX = typeof window !== "undefined" ? window.innerWidth / 2 - 60 : 120;
-      let destY = typeof window !== "undefined" ? window.innerHeight - 55 : 600;
+      let destX = typeof window !== "undefined" ? window.innerWidth / 2 - 40 : 160;
+      let destY = typeof window !== "undefined" ? window.innerHeight - 80 : 600;
 
       const cartBarEl = document.getElementById("global-cart-bar-target");
       if (cartBarEl) {
         const cartRect = cartBarEl.getBoundingClientRect();
-        destX = cartRect.left + 28; // Lands directly into the product circle thumbnail on the cart
+        // Land directly inside the left circular thumbnail of the View Cart pill
+        destX = cartRect.left + 24;
         destY = cartRect.top + cartRect.height / 2;
       }
 
@@ -33,7 +34,7 @@ export default function FlyingBadgeOverlay() {
           id,
           imgUrl,
           dropX: destX - 18,
-          dropStartY: destY - 55,
+          dropStartY: destY - 80,
           dropEndY: destY - 18,
         },
       ]);
