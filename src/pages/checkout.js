@@ -181,7 +181,7 @@ export default function CheckoutPage() {
           className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
         >
           {isProcessing ? (
-            <span>Processing Order... 🎉</span>
+            <span>Processing Order...</span>
           ) : (
             <span>Pay ₹{checkoutData.grandTotal} & Place Order</span>
           )}

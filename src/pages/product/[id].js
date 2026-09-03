@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ArrowLeft, Heart, Star, ShieldCheck, ShoppingBag, Tag, ChevronRight } from "lucide-react";
-import BottomNav from "../../components/BottomNav";
+import { ArrowLeft, Heart, Star, ShieldCheck, Tag, ChevronRight } from "lucide-react";
+import ProductCardStepper from "../../components/ProductCardStepper";
+import FloatingCartBar from "../../components/FloatingCartBar";
 
 const PRODUCT_IMAGES = [
   "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=80",
@@ -15,21 +16,44 @@ export default function ProductDetailPage() {
   const { id } = router.query;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFav, setIsFav] = useState(false);
-  const [qty, setQty] = useState(1);
+  const [cart, setCart] = useState([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("dashit_cart");
+    if (saved) {
+      try { setCart(JSON.parse(saved)); } catch (e) {}
+    }
+  }, []);
+
+  const saveCart = (newCart) => {
+    setCart(newCart);
+    localStorage.setItem("dashit_cart", JSON.stringify(newCart));
+  };
+
+  const productObj = {
+    id: Number(id) || 301,
+    name: "Portronics Conch Theta C Type C Wired Earphones (White)",
+    unit: "1 unit",
+    price: 303,
+    originalPrice: 799,
+    img: PRODUCT_IMAGES[0],
+    time: "10 mins",
+    cat: "Electronics"
+  };
+
+  const cartItem = cart.find((i) => i.id === productObj.id);
+  const currentQty = cartItem ? cartItem.qty : 0;
 
   const handleAddToCart = () => {
-    const existing = JSON.parse(localStorage.getItem("dashit_cart") || "[]");
-    const newItem = {
-      id: Number(id) || 301,
-      name: "Portronics Conch Theta C Type C Wired Earphones (White)",
-      unit: "1 unit",
-      price: 303,
-      originalPrice: 799,
-      img: PRODUCT_IMAGES[0],
-      qty: 1
-    };
-    localStorage.setItem("dashit_cart", JSON.stringify([...existing, newItem]));
-    alert("Item added to cart!");
+    const updated = [...cart, { ...productObj, qty: 1 }];
+    saveCart(updated);
+  };
+
+  const handleUpdateQty = (prodId, delta) => {
+    const updated = cart
+      .map((i) => (i.id === prodId ? { ...i, qty: i.qty + delta } : i))
+      .filter((i) => i.qty > 0);
+    saveCart(updated);
   };
 
   return (
@@ -83,7 +107,7 @@ export default function ProductDetailPage() {
           </div>
 
           <h2 className="font-extrabold text-base text-slate-900 leading-snug">
-            Portronics Conch Theta C Type C Wired Earphones (White)
+            {productObj.name}
           </h2>
 
           <div className="flex items-center space-x-2">
@@ -96,8 +120,8 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="pt-2 flex items-baseline space-x-2">
-            <span className="text-xl font-black text-slate-900 font-mono">₹303</span>
-            <span className="text-xs text-slate-400 line-through font-medium">MRP ₹799</span>
+            <span className="text-xl font-black text-slate-900 font-mono">₹{productObj.price}</span>
+            <span className="text-xs text-slate-400 line-through font-medium">MRP ₹{productObj.originalPrice}</span>
             <span className="text-xs font-extrabold text-[#0c831f] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               62% OFF
             </span>
@@ -128,26 +152,29 @@ export default function ProductDetailPage() {
         </div>
       </main>
 
-      {/* Persistent Bottom Purchase Bar */}
+      {/* Persistent Bottom Purchase Bar with Morphing Stepper */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 shadow-xl z-50">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-slate-400">1 unit</span>
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-base font-black text-slate-900 font-mono">₹303</span>
-              <span className="text-xs text-slate-400 line-through">₹799</span>
+              <span className="text-base font-black text-slate-900 font-mono">₹{productObj.price}</span>
+              <span className="text-xs text-slate-400 line-through">₹{productObj.originalPrice}</span>
             </div>
           </div>
 
-          <button
-            onClick={handleAddToCart}
-            className="bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs px-6 py-3 rounded-2xl shadow-md transition-all active:scale-95 flex items-center space-x-2"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Add to Cart</span>
-          </button>
+          <div className="w-36">
+            <ProductCardStepper
+              product={productObj}
+              qty={currentQty}
+              onAdd={handleAddToCart}
+              onUpdateQty={handleUpdateQty}
+            />
+          </div>
         </div>
       </div>
+
+      <FloatingCartBar cart={cart} />
     </div>
   );
 }
