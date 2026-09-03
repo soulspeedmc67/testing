@@ -1,23 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Heart, Star } from "lucide-react";
 import ProductCardStepper from "./ProductCardStepper";
+import { isItemInWishlist, toggleWishlistItem } from "../lib/wishlist";
 
 export default function ProductCard({
   product,
   qty = 0,
   onAdd,
   onUpdateQty,
+  onIncrement,
+  onDecrement,
   onOpenQuickView,
+  onQuickView,
   isFavorite = false,
   onToggleFavorite
 }) {
-  const [favorite, setFavorite] = useState(isFavorite);
+  const [favorite, setFavorite] = useState(() => {
+    return isFavorite || isItemInWishlist(product?.id || product?.barcode);
+  });
+
+  useEffect(() => {
+    const syncFav = () => {
+      setFavorite(isItemInWishlist(product?.id || product?.barcode));
+    };
+    syncFav();
+    window.addEventListener("dashit_wishlist_updated", syncFav);
+    return () => window.removeEventListener("dashit_wishlist_updated", syncFav);
+  }, [product]);
 
   const handleHeartClick = (e) => {
     e.stopPropagation();
-    setFavorite(!favorite);
-    if (onToggleFavorite) onToggleFavorite(product.id, !favorite);
+    const nextState = toggleWishlistItem(product);
+    setFavorite(nextState);
+    if (onToggleFavorite) onToggleFavorite(product.id || product.barcode, nextState);
   };
 
   return (
@@ -68,6 +84,8 @@ export default function ProductCard({
             qty={qty}
             onAdd={onAdd}
             onUpdateQty={onUpdateQty}
+            onIncrement={onIncrement}
+            onDecrement={onDecrement}
             subtext={product.options}
           />
         </div>

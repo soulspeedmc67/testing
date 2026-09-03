@@ -243,6 +243,44 @@ export default function AccountPage() {
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </div>
+
+            {/* Appearance / Dark Mode */}
+            <div className="flex items-center justify-between p-3.5 border-t border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300">
+                  <Moon className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Dark Mode</span>
+              </div>
+              <div className="flex items-center space-x-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppearance("Light");
+                    localStorage.setItem("dashit_theme", "light");
+                    document.documentElement.classList.remove("dark");
+                  }}
+                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                    appearance === "Light" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500"
+                  }`}
+                >
+                  Off
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppearance("Dark");
+                    localStorage.setItem("dashit_theme", "dark");
+                    document.documentElement.classList.add("dark");
+                  }}
+                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
+                    appearance === "Dark" ? "bg-[#0c831f] text-white shadow-2xs" : "text-slate-500"
+                  }`}
+                >
+                  On
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </main>

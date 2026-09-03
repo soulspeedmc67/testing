@@ -17,9 +17,10 @@ export default function LiveOrderFloatingTracker() {
   useEffect(() => {
     const checkOrder = () => {
       try {
-        const wasDismissed = sessionStorage.getItem("dashit_order_dismissed") === "true";
+        const wasDismissed = localStorage.getItem("dashit_order_dismissed") === "true";
         if (wasDismissed) {
           setIsDismissed(true);
+          return;
         }
 
         const active = localStorage.getItem("dashit_active_order");
@@ -38,7 +39,8 @@ export default function LiveOrderFloatingTracker() {
             setStatusLabel("On the way on Scooter");
             setProgressPct((p) => Math.max(55, p));
           } else {
-            setStatusLabel("Preparing your order");
+            setStatusLabel("Processing in the dark store");
+            setProgressPct(28);
           }
 
           showOrderLiveNotification({
@@ -116,7 +118,7 @@ export default function LiveOrderFloatingTracker() {
     e?.stopPropagation();
     setIsDismissed(true);
     try {
-      sessionStorage.setItem("dashit_order_dismissed", "true");
+      localStorage.setItem("dashit_order_dismissed", "true");
     } catch (e) {}
   };
 
@@ -161,10 +163,14 @@ export default function LiveOrderFloatingTracker() {
               {statusLabel}
             </h2>
             <div className="flex items-center space-x-1.5 mt-1">
-              <span className="text-[#22c55e] font-extrabold text-[13px]">On time</span>
+              <span className="text-[#22c55e] font-extrabold text-[13px]">
+                {activeOrder?.status === "Out for Delivery" ? "On time" : "Fresh packing"}
+              </span>
               <span className="text-zinc-600 text-[13px] font-semibold">|</span>
               <span className="text-zinc-300 text-[13px] font-medium">
-                Arriving in {etaMinutes} minute{etaMinutes !== 1 ? "s" : ""}
+                {activeOrder?.status === "Out for Delivery"
+                  ? `Arriving in ${etaMinutes} minute${etaMinutes !== 1 ? "s" : ""}`
+                  : "Nai Basti Darkstore"}
               </span>
             </div>
 

@@ -74,7 +74,7 @@ export default function FloatingCartBar() {
         opacity: { duration: 0.16 },
         bottom: { duration: 0.2, ease: [0.32, 0.72, 0, 1] },
       }}
-      className="fixed left-0 right-0 z-[55] flex justify-center pointer-events-none px-4"
+      className="fixed left-0 right-0 z-[55] flex justify-center pointer-events-auto px-4"
     >
       <div
         onClick={() => {
@@ -83,15 +83,39 @@ export default function FloatingCartBar() {
         }}
         role="button"
         tabIndex={0}
-        className="pointer-events-auto bg-[#0c831f] hover:bg-[#0a6f1a] text-white rounded-full py-1.5 px-2.5 shadow-[0_8px_24px_rgba(12,131,31,0.4)] flex items-center space-x-2.5 transition-transform active:scale-[0.97] cursor-pointer select-none border border-emerald-400/30"
+        className="bg-[#0c831f] hover:bg-[#0a6f1a] text-white rounded-full py-1.5 px-2.5 shadow-[0_8px_24px_rgba(12,131,31,0.4)] flex items-center space-x-2.5 transition-transform active:scale-[0.97] cursor-pointer select-none border border-emerald-400/30"
       >
-        {/* Left: Bag Icon in pure white circle */}
-        <div className="w-7 h-7 rounded-full bg-white text-[#0c831f] flex items-center justify-center shrink-0 shadow-xs">
-          <ShoppingBag className="w-3.5 h-3.5 stroke-[2.8]" />
+        {/* Left: Last 3 items added to cart in circular shapes */}
+        <div className="flex items-center -space-x-2 shrink-0 py-0.5 pl-0.5">
+          {cart.length > 0 ? (
+            cart.slice(-3).reverse().map((item, idx) => (
+              <div
+                key={item.id || idx}
+                className="w-7 h-7 rounded-full bg-white border-2 border-[#0c831f] overflow-hidden flex items-center justify-center shadow-xs shrink-0"
+                style={{ zIndex: 10 - idx }}
+              >
+                {item.image || item.img ? (
+                  <img
+                    src={item.image || item.img}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-[10px] font-black text-[#0c831f]">
+                    {item.name ? item.name.charAt(0) : "🛍️"}
+                  </span>
+                )}
+              </div>
+            ))
+          ) : (
+            <div className="w-7 h-7 rounded-full bg-white text-[#0c831f] flex items-center justify-center shrink-0 shadow-xs">
+              <ShoppingBag className="w-3.5 h-3.5 stroke-[2.8]" />
+            </div>
+          )}
         </div>
 
         {/* Middle: View cart & Item count */}
-        <div className="text-left pr-1">
+        <div className="text-left pr-1 pl-1">
           <span className="font-black text-xs text-white block leading-tight">
             View cart
           </span>

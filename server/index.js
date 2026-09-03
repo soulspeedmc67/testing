@@ -288,6 +288,211 @@ app.post("/api/admin/store-toggle", (req, res) => {
 });
 
 // ==========================================
+// 3B. OPEN FOOD FACTS FMCG PRODUCT IMPORT PIPELINE
+// ==========================================
+
+function classifyCategory(categoriesText = "", productName = "") {
+  const combined = `${categoriesText} ${productName}`.toLowerCase();
+  if (/chip|crisp|nacho|kurkure|lays|dorito|puff/i.test(combined)) return "Chips";
+  if (/biscuit|cookie|wafer|rusk|parle-g|oreo|bourbon|good day/i.test(combined)) return "Biscuits";
+  if (/snack|namkeen|bhujia|sev|popcorn|mixture|chana|peanut/i.test(combined)) return "Snacks";
+  if (/beverage|drink|juice|soda|cola|pepsi|tea|chai|coffee|syrup|energy drink|squash|water/i.test(combined)) return "Beverages";
+  if (/milk|dairy|curd|paneer|dahi|butter|cheese|ghee|cream|yogurt|lassi/i.test(combined)) return "Dairy";
+  if (/vegetable|onion|potato|tomato|garlic|ginger|carrot|chilli|spinach|pea/i.test(combined)) return "Vegetables";
+  if (/fruit|apple|banana|mango|orange|grape|pomegranate|papaya|lemon/i.test(combined)) return "Fruits";
+  if (/spice|masala|turmeric|haldi|jeera|coriander|dhaniya|chilli powder|garam masala|salt/i.test(combined)) return "Spices";
+  if (/noodle|maggi|pasta|macaroni|instant|ready-to-eat|oats|yippee|cuppa|soup/i.test(combined)) return "Instant Food";
+  if (/soap|shampoo|toothpaste|brush|facewash|deodorant|lotion|cream|shave|sanitary|personal care/i.test(combined)) return "Personal Care";
+  if (/detergent|cleaner|dishwash|surf|vim|harpic|mop|toilet|foil|repellent|household/i.test(combined)) return "Household Items";
+  if (/rice|atta|wheat|flour|dal|pulse|grain|cereal|staple|oil|mustard oil|sunflower oil/i.test(combined)) return "Staples";
+  return "Snacks";
+}
+
+function extractBestFrontImage(product) {
+  if (!product) return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80";
+
+  const selected = product.selected_images?.front;
+  if (selected?.display?.en) {
+    const url = selected.display.en;
+    return url.replace(/\.400\.jpg$/, ".full.jpg") || url;
+  }
+  if (selected?.display?.in) return selected.display.in;
+
+  if (product.image_front_url) {
+    return product.image_front_url.replace(/\.400\.jpg$/, ".full.jpg") || product.image_front_url;
+  }
+  if (product.image_url) {
+    return product.image_url.replace(/\.400\.jpg$/, ".full.jpg") || product.image_url;
+  }
+  return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80";
+}
+
+let products = readData("products.json", []);
+
+// GET /api/products (Catalogue for Storefront and Search)
+app.get("/api/products", (req, res) => {
+  const { cat, q } = req.query;
+  let list = [...products];
+
+  if (cat && cat.toLowerCase() !== "all") {
+    list = list.filter((p) => p.cat && p.cat.toLowerCase() === cat.toLowerCase());
+  }
+
+  if (q && q.trim().length > 0) {
+    const term = q.trim().toLowerCase();
+    list = list.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        (p.brand && p.brand.toLowerCase().includes(term)) ||
+        (p.barcode && p.barcode.includes(term)) ||
+        (p.cat && p.cat.toLowerCase().includes(term))
+    );
+  }
+
+  res.json({ success: true, count: list.length, products: list });
+});
+
+// GET /api/admin/products/search-off (Live Open Food Facts Indian FMCG Search)
+app.get("/api/admin/products/search-off", async (req, res) => {
+  try {
+    const { barcode, q } = req.query;
+
+    if (barcode) {
+      const resp = await fetch(`https://world.openfoodfacts.net/api/v0/product/${barcode.trim()}.json`, {
+        headers: { "User-Agent": "DashitApp - Android - Version 1.0 - www.dashit.in" }
+      });
+      const data = await resp.json();
+      if (data.status === 1 && data.product) {
+        const p = data.product;
+        const name = p.product_name_en || p.product_name || "Indian FMCG Product";
+        const brand = p.brands ? p.brands.split(",")[0].trim() : "Indian Brand";
+        const cat = classifyCategory(p.categories || "", name);
+        const imageUrl = extractBestFrontImage(p);
+        const unit = p.quantity || "1 pc";
+
+        return res.json({
+          success: true,
+          products: [
+            {
+              barcode: p.code,
+              name,
+              brand,
+              cat,
+              unit,
+              img: imageUrl,
+              price: 45,
+              originalPrice: 50,
+              badge: "OFF Verified"
+            }
+          ]
+        });
+      }
+      return res.json({ success: false, message: "Product not found in Open Food Facts database", products: [] });
+    }
+
+    if (q) {
+      const url = `https://world.openfoodfacts.net/cgi/search.pl?search_terms=${encodeURIComponent(
+        q.trim()
+      )}&search_simple=1&action=process&json=1&page_size=25&countries_tags_en=india`;
+
+      const resp = await fetch(url, {
+        headers: { "User-Agent": "DashitApp - Android - Version 1.0 - www.dashit.in" }
+      });
+      const data = await resp.json();
+
+      const items = (data.products || [])
+        .filter((p) => (p.product_name || p.product_name_en) && (p.image_front_url || p.image_url))
+        .map((p) => {
+          const name = p.product_name_en || p.product_name || "Indian Product";
+          const brand = p.brands ? p.brands.split(",")[0].trim() : "Indian Brand";
+          const cat = classifyCategory(p.categories || "", name);
+          const imageUrl = extractBestFrontImage(p);
+          const unit = p.quantity || "1 pc";
+
+          return {
+            barcode: p.code || ("IND-" + Math.floor(10000000 + Math.random() * 90000000)),
+            name,
+            brand,
+            cat,
+            unit,
+            img: imageUrl,
+            price: 40,
+            originalPrice: 45,
+            badge: "Indian FMCG"
+          };
+        });
+
+      return res.json({ success: true, count: items.length, products: items });
+    }
+
+    return res.status(400).json({ success: false, message: "Provide q or barcode parameter" });
+  } catch (err) {
+    console.error("Open Food Facts search error:", err.message);
+    res.status(500).json({ success: false, message: err.message, products: [] });
+  }
+});
+
+// POST /api/admin/products/import (Import products into catalogue)
+app.post("/api/admin/products/import", (req, res) => {
+  const { product, products: productList } = req.body;
+  const toImport = productList || (product ? [product] : []);
+
+  if (toImport.length === 0) {
+    return res.status(400).json({ success: false, message: "No product provided to import" });
+  }
+
+  let addedCount = 0;
+  let updatedCount = 0;
+
+  for (const item of toImport) {
+    const barcode = item.barcode || ("BC-" + Date.now() + Math.floor(Math.random() * 1000));
+    const existingIndex = products.findIndex((p) => p.barcode === barcode || (item.id && p.id === item.id));
+
+    const standardized = {
+      id: item.id || ("PROD-" + Date.now() + "-" + Math.floor(Math.random() * 1000)),
+      name: item.name,
+      brand: item.brand || "Indian FMCG",
+      cat: item.cat || item.category || "Snacks",
+      barcode: barcode,
+      unit: item.unit || "1 pc",
+      price: Number(item.price) || 35,
+      originalPrice: Number(item.originalPrice) || (Number(item.price) ? Math.round(Number(item.price) * 1.15) : 40),
+      rating: item.rating || "4.7",
+      time: item.time || "8 mins",
+      badge: item.badge || "Verified",
+      img: item.img || item.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80"
+    };
+
+    if (existingIndex >= 0) {
+      products[existingIndex] = { ...products[existingIndex], ...standardized };
+      updatedCount++;
+    } else {
+      products.unshift(standardized);
+      addedCount++;
+    }
+  }
+
+  writeData("products.json", products);
+  io.emit("products_updated", { count: products.length, added: addedCount, updated: updatedCount });
+
+  res.json({
+    success: true,
+    message: `Successfully imported ${addedCount} new product(s), updated ${updatedCount}.`,
+    totalProducts: products.length
+  });
+});
+
+// DELETE /api/admin/products/:id
+app.delete("/api/admin/products/:id", (req, res) => {
+  const { id } = req.params;
+  const initialLength = products.length;
+  products = products.filter((p) => p.id !== id && p.barcode !== id);
+  writeData("products.json", products);
+  io.emit("products_updated", { count: products.length });
+  res.json({ success: true, removed: initialLength - products.length, totalProducts: products.length });
+});
+
+// ==========================================
 // 4. REAL-TIME WEBSOCKETS (DRIVER GPS TRACKING)
 // ==========================================
 
