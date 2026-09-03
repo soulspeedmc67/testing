@@ -19,14 +19,14 @@ let package = Package(
     targets: [
         .target(
             name: "CapApp-SPM",
-            swiftSettings: [.enableExperimentalFeature("NonescapableTypes")],
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
                 .product(name: "Cordova", package: "capacitor-swift-pm"),
                 .product(name: "CapacitorApp", package: "CapacitorApp"),
                 .product(name: "CapacitorLocalNotifications", package: "CapacitorLocalNotifications"),
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar")
-            ]
+            ],
+            swiftSettings: [.enableExperimentalFeature("NonescapableTypes")]
         )
     ]
 )
