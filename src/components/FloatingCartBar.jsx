@@ -143,7 +143,7 @@ export default function FloatingCartBar() {
         }}
         role="button"
         tabIndex={0}
-        className="pointer-events-auto relative overflow-hidden bg-gradient-to-r from-[#16a34a] via-[#1bb338] to-[#16a34a] text-white rounded-full py-2 px-3.5 shadow-[0_4px_16px_rgba(0,0,0,0.12)] border border-white/20 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
+        className="pointer-events-auto relative overflow-hidden bg-gradient-to-r from-[#061838] via-[#0A2558] to-[#061838] text-white rounded-full py-2 px-3.5 shadow-[0_8px_24px_rgba(6,24,56,0.3)] border border-slate-700/60 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
       >
         {/* Left: Last 3 items added to cart in overlapping circular shapes */}
         <div className="flex items-center -space-x-2.5 shrink-0 py-0.5 pl-0.5">
@@ -151,7 +151,7 @@ export default function FloatingCartBar() {
             cart.slice(-3).reverse().map((item, idx) => (
               <div
                 key={item.id || idx}
-                className="w-8 h-8 rounded-full bg-white border-2 border-[#16a34a] overflow-hidden flex items-center justify-center shadow-xs shrink-0"
+                className="w-8 h-8 rounded-full bg-white border-2 border-[#061838] overflow-hidden flex items-center justify-center shadow-xs shrink-0"
                 style={{ zIndex: 10 - idx }}
               >
                 {item.image || item.img ? (
@@ -161,31 +161,33 @@ export default function FloatingCartBar() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-xs font-black text-[#16a34a]">
+                  <span className="text-xs font-black text-[#FF6B00]">
                     {item.name ? item.name.charAt(0) : "🛍️"}
                   </span>
                 )}
               </div>
             ))
           ) : (
-            <div className="w-8 h-8 rounded-full bg-white text-[#16a34a] flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-8 h-8 rounded-full bg-white text-[#061838] flex items-center justify-center shrink-0 shadow-xs">
               <ShoppingBag className="w-4 h-4 stroke-[2.8]" />
             </div>
           )}
         </div>
 
-        {/* Middle: View cart & Item count */}
+        {/* Middle: View cart & Item count with Trust Navy & Orange Badge */}
         <div className="text-left pr-1 pl-0.5">
           <span className="font-black text-xs md:text-sm text-white block leading-tight tracking-tight drop-shadow-xs">
             View cart
           </span>
-          <span className="text-[11px] font-bold text-emerald-100 block leading-tight">
-            <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "Item" : "Items"}
-          </span>
+          <div className="flex items-center space-x-1 mt-0.5">
+            <span className="text-[10px] font-black text-white bg-[#FF6B00] px-1.5 py-0.5 rounded-md leading-none">
+              <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "Item" : "Items"}
+            </span>
+          </div>
         </div>
 
         {/* Right: Chevron arrow circle */}
-        <div className="w-7 h-7 rounded-full bg-[#15803d] flex items-center justify-center text-white shrink-0 shadow-xs ring-1 ring-white/25">
+        <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 shadow-xs ring-1 ring-white/20">
           <ChevronRight className="w-4 h-4 stroke-[3]" />
         </div>
       </div>

@@ -45,14 +45,14 @@ export default function HomeScreenLiveOrderCard() {
   }
 
   return (
-    <div className="bg-white border border-emerald-200/90 rounded-3xl p-4 shadow-sm space-y-3 animate-fade-in relative overflow-hidden">
-      {/* Subtle emerald highlight strip */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-[#0c831f]" />
+    <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-sm space-y-3 animate-fade-in relative overflow-hidden">
+      {/* Subtle orange highlight strip */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-[#FF6B00]" />
 
       {/* Header: Title, Order ID, Dismiss X */}
       <div className="flex items-center justify-between pt-0.5">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#0c831f] flex items-center justify-center shrink-0 border border-emerald-100">
+          <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
             <Bike className="w-4 h-4 stroke-[2.8]" />
           </div>
           <div>
@@ -97,7 +97,7 @@ export default function HomeScreenLiveOrderCard() {
 
         <Link
           href="/orders"
-          className="bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center space-x-1"
+          className="bg-[#061838] hover:bg-slate-900 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center space-x-1"
         >
           <Navigation className="w-3.5 h-3.5" />
           <span>Track Live</span>
@@ -109,16 +109,16 @@ export default function HomeScreenLiveOrderCard() {
       <div className="pt-0.5">
         <div className="grid grid-cols-3 gap-1.5">
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#0c831f] rounded-full" />
-            <span className="text-[9px] font-bold text-[#0c831f] block">Placed</span>
+            <div className="h-1 w-full bg-[#FF6B00] rounded-full" />
+            <span className="text-[9px] font-bold text-[#061838] block">Placed</span>
           </div>
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#0c831f] rounded-full" />
-            <span className="text-[9px] font-bold text-[#0c831f] block">Packed</span>
+            <div className="h-1 w-full bg-[#FF6B00] rounded-full" />
+            <span className="text-[9px] font-bold text-[#061838] block">Packed</span>
           </div>
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#0c831f] rounded-full" />
-            <span className="text-[9px] font-bold text-[#0c831f] block">On Way</span>
+            <div className="h-1 w-full bg-[#FF6B00] rounded-full" />
+            <span className="text-[9px] font-bold text-[#061838] block">On Way</span>
           </div>
         </div>
       </div>

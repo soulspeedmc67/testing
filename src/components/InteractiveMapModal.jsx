@@ -6,10 +6,10 @@ import { hapticHeavy, hapticLight } from "../lib/haptics";
 
 const MapWithPin = dynamic(() => import("./MapWithPinInner"), { ssr: false });
 
-const DARKSTORE_POS = { lat: 33.7311, lng: 75.1487 }; // Nai Basti, Anantnag
+const HUB_POS = { lat: 33.7311, lng: 75.1487 }; // Nai Basti, Anantnag
 
 export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation }) {
-  const [selectedPos, setSelectedPos] = useState(DARKSTORE_POS);
+  const [selectedPos, setSelectedPos] = useState(HUB_POS);
   const [areaTitle, setAreaTitle] = useState("Kurhama");
   const [addressSubtitle, setAddressSubtitle] = useState("Gulshan Mohalla, Safapore 191131. (Kurhama)");
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,9 +76,9 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
       },
       () => {
         setIsLocating(false);
-        setSelectedPos(DARKSTORE_POS);
+        setSelectedPos(HUB_POS);
         if (mapInstanceRef.current) {
-          mapInstanceRef.current.setView([DARKSTORE_POS.lat, DARKSTORE_POS.lng], 16, { animate: true });
+          mapInstanceRef.current.setView([HUB_POS.lat, HUB_POS.lng], 16, { animate: true });
         }
       },
       { enableHighAccuracy: true }
@@ -224,7 +224,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
         {/* Confirm Button */}
         <button
           onClick={handleConfirm}
-          className="w-full bg-[#0c831f] hover:bg-[#0a6f1a] text-white py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all"
+          className="w-full bg-[#061838] hover:bg-slate-900 text-white py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all"
         >
           <Check className="w-4 h-4 stroke-[3]" />
           <span>Confirm Location & Proceed</span>

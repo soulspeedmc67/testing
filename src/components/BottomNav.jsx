@@ -95,30 +95,30 @@ export default function BottomNav({ forceHide = false }) {
                 }
               }}
               className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full transition-colors cursor-pointer touch-manipulation select-none ${
-                isActive ? "text-[#16a34a]" : "text-slate-400 hover:text-slate-600"
+                isActive ? "text-[#061838]" : "text-slate-400 hover:text-slate-600"
               }`}
             >
               <div className="flex items-center justify-center">
                 <Icon
                   className={`w-4 h-4 transition-transform ${
-                    isActive ? "stroke-[2.6] scale-105 text-[#16a34a]" : "stroke-[2] text-slate-400"
+                    isActive ? "stroke-[2.8] scale-105 text-[#061838]" : "stroke-[2] text-slate-400"
                   }`}
                 />
               </div>
 
               <span
                 className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap ${
-                  isActive ? "font-black text-[#16a34a]" : "font-semibold text-slate-500"
+                  isActive ? "font-black text-[#061838]" : "font-semibold text-slate-500"
                 }`}
               >
                 {item.label}
               </span>
 
-              {/* Minimal Active Indicator Dot */}
+              {/* Minimal Active Indicator Dot in Dashit Sunset Orange */}
               {isActive && (
                 <motion.span
                   layoutId="activeTabIndicator"
-                  className="w-1 h-1 rounded-full bg-[#16a34a] mt-0.5"
+                  className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] mt-0.5"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
