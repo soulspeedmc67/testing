@@ -7,7 +7,6 @@ import CategoryScroller from "../components/CategoryScroller";
 import PromoBanner from "../components/PromoBanner";
 import CategoryGridSixPack from "../components/CategoryGridSixPack";
 import ProductCard from "../components/ProductCard";
-import FloatingCartBar from "../components/FloatingCartBar";
 import BottomNav from "../components/BottomNav";
 import QuickProductSheet from "../components/QuickProductSheet";
 import LocationPickerModal from "../components/LocationPickerModal";
@@ -21,12 +20,22 @@ export default function StorefrontHome() {
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isInteractiveMapOpen, setIsInteractiveMapOpen] = useState(false);
+  const [isSearchPulsing, setIsSearchPulsing] = useState(false);
   const [location, setLocation] = useState({
     nickname: "HOME",
     address: "b-3,jamia appqrtment, Anantnag",
     lat: 33.7311,
     lng: 75.1487
   });
+
+  const handleSelectLocation = (newLoc) => {
+    setLocation(newLoc);
+    try {
+      localStorage.setItem("dashit_user_address", JSON.stringify(newLoc));
+    } catch (e) {}
+    setIsSearchPulsing(true);
+    setTimeout(() => setIsSearchPulsing(false), 600);
+  };
 
   useEffect(() => {
     try {
@@ -49,6 +58,7 @@ export default function StorefrontHome() {
     setCart(newCart);
     try {
       localStorage.setItem("dashit_cart", JSON.stringify(newCart));
+      window.dispatchEvent(new Event("dashit_cart_updated"));
     } catch (e) {}
   };
 
@@ -100,7 +110,9 @@ export default function StorefrontHome() {
         <div className="max-w-md mx-auto px-4 pt-1.5 pb-2">
           <div
             onClick={() => router.push("/search")}
-            className="relative flex items-center bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/90 cursor-pointer active:scale-[0.99] transition-transform"
+            className={`relative flex items-center bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/90 cursor-pointer active:scale-[0.99] transition-all ${
+              isSearchPulsing ? "animate-search-pulse ring-2 ring-[#0c831f]/40" : ""
+            }`}
           >
             <Search className="w-4 h-4 stroke-[2.5] text-slate-400 mr-2.5 shrink-0" />
             <span className="text-xs font-semibold text-slate-400 select-none">
@@ -189,18 +201,16 @@ export default function StorefrontHome() {
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}
         currentLocation={location}
-        onSelectLocation={(newLoc) => setLocation(newLoc)}
+        onSelectLocation={handleSelectLocation}
       />
 
       {/* 9. INTERACTIVE MAP MODAL */}
       <InteractiveMapModal
         isOpen={isInteractiveMapOpen}
         onClose={() => setIsInteractiveMapOpen(false)}
-        onConfirmLocation={(newLoc) => setLocation(newLoc)}
+        onConfirmLocation={handleSelectLocation}
       />
 
-      {/* 10. FLOATING VIEW CART BAR (Smaller pill with ShoppingBag icon) */}
-      <FloatingCartBar cart={cart} />
 
       {/* 11. FLOATING BOTTOM NAVIGATION */}
       <BottomNav />

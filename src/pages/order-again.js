@@ -3,7 +3,6 @@ import Head from "next/head";
 import { ShoppingBag } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import BottomNav from "../components/BottomNav";
-import FloatingCartBar from "../components/FloatingCartBar";
 import ProductCard from "../components/ProductCard";
 import QuickProductSheet from "../components/QuickProductSheet";
 import LocationPickerModal from "../components/LocationPickerModal";
@@ -129,7 +128,7 @@ export default function OrderAgainPage() {
         currentLocation={location}
       />
 
-      <FloatingCartBar cart={cart} />
+
       <BottomNav />
     </div>
   );

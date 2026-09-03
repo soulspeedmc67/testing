@@ -37,7 +37,10 @@ export default function CartPage() {
 
   const saveCartState = (updated) => {
     setCart(updated);
-    localStorage.setItem("dashit_cart", JSON.stringify(updated));
+    try {
+      localStorage.setItem("dashit_cart", JSON.stringify(updated));
+      window.dispatchEvent(new Event("dashit_cart_updated"));
+    } catch (e) {}
   };
 
   const updateQty = (id, delta) => {
@@ -278,19 +281,23 @@ export default function CartPage() {
             </div>
 
             {/* Security Badge */}
-            <div className="flex items-center justify-center space-x-1.5 text-[11px] font-semibold text-slate-500 py-1">
+            <div className="flex items-center justify-center space-x-1.5 text-[11px] font-semibold text-slate-500 py-1 mb-20">
               <ShieldCheck className="w-4 h-4 text-[#0c831f]" />
               <span>100% Safe & Contactless Delivery</span>
             </div>
 
-            {/* Proceed to Payment CTA */}
-            <button
-              onClick={proceedToCheckout}
-              className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
-            >
-              <span>Proceed to Payment (₹{grandTotal})</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Sticky Proceed to Payment CTA */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/98 backdrop-blur-md border-t border-slate-200 p-4 pb-[max(14px,env(safe-area-inset-bottom,14px))] shadow-[0_-10px_30px_rgba(0,0,0,0.08)]">
+              <div className="max-w-md mx-auto">
+                <button
+                  onClick={proceedToCheckout}
+                  className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center space-x-2"
+                >
+                  <span>Proceed to Payment (₹{grandTotal})</span>
+                  <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </div>
+            </div>
           </>
         )}
       </main>
