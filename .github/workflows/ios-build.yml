@@ -49,23 +49,28 @@ jobs:
         run: |
           npx cap sync ios
 
-      - name: Patch SPM Packages for NonescapableTypes
+      - name: Resolve Swift Packages & Un-gate Capacitor APIs
         run: |
+          cd ios/App
+          xcodebuild -resolvePackageDependencies -project App.xcodeproj
           python3 -c '
-          import glob
-          targets = glob.glob("node_modules/@capacitor/*/Package.swift")
-          for p in targets:
-              with open(p, "r") as f:
-                  content = f.read()
-              if "AppPlugin" in content and "swiftSettings" not in content:
-                  content = content.replace("path: \"ios/Sources/AppPlugin\")", "path: \"ios/Sources/AppPlugin\",\n            swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")])")
-              if "LocalNotificationsPlugin" in content and "swiftSettings" not in content:
-                  content = content.replace("path: \"ios/Sources/LocalNotificationsPlugin\")", "path: \"ios/Sources/LocalNotificationsPlugin\",\n            swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")])")
-              if "StatusBarPlugin" in content and "swiftSettings" not in content:
-                  content = content.replace("path: \"ios/Sources/StatusBarPlugin\"", "path: \"ios/Sources/StatusBarPlugin\",\n            swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")]")
-              with open(p, "w") as f:
-                  f.write(content)
-              print(f"Patched {p}")
+          import os
+          derived = os.path.expanduser("~/Library/Developer/Xcode/DerivedData")
+          for root, dirs, files in os.walk(derived):
+              for f in files:
+                  if f.endswith(".swiftinterface"):
+                      p = os.path.join(root, f)
+                      try:
+                          with open(p, "r", encoding="utf-8") as fl:
+                              content = fl.read()
+                          if "$NonescapableTypes" in content:
+                              count = content.count("#if compiler(>=5.3) && $NonescapableTypes")
+                              content = content.replace("#if compiler(>=5.3) && $NonescapableTypes", "#if true")
+                              with open(p, "w", encoding="utf-8") as fl:
+                                  fl.write(content)
+                              print(f"Patched {count} APIs in {f}")
+                      except Exception as e:
+                          print("Error:", e)
           '
 
       - name: Build Xcode Archive
@@ -81,8 +86,7 @@ jobs:
             -skipPackagePluginValidation \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            OTHER_SWIFT_FLAGS='$(inherited) -enable-experimental-feature NonescapableTypes'
+            CODE_SIGN_IDENTITY=""
 
       - name: Package IPA from Archive
         run: |
