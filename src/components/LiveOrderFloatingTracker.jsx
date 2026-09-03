@@ -3,20 +3,16 @@ import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Home, Bike } from "lucide-react";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
-
-const STATUS_STAGES = [
-  { key: "placed",   label: "Order Placed" },
-  { key: "packing",  label: "Preparing your order" },
-  { key: "rider",    label: "Rider picked up" },
-  { key: "arriving", label: "Almost there" },
-];
+import io from "socket.io-client";
 
 export default function LiveOrderFloatingTracker() {
   const router = useRouter();
   const [activeOrder, setActiveOrder] = useState(null);
   const [isDismissed, setIsDismissed] = useState(false);
   const [etaMinutes, setEtaMinutes] = useState(7);
-  const [stageIndex, setStageIndex] = useState(1);
+  const [progressPct, setProgressPct] = useState(32);
+  const [statusLabel, setStatusLabel] = useState("Preparing your order");
+  const [riderName, setRiderName] = useState("Tariq Ahmad");
 
   useEffect(() => {
     const checkOrder = () => {
@@ -33,10 +29,24 @@ export default function LiveOrderFloatingTracker() {
           if (!wasDismissed) {
             setIsDismissed(false);
           }
+
+          if (parsed.status === "Delivered") {
+            setStatusLabel("Order Delivered!");
+            setProgressPct(100);
+            setEtaMinutes(0);
+          } else if (parsed.status === "Out for Delivery") {
+            setStatusLabel("On the way on Scooter");
+            setProgressPct((p) => Math.max(55, p));
+          } else {
+            setStatusLabel("Preparing your order");
+          }
+
           showOrderLiveNotification({
             orderId: parsed.orderId,
-            etaMinutes: 7,
-            riderName: "Tariq Ahmad",
+            etaMinutes: parsed.status === "Delivered" ? 0 : etaMinutes,
+            progressPct: parsed.status === "Delivered" ? 100 : progressPct,
+            status: parsed.status === "Delivered" ? "Delivered" : statusLabel,
+            riderName
           });
         } else {
           setActiveOrder(null);
@@ -46,9 +56,61 @@ export default function LiveOrderFloatingTracker() {
     };
 
     checkOrder();
-    const interval = setInterval(checkOrder, 4000);
+    const interval = setInterval(checkOrder, 3500);
     return () => clearInterval(interval);
-  }, []);
+  }, [etaMinutes, progressPct, statusLabel, riderName]);
+
+  // Real-time socket listener for driver movement and status
+  useEffect(() => {
+    let socket;
+    try {
+      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5001";
+      socket = io(socketUrl);
+
+      if (activeOrder?.orderId) {
+        socket.emit("join_order_room", activeOrder.orderId);
+      }
+
+      // Driver broadcasts live GPS
+      socket.on("driver_location_changed", (data) => {
+        if (data.driverName) setRiderName(data.driverName);
+        setStatusLabel("On the way on Scooter");
+        setProgressPct((prev) => {
+          const next = Math.min(95, prev + 6);
+          const remainingEta = Math.max(1, Math.round(7 * (1 - next / 100)));
+          setEtaMinutes(remainingEta);
+
+          showOrderLiveNotification({
+            orderId: activeOrder?.orderId || "DASH-LIVE",
+            etaMinutes: remainingEta,
+            progressPct: next,
+            status: "On the way on Scooter",
+            riderName: data.driverName || "Tariq Ahmad"
+          });
+          return next;
+        });
+      });
+
+      // Admin or Driver updates status
+      socket.on("order_status_changed", (data) => {
+        if (data.orderId === activeOrder?.orderId) {
+          if (data.status === "Delivered") {
+            setStatusLabel("Order Delivered!");
+            setProgressPct(100);
+            setEtaMinutes(0);
+          } else if (data.status === "Out for Delivery") {
+            setStatusLabel("On the way on Scooter");
+            setProgressPct(60);
+            setEtaMinutes(4);
+          }
+        }
+      });
+    } catch (e) {}
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [activeOrder?.orderId]);
 
   const handleDismiss = (e) => {
     e?.stopPropagation();
@@ -58,19 +120,8 @@ export default function LiveOrderFloatingTracker() {
     } catch (e) {}
   };
 
-  useEffect(() => {
-    if (!activeOrder) return;
-    const t = setInterval(() => {
-      setEtaMinutes((m) => Math.max(1, m - 1));
-    }, 60_000);
-    return () => clearInterval(t);
-  }, [activeOrder]);
-
   // Don't render on /orders, /checkout, or /confirm-location page
   if (!activeOrder || isDismissed || router.pathname === "/orders" || router.pathname === "/checkout" || router.pathname === "/confirm-location") return null;
-
-  const progressPct = [12, 32, 60, 82][stageIndex] ?? 32;
-  const statusLabel = STATUS_STAGES[stageIndex]?.label ?? "Preparing your order";
 
   return (
     <AnimatePresence>

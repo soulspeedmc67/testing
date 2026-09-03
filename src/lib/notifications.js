@@ -16,51 +16,66 @@ export async function initNotificationPermissions() {
   }
 }
 
-export async function showOrderLiveNotification({ orderId = "DASH-98214", etaMinutes = 7, riderName = "Tariq Ahmad" }) {
+export async function showOrderLiveNotification({
+  orderId = "DASH-98214",
+  etaMinutes = 7,
+  progressPct = 35,
+  status = "Preparing your order",
+  riderName = "Tariq Ahmad"
+}) {
   if (typeof window === "undefined") return;
 
-  const currentKey = `${orderId}_${etaMinutes}`;
-  // Prevent repeated popup triggers if status / ETA has not changed
+  const currentKey = `${orderId}_${etaMinutes}_${progressPct}_${status}`;
   if (lastNotificationKey === currentKey) {
     return;
   }
   lastNotificationKey = currentKey;
 
+  // Build clean visual progress track for Android / iOS notification drawer:
+  // e.g. [●━━━━🛵┈┈┈┈┈⌂]
+  const totalSlots = 8;
+  const filledSlots = Math.min(totalSlots - 1, Math.max(0, Math.floor((progressPct / 100) * totalSlots)));
+  const unfilledSlots = Math.max(0, totalSlots - 1 - filledSlots);
+  const visualTrack = "●" + "━".repeat(filledSlots) + "🛵" + "┈".repeat(unfilledSlots) + "⌂";
+
   try {
-    // Android Channel with LOW importance (silent, stays live in status bar without popping up)
     try {
       await LocalNotifications.createChannel({
-        id: "live_order_tracking_v2",
-        name: "Live Order Tracking",
-        description: "Silent ongoing updates in status bar (Zomato style)",
-        importance: 2, // LOW: shows in status bar and drawer, NO heads-up popup
+        id: "live_order_tracking_v3",
+        name: "Dashit Live Tracking",
+        description: "Live delivery progress in notification drawer",
+        importance: 2, // Silent ongoing status bar
         visibility: 1,
         vibration: false,
         sound: null
       });
     } catch (e) {}
 
+    const title = status === "Delivered" ? "Order Delivered! · Dashit" : `${status} · Dashit`;
+    const body = status === "Delivered"
+      ? "Your Dashit delivery has arrived. Enjoy!"
+      : `${visualTrack}  On time | Arriving in ${etaMinutes} min${etaMinutes !== 1 ? "s" : ""}`;
+
     await LocalNotifications.schedule({
       notifications: [
         {
           id: 9821,
-          title: `On time · Arriving in ${etaMinutes} min${etaMinutes !== 1 ? "s" : ""}`,
-          body: `Dashit Darkstore: Preparing your order for delivery`,
-          channelId: "live_order_tracking_v2",
-          ongoing: true,
-          autoCancel: false,
+          title,
+          body,
+          summaryText: "Dashit Darkstore · Anantnag",
+          channelId: "live_order_tracking_v3",
+          ongoing: status !== "Delivered",
+          autoCancel: status === "Delivered",
           silent: true
         }
       ]
     });
   } catch (err) {
-    // Browser fallback
     if ("Notification" in window && Notification.permission === "granted") {
       try {
-        new Notification(`DASHit · Arriving in ${etaMinutes} mins`, {
-          body: `${riderName} is on the way with order #${orderId}`,
-          tag: "dashit_order_tracking",
-          silent: true
+        new Notification(`Dashit · ${status}`, {
+          body: `${visualTrack} On time | Arriving in ${etaMinutes} mins`,
+          icon: "/favicon.ico"
         });
       } catch (e) {}
     }
