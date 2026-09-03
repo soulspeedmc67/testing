@@ -7,7 +7,6 @@ import CategoryScroller from "../components/CategoryScroller";
 import PromoBanner from "../components/PromoBanner";
 import CategoryGridSixPack from "../components/CategoryGridSixPack";
 import ProductCard from "../components/ProductCard";
-import HomeScreenLiveOrderCard from "../components/HomeScreenLiveOrderCard";
 import FloatingCartBar from "../components/FloatingCartBar";
 import BottomNav from "../components/BottomNav";
 import QuickProductSheet from "../components/QuickProductSheet";
@@ -119,8 +118,6 @@ export default function StorefrontHome() {
 
       {/* MAIN BODY CONTENT */}
       <main className="max-w-md mx-auto px-4 pt-3 space-y-5">
-        {/* 3. DISMISSABLE LIVE TRACKING CARD */}
-        <HomeScreenLiveOrderCard />
 
         {/* 4. PROMOTIONAL HERO BANNER */}
         <PromoBanner onSelectPromo={(promo) => setActiveCategory(promo)} />

@@ -149,3 +149,20 @@ nightime : no cash on delivery
 no cod for guys who didnt pick up the call last time (honor system )
 
 the ui should be like blinkit ,very easy to use but the colour schem should be like i said above 
+
+# **ADMIN PAGE**
+
+past order and current order
+
+order information (all details abou tthe user )
+
+
+
+coupons 
+
+products addition 
+
+inventory 
+
+rider details  and contorl over them 
+

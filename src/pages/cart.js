@@ -3,7 +3,6 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { ShoppingBag, ArrowRight, MapPin, Plus, Minus, Trash2, ArrowLeft, Tag, ShieldCheck, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import BottomNav from "../components/BottomNav";
 import LocationPickerModal from "../components/LocationPickerModal";
 import ProductCardStepper from "../components/ProductCardStepper";
 import { EmptyCartState } from "../components/ui/EmptyState";
@@ -295,8 +294,6 @@ export default function CartPage() {
           </>
         )}
       </main>
-
-      <BottomNav cartCount={cart.reduce((s, i) => s + i.qty, 0)} />
     </div>
   );
 }
