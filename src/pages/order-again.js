@@ -302,16 +302,16 @@ export default function OrderAgainPage() {
               return (
                 <div
                   key={pId}
-                  className="bg-white rounded-2xl border border-slate-200/90 p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow relative"
+                  className="bg-white rounded-2xl border border-slate-200/90 p-3 flex flex-col justify-between shadow-2xs hover:shadow-xs transition-shadow relative overflow-hidden"
                 >
-                  <div className="relative aspect-square bg-slate-50 rounded-xl p-2 flex items-center justify-center border border-slate-100 mb-2">
+                  <div className="relative w-full h-28 bg-slate-50 rounded-xl p-2 flex items-center justify-center border border-slate-100 mb-2 overflow-hidden shrink-0">
                     <img
                       src={prod.img}
                       alt={prod.name}
-                      className="max-h-full max-w-full object-contain"
+                      className="w-full h-full object-contain pointer-events-none select-none"
                     />
                     {prod.fromOrder && (
-                      <span className="absolute top-1 left-1 bg-blue-50 text-[#061838] font-mono text-[8px] font-black px-1.5 py-0.5 rounded-md border border-blue-200/60">
+                      <span className="absolute top-1 left-1 bg-blue-50 text-[#061838] font-mono text-[8px] font-black px-1.5 py-0.5 rounded-md border border-blue-200/60 shadow-2xs">
                         #{prod.fromOrder}
                       </span>
                     )}
@@ -420,16 +420,16 @@ export default function OrderAgainPage() {
               return (
                 <div
                   key={pId}
-                  className="w-[160px] shrink-0 bg-white border border-slate-200/90 rounded-2xl p-2.5 flex flex-col justify-between shadow-2xs space-y-2"
+                  className="w-[160px] shrink-0 bg-white border border-slate-200/90 rounded-2xl p-2.5 flex flex-col justify-between shadow-2xs space-y-2 overflow-hidden"
                 >
-                  <div className="relative aspect-square bg-slate-50 rounded-xl p-2 flex items-center justify-center border border-slate-100">
+                  <div className="relative w-full h-28 bg-slate-50 rounded-xl p-2 flex items-center justify-center border border-slate-100 overflow-hidden shrink-0">
                     <img
                       src={sug.img}
                       alt={sug.name}
-                      className="max-h-full max-w-full object-contain"
+                      className="w-full h-full object-contain pointer-events-none select-none"
                     />
                     {sug.badge && (
-                      <span className="absolute top-1 left-1 bg-amber-100 text-amber-900 font-extrabold text-[8px] px-1.5 py-0.5 rounded-md">
+                      <span className="absolute top-1 left-1 bg-amber-100 text-amber-900 font-extrabold text-[8px] px-1.5 py-0.5 rounded-md shadow-2xs">
                         {sug.badge}
                       </span>
                     )}

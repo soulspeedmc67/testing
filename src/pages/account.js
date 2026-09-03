@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import { getWishlist } from "../lib/wishlist";
+import { hapticLight } from "../lib/haptics";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function AccountPage() {
     address: "b-3,jamia appqrtment, Anantnag"
   });
   const [wishlistCount, setWishlistCount] = useState(0);
+  const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
     try {
@@ -46,20 +48,43 @@ export default function AccountPage() {
     return () => window.removeEventListener("dashit_wishlist_updated", syncWishlist);
   }, []);
 
+  const handleBack = () => {
+    setIsExiting(true);
+    hapticLight();
+    setTimeout(() => {
+      router.back();
+    }, 220);
+  };
+
+  const handleDragEnd = (event, info) => {
+    // iPhone-style swipe to go back: if dragged right by > 80px or with rightward velocity
+    if (info.offset.x > 80 || info.velocity.x > 250) {
+      handleBack();
+    }
+  };
+
   return (
     <motion.div
+      drag="x"
+      dragDirectionLock
+      dragConstraints={{ left: 0, right: 0 }}
+      dragElastic={{ left: 0, right: 0.85 }}
+      onDragEnd={handleDragEnd}
       initial={{ x: "100%", opacity: 0.9 }}
-      animate={{ x: 0, opacity: 1 }}
+      animate={isExiting ? { x: "100%", opacity: 0.5 } : { x: 0, opacity: 1 }}
       exit={{ x: "100%", opacity: 0.9 }}
-      transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
-      className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32"
+      transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.75 }}
+      className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32 touch-pan-y select-none relative"
     >
+      {/* Subtle iPhone left edge swipe indicator hint */}
+      <div className="absolute left-0 top-0 bottom-0 w-3 pointer-events-none z-50 bg-gradient-to-r from-black/5 to-transparent" />
+
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
       <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
         <button
           type="button"
-          onClick={() => router.back()}
-          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+          onClick={handleBack}
+          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform cursor-pointer"
         >
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
         </button>

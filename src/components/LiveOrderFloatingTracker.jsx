@@ -224,10 +224,10 @@ export default function LiveOrderFloatingTracker() {
           dragConstraints={{ left: -70, right: 70 }}
           dragElastic={0.25}
           onDragEnd={handleDragEnd}
-          className="fixed left-3.5 right-3.5 z-[250] max-w-md mx-auto pointer-events-none"
+          className="fixed left-3.5 right-3.5 z-[250] max-w-md mx-auto pointer-events-auto"
           style={{ top: "max(46px, calc(env(safe-area-inset-top, 0px) + 14px))" }}
         >
-          <div className="pointer-events-auto bg-gradient-to-b from-[#08152C] via-[#061124] to-[#040C1A] text-white rounded-[26px] px-4 py-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.12)_inset] border border-slate-700/70 overflow-hidden select-none backdrop-blur-xl">
+          <div className="bg-gradient-to-b from-[#08152C] via-[#061124] to-[#040C1A] text-white rounded-[26px] px-4 py-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.12)_inset] border border-slate-700/70 overflow-hidden select-none backdrop-blur-xl">
             {/* TOP ROW: Outlet name + Sleek Slide-to-side Pill */}
             <div className="flex items-center justify-between mb-2 border-b border-white/10 pb-2">
               <div className="flex items-center space-x-2">

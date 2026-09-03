@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { ArrowLeft, Search, Share2, Clock, CheckCircle2, ChevronRight, ChevronUp, ShieldCheck, Plus, Minus, ShoppingBag, Users, Tag, Sparkles, UserCheck } from "lucide-react";
+import { ArrowLeft, Search, Share2, Clock, CheckCircle2, ChevronRight, ChevronUp, ShieldCheck, Plus, Minus, ShoppingBag, Users, Tag, Sparkles, UserCheck, Trash2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import PaymentMethodModal from "../components/PaymentMethodModal";
 import LocationPickerModal from "../components/LocationPickerModal";
@@ -136,6 +136,16 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleClearAllCart = () => {
+    hapticMedium();
+    setCartItems([]);
+    try {
+      localStorage.removeItem("dashit_cart");
+      window.dispatchEvent(new Event("dashit_cart_updated"));
+    } catch (e) {}
+    router.push("/");
+  };
+
   const handlePlaceOrder = () => {
     if (!cartItems || cartItems.length === 0) {
       alert("Your cart is empty! Please add items before placing an order.");
@@ -208,8 +218,9 @@ export default function CheckoutPage() {
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center justify-between shadow-2xs">
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => router.back()}
-            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-90 transition-transform"
+            type="button"
+            onClick={() => router.push("/")}
+            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-90 transition-transform cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -262,18 +273,31 @@ export default function CheckoutPage() {
         <main className="max-w-md mx-auto p-4 space-y-4">
         {/* 2. DELIVERY IN 12 MINUTES BANNER */}
         <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3">
-          <div className="flex items-start space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
-              <Clock className="w-5 h-5 stroke-[2.5]" />
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
+                <Clock className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div>
+                <h2 className="font-black text-base text-slate-900 leading-tight">
+                  Delivery in 12 minutes
+                </h2>
+                <p className="text-slate-500 font-semibold text-xs mt-0.5">
+                  Shipment of {cartItems.reduce((s, i) => s + i.qty, 0)} item{cartItems.length !== 1 ? "s" : ""}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-black text-base text-slate-900 leading-tight">
-                Delivery in 12 minutes
-              </h2>
-              <p className="text-slate-500 font-semibold text-xs mt-0.5">
-                Shipment of {cartItems.reduce((s, i) => s + i.qty, 0)} item{cartItems.length !== 1 ? "s" : ""}
-              </p>
-            </div>
+
+            {/* Red Bin Remove All Button */}
+            <button
+              type="button"
+              onClick={handleClearAllCart}
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 text-xs font-black active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0"
+              title="Remove all items from cart"
+            >
+              <Trash2 className="w-3.5 h-3.5 stroke-[2.5] text-red-600" />
+              <span>Remove all</span>
+            </button>
           </div>
 
           {/* Open box delivery badge */}
