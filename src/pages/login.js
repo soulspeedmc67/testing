@@ -4,6 +4,8 @@ import { useRouter } from "next/router";
 import { X, MapPin, User, Phone, Home, Check } from "lucide-react";
 import LoginProductMarquee from "../components/LoginProductMarquee";
 
+import { sendOtp, verifyOtp } from "../lib/api";
+
 export default function LoginPage() {
   const router = useRouter();
   const [step, setStep] = useState(1); // 1: Mobile & Login, 2: OTP, 3: Address & Profile Setup (Skippable)
@@ -17,21 +19,25 @@ export default function LoginPage() {
   const [city, setCity] = useState("Anantnag");
   const [pincode, setPincode] = useState("192101");
 
-  const handleSendOtp = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
     if (mobile.length < 10) {
       alert("Please enter a valid 10-digit mobile number");
       return;
     }
+    await sendOtp(mobile);
     setStep(2);
   };
 
-  const handleVerifyOtp = () => {
-    if (otpInput === "1234" || otpInput.length === 4) {
-      // Advance to skippable address setup step
+  const handleVerifyOtp = async () => {
+    const res = await verifyOtp(mobile, otpInput);
+    if (res.success) {
+      if (res.user?.name && res.user?.name !== "Valued Customer") {
+        setFullName(res.user.name);
+      }
       setStep(3);
     } else {
-      alert("Invalid OTP! Use dummy OTP code: 1234");
+      alert("Invalid OTP! Use test OTP code: 1234");
     }
   };
 

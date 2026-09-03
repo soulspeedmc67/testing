@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Power, Package, Truck, CheckCircle2, RefreshCw, ShieldAlert, Tag, Clock, IndianRupee, Users, ArrowUpRight } from "lucide-react";
 
+import { fetchAdminOrders, updateAdminOrderStatus } from "../lib/api";
+
 export default function EasyAdminDashboard() {
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [orders, setOrders] = useState([]);
@@ -9,7 +11,13 @@ export default function EasyAdminDashboard() {
   const [newBlacklistNumber, setNewBlacklistNumber] = useState("");
   const [customCoupon, setCustomCoupon] = useState("");
 
-  useEffect(() => {
+  const loadOrders = async () => {
+    const res = await fetchAdminOrders();
+    if (res.success && res.orders && res.orders.length > 0) {
+      setOrders(res.orders);
+      return;
+    }
+
     const history = localStorage.getItem("dashit_orders_history");
     const active = localStorage.getItem("dashit_active_order");
     let combined = [];
@@ -22,28 +30,20 @@ export default function EasyAdminDashboard() {
         combined = [...combined, ...hist];
       } catch (e) {}
     }
-    if (combined.length === 0) {
-      combined = [
-        {
-          orderId: "DASH-511421",
-          date: "Today, 6:24 PM",
-          items: [{ name: "Kashmiri Lavas Bread (4 pcs)", qty: 2, price: 30 }, { name: "Amul Milk 1L", qty: 1, price: 66 }],
-          totalAmount: 126,
-          paymentMethod: "upi",
-          status: "Packing",
-          otp: "4152",
-          customerName: "Azan Iqbal Mir",
-          mobile: "9622720283",
-          address: "Nai Basti, Near Petrol Pump, Anantnag"
-        }
-      ];
-    }
     setOrders(combined);
+  };
+
+  useEffect(() => {
+    loadOrders();
+    const interval = setInterval(loadOrders, 4000);
+    return () => clearInterval(interval);
   }, []);
 
-  const updateOrderStatus = (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus) => {
     const updated = orders.map((o) => (o.orderId === orderId ? { ...o, status: newStatus } : o));
     setOrders(updated);
+
+    await updateAdminOrderStatus(orderId, newStatus);
 
     const targetOrder = updated.find((o) => o.orderId === orderId);
     if (targetOrder) {

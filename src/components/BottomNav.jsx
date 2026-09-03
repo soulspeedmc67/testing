@@ -9,8 +9,8 @@ const STOREFRONT_TABS = ["/", "/order-again", "/categories", "/account", "/order
 
 const NAV_ITEMS = [
   { id: "home", label: "Home", icon: Home, path: "/" },
-  { id: "order-again", label: "Order Again", icon: RotateCcw, path: "/order-again" },
   { id: "categories", label: "Categories", icon: LayoutGrid, path: "/categories" },
+  { id: "order-again", label: "Order Again", icon: RotateCcw, path: "/order-again" },
   { id: "account", label: "Account", icon: User, path: "/account" },
 ];
 
