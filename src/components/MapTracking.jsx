@@ -119,7 +119,8 @@ export default function MapTracking({
     });
 
     // Socket.io for live updates
-    socket = io();
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5001";
+    socket = io(socketUrl);
     socket.emit("join_order_room", orderId);
 
     let animationFrameId;

@@ -52,6 +52,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve Partner Portal (Admin + Driver App)
+app.use("/partner", express.static(path.join(__dirname, "public")));
+app.get("/partner", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+app.get("/", (req, res) => {
+  res.redirect("/partner");
+});
+
 // Initial Seed Data
 let users = readData("users.json", [
   {
