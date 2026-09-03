@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, Plus, Minus } from "lucide-react";
+import { Heart } from "lucide-react";
+import ProductCardStepper from "./ProductCardStepper";
 
 const CAMPAIGN_CATEGORIES = [
   { title: "Flowers, Cards & Mugs", img: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=200&auto=format&fit=crop&q=80", bg: "bg-rose-100/80" },
@@ -15,7 +16,7 @@ const CAMPAIGN_PRODUCTS = [
   { id: 104, name: "Party Propz Coffee Mug - World's Best Teacher", unit: "1 pc", price: 169, originalPrice: 499, time: "21 mins", img: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=300&auto=format&fit=crop&q=80" }
 ];
 
-export default function CampaignSection({ onAddToCart, cart }) {
+export default function CampaignSection({ onAddToCart, onUpdateQty, cart }) {
   const [favorites, setFavorites] = useState({});
 
   const toggleFav = (id) => {
@@ -81,19 +82,21 @@ export default function CampaignSection({ onAddToCart, cart }) {
                 <h4 className="font-bold text-[11px] text-slate-900 leading-snug line-clamp-2">{p.name}</h4>
               </div>
 
-              {/* Price & Add Button with Spring Motion */}
+              {/* Price & Morphing Stepper */}
               <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100">
                 <div>
                   <span className="text-xs font-black text-slate-900">₹{p.price}</span>
                   <span className="text-[9px] text-slate-400 line-through block">₹{p.originalPrice}</span>
                 </div>
 
-                <button
-                  onClick={() => onAddToCart(p)}
-                  className="bg-emerald-50 hover:bg-[#0c831f] hover:text-white text-[#0c831f] border border-emerald-300 font-extrabold text-[10px] px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-[0.94]"
-                >
-                  ADD
-                </button>
+                <div className="w-16">
+                  <ProductCardStepper
+                    product={p}
+                    qty={inCart ? inCart.qty : 0}
+                    onAdd={onAddToCart}
+                    onUpdateQty={onUpdateQty}
+                  />
+                </div>
               </div>
             </div>
           );

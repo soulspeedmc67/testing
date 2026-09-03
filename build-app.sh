@@ -19,8 +19,8 @@ npx cap copy android
 npx cap sync android
 
 echo "=== 4. Compiling Android APK ==="
-export JAVA_HOME=/tmp/jdk21
-export ANDROID_HOME=/home/aleemkanyu/Android/Sdk
+export JAVA_HOME="/home/aleemkanyu/.local/share/developer-tools/jdk-21.0.2+13"
+export ANDROID_HOME="${ANDROID_HOME:-/home/aleemkanyu/Android/Sdk}"
 export PATH=$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH
 
 cd android
@@ -28,7 +28,8 @@ cd android
 
 echo "=== 5. Installing Fresh APK on Device ==="
 cd ..
+cp -f android/app/build/outputs/apk/debug/app-debug.apk dashit-debug.apk || true
 adb devices
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk || true
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 
 echo "=== SUCCESS! Fresh App Installed on Android Device ==="

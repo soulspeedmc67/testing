@@ -11,10 +11,19 @@
   --bg-slate: #f8fafc;
 }
 
+html {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     @apply bg-slate-50 text-slate-900 antialiased selection:bg-amber-200 selection:text-slate-900;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    overflow-x: hidden;
   }
 }
 
@@ -44,6 +53,13 @@
   right: 16px;
   z-index: 50;
   pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.floating-pill-nav.keyboard-hidden {
+  transform: translateY(120%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Search Bar Placeholder Vertical Motion */
@@ -62,7 +78,7 @@
   animation: searchSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Bottom Sheet & Modal Keyframes */
+/* Bottom Sheet & Modal Keyframes - iOS Smooth Spring Feel */
 @keyframes bottomSheetUp {
   0% {
     opacity: 0;
@@ -82,7 +98,7 @@
 @keyframes modalPop {
   0% {
     opacity: 0;
-    transform: scale(0.94) translateY(12px);
+    transform: scale(0.92) translateY(12px);
   }
   100% {
     opacity: 1;
@@ -90,8 +106,30 @@
   }
 }
 
+/* Pin Pick-up & Drop Animation */
+@keyframes pinLift {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-12px) scale(1.1);
+  }
+}
+
+@keyframes pinDrop {
+  0% {
+    transform: translateY(-12px) scale(1.1);
+  }
+  60% {
+    transform: translateY(2px) scale(0.95);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
 .animate-bottom-sheet {
-  animation: bottomSheetUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: bottomSheetUp 0.38s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
 .animate-fade-in {
@@ -99,7 +137,40 @@
 }
 
 .animate-modal-pop {
-  animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: modalPop 0.3s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.pin-dragging {
+  animation: pinLift 0.2s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.pin-dropped {
+  animation: pinDrop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes shimmerSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background-size: 200% 100%;
+  animation: shimmerSweep 1.8s infinite linear;
+}
+
+/* iOS Touch Response */
+.ios-press {
+  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.15s ease;
+}
+.ios-press:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+}
+
+/* Map Custom Styling */
+.fancy-map-container .leaflet-tile {
+  filter: contrast(102%) brightness(101%);
 }
 
 .scrollbar-none::-webkit-scrollbar {
@@ -109,3 +180,4 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+

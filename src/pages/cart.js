@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ShoppingBag, ArrowRight, MapPin, Plus, Minus, Trash2, ArrowLeft, Tag, ShieldCheck, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import BottomNav from "../components/BottomNav";
 import LocationPickerModal from "../components/LocationPickerModal";
+import ProductCardStepper from "../components/ProductCardStepper";
+import { EmptyCartState } from "../components/ui/EmptyState";
 
 const CART_SUGGESTIONS = [
   { id: 10, name: "Amul Pasteurised Salted Butter 100g", price: 58, originalPrice: 60, unit: "100g", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=200&auto=format&fit=crop&q=80" },
@@ -92,9 +95,18 @@ export default function CartPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
         <div className="flex items-center space-x-3">
-          <Link href="/" className="p-1 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100">
+          <button
+            onClick={() => {
+              if (window.history.length > 1) {
+                router.back();
+              } else {
+                router.push("/");
+              }
+            }}
+            className="p-1 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 active:scale-90 transition-transform"
+          >
             <ArrowLeft className="w-5 h-5" />
-          </Link>
+          </button>
           <h1 className="font-extrabold text-base text-slate-900">My Cart ({cart.reduce((s, i) => s + i.qty, 0)})</h1>
         </div>
         <button
@@ -115,17 +127,7 @@ export default function CartPage() {
         />
 
         {cart.length === 0 ? (
-          <div className="text-center py-16 space-y-3 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-            <ShoppingBag className="w-12 h-12 text-slate-300 mx-auto" />
-            <h3 className="font-extrabold text-sm text-slate-800">Your cart is empty</h3>
-            <p className="text-xs text-slate-500">Explore products and add items to your cart</p>
-            <Link
-              href="/"
-              className="inline-block bg-[#0c831f] text-white font-bold text-xs px-5 py-2.5 rounded-2xl mt-2 hover:bg-emerald-800 transition-colors shadow-md"
-            >
-              Browse Storefront
-            </Link>
-          </div>
+          <EmptyCartState />
         ) : (
           <>
             {/* Delivery Address Card */}
@@ -147,30 +149,48 @@ export default function CartPage() {
               </button>
             </div>
 
-            {/* Cart Items List */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm divide-y divide-slate-100">
+            {/* Cart Items List with Smooth Physics Removal */}
+            <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-3 shadow-sm divide-y divide-slate-100 overflow-hidden">
               <h3 className="font-extrabold text-xs text-slate-400 uppercase tracking-wider pb-1">Selected Items</h3>
-              {cart.map((item) => (
-                <div key={item.id} className="pt-3 flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <img src={item.img} alt={item.name} className="w-12 h-12 object-contain bg-slate-50 p-1 rounded-xl border border-slate-100" />
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900">{item.name}</h4>
-                      <p className="text-[11px] font-semibold text-slate-500">₹{item.price} x {item.qty}</p>
+              <AnimatePresence initial={false}>
+                {cart.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, height: 0, scale: 0.9, marginTop: 0, paddingTop: 0, paddingBottom: 0 }}
+                    transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    className="pt-3 flex items-center justify-between overflow-hidden"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <img src={item.img} alt={item.name} className="w-12 h-12 object-contain bg-slate-50 p-1 rounded-xl border border-slate-100" />
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-900">{item.name}</h4>
+                        <p className="text-[11px] font-semibold text-slate-500">₹{item.price} x {item.qty}</p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-[#0c831f] rounded-xl px-2 py-1 font-bold">
-                    <button onClick={() => updateQty(item.id, -1)} className="hover:opacity-80">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="text-xs font-extrabold px-1">{item.qty}</span>
-                    <button onClick={() => updateQty(item.id, 1)} className="hover:opacity-80">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                    <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-[#0c831f] rounded-xl px-2 py-1 font-bold">
+                      <motion.button whileTap={{ scale: 0.75 }} onClick={() => updateQty(item.id, -1)} className="hover:opacity-80 p-0.5">
+                        <Minus className="w-3.5 h-3.5" />
+                      </motion.button>
+                      <motion.span
+                        key={`qty-${item.qty}`}
+                        initial={{ scale: 1.3 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className="text-xs font-extrabold px-1 font-mono"
+                      >
+                        {item.qty}
+                      </motion.span>
+                      <motion.button whileTap={{ scale: 0.75 }} onClick={() => updateQty(item.id, 1)} className="hover:opacity-80 p-0.5">
+                        <Plus className="w-3.5 h-3.5" />
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
 
             {/* Coupon Code Section */}
@@ -218,8 +238,9 @@ export default function CartPage() {
                 <span>To Pay</span>
                 <span className="text-[#0c831f] font-mono text-base">₹{grandTotal}</span>
               </div>
-              <div className="bg-emerald-50 text-[#0c831f] text-[11px] font-extrabold px-3 py-2 rounded-2xl text-center border border-emerald-200">
-                🎉 You are saving ₹{totalSavings} on this order!
+              <div className="bg-emerald-50 text-[#0c831f] text-[11px] font-extrabold px-3 py-2 rounded-2xl text-center border border-emerald-200 flex items-center justify-center space-x-1">
+                <Sparkles className="w-3.5 h-3.5 stroke-[2.5] shrink-0" />
+                <span>You are saving ₹{totalSavings} on this order!</span>
               </div>
             </div>
 
@@ -243,12 +264,14 @@ export default function CartPage() {
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                       <span className="text-xs font-black text-slate-900 font-mono">₹{sug.price}</span>
-                      <button
-                        onClick={() => addSuggestedItem(sug)}
-                        className="bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-[10px] px-2.5 py-1 rounded-xl shadow-sm active:scale-95"
-                      >
-                        + ADD
-                      </button>
+                      <div className="w-14">
+                        <ProductCardStepper
+                          product={sug}
+                          qty={cart.find((i) => i.id === sug.id)?.qty || 0}
+                          onAdd={() => addSuggestedItem(sug)}
+                          onUpdateQty={updateQty}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

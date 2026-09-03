@@ -7,8 +7,8 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS Native Project (macos-latest)
-    runs-on: macos-latest
+    name: Build iOS IPA (macos-14)
+    runs-on: macos-14
 
     steps:
       - name: Checkout Repository
@@ -32,18 +32,34 @@ jobs:
           cp -r .next/server/pages/* out/ 2>/dev/null || true
           cp -r public/* out/ 2>/dev/null || true
 
-      - name: Add and Sync Capacitor iOS Assets
+      - name: Sync Capacitor iOS Assets
         run: |
-          npx cap add ios || true
           npx cap sync ios
 
-      - name: Build Xcode iOS Project (Archive)
+      - name: Build Xcode Archive
         run: |
           cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -derivedDataPath build -archivePath build/App.xcarchive archive CODE_SIGNING_ALLOWED=NO
+          xcodebuild archive \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/App.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
 
-      - name: Upload iOS Archive / App Bundle Artifact
+      - name: Package IPA from Archive
+        run: |
+          cd ios/App/build
+          mkdir -p Payload
+          cp -r App.xcarchive/Products/Applications/App.app Payload/
+          zip -r -q Dashit.ipa Payload
+          ls -lh Dashit.ipa
+
+      - name: Upload iOS IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: DASHit-Anantnag-iOS-Bundle
-          path: ios/App/build/App.xcarchive
+          name: Dashit-iOS-IPA
+          path: ios/App/build/Dashit.ipa
+          if-no-files-found: error

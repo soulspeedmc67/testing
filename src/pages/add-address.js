@@ -1,0 +1,208 @@
+import { useState } from "react";
+import Head from "next/head";
+import { useRouter } from "next/router";
+import { ChevronLeft, Contact } from "lucide-react";
+
+export default function AddAddressPage() {
+  const router = useRouter();
+  const [city, setCity] = useState("Anantnag");
+  const [area, setArea] = useState("Nai Basti");
+  const [completeAddress, setCompleteAddress] = useState("");
+  const [mapsLink, setMapsLink] = useState("");
+  const [contactType, setContactType] = useState("Someone else");
+  const [receiverName, setReceiverName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [addressLabel, setAddressLabel] = useState("Home");
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleNext = (e) => {
+    e.preventDefault();
+    if (!completeAddress.trim()) {
+      alert("Please enter your complete address");
+      return;
+    }
+    // Save address in localStorage
+    const saved = {
+      nickname: addressLabel || "Home",
+      address: `${completeAddress}, ${area}, ${city}`,
+      lat: 33.7311,
+      lng: 75.1487,
+      phone: phone || "9622720283",
+      receiver: receiverName || "Self"
+    };
+    try {
+      localStorage.setItem("dashit_user_address", JSON.stringify(saved));
+    } catch (err) {}
+
+    router.push("/");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between">
+      <Head>
+        <title>Add Address Details — Dashit</title>
+      </Head>
+
+      {/* Top Header */}
+      <header className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center sticky top-0 z-30 shadow-xs">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-10 h-10 rounded-full border border-slate-200/90 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+        >
+          <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+        </button>
+        <h1 className="text-base font-extrabold text-slate-900 mx-auto -translate-x-5">
+          Add address details
+        </h1>
+      </header>
+
+      {/* Main Content Form */}
+      <main className="max-w-md mx-auto w-full px-4 py-4 space-y-4 grow">
+        {/* Card 1: Address Details */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-xs space-y-3.5">
+          <h2 className="text-sm font-extrabold text-slate-900">Address details</h2>
+
+          {/* Select a City */}
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl">
+            <div>
+              <span className="text-xs font-bold text-slate-800 block">Select a city</span>
+              <span className="text-[11px] font-semibold text-emerald-700">{city}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const c = prompt("Enter your city:", city);
+                if (c) setCity(c);
+              }}
+              className="bg-white border border-slate-200 text-emerald-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95"
+            >
+              Select
+            </button>
+          </div>
+
+          {/* Select Area / Street */}
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl">
+            <div>
+              <span className="text-xs font-bold text-slate-800 block">Select an area, street</span>
+              <span className="text-[11px] font-semibold text-emerald-700">{area}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const a = prompt("Enter your area/street:", area);
+                if (a) setArea(a);
+              }}
+              className="bg-white border border-slate-200 text-emerald-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95"
+            >
+              Select
+            </button>
+          </div>
+
+          {/* Enter Complete Address */}
+          <div>
+            <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+              <input
+                type="text"
+                placeholder="Enter complete address*"
+                value={completeAddress}
+                onChange={(e) => setCompleteAddress(e.target.value)}
+                className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none"
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium mt-1 ml-2">
+              Example: A-504, Shanti Heights, Near Bus Stand
+            </p>
+          </div>
+
+          {/* Google Maps Link (optional) */}
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+            <input
+              type="text"
+              placeholder="Add google maps link (optional)"
+              value={mapsLink}
+              onChange={(e) => setMapsLink(e.target.value)}
+              className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Card 2: Contact Details */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-xs space-y-3.5">
+          <h2 className="text-sm font-extrabold text-slate-900">Contact details</h2>
+
+          {/* Radio toggle: Myself vs Someone else */}
+          <div className="flex items-center space-x-6 px-1">
+            <label className="flex items-center space-x-2 cursor-pointer select-none">
+              <input
+                type="radio"
+                name="contactType"
+                checked={contactType === "Myself"}
+                onChange={() => setContactType("Myself")}
+                className="w-4 h-4 text-[#0c831f] focus:ring-[#0c831f]"
+              />
+              <span className="text-xs font-bold text-slate-700">Myself</span>
+            </label>
+
+            <label className="flex items-center space-x-2 cursor-pointer select-none">
+              <input
+                type="radio"
+                name="contactType"
+                checked={contactType === "Someone else"}
+                onChange={() => setContactType("Someone else")}
+                className="w-4 h-4 text-[#0c831f] focus:ring-[#0c831f]"
+              />
+              <span className="text-xs font-bold text-slate-700">Someone else</span>
+            </label>
+          </div>
+
+          {/* Receiver Name */}
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+            <input
+              type="text"
+              placeholder="Receiver's name*"
+              value={receiverName}
+              onChange={(e) => setReceiverName(e.target.value)}
+              className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none"
+            />
+          </div>
+
+          {/* Receiver Phone Number with +91 prefix and contact book icon */}
+          <div className="flex items-center bg-slate-50/70 border border-slate-200/90 rounded-2xl px-3 py-2.5 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+            <span className="text-xs font-black text-slate-700 mr-2">+91</span>
+            <input
+              type="tel"
+              placeholder="Receiver's phone number*"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none font-mono"
+            />
+            <Contact className="w-5 h-5 text-slate-500 shrink-0 ml-2" />
+          </div>
+
+          {/* Save as Address (optional) */}
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+            <input
+              type="text"
+              placeholder="Save as address (optional, e.g. Home, Work)"
+              value={addressLabel}
+              onChange={(e) => setAddressLabel(e.target.value)}
+              className="w-full bg-transparent text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none"
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Sticky Bottom Next Button with safe area padding */}
+      <footer className="sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 pb-[max(16px,calc(12px+env(safe-area-inset-bottom,16px)))] max-w-md mx-auto w-full">
+        <button
+          type="button"
+          onClick={handleNext}
+          className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-700/20 active:scale-[0.98] transition-all"
+        >
+          Next
+        </button>
+      </footer>
+    </div>
+  );
+}

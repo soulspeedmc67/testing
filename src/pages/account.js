@@ -1,111 +1,249 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { User, Phone, MapPin, Package, PhoneCall, ShieldAlert, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Headphones,
+  CreditCard,
+  ShoppingBag,
+  Heart,
+  BookOpen,
+  FileText,
+  MapPin,
+  Gift,
+  Phone,
+  Moon,
+  Shield,
+  Check,
+  X
+} from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState({ name: "Azan Iqbal Mir", mobile: "9622720283" });
-  const [orderCount, setOrderCount] = useState(0);
+  const [user, setUser] = useState({
+    name: "Azan Iqbal Mir",
+    mobile: "9622720283",
+    email: "azan.mir@example.com",
+    address: "b-3,jamia appqrtment, Anantnag"
+  });
+  const [hideSensitive, setHideSensitive] = useState(false);
+  const [appearance, setAppearance] = useState("Light");
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("dashit_user");
-    const history = localStorage.getItem("dashit_orders_history");
-
-    if (savedUser) {
-      try { setUser(JSON.parse(savedUser)); } catch (e) {}
-    }
-    if (history) {
-      try { setOrderCount(JSON.parse(history).length); } catch (e) {}
-    }
+    try {
+      const savedUser = localStorage.getItem("dashit_user");
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch (e) {}
   }, []);
 
-  const handleDeleteAccount = async () => {
-    if (confirm("Are you sure you want to delete your account and personal data from DASHit?")) {
-      try {
-        await fetch("/api/privacy/delete-account", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: "USER-6006990032" })
-        });
-        alert("Account data purged successfully.");
-        localStorage.clear();
-        window.location.href = "/login";
-      } catch (e) {
-        alert("Account deleted.");
-      }
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
-        <h1 className="font-extrabold text-base text-slate-900">My Profile</h1>
-        <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wider">
-          ANANTNAG MEMBER
-        </span>
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32">
+      {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
+      <header className="bg-white px-4 pt-3.5 pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+        >
+          <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+        </button>
+        <h1 className="text-base font-extrabold text-slate-900 mx-auto -translate-x-5">
+          Profile
+        </h1>
       </header>
 
-      <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
-        {/* Profile Details Card */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-4 flex items-center space-x-3.5 shadow-sm">
-          <div className="w-12 h-12 rounded-2xl bg-[#f7c400] text-slate-950 font-black text-xl flex items-center justify-center shadow-md border border-amber-300">
-            AI
-          </div>
-          <div>
-            <h2 className="font-extrabold text-sm text-slate-900">{user.name || "Azan Iqbal Mir"}</h2>
-            <div className="flex items-center space-x-2 text-xs text-slate-500 font-semibold mt-0.5">
-              <Phone className="w-3.5 h-3.5 text-[#0c831f]" />
-              <span className="font-mono">{user.mobile || "9622720283"}</span>
-            </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">Nai Basti, Near Petrol Pump, Anantnag</p>
+      <main className="max-w-md mx-auto px-4 pt-3 space-y-4">
+        {/* 2. YOUR ACCOUNT TITLE & PHONE matching Screenshot 1 */}
+        <div className="pt-1">
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">Your account</h2>
+          <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-semibold mt-1">
+            <Phone className="w-3.5 h-3.5 text-slate-500" />
+            <span className="font-mono font-bold">+91-{user.mobile || "9622720283"}</span>
           </div>
         </div>
 
-        {/* Dedicated "Past Orders" Button Card */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-4 space-y-2 shadow-sm">
-          <Link
-            href="/orders?viewPast=true"
-            className="flex items-center justify-between p-3 bg-emerald-50 hover:bg-[#0c831f] text-[#0c831f] hover:text-white rounded-2xl transition-all border border-emerald-200 shadow-sm active:scale-95 group"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-white text-[#0c831f] rounded-xl shadow-sm">
-                <Package className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-black text-xs">View Past Orders History</h3>
-                <p className="text-[10px] opacity-80 font-medium">Check past invoices, items & receipts ({orderCount} past orders)</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {/* Support & Privacy Actions */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-3.5 space-y-2 text-xs shadow-sm">
+        {/* 3. TWO SHORTCUT CARDS (Wallet removed) */}
+        <div className="grid grid-cols-2 gap-3">
           <a
             href="tel:6006990032"
-            className="flex items-center justify-between p-2.5 rounded-2xl text-slate-800 hover:bg-slate-50 transition-colors"
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-all"
           >
-            <div className="flex items-center space-x-2.5">
-              <PhoneCall className="w-4 h-4 text-[#0c831f]" />
-              <span className="font-bold">Contact Customer Support (6006990032)</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 mb-2">
+              <Headphones className="w-6 h-6 stroke-[1.8]" />
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-bold text-slate-800">Support</span>
           </a>
 
-          <button
-            onClick={handleDeleteAccount}
-            className="w-full flex items-center justify-between p-2.5 rounded-2xl text-rose-600 hover:bg-rose-50 transition-colors"
+          <div
+            onClick={() => alert("Payments & Saved Cards")}
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center cursor-pointer shadow-xs active:scale-95 transition-all"
           >
-            <div className="flex items-center space-x-2.5">
-              <ShieldAlert className="w-4 h-4 text-rose-600" />
-              <span className="font-bold">Delete Account & Data</span>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 mb-2">
+              <CreditCard className="w-6 h-6 stroke-[1.8]" />
             </div>
-            <ChevronRight className="w-4 h-4 text-rose-400" />
-          </button>
+            <span className="text-xs font-bold text-slate-800">Payments</span>
+          </div>
+        </div>
+
+        {/* 4. APPEARANCE CARD matching Screenshot 1 */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+              <Moon className="w-4 h-4" />
+            </div>
+            <span className="text-xs font-bold text-slate-800">Appearance</span>
+          </div>
+
+          <div className="bg-slate-100 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 cursor-pointer">
+            <span className="text-xs font-extrabold text-slate-700">{appearance}</span>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400 rotate-90" />
+          </div>
+        </div>
+
+        {/* 5. HIDE SENSITIVE ITEMS CARD matching Screenshot 1 */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div className="pr-4">
+              <h3 className="text-xs font-bold text-slate-900">Hide sensitive items</h3>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-snug">
+                Sexual wellness, nicotine products and other sensitive items will be hidden
+              </p>
+              <button
+                type="button"
+                onClick={() => alert("Sensitive items filtering enabled across all categories.")}
+                className="text-[11px] font-bold text-emerald-700 underline underline-offset-2 mt-1 block"
+              >
+                Know more
+              </button>
+            </div>
+
+            {/* Toggle Switch */}
+            <button
+              type="button"
+              onClick={() => setHideSensitive(!hideSensitive)}
+              className={`w-11 h-6 rounded-full p-0.5 transition-colors shrink-0 mt-1 ${
+                hideSensitive ? "bg-[#0c831f]" : "bg-slate-200"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                  hideSensitive ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* 6. YOUR INFORMATION GROUP matching Screenshot 1 */}
+        <div className="pt-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block mb-2">
+            Your Information
+          </span>
+
+          <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden">
+            {/* Your orders */}
+            <Link
+              href="/orders?viewPast=true"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">Your orders</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            {/* Your wishlist */}
+            <div
+              onClick={() => alert("Your wishlist is empty")}
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <Heart className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">Your wishlist</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+
+            {/* Bookmarked recipes */}
+            <div
+              onClick={() => alert("No bookmarked recipes yet")}
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">Bookmarked recipes</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+
+            {/* Your prescriptions */}
+            <div
+              onClick={() => alert("Upload prescription at checkout")}
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">Your prescriptions</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+
+            {/* Address book */}
+            <Link
+              href="/add-address"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">Address book</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+
+            {/* GST details */}
+            <div
+              onClick={() => alert("GST details management")}
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">GST details</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+
+            {/* E-gift cards with red notification dot matching Screenshot 1 */}
+            <div
+              onClick={() => alert("E-gift cards store")}
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="relative w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <Gift className="w-4 h-4" />
+                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500" />
+                </div>
+                <span className="text-xs font-bold text-slate-800">E-gift cards</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
         </div>
       </main>
 

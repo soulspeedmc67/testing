@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { Search, ArrowLeft, X, Plus, Minus, Heart, Mic } from "lucide-react";
+import { Search, ArrowLeft, X, Plus, Minus, Heart, Mic, ShoppingBag, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
 import BottomNav from "../components/BottomNav";
+import ProductCardStepper from "../components/ProductCardStepper";
+import FloatingCartBar from "../components/FloatingCartBar";
+import QuickProductSheet from "../components/QuickProductSheet";
+import { EmptySearchState } from "../components/ui/EmptyState";
 
 const ALL_SEARCH_PRODUCTS = [
   { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Snacks" },
@@ -21,6 +25,8 @@ export default function SearchPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState([]);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("dashit_cart");
@@ -59,6 +65,9 @@ export default function SearchPage() {
     p.name.toLowerCase().includes(query.toLowerCase()) || p.cat.toLowerCase().includes(query.toLowerCase())
   );
 
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+  const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
       {/* Search Header Bar */}
@@ -76,6 +85,8 @@ export default function SearchPage() {
               placeholder="Search for milk, chips, bread, apples..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setIsInputFocused(true)}
+              onBlur={() => setIsInputFocused(false)}
               className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none placeholder-slate-400"
             />
             {query ? (
@@ -117,47 +128,41 @@ export default function SearchPage() {
           </div>
 
           {filteredProducts.length === 0 ? (
-            <div className="bg-white rounded-3xl p-8 text-center space-y-2 border border-slate-200 shadow-sm">
-              <Search className="w-10 h-10 text-slate-300 mx-auto" />
-              <p className="text-xs font-extrabold text-slate-700">No items found matching "{query}"</p>
-              <p className="text-[11px] text-slate-400">Try searching for "Milk", "Lavas", "Chips", or "Apples"</p>
-            </div>
+            <EmptySearchState query={query} onSelectChip={(chip) => setQuery(chip)} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {filteredProducts.map((p) => {
                 const inCart = cart.find((i) => i.id === p.id);
                 return (
-                  <div key={p.id} className="bg-white border border-slate-200 rounded-3xl p-3 flex flex-col justify-between shadow-sm space-y-2">
-                    <div className="bg-slate-50 rounded-2xl p-2 h-28 flex items-center justify-center">
-                      <img src={p.img} alt={p.name} className="h-20 w-20 object-contain rounded-lg" />
-                    </div>
+                  <div key={p.id} className="bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between shadow-sm space-y-2">
+                    <button
+                      onClick={() => setSelectedQuickProduct(p)}
+                      className="bg-slate-50 rounded-2xl p-2 h-28 flex items-center justify-center cursor-pointer w-full"
+                    >
+                      <img src={p.img} alt={p.name} className="h-20 w-20 object-contain rounded-lg transform hover:scale-105 transition-transform" />
+                    </button>
 
                     <div>
                       <span className="text-[9px] font-bold text-slate-400">{p.unit}</span>
-                      <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">{p.name}</h4>
+                      <button
+                        onClick={() => setSelectedQuickProduct(p)}
+                        className="text-left w-full cursor-pointer"
+                      >
+                        <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2 hover:text-[#0c831f]">{p.name}</h4>
+                      </button>
                     </div>
 
                     <div className="flex items-center justify-between pt-1 border-t border-slate-100">
                       <span className="text-xs font-black text-slate-900 font-mono">₹{p.price}</span>
 
-                      {inCart ? (
-                        <div className="flex items-center space-x-1 bg-[#0c831f] text-white rounded-xl px-2 py-1 font-extrabold text-xs shadow">
-                          <button onClick={() => updateQty(p.id, -1)}>
-                            <Minus className="w-3.5 h-3.5" />
-                          </button>
-                          <span>{inCart.qty}</span>
-                          <button onClick={() => updateQty(p.id, 1)}>
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => addToCart(p)}
-                          className="bg-emerald-50 hover:bg-[#0c831f] hover:text-white text-[#0c831f] border border-emerald-300 font-black text-xs px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
-                        >
-                          ADD
-                        </button>
-                      )}
+                      <div className="w-16">
+                        <ProductCardStepper
+                          product={p}
+                          qty={inCart ? inCart.qty : 0}
+                          onAdd={addToCart}
+                          onUpdateQty={updateQty}
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -167,7 +172,20 @@ export default function SearchPage() {
         </div>
       </main>
 
-      <BottomNav />
+      {/* Quick Interactive Product Detail Sheet */}
+      <QuickProductSheet
+        product={selectedQuickProduct}
+        isOpen={!!selectedQuickProduct}
+        onClose={() => setSelectedQuickProduct(null)}
+        cart={cart}
+        onAddToCart={addToCart}
+        onUpdateQty={updateQty}
+      />
+
+      {/* Blinkit-Grade Floating Persistent Cart Bar */}
+      {!isInputFocused && <FloatingCartBar cart={cart} />}
+
+      <BottomNav forceHide={isInputFocused} cartCount={cartCount} />
     </div>
   );
 }
