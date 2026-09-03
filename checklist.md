@@ -166,3 +166,11 @@ inventory
 
 rider details  and contorl over them 
 
+
+
+
+
+all layz types - options dena 
+
+
+

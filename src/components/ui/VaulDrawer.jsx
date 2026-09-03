@@ -11,9 +11,9 @@ export default function VaulDrawer({
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-slate-950/60 z-[60] backdrop-blur-sm" />
+        <Drawer.Overlay className="fixed inset-0 bg-slate-950/50 z-[60] backdrop-blur-xs transition-opacity duration-300 ease-out" />
         <Drawer.Content
-          className={`bg-white flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-[60] max-w-md mx-auto border-t border-slate-100 outline-none shadow-2xl ${maxHeight}`}
+          className={`bg-white flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-[60] max-w-md mx-auto border-t border-slate-100 outline-none shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${maxHeight}`}
         >
           {/* Top handle pill */}
           <div className="w-full pt-3 pb-1 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none">

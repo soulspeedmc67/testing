@@ -18,9 +18,10 @@ export default function ProductCardStepper({
   const handleAdd = (e) => {
     e.stopPropagation();
     hapticMedium();
-    if (product?.img) {
+    const imgSrc = product?.img || product?.image;
+    if (imgSrc) {
       const rect = e.currentTarget.getBoundingClientRect();
-      triggerFlyToCart(product.img, rect);
+      triggerFlyToCart(imgSrc, rect);
     }
     if (onAdd) {
       onAdd(product);
@@ -48,9 +49,10 @@ export default function ProductCardStepper({
   const handlePlus = (e) => {
     e.stopPropagation();
     hapticLight();
-    if (product?.img) {
+    const imgSrc = product?.img || product?.image;
+    if (imgSrc) {
       const rect = e.currentTarget.getBoundingClientRect();
-      triggerFlyToCart(product.img, rect);
+      triggerFlyToCart(imgSrc, rect);
     }
     if (onUpdateQty) {
       onUpdateQty(prodId, 1);

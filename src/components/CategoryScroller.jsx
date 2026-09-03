@@ -3,8 +3,6 @@ import { hapticLight } from "../lib/haptics";
 
 export const CATEGORY_STRIP = [
   { id: "All", label: "All", icon: Flame },
-  { id: "Chips", label: "Chips", icon: Sparkles },
-  { id: "Biscuits", label: "Biscuits", icon: Cookie },
   { id: "Snacks", label: "Snacks", icon: Cookie },
   { id: "Beverages", label: "Beverages", icon: Coffee },
   { id: "Dairy", label: "Dairy & Eggs", icon: Milk },

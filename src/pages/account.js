@@ -11,14 +11,13 @@ import {
   BookOpen,
   FileText,
   MapPin,
-  Gift,
   Phone,
-  Moon,
   Shield,
   Check,
   X
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import { getWishlist } from "../lib/wishlist";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -28,8 +27,7 @@ export default function AccountPage() {
     email: "azan.mir@example.com",
     address: "b-3,jamia appqrtment, Anantnag"
   });
-  const [hideSensitive, setHideSensitive] = useState(false);
-  const [appearance, setAppearance] = useState("Light");
+  const [wishlistCount, setWishlistCount] = useState(0);
 
   useEffect(() => {
     try {
@@ -38,6 +36,13 @@ export default function AccountPage() {
         setUser(JSON.parse(savedUser));
       }
     } catch (e) {}
+
+    const syncWishlist = () => {
+      setWishlistCount(getWishlist().length);
+    };
+    syncWishlist();
+    window.addEventListener("dashit_wishlist_updated", syncWishlist);
+    return () => window.removeEventListener("dashit_wishlist_updated", syncWishlist);
   }, []);
 
   return (
@@ -89,55 +94,6 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* 4. APPEARANCE CARD matching Screenshot 1 */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex items-center justify-between shadow-xs">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-              <Moon className="w-4 h-4" />
-            </div>
-            <span className="text-xs font-bold text-slate-800">Appearance</span>
-          </div>
-
-          <div className="bg-slate-100 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 cursor-pointer">
-            <span className="text-xs font-extrabold text-slate-700">{appearance}</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 rotate-90" />
-          </div>
-        </div>
-
-        {/* 5. HIDE SENSITIVE ITEMS CARD matching Screenshot 1 */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs">
-          <div className="flex items-start justify-between">
-            <div className="pr-4">
-              <h3 className="text-xs font-bold text-slate-900">Hide sensitive items</h3>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-snug">
-                Sexual wellness, nicotine products and other sensitive items will be hidden
-              </p>
-              <button
-                type="button"
-                onClick={() => alert("Sensitive items filtering enabled across all categories.")}
-                className="text-[11px] font-bold text-emerald-700 underline underline-offset-2 mt-1 block"
-              >
-                Know more
-              </button>
-            </div>
-
-            {/* Toggle Switch */}
-            <button
-              type="button"
-              onClick={() => setHideSensitive(!hideSensitive)}
-              className={`w-11 h-6 rounded-full p-0.5 transition-colors shrink-0 mt-1 ${
-                hideSensitive ? "bg-[#0c831f]" : "bg-slate-200"
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-                  hideSensitive ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-
         {/* 6. YOUR INFORMATION GROUP matching Screenshot 1 */}
         <div className="pt-2">
           <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block mb-2">
@@ -160,18 +116,32 @@ export default function AccountPage() {
             </Link>
 
             {/* Your wishlist */}
-            <div
-              onClick={() => alert("Your wishlist is empty")}
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            <Link
+              href="/wishlist"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
-                  <Heart className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
+                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Your wishlist</span>
+                <div>
+                  <span className="text-xs font-bold text-slate-800">Your wishlist</span>
+                  {wishlistCount > 0 && (
+                    <span className="text-[10px] font-bold text-rose-600 block">
+                      {wishlistCount} {wishlistCount === 1 ? "item" : "items"} saved
+                    </span>
+                  )}
+                </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
+              <div className="flex items-center space-x-1.5">
+                {wishlistCount > 0 && (
+                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black flex items-center justify-center">
+                    {wishlistCount}
+                  </span>
+                )}
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </Link>
 
             {/* Bookmarked recipes */}
             <div
@@ -227,59 +197,6 @@ export default function AccountPage() {
                 <span className="text-xs font-bold text-slate-800">GST details</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-
-            {/* E-gift cards with red notification dot matching Screenshot 1 */}
-            <div
-              onClick={() => alert("E-gift cards store")}
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="relative w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
-                  <Gift className="w-4 h-4" />
-                  <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-red-500" />
-                </div>
-                <span className="text-xs font-bold text-slate-800">E-gift cards</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-
-            {/* Appearance / Dark Mode */}
-            <div className="flex items-center justify-between p-3.5 border-t border-slate-100 dark:border-zinc-800">
-              <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300">
-                  <Moon className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">Dark Mode</span>
-              </div>
-              <div className="flex items-center space-x-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAppearance("Light");
-                    localStorage.setItem("dashit_theme", "light");
-                    document.documentElement.classList.remove("dark");
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
-                    appearance === "Light" ? "bg-white text-slate-900 shadow-2xs" : "text-slate-500"
-                  }`}
-                >
-                  Off
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAppearance("Dark");
-                    localStorage.setItem("dashit_theme", "dark");
-                    document.documentElement.classList.add("dark");
-                  }}
-                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
-                    appearance === "Dark" ? "bg-[#0c831f] text-white shadow-2xs" : "text-slate-500"
-                  }`}
-                >
-                  On
-                </button>
-              </div>
             </div>
           </div>
         </div>

@@ -13,6 +13,8 @@ import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
 import { initNotificationPermissions } from '../lib/notifications';
 
+import { setDeviceSystemBars } from '../lib/systemBars';
+
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
@@ -25,9 +27,16 @@ export default function App({ Component, pageProps }) {
         // Force Light Mode as requested
         document.documentElement.classList.remove("dark");
         const isHome = router.pathname === '/' || router.pathname === '';
-        const topColor = isHome ? '#FFFDF5' : '#FFFFFF';
-        await StatusBar.setBackgroundColor({ color: topColor });
-        await StatusBar.setStyle({ style: Style.Light });
+        const isSearch = router.pathname === '/search';
+        const topColor = isSearch ? '#061838' : isHome ? '#FFE8D6' : '#FFFFFF';
+        const isTopDarkIcons = !isSearch;
+        const bottomColor = isHome ? '#FFFDF5' : '#FFFFFF';
+        await setDeviceSystemBars({
+          topColor,
+          topDarkIcons: isTopDarkIcons,
+          bottomColor,
+          bottomDarkIcons: true,
+        });
       } catch (e) {}
     };
     syncThemeAndStatusBar();
@@ -80,10 +89,6 @@ export default function App({ Component, pageProps }) {
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </Head>
-      <FlyingBadgeOverlay />
-      <LiveOrderFloatingTracker />
-      <FloatingCartBar />
-      <BottomNav />
       <motion.div
         key={router.asPath}
         initial={{ opacity: 0.85, scale: 0.996 }}
@@ -93,6 +98,10 @@ export default function App({ Component, pageProps }) {
       >
         <Component {...pageProps} />
       </motion.div>
+      <LiveOrderFloatingTracker />
+      <FloatingCartBar />
+      <BottomNav />
+      <FlyingBadgeOverlay />
     </ScrollChromeProvider>
   );
 }

@@ -11,6 +11,7 @@ import CouponsDrawer from "../components/CouponsDrawer";
 import FreeDeliveryCelebrationModal from "../components/FreeDeliveryCelebrationModal";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
+import { addToWishlist } from "../lib/wishlist";
 
 const YOU_MIGHT_ALSO_LIKE = [
   {
@@ -99,12 +100,16 @@ export default function CheckoutPage() {
   const couponDiscount = appliedCoupon ? Math.min(subtotal, appliedCoupon.discount) : 0;
   const grandTotal = Math.max(0, subtotal + deliveryFee - couponDiscount);
 
-  // Trigger Free Delivery Celebration when cart reaches ₹199 (matching screenshot 5)
+  // Trigger Free Delivery Celebration when cart reaches ₹199 (Shown only once until order placed)
   useEffect(() => {
-    if (subtotal >= 199 && !hasShownFreeDelivery) {
-      setIsFreeDeliveryModalOpen(true);
-      setHasShownFreeDelivery(true);
-    }
+    try {
+      const alreadyShown = localStorage.getItem("dashit_free_delivery_seen");
+      if (subtotal >= 199 && !alreadyShown && !hasShownFreeDelivery) {
+        setIsFreeDeliveryModalOpen(true);
+        localStorage.setItem("dashit_free_delivery_seen", "true");
+        setHasShownFreeDelivery(true);
+      }
+    } catch (e) {}
   }, [subtotal, hasShownFreeDelivery]);
 
   const updateItemQty = (id, delta) => {
@@ -139,10 +144,9 @@ export default function CheckoutPage() {
     
     if (cartItems.length === 0 || isProcessing) return;
 
-    // Check if user authenticated in this checkout session
-    const isAuthenticated = sessionStorage.getItem("dashit_checkout_authenticated");
-    if (!isAuthenticated) {
-      // Trigger iOS-style Bottom Sheet Login (Skippable)
+    // Login is strictly mandatory before placing an order
+    const hasPhone = typeof window !== "undefined" && (localStorage.getItem("dashit_user_phone") || sessionStorage.getItem("dashit_checkout_authenticated"));
+    if (!hasPhone) {
       setIsLoginModalOpen(true);
       return;
     }
@@ -179,7 +183,7 @@ export default function CheckoutPage() {
         otp: Math.floor(1000 + Math.random() * 9000),
         status: "Packing",
         customerName: userObj?.name || "Azan Iqbal Mir",
-        mobile: userObj?.mobile || "9622720283",
+        mobile: userObj?.mobile || localStorage.getItem("dashit_user_phone") || "9622720283",
         receiverContact: receiverDetails
       };
 
@@ -189,6 +193,8 @@ export default function CheckoutPage() {
       submitOrder(newOrder);
       localStorage.removeItem("dashit_cart");
       localStorage.removeItem("dashit_checkout_data");
+      // Reset free delivery popup so future orders can see it again
+      localStorage.removeItem("dashit_free_delivery_seen");
       window.dispatchEvent(new Event("dashit_cart_updated"));
 
       setIsProcessing(false);
@@ -298,7 +304,13 @@ export default function CheckoutPage() {
                   <span className="text-[11px] font-semibold text-slate-500 block mt-0.5">
                     {item.unit || "1 unit"}
                   </span>
-                  <button className="text-[11px] font-bold text-slate-400 hover:text-slate-700 underline mt-1">
+                  <button
+                    onClick={() => {
+                      addToWishlist(item);
+                      updateItemQty(item.id, -item.qty);
+                    }}
+                    className="text-[11px] font-bold text-slate-400 hover:text-emerald-700 underline mt-1 text-left active:scale-95 transition-transform"
+                  >
                     Move to wishlist
                   </button>
                 </div>
