@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { motion } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -46,7 +47,13 @@ export default function AccountPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32">
+    <motion.div
+      initial={{ x: "100%", opacity: 0.9 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: "100%", opacity: 0.9 }}
+      transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.8 }}
+      className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32"
+    >
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
       <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
         <button
@@ -103,7 +110,7 @@ export default function AccountPage() {
           <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden">
             {/* Your orders */}
             <Link
-              href="/orders?viewPast=true"
+              href="/orders"
               className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
             >
               <div className="flex items-center space-x-3.5">
@@ -201,6 +208,6 @@ export default function AccountPage() {
           </div>
         </div>
       </main>
-    </div>
+    </motion.div>
   );
 }

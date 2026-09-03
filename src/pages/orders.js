@@ -125,7 +125,7 @@ export default function OrdersPage() {
             onClick={() => setShowPastOrdersModal(true)}
             className="flex items-center space-x-1.5 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full font-bold transition-all active:scale-95"
           >
-            <Package className="w-3.5 h-3.5 text-[#0c831f]" />
+            <Package className="w-3.5 h-3.5 text-[#061838]" />
             <span>Past Orders ({orderHistory.length})</span>
           </button>
         </div>
@@ -139,12 +139,16 @@ export default function OrdersPage() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center space-x-2">
                 <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#0c831f]"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF6B00]"></span>
                 </span>
                 <div>
                   <h2 className="font-extrabold text-xs text-slate-900 tracking-tight">
-                    {activeOrder.status === "Out for Delivery" ? "Rider Dispatched" : "Packing at Dashit Central Hub"}
+                    {activeOrder.status === "Out for Delivery"
+                      ? "Rider Dispatched"
+                      : activeOrder.status === "Delivered"
+                      ? "Delivered to Doorstep"
+                      : "Processing & Packing at Central Hub"}
                   </h2>
                   <span className="text-[10px] font-semibold text-slate-400 font-mono">
                     #{activeOrder.orderId}
@@ -163,31 +167,94 @@ export default function OrdersPage() {
             {/* Minimal Horizontal Step Tracker with Spring Motion */}
             <div className="py-1">
               <div className="grid grid-cols-4 gap-1.5 relative">
-                <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ type: "spring", stiffness: 80, damping: 15 }} className="h-full bg-[#0c831f] rounded-full" />
-                  </div>
-                  <span className="text-[9px] font-bold text-[#0c831f] block">Placed</span>
-                </div>
-                <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} transition={{ type: "spring", stiffness: 80, damping: 15, delay: 0.15 }} className="h-full bg-[#0c831f] rounded-full" />
-                  </div>
-                  <span className="text-[9px] font-bold text-[#0c831f] block">Packed</span>
-                </div>
+                {/* 1. Placed */}
                 <div className="space-y-1 text-center">
                   <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                     <motion.div
-                      animate={{ width: cancellationSeconds === 0 ? "100%" : "35%" }}
+                      initial={{ width: 0 }}
+                      animate={{ width: "100%" }}
                       transition={{ type: "spring", stiffness: 80, damping: 15 }}
-                      className="h-full bg-[#0c831f] rounded-full"
+                      className="h-full bg-[#061838] rounded-full"
                     />
                   </div>
-                  <span className={`text-[9px] font-bold ${cancellationSeconds === 0 ? "text-[#0c831f]" : "text-slate-400"} block`}>On Way</span>
+                  <span className="text-[9px] font-black text-[#061838] block">Placed</span>
                 </div>
+
+                {/* 2. Processing (Active when placed/packing, not jumping to On Way) */}
                 <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-200 rounded-full" />
-                  <span className="text-[9px] font-bold text-slate-400 block">Delivered</span>
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{
+                        width:
+                          activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
+                            ? "100%"
+                            : "80%",
+                      }}
+                      transition={{ type: "spring", stiffness: 80, damping: 15, delay: 0.15 }}
+                      className={`h-full ${
+                        activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
+                          ? "bg-[#061838]"
+                          : "bg-[#FF6B00] animate-pulse"
+                      } rounded-full`}
+                    />
+                  </div>
+                  <span
+                    className={`text-[9px] font-black ${
+                      activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
+                        ? "text-[#061838]"
+                        : "text-[#FF6B00]"
+                    } block`}
+                  >
+                    Processing
+                  </span>
+                </div>
+
+                {/* 3. On Way (Only active when dispatched by driver) */}
+                <div className="space-y-1 text-center">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      animate={{
+                        width:
+                          activeOrder.status === "Delivered"
+                            ? "100%"
+                            : activeOrder.status === "Out for Delivery"
+                            ? "70%"
+                            : "0%",
+                      }}
+                      transition={{ type: "spring", stiffness: 80, damping: 15 }}
+                      className="h-full bg-[#061838] rounded-full"
+                    />
+                  </div>
+                  <span
+                    className={`text-[9px] font-black ${
+                      activeOrder.status === "Out for Delivery"
+                        ? "text-[#FF6B00]"
+                        : activeOrder.status === "Delivered"
+                        ? "text-[#061838]"
+                        : "text-slate-400"
+                    } block`}
+                  >
+                    On Way
+                  </span>
+                </div>
+
+                {/* 4. Delivered */}
+                <div className="space-y-1 text-center">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div
+                      animate={{ width: activeOrder.status === "Delivered" ? "100%" : "0%" }}
+                      transition={{ type: "spring", stiffness: 80, damping: 15 }}
+                      className="h-full bg-[#061838] rounded-full"
+                    />
+                  </div>
+                  <span
+                    className={`text-[9px] font-black ${
+                      activeOrder.status === "Delivered" ? "text-[#061838]" : "text-slate-400"
+                    } block`}
+                  >
+                    Delivered
+                  </span>
                 </div>
               </div>
             </div>
@@ -324,7 +391,7 @@ export default function OrdersPage() {
             <div className="flex space-x-2 pt-1">
               <Link
                 href="/"
-                className="grow bg-[#0c831f] hover:bg-emerald-800 text-white text-center text-xs font-extrabold py-3 rounded-2xl transition-all shadow-sm active:scale-95"
+                className="grow bg-[#061838] hover:bg-slate-900 text-white text-center text-xs font-black py-3 rounded-2xl transition-all shadow-md active:scale-95"
               >
                 + Add Items to Cart
               </Link>
@@ -344,7 +411,7 @@ export default function OrdersPage() {
             </div>
             <Link
               href="/"
-              className="inline-block bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs px-5 py-2.5 rounded-2xl shadow-sm transition-all active:scale-95"
+              className="inline-block bg-[#061838] hover:bg-slate-900 text-white font-black text-xs px-5 py-2.5 rounded-2xl shadow-md transition-all active:scale-95"
             >
               Start Shopping
             </Link>
@@ -378,7 +445,7 @@ export default function OrdersPage() {
                     <span>{ord.date} • {ord.items?.length || 1} {ord.items?.length === 1 ? "item" : "items"}</span>
                     <button
                       onClick={() => handleReorder(ord)}
-                      className="text-[#0c831f] font-extrabold hover:underline flex items-center space-x-1"
+                      className="text-[#061838] font-black hover:underline flex items-center space-x-1"
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>Reorder</span>
@@ -411,7 +478,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="text-right">
                     <span className="font-black font-mono text-slate-900 block">₹{ord.totalAmount}</span>
-                    <span className="text-[9px] font-extrabold text-[#0c831f] bg-emerald-50 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-extrabold text-[#061838] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/50">
                       Delivered
                     </span>
                   </div>
@@ -435,7 +502,7 @@ export default function OrdersPage() {
                       handleReorder(ord);
                       setShowPastOrdersModal(false);
                     }}
-                    className="bg-emerald-50 hover:bg-emerald-100 text-[#0c831f] font-extrabold text-xs px-3 py-1.5 rounded-xl transition-colors flex items-center space-x-1"
+                    className="bg-slate-100 hover:bg-slate-200 text-[#061838] font-black text-xs px-3 py-1.5 rounded-xl transition-colors flex items-center space-x-1"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>Reorder all items</span>
