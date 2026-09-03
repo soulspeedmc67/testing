@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ChevronRight, X, Navigation, Bike, Zap } from "lucide-react";
+import { ChevronRight, X, Navigation, Zap } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import DashitAnimatedLogo from "./DashitAnimatedLogo";
 
 export default function HomeScreenLiveOrderCard() {
   const [activeOrder, setActiveOrder] = useState(null);
@@ -51,9 +52,9 @@ export default function HomeScreenLiveOrderCard() {
 
       {/* Header: Title, Order ID, Dismiss X */}
       <div className="flex items-center justify-between pt-0.5">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
-            <Bike className="w-4 h-4 stroke-[2.8]" />
+        <div className="flex items-center space-x-2.5">
+          <div className="w-8 h-8 rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0 border border-slate-200/90 p-0.5">
+            <DashitAnimatedLogo size="xs" showGlow={false} />
           </div>
           <div>
             <div className="flex items-center space-x-2">

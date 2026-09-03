@@ -60,9 +60,9 @@ export default function MapTracking({
 
         // Accurate road-hugging polyline
         const coreLine = L.polyline(roadRoute.points, {
-          color: "#0c831f",
-          weight: 4,
-          opacity: 0.9,
+          color: "#FF5B00",
+          weight: 4.5,
+          opacity: 0.95,
           lineCap: "round",
           lineJoin: "round"
         }).addTo(map);
@@ -71,16 +71,16 @@ export default function MapTracking({
           map.fitBounds(coreLine.getBounds(), { padding: [45, 45], maxZoom: 16 });
         } catch (e) {}
 
-        // Minimalist Scooter Rider Marker (Clean SVG)
+        // Minimalist Dashit Rider Marker
         const riderIcon = L.divIcon({
           className: "rider-marker",
           html: `
-            <div style="width:36px; height:36px; background:#0c831f; border:2px solid #ffffff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 8px rgba(0,0,0,0.15);">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+            <div style="width:38px; height:38px; background:#ffffff; border:2.5px solid #FF5B00; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6px 18px rgba(6,24,56,0.35); overflow:hidden; padding:5px;">
+              <img src="/dashit-mark.png" style="width:100%; height:100%; object-fit:contain;" alt="Dashit" />
             </div>
           `,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18]
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
         });
 
         const riderMarker = L.marker(startPoint, { icon: riderIcon }).addTo(map);
