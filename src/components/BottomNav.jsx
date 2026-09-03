@@ -73,7 +73,10 @@ export default function BottomNav({ forceHide = false }) {
         y: shouldHide ? 110 : 0,
         opacity: shouldHide ? 0 : 1,
       }}
-      transition={{ type: "spring", stiffness: 320, damping: 28 }}
+      transition={{
+        duration: 0.45,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className="fixed left-0 right-0 z-50 flex justify-center pointer-events-auto px-4"
       style={{
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
@@ -94,32 +97,37 @@ export default function BottomNav({ forceHide = false }) {
                   router.push(item.path);
                 }
               }}
-              className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full transition-colors cursor-pointer touch-manipulation select-none ${
+              className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full transition-colors duration-300 cursor-pointer touch-manipulation select-none ${
                 isActive ? "text-[#061838]" : "text-slate-400 hover:text-slate-600"
               }`}
             >
               <div className="flex items-center justify-center">
                 <Icon
-                  className={`w-4 h-4 transition-transform ${
+                  className={`w-4 h-4 transition-all duration-300 ${
                     isActive ? "stroke-[2.8] scale-105 text-[#061838]" : "stroke-[2] text-slate-400"
                   }`}
                 />
               </div>
 
               <span
-                className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap ${
+                className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors duration-300 ${
                   isActive ? "font-black text-[#061838]" : "font-semibold text-slate-500"
                 }`}
               >
                 {item.label}
               </span>
 
-              {/* Minimal Active Indicator Dot in Dashit Sunset Orange */}
+              {/* Minimal Active Indicator Dot with Smooth Slow Physics */}
               {isActive && (
                 <motion.span
                   layoutId="activeTabIndicator"
                   className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] mt-0.5"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 160,
+                    damping: 22,
+                    mass: 0.7,
+                  }}
                 />
               )}
             </button>

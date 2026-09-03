@@ -109,16 +109,26 @@ export default function HomeScreenLiveOrderCard() {
       <div className="pt-0.5">
         <div className="grid grid-cols-3 gap-1.5">
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#FF6B00] rounded-full" />
+            <div className="h-1 w-full bg-[#061838] rounded-full" />
             <span className="text-[9px] font-bold text-[#061838] block">Placed</span>
           </div>
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#FF6B00] rounded-full" />
-            <span className="text-[9px] font-bold text-[#061838] block">Packed</span>
+            <div className="h-1 w-full bg-[#FF6B00] animate-pulse rounded-full" />
+            <span className="text-[9px] font-bold text-[#FF6B00] block">Processing</span>
           </div>
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#FF6B00] rounded-full" />
-            <span className="text-[9px] font-bold text-[#061838] block">On Way</span>
+            <div
+              className={`h-1 w-full ${
+                activeOrder?.status === "Out for Delivery" ? "bg-[#FF6B00]" : "bg-slate-200"
+              } rounded-full`}
+            />
+            <span
+              className={`text-[9px] font-bold ${
+                activeOrder?.status === "Out for Delivery" ? "text-[#061838]" : "text-slate-400"
+              } block`}
+            >
+              On Way
+            </span>
           </div>
         </div>
       </div>

@@ -249,100 +249,116 @@ export default function StorefrontHome() {
 
       {/* MAIN BODY CONTENT */}
       <main className="max-w-md mx-auto px-4 pt-3 space-y-5">
-        {/* Selected Category Header (when activeCategory !== 'All') */}
-        {activeCategory !== "All" && (
-          <div className="flex items-center justify-between px-1 pt-1 pb-0">
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
-              <h2 className="font-black text-base text-[#061838] tracking-tight">
-                {activeCategory}
-              </h2>
-              <span className="text-xs font-bold text-slate-400">
-                ({filteredProducts.length} items)
-              </span>
-            </div>
-            <button
-              onClick={() => setActiveCategory("All")}
-              className="text-xs font-black text-[#FF6B00] hover:underline flex items-center space-x-1"
-            >
-              <span>Show All</span>
-              <span>✕</span>
-            </button>
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeCategory}
+            initial={{ opacity: 0, filter: "blur(12px)", y: 12 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            exit={{ opacity: 0, filter: "blur(8px)", y: -8 }}
+            transition={{
+              duration: 0.36,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="space-y-5"
+          >
+            {/* Selected Category Header (when activeCategory !== 'All') */}
+            {activeCategory !== "All" && (
+              <div className="flex items-center justify-between px-1 pt-1 pb-0">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
+                  <h2 className="font-black text-base text-[#061838] tracking-tight">
+                    {activeCategory}
+                  </h2>
+                  <span className="text-xs font-bold text-slate-400">
+                    ({filteredProducts.length} items)
+                  </span>
+                </div>
+                <button
+                  onClick={() => setActiveCategory("All")}
+                  className="text-xs font-black text-[#FF6B00] hover:underline flex items-center space-x-1 cursor-pointer active:scale-95 transition-transform"
+                >
+                  <span>Show All</span>
+                  <span>✕</span>
+                </button>
+              </div>
+            )}
 
-        {/* 4. PROMOTIONAL HERO BANNER (Only visible when activeCategory === 'All') */}
-        {activeCategory === "All" && (
-          <PromoBanner
-            onSelectPromo={(promo) =>
-              setActiveCategory(promo === "Chips & Crisps" ? "Snacks" : promo)
-            }
-          />
-        )}
+            {/* 4. PROMOTIONAL HERO BANNER (Only visible when activeCategory === 'All') */}
+            {activeCategory === "All" && (
+              <PromoBanner
+                onSelectPromo={(promo) =>
+                  setActiveCategory(promo === "Chips & Crisps" ? "Snacks" : promo)
+                }
+              />
+            )}
 
-        {/* 5. 6-PACK CATEGORY GRID (Only visible when activeCategory === 'All') */}
-        {activeCategory === "All" && (
-          <section className="space-y-2.5">
-            <div className="flex items-center justify-between px-1">
-              <h3 className="font-black text-sm text-[#061838] tracking-tight">
-                Explore Categories
-              </h3>
-              <button
-                onClick={() => router.push("/categories")}
-                className="text-xs font-black text-[#FF6B00] hover:underline"
-              >
-                See all →
-              </button>
-            </div>
-            <CategoryGridSixPack
-              onSelectCategory={(cat) =>
-                setActiveCategory(cat === "Chips" || cat === "Biscuits" ? "Snacks" : cat)
-              }
-            />
-          </section>
-        )}
+            {/* 5. 6-PACK CATEGORY GRID (Only visible when activeCategory === 'All') */}
+            {activeCategory === "All" && (
+              <section className="space-y-2.5">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="font-black text-sm text-[#061838] tracking-tight">
+                    Explore Categories
+                  </h3>
+                  <button
+                    onClick={() => router.push("/categories")}
+                    className="text-xs font-black text-[#FF6B00] hover:underline"
+                  >
+                    See all →
+                  </button>
+                </div>
+                <CategoryGridSixPack
+                  onSelectCategory={(cat) =>
+                    setActiveCategory(cat === "Chips" || cat === "Biscuits" ? "Snacks" : cat)
+                  }
+                />
+              </section>
+            )}
 
-        {/* 6. PRODUCT SECTION WITH SKELETON SUPPORT */}
-        <section className="space-y-3 pt-2">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-black text-base text-slate-900 tracking-tight">
-              {activeCategory === "All" ? "Bestsellers" : activeCategory}
-            </h3>
-            <button
-              onClick={() => setActiveCategory("All")}
-              className={`text-xs font-extrabold transition-colors ${activeCategory === "All" ? "text-slate-300" : "text-[#0c831f]"}`}
-            >
-              {activeCategory === "All" ? "" : "See all"}
-            </button>
-          </div>
+            {/* 6. PRODUCT SECTION WITH SKELETON SUPPORT */}
+            <section className="space-y-3 pt-1">
+              <div className="flex items-center justify-between px-1">
+                <h3 className="font-black text-base text-slate-900 tracking-tight">
+                  {activeCategory === "All" ? "Bestsellers" : activeCategory}
+                </h3>
+                {activeCategory !== "All" && (
+                  <button
+                    onClick={() => setActiveCategory("All")}
+                    className="text-xs font-black text-[#FF6B00] hover:underline active:scale-95 transition-transform"
+                  >
+                    Back to All
+                  </button>
+                )}
+              </div>
 
-          {isLoadingProducts ? (
-            <div className="grid grid-cols-2 gap-3">
-              {[...Array(6)].map((_, i) => (
-                <ProductCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {filteredProducts.map((p) => {
-                const pId = String(p.id || p.barcode);
-                const inCart = cart.find((i) => String(i.id || i.barcode) === pId);
-                return (
-                  <ProductCard
-                    key={pId}
-                    product={p}
-                    qty={inCart ? inCart.qty : 0}
-                    onAdd={() => handleAddToCart(p)}
-                    onUpdateQty={(id, delta) => handleUpdateQty(id, delta)}
-                    onIncrement={() => handleUpdateQty(pId, 1)}
-                    onDecrement={() => handleUpdateQty(pId, -1)}
-                    onQuickView={() => setSelectedQuickProduct(p)}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </section>
+              {isLoadingProducts ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {[...Array(6)].map((_, i) => (
+                    <ProductCardSkeleton key={i} />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {filteredProducts.map((p) => {
+                    const pId = String(p.id || p.barcode);
+                    const inCart = cart.find((i) => String(i.id || i.barcode) === pId);
+                    return (
+                      <ProductCard
+                        key={pId}
+                        product={p}
+                        qty={inCart ? inCart.qty : 0}
+                        onAdd={() => handleAddToCart(p)}
+                        onUpdateQty={(id, delta) => handleUpdateQty(id, delta)}
+                        onIncrement={() => handleUpdateQty(pId, 1)}
+                        onDecrement={() => handleUpdateQty(pId, -1)}
+                        onQuickView={() => setSelectedQuickProduct(p)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* 7. QUICK PRODUCT SHEET (Vaul gesture sheet) */}
