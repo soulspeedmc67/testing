@@ -47,7 +47,7 @@ export default function AppHeader({
           </button>
         </div>
 
-        {/* Location selector */}
+        {/* Location selector with iOS text blur reveal */}
         <button
           type="button"
           onClick={onOpenLocation}
@@ -57,7 +57,10 @@ export default function AppHeader({
             {location.nickname || "HOME"}
           </span>
           <span className="text-slate-400 font-bold text-xs">-</span>
-          <span className="text-xs text-slate-600 font-semibold truncate max-w-[220px]">
+          <span
+            key={location.address}
+            className="text-xs text-slate-600 font-semibold truncate max-w-[220px] animate-ios-blur"
+          >
             {location.address || "Select your delivery address"}
           </span>
           <ChevronDown className="w-3.5 h-3.5 stroke-[2.5] text-slate-500 group-hover:translate-y-0.5 transition-transform" />

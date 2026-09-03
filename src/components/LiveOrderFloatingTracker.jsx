@@ -21,11 +21,18 @@ export default function LiveOrderFloatingTracker() {
   useEffect(() => {
     const checkOrder = () => {
       try {
+        const wasDismissed = sessionStorage.getItem("dashit_order_dismissed") === "true";
+        if (wasDismissed) {
+          setIsDismissed(true);
+        }
+
         const active = localStorage.getItem("dashit_active_order");
         if (active) {
           const parsed = JSON.parse(active);
           setActiveOrder(parsed);
-          setIsDismissed(false);
+          if (!wasDismissed) {
+            setIsDismissed(false);
+          }
           showOrderLiveNotification({
             orderId: parsed.orderId,
             etaMinutes: 7,
@@ -43,6 +50,14 @@ export default function LiveOrderFloatingTracker() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleDismiss = (e) => {
+    e?.stopPropagation();
+    setIsDismissed(true);
+    try {
+      sessionStorage.setItem("dashit_order_dismissed", "true");
+    } catch (e) {}
+  };
+
   useEffect(() => {
     if (!activeOrder) return;
     const t = setInterval(() => {
@@ -51,8 +66,8 @@ export default function LiveOrderFloatingTracker() {
     return () => clearInterval(t);
   }, [activeOrder]);
 
-  // Don't render on /orders or /checkout page
-  if (!activeOrder || isDismissed || router.pathname === "/orders" || router.pathname === "/checkout") return null;
+  // Don't render on /orders, /checkout, or /confirm-location page
+  if (!activeOrder || isDismissed || router.pathname === "/orders" || router.pathname === "/checkout" || router.pathname === "/confirm-location") return null;
 
   const progressPct = [12, 32, 60, 82][stageIndex] ?? 32;
   const statusLabel = STATUS_STAGES[stageIndex]?.label ?? "Preparing your order";
@@ -77,11 +92,9 @@ export default function LiveOrderFloatingTracker() {
             <div className="flex items-center space-x-2">
               <span className="text-[13px] font-black text-white tracking-tighter lowercase">dashit</span>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsDismissed(true);
-                }}
-                className="p-1 text-zinc-500 hover:text-white rounded-full transition-colors active:scale-90"
+                type="button"
+                onClick={handleDismiss}
+                className="p-1.5 text-zinc-400 hover:text-white rounded-full transition-colors active:scale-90"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
