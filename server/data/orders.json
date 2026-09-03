@@ -1,5 +1,131 @@
 [
   {
+    "orderId": "DASH-158968",
+    "date": "Just now",
+    "items": [
+      {
+        "id": "PROD-1",
+        "name": "Amul Gold Full Cream Milk",
+        "unit": "500 ml",
+        "price": 36,
+        "originalPrice": 38,
+        "rating": "4.8",
+        "time": "8 mins",
+        "badge": "Full Cream",
+        "brand": "Amul",
+        "barcode": "8901262010015",
+        "img": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80",
+        "cat": "Dairy",
+        "qty": 1
+      },
+      {
+        "id": "PROD-2",
+        "name": "Mother Dairy Classic Curd",
+        "unit": "390 g",
+        "price": 35,
+        "originalPrice": 38,
+        "rating": "4.7",
+        "time": "8 mins",
+        "badge": "Bestseller",
+        "brand": "Mother Dairy",
+        "barcode": "8901648001009",
+        "img": "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600&auto=format&fit=crop&q=80",
+        "cat": "Dairy",
+        "qty": 1
+      }
+    ],
+    "totalAmount": 96,
+    "paymentMethod": "Google Pay UPI",
+    "status": "Packing",
+    "otp": "2188",
+    "customerName": "Azan Iqbal Mir",
+    "mobile": "9622720283",
+    "address": "Nai Basti, Near Petrol Pump, Anantnag",
+    "location": {
+      "nickname": "Home",
+      "address": "Nai Basti, Near Petrol Pump, Anantnag"
+    },
+    "createdAt": "2026-09-03T14:46:47.247Z"
+  },
+  {
+    "orderId": "DASH-588412",
+    "date": "Just now",
+    "items": [
+      {
+        "id": "PROD-2",
+        "name": "Mother Dairy Classic Curd",
+        "unit": "390 g",
+        "price": 35,
+        "originalPrice": 38,
+        "rating": "4.7",
+        "time": "8 mins",
+        "badge": "Bestseller",
+        "brand": "Mother Dairy",
+        "barcode": "8901648001009",
+        "img": "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=600&auto=format&fit=crop&q=80",
+        "cat": "Dairy",
+        "qty": 1
+      },
+      {
+        "id": "PROD-1",
+        "name": "Amul Gold Full Cream Milk",
+        "unit": "500 ml",
+        "price": 36,
+        "originalPrice": 38,
+        "rating": "4.8",
+        "time": "8 mins",
+        "badge": "Full Cream",
+        "brand": "Amul",
+        "barcode": "8901262010015",
+        "img": "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80",
+        "cat": "Dairy",
+        "qty": 1
+      },
+      {
+        "id": "PROD-4",
+        "name": "Nestlé MUNCH Chocolate Bar",
+        "unit": "12 g",
+        "price": 10,
+        "originalPrice": 10,
+        "rating": "4.6",
+        "time": "8 mins",
+        "badge": "Chocolate",
+        "brand": "Nestlé",
+        "barcode": "8901058852332",
+        "img": "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=600&auto=format&fit=crop&q=80",
+        "cat": "Dairy",
+        "qty": 1
+      },
+      {
+        "id": "PROD-6",
+        "name": "Cadbury Dairy Milk Silk",
+        "unit": "150 g",
+        "price": 175,
+        "originalPrice": 190,
+        "rating": "4.9",
+        "time": "8 mins",
+        "badge": "Treats",
+        "brand": "Cadbury",
+        "barcode": "7622201736187",
+        "img": "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=600&auto=format&fit=crop&q=80",
+        "cat": "Snacks",
+        "qty": 1
+      }
+    ],
+    "totalAmount": 256,
+    "paymentMethod": "Google Pay UPI",
+    "status": "Packing",
+    "otp": "4449",
+    "customerName": "Guest Customer",
+    "mobile": "9622720283",
+    "address": "Nai Basti, Near Petrol Pump, Anantnag",
+    "location": {
+      "nickname": "Home",
+      "address": "Nai Basti, Near Petrol Pump, Anantnag"
+    },
+    "createdAt": "2026-09-03T14:09:08.084Z"
+  },
+  {
     "orderId": "DASH-574782",
     "date": "Just now",
     "items": [

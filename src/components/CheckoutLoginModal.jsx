@@ -1,23 +1,25 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Phone, Lock, Sparkles, ArrowRight } from "lucide-react";
+import { X, Phone, ShieldCheck, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { sendOtp, verifyOtp } from "../lib/api";
-import { hapticLight, hapticMedium } from "../lib/haptics";
+import { hapticLight, hapticMedium, hapticSuccess } from "../lib/haptics";
 
 export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated }) {
   const [step, setStep] = useState(1); // 1: Mobile, 2: OTP
   const [mobile, setMobile] = useState("9622720283");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   if (!isOpen) return null;
 
   const handleSendOtp = async (e) => {
     e?.preventDefault();
     if (mobile.length < 10) {
-      alert("Please enter a valid 10-digit mobile number");
+      setErrorMsg("Please enter a valid 10-digit mobile number");
       return;
     }
+    setErrorMsg("");
     setLoading(true);
     hapticLight();
     await sendOtp(mobile);
@@ -28,34 +30,30 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
   const handleVerifyOtp = async (e) => {
     e?.preventDefault();
     if (otp.length < 4) {
-      alert("Please enter the 4-digit OTP code");
+      setErrorMsg("Please enter the 4-digit verification code");
       return;
     }
+    setErrorMsg("");
     setLoading(true);
     hapticMedium();
     const res = await verifyOtp(mobile, otp);
     setLoading(false);
     if (res.success) {
-      onAuthenticated(res.user || { mobile, name: "Valued Customer" });
+      hapticSuccess();
+      const verifiedUser = res.user || {
+        mobile,
+        name: "Azan Iqbal Mir",
+        address: "b-3,jamia appqrtment, Anantnag"
+      };
+      try {
+        localStorage.setItem("dashit_user", JSON.stringify(verifiedUser));
+        localStorage.setItem("dashit_user_phone", mobile);
+      } catch (e) {}
+      onAuthenticated(verifiedUser);
       onClose();
     } else {
-      alert("Invalid OTP code. Please use test code: 1234");
+      setErrorMsg("Invalid code. Use test code: 1234");
     }
-  };
-
-  const handleSkip = () => {
-    hapticLight();
-    // Continue as guest
-    const guestUser = {
-      mobile: mobile || "9622720283",
-      name: "Guest Customer",
-      isGuest: true
-    };
-    try {
-      localStorage.setItem("dashit_user", JSON.stringify(guestUser));
-    } catch (e) {}
-    onAuthenticated(guestUser);
-    onClose();
   };
 
   return (
@@ -66,108 +64,171 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={handleSkip}
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
         />
 
-        {/* iOS Bottom Sheet */}
+        {/* Sleek iOS-style Bottom Sheet with Spring Physics */}
         <motion.div
-          initial={{ y: "100%" }}
-          animate={{ y: 0 }}
-          exit={{ y: "100%" }}
-          transition={{ type: "spring", damping: 28, stiffness: 350 }}
-          className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-[32px] p-6 shadow-2xl border-t border-slate-100 dark:border-zinc-800 z-10"
+          initial={{ y: "100%", opacity: 0.8 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "spring", damping: 28, stiffness: 360 }}
+          className="relative w-full max-w-md bg-white rounded-t-[36px] p-6 pb-8 shadow-2xl border-t border-slate-100 z-10 overflow-hidden"
         >
-          {/* iOS Grab Handle */}
-          <div className="w-12 h-1.5 bg-slate-300 dark:bg-zinc-700 rounded-full mx-auto mb-4" />
+          {/* Top Grab Handle */}
+          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4" />
 
-          {/* Close / Skip button */}
+          {/* Dismiss button */}
           <button
-            onClick={handleSkip}
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-zinc-400"
+            onClick={onClose}
+            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 active:scale-90 transition-transform"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
 
+          {/* Brand Header Icon with Dashit Signature Navy & Orange */}
           <div className="text-center mb-5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-[#0c831f] flex items-center justify-center mx-auto mb-3 shadow-xs">
-              <Sparkles className="w-6 h-6 stroke-[2.5]" />
+            <div className="w-14 h-14 rounded-2xl bg-[#061838] text-white flex items-center justify-center mx-auto mb-3 shadow-md relative">
+              <Phone className="w-6 h-6 text-[#FF6B00] stroke-[2.5]" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#0c831f] border-2 border-white flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 text-white stroke-[3]" />
+              </span>
             </div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-              {step === 1 ? "Link Account for Order Updates" : "Enter Verification Code"}
+
+            <div className="inline-flex items-center space-x-1.5 bg-amber-50 text-[#FF6B00] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-1 border border-amber-200/60">
+              <Sparkles className="w-3 h-3 stroke-[2.5]" />
+              <span>Mandatory for Order Updates</span>
+            </div>
+
+            <h3 className="text-xl font-black text-[#061838] tracking-tight">
+              {step === 1 ? "Verify Mobile Number" : "Enter Verification Code"}
             </h3>
-            <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400 mt-1">
+            <p className="text-xs font-semibold text-slate-500 mt-1 max-w-[280px] mx-auto">
               {step === 1
-                ? "Get live WhatsApp tracking and delivery OTP for this order"
-                : `Enter the 4-digit code sent to +91 ${mobile}`}
+                ? "Please verify your mobile number to receive live driver tracking and delivery OTP."
+                : `We have sent a 4-digit OTP to +91 ${mobile}`}
             </p>
           </div>
 
-          {step === 1 ? (
-            <form onSubmit={handleSendOtp} className="space-y-3.5">
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  maxLength={10}
-                  value={mobile}
-                  onChange={(e) => setMobile(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Enter 10-digit mobile number"
-                  className="w-full bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
-                  autoFocus
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || mobile.length < 10}
-                className="w-full py-3.5 rounded-2xl bg-[#0c831f] hover:bg-[#0a6f1a] text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50"
+          <AnimatePresence mode="wait">
+            {step === 1 ? (
+              <motion.form
+                key="step-mobile"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={{ duration: 0.2 }}
+                onSubmit={handleSendOtp}
+                className="space-y-4"
               >
-                {loading ? "Sending OTP..." : "Continue with Mobile"}
-              </button>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">
+                    Mobile Number
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3.5 text-xs font-black text-[#061838] bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/80">
+                      🇮🇳 +91
+                    </span>
+                    <input
+                      type="tel"
+                      maxLength={10}
+                      value={mobile}
+                      onChange={(e) => {
+                        setErrorMsg("");
+                        setMobile(e.target.value.replace(/\D/g, ""));
+                      }}
+                      placeholder="10-digit mobile number"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-24 pr-4 py-3.5 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#061838] focus:bg-white transition-all tracking-wide"
+                      autoFocus
+                    />
+                  </div>
+                </div>
 
-              <button
-                type="button"
-                onClick={handleSkip}
-                className="w-full py-2.5 text-xs font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200"
-              >
-                Skip & Continue as Guest ➔
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-3.5">
-              <input
-                type="text"
-                maxLength={4}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                placeholder="• • • •"
-                className="w-full text-center tracking-[12px] bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl py-3 text-2xl font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
-                autoFocus
-              />
-              <p className="text-[11px] text-center text-slate-400">
-                Hint: Use dummy test OTP <b className="text-slate-700 dark:text-zinc-300">1234</b>
-              </p>
+                {errorMsg && (
+                  <p className="text-xs font-bold text-red-500 text-center animate-shake">
+                    {errorMsg}
+                  </p>
+                )}
 
-              <button
-                type="submit"
-                disabled={loading || otp.length < 4}
-                className="w-full py-3.5 rounded-2xl bg-[#0c831f] hover:bg-[#0a6f1a] text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50"
+                <button
+                  type="submit"
+                  disabled={loading || mobile.length < 10}
+                  className="w-full py-3.5 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <span>{loading ? "Sending OTP..." : "Get OTP Verification Code"}</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3] text-[#FF6B00]" />
+                </button>
+              </motion.form>
+            ) : (
+              <motion.form
+                key="step-otp"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                onSubmit={handleVerifyOtp}
+                className="space-y-4"
               >
-                {loading ? "Verifying..." : "Verify & Place Order"}
-              </button>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">
+                      4-Digit OTP
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="text-xs font-bold text-[#FF6B00] hover:underline"
+                    >
+                      Change Number
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={otp}
+                    onChange={(e) => {
+                      setErrorMsg("");
+                      setOtp(e.target.value.replace(/\D/g, ""));
+                    }}
+                    placeholder="• • • •"
+                    className="w-full text-center tracking-[16px] bg-slate-50 border border-slate-200 rounded-2xl py-3 text-2xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#061838] focus:bg-white transition-all"
+                    autoFocus
+                  />
+                </div>
 
-              <button
-                type="button"
-                onClick={handleSkip}
-                className="w-full py-2 text-xs font-bold text-slate-500 dark:text-zinc-400"
-              >
-                Skip & Continue as Guest
-              </button>
-            </form>
-          )}
+                {/* Auto-fill test code chip */}
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-[11px] text-slate-400 font-semibold">Demo code:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtp("1234");
+                      setErrorMsg("");
+                    }}
+                    className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 active:scale-95 transition-transform"
+                  >
+                    Use 1234
+                  </button>
+                </div>
+
+                {errorMsg && (
+                  <p className="text-xs font-bold text-red-500 text-center">
+                    {errorMsg}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || otp.length < 4}
+                  className="w-full py-3.5 rounded-2xl bg-[#0c831f] hover:bg-[#0a6f1a] text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4 stroke-[2.5]" />
+                  <span>{loading ? "Verifying..." : "Verify & Complete Order"}</span>
+                </button>
+              </motion.form>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
     </AnimatePresence>

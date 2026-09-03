@@ -28,6 +28,8 @@ export async function hapticMedium() {
   } catch (e) {}
 }
 
+export const hapticCartAdd = hapticMedium;
+
 // 3. Crisp selection haptic: for removing items or selecting options (iOS only)
 export async function hapticHeavy() {
   if (!isIOS()) return;
@@ -43,3 +45,5 @@ export async function hapticOrderPlaced() {
     await Haptics.notification({ type: NotificationType.Success });
   } catch (e) {}
 }
+
+export const hapticSuccess = hapticOrderPlaced;

@@ -13,21 +13,28 @@ export default function FlyingBadgeOverlay() {
   const [flyingItems, setFlyingItems] = useState([]);
 
   useEffect(() => {
-    globalTriggerFly = (imgUrl, startRect) => {
-      if (!startRect) return;
+    globalTriggerFly = (imgUrl) => {
       const id = Date.now() + Math.random();
-      const targetX = (typeof window !== "undefined" ? window.innerWidth / 2 : 200) - (startRect.left + startRect.width / 2);
-      const targetY = (typeof window !== "undefined" ? window.innerHeight - 110 : 600) - (startRect.top + startRect.height / 2);
+
+      // Locate the actual View Cart bar thumbnail on screen
+      let destX = typeof window !== "undefined" ? window.innerWidth / 2 - 60 : 120;
+      let destY = typeof window !== "undefined" ? window.innerHeight - 55 : 600;
+
+      const cartBarEl = document.getElementById("global-cart-bar-target");
+      if (cartBarEl) {
+        const cartRect = cartBarEl.getBoundingClientRect();
+        destX = cartRect.left + 28; // Lands directly into the product circle thumbnail on the cart
+        destY = cartRect.top + cartRect.height / 2;
+      }
 
       setFlyingItems((prev) => [
         ...prev,
         {
           id,
           imgUrl,
-          startX: startRect.left + startRect.width / 2 - 20,
-          startY: startRect.top + startRect.height / 2 - 20,
-          targetX,
-          targetY,
+          dropX: destX - 18,
+          dropStartY: destY - 55,
+          dropEndY: destY - 18,
         },
       ]);
     };
@@ -38,6 +45,9 @@ export default function FlyingBadgeOverlay() {
   }, []);
 
   const handleAnimationComplete = (id) => {
+    try {
+      window.dispatchEvent(new Event("dashit_cart_bounce"));
+    } catch (e) {}
     setFlyingItems((prev) => prev.filter((item) => item.id !== id));
   };
 
@@ -48,26 +58,24 @@ export default function FlyingBadgeOverlay() {
           <motion.div
             key={item.id}
             initial={{
-              x: item.startX,
-              y: item.startY,
-              scale: 1,
-              opacity: 1,
+              x: item.dropX,
+              y: item.dropStartY,
+              scale: 1.1,
+              opacity: 0,
             }}
             animate={{
-              x: item.startX + item.targetX,
-              y: item.startY + item.targetY,
-              scale: 0.25,
-              opacity: 0.1,
+              x: item.dropX,
+              y: [item.dropStartY, item.dropEndY],
+              scale: [1.1, 0.38],
+              opacity: [0, 1, 0.95],
             }}
             exit={{ opacity: 0 }}
             transition={{
-              type: "spring",
-              stiffness: 220,
-              damping: 22,
-              mass: 0.8,
+              duration: 0.28,
+              ease: [0.22, 1, 0.36, 1],
             }}
             onAnimationComplete={() => handleAnimationComplete(item.id)}
-            className="absolute w-10 h-10 rounded-2xl bg-white shadow-xl border border-emerald-300 overflow-hidden flex items-center justify-center p-1"
+            className="absolute w-10 h-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.18)] border-2 border-[#16a34a] overflow-hidden flex items-center justify-center p-1"
           >
             <img
               src={item.imgUrl}

@@ -70,8 +70,8 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Search Header Bar */}
-      <header className="sticky top-0 z-40 bg-[#061838] px-4 py-3.5 shadow-md">
+      {/* Search Header Bar with iOS Safe Area Top Inset */}
+      <header className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(14px,calc(12px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md">
         <div className="max-w-md mx-auto flex items-center space-x-3">
           <Link href="/" className="p-1 rounded-full text-slate-300 hover:text-white">
             <ArrowLeft className="w-5 h-5" />

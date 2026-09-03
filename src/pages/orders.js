@@ -192,29 +192,38 @@ export default function OrdersPage() {
               </div>
             </div>
 
-            {/* Packing Window Notice Pill with Animated Countdown Bar */}
+            {/* Clean, Human-Crafted Packing Window Card */}
             {cancellationSeconds > 0 && (
-              <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-3 space-y-2 text-xs">
+              <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-white border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span className="text-[11px] font-bold text-amber-900">
-                      Packing window active · <b className="font-mono font-black">{cancellationSeconds}s left</b>
-                    </span>
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-black text-slate-900 block leading-tight">
+                        Packing window active
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        Starts in <span className="font-mono font-bold text-amber-800">{cancellationSeconds}s</span>
+                      </span>
+                    </div>
                   </div>
+
                   <button
                     onClick={handleCancelOrder}
-                    className="text-[11px] font-extrabold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-xl transition-colors active:scale-95"
+                    className="text-[11px] font-black text-rose-600 bg-white hover:bg-rose-50 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95"
                   >
-                    Cancel
+                    Cancel Order
                   </button>
                 </div>
-                {/* Visual Framer Motion Countdown Bar */}
-                <div className="h-1.5 w-full bg-amber-200/60 rounded-full overflow-hidden">
+
+                {/* Sleek Gradient Countdown Track */}
+                <div className="h-1.5 w-full bg-amber-100/80 rounded-full overflow-hidden">
                   <motion.div
-                    animate={{ width: `${(cancellationSeconds / 60) * 100}%` }}
-                    transition={{ ease: "linear", duration: 0.8 }}
-                    className="h-full bg-amber-500 rounded-full"
+                    animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / 60) * 100))}%` }}
+                    transition={{ ease: "linear", duration: 0.9 }}
+                    className="h-full bg-gradient-to-r from-amber-500 to-[#FF6B00] rounded-full"
                   />
                 </div>
               </div>
