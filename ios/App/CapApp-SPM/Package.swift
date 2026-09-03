@@ -25,8 +25,7 @@ let package = Package(
                 .product(name: "CapacitorApp", package: "CapacitorApp"),
                 .product(name: "CapacitorLocalNotifications", package: "CapacitorLocalNotifications"),
                 .product(name: "CapacitorStatusBar", package: "CapacitorStatusBar")
-            ],
-            swiftSettings: [.enableExperimentalFeature("NonescapableTypes")]
+            ]
         )
     ]
 )
