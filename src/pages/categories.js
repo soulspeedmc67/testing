@@ -15,17 +15,17 @@ const ALL_CATEGORIES = [
 export default function CategoriesPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#061838] px-4 py-4 text-white shadow-md">
+      {/* Header with iOS / Android safe-area top padding */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3.5 text-slate-900 border-b border-slate-200/80 shadow-xs">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Link href="/" className="p-1 rounded-full text-slate-300 hover:text-white">
-              <ArrowLeft className="w-5 h-5" />
+            <Link href="/" className="p-1 rounded-full text-slate-700 hover:text-slate-950 active:scale-95 transition-transform">
+              <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
             </Link>
-            <h1 className="font-extrabold text-base text-white">All Categories</h1>
+            <h1 className="font-black text-base text-slate-900 tracking-tight">All Categories</h1>
           </div>
-          <Link href="/search" className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20">
-            <Search className="w-4 h-4" />
+          <Link href="/search" className="p-2 bg-slate-100 rounded-full text-slate-700 hover:bg-slate-200 active:scale-95 transition-transform">
+            <Search className="w-4 h-4 stroke-[2.5]" />
           </Link>
         </div>
       </header>

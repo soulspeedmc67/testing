@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { motion, AnimatePresence } from 'framer-motion';
+import Head from 'next/head';
+import { motion } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import '../styles/globals.css';
 import 'leaflet/dist/leaflet.css';
@@ -72,20 +73,20 @@ export default function App({ Component, pageProps }) {
 
   return (
     <ScrollChromeProvider>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+      </Head>
       <FlyingBadgeOverlay />
       <LiveOrderFloatingTracker />
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={router.asPath}
-          initial={{ x: 26, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: -26, opacity: 0 }}
-          transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-          className="w-full min-h-screen overflow-x-clip relative"
-        >
-          <Component {...pageProps} />
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={router.asPath}
+        initial={{ opacity: 0.85, scale: 0.996 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.16, ease: [0.25, 1, 0.5, 1] }}
+        className="w-full min-h-screen overflow-x-clip relative"
+      >
+        <Component {...pageProps} />
+      </motion.div>
     </ScrollChromeProvider>
   );
 }

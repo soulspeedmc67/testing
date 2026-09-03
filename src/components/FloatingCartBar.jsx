@@ -25,15 +25,20 @@ export default function FloatingCartBar({ cart = [], onOpenCart }) {
       {itemCount > 0 && (
         <motion.div
           key="floating-cart-bar-pill"
-          initial={{ y: 80, opacity: 0, scale: 0.92 }}
+          initial={{ y: 90, opacity: 0, scale: 0.7 }}
           animate={{
             y: 0,
             opacity: 1,
             scale: 1,
             bottom: isNavVisible ? "84px" : "max(18px, calc(14px + env(safe-area-inset-bottom, 14px)))",
           }}
-          exit={{ y: 80, opacity: 0, scale: 0.92 }}
-          transition={{ type: "spring", stiffness: 320, damping: 26 }}
+          exit={{ y: 80, opacity: 0, scale: 0.85 }}
+          transition={{
+            y: { type: "spring", stiffness: 420, damping: 24 },
+            scale: { type: "spring", stiffness: 380, damping: 18 },
+            opacity: { duration: 0.18 },
+            bottom: { duration: 0.22, ease: [0.32, 0.72, 0, 1] },
+          }}
           className="fixed left-0 right-0 z-[55] flex justify-center pointer-events-none px-4"
         >
           <div

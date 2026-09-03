@@ -21,7 +21,7 @@ export default function AppHeader({
   return (
     <header className="w-full bg-[#FFFDF5]">
       {/* 1. TOP DELIVERY ROW (Natural flow: smoothly scrolls away with zero layout jitter) */}
-      <div className="max-w-md mx-auto px-4 pt-2.5 pb-2">
+      <div className="max-w-md mx-auto px-4 pt-[max(10px,env(safe-area-inset-top,10px))] pb-2">
         <div className="flex items-center justify-between">
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block leading-tight">
