@@ -52,24 +52,20 @@ jobs:
       - name: Patch SPM Packages for NonescapableTypes
         run: |
           python3 -c '
-          import os, glob
-          targets = glob.glob("node_modules/@capacitor/*/Package.swift") + ["ios/App/CapApp-SPM/Package.swift"]
+          import glob
+          targets = glob.glob("node_modules/@capacitor/*/Package.swift")
           for p in targets:
-              if os.path.exists(p):
-                  with open(p, "r") as f:
-                      content = f.read()
-                  if "NonescapableTypes" not in content:
-                      content = content.replace(
-                          "path: \"ios/Sources/",
-                          "swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")],\n            path: \"ios/Sources/"
-                      )
-                      content = content.replace(
-                          "dependencies: [\n                .product(name: \"Capacitor\"",
-                          "swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")],\n            dependencies: [\n                .product(name: \"Capacitor\""
-                      )
-                      with open(p, "w") as f:
-                          f.write(content)
-                  print(f"Verified & patched: {p}")
+              with open(p, "r") as f:
+                  content = f.read()
+              if "AppPlugin" in content and "swiftSettings" not in content:
+                  content = content.replace("path: \"ios/Sources/AppPlugin\")", "path: \"ios/Sources/AppPlugin\",\n            swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")])")
+              if "LocalNotificationsPlugin" in content and "swiftSettings" not in content:
+                  content = content.replace("path: \"ios/Sources/LocalNotificationsPlugin\")", "path: \"ios/Sources/LocalNotificationsPlugin\",\n            swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")])")
+              if "StatusBarPlugin" in content and "swiftSettings" not in content:
+                  content = content.replace("path: \"ios/Sources/StatusBarPlugin\"", "path: \"ios/Sources/StatusBarPlugin\",\n            swiftSettings: [.enableExperimentalFeature(\"NonescapableTypes\")]")
+              with open(p, "w") as f:
+                  f.write(content)
+              print(f"Patched {p}")
           '
 
       - name: Build Xcode Archive
