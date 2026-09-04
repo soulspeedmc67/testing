@@ -6,3 +6,4 @@ build/
 .env.local
 *.log
 graphify-out/cache/
+dist/
