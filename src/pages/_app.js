@@ -43,6 +43,19 @@ export default function App({ Component, pageProps }) {
     syncThemeAndStatusBar();
   }, [router.pathname]);
 
+  // On first launch or unauthenticated visit to storefront, route to /login to ask for login
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.pathname === '/' || router.pathname === '') {
+      try {
+        const savedUser = localStorage.getItem('dashit_user');
+        if (!savedUser) {
+          router.replace('/login');
+        }
+      } catch (e) {}
+    }
+  }, [router.isReady, router.pathname]);
+
   useEffect(() => {
     initNotificationPermissions();
 

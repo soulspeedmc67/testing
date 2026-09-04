@@ -69,23 +69,22 @@ export default function ProductCardStepper({
   };
 
   return (
-    <motion.div
-      layout
-      transition={{ type: "spring", stiffness: 450, damping: 28 }}
-      className={`relative h-8 flex items-center justify-center overflow-hidden rounded-xl ${className}`}
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className={`relative h-8 w-full shrink-0 overflow-hidden rounded-xl select-none ${className}`}
     >
-      <AnimatePresence mode="wait" initial={false}>
+      <AnimatePresence initial={false}>
         {qty === 0 ? (
           <motion.button
             key="add-btn"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            whileTap={{ scale: 0.94 }}
             whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 450, damping: 25 }}
+            transition={{ duration: 0.15 }}
             onClick={handleAdd}
-            className="w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5"
+            className="absolute inset-0 w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5"
           >
             <span className="leading-tight">ADD</span>
             {subtext && (
@@ -97,11 +96,12 @@ export default function ProductCardStepper({
         ) : (
           <motion.div
             key="stepper-controls"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 450, damping: 25 }}
-            className="w-full h-full bg-[#061838] text-white rounded-xl flex items-center justify-between px-1.5 shadow-sm"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-0 w-full h-full bg-[#061838] text-white rounded-xl flex items-center justify-between px-1.5 shadow-sm"
           >
             <motion.button
               type="button"
@@ -135,6 +135,6 @@ export default function ProductCardStepper({
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
