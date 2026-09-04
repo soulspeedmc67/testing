@@ -19,10 +19,42 @@ import {
   Trash2,
   Plus,
   Layers,
-  ShoppingBag
+  ShoppingBag,
+  Flame,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  PlusCircle,
+  ToggleLeft,
+  ToggleRight
 } from "lucide-react";
 
 import { fetchAdminOrders, updateAdminOrderStatus } from "../lib/api";
+import BklitAreaChart from "../components/BklitAreaChart";
+import {
+  getExclusiveOffers,
+  addExclusiveOffer,
+  toggleOfferActive,
+  deleteExclusiveOffer,
+  saveExclusiveOffers,
+  DEFAULT_OFFERS
+} from "../lib/offers";
+
+const OFFER_THEMES = [
+  { name: "Midnight Navy", gradient: "from-[#040E22] via-[#061838] to-[#0A2558]", accent: "text-amber-400", preview: "bg-[#061838] border-amber-400" },
+  { name: "Warm Oven Amber", gradient: "from-[#140C04] via-[#241406] to-[#361E0A]", accent: "text-[#FF8A3D]", preview: "bg-[#241406] border-orange-500" },
+  { name: "Forest Emerald", gradient: "from-[#02180E] via-[#062816] to-[#0B3D22]", accent: "text-emerald-400", preview: "bg-[#062816] border-emerald-400" },
+  { name: "Royal Violet", gradient: "from-[#140326] via-[#21073E] to-[#310C5C]", accent: "text-fuchsia-400", preview: "bg-[#21073E] border-fuchsia-400" },
+  { name: "Crimson Sunset", gradient: "from-[#1E0509] via-[#350912] to-[#4E0F1D]", accent: "text-rose-400", preview: "bg-[#350912] border-rose-400" }
+];
+
+const OFFER_IMAGE_PRESETS = [
+  { label: "Gourmet Crisps & Sips", url: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80", cat: "Snacks" },
+  { label: "Oven Breads & Pastries", url: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80", cat: "Bakery" },
+  { label: "Farm Fresh Milk & Butter", url: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { label: "Crisp Valley Kashmiri Apples", url: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80", cat: "Fruits" },
+  { label: "Artisan Coffee & Cold Brews", url: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", cat: "Beverages" }
+];
 
 const FMCG_PRESETS = [
   { label: "Lay's Magic Masala", query: "lays magic masala", cat: "Chips" },
@@ -55,11 +87,28 @@ const CATEGORIES = [
 ];
 
 export default function EasyAdminDashboard() {
-  const [activeTab, setActiveTab] = useState("orders"); // "orders" | "importer" | "catalogue"
+  const [activeTab, setActiveTab] = useState("orders"); // "orders" | "offers" | "importer" | "catalogue"
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [orders, setOrders] = useState([]);
   const [codBlacklist, setCodBlacklist] = useState(["9876543210"]);
   const [newBlacklistNumber, setNewBlacklistNumber] = useState("");
+
+  // Exclusive Offers States
+  const [exclusiveOffers, setExclusiveOffers] = useState(DEFAULT_OFFERS);
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [offerForm, setOfferForm] = useState({
+    title: "",
+    badge: "DASHIT EXCLUSIVE",
+    subtitle: "",
+    priceTag: "Flat 20% OFF",
+    category: "Snacks",
+    promoCode: "OFFER20",
+    discountPercent: 20,
+    expiresIn: "Active Today",
+    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
+    gradient: "from-[#040E22] via-[#061838] to-[#0A2558]",
+    accent: "text-amber-400"
+  });
 
   // Open Food Facts Importer States
   const [offSearchQuery, setOffSearchQuery] = useState("");
@@ -110,12 +159,71 @@ export default function EasyAdminDashboard() {
     setIsLoadingCatalogue(false);
   };
 
+  const loadOffers = () => {
+    setExclusiveOffers(getExclusiveOffers());
+  };
+
   useEffect(() => {
     loadOrders();
     loadCatalogue();
+    loadOffers();
+    window.addEventListener("dashit_offers_updated", loadOffers);
     const interval = setInterval(loadOrders, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("dashit_offers_updated", loadOffers);
+    };
   }, []);
+
+  const handleCreateOffer = (e) => {
+    e.preventDefault();
+    if (!offerForm.title.trim()) {
+      alert("Please enter an offer title.");
+      return;
+    }
+    const newOffer = {
+      ...offerForm,
+      title: offerForm.title.trim(),
+      badge: offerForm.badge.trim() || "DASHIT EXCLUSIVE",
+      subtitle: offerForm.subtitle.trim() || "Limited-time flash drop delivered in minutes.",
+      promoCode: offerForm.promoCode.trim().toUpperCase() || "FLASH20",
+      priceTag: offerForm.priceTag.trim() || "Special Deal",
+      expiresIn: offerForm.expiresIn.trim() || "Active Today",
+      active: true
+    };
+    addExclusiveOffer(newOffer);
+    setShowOfferForm(false);
+    setOfferForm({
+      title: "",
+      badge: "DASHIT EXCLUSIVE",
+      subtitle: "",
+      priceTag: "Flat 20% OFF",
+      category: "Snacks",
+      promoCode: "OFFER20",
+      discountPercent: 20,
+      expiresIn: "Active Today",
+      img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
+      gradient: "from-[#040E22] via-[#061838] to-[#0A2558]",
+      accent: "text-amber-400"
+    });
+    alert("Exclusive offer published to storefront & Story Deck successfully!");
+  };
+
+  const handleToggleOffer = (id) => {
+    toggleOfferActive(id);
+  };
+
+  const handleDeleteOffer = (id, title) => {
+    if (confirm(`Are you sure you want to delete "${title}"?`)) {
+      deleteExclusiveOffer(id);
+    }
+  };
+
+  const handleResetOffers = () => {
+    if (confirm("Reset all exclusive offers back to standard presets?")) {
+      saveExclusiveOffers(DEFAULT_OFFERS);
+    }
+  };
 
   const updateOrderStatus = async (orderId, newStatus) => {
     const updated = orders.map((o) => (o.orderId === orderId ? { ...o, status: newStatus } : o));
@@ -227,7 +335,7 @@ export default function EasyAdminDashboard() {
           <button
             onClick={() => setIsStoreOpen(!isStoreOpen)}
             className={`flex items-center space-x-2 px-4 py-2.5 rounded-2xl font-black text-xs shadow-md transition-all ${
-              isStoreOpen ? "bg-[#0c831f] text-white" : "bg-rose-600 text-white"
+              isStoreOpen ? "bg-[#FF5B00] text-white" : "bg-rose-600 text-white"
             }`}
           >
             <Power className="w-4 h-4" />
@@ -236,35 +344,45 @@ export default function EasyAdminDashboard() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center space-x-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="flex items-center space-x-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab("orders")}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 ${
-              activeTab === "orders" ? "bg-[#0c831f] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
+            className={`flex-1 min-w-[120px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
+              activeTab === "orders" ? "bg-[#FF5B00] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <Package className="w-4 h-4" />
-            <span>Orders Dispatch ({orders.length})</span>
+            <span>Orders ({orders.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("offers")}
+            className={`flex-1 min-w-[150px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
+              activeTab === "offers" ? "bg-amber-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <Flame className="w-4 h-4" />
+            <span>Exclusive Offers ({exclusiveOffers.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab("importer")}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 ${
-              activeTab === "importer" ? "bg-[#0c831f] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
+            className={`flex-1 min-w-[140px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
+              activeTab === "importer" ? "bg-[#FF5B00] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Open Food Facts Importer</span>
+            <span>Product Importer</span>
           </button>
 
           <button
             onClick={() => setActiveTab("catalogue")}
-            className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 ${
-              activeTab === "catalogue" ? "bg-[#0c831f] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
+            className={`flex-1 min-w-[130px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
+              activeTab === "catalogue" ? "bg-[#FF5B00] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>Live Store Catalogue ({catalogue.length})</span>
+            <span>Catalogue ({catalogue.length})</span>
           </button>
         </div>
 
@@ -282,7 +400,7 @@ export default function EasyAdminDashboard() {
 
               <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
                 <span className="text-[11px] font-extrabold text-slate-400 uppercase">Total Revenue</span>
-                <div className="text-2xl font-black text-[#0c831f] font-mono">₹{totalRevenue}</div>
+                <div className="text-2xl font-black text-[#FF5B00] font-mono">₹{totalRevenue}</div>
               </div>
 
               <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
@@ -291,14 +409,17 @@ export default function EasyAdminDashboard() {
               </div>
             </div>
 
+            {/* Bklit Area Chart Visualizer */}
+            <BklitAreaChart />
+
             {/* Live Order Queue */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <h2 className="font-black text-sm text-slate-900 tracking-tight flex items-center space-x-2">
-                  <Package className="w-4 h-4 text-[#0c831f]" />
+                  <Package className="w-4 h-4 text-[#FF5B00]" />
                   <span>Live Order Dispatch Desk</span>
                 </h2>
-                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-3 py-1 rounded-full">
+                <span className="bg-orange-100 text-orange-800 text-[10px] font-extrabold px-3 py-1 rounded-full">
                   AUTO-SYNCED
                 </span>
               </div>
@@ -343,7 +464,7 @@ export default function EasyAdminDashboard() {
                         ))}
                         <div className="pt-2 border-t border-slate-100 flex justify-between font-black text-xs text-slate-900">
                           <span>Total Amount ({ord.paymentMethod})</span>
-                          <span className="text-[#0c831f] font-mono">₹{ord.totalAmount}</span>
+                          <span className="text-[#FF5B00] font-mono">₹{ord.totalAmount}</span>
                         </div>
                       </div>
 
@@ -368,7 +489,7 @@ export default function EasyAdminDashboard() {
                         <button
                           onClick={() => updateOrderStatus(ord.orderId, "Delivered")}
                           className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
-                            ord.status === "Delivered" ? "bg-[#0c831f] text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700"
+                            ord.status === "Delivered" ? "bg-[#FF5B00] text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700"
                           }`}
                         >
                           Delivered
@@ -408,14 +529,380 @@ export default function EasyAdminDashboard() {
               {/* Promo Coupon */}
               <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
                 <h3 className="font-black text-xs text-slate-900 flex items-center space-x-1.5">
-                  <Tag className="w-4 h-4 text-[#0c831f]" />
+                  <Tag className="w-4 h-4 text-[#FF5B00]" />
                   <span>Promo Coupon Manager</span>
                 </h3>
                 <p className="text-[11px] text-slate-500 font-medium">Active campaigns running in customer app:</p>
-                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-xs space-y-1">
-                  <span className="font-black text-emerald-900">GET30 · DASHIT50 · FREEDEL</span>
-                  <p className="text-[11px] text-emerald-700 font-medium">Discounts automatically validated at checkout.</p>
+                <div className="bg-orange-50 border border-orange-200 p-3 rounded-2xl text-xs space-y-1">
+                  <span className="font-black text-orange-900">GET30 · DASHIT50 · FREEDEL</span>
+                  <p className="text-[11px] text-orange-700 font-medium">Discounts automatically validated at checkout.</p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* TAB: EXCLUSIVE OFFERS MANAGER                            */}
+        {/* ======================================================== */}
+        {activeTab === "offers" && (
+          <div className="space-y-5">
+            {/* Action & Stats Header */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-black text-sm text-slate-900 flex items-center space-x-2">
+                  <Flame className="w-5 h-5 text-amber-500 fill-amber-400" />
+                  <span>Exclusive Offers & Live Flash Drops</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Directly control the offers on the Dashit Spotlight banner and Home Screen Flash Drops.
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2 flex-wrap gap-2">
+                <button
+                  onClick={handleResetOffers}
+                  className="px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
+                  title="Reset to default offers"
+                >
+                  Reset Defaults
+                </button>
+
+                <Link
+                  href="/?deal=Snacks"
+                  className="flex items-center space-x-1 px-3.5 py-2 text-xs font-black text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-xl transition-all"
+                >
+                  <span>View Deals on Home</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+
+                <button
+                  onClick={() => setShowOfferForm(!showOfferForm)}
+                  className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs font-black shadow-sm active:scale-95 transition-all"
+                >
+                  <PlusCircle className="w-4 h-4 stroke-[2.5]" />
+                  <span>{showOfferForm ? "Close Form" : "Launch New Offer"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Total Offers</span>
+                <div className="text-2xl font-black text-slate-900 font-mono">{exclusiveOffers.length}</div>
+              </div>
+
+              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Active on Store</span>
+                <div className="text-2xl font-black text-orange-600 font-mono">
+                  {exclusiveOffers.filter((o) => o.active).length}
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Paused / Draft</span>
+                <div className="text-2xl font-black text-slate-400 font-mono">
+                  {exclusiveOffers.filter((o) => !o.active).length}
+                </div>
+              </div>
+            </div>
+
+            {/* Create Offer Drawer / Form */}
+            {showOfferForm && (
+              <form
+                onSubmit={handleCreateOffer}
+                className="bg-white p-5 rounded-3xl border-2 border-amber-200 shadow-md space-y-5"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <h3 className="font-black text-sm text-slate-900">Create & Publish Exclusive Offer</h3>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                    Instant Live Sync
+                  </span>
+                </div>
+
+                {/* Theme Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
+                    Select Card Color Theme
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {OFFER_THEMES.map((theme) => {
+                      const isSelected = offerForm.gradient === theme.gradient;
+                      return (
+                        <button
+                          key={theme.name}
+                          type="button"
+                          onClick={() =>
+                            setOfferForm((prev) => ({
+                              ...prev,
+                              gradient: theme.gradient,
+                              accent: theme.accent
+                            }))
+                          }
+                          className={`flex items-center space-x-2 p-2 rounded-2xl border-2 transition-all text-left ${
+                            isSelected
+                              ? "border-amber-500 bg-amber-50/50 shadow-xs"
+                              : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                          }`}
+                        >
+                          <div className={`w-6 h-6 rounded-xl border ${theme.preview} shrink-0`} />
+                          <span className="text-[11px] font-black text-slate-800 truncate">{theme.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Image Presets & URL */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
+                    Offer Visual Image
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {OFFER_IMAGE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() =>
+                          setOfferForm((prev) => ({
+                            ...prev,
+                            img: preset.url,
+                            category: preset.cat
+                          }))
+                        }
+                        className={`text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all ${
+                          offerForm.img === preset.url
+                            ? "bg-amber-500 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center space-x-3 mt-2">
+                    <input
+                      type="url"
+                      placeholder="Or paste custom image URL..."
+                      value={offerForm.img}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, img: e.target.value }))}
+                      className="grow bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
+                    />
+                    {offerForm.img && (
+                      <img
+                        src={offerForm.img}
+                        alt="Preview"
+                        className="w-10 h-10 object-cover rounded-xl border border-slate-200 shrink-0"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Offer Fields Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Offer Title *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Gourmet Crisps & Sips"
+                      value={offerForm.title}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, title: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Top Badge Pill</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. DASHIT EXCLUSIVE"
+                      value={offerForm.badge}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, badge: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Price / Deal Tag</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Starting ₹20 / Flat 25% OFF"
+                      value={offerForm.priceTag}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, priceTag: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Promo Voucher Code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CRISP20"
+                      value={offerForm.promoCode}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, promoCode: e.target.value.toUpperCase() }))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-mono font-black text-amber-700 uppercase focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Target Category</label>
+                    <select
+                      value={offerForm.category}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, category: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                    >
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Expiry / Time Left</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Ends in 3 hours"
+                      value={offerForm.expiresIn}
+                      onChange={(e) => setOfferForm((prev) => ({ ...prev, expiresIn: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-extrabold text-slate-600 uppercase">Subtitle / Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Artisanal crisps, premium chocolates & chilled sodas at 8-min dispatch."
+                    value={offerForm.subtitle}
+                    onChange={(e) => setOfferForm((prev) => ({ ...prev, subtitle: e.target.value }))}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                {/* Form Buttons */}
+                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowOfferForm(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex items-center space-x-1.5 px-5 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-md active:scale-95 transition-all"
+                  >
+                    <Flame className="w-4 h-4 fill-white" />
+                    <span>Publish Offer Now</span>
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* List of Offers */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Live Offers Registry ({exclusiveOffers.length})
+                </span>
+                <span className="text-[11px] text-slate-400 font-semibold">
+                  Toggling updates customer home screen & Story Deck live
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3">
+                {exclusiveOffers.map((offer) => (
+                  <div
+                    key={offer.id}
+                    className={`bg-white rounded-3xl p-4 border transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                      offer.active ? "border-slate-200" : "border-slate-200/60 opacity-60 bg-slate-50"
+                    }`}
+                  >
+                    <div className="flex items-start sm:items-center space-x-3.5 min-w-0">
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shrink-0 bg-slate-900 border border-slate-100">
+                        <img
+                          src={offer.img}
+                          alt={offer.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-t ${offer.gradient} opacity-40`}
+                        />
+                      </div>
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex items-center space-x-2 flex-wrap gap-1">
+                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                            {offer.badge}
+                          </span>
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                            {offer.category}
+                          </span>
+                          <span className="text-[9px] font-mono font-black px-1.5 py-0.5 rounded bg-orange-50 text-[#FF5B00] border border-orange-200">
+                            CODE: {offer.promoCode}
+                          </span>
+                        </div>
+
+                        <h4 className="font-black text-sm text-slate-900 truncate">
+                          {offer.title}
+                        </h4>
+
+                        <p className="text-xs text-slate-500 font-medium line-clamp-1 max-w-xl">
+                          {offer.subtitle}
+                        </p>
+
+                        <div className="flex items-center space-x-3 text-[11px] font-bold text-slate-600">
+                          <span className="text-amber-700 font-black">{offer.priceTag}</span>
+                          <span>•</span>
+                          <span className="text-slate-400 font-medium">{offer.expiresIn}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
+                      {/* Active Status Switch */}
+                      <button
+                        onClick={() => handleToggleOffer(offer.id)}
+                        className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition-all ${
+                          offer.active
+                            ? "bg-orange-50 border border-orange-300 text-[#FF5B00] hover:bg-orange-100"
+                            : "bg-slate-200 border border-slate-300 text-slate-600 hover:bg-slate-300"
+                        }`}
+                      >
+                        {offer.active ? (
+                          <>
+                            <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>LIVE</span>
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
+                            <span>PAUSED</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => handleDeleteOffer(offer.id, offer.title)}
+                        className="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
+                        title="Delete Offer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -430,7 +917,7 @@ export default function EasyAdminDashboard() {
             <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div>
                 <h2 className="font-black text-sm text-slate-900 flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-[#0c831f]" />
+                  <Sparkles className="w-4 h-4 text-[#FF5B00]" />
                   <span>Open Food Facts Indian FMCG Product Pipeline</span>
                 </h2>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">
@@ -447,14 +934,14 @@ export default function EasyAdminDashboard() {
                     value={offSearchQuery}
                     onChange={(e) => setOffSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearchOff()}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
                   />
                   <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 </div>
                 <button
                   onClick={() => handleSearchOff()}
                   disabled={isSearchingOff}
-                  className="bg-[#0c831f] hover:bg-emerald-800 text-white font-black text-xs px-5 py-3 rounded-2xl shadow-sm active:scale-95 transition-all flex items-center space-x-1.5 shrink-0"
+                  className="bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs px-5 py-3 rounded-2xl shadow-sm active:scale-95 transition-all flex items-center space-x-1.5 shrink-0"
                 >
                   {isSearchingOff ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -478,7 +965,7 @@ export default function EasyAdminDashboard() {
                         setOffSearchQuery(p.query);
                         handleSearchOff(p.query);
                       }}
-                      className="bg-slate-100 hover:bg-emerald-50 hover:text-[#0c831f] text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-colors border border-slate-200/80"
+                      className="bg-slate-100 hover:bg-orange-50 hover:text-[#FF5B00] text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-colors border border-slate-200/80"
                     >
                       + {p.label}
                     </button>
@@ -507,7 +994,7 @@ export default function EasyAdminDashboard() {
                     return (
                       <div
                         key={idx}
-                        className="bg-white rounded-3xl p-3.5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3 transition-all hover:border-[#0c831f]"
+                        className="bg-white rounded-3xl p-3.5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3 transition-all hover:border-[#FF5B00]"
                       >
                         {/* Image Preview & Badges */}
                         <div className="space-y-2">
@@ -518,7 +1005,7 @@ export default function EasyAdminDashboard() {
                               className="max-h-full max-w-full object-contain rounded-lg"
                               loading="lazy"
                             />
-                            <span className="absolute top-2 left-2 bg-[#0c831f] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            <span className="absolute top-2 left-2 bg-[#FF5B00] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
                               {item.cat}
                             </span>
                             <span className="absolute bottom-2 right-2 bg-black/65 backdrop-blur-xs text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md">
@@ -555,8 +1042,8 @@ export default function EasyAdminDashboard() {
                             disabled={isImported}
                             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
                               isImported
-                                ? "bg-emerald-100 text-[#0c831f] cursor-default"
-                                : "bg-[#0c831f] text-white hover:bg-emerald-800 active:scale-95 shadow-xs"
+                                ? "bg-orange-100 text-[#FF5B00] cursor-default"
+                                : "bg-[#FF5B00] text-white hover:bg-[#E04E00] active:scale-95 shadow-xs"
                             }`}
                           >
                             {isImported ? (
@@ -589,7 +1076,7 @@ export default function EasyAdminDashboard() {
             <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="font-black text-sm text-slate-900 flex items-center space-x-2">
-                  <ShoppingBag className="w-4 h-4 text-[#0c831f]" />
+                  <ShoppingBag className="w-4 h-4 text-[#FF5B00]" />
                   <span>Active Storefront Catalogue ({catalogue.length} Products)</span>
                 </h2>
                 <p className="text-xs text-slate-500 font-medium">
@@ -638,7 +1125,7 @@ export default function EasyAdminDashboard() {
                       <h4 className="font-black text-xs text-slate-900 truncate">{prod.name}</h4>
                       <p className="text-[11px] text-slate-500 font-semibold">{prod.unit}</p>
                       <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs font-black text-[#0c831f] font-mono">₹{prod.price}</span>
+                        <span className="text-xs font-black text-[#FF5B00] font-mono">₹{prod.price}</span>
                         <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
                           {prod.cat}
                         </span>

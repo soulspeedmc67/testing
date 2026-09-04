@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { motion, AnimatePresence } from "framer-motion";
+import { fadeUp, EASE_OUT, SPRING_SOFT, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 import {
   ArrowLeft,
   Search,
@@ -292,25 +294,31 @@ export default function CategoriesPage() {
               const Icon = cat.icon;
 
               return (
-                <button
+                <motion.button
                   key={cat.id}
+                  whileTap={TAP_SOFT}
+                  transition={SPRING_SNAPPY}
                   onClick={() => handleSelectCategory(cat.id)}
-                  className={`flex flex-col items-center text-center p-2.5 relative transition-all active:scale-95 select-none ${
+                  className={`flex flex-col items-center text-center p-2.5 relative transition-colors duration-300 select-none ${
                     isSelected
                       ? "bg-white text-slate-950 font-black shadow-xs"
                       : "text-slate-600 hover:bg-slate-200/60 font-semibold"
                   }`}
                 >
-                  {/* Active Indicator Bar on Left Edge */}
+                  {/* Active Indicator Bar — slides between categories */}
                   {isSelected && (
-                    <span className="absolute left-0 top-1 bottom-1 w-1 bg-[#0c831f] rounded-r-full" />
+                    <motion.span
+                      layoutId="categorySidebarIndicator"
+                      transition={SPRING_SOFT}
+                      className="absolute left-0 top-1 bottom-1 w-1 bg-[#FF5B00] rounded-r-full"
+                    />
                   )}
 
                   {/* Thumbnail / Icon Container */}
                   <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center p-1 mb-1 transition-transform ${
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center p-1 mb-1 transition-all duration-300 ${
                       isSelected
-                        ? "scale-105 bg-emerald-50 border border-emerald-200"
+                        ? "scale-105 bg-orange-50 border border-orange-200"
                         : "bg-white/80 border border-slate-200"
                     }`}
                   >
@@ -330,7 +338,7 @@ export default function CategoriesPage() {
                   >
                     {cat.shortName}
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -338,6 +346,14 @@ export default function CategoriesPage() {
 
         {/* RIGHT CONTENT: Products List for Selected Category */}
         <main className="grow bg-white overflow-y-auto px-3 pt-3 pb-36">
+          <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedCatId}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.26, ease: EASE_OUT }}
+          >
           {/* Header of Active Category */}
           <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
             <div>
@@ -348,7 +364,7 @@ export default function CategoriesPage() {
                 {filteredProducts.length} items available
               </span>
             </div>
-            <span className="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="text-[10px] font-black text-[#FF5B00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200/70">
               8 Mins Hub
             </span>
           </div>
@@ -388,6 +404,8 @@ export default function CategoriesPage() {
               })}
             </div>
           )}
+          </motion.div>
+          </AnimatePresence>
         </main>
       </div>
 
@@ -395,6 +413,7 @@ export default function CategoriesPage() {
       {selectedQuickProduct && (
         <QuickProductSheet
           product={selectedQuickProduct}
+          isOpen={Boolean(selectedQuickProduct)}
           onClose={() => setSelectedQuickProduct(null)}
           cartQty={
             cart.find(

@@ -7,6 +7,7 @@ import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticMedium } from "../lib/haptics";
 
 const STOREFRONT_ROUTES = ["/", "/order-again", "/categories", "/wishlist"];
+const NAVBAR_ROUTES = ["/", "/order-again", "/categories"];
 
 export default function FloatingCartBar() {
   const router = useRouter();
@@ -116,9 +117,9 @@ export default function FloatingCartBar() {
       key="global-floating-cart-bar"
       initial={isFirstAppearance ? { y: 60, opacity: 0, scale: 0.8 } : false}
       animate={{
-        // When navbar is visible: docked above navbar with a clean 12px breathing gap (-70px).
-        // When navbar hides on scroll: glides down smoothly to screen bottom (0px) and stays visible!
-        y: isNavVisible ? -70 : 0,
+        // When navbar is visible on pages with navbar: docked above navbar with a clean 12px breathing gap (-70px).
+        // On pages without navbar (or when navbar hides): glides down smoothly to screen bottom (0px).
+        y: (NAVBAR_ROUTES.includes(router.pathname) && isNavVisible) ? -70 : 0,
         opacity: 1,
         scale: isBouncing ? [1, 1.15, 0.94, 1.05, 1] : 1,
       }}
@@ -161,7 +162,7 @@ export default function FloatingCartBar() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <span className="text-xs font-black text-[#FF6B00]">
+                  <span className="text-xs font-black text-[#FF5B00]">
                     {item.name ? item.name.charAt(0) : "🛍️"}
                   </span>
                 )}
@@ -180,7 +181,7 @@ export default function FloatingCartBar() {
             View cart
           </span>
           <div className="flex items-center space-x-1 mt-0.5">
-            <span className="text-[10px] font-black text-white bg-[#FF6B00] px-1.5 py-0.5 rounded-md leading-none">
+            <span className="text-[10px] font-black text-white bg-[#FF5B00] px-1.5 py-0.5 rounded-md leading-none">
               <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "Item" : "Items"}
             </span>
           </div>

@@ -65,7 +65,7 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
                   <div className="w-14 h-14 rounded-full bg-amber-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-2xl shadow-sm">
                     👦
                   </div>
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-3xl z-10 shadow-md">
+                  <div className="w-16 h-16 rounded-full bg-orange-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-3xl z-10 shadow-md">
                     👩
                   </div>
                   <div className="w-14 h-14 rounded-full bg-rose-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-2xl shadow-sm">

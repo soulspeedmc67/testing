@@ -13,7 +13,7 @@ export function EmptyCartState() {
       <motion.div
         animate={{ y: [0, -6, 0] }}
         transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-        className="w-16 h-16 bg-emerald-50 text-[#0c831f] rounded-3xl flex items-center justify-center mx-auto shadow-sm"
+        className="w-16 h-16 bg-orange-50 text-[#FF5B00] rounded-3xl flex items-center justify-center mx-auto shadow-sm"
       >
         <ShoppingBag className="w-8 h-8 stroke-[2]" />
       </motion.div>
@@ -25,7 +25,7 @@ export function EmptyCartState() {
       </div>
       <Link
         href="/"
-        className="inline-flex items-center space-x-1.5 bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-sm transition-all active:scale-95"
+        className="inline-flex items-center space-x-1.5 bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-sm transition-all active:scale-95"
       >
         <span>Browse Products</span>
         <ArrowRight className="w-4 h-4" />
@@ -68,7 +68,7 @@ export function EmptySearchState({ query = "", onSelectChip }) {
               key={idx}
               whileTap={{ scale: 0.94 }}
               onClick={() => onSelectChip && onSelectChip(chip)}
-              className="bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-[#0c831f] border border-slate-200 text-xs font-bold px-3 py-1.5 rounded-full transition-colors"
+              className="bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-[#FF5B00] border border-slate-200 text-xs font-bold px-3 py-1.5 rounded-full transition-colors"
             >
               {chip}
             </motion.button>

@@ -67,7 +67,7 @@ export const DeliveryScooterComposition = ({ etaMinutes = 7, riderName = "Tariq 
             filter: "drop-shadow(0 4px 8px rgba(12, 131, 31, 0.25))"
           }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0c831f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FF5B00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
         </div>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -78,7 +78,7 @@ export const DeliveryScooterComposition = ({ etaMinutes = 7, riderName = "Tariq 
               style={{
                 fontSize: "9px",
                 fontWeight: "800",
-                background: "#0c831f",
+                background: "#FF5B00",
                 color: "#ffffff",
                 padding: "1px 6px",
                 borderRadius: "6px"
@@ -106,7 +106,7 @@ export const DeliveryScooterComposition = ({ etaMinutes = 7, riderName = "Tariq 
           zIndex: 1
         }}
       >
-        <div style={{ fontSize: "9px", fontWeight: "800", color: "#0c831f", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        <div style={{ fontSize: "9px", fontWeight: "800", color: "#FF5B00", textTransform: "uppercase", letterSpacing: "0.5px" }}>
           Arriving In
         </div>
         <div style={{ fontSize: "13px", fontWeight: "900", color: "#0f172a", fontFamily: "monospace" }}>

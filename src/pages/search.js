@@ -107,7 +107,7 @@ export default function SearchPage() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 380, damping: 26, delay: 0.05 }}
             className={`relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner transition-all ${
-              isInputFocused ? "ring-2 ring-[#FF6B00]" : ""
+              isInputFocused ? "ring-2 ring-[#FF5B00]" : ""
             }`}
           >
             <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
@@ -138,7 +138,7 @@ export default function SearchPage() {
                   hapticMedium();
                   setIsVoiceModalOpen(true);
                 }}
-                className="p-1 text-[#FF6B00] hover:text-[#e05f00] active:scale-90 transition-transform cursor-pointer"
+                className="p-1 text-[#FF5B00] hover:text-[#e05f00] active:scale-90 transition-transform cursor-pointer"
                 title="Search with voice"
               >
                 <Mic className="w-4 h-4 stroke-[2.5]" />
@@ -167,7 +167,7 @@ export default function SearchPage() {
                 <button
                   key={idx}
                   onClick={() => setQuery(chip)}
-                  className="bg-white border border-slate-200 hover:border-[#0c831f] text-xs font-bold text-slate-700 px-3.5 py-1.5 rounded-full shadow-sm active:scale-95 transition-all"
+                  className="bg-white border border-slate-200 hover:border-[#FF5B00] text-xs font-bold text-slate-700 px-3.5 py-1.5 rounded-full shadow-sm active:scale-95 transition-all"
                 >
                   {chip}
                 </button>
@@ -205,7 +205,7 @@ export default function SearchPage() {
                         onClick={() => setSelectedQuickProduct(p)}
                         className="text-left w-full cursor-pointer"
                       >
-                        <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2 hover:text-[#0c831f]">{p.name}</h4>
+                        <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2 hover:text-[#FF5B00]">{p.name}</h4>
                       </button>
                     </div>
 

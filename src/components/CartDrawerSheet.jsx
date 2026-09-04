@@ -61,7 +61,7 @@ export default function CartDrawerSheet({
             {/* Delivery Address Pill */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 flex items-center justify-between text-xs">
               <div className="flex items-center space-x-2.5">
-                <MapPin className="w-4 h-4 text-[#FF6B00] shrink-0" />
+                <MapPin className="w-4 h-4 text-[#FF5B00] shrink-0" />
                 <div>
                   <span className="font-extrabold text-slate-900">Deliver to {location.nickname}</span>
                   <p className="text-[10px] text-slate-500 font-medium truncate max-w-[210px]">{location.address}</p>
@@ -70,7 +70,7 @@ export default function CartDrawerSheet({
               {onChangeLocation && (
                 <button
                   onClick={onChangeLocation}
-                  className="text-[11px] font-bold text-[#0c831f] hover:underline"
+                  className="text-[11px] font-bold text-[#FF5B00] hover:underline"
                 >
                   Change
                 </button>
@@ -102,7 +102,7 @@ export default function CartDrawerSheet({
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-[#0c831f] rounded-xl px-2 py-1 font-bold">
+                    <div className="flex items-center space-x-2 bg-orange-50 border border-orange-200 text-[#FF5B00] rounded-xl px-2 py-1 font-bold">
                       <motion.button
                         whileTap={{ scale: 0.75 }}
                         onClick={() => onUpdateQty(item.id, -1)}
@@ -132,7 +132,7 @@ export default function CartDrawerSheet({
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Delivery Charge</span>
-                <span className="font-mono font-bold text-[#0c831f]">{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span>
+                <span className="font-mono font-bold text-[#FF5B00]">{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Handling Fee</span>
@@ -140,7 +140,7 @@ export default function CartDrawerSheet({
               </div>
               <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-sm text-slate-900">
                 <span>Total to Pay</span>
-                <span className="font-mono text-[#0c831f]">₹{grandTotal}</span>
+                <span className="font-mono text-[#FF5B00]">₹{grandTotal}</span>
               </div>
             </div>
 

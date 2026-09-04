@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { goBack } from "../lib/navigation";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { ChevronLeft, Contact } from "lucide-react";
@@ -47,7 +48,7 @@ export default function AddAddressPage() {
       <header className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center sticky top-0 z-30 shadow-xs">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => goBack(router)}
           className="w-10 h-10 rounded-full border border-slate-200/90 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
         >
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
@@ -67,7 +68,7 @@ export default function AddAddressPage() {
           <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl">
             <div>
               <span className="text-xs font-bold text-slate-800 block">Select a city</span>
-              <span className="text-[11px] font-semibold text-emerald-700">{city}</span>
+              <span className="text-[11px] font-semibold text-orange-700">{city}</span>
             </div>
             <button
               type="button"
@@ -75,7 +76,7 @@ export default function AddAddressPage() {
                 const c = prompt("Enter your city:", city);
                 if (c) setCity(c);
               }}
-              className="bg-white border border-slate-200 text-emerald-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95"
+              className="bg-white border border-slate-200 text-orange-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95"
             >
               Select
             </button>
@@ -85,7 +86,7 @@ export default function AddAddressPage() {
           <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl">
             <div>
               <span className="text-xs font-bold text-slate-800 block">Select an area, street</span>
-              <span className="text-[11px] font-semibold text-emerald-700">{area}</span>
+              <span className="text-[11px] font-semibold text-orange-700">{area}</span>
             </div>
             <button
               type="button"
@@ -93,7 +94,7 @@ export default function AddAddressPage() {
                 const a = prompt("Enter your area/street:", area);
                 if (a) setArea(a);
               }}
-              className="bg-white border border-slate-200 text-emerald-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95"
+              className="bg-white border border-slate-200 text-orange-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95"
             >
               Select
             </button>
@@ -101,7 +102,7 @@ export default function AddAddressPage() {
 
           {/* Enter Complete Address */}
           <div>
-            <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+            <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all">
               <input
                 type="text"
                 placeholder="Enter complete address*"
@@ -116,7 +117,7 @@ export default function AddAddressPage() {
           </div>
 
           {/* Google Maps Link (optional) */}
-          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all">
             <input
               type="text"
               placeholder="Add google maps link (optional)"
@@ -139,7 +140,7 @@ export default function AddAddressPage() {
                 name="contactType"
                 checked={contactType === "Myself"}
                 onChange={() => setContactType("Myself")}
-                className="w-4 h-4 text-[#0c831f] focus:ring-[#0c831f]"
+                className="w-4 h-4 text-[#FF5B00] focus:ring-[#FF5B00]"
               />
               <span className="text-xs font-bold text-slate-700">Myself</span>
             </label>
@@ -150,14 +151,14 @@ export default function AddAddressPage() {
                 name="contactType"
                 checked={contactType === "Someone else"}
                 onChange={() => setContactType("Someone else")}
-                className="w-4 h-4 text-[#0c831f] focus:ring-[#0c831f]"
+                className="w-4 h-4 text-[#FF5B00] focus:ring-[#FF5B00]"
               />
               <span className="text-xs font-bold text-slate-700">Someone else</span>
             </label>
           </div>
 
           {/* Receiver Name */}
-          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all">
             <input
               type="text"
               placeholder="Receiver's name*"
@@ -168,7 +169,7 @@ export default function AddAddressPage() {
           </div>
 
           {/* Receiver Phone Number with +91 prefix and contact book icon */}
-          <div className="flex items-center bg-slate-50/70 border border-slate-200/90 rounded-2xl px-3 py-2.5 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+          <div className="flex items-center bg-slate-50/70 border border-slate-200/90 rounded-2xl px-3 py-2.5 focus-within:border-[#FF5B00] focus-within:bg-white transition-all">
             <span className="text-xs font-black text-slate-700 mr-2">+91</span>
             <input
               type="tel"
@@ -181,7 +182,7 @@ export default function AddAddressPage() {
           </div>
 
           {/* Save as Address (optional) */}
-          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:bg-white transition-all">
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all">
             <input
               type="text"
               placeholder="Save as address (optional, e.g. Home, Work)"
@@ -198,7 +199,7 @@ export default function AddAddressPage() {
         <button
           type="button"
           onClick={handleNext}
-          className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-emerald-700/20 active:scale-[0.98] transition-all"
+          className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-sm py-3.5 rounded-2xl shadow-lg shadow-orange-700/20 active:scale-[0.98] transition-all"
         >
           Next
         </button>

@@ -196,7 +196,7 @@ export default function AppHeader({
                 readOnly={isSearchClickable}
                 className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400 cursor-pointer"
               />
-              <Mic className="w-4 h-4 stroke-[2.5] text-slate-500 ml-2 shrink-0 hover:text-[#0c831f] transition-colors" />
+              <Mic className="w-4 h-4 stroke-[2.5] text-slate-500 ml-2 shrink-0 hover:text-[#FF5B00] transition-colors" />
             </div>
           </div>
 

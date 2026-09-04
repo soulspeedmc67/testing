@@ -48,7 +48,7 @@ export default function HomeScreenLiveOrderCard() {
   return (
     <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-sm space-y-3 animate-fade-in relative overflow-hidden">
       {/* Subtle orange highlight strip */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-[#FF6B00]" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-[#FF5B00]" />
 
       {/* Header: Title, Order ID, Dismiss X */}
       <div className="flex items-center justify-between pt-0.5">
@@ -114,13 +114,13 @@ export default function HomeScreenLiveOrderCard() {
             <span className="text-[9px] font-bold text-[#061838] block">Placed</span>
           </div>
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#FF6B00] animate-pulse rounded-full" />
-            <span className="text-[9px] font-bold text-[#FF6B00] block">Processing</span>
+            <div className="h-1 w-full bg-[#FF5B00] animate-pulse rounded-full" />
+            <span className="text-[9px] font-bold text-[#FF5B00] block">Processing</span>
           </div>
           <div className="space-y-1 text-center">
             <div
               className={`h-1 w-full ${
-                activeOrder?.status === "Out for Delivery" ? "bg-[#FF6B00]" : "bg-slate-200"
+                activeOrder?.status === "Out for Delivery" ? "bg-[#FF5B00]" : "bg-slate-200"
               } rounded-full`}
             />
             <span

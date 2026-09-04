@@ -122,24 +122,24 @@ export default function ProductDetailPage() {
           <div className="pt-2 flex items-baseline space-x-2">
             <span className="text-xl font-black text-slate-900 font-mono">₹{productObj.price}</span>
             <span className="text-xs text-slate-400 line-through font-medium">MRP ₹{productObj.originalPrice}</span>
-            <span className="text-xs font-extrabold text-[#0c831f] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+            <span className="text-xs font-extrabold text-[#FF5B00] bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
               62% OFF
             </span>
           </div>
         </div>
 
         {/* Promotional Code Banner */}
-        <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-4 flex items-center justify-between shadow-sm">
+        <div className="bg-orange-50 border border-orange-200 rounded-3xl p-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-3">
-            <div className="p-2.5 bg-[#0c831f] text-white rounded-2xl">
+            <div className="p-2.5 bg-[#FF5B00] text-white rounded-2xl">
               <Tag className="w-4 h-4" />
             </div>
             <div>
               <h4 className="font-extrabold text-xs text-slate-900">Buy at ₹288</h4>
-              <p className="text-[11px] font-bold text-emerald-800">Apply Code: <b className="font-mono">AUCC30</b></p>
+              <p className="text-[11px] font-bold text-orange-800">Apply Code: <b className="font-mono">AUCC30</b></p>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-[#0c831f]" />
+          <ChevronRight className="w-4 h-4 text-[#FF5B00]" />
         </div>
 
         {/* Seller Info Card */}

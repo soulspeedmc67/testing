@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Mic } from "lucide-react";
+import { Search, Mic, Sparkles, Flame } from "lucide-react";
 import AppHeader from "../components/AppHeader";
 import CategoryScroller from "../components/CategoryScroller";
 import PromoBanner from "../components/PromoBanner";
@@ -17,6 +17,7 @@ import VariantSelectorModal from "../components/VariantSelectorModal";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { ALL_PRODUCTS } from "../data/products";
 import { reverseGeocodeCoords } from "../lib/maps";
+import { stagger, fadeUp, fadeUpTight, inViewOnce, EASE_OUT, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 
 const SEARCH_SUGGESTIONS = [
   '"milk, curd & paneer"',
@@ -39,6 +40,7 @@ export default function StorefrontHome() {
   const [isSearchPulsing, setIsSearchPulsing] = useState(false);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isHighDemand, setIsHighDemand] = useState(false);
+  const [activeDealPromo, setActiveDealPromo] = useState(null);
 
   // Smooth blurry suggestion rotation state
   const [suggestionIdx, setSuggestionIdx] = useState(0);
@@ -143,6 +145,42 @@ export default function StorefrontHome() {
     }
   }, [router.query.cat]);
 
+  // Support ?deal=Snacks navigation for in-page exclusive deals
+  useEffect(() => {
+    if (router.query.deal) {
+      const dealCat = router.query.deal;
+      setActiveDealPromo({
+        category: dealCat,
+        title: `Dashit Exclusive ${dealCat} Specials`,
+        priceTag: "Special Discounts Active",
+      });
+      setActiveCategory(dealCat);
+      setTimeout(() => {
+        const el = document.getElementById("products-section");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 250);
+    }
+  }, [router.query.deal]);
+
+  const handleSelectPromo = (promo) => {
+    if (!promo) return;
+    if (typeof promo === "string") {
+      setActiveCategory(promo === "Chips & Crisps" ? "Snacks" : promo);
+      return;
+    }
+    // Object: Exclusive Offer from Admin
+    setActiveDealPromo(promo);
+    if (promo.category && promo.category !== "All") {
+      setActiveCategory(promo.category);
+    }
+    setTimeout(() => {
+      const el = document.getElementById("products-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 150);
+  };
+
   const saveCart = (newCart) => {
     setCart(newCart);
     try {
@@ -173,23 +211,47 @@ export default function StorefrontHome() {
     }
   };
 
-  const filteredProducts = productsList.filter((p) => {
-    if (activeCategory === "All") return true;
-    if (!p.cat) return true;
-    const catLower = p.cat.toLowerCase();
-    const activeLower = activeCategory.toLowerCase();
-    if (activeLower === "snacks") {
-      return (
-        catLower.includes("snack") ||
-        catLower.includes("chip") ||
-        catLower.includes("biscuit") ||
-        catLower.includes("cookie") ||
-        catLower.includes("munch") ||
-        catLower.includes("namkeen")
-      );
+  const filteredProducts = useMemo(() => {
+    let list = [...productsList];
+
+    if (activeCategory !== "All") {
+      const activeLower = activeCategory.toLowerCase();
+      list = list.filter((p) => {
+        if (!p.cat) return true;
+        const catLower = p.cat.toLowerCase();
+        if (activeLower === "snacks") {
+          return (
+            catLower.includes("snack") ||
+            catLower.includes("chip") ||
+            catLower.includes("biscuit") ||
+            catLower.includes("cookie") ||
+            catLower.includes("munch") ||
+            catLower.includes("namkeen")
+          );
+        }
+        return catLower === activeLower || catLower.includes(activeLower) || activeLower.includes(catLower);
+      });
     }
-    return catLower === activeLower || catLower.includes(activeLower) || activeLower.includes(catLower);
-  });
+
+    // When an exclusive deal promo is active: sort so discounted & matching deal items appear first!
+    if (activeDealPromo) {
+      const dealCat = (activeDealPromo.category || "").toLowerCase();
+      list.sort((a, b) => {
+        const aCat = (a.cat || "").toLowerCase();
+        const bCat = (b.cat || "").toLowerCase();
+        const aCatMatch = aCat.includes(dealCat) || dealCat.includes(aCat);
+        const bCatMatch = bCat.includes(dealCat) || dealCat.includes(bCat);
+        if (aCatMatch && !bCatMatch) return -1;
+        if (!aCatMatch && bCatMatch) return 1;
+
+        const aDiscount = a.mrp && a.price ? (a.mrp - a.price) : 0;
+        const bDiscount = b.mrp && b.price ? (b.mrp - b.price) : 0;
+        return bDiscount - aDiscount;
+      });
+    }
+
+    return list;
+  }, [productsList, activeCategory, activeDealPromo]);
 
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-slate-900 font-sans pb-32">
@@ -211,7 +273,7 @@ export default function StorefrontHome() {
           <div
             onClick={() => router.push("/search")}
             className={`relative flex items-center bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/90 cursor-pointer active:scale-[0.99] transition-all ${
-              isSearchPulsing ? "animate-search-pulse ring-2 ring-[#0c831f]/40" : ""
+              isSearchPulsing ? "animate-search-pulse ring-2 ring-[#FF5B00]/40" : ""
             }`}
           >
             <Search className="w-4 h-4 stroke-[2.5] text-[#061838]/60 mr-2 shrink-0" />
@@ -239,7 +301,7 @@ export default function StorefrontHome() {
                 hapticMedium();
                 setIsVoiceModalOpen(true);
               }}
-              className="p-1 rounded-full text-[#FF6B00] hover:text-[#e05f00] ml-auto shrink-0 active:scale-90 transition-transform cursor-pointer"
+              className="p-1 rounded-full text-[#FF5B00] hover:text-[#e05f00] ml-auto shrink-0 active:scale-90 transition-transform cursor-pointer"
               title="Search with voice"
             >
               <Mic className="w-4 h-4 stroke-[2.5]" />
@@ -256,7 +318,7 @@ export default function StorefrontHome() {
       </div>
 
       {/* MAIN BODY CONTENT */}
-      <main className="max-w-md mx-auto px-4 pt-3 space-y-5">
+      <main className="max-w-md mx-auto px-4 pt-5 space-y-8">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeCategory}
@@ -264,16 +326,16 @@ export default function StorefrontHome() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{
-              duration: 0.24,
-              ease: "easeOut",
+              duration: 0.28,
+              ease: EASE_OUT,
             }}
-            className="space-y-5"
+            className="space-y-8"
           >
             {/* Selected Category Header (when activeCategory !== 'All') */}
             {activeCategory !== "All" && (
               <div className="flex items-center justify-between px-1 pt-1 pb-0">
                 <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF6B00]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF5B00]" />
                   <h2 className="font-black text-base text-[#061838] tracking-tight">
                     {activeCategory}
                   </h2>
@@ -283,7 +345,7 @@ export default function StorefrontHome() {
                 </div>
                 <button
                   onClick={() => setActiveCategory("All")}
-                  className="text-xs font-black text-[#FF6B00] hover:underline flex items-center space-x-1 cursor-pointer active:scale-95 transition-transform"
+                  className="text-xs font-black text-[#FF5B00] hover:underline flex items-center space-x-1 cursor-pointer active:scale-95 transition-transform"
                 >
                   <span>Show All</span>
                   <span>✕</span>
@@ -294,26 +356,26 @@ export default function StorefrontHome() {
             {/* 4. PROMOTIONAL HERO BANNER (Only visible when activeCategory === 'All') */}
             {activeCategory === "All" && (
               <PromoBanner
-                onSelectPromo={(promo) =>
-                  setActiveCategory(promo === "Chips & Crisps" ? "Snacks" : promo)
-                }
+                onSelectPromo={(promo) => handleSelectPromo(promo)}
               />
             )}
 
             {/* 5. 6-PACK CATEGORY GRID (Only visible when activeCategory === 'All') */}
             {activeCategory === "All" && (
-              <section className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="font-black text-sm text-[#061838] tracking-tight">
-                    Explore Categories
+              <section className="space-y-3">
+                <motion.div variants={fadeUp} {...inViewOnce} className="flex items-center justify-between px-1">
+                  <h3 className="font-black text-[17px] text-[#061838] tracking-tight">
+                    Grocery &amp; Kitchen
                   </h3>
-                  <button
+                  <motion.button
+                    whileTap={TAP_SOFT}
+                    transition={SPRING_SNAPPY}
                     onClick={() => router.push("/categories")}
-                    className="text-xs font-black text-[#FF6B00] hover:underline"
+                    className="text-[11px] font-black text-[#FF5B00] bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition-colors"
                   >
                     See all →
-                  </button>
-                </div>
+                  </motion.button>
+                </motion.div>
                 <CategoryGridSixPack
                   onSelectCategory={(cat) =>
                     setActiveCategory(cat === "Chips" || cat === "Biscuits" ? "Snacks" : cat)
@@ -323,20 +385,62 @@ export default function StorefrontHome() {
             )}
 
             {/* 6. PRODUCT SECTION WITH SKELETON SUPPORT */}
-            <section className="space-y-3 pt-1">
-              <div className="flex items-center justify-between px-1">
-                <h3 className="font-black text-base text-slate-900 tracking-tight">
+            <section id="products-section" className="space-y-3 pt-1">
+              {/* Active Deal Banner */}
+              {activeDealPromo && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-amber-50/70 border border-amber-200/70 rounded-2xl p-3 flex items-center justify-between shadow-[0_1px_3px_rgba(15,23,42,0.03)] mb-3"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-[#FF5B00] text-white flex items-center justify-center font-black shadow-xs shrink-0">
+                      <Sparkles className="w-4 h-4 stroke-[2.5]" />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                          DASHIT EXCLUSIVE APPLIED
+                        </span>
+                        {activeDealPromo.promoCode && (
+                          <span className="text-[10px] font-mono font-bold text-slate-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                            {activeDealPromo.promoCode}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-black text-slate-900 mt-0.5">
+                        {activeDealPromo.title} · <span className="text-[#FF5B00]">{activeDealPromo.priceTag || "Special Deals"}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDealPromo(null);
+                      setActiveCategory("All");
+                    }}
+                    className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 active:scale-95 transition-all cursor-pointer shadow-2xs"
+                  >
+                    Clear ✕
+                  </button>
+                </motion.div>
+              )}
+
+              <motion.div variants={fadeUp} {...inViewOnce} className="flex items-center justify-between px-1">
+                <h3 className="font-black text-[17px] text-slate-900 tracking-tight">
                   {activeCategory === "All" ? "Bestsellers" : activeCategory}
                 </h3>
                 {activeCategory !== "All" && (
-                  <button
+                  <motion.button
+                    whileTap={TAP_SOFT}
+                    transition={SPRING_SNAPPY}
                     onClick={() => setActiveCategory("All")}
-                    className="text-xs font-black text-[#FF6B00] hover:underline active:scale-95 transition-transform"
+                    className="text-[11px] font-black text-[#FF5B00] bg-orange-50 hover:bg-orange-100 border border-orange-200/70 px-2.5 py-1 rounded-lg transition-colors"
                   >
                     Back to All
-                  </button>
+                  </motion.button>
                 )}
-              </div>
+              </motion.div>
 
               {isLoadingProducts ? (
                 <div className="grid grid-cols-2 gap-3">
@@ -375,9 +479,16 @@ export default function StorefrontHome() {
         product={selectedQuickProduct}
         isOpen={Boolean(selectedQuickProduct)}
         onClose={() => setSelectedQuickProduct(null)}
+        /* Cart ids are normalised to strings on add, so compare as strings —
+           a strict === against a numeric product id never matched, which left
+           the sheet showing ADD for an item already in the cart. */
         cartQty={
           selectedQuickProduct
-            ? cart.find((i) => i.id === selectedQuickProduct.id)?.qty || 0
+            ? cart.find(
+                (i) =>
+                  String(i.id || i.barcode) ===
+                  String(selectedQuickProduct.id || selectedQuickProduct.barcode)
+              )?.qty || 0
             : 0
         }
         onAdd={() => selectedQuickProduct && handleAddToCart(selectedQuickProduct)}
@@ -407,6 +518,7 @@ export default function StorefrontHome() {
         product={selectedVariantProduct}
         cart={cart}
         onAddToCart={handleAddToCart}
+        onUpdateQty={(id, delta) => handleUpdateQty(id, delta)}
       />
 
       {/* 11. VOICE SEARCH MODAL */}

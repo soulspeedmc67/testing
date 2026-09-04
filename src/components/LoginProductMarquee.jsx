@@ -1,6 +1,6 @@
 const ROW1 = [
   { img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=150&auto=format&fit=crop&q=80", bg: "bg-sky-100/70" },
-  { img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop&q=80", bg: "bg-emerald-100/70" },
+  { img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop&q=80", bg: "bg-orange-100/70" },
   { img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=150&auto=format&fit=crop&q=80", bg: "bg-amber-100/70" },
   { img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=150&auto=format&fit=crop&q=80", bg: "bg-rose-100/70" },
 ];

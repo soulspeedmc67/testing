@@ -13,13 +13,16 @@ import {
   FileText,
   MapPin,
   Phone,
-  Shield,
   Check,
-  X
+  X,
+  Sparkles
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import { getWishlist } from "../lib/wishlist";
 import { hapticLight } from "../lib/haptics";
+import { goBack } from "../lib/navigation";
+import { isIOS } from "../lib/platform";
+import { SPRING_SNAPPY } from "../lib/motion";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -30,7 +33,13 @@ export default function AccountPage() {
     address: "b-3,jamia appqrtment, Anantnag"
   });
   const [wishlistCount, setWishlistCount] = useState(0);
-  const [isExiting, setIsExiting] = useState(false);
+  /* The iOS-style edge swipe is opt-in per platform: Android already has a
+     system back gesture, and running both makes the screen fire back twice. */
+  const [edgeSwipeEnabled, setEdgeSwipeEnabled] = useState(false);
+
+  useEffect(() => {
+    setEdgeSwipeEnabled(isIOS());
+  }, []);
 
   useEffect(() => {
     try {
@@ -48,36 +57,41 @@ export default function AccountPage() {
     return () => window.removeEventListener("dashit_wishlist_updated", syncWishlist);
   }, []);
 
+  /* Navigates back, or lands on Home when this screen was opened directly
+     (deep link / notification) and there is no history to pop. */
   const handleBack = () => {
-    setIsExiting(true);
     hapticLight();
-    setTimeout(() => {
-      router.back();
-    }, 220);
+    goBack(router, "/");
   };
 
-  const handleDragEnd = (event, info) => {
-    // iPhone-style swipe to go back: if dragged right by > 80px or with rightward velocity
-    if (info.offset.x > 80 || info.velocity.x > 250) {
+  const handleEdgeDragEnd = (event, info) => {
+    if (info.offset.x > 70 || info.velocity.x > 320) {
       handleBack();
     }
   };
 
   return (
-    <motion.div
-      drag="x"
-      dragDirectionLock
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={{ left: 0, right: 0.85 }}
-      onDragEnd={handleDragEnd}
-      initial={{ x: "100%", opacity: 0.9 }}
-      animate={isExiting ? { x: "100%", opacity: 0.5 } : { x: 0, opacity: 1 }}
-      exit={{ x: "100%", opacity: 0.9 }}
-      transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.75 }}
-      className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32 touch-pan-y select-none relative"
-    >
-      {/* Subtle iPhone left edge swipe indicator hint */}
-      <div className="absolute left-0 top-0 bottom-0 w-3 pointer-events-none z-50 bg-gradient-to-r from-black/5 to-transparent" />
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32 relative">
+      {/*
+        iOS edge-swipe back. Scoped to a 24px strip at the left edge instead of
+        the whole page — dragging the entire screen made ordinary vertical
+        scrolling drag the page sideways. The page itself is no longer a drag
+        target, and the screen transition is left to _app.js so the two do not
+        animate against each other.
+      */}
+      {edgeSwipeEnabled && (
+        <motion.div
+          drag="x"
+          dragDirectionLock
+          dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={{ left: 0, right: 0.6 }}
+          dragMomentum={false}
+          onDragEnd={handleEdgeDragEnd}
+          transition={SPRING_SNAPPY}
+          className="absolute left-0 top-0 bottom-0 w-6 z-50 touch-pan-y"
+          aria-hidden="true"
+        />
+      )}
 
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
       <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
@@ -230,9 +244,26 @@ export default function AccountPage() {
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </div>
+
+            {/* Dashit Exclusive Deals on Home */}
+            <Link
+              href="/?deal=Snacks"
+              className="flex items-center justify-between p-3.5 hover:bg-amber-50/60 transition-colors group border-t border-slate-100"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">Dashit Exclusive Deals</span>
+                  <span className="text-[10px] font-medium text-slate-500">Live flash offers sorted on home</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
         </div>
       </main>
-    </motion.div>
+    </div>
   );
 }

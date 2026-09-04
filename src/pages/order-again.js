@@ -192,13 +192,13 @@ export default function OrderAgainPage() {
                   : "🎉 Free Delivery Unlocked on this basket!"}
               </span>
             </div>
-            <span className="font-mono font-black text-xs text-[#FF6B00]">
+            <span className="font-mono font-black text-xs text-[#FF5B00]">
               Cart: ₹{cartSubtotal}
             </span>
           </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full mt-2 overflow-hidden">
             <motion.div
-              className="h-full bg-[#FF6B00] rounded-full"
+              className="h-full bg-[#FF5B00] rounded-full"
               initial={{ width: 0 }}
               animate={{
                 width: `${Math.min(100, Math.round((cartSubtotal / freeDeliveryThreshold) * 100))}%`,
@@ -213,7 +213,7 @@ export default function OrderAgainPage() {
           <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-sm space-y-3 relative overflow-hidden">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-[#FF6B00] flex items-center justify-center border border-amber-200/60 shadow-2xs">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-[#FF5B00] flex items-center justify-center border border-amber-200/60 shadow-2xs">
                   <RotateCcw className="w-4 h-4 stroke-[2.8]" />
                 </div>
                 <div>
@@ -258,7 +258,7 @@ export default function OrderAgainPage() {
               onClick={handleReorderLastOrder}
               className="w-full py-3 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-xs flex items-center justify-center space-x-2 shadow-md active:scale-[0.98] transition-transform cursor-pointer"
             >
-              <RotateCcw className="w-3.5 h-3.5 stroke-[2.8] text-[#FF6B00]" />
+              <RotateCcw className="w-3.5 h-3.5 stroke-[2.8] text-[#FF5B00]" />
               <span>Reorder Entire Basket to Checkout</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
@@ -283,7 +283,7 @@ export default function OrderAgainPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#FF6B00]" />
+              <span className="w-2 h-2 rounded-full bg-[#FF5B00]" />
               <h3 className="text-sm font-black text-[#061838] tracking-tight">
                 {reorderItems.length > 0
                   ? `Previously Ordered by You (${reorderItems.length})`
@@ -378,7 +378,7 @@ export default function OrderAgainPage() {
           <div className="flex items-center justify-between px-1">
             <div>
               <div className="flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#FF6B00] stroke-[2.5]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#FF5B00] stroke-[2.5]" />
                 <h3 className="text-sm font-black text-[#061838] tracking-tight">
                   Suggested Additions · Buy More
                 </h3>

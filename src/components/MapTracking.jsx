@@ -176,7 +176,7 @@ export default function MapTracking({
         {/* Minimalist ETA Pill */}
         <div className="absolute top-3 left-3 z-10 pointer-events-none">
           <div className="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-2xl shadow-sm border border-slate-200/90 flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-[#0c831f]" />
+            <span className="w-2 h-2 rounded-full bg-[#FF5B00]" />
             <div>
               <span className="text-[11px] font-extrabold text-slate-900 tracking-tight block">
                 Arriving in {etaMinutes} mins
@@ -195,7 +195,7 @@ export default function MapTracking({
             className="p-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-sm border border-slate-200/90 text-slate-700 hover:text-slate-950 active:scale-90 transition-transform"
             title="Recenter Map"
           >
-            <Navigation className="w-4 h-4 text-[#0c831f]" />
+            <Navigation className="w-4 h-4 text-[#FF5B00]" />
           </button>
         </div>
       </div>
@@ -203,13 +203,13 @@ export default function MapTracking({
       {/* Clean Courier Details Row */}
       <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100">
         <div className="flex items-center space-x-2.5">
-          <div className="w-10 h-10 bg-emerald-100 text-[#0c831f] rounded-2xl flex items-center justify-center font-black text-base shadow-sm">
+          <div className="w-10 h-10 bg-orange-100 text-[#FF5B00] rounded-2xl flex items-center justify-center font-black text-base shadow-sm">
             <Bike className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5">
               <h4 className="font-extrabold text-xs text-slate-900">{riderName}</h4>
-              <ShieldCheck className="w-3.5 h-3.5 text-[#0c831f]" />
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             </div>
             <p className="text-[10px] font-medium text-slate-500">{riderStatus}</p>
           </div>
@@ -217,7 +217,7 @@ export default function MapTracking({
 
         <a
           href="tel:9622720283"
-          className="p-2.5 bg-white hover:bg-emerald-50 text-[#0c831f] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold"
+          className="p-2.5 bg-white hover:bg-orange-50 text-[#FF5B00] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold"
         >
           <Phone className="w-3.5 h-3.5" />
           <span className="text-[11px]">Call</span>

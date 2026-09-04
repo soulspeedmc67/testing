@@ -2,11 +2,38 @@ import { Star, Clock, ShieldCheck } from "lucide-react";
 import VaulDrawer from "./ui/VaulDrawer";
 import ProductCardStepper from "./ProductCardStepper";
 
-export default function QuickProductSheet({ product, isOpen, onClose, cart = [], onAddToCart, onUpdateQty }) {
+/**
+ * Quick-view bottom sheet.
+ *
+ * Call sites historically passed two different prop shapes (`cart`+`onAddToCart`
+ * vs `cartQty`+`onAdd`/`onIncrement`/`onDecrement`), which silently left the
+ * stepper reading qty 0 and the ADD button wired to nothing. This accepts both
+ * and normalises them, so neither caller can be quietly broken again.
+ */
+export default function QuickProductSheet({
+  product,
+  isOpen,
+  onClose,
+  cart,
+  cartQty,
+  onAddToCart,
+  onAdd,
+  onUpdateQty,
+  onIncrement,
+  onDecrement,
+}) {
   if (!product) return null;
 
-  const cartItem = cart.find((i) => i.id === product.id);
-  const qty = cartItem ? cartItem.qty : 0;
+  const productId = product.id || product.barcode;
+  const derivedQty = Array.isArray(cart)
+    ? cart.find((i) => String(i.id || i.barcode) === String(productId))?.qty || 0
+    : 0;
+  const qty = typeof cartQty === "number" ? cartQty : derivedQty;
+
+  const handleAdd = onAddToCart || onAdd;
+  const handleUpdateQty =
+    onUpdateQty ||
+    ((id, delta) => (delta > 0 ? onIncrement?.(id) : onDecrement?.(id)));
 
   return (
     <VaulDrawer
@@ -42,7 +69,7 @@ export default function QuickProductSheet({ product, isOpen, onClose, cart = [],
           <div className="flex items-center space-x-2 pt-1">
             <span className="text-slate-500 text-xs font-semibold">{product.unit || "1 unit"}</span>
             <span className="text-slate-300">•</span>
-            <div className="flex items-center space-x-1 text-[11px] text-[#0c831f] font-bold">
+            <div className="flex items-center space-x-1 text-[11px] text-[#FF5B00] font-bold">
               <Clock className="w-3 h-3" />
               <span>{product.time || "10 mins"}</span>
             </div>
@@ -65,8 +92,10 @@ export default function QuickProductSheet({ product, isOpen, onClose, cart = [],
             <ProductCardStepper
               product={product}
               qty={qty}
-              onAdd={onAddToCart}
-              onUpdateQty={onUpdateQty}
+              onAdd={handleAdd}
+              onUpdateQty={handleUpdateQty}
+              onIncrement={onIncrement}
+              onDecrement={onDecrement}
             />
           </div>
         </div>

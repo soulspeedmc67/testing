@@ -1,10 +1,16 @@
 import { cn } from "../../lib/utils";
 
+/**
+ * Base shimmer block. Uses the `animate-shimmer` sweep (neutral slate gradient
+ * defined in globals.css) rather than a flat pulse — it reads as "loading"
+ * without flashing the whole layout. Every skeleton must match the real
+ * element's box exactly so there is zero layout shift on swap-in.
+ */
 export function Skeleton({ className, ...props }) {
   return (
     <div
       className={cn(
-        "animate-pulse rounded-2xl bg-slate-200/80",
+        "animate-shimmer rounded-2xl",
         className
       )}
       {...props}

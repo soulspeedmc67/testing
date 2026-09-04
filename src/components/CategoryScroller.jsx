@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Flame, Cookie, Apple, Croissant, Milk, Coffee, Sparkles, Utensils, Heart, Home, Package } from "lucide-react";
 import { hapticLight } from "../lib/haptics";
+import { SPRING_SNAPPY, TAP_FIRM } from "../lib/motion";
 
 export const CATEGORY_STRIP = [
   { id: "All", label: "All", icon: Flame },
@@ -28,7 +29,8 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
           return (
             <motion.button
               key={cat.id}
-              whileTap={{ scale: 0.92 }}
+              whileTap={TAP_FIRM}
+              transition={SPRING_SNAPPY}
               onClick={(e) => {
                 hapticLight();
                 e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -57,7 +59,7 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
               {isActive && (
                 <motion.span
                   layoutId="categoryUnderline"
-                  className="absolute -bottom-0.5 w-4 h-1 bg-[#FF6B00] rounded-full shadow-[0_1px_4px_rgba(255,107,0,0.4)]"
+                  className="absolute -bottom-0.5 w-4 h-1 bg-[#FF5B00] rounded-full shadow-[0_1px_4px_rgba(255, 91, 0,0.4)]"
                   transition={{ type: "spring", stiffness: 260, damping: 24 }}
                 />
               )}

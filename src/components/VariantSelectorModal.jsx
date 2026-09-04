@@ -1,7 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Check, ShoppingBag, Sparkles } from "lucide-react";
+import { X, Minus, Plus } from "lucide-react";
 import { hapticMedium, hapticLight } from "../lib/haptics";
 import { triggerFlyToCart } from "./FlyingBadgeOverlay";
+import { SPRING_SNAPPY, SPRING_BOUNCY } from "../lib/motion";
+
+/** Stable cart id for a given product + size, shared by add and qty updates. */
+export const variantCartId = (product, variant) =>
+  `${product.id}-${String(variant.unit).replace(/\s+/g, "")}`;
 
 export default function VariantSelectorModal({
   isOpen,
@@ -9,6 +14,7 @@ export default function VariantSelectorModal({
   product,
   cart = [],
   onAddToCart,
+  onUpdateQty,
 }) {
   if (!isOpen || !product) return null;
 
@@ -16,7 +22,12 @@ export default function VariantSelectorModal({
     { id: product.id, unit: product.unit, price: product.price, originalPrice: product.originalPrice }
   ];
 
-  const handleSelectVariant = (e, variant) => {
+  /**
+   * Adding a size keeps the sheet OPEN so several sizes can be picked in one
+   * visit — closing on every tap forced the user to reopen the sheet for each
+   * item. The sheet is dismissed explicitly via the close button or backdrop.
+   */
+  const handleAddVariant = (e, variant) => {
     hapticMedium();
     const imgSrc = product.img || product.image;
     if (imgSrc) {
@@ -26,7 +37,7 @@ export default function VariantSelectorModal({
 
     const itemToAdd = {
       ...product,
-      id: `${product.id}-${variant.unit.replace(/\s+/g, "")}`,
+      id: variantCartId(product, variant),
       name: `${product.name} (${variant.unit})`,
       unit: variant.unit,
       price: variant.price,
@@ -34,7 +45,11 @@ export default function VariantSelectorModal({
     };
 
     if (onAddToCart) onAddToCart(itemToAdd);
-    onClose();
+  };
+
+  const handleStep = (variant, delta) => {
+    hapticLight();
+    if (onUpdateQty) onUpdateQty(variantCartId(product, variant), delta);
   };
 
   return (
@@ -68,7 +83,7 @@ export default function VariantSelectorModal({
                 />
               </div>
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#FF6B00]">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#FF5B00]">
                   Select Option
                 </span>
                 <h3 className="text-sm font-black text-[#061838] leading-tight line-clamp-1">
@@ -94,7 +109,7 @@ export default function VariantSelectorModal({
           {/* Variant Selection List */}
           <div className="space-y-2 pt-1">
             {variants.map((variant) => {
-              const variantId = `${product.id}-${variant.unit.replace(/\s+/g, "")}`;
+              const variantId = variantCartId(product, variant);
               const inCartItem = cart.find(
                 (c) => String(c.id) === String(variantId) || (c.name === `${product.name} (${variant.unit})`)
               );
@@ -119,20 +134,63 @@ export default function VariantSelectorModal({
                         </span>
                       )}
                       {variant.originalPrice > variant.price && (
-                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded">
+                        <span className="text-[9px] font-black text-orange-600 bg-orange-50 px-1.5 py-0.2 rounded">
                           {Math.round(((variant.originalPrice - variant.price) / variant.originalPrice) * 100)}% OFF
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <motion.button
-                    whileTap={{ scale: 0.94 }}
-                    onClick={(e) => handleSelectVariant(e, variant)}
-                    className="flex items-center space-x-1 px-4 py-2 bg-[#061838] hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer tracking-wider"
-                  >
-                    <span>{qtyInCart > 0 ? `ADD MORE (${qtyInCart})` : "ADD"}</span>
-                  </motion.button>
+                  {/* Inline stepper once the size is in the cart — no reopening */}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {qtyInCart > 0 ? (
+                      <motion.div
+                        key="stepper"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={SPRING_SNAPPY}
+                        className="flex items-center bg-[#FF5B00] text-white rounded-xl shadow-xs overflow-hidden"
+                      >
+                        <motion.button
+                          whileTap={{ scale: 0.86 }}
+                          transition={SPRING_BOUNCY}
+                          onClick={() => handleStep(variant, -1)}
+                          aria-label={`Remove one ${variant.unit}`}
+                          className="px-2.5 py-2 hover:bg-[#E04E00] transition-colors cursor-pointer"
+                        >
+                          <Minus className="w-3.5 h-3.5 stroke-[3]" />
+                        </motion.button>
+
+                        <span className="min-w-[26px] text-center text-xs font-black tabular-nums select-none">
+                          {qtyInCart}
+                        </span>
+
+                        <motion.button
+                          whileTap={{ scale: 0.86 }}
+                          transition={SPRING_BOUNCY}
+                          onClick={(e) => handleAddVariant(e, variant)}
+                          aria-label={`Add one more ${variant.unit}`}
+                          className="px-2.5 py-2 hover:bg-[#E04E00] transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        </motion.button>
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        key="add"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        whileTap={{ scale: 0.94 }}
+                        transition={SPRING_SNAPPY}
+                        onClick={(e) => handleAddVariant(e, variant)}
+                        className="px-4 py-2 bg-[#061838] hover:bg-slate-800 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer tracking-wider"
+                      >
+                        ADD
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}

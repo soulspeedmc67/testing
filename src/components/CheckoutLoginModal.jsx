@@ -90,13 +90,13 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           {/* Brand Header Icon with Dashit Signature Navy & Orange */}
           <div className="text-center mb-5">
             <div className="w-14 h-14 rounded-2xl bg-[#061838] text-white flex items-center justify-center mx-auto mb-3 shadow-md relative">
-              <Phone className="w-6 h-6 text-[#FF6B00] stroke-[2.5]" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF6B00] border-2 border-white flex items-center justify-center">
+              <Phone className="w-6 h-6 text-[#FF5B00] stroke-[2.5]" />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#FF5B00] border-2 border-white flex items-center justify-center">
                 <CheckCircle2 className="w-3 h-3 text-white stroke-[3]" />
               </span>
             </div>
 
-            <div className="inline-flex items-center space-x-1.5 bg-amber-50 text-[#FF6B00] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-1 border border-amber-200/60">
+            <div className="inline-flex items-center space-x-1.5 bg-amber-50 text-[#FF5B00] px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider mb-1 border border-amber-200/60">
               <Sparkles className="w-3 h-3 stroke-[2.5]" />
               <span>Mandatory for Order Updates</span>
             </div>
@@ -157,7 +157,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                   className="w-full py-3.5 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-sm shadow-md transition-transform active:scale-[0.98] disabled:opacity-50 flex items-center justify-center space-x-2 cursor-pointer"
                 >
                   <span>{loading ? "Sending OTP..." : "Get OTP Verification Code"}</span>
-                  <ArrowRight className="w-4 h-4 stroke-[3] text-[#FF6B00]" />
+                  <ArrowRight className="w-4 h-4 stroke-[3] text-[#FF5B00]" />
                 </button>
               </motion.form>
             ) : (
@@ -178,7 +178,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="text-xs font-bold text-[#FF6B00] hover:underline"
+                      className="text-xs font-bold text-[#FF5B00] hover:underline"
                     >
                       Change Number
                     </button>
@@ -206,7 +206,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                       setOtp("1234");
                       setErrorMsg("");
                     }}
-                    className="text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 active:scale-95 transition-transform"
+                    className="text-xs font-black text-orange-700 bg-orange-50 px-2.5 py-0.5 rounded-full border border-orange-200 active:scale-95 transition-transform"
                   >
                     Use 1234
                   </button>

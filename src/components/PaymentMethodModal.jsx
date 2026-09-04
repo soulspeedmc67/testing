@@ -39,16 +39,16 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
               {/* Google Pay */}
               <button
                 onClick={() => handleSelect("gpay", "Google Pay UPI")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-emerald-50/50 transition-colors"
+                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center font-bold text-xs">
-                    <span className="text-blue-500 font-black">G</span><span className="text-emerald-500 font-black">P</span>
+                    <span className="text-blue-500 font-black">G</span><span className="text-orange-500 font-black">P</span>
                   </div>
                   <span className="text-xs font-bold text-slate-900">Google Pay UPI</span>
                 </div>
                 {selectedMethod?.id === "gpay" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#0c831f] stroke-[2.5]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}
@@ -57,7 +57,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
               {/* PhonePe */}
               <button
                 onClick={() => handleSelect("phonepe", "PhonePe UPI")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-emerald-50/50 transition-colors"
+                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-xl bg-[#5f259f] text-white flex items-center justify-center font-bold text-xs">
@@ -66,7 +66,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
                   <span className="text-xs font-bold text-slate-900">PhonePe UPI</span>
                 </div>
                 {selectedMethod?.id === "phonepe" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#0c831f] stroke-[2.5]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}
@@ -75,16 +75,16 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
               {/* Amazon Pay */}
               <button
                 onClick={() => handleSelect("amazonpay", "Amazon Pay UPI")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-emerald-50/50 transition-colors"
+                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#232F3E] text-[#FF9900] flex items-center justify-center font-black text-[10px]">
+                  <div className="w-8 h-8 rounded-xl bg-[#232F3E] text-[#FF5B00] flex items-center justify-center font-black text-[10px]">
                     pay
                   </div>
                   <span className="text-xs font-bold text-slate-900">Amazon Pay UPI</span>
                 </div>
                 {selectedMethod?.id === "amazonpay" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#0c831f] stroke-[2.5]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}
@@ -107,7 +107,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
                 </div>
                 <button
                   onClick={() => handleSelect("card", "Credit/Debit Card")}
-                  className="text-xs font-black text-[#0c831f] px-3 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-50 active:scale-95"
+                  className="text-xs font-black text-[#FF5B00] px-3 py-1 rounded-lg border border-orange-200 hover:bg-orange-50 active:scale-95"
                 >
                   ADD
                 </button>
@@ -139,14 +139,14 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
             </h3>
             <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#0c831f] flex items-center justify-center font-black text-[10px]">
+                <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5B00] flex items-center justify-center font-black text-[10px]">
                   UPI
                 </div>
                 <span className="text-xs font-bold text-slate-900">Add new UPI ID</span>
               </div>
               <button
                 onClick={() => handleSelect("upi_custom", "UPI ID")}
-                className="text-xs font-black text-[#0c831f] px-3 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-50 active:scale-95"
+                className="text-xs font-black text-[#FF5B00] px-3 py-1 rounded-lg border border-orange-200 hover:bg-orange-50 active:scale-95"
               >
                 ADD
               </button>
@@ -161,7 +161,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
             <div className="bg-white border border-slate-200/90 rounded-2xl divide-y divide-slate-100 shadow-2xs overflow-hidden">
               <button
                 onClick={() => handleSelect("cod", "Cash on Delivery (COD)")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-emerald-50/50 transition-colors"
+                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
@@ -173,7 +173,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
                   </div>
                 </div>
                 {selectedMethod?.id === "cod" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#0c831f] stroke-[2.5]" />
+                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 )}

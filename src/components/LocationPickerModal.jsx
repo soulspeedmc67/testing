@@ -49,11 +49,11 @@ export default function LocationPickerModal({ isOpen, onClose, onSelectLocation,
             <button
               type="button"
               onClick={() => setIsMapOpen(true)}
-              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group active:bg-emerald-50/50"
+              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group active:bg-orange-50/50"
             >
               <div className="flex items-center space-x-3">
-                <Plus className="w-5 h-5 text-[#FF6B00] stroke-[2.8]" />
-                <span className="text-xs font-black text-[#FF6B00]">
+                <Plus className="w-5 h-5 text-[#FF5B00] stroke-[2.8]" />
+                <span className="text-xs font-black text-[#FF5B00]">
                   Add new address
                 </span>
               </div>

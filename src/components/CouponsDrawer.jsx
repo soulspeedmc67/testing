@@ -103,7 +103,7 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                 <button
                   type="submit"
                   disabled={!customCode.trim()}
-                  className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 font-extrabold text-xs hover:bg-[#0c831f] hover:text-white transition-colors disabled:opacity-40"
+                  className="px-5 py-2 rounded-xl bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 font-extrabold text-xs hover:bg-[#FF5B00] hover:text-white transition-colors disabled:opacity-40"
                 >
                   Apply
                 </button>
@@ -145,7 +145,7 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
 
                       <div className="text-right shrink-0">
                         <span className="text-[10px] font-black text-slate-400 uppercase block">Save up to</span>
-                        <span className="text-sm font-mono font-black text-[#0c831f] block">₹{coupon.discount}</span>
+                        <span className="text-sm font-mono font-black text-[#FF5B00] block">₹{coupon.discount}</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -161,7 +161,7 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                             isSelected
                               ? "bg-rose-50 text-rose-600 border border-rose-200"
                               : isEligible
-                              ? "bg-[#0c831f] text-white hover:bg-[#0a6f1a] shadow-xs"
+                              ? "bg-[#FF5B00] text-white hover:bg-[#0a6f1a] shadow-xs"
                               : "bg-slate-100 dark:bg-zinc-800 text-slate-400 cursor-not-allowed"
                           }`}
                         >

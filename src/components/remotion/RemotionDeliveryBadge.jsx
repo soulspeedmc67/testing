@@ -16,7 +16,7 @@ export default function RemotionDeliveryBadge({ etaMinutes = 7, riderName = "Tar
 
   if (!mounted) {
     return (
-      <div className="w-full h-20 bg-emerald-50 rounded-2xl animate-pulse border border-emerald-200" />
+      <div className="w-full h-20 bg-orange-50 rounded-2xl animate-pulse border border-orange-200" />
     );
   }
 

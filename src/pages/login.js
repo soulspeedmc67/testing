@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [step, setStep] = useState(1); // 1: Mobile & Login, 2: OTP, 3: Address & Profile Setup (Skippable)
   const [mobile, setMobile] = useState("9622720283");
   const [otpInput, setOtpInput] = useState("");
+  const [issuedOtp, setIssuedOtp] = useState("");
 
   // User details state
   const [fullName, setFullName] = useState("Azan Iqbal Mir");
@@ -25,7 +26,11 @@ export default function LoginPage() {
       alert("Please enter a valid 10-digit mobile number");
       return;
     }
-    await sendOtp(mobile);
+    const res = await sendOtp(mobile);
+    // No SMS channel yet — the generated code is shown on screen. When a real
+    // sender is wired up, `devOtp` stops coming back and this simply hides.
+    setIssuedOtp(res?.devOtp || "");
+    setOtpInput("");
     setStep(2);
   };
 
@@ -37,8 +42,14 @@ export default function LoginPage() {
       }
       setStep(3);
     } else {
-      alert("Invalid OTP! Use test OTP code: 1234");
+      alert(res?.message || "Incorrect code");
     }
+  };
+
+  const handleResendOtp = async () => {
+    const res = await sendOtp(mobile);
+    setIssuedOtp(res?.devOtp || "");
+    setOtpInput("");
   };
 
   const handleCompleteSetup = () => {
@@ -99,7 +110,7 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSendOtp} className="space-y-4">
-              <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl p-3 focus-within:border-[#0c831f] focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+              <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-orange-500/20 transition-all">
                 <span className="text-sm font-extrabold text-slate-700 mr-2 border-r border-slate-300 pr-2">+91</span>
                 <input
                   type="tel"
@@ -113,7 +124,7 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-black text-xs py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
+                className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
               >
                 <span>Continue</span>
               </button>
@@ -137,10 +148,23 @@ export default function LoginPage() {
 
             <div>
               <h3 className="font-extrabold text-base text-slate-900">Enter OTP Code</h3>
-              <p className="text-xs text-slate-500 mt-1">Sent via SMS to <b className="text-slate-800">+91 {mobile}</b></p>
-              <p className="text-[11px] text-[#0c831f] font-bold mt-1 bg-emerald-50 py-1 px-2 rounded-lg inline-block">
-                Dummy OTP Code: 1234
+              <p className="text-xs text-slate-500 mt-1">
+                Verifying <b className="text-slate-800">+91 {mobile}</b>
               </p>
+              {/* Shown because there is no SMS sender yet. Once issueCode() calls
+                  a real backend, devOtp stops coming back and this hides itself. */}
+              {issuedOtp && (
+                <p className="text-[11px] text-[#FF5B00] font-bold mt-1 bg-orange-50 py-1 px-2 rounded-lg inline-block">
+                  Your code: <span className="font-mono tracking-widest">{issuedOtp}</span>
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                className="block text-[11px] font-bold text-slate-500 hover:text-[#FF5B00] mt-1.5 underline"
+              >
+                Resend code
+              </button>
             </div>
 
             <div className="flex justify-center">
@@ -150,13 +174,13 @@ export default function LoginPage() {
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value)}
                 placeholder="1234"
-                className="w-36 text-center text-xl font-mono font-bold tracking-widest bg-slate-100 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:border-[#0c831f]"
+                className="w-36 text-center text-xl font-mono font-bold tracking-widest bg-slate-100 border border-slate-300 rounded-xl p-2.5 focus:outline-none focus:border-[#FF5B00]"
               />
             </div>
 
             <button
               onClick={handleVerifyOtp}
-              className="w-full bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all active:scale-95"
+              className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-xs py-3 rounded-xl shadow-md transition-all active:scale-95"
             >
               Verify OTP
             </button>
@@ -187,7 +211,7 @@ export default function LoginPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Azan Iqbal Mir"
-                  className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#0c831f]"
+                  className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#FF5B00]"
                 />
               </div>
 
@@ -198,7 +222,7 @@ export default function LoginPage() {
                   value={flatNo}
                   onChange={(e) => setFlatNo(e.target.value)}
                   placeholder="e.g. House #12, Near Petrol Pump"
-                  className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#0c831f]"
+                  className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#FF5B00]"
                 />
               </div>
 
@@ -210,7 +234,7 @@ export default function LoginPage() {
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     placeholder="e.g. Nai Basti"
-                    className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#0c831f]"
+                    className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#FF5B00]"
                   />
                 </div>
                 <div>
@@ -220,7 +244,7 @@ export default function LoginPage() {
                     value={`${city} - ${pincode}`}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="Anantnag - 192101"
-                    className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#0c831f]"
+                    className="w-full bg-slate-50 border border-slate-200 font-semibold p-2.5 rounded-xl focus:outline-none focus:border-[#FF5B00]"
                   />
                 </div>
               </div>
@@ -235,7 +259,7 @@ export default function LoginPage() {
               </button>
               <button
                 onClick={handleCompleteSetup}
-                className="w-2/3 bg-[#0c831f] hover:bg-emerald-800 text-white font-extrabold text-xs py-3 rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center space-x-1"
+                className="w-2/3 bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-xs py-3 rounded-2xl shadow-md transition-all active:scale-95 flex items-center justify-center space-x-1"
               >
                 <Check className="w-4 h-4" />
                 <span>Save Profile</span>
