@@ -210,9 +210,58 @@ export function watchDriverOrders(driverId, callback) {
   );
 }
 
+/** Driver console: pool of unassigned active orders ready to claim. */
+export function watchAvailableOrders(callback) {
+  const db = getDb();
+  if (!db) {
+    if (typeof window !== "undefined") {
+      const active = localStorage.getItem("dashit_active_order");
+      if (active) {
+        try {
+          const ord = JSON.parse(active);
+          if (!ord.driverId && ord.status !== ORDER_STATUS.DELIVERED && ord.status !== ORDER_STATUS.CANCELLED) {
+            callback([ord]);
+            return () => {};
+          }
+        } catch (e) {}
+      }
+    }
+    callback([]);
+    return () => {};
+  }
+
+  return onSnapshot(
+    query(
+      collection(db, "orders"),
+      where("status", "in", [ORDER_STATUS.PLACED, ORDER_STATUS.PACKING]),
+      limit(50)
+    ),
+    (snap) => {
+      const unassigned = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((o) => !o.driverId);
+      callback(unassigned);
+    }
+  );
+}
+
 export async function updateOrderStatus(orderId, status) {
   const db = getDb();
-  if (!db) return { success: false };
+  if (!db) {
+    if (typeof window !== "undefined") {
+      try {
+        const active = localStorage.getItem("dashit_active_order");
+        if (active) {
+          const ord = JSON.parse(active);
+          if (ord.orderId === orderId || ord.id === orderId) {
+            ord.status = status;
+            localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+          }
+        }
+      } catch (e) {}
+    }
+    return { success: true };
+  }
   await updateDoc(doc(db, "orders", String(orderId)), {
     status,
     updatedAt: serverTimestamp(),
@@ -221,7 +270,35 @@ export async function updateOrderStatus(orderId, status) {
   return { success: true };
 }
 
-/** Admin-only: rules forbid drivers from assigning themselves. */
+/** Driver claims an unassigned order. */
+export async function claimOrder(orderId, driverId, driverName) {
+  const db = getDb();
+  if (!db) {
+    if (typeof window !== "undefined") {
+      try {
+        const active = localStorage.getItem("dashit_active_order");
+        if (active) {
+          const ord = JSON.parse(active);
+          ord.driverId = driverId;
+          ord.driverName = driverName || "Delivery Partner";
+          ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
+          localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+        }
+      } catch (e) {}
+    }
+    return { success: true };
+  }
+  await updateDoc(doc(db, "orders", String(orderId)), {
+    driverId,
+    driverName: driverName || "Delivery Partner",
+    status: ORDER_STATUS.OUT_FOR_DELIVERY,
+    updatedAt: serverTimestamp(),
+    statusHistory: arrayUnion({ status: ORDER_STATUS.OUT_FOR_DELIVERY, at: new Date().toISOString() }),
+  });
+  return { success: true };
+}
+
+/** Admin-only: assign a specific driver to an order. */
 export async function assignDriver(orderId, driverId, driverName) {
   const db = getDb();
   if (!db) return { success: false };
@@ -240,23 +317,63 @@ export async function assignDriver(orderId, driverId, driverName) {
  * tick does not wake every listener on the parent order document.
  */
 export async function pushDriverLocation(orderId, payload) {
+  const dataWithTime = { ...payload, updatedAt: new Date().toISOString() };
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(`dashit_tracking_${orderId}`, JSON.stringify(dataWithTime));
+      window.dispatchEvent(new CustomEvent("dashit_tracking_updated", { detail: { orderId, ...dataWithTime } }));
+    } catch (e) {}
+  }
+
   const db = getDb();
   if (!db) return;
-  await setDoc(
-    doc(db, "orders", String(orderId), "tracking", "live"),
-    { ...payload, updatedAt: serverTimestamp() },
-    { merge: true }
-  );
+  try {
+    await setDoc(
+      doc(db, "orders", String(orderId), "tracking", "live"),
+      { ...payload, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (e) {
+    console.warn("Could not push driver location to Firestore:", e?.message);
+  }
 }
 
 /** Replaces `driver_location_changed`. */
 export function watchOrderTracking(orderId, callback) {
   const db = getDb();
-  if (!db || !orderId) return () => {};
-  return onSnapshot(
-    doc(db, "orders", String(orderId), "tracking", "live"),
-    (snap) => callback(snap.exists() ? snap.data() : null)
-  );
+  let unsubFirestore = () => {};
+
+  if (db && orderId) {
+    unsubFirestore = onSnapshot(
+      doc(db, "orders", String(orderId), "tracking", "live"),
+      (snap) => {
+        if (snap.exists()) callback(snap.data());
+      },
+      (err) => console.warn("watchOrderTracking Firestore snapshot error:", err)
+    );
+  }
+
+  // Also listen for local updates (useful in dev/sandbox or low-connectivity fallback)
+  const localHandler = (e) => {
+    if (e.detail && (e.detail.orderId === orderId || !e.detail.orderId)) {
+      callback(e.detail);
+    }
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("dashit_tracking_updated", localHandler);
+    try {
+      const cached = localStorage.getItem(`dashit_tracking_${orderId}`);
+      if (cached) callback(JSON.parse(cached));
+    } catch (e) {}
+  }
+
+  return () => {
+    unsubFirestore();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("dashit_tracking_updated", localHandler);
+    }
+  };
 }
 
 /* ------------------------------------------------------------ store config */

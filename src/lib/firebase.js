@@ -11,15 +11,15 @@ import { getAuth } from "firebase/auth";
  */
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCddAjUQFXoxoG9wohGS4__jh7BBgMw4cU",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "dashit-1ecba.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "dashit-1ecba",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "dashit-1ecba.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "391742831837",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:391742831837:web:a66d0d0920d75b24f4ef34",
 };
 
-/** True when a real project has been configured in .env.local. */
+/** True when a real project has been configured. */
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId
 );
