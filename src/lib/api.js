@@ -25,6 +25,8 @@ export {
   signOut,
   signInWithGoogle,
   signInWithTruecaller,
+  signInWithEmail,
+  signUpWithEmail,
 } from "./auth";
 
 const readLocal = (key, fallback) => {

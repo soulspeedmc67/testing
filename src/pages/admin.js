@@ -26,10 +26,28 @@ import {
   ExternalLink,
   PlusCircle,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  LogIn,
+  ShieldOff,
+  Loader2
 } from "lucide-react";
 
-import { fetchAdminOrders, updateAdminOrderStatus } from "../lib/api";
+import { isFirebaseConfigured } from "../lib/firebase";
+import { watchAuth, getStaffRole } from "../lib/auth";
+import {
+  watchAllOrders,
+  updateOrderStatus as fsUpdateOrderStatus,
+  watchOffers,
+  saveOffer,
+  deleteOffer as fsDeleteOffer,
+  watchProducts,
+  fetchProducts,
+  upsertProduct,
+  deleteProduct as fsDeleteProduct,
+  watchStoreConfig,
+  setStoreConfig,
+} from "../lib/db";
+import { searchOffByBarcode, searchOffByQuery } from "../lib/openFoodFacts";
 import BklitAreaChart from "../components/BklitAreaChart";
 import {
   getExclusiveOffers,
@@ -86,7 +104,78 @@ const CATEGORIES = [
   "Bakery"
 ];
 
-export default function EasyAdminDashboard() {
+/**
+ * Access gate.
+ *
+ * On Spark there are no custom claims, so privilege lives in firestore.rules
+ * checking staff/{uid} (see docs/FIRESTORE.md §3). This gate mirrors that in the
+ * UI: it does not replace the rules, it just avoids showing the dashboard shell
+ * to someone the rules would reject anyway.
+ *
+ * Staff sign in through the ordinary customer OTP flow at /login once — that is
+ * what mints the anonymous uid the admin later grants `staff/{uid}` to in the
+ * Firebase console (docs/FIRESTORE.md step 5). If Firebase is not configured at
+ * all, the gate is skipped entirely — matches every other page's "degrade to
+ * localStorage, no auth" behaviour in that state.
+ */
+export default function AdminAccessGate() {
+  const [authState, setAuthState] = useState(isFirebaseConfigured ? "checking" : "open");
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    const unsub = watchAuth(async (user) => {
+      if (!user) {
+        setAuthState("signed-out");
+        return;
+      }
+      const role = await getStaffRole(user.uid);
+      setAuthState(role === "admin" ? "open" : "denied");
+    });
+    return unsub;
+  }, []);
+
+  if (authState === "open") return <EasyAdminDashboard />;
+
+  const screens = {
+    checking: {
+      Icon: Loader2,
+      spin: true,
+      title: "Checking access…",
+      message: "Confirming your admin session.",
+    },
+    "signed-out": {
+      Icon: LogIn,
+      title: "Sign in required",
+      message: "Open the Dashit app and sign in once via the normal login screen, then come back here.",
+    },
+    denied: {
+      Icon: ShieldOff,
+      title: "Access denied",
+      message: "This account is not registered as store staff. Ask an existing admin to grant access.",
+    },
+  };
+  const { Icon, spin, title, message } = screens[authState] || screens.checking;
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-8 max-w-sm w-full text-center space-y-3">
+        <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center mx-auto text-[#FF5B00]">
+          <Icon className={`w-6 h-6 ${spin ? "animate-spin" : ""}`} />
+        </div>
+        <h1 className="font-black text-base text-slate-900">{title}</h1>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed">{message}</p>
+        <Link
+          href="/"
+          className="inline-block mt-2 text-xs font-bold text-[#FF5B00] hover:underline"
+        >
+          ← Back to storefront
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function EasyAdminDashboard() {
   const [activeTab, setActiveTab] = useState("orders"); // "orders" | "offers" | "importer" | "catalogue"
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [orders, setOrders] = useState([]);
@@ -121,13 +210,10 @@ export default function EasyAdminDashboard() {
   const [isLoadingCatalogue, setIsLoadingCatalogue] = useState(false);
   const [catalogueFilter, setCatalogueFilter] = useState("All");
 
-  const loadOrders = async () => {
-    const res = await fetchAdminOrders();
-    if (res.success && res.orders && res.orders.length > 0) {
-      setOrders(res.orders);
-      return;
-    }
-
+  /* localStorage fallback for orders — only used when Firebase is not
+     configured. With Firebase, watchAllOrders() below replaces this entirely
+     with a live subscription (no polling, no manual reload). */
+  const loadOrdersLocal = () => {
     const history = localStorage.getItem("dashit_orders_history");
     const active = localStorage.getItem("dashit_active_order");
     let combined = [];
@@ -143,39 +229,68 @@ export default function EasyAdminDashboard() {
     setOrders(combined);
   };
 
-  const loadCatalogue = async () => {
-    setIsLoadingCatalogue(true);
-    try {
-      const res = await fetch("http://localhost:5001/api/products");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setCatalogue(data.products || []);
-        }
-      }
-    } catch (e) {
-      console.warn("Could not load catalogue from backend:", e);
-    }
-    setIsLoadingCatalogue(false);
-  };
-
-  const loadOffers = () => {
+  const loadOffersLocal = () => {
     setExclusiveOffers(getExclusiveOffers());
   };
 
+  // Orders: realtime when Firebase is configured, polled localStorage otherwise.
   useEffect(() => {
-    loadOrders();
-    loadCatalogue();
-    loadOffers();
-    window.addEventListener("dashit_offers_updated", loadOffers);
-    const interval = setInterval(loadOrders, 5000);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("dashit_offers_updated", loadOffers);
-    };
+    if (!isFirebaseConfigured) {
+      loadOrdersLocal();
+      const interval = setInterval(loadOrdersLocal, 5000);
+      return () => clearInterval(interval);
+    }
+    return watchAllOrders(setOrders);
   }, []);
 
-  const handleCreateOffer = (e) => {
+  // Catalogue: realtime Firestore subscription. No localStorage fallback here —
+  // the admin catalogue is a Firestore-only concern (the storefront's bundled
+  // products.js is unrelated and unaffected either way).
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      setIsLoadingCatalogue(false);
+      return;
+    }
+    setIsLoadingCatalogue(true);
+    const unsub = watchProducts((list) => {
+      setCatalogue(list);
+      setIsLoadingCatalogue(false);
+    });
+    return unsub;
+  }, []);
+
+  // Offers: realtime when configured, localStorage + custom event otherwise.
+  useEffect(() => {
+    if (!isFirebaseConfigured) {
+      loadOffersLocal();
+      window.addEventListener("dashit_offers_updated", loadOffersLocal);
+      return () => window.removeEventListener("dashit_offers_updated", loadOffersLocal);
+    }
+    return watchOffers((list) => setExclusiveOffers(list.length ? list : DEFAULT_OFFERS));
+  }, []);
+
+  // Store open/closed toggle, persisted when Firebase is configured.
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    return watchStoreConfig((cfg) => setIsStoreOpen(cfg.isOpen !== false));
+  }, []);
+
+  /** Manual re-fetch for the refresh button — the listener above already
+   *  keeps the catalogue live, this is just user-visible reassurance. */
+  const handleRefreshCatalogue = async () => {
+    if (!isFirebaseConfigured) return;
+    setIsLoadingCatalogue(true);
+    setCatalogue(await fetchProducts());
+    setIsLoadingCatalogue(false);
+  };
+
+  const handleToggleStore = () => {
+    const next = !isStoreOpen;
+    setIsStoreOpen(next);
+    if (isFirebaseConfigured) setStoreConfig({ isOpen: next });
+  };
+
+  const handleCreateOffer = async (e) => {
     e.preventDefault();
     if (!offerForm.title.trim()) {
       alert("Please enter an offer title.");
@@ -191,7 +306,13 @@ export default function EasyAdminDashboard() {
       expiresIn: offerForm.expiresIn.trim() || "Active Today",
       active: true
     };
-    addExclusiveOffer(newOffer);
+
+    if (isFirebaseConfigured) {
+      await saveOffer(newOffer);
+    } else {
+      addExclusiveOffer(newOffer);
+    }
+
     setShowOfferForm(false);
     setOfferForm({
       title: "",
@@ -209,92 +330,95 @@ export default function EasyAdminDashboard() {
     alert("Exclusive offer published to storefront & Story Deck successfully!");
   };
 
-  const handleToggleOffer = (id) => {
-    toggleOfferActive(id);
+  const handleToggleOffer = async (offer) => {
+    if (isFirebaseConfigured) {
+      await saveOffer({ ...offer, active: !offer.active });
+    } else {
+      toggleOfferActive(offer.id);
+    }
   };
 
-  const handleDeleteOffer = (id, title) => {
-    if (confirm(`Are you sure you want to delete "${title}"?`)) {
+  const handleDeleteOffer = async (id, title) => {
+    if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+    if (isFirebaseConfigured) {
+      await fsDeleteOffer(id);
+    } else {
       deleteExclusiveOffer(id);
     }
   };
 
-  const handleResetOffers = () => {
-    if (confirm("Reset all exclusive offers back to standard presets?")) {
+  const handleResetOffers = async () => {
+    if (!confirm("Reset all exclusive offers back to standard presets?")) return;
+    if (isFirebaseConfigured) {
+      await Promise.all(DEFAULT_OFFERS.map((o) => saveOffer(o)));
+    } else {
       saveExclusiveOffers(DEFAULT_OFFERS);
     }
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
+    if (isFirebaseConfigured) {
+      // No optimistic local update needed — watchAllOrders() reflects the
+      // write back within one round-trip, same as every other realtime page.
+      await fsUpdateOrderStatus(orderId, newStatus);
+      return;
+    }
+
     const updated = orders.map((o) => (o.orderId === orderId ? { ...o, status: newStatus } : o));
     setOrders(updated);
-
-    await updateAdminOrderStatus(orderId, newStatus);
-
     const targetOrder = updated.find((o) => o.orderId === orderId);
     if (targetOrder) {
       localStorage.setItem("dashit_active_order", JSON.stringify(targetOrder));
     }
-    alert(`Order #${orderId} status updated to: ${newStatus}`);
   };
 
-  // Open Food Facts Search Handler (Query or Barcode)
+  // Open Food Facts search — runs client-side against the public API directly,
+  // independent of whether Firebase is configured (see src/lib/openFoodFacts.js).
   const handleSearchOff = async (customTerm = null) => {
     const term = (customTerm !== null ? customTerm : offSearchQuery).trim();
     if (!term) return;
 
     setIsSearchingOff(true);
-    try {
-      const isBarcode = /^\d{8,14}$/.test(term);
-      const url = isBarcode
-        ? `http://localhost:5001/api/admin/products/search-off?barcode=${term}`
-        : `http://localhost:5001/api/admin/products/search-off?q=${encodeURIComponent(term)}`;
-
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.success && data.products) {
-        setOffResults(data.products);
-      } else {
-        alert(data.message || "No Indian FMCG products found for this term.");
-        setOffResults([]);
-      }
-    } catch (err) {
-      alert("Search error: " + err.message);
+    const isBarcode = /^\d{8,14}$/.test(term);
+    const data = isBarcode ? await searchOffByBarcode(term) : await searchOffByQuery(term);
+    if (data.success && data.products) {
+      setOffResults(data.products);
+    } else {
+      alert(data.message || "No Indian FMCG products found for this term.");
+      setOffResults([]);
     }
     setIsSearchingOff(false);
   };
 
-  // Import Product to App Catalogue
-  const handleImportProduct = async (prod, index) => {
+  /**
+   * Import Product to App Catalogue.
+   *
+   * `id: prod.barcode` mirrors the old server's dedup-by-barcode behaviour —
+   * upsertProduct() setDoc-merges at that id, so re-importing the same product
+   * updates it in place instead of creating a duplicate. No manual catalogue
+   * reload needed: watchProducts() picks the write up on its own.
+   */
+  const handleImportProduct = async (prod) => {
+    if (!isFirebaseConfigured) {
+      alert("Connect Firebase first (see docs/FIRESTORE.md) — there is no offline catalogue store to import into.");
+      return;
+    }
     try {
-      const res = await fetch("http://localhost:5001/api/admin/products/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product: prod })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setImportedBarcodes((prev) => ({ ...prev, [prod.barcode]: true }));
-        loadCatalogue();
-      } else {
-        alert("Import failed: " + data.message);
-      }
+      await upsertProduct({ id: prod.barcode, ...prod });
+      setImportedBarcodes((prev) => ({ ...prev, [prod.barcode]: true }));
     } catch (err) {
       alert("Error importing product: " + err.message);
     }
   };
 
-  // Delete Product from Catalogue
   const handleDeleteProduct = async (id) => {
     if (!confirm("Are you sure you want to remove this product from the storefront?")) return;
+    if (!isFirebaseConfigured) {
+      alert("Connect Firebase first — the catalogue only exists in Firestore.");
+      return;
+    }
     try {
-      const res = await fetch(`http://localhost:5001/api/admin/products/${id}`, {
-        method: "DELETE"
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCatalogue((prev) => prev.filter((p) => p.id !== id && p.barcode !== id));
-      }
+      await fsDeleteProduct(id);
     } catch (err) {
       alert("Error deleting product: " + err.message);
     }
@@ -333,7 +457,7 @@ export default function EasyAdminDashboard() {
 
           {/* Master Store Power Switch */}
           <button
-            onClick={() => setIsStoreOpen(!isStoreOpen)}
+            onClick={handleToggleStore}
             className={`flex items-center space-x-2 px-4 py-2.5 rounded-2xl font-black text-xs shadow-md transition-all ${
               isStoreOpen ? "bg-[#FF5B00] text-white" : "bg-rose-600 text-white"
             }`}
@@ -872,7 +996,7 @@ export default function EasyAdminDashboard() {
                     <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
                       {/* Active Status Switch */}
                       <button
-                        onClick={() => handleToggleOffer(offer.id)}
+                        onClick={() => handleToggleOffer(offer)}
                         className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition-all ${
                           offer.active
                             ? "bg-orange-50 border border-orange-300 text-[#FF5B00] hover:bg-orange-100"
@@ -1038,7 +1162,7 @@ export default function EasyAdminDashboard() {
                           </div>
 
                           <button
-                            onClick={() => handleImportProduct(item, idx)}
+                            onClick={() => handleImportProduct(item)}
                             disabled={isImported}
                             className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
                               isImported
@@ -1097,7 +1221,7 @@ export default function EasyAdminDashboard() {
                   ))}
                 </select>
                 <button
-                  onClick={loadCatalogue}
+                  onClick={handleRefreshCatalogue}
                   className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700"
                 >
                   <RefreshCw className={`w-4 h-4 ${isLoadingCatalogue ? "animate-spin" : ""}`} />

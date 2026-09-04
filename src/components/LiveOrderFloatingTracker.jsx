@@ -98,9 +98,23 @@ export default function LiveOrderFloatingTracker() {
     return () => clearInterval(interval);
   }, [etaMinutes, progressPct, statusLabel, riderName]);
 
-  // Real-time Firestore listeners for driver movement and status
+  // Hide completely on checkout, full order tracking page, driver console, login, exclusive story deck, admin
+  const isHiddenPage =
+    router.pathname === "/orders" ||
+    router.pathname === "/checkout" ||
+    router.pathname === "/driver" ||
+    router.pathname === "/login" ||
+    router.pathname === "/confirm-location" ||
+    router.pathname === "/admin";
+
+  /* Real-time Firestore listeners for driver movement and status.
+     Skipped on isHiddenPage — this component renders null there, but hooks
+     always run regardless of an early return further down, so without this
+     guard a stale localStorage order (e.g. leftover test data) would still
+     open two Firestore listeners and, if unreadable under the current auth
+     state, spam permission-denied on every page load. */
   useEffect(() => {
-    if (!activeOrder?.orderId) return;
+    if (!activeOrder?.orderId || isHiddenPage) return;
 
     // 1. Watch order document (status, rider name)
     const unsubOrder = watchOrder(activeOrder.orderId, (data) => {
@@ -131,16 +145,7 @@ export default function LiveOrderFloatingTracker() {
       if (typeof unsubOrder === "function") unsubOrder();
       if (typeof unsubTracking === "function") unsubTracking();
     };
-  }, [activeOrder?.orderId]);
-
-  // Hide completely on checkout, full order tracking page, driver console, login, exclusive story deck, admin
-  const isHiddenPage =
-    router.pathname === "/orders" ||
-    router.pathname === "/checkout" ||
-    router.pathname === "/driver" ||
-    router.pathname === "/login" ||
-    router.pathname === "/confirm-location" ||
-    router.pathname === "/admin";
+  }, [activeOrder?.orderId, isHiddenPage]);
 
   if (!activeOrder || isHiddenPage) return null;
 

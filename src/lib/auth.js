@@ -6,6 +6,8 @@ import {
   signOut as fbSignOut,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseAuth, getDb, AUTH_MODE, DEV_OTP } from "./firebase";
@@ -278,6 +280,87 @@ export async function signInWithGoogle() {
     return { success: true, user };
   } catch (e) {
     return { success: false, message: e?.message || "Google sign in failed" };
+  }
+}
+
+/** Signs in with Email and Password. */
+export async function signInWithEmail(email, password) {
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    return { success: false, message: "Firebase is not configured" };
+  }
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  if (!cleanEmail || !password) {
+    return { success: false, message: "Please provide both email and password" };
+  }
+
+  try {
+    const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    const fbUser = credential.user;
+    const profile = await ensureUserProfile(fbUser.uid, fbUser.phoneNumber || "", {
+      name: fbUser.displayName || cleanEmail.split("@")[0],
+      email: cleanEmail,
+    });
+    const user = cacheLocalUser({
+      uid: fbUser.uid,
+      name: profile.name || fbUser.displayName || cleanEmail.split("@")[0],
+      email: cleanEmail,
+      mobile: profile.mobile || "",
+      address: profile.address || "",
+      isLoggedIn: true,
+    });
+    return { success: true, user };
+  } catch (e) {
+    let msg = e?.message || "Sign in failed";
+    if (e.code === "auth/invalid-credential" || e.code === "auth/wrong-password" || e.code === "auth/user-not-found") {
+      msg = "Invalid email or password. Please check your credentials.";
+    } else if (e.code === "auth/invalid-email") {
+      msg = "Please enter a valid email address.";
+    }
+    return { success: false, message: msg, code: e.code };
+  }
+}
+
+/** Creates a new account with Email and Password. */
+export async function signUpWithEmail(email, password, displayName = "") {
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    return { success: false, message: "Firebase is not configured" };
+  }
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  if (!cleanEmail || !password) {
+    return { success: false, message: "Please provide both email and password" };
+  }
+  if (password.length < 6) {
+    return { success: false, message: "Password must be at least 6 characters" };
+  }
+
+  try {
+    const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+    const fbUser = credential.user;
+    const profile = await ensureUserProfile(fbUser.uid, "", {
+      name: displayName || cleanEmail.split("@")[0],
+      email: cleanEmail,
+    });
+    const user = cacheLocalUser({
+      uid: fbUser.uid,
+      name: profile.name || displayName || cleanEmail.split("@")[0],
+      email: cleanEmail,
+      mobile: "",
+      address: "",
+      isLoggedIn: true,
+    });
+    return { success: true, user };
+  } catch (e) {
+    let msg = e?.message || "Account creation failed";
+    if (e.code === "auth/email-already-in-use") {
+      msg = "An account with this email already exists. Try signing in instead.";
+    } else if (e.code === "auth/weak-password") {
+      msg = "Password is too weak. Please use at least 6 characters.";
+    } else if (e.code === "auth/invalid-email") {
+      msg = "Please enter a valid email address.";
+    }
+    return { success: false, message: msg, code: e.code };
   }
 }
 
