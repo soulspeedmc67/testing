@@ -15,9 +15,11 @@ import {
   Phone,
   Check,
   X,
-  Sparkles
+  Sparkles,
+  LogOut,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import { signOut } from "../lib/api";
 import { getWishlist } from "../lib/wishlist";
 import { hapticLight } from "../lib/haptics";
 import { goBack } from "../lib/navigation";
@@ -261,6 +263,27 @@ export default function AccountPage() {
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </Link>
+
+            {/* Log Out */}
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut();
+                router.push("/login");
+              }}
+              className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600"
+            >
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                  <LogOut className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-rose-600 block">Log out</span>
+                  <span className="text-[10px] font-medium text-slate-400">Sign in with another account</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+            </button>
           </div>
         </div>
       </main>

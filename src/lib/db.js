@@ -60,14 +60,18 @@ export async function upsertProduct(product) {
   const db = getDb();
   if (!db) throw new Error("Firestore unavailable");
   const { id, ...data } = product;
-  const payload = { ...data, updatedAt: serverTimestamp() };
+  /* Every catalogue read filters `active == true` (fetchProducts, watchProducts).
+     A caller passing an explicit id (the OFF importer keys new docs by barcode)
+     must still default to visible — setDoc(merge) does not carry `addDoc`'s
+     default forward, so this has to be set explicitly on both paths. Passing
+     `active: false` in `product` still hides it, as intended. */
+  const payload = { active: true, ...data, updatedAt: serverTimestamp() };
   if (id) {
     await setDoc(doc(db, "products", String(id)), payload, { merge: true });
     return String(id);
   }
   const ref = await addDoc(collection(db, "products"), {
     ...payload,
-    active: true,
     createdAt: serverTimestamp(),
   });
   return ref.id;

@@ -17,6 +17,8 @@ import VariantSelectorModal from "../components/VariantSelectorModal";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { ALL_PRODUCTS } from "../data/products";
 import { reverseGeocodeCoords } from "../lib/maps";
+import { watchProducts } from "../lib/db";
+import { isFirebaseConfigured } from "../lib/firebase";
 import { stagger, fadeUp, fadeUpTight, inViewOnce, EASE_OUT, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 
 const SEARCH_SUGGESTIONS = [
@@ -112,30 +114,16 @@ export default function StorefrontHome() {
   const [productsList, setProductsList] = useState(ALL_PRODUCTS);
 
   useEffect(() => {
-    const loadLiveProducts = async () => {
-      try {
-        const res = await fetch("http://192.168.217.22:5001/api/products");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.products && data.products.length > 0) {
-            setProductsList(data.products);
-            return;
-          }
+    if (isFirebaseConfigured) {
+      const unsub = watchProducts((liveProducts) => {
+        if (liveProducts && liveProducts.length > 0) {
+          setProductsList(liveProducts);
         }
-      } catch (e) {}
-
-      try {
-        const res = await fetch("http://localhost:5001/api/products");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.products && data.products.length > 0) {
-            setProductsList(data.products);
-          }
-        }
-      } catch (e) {}
-    };
-
-    loadLiveProducts();
+      });
+      return () => {
+        if (typeof unsub === "function") unsub();
+      };
+    }
   }, []);
 
   // Support ?cat=Snacks navigation from categories page

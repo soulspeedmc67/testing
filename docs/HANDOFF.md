@@ -8,16 +8,18 @@
 
 ## 0. Where the work stopped (read this first)
 
-The **Firestore backend foundation is built and building clean**, but only the
-foundation. The driver console and admin dashboard have **not** been migrated —
-they still read the old Express endpoints and localStorage.
+**The admin dashboard is now fully migrated to Firestore and access-gated.**
+Driver console is still on old localStorage/mock data (§5, task 1) — pick that
+up next. `npm run build` passes: 17/17 static pages, zero export errors.
 
-`npm run build` passes: 17/17 static pages, zero export errors. Nothing is left
-in a broken state.
-
-**The immediate next task** is §5 below: wire `src/pages/driver.js` and
-`src/pages/admin.js` to the new `src/lib/db.js` helpers, then split admin into
-its own web-only build.
+### The user's Firebase project is live but rules are not deployed yet
+This was discovered live during testing, not assumed: `.env.local` in this
+environment has real Firebase config, and login correctly performs anonymous
+sign-in — but the `users/{uid}` profile write fails with
+`FirebaseError: permission-denied`. That means the project's Firestore is still
+on its default deny-all rules; `firestore.rules` in this repo has never been
+deployed. **Run `npm run fb:rules` before relying on any Firestore write.**
+Reads/writes will keep failing (gracefully — see below) until then.
 
 ---
 
@@ -141,12 +143,71 @@ back to localStorage. The app runs fine in this state — that is deliberate.
 
 ---
 
+## 4b. This session: admin.js fully migrated + three real bugs fixed
+
+**`src/pages/admin.js`** now runs entirely on `src/lib/db.js`, with the same
+dual-path pattern as every other page (`isFirebaseConfigured` branches to
+Firestore realtime vs. localStorage). All four tabs migrated:
+- **Orders**: `watchAllOrders()` (no more 5s polling), `fsUpdateOrderStatus()`
+- **Offers**: `watchOffers()` / `saveOffer()` / `deleteOffer()`, falls back to
+  the existing `src/lib/offers.js` localStorage module when unconfigured
+- **Importer**: rewritten onto `src/lib/openFoodFacts.js` (new file) — runs
+  **client-side**, independent of Firebase config. See §4c, this was NOT a
+  drop-in port: the old server set a `User-Agent` header, which browsers
+  refuse to let JS set (forbidden header) — that header is simply gone.
+- **Catalogue**: `watchProducts()` realtime, `upsertProduct()` / `fsDeleteProduct()`
+
+**Access gate added**: `AdminAccessGate` (new default export) wraps the
+dashboard. On Spark there are no custom claims, so it mirrors the rules: watch
+auth state, then `getStaffRole(uid)`, three states — checking / signed-out /
+denied / open. Staff sign in via the ordinary `/login` OTP flow once; an
+existing admin then grants `staff/{uid}` in the console (FIRESTORE.md step 5).
+**Verified live** (not just code-reviewed): signed-out → "Sign in required";
+signed in but no staff doc → "Access denied" — confirmed this **fails safe even
+with rules undeployed** (an undeployed/denied `staff/{uid}` read is caught by
+`getStaffRole` and treated as "not staff", not as an error that leaks access).
+
+### Three real bugs found and fixed while wiring this up
+1. **`upsertProduct()` in `db.js`** only defaulted `active: true` on the
+   auto-id (`addDoc`) path, not when a caller supplies an explicit id. The new
+   OFF importer always passes `id: barcode` (to dedupe re-imports the way the
+   old server did) — every import would have been invisible forever, since
+   every catalogue query filters `active == true`. Fixed: `active: true` is
+   now the default on both paths, overridable by the caller.
+2. **`LiveOrderFloatingTracker.jsx`** ran its `watchOrder`/`watchOrderTracking`
+   `useEffect` unconditionally — `isHiddenPage` (which includes `/admin`) was
+   computed AFTER that effect and only gated the render, not the hooks (hooks
+   always run). A stale `dashit_active_order` in localStorage was found live
+   opening two Firestore listeners on every page load, including `/admin`
+   where the component is supposed to be fully inert. Fixed: `isHiddenPage` is
+   now computed first and gates the effect too.
+3. **`verifyOtp()` in `auth.js`** treated a failed Firestore profile write as a
+   total login failure, even though `signInAnonymously()` had already
+   succeeded and the user had a working uid. That's inconsistent with every
+   other page's "degrade to localStorage, don't block" behavior — reproduced
+   live against the undeployed rules above. Fixed: sign-in failure and
+   profile-write failure are now handled separately; a profile-write failure
+   logs a warning and still returns a usable local user.
+
+## 4c. `src/lib/openFoodFacts.js` (new)
+
+Client-side port of the old server's OFF search/classify logic
+(`classifyCategory`, `extractBestFrontImage`, barcode + query search). Runs
+regardless of Firebase config — it only talks to `world.openfoodfacts.net`, not
+Firestore. **Caveat, not yet hit but worth knowing**: this relies on OFF's
+public API allowing CORS from a browser origin; if a network/region ever blocks
+it, searches fail with a plain network error and there is no server-side
+fallback by design (Spark has no Cloud Functions to proxy through).
+
+---
+
 ## 5. Next tasks, in order
-- [x] **Remove socket.io from client** — Done! Swapped `LiveOrderFloatingTracker.jsx`, `MapTracking.jsx`, `orders.js`, and `driver.js` to Firestore `watchOrder` / `watchOrderTracking` / `pushDriverLocation`.
-1. **Driver console** (`src/pages/driver.js`) → Wire full UI to `watchDriverOrders(uid, cb)`, `updateOrderStatus()`, and gate entry on `getStaffRole(uid) === 'driver'`.
-2. **Admin dashboard** (`src/pages/admin.js`) → `watchAllOrders()`, `assignDriver()`, `upsertProduct()`/`deleteProduct()`, `saveOffer()`, `setStoreConfig()`, `fetchOrderStats()`. Gate on `role === 'admin'`.
-3. **Split the admin build** (user chose web-only) so admin UI stops shipping inside the customer APK.
-4. Retire `server/` once 1–2 are done.
+- [x] **Remove socket.io from client** — Done. Swapped `LiveOrderFloatingTracker.jsx`, `MapTracking.jsx`, `orders.js`, and `driver.js` to Firestore `watchOrder` / `watchOrderTracking` / `pushDriverLocation`.
+- [x] **Admin dashboard migration** — Done this session. See §4b.
+1. **Driver console** (`src/pages/driver.js`) → Still the original demo screen: hardcoded `orderId = "DASH-98214"`, fake incrementing coordinates instead of real GPS, no sign-in, no staff gate. Wire to `watchDriverOrders(uid, cb)` for a real assigned-order list, `navigator.geolocation.watchPosition` for real coordinates, and gate entry the same way `AdminAccessGate` does (`getStaffRole(uid) === 'driver'` instead of `'admin'` — consider extracting a shared `<StaffGate role="..." />` component rather than duplicating the gate a third time).
+2. **Split the admin build** (user chose web-only) so admin UI stops shipping inside the customer APK.
+3. Retire `server/` once 1 is done.
+4. **Deploy Firestore rules** (`npm run fb:rules`) — see §0. Blocked on the user; every write will keep failing until this happens.
 
 ---
 
