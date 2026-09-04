@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -21,6 +21,7 @@ import {
   sendOtp,
   verifyOtp,
   signInWithGoogle,
+  signInWithTruecaller,
   signInWithEmail,
   signUpWithEmail,
 } from "../lib/api";
@@ -53,6 +54,76 @@ export default function LoginPage() {
   const [area, setArea] = useState("Nai Basti");
   const [city, setCity] = useState("Anantnag");
   const [pincode, setPincode] = useState("192101");
+
+  const TRUECALLER_CLIENT_ID =
+    process.env.NEXT_PUBLIC_TRUECALLER_CLIENT_ID ||
+    "yxekbcxiwocqnjm3ocnd2uk5kgqrzfooz1k635ezzrs";
+
+  // Handle incoming Truecaller redirect or query params
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { endpoint, requestId, requestNonce, error, status } = router.query;
+    if (error) {
+      setErrorMessage(`Truecaller verification: ${error}`);
+      return;
+    }
+    if (endpoint || (status === "success" && (requestId || requestNonce))) {
+      setIsProcessing(true);
+      signInWithTruecaller({
+        requestId: requestId || requestNonce,
+        endpoint,
+      }).then((res) => {
+        setIsProcessing(false);
+        if (res.success) {
+          router.push("/");
+        } else {
+          setErrorMessage(res.message || "Failed to complete Truecaller login");
+        }
+      });
+    }
+  }, [router.isReady, router.query]);
+
+  // --------------------------------------------------------------------------
+  // TRUECALLER 1-TAP LOGIN HANDLER
+  // --------------------------------------------------------------------------
+  const handleTruecallerLogin = () => {
+    setIsProcessing(true);
+    setErrorMessage("");
+
+    const nonce =
+      "tc_" + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("dashit_tc_nonce", nonce);
+      } catch (e) {}
+    }
+
+    const tcUrl = `truecallersdk://truesdk/web_verify?type=btmsheet&requestNonce=${encodeURIComponent(
+      nonce
+    )}&partnerKey=${encodeURIComponent(
+      TRUECALLER_CLIENT_ID
+    )}&partnerName=DASHit&lang=en&title=login`;
+
+    let appOpened = false;
+    const handleBlur = () => {
+      appOpened = true;
+      window.removeEventListener("blur", handleBlur);
+    };
+    window.addEventListener("blur", handleBlur);
+
+    // Invoke Truecaller native bottomsheet via deep link
+    window.location.href = tcUrl;
+
+    setTimeout(() => {
+      setIsProcessing(false);
+      window.removeEventListener("blur", handleBlur);
+      if (!appOpened && typeof document !== "undefined" && document.hasFocus()) {
+        setErrorMessage(
+          "Truecaller app not detected or not responding. You can continue instantly with Google or Email below."
+        );
+      }
+    }, 1800);
+  };
 
   // --------------------------------------------------------------------------
   // GOOGLE SIGN-IN HANDLER
@@ -210,7 +281,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-50 text-slate-900 font-sans flex flex-col justify-between overflow-x-hidden selection:bg-orange-100 selection:text-orange-900">
+    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-50 text-slate-900 font-sans flex flex-col justify-between overflow-x-hidden select-none">
       {/* Top Ambient Marquee & Header */}
       <div className="relative pt-4 pb-2">
         {/* Skip Pill Button */}
@@ -230,7 +301,7 @@ export default function LoginPage() {
       {/* Main Elevated Card Container */}
       <div className="w-full max-w-md mx-auto px-4 pb-6">
         <div className="bg-white rounded-[32px] shadow-2xl border border-slate-200/80 p-6 md:p-7 space-y-5 animate-slide-up">
-          {/* STEP 1: Minimalist Google & Email Auth */}
+          {/* STEP 1: Minimalist Google, Truecaller & Email Auth */}
           {step === 1 && (
             <div className="space-y-4">
               {/* Brand Wordmark */}
@@ -258,8 +329,22 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Primary 1-Tap Google Button */}
-              <div>
+              {/* 1-Tap Providers: Truecaller & Google */}
+              <div className="space-y-2.5">
+                {/* Truecaller 1-Tap Verification */}
+                <button
+                  type="button"
+                  onClick={handleTruecallerLogin}
+                  disabled={isProcessing}
+                  className="w-full bg-[#0087FF] hover:bg-[#0077e6] text-white font-bold text-xs py-3 px-4 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.98] flex items-center justify-center space-x-2.5"
+                >
+                  <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                    <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.05 15.05 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1.01A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-1-1z" />
+                  </svg>
+                  <span>1-Tap Login with Truecaller</span>
+                </button>
+
+                {/* Primary 1-Tap Google Button */}
                 <button
                   type="button"
                   onClick={handleGoogleLogin}

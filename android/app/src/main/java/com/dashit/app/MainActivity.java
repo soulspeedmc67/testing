@@ -30,7 +30,12 @@ public class MainActivity extends BridgeActivity {
         }
 
         if (this.bridge != null && this.bridge.getWebView() != null) {
-            this.bridge.getWebView().addJavascriptInterface(new Object() {
+            android.webkit.WebView webView = this.bridge.getWebView();
+            webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            webView.setVerticalScrollBarEnabled(false);
+            webView.setHorizontalScrollBarEnabled(false);
+
+            webView.addJavascriptInterface(new Object() {
                 @JavascriptInterface
                 public void setBars(final String topColor, final boolean topDarkIcons, final String bottomColor, final boolean bottomDarkIcons) {
                     runOnUiThread(() -> {
