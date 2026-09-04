@@ -136,19 +136,16 @@ export default function LiveOrderFloatingTracker() {
             x: dockSide === "right" ? 80 : -80,
             opacity: 0,
             scale: 0.7,
-            filter: "blur(6px)",
           }}
           animate={{
             x: 0,
             opacity: 1,
             scale: 1,
-            filter: "blur(0px)",
           }}
           exit={{
             x: dockSide === "right" ? 80 : -80,
             opacity: 0,
             scale: 0.7,
-            filter: "blur(6px)",
           }}
           transition={{
             type: "spring",
@@ -196,23 +193,19 @@ export default function LiveOrderFloatingTracker() {
         <motion.div
           key="zomato-tracker-full"
           initial={{
-            y: -80,
+            scale: 0.6,
             opacity: 0,
-            scale: 0.92,
-            filter: "blur(8px)",
+            x: dockSide === "right" ? 50 : -50,
           }}
           animate={{
-            y: 0,
-            opacity: 1,
             scale: 1,
-            filter: "blur(0px)",
+            opacity: 1,
+            x: 0,
           }}
           exit={{
-            y: 90,
-            x: dockSide === "right" ? 120 : -120,
-            opacity: 0,
             scale: 0.6,
-            filter: "blur(10px)",
+            opacity: 0,
+            x: dockSide === "right" ? 50 : -50,
           }}
           transition={{
             type: "spring",

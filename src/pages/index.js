@@ -14,6 +14,7 @@ import QuickProductSheet from "../components/QuickProductSheet";
 import LocationPickerModal from "../components/LocationPickerModal";
 import InteractiveMapModal from "../components/InteractiveMapModal";
 import VariantSelectorModal from "../components/VariantSelectorModal";
+import VoiceSearchModal from "../components/VoiceSearchModal";
 import { ALL_PRODUCTS } from "../data/products";
 import { reverseGeocodeCoords } from "../lib/maps";
 
@@ -32,6 +33,7 @@ export default function StorefrontHome() {
   const [cart, setCart] = useState([]);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isInteractiveMapOpen, setIsInteractiveMapOpen] = useState(false);
   const [isSearchPulsing, setIsSearchPulsing] = useState(false);
@@ -171,13 +173,6 @@ export default function StorefrontHome() {
     }
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setPlaceholderIndex((prev) => (prev + 1) % SEARCH_PLACEHOLDERS.length);
-    }, 2800);
-    return () => clearInterval(timer);
-  }, []);
-
   const filteredProducts = productsList.filter((p) => {
     if (activeCategory === "All") return true;
     if (!p.cat) return true;
@@ -227,17 +222,28 @@ export default function StorefrontHome() {
               <AnimatePresence mode="wait">
                 <motion.span
                   key={suggestionIdx}
-                  initial={{ opacity: 0, y: 6, filter: "blur(6px)" }}
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: -6, filter: "blur(6px)" }}
-                  transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
                   className="text-xs font-semibold text-slate-400 select-none truncate block absolute w-full"
                 >
                   {SEARCH_SUGGESTIONS[suggestionIdx]}
                 </motion.span>
               </AnimatePresence>
             </div>
-            <Mic className="w-4 h-4 stroke-[2.5] text-[#FF6B00] ml-auto shrink-0 hover:text-[#0c831f] transition-colors" />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                hapticMedium();
+                setIsVoiceModalOpen(true);
+              }}
+              className="p-1 rounded-full text-[#FF6B00] hover:text-[#e05f00] ml-auto shrink-0 active:scale-90 transition-transform cursor-pointer"
+              title="Search with voice"
+            >
+              <Mic className="w-4 h-4 stroke-[2.5]" />
+            </button>
           </div>
         </div>
 
@@ -254,12 +260,12 @@ export default function StorefrontHome() {
         <AnimatePresence mode="wait">
           <motion.div
             key={activeCategory}
-            initial={{ opacity: 0, filter: "blur(12px)", y: 12 }}
-            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-            exit={{ opacity: 0, filter: "blur(8px)", y: -8 }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
             transition={{
-              duration: 0.36,
-              ease: [0.22, 1, 0.36, 1],
+              duration: 0.24,
+              ease: "easeOut",
             }}
             className="space-y-5"
           >
@@ -401,6 +407,15 @@ export default function StorefrontHome() {
         product={selectedVariantProduct}
         cart={cart}
         onAddToCart={handleAddToCart}
+      />
+
+      {/* 11. VOICE SEARCH MODAL */}
+      <VoiceSearchModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onResult={(spokenText) => {
+          router.push(`/search?q=${encodeURIComponent(spokenText)}`);
+        }}
       />
 
 
