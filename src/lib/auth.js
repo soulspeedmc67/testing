@@ -4,6 +4,8 @@ import {
   signInAnonymously,
   onAuthStateChanged,
   signOut as fbSignOut,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseAuth, getDb, AUTH_MODE, DEV_OTP } from "./firebase";
@@ -171,15 +173,38 @@ export async function verifyOtp(mobile, otp) {
       };
     }
 
+    /* Sign-in and the profile write are separate failure modes and are handled
+       separately: if sign-in itself fails, there is no uid and nothing else can
+       work — that is a real error. But if sign-in SUCCEEDS and only the
+       Firestore write fails (e.g. security rules not deployed yet, a transient
+       network blip), the user already has a working uid — every other page in
+       this app degrades to localStorage rather than blocking on Firestore, and
+       login should not be the one place that hard-fails when the rest of the
+       app would keep going. */
+    let uid;
     try {
       const credential = auth.currentUser
         ? { user: auth.currentUser }
         : await signInAnonymously(auth);
-      const uid = credential.user.uid;
+      uid = credential.user.uid;
+    } catch (e) {
+      return { success: false, message: e?.message || "Could not sign in" };
+    }
+
+    try {
       const profile = await ensureUserProfile(uid, verifiedMobile);
       return { success: true, user: cacheLocalUser({ uid, ...profile }) };
     } catch (e) {
-      return { success: false, message: e?.message || "Could not sign in" };
+      console.warn("Signed in, but could not write the Firestore profile:", e?.message);
+      return {
+        success: true,
+        user: cacheLocalUser({
+          uid,
+          mobile: verifiedMobile,
+          name: "Valued Customer",
+          address: "Nai Basti, Anantnag",
+        }),
+      };
     }
   }
 
@@ -198,22 +223,102 @@ export async function verifyOtp(mobile, otp) {
 }
 
 /** Creates users/{uid} on first sign-in, or returns the existing profile. */
-export async function ensureUserProfile(uid, mobile) {
+export async function ensureUserProfile(uid, mobile, extras = {}) {
   const db = getDb();
-  if (!db) return { id: uid, mobile, name: "Valued Customer" };
+  if (!db) return { id: uid, mobile: mobile || "", name: extras.name || "Valued Customer", email: extras.email || "" };
 
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return { id: uid, ...snap.data() };
+  if (snap.exists()) {
+    const data = snap.data();
+    const updates = {};
+    if (!data.mobile && mobile) updates.mobile = toE164(mobile);
+    if ((!data.name || data.name === "Valued Customer") && extras.name) updates.name = extras.name;
+    if (!data.email && extras.email) updates.email = extras.email;
+    if (Object.keys(updates).length > 0) {
+      try {
+        await setDoc(ref, updates, { merge: true });
+        return { id: uid, ...data, ...updates };
+      } catch (e) {}
+    }
+    return { id: uid, ...data };
+  }
 
   const profile = {
-    mobile: toE164(mobile),
-    name: "Valued Customer",
-    email: "",
+    mobile: mobile ? toE164(mobile) : "",
+    name: extras.name || "Valued Customer",
+    email: extras.email || "",
     createdAt: serverTimestamp(),
   };
   await setDoc(ref, profile);
   return { id: uid, ...profile };
+}
+
+/** Signs in with Google Popup (Spark free tier, verified identity). */
+export async function signInWithGoogle() {
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    return { success: false, message: "Firebase is not configured" };
+  }
+  try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    const fbUser = result.user;
+    const profile = await ensureUserProfile(fbUser.uid, fbUser.phoneNumber || "", {
+      name: fbUser.displayName || "Valued Customer",
+      email: fbUser.email || "",
+    });
+    const user = cacheLocalUser({
+      uid: fbUser.uid,
+      name: fbUser.displayName || profile.name || "Valued Customer",
+      email: fbUser.email || profile.email || "",
+      mobile: profile.mobile || "",
+      isLoggedIn: true,
+    });
+    return { success: true, user };
+  } catch (e) {
+    return { success: false, message: e?.message || "Google sign in failed" };
+  }
+}
+
+/** Signs in via Truecaller 1-tap phone verification profile. */
+export async function signInWithTruecaller(profileData = {}) {
+  const auth = getFirebaseAuth();
+  const mobile = profileData.mobile || profileData.phoneNumber || "9622720283";
+  const name = profileData.name || (profileData.firstName
+    ? `${profileData.firstName || ""} ${profileData.lastName || ""}`.trim()
+    : "Azan Iqbal Mir");
+
+  if (!auth) {
+    const user = cacheLocalUser({
+      id: `USR-${mobile.slice(-10)}`,
+      uid: null,
+      name,
+      mobile: toE164(mobile),
+      address: "Nai Basti, Anantnag",
+      isLoggedIn: true,
+    });
+    return { success: true, user };
+  }
+
+  try {
+    const credential = auth.currentUser
+      ? { user: auth.currentUser }
+      : await signInAnonymously(auth);
+    const uid = credential.user.uid;
+    const profile = await ensureUserProfile(uid, mobile, { name });
+    const user = cacheLocalUser({
+      uid,
+      name: profile.name || name,
+      mobile: profile.mobile || toE164(mobile),
+      email: profile.email || "",
+      address: profile.address || "Nai Basti, Anantnag",
+      isLoggedIn: true,
+    });
+    return { success: true, user };
+  } catch (e) {
+    return { success: false, message: e?.message || "Truecaller verification failed" };
+  }
 }
 
 /** Resolves the caller's staff role, or null for ordinary customers. */

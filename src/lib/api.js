@@ -19,7 +19,13 @@ import {
   fetchProducts,
 } from "./db";
 
-export { getStaffRole, watchAuth, signOut } from "./auth";
+export {
+  getStaffRole,
+  watchAuth,
+  signOut,
+  signInWithGoogle,
+  signInWithTruecaller,
+} from "./auth";
 
 const readLocal = (key, fallback) => {
   try {
