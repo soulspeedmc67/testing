@@ -255,8 +255,8 @@ export default function StorefrontHome() {
         isHighDemand={isHighDemand}
       />
 
-      {/* 2. STICKY SEARCH & CATEGORY BAR (Protected against iPhone status bar clipping on scroll) */}
-      <div className="sticky top-0 z-40 bg-[#FFFDF5] border-b border-amber-100/60 shadow-[0_2px_10px_rgba(0,0,0,0.03)] -mt-[env(safe-area-inset-top,0px)] pt-[env(safe-area-inset-top,0px)]">
+      {/* 2. STICKY SEARCH & CATEGORY BAR (Stops cleanly below status bar when scrolling) */}
+      <div className="sticky top-[max(62px,calc(env(safe-area-inset-top,0px)+54px))] z-40 bg-[#FFFDF5] border-b border-amber-100/60 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
         <div className="max-w-md mx-auto px-4 pt-1.5 pb-2">
           <div
             onClick={() => router.push("/search")}

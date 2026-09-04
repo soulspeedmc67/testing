@@ -67,7 +67,15 @@ export default function AppHeader({
 
   return (
     <header className="w-full bg-gradient-to-b from-[#FFE8D6] via-[#FFF5EB] to-[#FFFDF5] transition-colors duration-500">
-      {/* 0. HIGH DEMAND TOP BANNER WITH WAVY BOTTOM (Visible for 7 seconds, then vanishes) */}
+      {/* 0. RESERVED STATUS BAR SPACE (Transparent status bar with background extending behind it) */}
+      <div
+        className={`w-full h-[max(62px,calc(env(safe-area-inset-top,0px)+54px))] shrink-0 pointer-events-none transition-colors duration-300 ${
+          showTopWarning ? "bg-[#8B1A1A]" : ""
+        }`}
+        aria-hidden="true"
+      />
+
+      {/* HIGH DEMAND TOP BANNER WITH WAVY BOTTOM (Visible for 7 seconds, then vanishes) */}
       <AnimatePresence>
         {showTopWarning && (
           <motion.div
@@ -78,7 +86,7 @@ export default function AppHeader({
             className="w-full relative z-30 select-none drop-shadow-xs"
           >
             <div className="w-full bg-[#8B1A1A] text-white">
-              <div className="max-w-md mx-auto px-4 pt-2.5 pb-1 text-xs font-black flex items-center justify-center space-x-2 text-center tracking-tight">
+              <div className="max-w-md mx-auto px-4 pt-1 pb-1 text-xs font-black flex items-center justify-center space-x-2 text-center tracking-tight">
                 <Clock className="w-3.5 h-3.5 text-red-200 shrink-0" />
                 <span>Longer delivery time due to high demand</span>
               </div>
@@ -99,7 +107,7 @@ export default function AppHeader({
       </AnimatePresence>
 
       {/* 1. TOP DELIVERY ROW (Natural flow: smoothly scrolls away with zero layout jitter) */}
-      <div className="max-w-md mx-auto px-4 pt-[max(10px,env(safe-area-inset-top,10px))] pb-2">
+      <div className="max-w-md mx-auto px-4 pt-1.5 pb-2">
         <div className="flex items-center justify-between">
           <div>
             <motion.span

@@ -90,7 +90,7 @@ export default function SearchPage() {
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 350, damping: 28 }}
-        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(14px,calc(12px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md"
+        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(48px,calc(42px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md"
       >
         <div className="max-w-md mx-auto flex items-center space-x-3">
           <motion.button

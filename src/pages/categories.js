@@ -257,7 +257,7 @@ export default function CategoriesPage() {
       </Head>
 
       {/* 1. TOP HEADER */}
-      <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-2.5 flex items-center justify-between border-b border-slate-200/90 shadow-2xs z-30 shrink-0">
+      <header className="bg-white px-4 pt-[max(46px,calc(env(safe-area-inset-top,0px)+40px))] pb-2.5 flex items-center justify-between border-b border-slate-200/90 shadow-2xs z-30 shrink-0">
         <div className="flex items-center space-x-3">
           <button
             type="button"
