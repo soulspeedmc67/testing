@@ -1,4 +1,4 @@
-package com.dashit.anantnag;
+package com.dashit.app;
 
 import android.graphics.Color;
 import android.os.Build;
