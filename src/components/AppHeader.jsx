@@ -103,9 +103,9 @@ export default function AppHeader({
         <div className="flex items-center justify-between">
           <div>
             <motion.span
-              initial={{ opacity: 0, filter: "blur(4px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              transition={{ duration: 0.3 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
               className="text-[10px] font-black uppercase tracking-wider text-slate-500 block leading-tight"
             >
               Dashit in
@@ -113,9 +113,9 @@ export default function AppHeader({
             <div className="flex items-center space-x-2 mt-0.5">
               <motion.h1
                 key={isHighDemand ? "18-mins" : "8-mins"}
-                initial={{ opacity: 0, y: 4, filter: "blur(6px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
+                initial={{ opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
                 className="text-[28px] font-black tracking-tight text-slate-900 leading-none"
               >
                 {isHighDemand ? "18 minutes" : "8 minutes"}
@@ -125,8 +125,8 @@ export default function AppHeader({
               <AnimatePresence>
                 {showSmallBadge && (
                   <motion.div
-                    initial={{ scale: 0.7, opacity: 0, filter: "blur(5px)" }}
-                    animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
+                    initial={{ scale: 0.7, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.7, opacity: 0 }}
                     transition={{ type: "spring", stiffness: 420, damping: 22 }}
                     className="inline-flex items-center space-x-1.5 bg-gradient-to-r from-red-600 to-rose-600 text-white text-[10px] font-black pl-1.5 pr-2.5 py-0.5 rounded-full shadow-xs border border-red-400/40 shrink-0 select-none"

@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, ArrowLeft, X, Plus, Minus, Heart, Mic, ShoppingBag, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
 import BottomNav from "../components/BottomNav";
 import ProductCardStepper from "../components/ProductCardStepper";
 import FloatingCartBar from "../components/FloatingCartBar";
 import QuickProductSheet from "../components/QuickProductSheet";
+import VoiceSearchModal from "../components/VoiceSearchModal";
 import { EmptySearchState } from "../components/ui/EmptyState";
+import { hapticLight, hapticMedium } from "../lib/haptics";
 
 const ALL_SEARCH_PRODUCTS = [
   { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Snacks" },
@@ -27,6 +30,7 @@ export default function SearchPage() {
   const [cart, setCart] = useState([]);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("dashit_cart");
@@ -34,6 +38,17 @@ export default function SearchPage() {
       try { setCart(JSON.parse(savedCart)); } catch (e) {}
     }
   }, []);
+
+  useEffect(() => {
+    if (router.isReady) {
+      if (router.query.voice === "true") {
+        setIsVoiceModalOpen(true);
+      }
+      if (router.query.q) {
+        setQuery(String(router.query.q));
+      }
+    }
+  }, [router.isReady, router.query]);
 
   const saveCart = (newCart) => {
     if (cart.length === 0 && newCart.length > 0) {
@@ -70,18 +85,31 @@ export default function SearchPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
-      {/* Search Header Bar with iOS Safe Area Top Inset */}
-      <header className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(14px,calc(12px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md">
+      {/* Search Header Bar with Smooth Entry Animation & Safe Area */}
+      <motion.header
+        initial={{ y: -30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(14px,calc(12px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md"
+      >
         <div className="max-w-md mx-auto flex items-center space-x-3">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.88 }}
             type="button"
             onClick={() => router.push("/")}
-            className="p-1 rounded-full text-slate-300 hover:text-white active:scale-90 transition-transform cursor-pointer"
+            className="p-1.5 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+          </motion.button>
 
-          <div className="relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner">
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 380, damping: 26, delay: 0.05 }}
+            className={`relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner transition-all ${
+              isInputFocused ? "ring-2 ring-[#FF6B00]" : ""
+            }`}
+          >
             <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <input
               type="text"
@@ -94,15 +122,40 @@ export default function SearchPage() {
               className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none placeholder-slate-400"
             />
             {query ? (
-              <button onClick={() => setQuery("")} className="p-1 text-slate-400 hover:text-slate-700">
-                <X className="w-3.5 h-3.5" />
+              <button
+                onClick={() => {
+                  hapticLight();
+                  setQuery("");
+                }}
+                className="p-1 text-slate-400 hover:text-slate-700 active:scale-90 transition-transform"
+              >
+                <X className="w-3.5 h-3.5 stroke-[2.5]" />
               </button>
             ) : (
-              <Mic className="w-4 h-4 text-slate-500" />
+              <button
+                type="button"
+                onClick={() => {
+                  hapticMedium();
+                  setIsVoiceModalOpen(true);
+                }}
+                className="p-1 text-[#FF6B00] hover:text-[#e05f00] active:scale-90 transition-transform cursor-pointer"
+                title="Search with voice"
+              >
+                <Mic className="w-4 h-4 stroke-[2.5]" />
+              </button>
             )}
-          </div>
+          </motion.div>
         </div>
-      </header>
+      </motion.header>
+
+      {/* Voice Search Modal Component */}
+      <VoiceSearchModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+        onResult={(spokenText) => {
+          setQuery(spokenText);
+        }}
+      />
 
       <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
         {/* Popular Quick Search Chips */}

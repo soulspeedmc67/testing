@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { motion } from "framer-motion";
 import { ArrowLeft, Search, Share2, Clock, CheckCircle2, ChevronRight, ChevronUp, ShieldCheck, Plus, Minus, ShoppingBag, Users, Tag, Sparkles, UserCheck, Trash2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import PaymentMethodModal from "../components/PaymentMethodModal";
@@ -67,6 +68,15 @@ export default function CheckoutPage() {
   const [hasShownFreeDelivery, setHasShownFreeDelivery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cartItems, setCartItems] = useState([]);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleSmoothClose = () => {
+    hapticLight();
+    setIsClosing(true);
+    setTimeout(() => {
+      router.push("/");
+    }, 220);
+  };
 
   useEffect(() => {
     try {
@@ -213,17 +223,23 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] text-slate-900 font-sans pb-36">
-      {/* 1. TOP HEADER matching media_1788424288168.png */}
+    <motion.div
+      initial={{ y: "100%", opacity: 0.8 }}
+      animate={isClosing ? { y: "100%", opacity: 0 } : { y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 340, damping: 32 }}
+      className="min-h-screen bg-[#F4F6F8] text-slate-900 font-sans pb-36"
+    >
+      {/* 1. TOP HEADER with Smooth Return */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center justify-between shadow-2xs">
         <div className="flex items-center space-x-3">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.88 }}
             type="button"
-            onClick={() => router.push("/")}
-            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-90 transition-transform cursor-pointer"
+            onClick={handleSmoothClose}
+            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-transform cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-          </button>
+          </motion.button>
           <h1 className="font-extrabold text-base text-slate-900">
             Checkout
           </h1>
@@ -626,6 +642,6 @@ export default function CheckoutPage() {
         isOpen={isFreeDeliveryModalOpen}
         onClose={() => setIsFreeDeliveryModalOpen(false)}
       />
-    </div>
+    </motion.div>
   );
 }
