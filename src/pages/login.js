@@ -131,8 +131,23 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setIsProcessing(true);
     setErrorMessage("");
+
+    // Safety timeout: on Android WebViews, browser popups cannot postMessage
+    // back across separate OS processes. Race against a timeout so the UI never hangs.
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(
+        () =>
+          resolve({
+            success: false,
+            message:
+              "Google popup did not return a session to the app. Please sign in instantly using Email & Password below.",
+          }),
+        15000
+      )
+    );
+
     try {
-      const res = await signInWithGoogle();
+      const res = await Promise.race([signInWithGoogle(), timeoutPromise]);
       if (res.success) {
         if (res.user?.name && res.user?.name !== "Valued Customer") {
           setFullName(res.user.name);
