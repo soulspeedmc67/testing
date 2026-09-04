@@ -96,7 +96,7 @@ export default function AccountPage() {
       )}
 
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
-      <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
+      <header className="bg-white px-4 pt-[max(46px,calc(env(safe-area-inset-top,0px)+40px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
         <button
           type="button"
           onClick={handleBack}

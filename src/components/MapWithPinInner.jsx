@@ -100,10 +100,11 @@ export default function MapWithPinInner({ pos, onChangePos, onDragStateChange, m
       doubleClickZoom={true}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles by <a href="https://www.hotosm.org/">Humanitarian OSM</a>'
+        url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
+        subdomains="abc"
         maxZoom={19}
-        keepBuffer={4}
+        keepBuffer={6}
         updateWhenIdle={false}
       />
       <MapBridge

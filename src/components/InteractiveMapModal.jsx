@@ -8,10 +8,20 @@ const MapWithPin = dynamic(() => import("./MapWithPinInner"), { ssr: false });
 
 const HUB_POS = { lat: 33.7311, lng: 75.1487 }; // Nai Basti, Anantnag
 
+const POPULAR_AREAS = [
+  { name: "Nai Basti", lat: 33.7311, lng: 75.1487 },
+  { name: "KP Road", lat: 33.7290, lng: 75.1550 },
+  { name: "Lal Chowk", lat: 33.7335, lng: 75.1460 },
+  { name: "Khanabal", lat: 33.7440, lng: 75.1320 },
+  { name: "Janglat Mandi", lat: 33.7265, lng: 75.1585 },
+  { name: "Mattan", lat: 33.7660, lng: 75.2080 },
+  { name: "Dialgam", lat: 33.7120, lng: 75.1750 },
+];
+
 export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation }) {
   const [selectedPos, setSelectedPos] = useState(HUB_POS);
-  const [areaTitle, setAreaTitle] = useState("Kurhama");
-  const [addressSubtitle, setAddressSubtitle] = useState("Gulshan Mohalla, Safapore 191131. (Kurhama)");
+  const [areaTitle, setAreaTitle] = useState("Nai Basti");
+  const [addressSubtitle, setAddressSubtitle] = useState("Nai Basti, Anantnag 192101");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -47,13 +57,27 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
     }
   };
 
+  const handleSelectQuickArea = async (area) => {
+    hapticLight();
+    setSelectedPos({ lat: area.lat, lng: area.lng });
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.setView([area.lat, area.lng], 16, { animate: true });
+    }
+    const geocoded = await reverseGeocodeCoords(area.lat, area.lng);
+    setAreaTitle(geocoded.area || area.name);
+    setAddressSubtitle(geocoded.address);
+  };
+
   const handleConfirm = () => {
     hapticHeavy();
     onConfirmLocation({
       nickname: areaTitle || "Home",
+      area: areaTitle || "Nai Basti",
       address: `${areaTitle}, ${addressSubtitle}`,
       lat: selectedPos.lat,
-      lng: selectedPos.lng
+      lng: selectedPos.lng,
+      city: "Anantnag",
+      pincode: "192101",
     });
     onClose();
   };
@@ -137,58 +161,74 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
       </div>
 
       {/* 4. TOP FLOATING SEARCH BAR & SUGGESTIONS */}
-      <div className="absolute top-0 left-0 right-0 z-[2000] p-4 pt-[max(14px,env(safe-area-inset-top,14px))] flex items-center space-x-3 pointer-events-none">
-        <button
-          type="button"
-          onClick={onClose}
-          className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-        </button>
+      <div className="absolute top-0 left-0 right-0 z-[2000] p-4 pt-[max(48px,calc(env(safe-area-inset-top,0px)+42px))] flex flex-col space-y-2 pointer-events-none">
+        <div className="flex items-center space-x-3 w-full">
+          <button
+            type="button"
+            onClick={onClose}
+            className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0 cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+          </button>
 
-        <div className="pointer-events-auto grow relative">
-          <input
-            type="text"
-            placeholder="Search an area or address"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
-          />
-          {searchQuery ? (
+          <div className="pointer-events-auto grow relative">
+            <input
+              type="text"
+              placeholder="Search area or address in Anantnag..."
+              value={searchQuery}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
+            />
+            {searchQuery ? (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+                className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            ) : isSearching ? (
+              <Loader2 className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 animate-spin pointer-events-none" />
+            ) : (
+              <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none" />
+            )}
+
+            {/* Autocomplete Results Dropdown (Top Z-Index 2500) */}
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[2500] divide-y divide-slate-100 max-h-64 overflow-y-auto">
+                {searchResults.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSelectSearchResult(item)}
+                    className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-orange-50/50 transition-colors cursor-pointer"
+                  >
+                    <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
+                    <div className="overflow-hidden">
+                      <span className="font-bold text-xs text-slate-900 block truncate">{item.title}</span>
+                      <span className="text-[11px] text-slate-500 truncate block">{item.subtitle}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Quick Anantnag Locality Chips */}
+        <div className="pointer-events-auto flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {POPULAR_AREAS.map((item) => (
             <button
-              onClick={() => {
-                setSearchQuery("");
-                setSearchResults([]);
-              }}
-              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+              key={item.name}
+              type="button"
+              onClick={() => handleSelectQuickArea(item)}
+              className="shrink-0 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-700 shadow-sm border border-slate-200/80 active:scale-95 hover:bg-orange-50 hover:text-[#FF5B00] hover:border-orange-200 transition-all cursor-pointer"
             >
-              <X className="w-4 h-4" />
+              📍 {item.name}
             </button>
-          ) : isSearching ? (
-            <Loader2 className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 animate-spin pointer-events-none" />
-          ) : (
-            <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none" />
-          )}
-
-          {/* Autocomplete Results Dropdown (Top Z-Index 2500) */}
-          {searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[2500] divide-y divide-slate-100 max-h-64 overflow-y-auto">
-              {searchResults.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSelectSearchResult(item)}
-                  className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-orange-50/50 transition-colors"
-                >
-                  <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
-                  <div className="overflow-hidden">
-                    <span className="font-bold text-xs text-slate-900 block truncate">{item.title}</span>
-                    <span className="text-[11px] text-slate-500 truncate block">{item.subtitle}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       </div>
 

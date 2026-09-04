@@ -90,7 +90,7 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
       {/* Minimalist Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[max(46px,calc(env(safe-area-inset-top,0px)+40px))] pb-3 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button

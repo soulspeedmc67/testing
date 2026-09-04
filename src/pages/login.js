@@ -17,6 +17,8 @@ import {
   Phone,
   Sparkles,
   Compass,
+  MapPin,
+  Crosshair,
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
@@ -25,6 +27,8 @@ import {
   signInWithEmail,
   signUpWithEmail,
 } from "../lib/api";
+import InteractiveMapModal from "../components/InteractiveMapModal";
+import { setDeviceSystemBars } from "../lib/systemBars";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,6 +38,9 @@ export default function LoginPage() {
 
   // Extended bottom sheet state (collapsed overview vs 70% auth sheet)
   const [isSheetExtended, setIsSheetExtended] = useState(false);
+
+  // Interactive Map Modal state
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
 
   // Auth Modes & State. Default to "signup"
   const [authTab, setAuthTab] = useState("signup"); // "signup" | "signin"
@@ -52,6 +59,14 @@ export default function LoginPage() {
   useEffect(() => {
     const img = heroImgRef.current;
     if (img && img.complete && img.naturalWidth === 0) setHeroFailed(true);
+
+    // Keep status bar completely transparent with light/white icons over orange background
+    setDeviceSystemBars({
+      topColor: "#FF5E00",
+      topDarkIcons: false,
+      bottomColor: "#061838",
+      bottomDarkIcons: false,
+    });
   }, []);
 
   // User Profile & Delivery Details (Step 3)
@@ -244,7 +259,20 @@ export default function LoginPage() {
       address: `${flatNo}, ${area}, ${city} - ${pincode}`,
       isLoggedIn: true,
     };
-    localStorage.setItem("dashit_user", JSON.stringify(userData));
+    try {
+      localStorage.setItem("dashit_user", JSON.stringify(userData));
+      localStorage.setItem(
+        "dashit_user_address",
+        JSON.stringify({
+          nickname: "HOME",
+          address: `${flatNo}, ${area}, ${city}`,
+          area: area || "Nai Basti",
+          lat: 33.7311,
+          lng: 75.1487,
+        })
+      );
+    } catch (e) {}
+
     router.push("/");
   };
 
@@ -256,17 +284,22 @@ export default function LoginPage() {
       address: "Nai Basti, Near Petrol Pump, Anantnag",
       isLoggedIn: true,
     };
-    localStorage.setItem("dashit_user", JSON.stringify(userData));
+    try {
+      localStorage.setItem("dashit_user", JSON.stringify(userData));
+    } catch (e) {}
     router.push("/");
   };
 
   return (
-    <div className={`min-h-screen ${step === 1 ? "bg-[#D63800]" : "bg-[#061838]"} text-white font-sans flex flex-col justify-between overflow-hidden select-none relative`}>
+    <div className="min-h-screen bg-[#D63800] text-white font-sans flex flex-col justify-between overflow-hidden select-none relative">
       {/* STEP 1: Screenshot-styled Hero + Seamless Extensible Bottom Sheet */}
       {step === 1 && (
         <div className="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#FF5E00] via-[#F24E00] to-[#D63800] pb-[165px]">
+          {/* Reserved Status Bar Space: Empty reserved space with background color extending behind it */}
+          <div className="w-full h-[max(62px,calc(env(safe-area-inset-top,0px)+54px))] shrink-0 pointer-events-none" aria-hidden="true" />
+
           {/* Top Section: Navigation + Brand Squircle + Headline + Large Artwork */}
-          <div className="relative z-10 flex-1 flex flex-col px-6 pt-[max(44px,calc(env(safe-area-inset-top,0px)+38px))] pb-2 justify-between">
+          <div className="relative z-10 flex-1 flex flex-col px-6 pt-1 pb-2 justify-between">
             {/* Top Navigation Row: Sleek floating Skip capsule (no back button) */}
             <div className="flex items-center justify-end shrink-0 pt-1">
               <button
@@ -605,87 +638,193 @@ export default function LoginPage() {
 
       {/* STEP 3: Complete Delivery Address Setup */}
       {step === 3 && (
-        <div className="relative min-h-screen bg-[#061838] px-6 pt-12 pb-10 flex flex-col justify-between">
-          <div className="max-w-sm mx-auto w-full space-y-6">
-            <div className="text-center space-y-2">
-              <div className="w-12 h-12 bg-white/[0.06] border border-white/10 rounded-2xl flex items-center justify-center mx-auto text-[#FF5B00]">
-                <Home className="w-6 h-6" />
-              </div>
-              <h2 className="text-2xl font-black text-white">Delivery Address</h2>
-              <p className="text-xs text-slate-400">
-                Where should we deliver your 8-minute grocery orders in Anantnag?
-              </p>
-            </div>
+        <div className="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#FF5E00] via-[#F24E00] to-[#D63800] overflow-y-auto">
+          {/* Reserved Status Bar Space: Empty reserved space with background extending behind it */}
+          <div className="w-full h-[max(62px,calc(env(safe-area-inset-top,0px)+54px))] shrink-0 pointer-events-none" aria-hidden="true" />
 
-            <div className="space-y-3.5">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
-                  Contact Mobile
-                </label>
-                <input
-                  type="tel"
-                  value={mobile}
-                  onChange={(e) => setMobile(e.target.value)}
-                  placeholder="9622720283"
-                  className="w-full bg-white/[0.05] border border-white/10 text-white rounded-2xl py-3 px-4 text-xs font-semibold focus:outline-hidden focus:border-[#FF5B00]"
-                />
-              </div>
+          {/* Top Navigation Row: Back Button + Title + Skip Button */}
+          <div className="relative z-10 flex items-center justify-between px-6 pt-1 pb-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-90 flex items-center justify-center text-white border border-white/25 shadow-xs backdrop-blur-md transition-all cursor-pointer"
+              title="Back to login"
+            >
+              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+            </button>
 
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
-                  House / Flat / Landmark
-                </label>
-                <input
-                  type="text"
-                  value={flatNo}
-                  onChange={(e) => setFlatNo(e.target.value)}
-                  placeholder="House #12, Near Petrol Pump"
-                  className="w-full bg-white/[0.05] border border-white/10 text-white rounded-2xl py-3 px-4 text-xs font-semibold focus:outline-hidden focus:border-[#FF5B00]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
-                    Area
-                  </label>
-                  <input
-                    type="text"
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                    placeholder="Nai Basti"
-                    className="w-full bg-white/[0.05] border border-white/10 text-white rounded-2xl py-3 px-4 text-xs font-semibold focus:outline-hidden focus:border-[#FF5B00]"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
-                    City / Pincode
-                  </label>
-                  <input
-                    type="text"
-                    value={`${city} - ${pincode}`}
-                    readOnly
-                    className="w-full bg-white/[0.02] border border-white/5 text-slate-400 rounded-2xl py-3 px-4 text-xs font-semibold cursor-not-allowed"
-                  />
-                </div>
-              </div>
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-md">
+              <Sparkles className="w-3 h-3 text-amber-200" />
+              <span className="text-[11px] font-black tracking-wide text-white uppercase">Delivery Setup</span>
             </div>
 
             <button
               type="button"
-              onClick={handleCompleteSetup}
-              className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center space-x-2"
+              onClick={handleSkipSetup}
+              className="text-[12px] font-black text-white bg-white/20 hover:bg-white/30 active:scale-95 px-3.5 py-1.5 rounded-full border border-white/25 backdrop-blur-md transition-all cursor-pointer"
             >
-              <span>Save &amp; Start Shopping</span>
-              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+              Skip
             </button>
           </div>
 
-          <p className="text-[10px] text-slate-500 text-center">
-            DASHit · Instant 8-Min Delivery in Anantnag
-          </p>
+          {/* Dedicated Artwork (Rider holding groceries) + Header */}
+          <div className="relative z-10 flex flex-col items-center text-center px-6 pt-1 pb-3 shrink-0">
+            <motion.div
+              initial={{ scale: 0.88, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className="w-full max-w-[210px] h-[19vh] flex items-center justify-center select-none pointer-events-none"
+            >
+              <img
+                src="/art/rider-holding-groceries-transparent.png"
+                alt="DASHit Delivery Partner"
+                className="w-full h-full object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.3)]"
+              />
+            </motion.div>
+
+            <h1 className="text-[21px] sm:text-[23px] font-black text-white leading-tight tracking-tight mt-1 drop-shadow-xs">
+              Where should we deliver?
+            </h1>
+            <p className="text-[11.5px] text-white/90 font-medium mt-1 max-w-[280px]">
+              DASHit delivers fresh groceries in 8 minutes across Anantnag.
+            </p>
+          </div>
+
+          {/* Content Sheet: Choose on Map + Address Inputs */}
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            className="relative z-20 rounded-t-[32px] bg-white text-slate-900 px-6 pt-5 pb-8 shadow-[0_-14px_44px_rgba(0,0,0,0.25)] flex flex-col space-y-3.5"
+          >
+            {/* Interactive Choose on Map Card */}
+            <div
+              onClick={() => setIsMapModalOpen(true)}
+              className="group bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50/50 border border-orange-200/80 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <div className="flex items-center space-x-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-[#FF5E00] text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                  <MapPin className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Delivery Pin
+                  </span>
+                  <p className="text-xs font-black text-slate-900 truncate">
+                    {area || "Select on Map (Anantnag)"}
+                  </p>
+                  <span className="text-[10px] text-slate-500 block truncate">
+                    {flatNo ? `${flatNo}, ` : ""}{city} - {pincode}
+                  </span>
+                </div>
+              </div>
+
+              <div className="shrink-0 pl-2">
+                <span className="inline-flex items-center space-x-1 bg-[#FF5E00] text-white text-[11px] font-black px-3 py-1.5 rounded-full shadow-xs group-hover:bg-[#E04800] transition-colors">
+                  <Crosshair className="w-3.5 h-3.5" />
+                  <span>Choose on Map</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Address Input Fields */}
+            <div className="space-y-2.5">
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider pl-1">
+                  House / Flat / Landmark
+                </label>
+                <div className="relative flex items-center">
+                  <Home className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={flatNo}
+                    onChange={(e) => setFlatNo(e.target.value)}
+                    placeholder="e.g. Flat #4B, Near Jamia Masjid"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider pl-1">
+                    Area / Locality
+                  </label>
+                  <div className="relative flex items-center">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      placeholder="e.g. Nai Basti"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider pl-1">
+                    City / Pincode
+                  </label>
+                  <div className="relative flex items-center">
+                    <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={`${city} - ${pincode}`}
+                      readOnly
+                      className="w-full bg-slate-100/70 border border-slate-200 text-slate-500 font-semibold text-xs rounded-xl pl-9 pr-3 py-3 cursor-not-allowed select-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider pl-1">
+                  Contact Mobile
+                </label>
+                <div className="relative flex items-center">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+                  <input
+                    type="tel"
+                    value={mobile}
+                    onChange={(e) => setMobile(e.target.value)}
+                    placeholder="9622720283"
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Save & Start Shopping Button */}
+            <button
+              type="button"
+              onClick={handleCompleteSetup}
+              className="w-full bg-gradient-to-r from-[#FF5E00] to-[#E04800] text-white font-black text-sm py-3.5 px-5 rounded-2xl shadow-[0_10px_24px_rgba(255,94,0,0.35)] flex items-center justify-center space-x-2 active:scale-95 transition-transform cursor-pointer"
+            >
+              <span>Save Address &amp; Start Shopping</span>
+              <ArrowRight className="w-4 h-4 stroke-[3]" />
+            </button>
+
+            <p className="text-[10px] text-slate-400 text-center font-semibold pt-0.5">
+              ⚡ DASHit Dark Store · Instant 8-Min Delivery in Anantnag
+            </p>
+          </motion.div>
         </div>
       )}
+
+      {/* Interactive Map Modal */}
+      <InteractiveMapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        onConfirmLocation={(loc) => {
+          if (loc.area) setArea(loc.area);
+          if (loc.address && !flatNo) {
+            setFlatNo(loc.address.split(",")[0] || "");
+          }
+          if (loc.city) setCity(loc.city);
+          if (loc.pincode) setPincode(loc.pincode);
+        }}
+      />
     </div>
   );
 }
