@@ -266,35 +266,16 @@ export default function LoginPage() {
       {step === 1 && (
         <div className="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#FF5E00] via-[#F24E00] to-[#D63800] pb-[165px]">
           {/* Top Section: Navigation + Brand Squircle + Headline + Large Artwork */}
-          <div className="relative z-10 flex-1 flex flex-col px-6 pt-[max(14px,env(safe-area-inset-top,14px))] pb-2 justify-between">
-            {/* Top Navigation Row */}
-            <div className="flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    const user = localStorage.getItem("dashit_user");
-                    if (!user) {
-                      handleSkipSetup();
-                    } else {
-                      goBack(router, "/");
-                    }
-                  } catch (e) {
-                    goBack(router, "/");
-                  }
-                }}
-                className="w-10 h-10 rounded-full bg-black/15 hover:bg-black/25 active:scale-95 flex items-center justify-center text-white backdrop-blur-md transition-colors cursor-pointer"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
-              </button>
-
+          <div className="relative z-10 flex-1 flex flex-col px-6 pt-[max(44px,calc(env(safe-area-inset-top,0px)+38px))] pb-2 justify-between">
+            {/* Top Navigation Row: Sleek floating Skip capsule (no back button) */}
+            <div className="flex items-center justify-end shrink-0 pt-1">
               <button
                 type="button"
                 onClick={handleSkipSetup}
-                className="text-[11px] font-black text-white/90 hover:text-white bg-black/15 hover:bg-black/25 px-3.5 py-1.5 rounded-full transition-colors active:scale-95 cursor-pointer"
+                className="group flex items-center gap-1.5 text-[12px] font-black text-white bg-white/20 hover:bg-white/30 active:scale-95 px-4 py-2 rounded-full border border-white/25 shadow-[0_2px_12px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all cursor-pointer"
               >
-                Skip for now
+                <span>Skip for now</span>
+                <ChevronRight className="w-3.5 h-3.5 stroke-[2.5] text-white/85 group-hover:translate-x-0.5 transition-transform" />
               </button>
             </div>
 

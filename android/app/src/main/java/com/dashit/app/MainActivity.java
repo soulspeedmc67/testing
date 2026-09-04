@@ -16,18 +16,18 @@ public class MainActivity extends BridgeActivity {
         
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        window.setStatusBarColor(Color.TRANSPARENT);
         
         int appBgColor = Color.parseColor("#FFFDF5");
-        window.setStatusBarColor(appBgColor);
         window.setNavigationBarColor(appBgColor);
         
+        int initFlags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            window.getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-            );
+            initFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+            initFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         }
+        window.getDecorView().setSystemUiVisibility(initFlags);
 
         if (this.bridge != null && this.bridge.getWebView() != null) {
             android.webkit.WebView webView = this.bridge.getWebView();
@@ -41,13 +41,11 @@ public class MainActivity extends BridgeActivity {
                     runOnUiThread(() -> {
                         try {
                             Window win = getWindow();
-                            if (topColor != null && !topColor.isEmpty()) {
-                                win.setStatusBarColor(Color.parseColor(topColor));
-                            }
+                            win.setStatusBarColor(Color.TRANSPARENT);
                             if (bottomColor != null && !bottomColor.isEmpty()) {
                                 win.setNavigationBarColor(Color.parseColor(bottomColor));
                             }
-                            int flags = 0;
+                            int flags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && topDarkIcons) {
                                 flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                             }

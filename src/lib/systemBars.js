@@ -29,7 +29,8 @@ export async function setDeviceSystemBars({
 
   // 2. Capacitor Official StatusBar plugin (iOS + Android)
   try {
-    await StatusBar.setBackgroundColor({ color: topColor });
+    await StatusBar.setOverlaysWebView({ overlay: true });
+    await StatusBar.setBackgroundColor({ color: "#00000000" });
     await StatusBar.setStyle({
       style: topDarkIcons ? Style.Light : Style.Dark,
     });
