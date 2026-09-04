@@ -60,9 +60,9 @@ npm scripts added: `seed:firestore`, `fb:rules`, `fb:emulate`.
 | `update_driver_location` | `pushDriverLocation(orderId, payload)` |
 | `driver_location_changed` | `watchOrderTracking(orderId, cb)` |
 
-`socket.io-client` is still imported by `LiveOrderFloatingTracker.jsx` and
-`MapTracking.jsx`. **Removing those imports is part of the next task** — they
-currently connect to a server that will not exist.
+`socket.io-client` has been **completely removed** from all client components:
+`LiveOrderFloatingTracker.jsx`, `MapTracking.jsx`, `orders.js`, and `driver.js`.
+All real-time events now use Firestore `watchOrder` and `watchOrderTracking`.
 
 > Design note worth preserving: live rider GPS lives in
 > `orders/{id}/tracking/live`, a subcollection doc, *not* on the order document.
@@ -142,18 +142,11 @@ back to localStorage. The app runs fine in this state — that is deliberate.
 ---
 
 ## 5. Next tasks, in order
-
-1. **Driver console** (`src/pages/driver.js`) → `watchDriverOrders(uid, cb)`,
-   `updateOrderStatus()`, and a GPS loop calling `pushDriverLocation()`.
-   Gate entry on `getStaffRole(uid) === 'driver'`.
-2. **Admin dashboard** (`src/pages/admin.js`) → `watchAllOrders()`,
-   `assignDriver()`, `upsertProduct()`/`deleteProduct()`, `saveOffer()`,
-   `setStoreConfig()`, `fetchOrderStats()`. Gate on `role === 'admin'`.
-3. **Remove socket.io** from `LiveOrderFloatingTracker.jsx` and
-   `MapTracking.jsx`; swap to `watchOrder` / `watchOrderTracking`.
-4. **Split the admin build** (user chose web-only) so admin UI stops shipping
-   inside the customer APK.
-5. Retire `server/` once 1–3 are done.
+- [x] **Remove socket.io from client** — Done! Swapped `LiveOrderFloatingTracker.jsx`, `MapTracking.jsx`, `orders.js`, and `driver.js` to Firestore `watchOrder` / `watchOrderTracking` / `pushDriverLocation`.
+1. **Driver console** (`src/pages/driver.js`) → Wire full UI to `watchDriverOrders(uid, cb)`, `updateOrderStatus()`, and gate entry on `getStaffRole(uid) === 'driver'`.
+2. **Admin dashboard** (`src/pages/admin.js`) → `watchAllOrders()`, `assignDriver()`, `upsertProduct()`/`deleteProduct()`, `saveOffer()`, `setStoreConfig()`, `fetchOrderStats()`. Gate on `role === 'admin'`.
+3. **Split the admin build** (user chose web-only) so admin UI stops shipping inside the customer APK.
+4. Retire `server/` once 1–2 are done.
 
 ---
 

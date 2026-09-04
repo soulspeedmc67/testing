@@ -7,7 +7,7 @@ import { hapticLight, hapticMedium } from "../lib/haptics";
 import { DashitProgressBadge } from "./DashitAnimatedLogo";
 import DeliveryStatusIcon, { statusToMark } from "./DeliveryStatusIcon";
 import { SPRING_SNAPPY, SPRING_SOFT, EASE_OUT } from "../lib/motion";
-import io from "socket.io-client";
+import { watchOrder, watchOrderTracking } from "../lib/db";
 
 /** Edge rail bounds — keeps the docked semicircle clear of the status bar and
  *  the FloatingCartBar / BottomNav dock at the bottom of the screen. */
@@ -98,37 +98,38 @@ export default function LiveOrderFloatingTracker() {
     return () => clearInterval(interval);
   }, [etaMinutes, progressPct, statusLabel, riderName]);
 
-  // Real-time socket listener for driver movement and status
+  // Real-time Firestore listeners for driver movement and status
   useEffect(() => {
-    let socket;
-    try {
-      socket = io("http://localhost:3000");
-      socket.on("connect", () => {
-        if (activeOrder?.orderId) {
-          socket.emit("join_order", activeOrder.orderId);
-        }
-      });
+    if (!activeOrder?.orderId) return;
 
-      socket.on("driver_location_update", (data) => {
-        if (data.eta !== undefined) setEtaMinutes(data.eta);
-        if (data.progress !== undefined) setProgressPct(data.progress);
-        if (data.status) {
-          setStatusLabel(data.status);
-          try {
-            const raw = localStorage.getItem("dashit_active_order");
-            if (raw) {
-              const ord = JSON.parse(raw);
-              ord.status = data.status;
-              localStorage.setItem("dashit_active_order", JSON.stringify(ord));
-            }
-          } catch (e) {}
-        }
-        if (data.driverName) setRiderName(data.driverName);
-      });
-    } catch (e) {}
+    // 1. Watch order document (status, rider name)
+    const unsubOrder = watchOrder(activeOrder.orderId, (data) => {
+      if (!data) return;
+      if (data.status) {
+        setStatusLabel(data.status);
+        try {
+          const raw = localStorage.getItem("dashit_active_order");
+          if (raw) {
+            const ord = JSON.parse(raw);
+            ord.status = data.status;
+            localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+          }
+        } catch (e) {}
+      }
+      if (data.driverName) setRiderName(data.driverName);
+    });
+
+    // 2. Watch subcollection live tracking doc (eta, progress, live location)
+    const unsubTracking = watchOrderTracking(activeOrder.orderId, (data) => {
+      if (!data) return;
+      if (data.eta !== undefined) setEtaMinutes(data.eta);
+      if (data.progress !== undefined) setProgressPct(data.progress);
+      if (data.driverName) setRiderName(data.driverName);
+    });
 
     return () => {
-      if (socket) socket.disconnect();
+      if (typeof unsubOrder === "function") unsubOrder();
+      if (typeof unsubTracking === "function") unsubTracking();
     };
   }, [activeOrder?.orderId]);
 

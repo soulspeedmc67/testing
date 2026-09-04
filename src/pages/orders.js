@@ -13,7 +13,7 @@ import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
-import io from "socket.io-client";
+import { watchOrder } from "../lib/db";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -41,37 +41,25 @@ export default function OrdersPage() {
     }
   }, [router.query]);
 
-  // Real-time status sync with Admin Dashboard & Driver via WebSockets
+  // Real-time status sync via Firestore watchOrder
   useEffect(() => {
-    let socket;
-    try {
-      const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5001";
-      socket = io(socketUrl);
-      if (activeOrder?.orderId) {
-        socket.emit("join_order_room", activeOrder.orderId);
+    if (!activeOrder?.orderId) return;
+    const unsub = watchOrder(activeOrder.orderId, (data) => {
+      if (!data) return;
+      if (data.status) {
+        setActiveOrder((prev) => {
+          if (!prev) return data;
+          const updated = { ...prev, ...data };
+          try {
+            localStorage.setItem("dashit_active_order", JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
       }
-      socket.on("order_status_changed", (data) => {
-        if (data.orderId === activeOrder?.orderId) {
-          setActiveOrder((prev) => {
-            const updated = { ...prev, status: data.status };
-            try { localStorage.setItem("dashit_active_order", JSON.stringify(updated)); } catch (e) {}
-            return updated;
-          });
-        }
-      });
-      socket.on("order_status_updated", (data) => {
-        if (data.orderId === activeOrder?.orderId) {
-          setActiveOrder((prev) => {
-            const updated = { ...prev, status: data.status };
-            try { localStorage.setItem("dashit_active_order", JSON.stringify(updated)); } catch (e) {}
-            return updated;
-          });
-        }
-      });
-    } catch (e) {}
+    });
 
     return () => {
-      if (socket) socket.disconnect();
+      if (typeof unsub === "function") unsub();
     };
   }, [activeOrder?.orderId]);
 
