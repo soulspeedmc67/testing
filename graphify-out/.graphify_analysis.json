@@ -1,0 +1,709 @@
+{
+  "communities": {
+    "0": [
+      "src_components_checkoutloginmodal",
+      "src_components_checkoutloginmodal_checkoutloginmodal",
+      "src_components_couponsdrawer",
+      "src_components_couponsdrawer_available_coupons",
+      "src_components_couponsdrawer_couponsdrawer",
+      "src_components_freedeliverycelebrationmodal",
+      "src_components_freedeliverycelebrationmodal_freedeliverycelebrationmodal",
+      "src_components_loginproductmarquee",
+      "src_components_loginproductmarquee_loginproductmarquee",
+      "src_components_loginproductmarquee_row1",
+      "src_components_loginproductmarquee_row2",
+      "src_components_orderingforsomeoneelsemodal",
+      "src_components_orderingforsomeoneelsemodal_orderingforsomeoneelsemodal",
+      "src_components_paymentmethodmodal",
+      "src_components_paymentmethodmodal_paymentmethodmodal",
+      "src_components_unserviceableareascreen",
+      "src_components_unserviceableareascreen_unserviceableareascreen",
+      "src_components_voicesearchmodal",
+      "src_components_voicesearchmodal_voicesearchmodal",
+      "src_lib_api",
+      "src_lib_api_sendotp",
+      "src_lib_api_submitorder",
+      "src_lib_api_verifyotp",
+      "src_lib_haptics",
+      "src_lib_haptics_hapticlight",
+      "src_lib_haptics_hapticmedium",
+      "src_lib_haptics_hapticorderplaced",
+      "src_lib_haptics_isios",
+      "src_lib_wishlist",
+      "src_lib_wishlist_addtowishlist",
+      "src_lib_wishlist_getwishlist",
+      "src_lib_wishlist_removefromwishlist",
+      "src_pages_account",
+      "src_pages_account_accountpage",
+      "src_pages_checkout",
+      "src_pages_checkout_checkoutpage",
+      "src_pages_checkout_you_might_also_like",
+      "src_pages_login",
+      "src_pages_login_loginpage",
+      "src_pages_search_searchpage",
+      "src_pages_wishlist",
+      "src_pages_wishlist_wishlistpage"
+    ],
+    "1": [
+      "package_dependencies_react",
+      "react",
+      "src_components_dashitanimatedlogo",
+      "src_components_dashitanimatedlogo_dashitanimatedlogo",
+      "src_components_dashitanimatedlogo_dashitprogressbadge",
+      "src_components_homescreenliveordercard",
+      "src_components_homescreenliveordercard_homescreenliveordercard",
+      "src_components_liveorderfloatingtracker",
+      "src_components_liveorderfloatingtracker_liveorderfloatingtracker",
+      "src_components_ui_badge",
+      "src_components_ui_badge_badge",
+      "src_components_ui_badge_badgevariants",
+      "src_components_ui_button",
+      "src_components_ui_button_button",
+      "src_components_ui_button_buttonsizes",
+      "src_components_ui_button_buttonvariants",
+      "src_components_ui_card",
+      "src_components_ui_card_card",
+      "src_components_ui_card_cardcontent",
+      "src_components_ui_card_carddescription",
+      "src_components_ui_card_cardfooter",
+      "src_components_ui_card_cardheader",
+      "src_components_ui_card_cardtitle",
+      "src_components_ui_draggablesheet",
+      "src_components_ui_draggablesheet_draggablesheet",
+      "src_components_ui_skeletonloader",
+      "src_components_ui_skeletonloader_categorygridskeleton",
+      "src_components_ui_skeletonloader_productcardskeleton",
+      "src_components_ui_skeletonloader_skeleton",
+      "src_components_ui_tabs",
+      "src_components_ui_tabs_tabs",
+      "src_components_ui_tabs_tabscontent",
+      "src_components_ui_tabs_tabslist",
+      "src_components_ui_tabs_tabstrigger",
+      "src_lib_notifications",
+      "src_lib_notifications_clearorderlivenotification",
+      "src_lib_notifications_showorderlivenotification",
+      "src_lib_utils",
+      "src_lib_utils_cn",
+      "src_pages_orders",
+      "src_pages_orders_orderspage"
+    ],
+    "2": [
+      "src_components_campaignsection",
+      "src_components_campaignsection_campaign_categories",
+      "src_components_campaignsection_campaign_products",
+      "src_components_campaignsection_campaignsection",
+      "src_components_cartdrawersheet",
+      "src_components_cartdrawersheet_cartdrawersheet",
+      "src_components_flyingbadgeoverlay",
+      "src_components_flyingbadgeoverlay_triggerflytocart",
+      "src_components_productcard",
+      "src_components_productcard_productcard",
+      "src_components_productcardstepper",
+      "src_components_productcardstepper_productcardstepper",
+      "src_components_quickproductsheet",
+      "src_components_quickproductsheet_quickproductsheet",
+      "src_components_ui_emptystate",
+      "src_components_ui_emptystate_emptycartstate",
+      "src_components_ui_emptystate_emptysearchstate",
+      "src_components_ui_emptystate_suggested_search_chips",
+      "src_components_ui_vauldrawer",
+      "src_components_ui_vauldrawer_vauldrawer",
+      "src_components_variantselectormodal",
+      "src_components_variantselectormodal_variantselectormodal",
+      "src_data_products",
+      "src_data_products_all_products",
+      "src_lib_haptics_hapticcartadd",
+      "src_lib_haptics_hapticheavy",
+      "src_lib_haptics_hapticsuccess",
+      "src_lib_wishlist_isiteminwishlist",
+      "src_lib_wishlist_togglewishlistitem",
+      "src_pages_categories",
+      "src_pages_categories_categories_catalog",
+      "src_pages_categories_categoriespage",
+      "src_pages_order_again",
+      "src_pages_order_again_orderagainpage",
+      "src_pages_search",
+      "src_pages_search_all_search_products",
+      "src_pages_search_popular_search_chips"
+    ],
+    "3": [
+      "src_components_categorygridsixpack",
+      "src_components_categorygridsixpack_categorygridsixpack",
+      "src_components_categorygridsixpack_six_pack_categories",
+      "src_components_categoryscroller",
+      "src_components_categoryscroller_category_strip",
+      "src_components_categoryscroller_categoryscroller",
+      "src_components_interactivemapmodal",
+      "src_components_interactivemapmodal_hub_pos",
+      "src_components_interactivemapmodal_interactivemapmodal",
+      "src_components_interactivemapmodal_mapwithpin",
+      "src_components_locationpickermodal",
+      "src_components_locationpickermodal_locationpickermodal",
+      "src_components_maptracking",
+      "src_components_maptracking_maptracking",
+      "src_components_mapwithpininner",
+      "src_components_mapwithpininner_mapcontroller",
+      "src_components_mapwithpininner_mapeventshandler",
+      "src_components_mapwithpininner_maptouchpanhandler",
+      "src_components_mapwithpininner_mapwithpininner",
+      "src_components_productcardskeleton",
+      "src_components_productcardskeleton_productcardskeleton",
+      "src_lib_maps",
+      "src_lib_maps_fetchroadroute",
+      "src_lib_maps_reversegeocodecoords",
+      "src_lib_maps_searchplacesautocomplete",
+      "src_pages_confirm_location",
+      "src_pages_confirm_location_confirmlocationpage",
+      "src_pages_confirm_location_hub_pos",
+      "src_pages_confirm_location_mapwithpin",
+      "src_pages_index",
+      "src_pages_index_search_suggestions",
+      "src_pages_index_storefronthome",
+      "src_pages_orders_maptracking"
+    ],
+    "4": [
+      "any",
+      "bool",
+      "capacitor",
+      "ios_app_app_appdelegate",
+      "ios_app_app_appdelegate_appdelegate",
+      "ios_app_app_appdelegate_appdelegate_application",
+      "ios_app_app_appdelegate_appdelegate_applicationdidbecomeactive",
+      "ios_app_app_appdelegate_appdelegate_applicationdidenterbackground",
+      "ios_app_app_appdelegate_appdelegate_applicationwillenterforeground",
+      "ios_app_app_appdelegate_appdelegate_applicationwillresignactive",
+      "ios_app_app_appdelegate_appdelegate_applicationwillterminate",
+      "ios_app_app_appdelegate_swift_uiscene",
+      "ios_app_app_appdelegate_swift_uiscenesession",
+      "ios_app_app_appdelegate_swift_uiwindow",
+      "ios_app_app_scenedelegate",
+      "ios_app_app_scenedelegate_scenedelegate",
+      "ios_app_app_scenedelegate_scenedelegate_scene",
+      "ios_app_app_scenedelegate_swift_uiscene",
+      "ios_app_app_scenedelegate_swift_uiscenesession",
+      "ios_app_app_scenedelegate_swift_uiwindow",
+      "nsuseractivity",
+      "set",
+      "uiapplication",
+      "uiapplicationdelegate",
+      "uikit",
+      "uiopenurlcontext",
+      "uiresponder",
+      "uisceneconfiguration",
+      "uiwindowscenedelegate"
+    ],
+    "5": [
+      "src_components_animatedcounter",
+      "src_components_animatedcounter_animatedcounter",
+      "src_components_appheader",
+      "src_components_appheader_appheader",
+      "src_components_bottomnav",
+      "src_components_bottomnav_bottomnav",
+      "src_components_bottomnav_nav_items",
+      "src_components_bottomnav_storefront_tabs",
+      "src_components_floatingcartbar",
+      "src_components_floatingcartbar_floatingcartbar",
+      "src_components_floatingcartbar_navbar_routes",
+      "src_components_floatingcartbar_storefront_routes",
+      "src_components_flyingbadgeoverlay_flyingbadgeoverlay",
+      "src_context_scrollchromecontext",
+      "src_context_scrollchromecontext_scrollchromecontext",
+      "src_context_scrollchromecontext_scrollchromeprovider",
+      "src_context_scrollchromecontext_usescrollchrome",
+      "src_lib_notifications_initnotificationpermissions",
+      "src_lib_systembars",
+      "src_lib_systembars_setdevicesystembars",
+      "src_pages_app",
+      "src_pages_app_app",
+      "src_pages_product_id",
+      "src_pages_product_id_product_images",
+      "src_pages_product_id_productdetailpage"
+    ],
+    "6": [
+      "src_components_bklitareachart",
+      "src_components_bklitareachart_bklitareachart",
+      "src_components_bklitareachart_data_month",
+      "src_components_bklitareachart_data_today",
+      "src_components_bklitareachart_data_week",
+      "src_components_promobanner",
+      "src_components_promobanner_curated_rails",
+      "src_components_promobanner_promobanner",
+      "src_lib_api_fetchadminorders",
+      "src_lib_api_updateadminorderstatus",
+      "src_lib_offers",
+      "src_lib_offers_addexclusiveoffer",
+      "src_lib_offers_default_offers",
+      "src_lib_offers_deleteexclusiveoffer",
+      "src_lib_offers_getexclusiveoffers",
+      "src_lib_offers_saveexclusiveoffers",
+      "src_lib_offers_toggleofferactive",
+      "src_pages_admin",
+      "src_pages_admin_categories",
+      "src_pages_admin_easyadmindashboard",
+      "src_pages_admin_fmcg_presets",
+      "src_pages_admin_offer_image_presets",
+      "src_pages_admin_offer_themes"
+    ],
+    "7": [
+      "autoprefixer",
+      "package",
+      "package_devdependencies",
+      "package_devdependencies_autoprefixer",
+      "package_devdependencies_postcss",
+      "package_devdependencies_tailwindcss",
+      "package_json_tailwindcss",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_server",
+      "package_scripts_start",
+      "package_scripts_test",
+      "package_version",
+      "postcss"
+    ],
+    "8": [
+      "server_index",
+      "server_index_app",
+      "server_index_classifycategory",
+      "server_index_data_dir",
+      "server_index_express",
+      "server_index_extractbestfrontimage",
+      "server_index_fs",
+      "server_index_http",
+      "server_index_io",
+      "server_index_orders",
+      "server_index_path",
+      "server_index_products",
+      "server_index_readdata",
+      "server_index_server",
+      "server_index_storestatus",
+      "server_index_users",
+      "server_index_writedata"
+    ],
+    "9": [
+      "player",
+      "src_components_remotion_deliveryscootercomposition",
+      "src_components_remotion_deliveryscootercomposition_deliveryscootercomposition",
+      "src_components_remotion_remotiondeliverybadge",
+      "src_components_remotion_remotiondeliverybadge_player",
+      "src_components_remotion_remotiondeliverybadge_remotiondeliverybadge",
+      "src_components_remotion_remotionguaranteebanner",
+      "src_components_remotion_remotionguaranteebanner_player",
+      "src_components_remotion_remotionguaranteebanner_remotionguaranteebanner",
+      "src_components_remotion_stopwatchguaranteecomposition",
+      "src_components_remotion_stopwatchguaranteecomposition_stopwatchguaranteecomposition"
+    ],
+    "10": [
+      "android_app_src_androidtest_java_com_getcapacitor_myapp_exampleinstrumentedtest",
+      "android_app_src_androidtest_java_com_getcapacitor_myapp_exampleinstrumentedtest_exampleinstrumentedtest",
+      "android_app_src_androidtest_java_com_getcapacitor_myapp_exampleinstrumentedtest_exampleinstrumentedtest_useappcontext",
+      "android_app_src_test_java_com_getcapacitor_myapp_exampleunittest",
+      "android_app_src_test_java_com_getcapacitor_myapp_exampleunittest_exampleunittest",
+      "android_app_src_test_java_com_getcapacitor_myapp_exampleunittest_exampleunittest_addition_iscorrect",
+      "androidx_test_ext_junit_runners_androidjunit4",
+      "org_junit_runner_runwith",
+      "org_junit_test"
+    ],
+    "11": [
+      "animejs",
+      "canvas_confetti",
+      "package_dependencies",
+      "package_dependencies_animejs",
+      "package_dependencies_canvas_confetti",
+      "package_dependencies_remotion",
+      "remotion"
+    ],
+    "12": [
+      "android_app_src_main_java_com_dashit_anantnag_mainactivity",
+      "android_app_src_main_java_com_dashit_anantnag_mainactivity_mainactivity",
+      "android_app_src_main_java_com_dashit_anantnag_mainactivity_mainactivity_oncreate",
+      "android_os_bundle",
+      "com_getcapacitor_bridgeactivity",
+      "override"
+    ],
+    "13": [
+      "build_app",
+      "build_app_android_home",
+      "build_app_java_home",
+      "build_app_path",
+      "build_app_sh__entry"
+    ],
+    "14": [
+      "android_gradlew",
+      "android_gradlew__entry",
+      "android_gradlew_die",
+      "android_gradlew_warn"
+    ],
+    "15": [
+      "src_server_socket",
+      "src_server_socket_getsocketserver",
+      "src_server_socket_initsocketserver",
+      "src_server_socket_server"
+    ],
+    "16": [
+      "src_components_animatedsearchbar",
+      "src_components_animatedsearchbar_animatedsearchbar",
+      "src_components_animatedsearchbar_search_placeholders"
+    ],
+    "17": [
+      "src_components_categorynavigationtabs",
+      "src_components_categorynavigationtabs_category_tabs",
+      "src_components_categorynavigationtabs_categorynavigationtabs"
+    ],
+    "18": [
+      "src_components_promocardscarousel",
+      "src_components_promocardscarousel_promo_cards",
+      "src_components_promocardscarousel_promocardscarousel"
+    ],
+    "19": [
+      "src_lib_animations",
+      "src_lib_animations_animatecounter",
+      "src_lib_animations_flytocart"
+    ],
+    "20": [
+      "capacitor_android",
+      "package_dependencies_capacitor_android"
+    ],
+    "21": [
+      "capacitor_app",
+      "package_dependencies_capacitor_app"
+    ],
+    "22": [
+      "capacitor_cli",
+      "package_dependencies_capacitor_cli"
+    ],
+    "23": [
+      "capacitor_core",
+      "package_dependencies_capacitor_core"
+    ],
+    "24": [
+      "capacitor_haptics",
+      "package_dependencies_capacitor_haptics"
+    ],
+    "25": [
+      "capacitor_ios",
+      "package_dependencies_capacitor_ios"
+    ],
+    "26": [
+      "capacitor_local_notifications",
+      "package_dependencies_capacitor_local_notifications"
+    ],
+    "27": [
+      "capacitor_status_bar",
+      "package_dependencies_capacitor_status_bar"
+    ],
+    "28": [
+      "clsx",
+      "package_dependencies_clsx"
+    ],
+    "29": [
+      "create_docx",
+      "create_docx_add_heading"
+    ],
+    "30": [
+      "express",
+      "package_dependencies_express"
+    ],
+    "31": [
+      "framer_motion",
+      "package_dependencies_framer_motion"
+    ],
+    "32": [
+      "ios_app_capapp_spm_package",
+      "packagedescription"
+    ],
+    "33": [
+      "lucide_react",
+      "package_dependencies_lucide_react"
+    ],
+    "34": [
+      "mongoose",
+      "package_dependencies_mongoose"
+    ],
+    "35": [
+      "next_config",
+      "next_config_nextconfig"
+    ],
+    "36": [
+      "package_dependencies_leaflet",
+      "package_json_leaflet"
+    ],
+    "37": [
+      "package_dependencies_next",
+      "package_json_next"
+    ],
+    "38": [
+      "package_dependencies_react_dom",
+      "react_dom"
+    ],
+    "39": [
+      "package_dependencies_react_leaflet",
+      "react_leaflet"
+    ],
+    "40": [
+      "package_dependencies_remotion_player",
+      "remotion_player"
+    ],
+    "41": [
+      "package_dependencies_socket_io",
+      "socket_io"
+    ],
+    "42": [
+      "package_dependencies_socket_io_client",
+      "socket_io_client"
+    ],
+    "43": [
+      "package_dependencies_tailwind_merge",
+      "tailwind_merge"
+    ],
+    "44": [
+      "package_dependencies_vaul",
+      "vaul"
+    ],
+    "45": [
+      "src_components_floatingdeliverybanner",
+      "src_components_floatingdeliverybanner_floatingdeliverybanner"
+    ],
+    "46": [
+      "src_components_locationpermissionmodal",
+      "src_components_locationpermissionmodal_locationpermissionmodal"
+    ],
+    "47": [
+      "src_components_ui_shimmerimage",
+      "src_components_ui_shimmerimage_shimmerimage"
+    ],
+    "48": [
+      "src_pages_add_address",
+      "src_pages_add_address_addaddresspage"
+    ],
+    "49": [
+      "src_pages_api_privacy_delete_account",
+      "src_pages_api_privacy_delete_account_handler"
+    ],
+    "50": [
+      "src_pages_cart",
+      "src_pages_cart_cartredirectpage"
+    ],
+    "51": [
+      "src_pages_driver",
+      "src_pages_driver_dashitdriverapp"
+    ],
+    "52": [
+      "android_app_build"
+    ],
+    "53": [
+      "android_app_capacitor_build"
+    ],
+    "54": [
+      "android_build"
+    ],
+    "55": [
+      "android_capacitor_settings"
+    ],
+    "56": [
+      "android_settings"
+    ],
+    "57": [
+      "android_variables"
+    ],
+    "58": [
+      "ios_app_capapp_spm_sources_capapp_spm_capapp_spm"
+    ],
+    "59": [
+      "leaflet_leaflet"
+    ],
+    "60": [
+      "next_next"
+    ],
+    "61": [
+      "postcss_config"
+    ],
+    "62": [
+      "tailwind_config"
+    ],
+    "63": [
+      "tailwindcss_tailwindcss"
+    ]
+  },
+  "cohesion": {
+    "0": 0.13240418118466898,
+    "1": 0.10121951219512196,
+    "2": 0.1021021021021021,
+    "3": 0.10416666666666667,
+    "4": 0.08866995073891626,
+    "5": 0.14666666666666667,
+    "6": 0.17786561264822134,
+    "7": 0.11764705882352941,
+    "8": 0.11764705882352941,
+    "9": 0.21818181818181817,
+    "10": 0.3333333333333333,
+    "11": 0.2857142857142857,
+    "12": 0.4666666666666667,
+    "13": 0.4,
+    "14": 0.8333333333333334,
+    "15": 0.5,
+    "16": 0.6666666666666666,
+    "17": 0.6666666666666666,
+    "18": 0.6666666666666666,
+    "19": 0.6666666666666666,
+    "20": 1.0,
+    "21": 1.0,
+    "22": 1.0,
+    "23": 1.0,
+    "24": 1.0,
+    "25": 1.0,
+    "26": 1.0,
+    "27": 1.0,
+    "28": 1.0,
+    "29": 1.0,
+    "30": 1.0,
+    "31": 1.0,
+    "32": 1.0,
+    "33": 1.0,
+    "34": 1.0,
+    "35": 1.0,
+    "36": 1.0,
+    "37": 1.0,
+    "38": 1.0,
+    "39": 1.0,
+    "40": 1.0,
+    "41": 1.0,
+    "42": 1.0,
+    "43": 1.0,
+    "44": 1.0,
+    "45": 1.0,
+    "46": 1.0,
+    "47": 1.0,
+    "48": 1.0,
+    "49": 1.0,
+    "50": 1.0,
+    "51": 1.0,
+    "52": 1.0,
+    "53": 1.0,
+    "54": 1.0,
+    "55": 1.0,
+    "56": 1.0,
+    "57": 1.0,
+    "58": 1.0,
+    "59": 1.0,
+    "60": 1.0,
+    "61": 1.0,
+    "62": 1.0,
+    "63": 1.0
+  },
+  "gods": [
+    {
+      "id": "src_lib_haptics_hapticlight",
+      "label": "hapticLight()",
+      "degree": 39
+    },
+    {
+      "id": "src_lib_haptics_hapticmedium",
+      "label": "hapticMedium()",
+      "degree": 30
+    },
+    {
+      "id": "src_lib_utils_cn",
+      "label": "cn()",
+      "degree": 19
+    },
+    {
+      "id": "src_components_bottomnav_bottomnav",
+      "label": "BottomNav()",
+      "degree": 11
+    },
+    {
+      "id": "ios_app_app_appdelegate_appdelegate",
+      "label": "AppDelegate",
+      "degree": 10
+    },
+    {
+      "id": "src_components_productcardstepper_productcardstepper",
+      "label": "ProductCardStepper()",
+      "degree": 10
+    },
+    {
+      "id": "src_components_floatingcartbar_floatingcartbar",
+      "label": "FloatingCartBar()",
+      "degree": 8
+    },
+    {
+      "id": "src_lib_offers_getexclusiveoffers",
+      "label": "getExclusiveOffers()",
+      "degree": 8
+    },
+    {
+      "id": "src_lib_wishlist_getwishlist",
+      "label": "getWishlist()",
+      "degree": 8
+    },
+    {
+      "id": "src_pages_admin_easyadmindashboard",
+      "label": "EasyAdminDashboard()",
+      "degree": 8
+    }
+  ],
+  "surprises": [
+    {
+      "source": "Tabs()",
+      "target": "react",
+      "source_files": [
+        "src/components/ui/tabs.jsx",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "TabsList()",
+      "target": "react",
+      "source_files": [
+        "src/components/ui/tabs.jsx",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories"
+    },
+    {
+      "source": "BottomNav()",
+      "target": "hapticLight()",
+      "source_files": [
+        "src/components/BottomNav.jsx",
+        "src/lib/haptics.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "CategoryGridSixPack()",
+      "target": "hapticLight()",
+      "source_files": [
+        "src/components/CategoryGridSixPack.jsx",
+        "src/lib/haptics.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "CategoryScroller()",
+      "target": "hapticLight()",
+      "source_files": [
+        "src/components/CategoryScroller.jsx",
+        "src/lib/haptics.js"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "bridges separate communities"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

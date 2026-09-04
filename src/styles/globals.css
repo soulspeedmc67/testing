@@ -4,7 +4,12 @@
 @tailwind utilities;
 
 :root {
-  --primary-green: #0c831f;
+  /* DASHit brand palette — orange is the primary/interactive colour,
+     midnight is the disciplined text/surface anchor. Green is reserved
+     for semantic success only and is never used as a brand accent. */
+  --brand-orange: #FF5B00;
+  --brand-orange-deep: #E04E00;
+  --brand-midnight: #061838;
   --brand-yellow: #f7c400;
   --primary-text: #0f172a;
   --secondary-text: #64748b;

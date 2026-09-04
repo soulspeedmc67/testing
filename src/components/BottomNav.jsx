@@ -65,12 +65,20 @@ export default function BottomNav({ forceHide = false }) {
 
   const isStorefront = STOREFRONT_TABS.includes(currentPath);
   const shouldHide = !isNavVisible || isKeyboardOpen || forceHide || !isStorefront;
-  const [animatingTab, setAnimatingTab] = useState(null);
+  const [animTick, setAnimTick] = useState({});
 
   const triggerIconAnimation = (tabId) => {
-    setAnimatingTab(tabId);
-    setTimeout(() => setAnimatingTab(null), 600);
+    setAnimTick((prev) => ({ ...prev, [tabId]: (prev[tabId] || 0) + 1 }));
   };
+
+  useEffect(() => {
+    const activeItem = NAV_ITEMS.find(
+      (item) => currentPath === item.path || (item.id === "home" && (currentPath === "/" || currentPath === ""))
+    );
+    if (activeItem) {
+      triggerIconAnimation(activeItem.id);
+    }
+  }, [currentPath]);
 
   return (
     <motion.div
@@ -92,7 +100,7 @@ export default function BottomNav({ forceHide = false }) {
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path || (item.id === "home" && currentPath === "/");
-          const isAnimating = animatingTab === item.id || isActive;
+          const tick = animTick[item.id] || 0;
 
           return (
             <motion.button
@@ -113,23 +121,22 @@ export default function BottomNav({ forceHide = false }) {
               }`}
             >
               <motion.div
-                key={`${item.id}-${animatingTab === item.id ? "anim" : "static"}`}
+                key={`${item.id}-${tick}`}
                 className="flex items-center justify-center relative"
                 animate={
-                  isAnimating
+                  tick > 0
                     ? item.id === "order-again"
-                      ? { rotate: [0, -180, -360], scale: [1, 1.25, 1] }
+                      ? { rotate: [0, -360], scale: [1, 1.25, 1] }
                       : item.id === "categories"
-                      ? { scale: [1, 1.22, 1], rotate: [0, -8, 6, 0] }
-                      : { scale: [1, 1.2, 1], y: [0, -3.5, 0] }
+                      ? { scale: [1, 1.28, 0.92, 1], rotate: [0, -16, 16, -6, 0] }
+                      : { scale: [1, 1.3, 0.9, 1.08, 1], y: [0, -5, 2, 0] }
                     : { scale: 1, y: 0, rotate: 0 }
                 }
-                transition={{
-                  type: "spring",
-                  stiffness: 350,
-                  damping: 20,
-                  mass: 0.6,
-                }}
+                transition={
+                  item.id === "order-again"
+                    ? { duration: 0.65, ease: [0.34, 1.56, 0.64, 1] }
+                    : { duration: 0.48, ease: "easeOut" }
+                }
               >
                 <Icon
                   className={`w-4 h-4 transition-colors duration-250 ${
@@ -152,12 +159,11 @@ export default function BottomNav({ forceHide = false }) {
               {isActive && (
                 <motion.span
                   layoutId="activeTabIndicator"
-                  className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] mt-0.5 shadow-[0_1px_4px_rgba(255,107,0,0.4)]"
+                  className="w-1.5 h-1.5 rounded-full bg-[#FF5B00] mt-0.5 shadow-[0_1px_4px_rgba(255, 91, 0,0.4)]"
                   transition={{
                     type: "spring",
-                    stiffness: 220,
-                    damping: 24,
-                    mass: 0.6,
+                    stiffness: 380,
+                    damping: 26,
                   }}
                 />
               )}

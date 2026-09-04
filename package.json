@@ -7,7 +7,10 @@
     "server": "node server/index.js",
     "build": "next build",
     "start": "next start",
-    "test": "jest"
+    "test": "jest",
+    "seed:firestore": "node scripts/seed-firestore.mjs",
+    "fb:rules": "firebase-tools deploy --only firestore:rules,firestore:indexes",
+    "fb:emulate": "firebase-tools emulators:start"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
@@ -19,9 +22,11 @@
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/status-bar": "^8.0.3",
     "@remotion/player": "^4.0.520",
+    "animejs": "^4.5.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "express": "^4.19.2",
+    "firebase": "^12.18.0",
     "framer-motion": "^11.3.19",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.417.0",

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { goBack } from "../lib/navigation";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
@@ -107,7 +108,7 @@ export default function OrdersPage() {
             <button
               onClick={() => {
                 if (window.history.length > 1) {
-                  router.back();
+                  goBack(router);
                 } else {
                   router.push("/");
                 }
@@ -141,7 +142,7 @@ export default function OrdersPage() {
               <div className="flex items-center space-x-2">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF6B00]"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF5B00]"></span>
                 </span>
                 <div>
                   <h2 className="font-extrabold text-xs text-slate-900 tracking-tight">
@@ -196,7 +197,7 @@ export default function OrdersPage() {
                       className={`h-full ${
                         activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
                           ? "bg-[#061838]"
-                          : "bg-[#FF6B00] animate-pulse"
+                          : "bg-[#FF5B00] animate-pulse"
                       } rounded-full`}
                     />
                   </div>
@@ -204,7 +205,7 @@ export default function OrdersPage() {
                     className={`text-[9px] font-black ${
                       activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
                         ? "text-[#061838]"
-                        : "text-[#FF6B00]"
+                        : "text-[#FF5B00]"
                     } block`}
                   >
                     Processing
@@ -230,7 +231,7 @@ export default function OrdersPage() {
                   <span
                     className={`text-[9px] font-black ${
                       activeOrder.status === "Out for Delivery"
-                        ? "text-[#FF6B00]"
+                        ? "text-[#FF5B00]"
                         : activeOrder.status === "Delivered"
                         ? "text-[#061838]"
                         : "text-slate-400"
@@ -291,7 +292,7 @@ export default function OrdersPage() {
                   <motion.div
                     animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / 60) * 100))}%` }}
                     transition={{ ease: "linear", duration: 0.9 }}
-                    className="h-full bg-gradient-to-r from-amber-500 to-[#FF6B00] rounded-full"
+                    className="h-full bg-gradient-to-r from-amber-500 to-[#FF5B00] rounded-full"
                   />
                 </div>
               </div>
@@ -329,9 +330,9 @@ export default function OrdersPage() {
                   </p>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-xs rounded-2xl p-3 border border-emerald-100 text-left space-y-2">
+                <div className="bg-white/80 backdrop-blur-xs rounded-2xl p-3 border border-orange-100 text-left space-y-2">
                   <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span className="w-2 h-2 rounded-full bg-orange-500" />
                     <span>Order received & confirmed</span>
                   </div>
                   <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">

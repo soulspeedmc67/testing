@@ -1,0 +1,130 @@
+rules_version = '2';
+
+/**
+ * DASHit Firestore security rules.
+ *
+ * Privilege comes from staff/{uid}, which no client can write — staff are added
+ * from the Firebase console. There are no custom claims because the project runs
+ * on the Spark plan (no Cloud Functions, so no Admin SDK to mint them).
+ *
+ * Cost note: every isAdmin()/isDriver() call is a document read. They are only
+ * invoked on paths that genuinely need elevation — a customer reading their own
+ * order never triggers one.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function staffDoc() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid))
+        && staffDoc().active == true;
+    }
+
+    function isAdmin() {
+      return isStaff() && staffDoc().role == 'admin';
+    }
+
+    function isDriver() {
+      return isStaff() && staffDoc().role == 'driver';
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    /** Fields a driver is allowed to touch on an order they are assigned to. */
+    function onlyChanges(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    // ---- Catalogue: world-readable, admin-writable -------------------------
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---- Users ------------------------------------------------------------
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid);
+      allow delete: if false;
+
+      match /addresses/{addressId} {
+        allow read, write: if isOwner(uid);
+        allow read: if isAdmin();
+      }
+    }
+
+    // ---- Orders -----------------------------------------------------------
+    match /orders/{orderId} {
+
+      allow read: if isAdmin()
+                  || isOwner(resource.data.userId)
+                  || (isDriver() && resource.data.driverId == request.auth.uid);
+
+      // A customer may only create an order for themselves, and may not
+      // pre-assign a driver or invent a delivered status.
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'Placed'
+                    && request.resource.data.driverId == null;
+
+      allow update: if isAdmin()
+                    // Assigned driver may advance status only — never money,
+                    // items, or who the order belongs to.
+                    || (isDriver()
+                        && resource.data.driverId == request.auth.uid
+                        && onlyChanges(['status', 'updatedAt', 'statusHistory']))
+                    // Customer may cancel, but only while it is still Placed.
+                    || (isOwner(resource.data.userId)
+                        && resource.data.status == 'Placed'
+                        && request.resource.data.status == 'Cancelled'
+                        && onlyChanges(['status', 'updatedAt', 'statusHistory']));
+
+      allow delete: if false;
+
+      // Live rider position — written frequently by the assigned driver.
+      match /tracking/{docId} {
+        allow read: if isAdmin()
+                    || isOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.userId)
+                    || (isDriver()
+                        && get(/databases/$(database)/documents/orders/$(orderId)).data.driverId == request.auth.uid);
+
+        allow write: if isAdmin()
+                     || (isDriver()
+                         && get(/databases/$(database)/documents/orders/$(orderId)).data.driverId == request.auth.uid);
+      }
+    }
+
+    // ---- Staff: readable only by the person it describes -------------------
+    // Clients read their own doc to discover their role. Nobody writes here;
+    // staff are provisioned from the Firebase console.
+    match /staff/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

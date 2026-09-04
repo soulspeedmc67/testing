@@ -60,7 +60,7 @@ export default function UnserviceableAreaScreen({
 
         <button
           onClick={onChangeLocation}
-          className="bg-[#0c831f] hover:bg-[#0a6f1a] text-white text-xs font-black px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-transform"
+          className="bg-[#FF5B00] hover:bg-[#0a6f1a] text-white text-xs font-black px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-transform"
         >
           Change to Anantnag Location
         </button>

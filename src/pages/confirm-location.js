@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { goBack } from "../lib/navigation";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
@@ -86,7 +87,7 @@ export default function ConfirmLocationPage() {
       localStorage.setItem("dashit_user_address", JSON.stringify(loc));
       window.dispatchEvent(new Event("dashit_address_updated"));
     } catch (e) {}
-    router.back();
+    goBack(router);
   };
 
   const handleRecenterGPS = () => {
@@ -172,7 +173,7 @@ export default function ConfirmLocationPage() {
       <div className="absolute top-0 left-0 right-0 z-[2000] p-4 pt-[max(14px,env(safe-area-inset-top,14px))] flex items-center space-x-3 pointer-events-none">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => goBack(router)}
           className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
@@ -184,7 +185,7 @@ export default function ConfirmLocationPage() {
             placeholder="Search an area or address"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
+            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
           />
           {searchQuery ? (
             <button
@@ -254,7 +255,7 @@ export default function ConfirmLocationPage() {
         {/* Confirm Button */}
         <button
           onClick={handleConfirm}
-          className="w-full bg-[#0c831f] hover:bg-[#0a6f1a] text-white py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all"
+          className="w-full bg-[#FF5B00] hover:bg-[#0a6f1a] text-white py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all"
         >
           <Check className="w-4 h-4 stroke-[3]" />
           <span>Confirm Location & Proceed</span>

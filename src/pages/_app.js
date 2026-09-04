@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { motion } from 'framer-motion';
+import { motion, MotionConfig } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import '../styles/globals.css';
 import 'leaflet/dist/leaflet.css';
@@ -14,6 +14,7 @@ import { ScrollChromeProvider } from '../context/ScrollChromeContext';
 import { initNotificationPermissions } from '../lib/notifications';
 
 import { setDeviceSystemBars } from '../lib/systemBars';
+import { EASE_OUT } from '../lib/motion';
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -85,23 +86,26 @@ export default function App({ Component, pageProps }) {
   }, [router]);
 
   return (
-    <ScrollChromeProvider>
-      <Head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-      </Head>
-      <motion.div
-        key={router.asPath}
-        initial={{ opacity: 0.85, scale: 0.996 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.16, ease: [0.25, 1, 0.5, 1] }}
-        className="w-full min-h-screen overflow-x-clip relative"
-      >
-        <Component {...pageProps} />
-      </motion.div>
-      <LiveOrderFloatingTracker />
-      <FloatingCartBar />
-      <BottomNav />
-      <FlyingBadgeOverlay />
-    </ScrollChromeProvider>
+    // reducedMotion="user" honours the OS accessibility setting app-wide
+    <MotionConfig reducedMotion="user">
+      <ScrollChromeProvider>
+        <Head>
+          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        </Head>
+        <motion.div
+          key={router.asPath}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2, ease: EASE_OUT }}
+          className="w-full min-h-screen overflow-x-clip relative"
+        >
+          <Component {...pageProps} />
+        </motion.div>
+        <LiveOrderFloatingTracker />
+        <FloatingCartBar />
+        <BottomNav />
+        <FlyingBadgeOverlay />
+      </ScrollChromeProvider>
+    </MotionConfig>
   );
 }

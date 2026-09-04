@@ -1,118 +1,125 @@
 /**
- * Dashit Client API Client
- * Seamlessly connects to Dashit Backend Server (default: http://localhost:5001 or LAN IP)
- * with automatic fallback to localStorage for full offline reliability.
+ * DASHit API surface.
+ *
+ * Previously a fetch client against the Express server on :5001. Now backed by
+ * Firestore. The exported function names and their return shapes are unchanged
+ * so existing pages keep working — new code should prefer `src/lib/db.js` and
+ * `src/lib/auth.js` directly, especially for realtime listeners.
+ *
+ * When Firebase is not configured, every call degrades to localStorage so the
+ * app still runs offline and in development.
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1"
-    ? `http://${window.location.hostname}:5001`
-    : "http://192.168.217.22:5001");
+import { isFirebaseConfigured, getFirebaseAuth } from "./firebase";
+import { sendOtp as authSendOtp, verifyOtp as authVerifyOtp } from "./auth";
+import {
+  createOrder,
+  fetchUserOrders,
+  updateOrderStatus,
+  fetchProducts,
+} from "./db";
+
+export { getStaffRole, watchAuth, signOut } from "./auth";
+
+const readLocal = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+const writeLocal = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {}
+};
+
+/** Current signed-in uid, or null. */
+const currentUid = () => getFirebaseAuth()?.currentUser?.uid || null;
 
 export async function sendOtp(mobile) {
-  try {
-    const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile })
-    });
-    return await res.json();
-  } catch (e) {
-    try {
-      const res = await fetch(`http://localhost:5001/api/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile })
-      });
-      return await res.json();
-    } catch (err) {
-      return { success: true, message: "OTP sent (offline simulation)", devOtp: "1234" };
-    }
-  }
+  return authSendOtp(mobile);
 }
 
 export async function verifyOtp(mobile, otp) {
-  try {
-    const res = await fetch(`${API_BASE}/api/auth/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mobile, otp })
-    });
-    const data = await res.json();
-    if (data.success && data.user) {
-      localStorage.setItem("dashit_user", JSON.stringify(data.user));
-    }
-    return data;
-  } catch (e) {
-    try {
-      const res = await fetch(`http://localhost:5001/api/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile, otp })
-      });
-      const data = await res.json();
-      if (data.success && data.user) {
-        localStorage.setItem("dashit_user", JSON.stringify(data.user));
-      }
-      return data;
-    } catch (err) {
-      const fallbackUser = {
-        id: "USR-LOCAL",
-        mobile,
-        name: "Valued Customer",
-        address: "Nai Basti, Anantnag",
-        savedAddresses: [
-          { id: "ADDR-1", nickname: "Home", address: "Nai Basti, Anantnag", lat: 33.7311, lng: 75.1487 }
-        ]
-      };
-      localStorage.setItem("dashit_user", JSON.stringify(fallbackUser));
-      return { success: true, user: fallbackUser };
-    }
-  }
+  return authVerifyOtp(mobile, otp);
 }
 
 export async function submitOrder(orderData) {
+  const uid = currentUid();
+
+  if (!isFirebaseConfigured || !uid) {
+    // Offline / unauthenticated: keep the order locally so the tracker still works.
+    const local = {
+      ...orderData,
+      orderId: orderData.orderId || `DSH-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: "Placed",
+      createdAt: new Date().toISOString(),
+    };
+    writeLocal("dashit_active_order", local);
+    const history = readLocal("dashit_orders_history", []);
+    writeLocal("dashit_orders_history", [local, ...history]);
+    return { success: true, order: local, offline: true };
+  }
+
   try {
-    const res = await fetch(`${API_BASE}/api/orders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(orderData)
+    const result = await createOrder(orderData, uid);
+    writeLocal("dashit_active_order", {
+      ...orderData,
+      orderId: result.orderId,
+      status: "Placed",
     });
-    return await res.json();
+    return result;
   } catch (e) {
-    try {
-      const res = await fetch(`http://localhost:5001/api/orders`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderData)
-      });
-      return await res.json();
-    } catch (err) {
-      console.warn("Order submit server unreachable, using local storage");
-      return { success: true, order: orderData };
-    }
+    console.warn("Order write failed, storing locally:", e?.message);
+    return { success: false, message: e?.message };
   }
 }
 
 export async function fetchAdminOrders() {
+  const uid = currentUid();
+  if (!isFirebaseConfigured || !uid) {
+    return { success: false, orders: readLocal("dashit_orders_history", []) };
+  }
   try {
-    const res = await fetch(`${API_BASE}/api/admin/orders`);
-    return await res.json();
+    // Admin listing is realtime elsewhere; this one-shot keeps the old contract.
+    const { watchAllOrders } = await import("./db");
+    const orders = await new Promise((resolve) => {
+      const stop = watchAllOrders((list) => {
+        stop();
+        resolve(list);
+      });
+    });
+    return { success: true, orders };
   } catch (e) {
     return { success: false, orders: [] };
   }
 }
 
 export async function updateAdminOrderStatus(orderId, status) {
+  if (!isFirebaseConfigured) return { success: false };
   try {
-    const res = await fetch(`${API_BASE}/api/admin/orders/${orderId}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status })
-    });
-    return await res.json();
+    return await updateOrderStatus(orderId, status);
   } catch (e) {
-    return { success: false };
+    return { success: false, message: e?.message };
+  }
+}
+
+export async function fetchUserOrderHistory() {
+  const uid = currentUid();
+  if (!isFirebaseConfigured || !uid) {
+    return readLocal("dashit_orders_history", []);
+  }
+  return fetchUserOrders(uid);
+}
+
+export async function fetchCatalogue() {
+  if (!isFirebaseConfigured) return [];
+  try {
+    return await fetchProducts();
+  } catch (e) {
+    return [];
   }
 }

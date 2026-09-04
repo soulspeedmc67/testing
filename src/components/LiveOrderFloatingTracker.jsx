@@ -1,21 +1,63 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import { motion, AnimatePresence } from "framer-motion";
-import { Home, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue } from "framer-motion";
+import { Home, ChevronRight } from "lucide-react";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import { hapticLight, hapticMedium } from "../lib/haptics";
-import DashitAnimatedLogo, { DashitProgressBadge } from "./DashitAnimatedLogo";
+import { DashitProgressBadge } from "./DashitAnimatedLogo";
+import DeliveryStatusIcon, { statusToMark } from "./DeliveryStatusIcon";
+import { SPRING_SNAPPY, SPRING_SOFT, EASE_OUT } from "../lib/motion";
 import io from "socket.io-client";
+
+/** Edge rail bounds — keeps the docked semicircle clear of the status bar and
+ *  the FloatingCartBar / BottomNav dock at the bottom of the screen. */
+const RAIL_MIN_Y = 80;
+const RAIL_BOTTOM_GAP = 120;
+
+const clampRailY = (y) => {
+  if (typeof window === "undefined") return y;
+  const max = window.innerHeight - RAIL_BOTTOM_GAP;
+  return Math.min(Math.max(y, RAIL_MIN_Y), Math.max(RAIL_MIN_Y, max));
+};
 
 export default function LiveOrderFloatingTracker() {
   const router = useRouter();
   const [activeOrder, setActiveOrder] = useState(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [dockSide, setDockSide] = useState("right"); // "right" or "left"
+  const [viewportH, setViewportH] = useState(812);
+  /**
+   * Absolute Y of the docked puck, in viewport pixels.
+   *
+   * This is the SINGLE source of truth for its vertical position — the element
+   * is anchored at `top: 0` and moved purely by this transform. Do not also set
+   * a CSS `top`: Framer owns this value during a drag and re-applies it on the
+   * elastic settle, so a CSS offset would double-count and walk the puck
+   * off-screen.
+   */
+  const railY = useMotionValue(220);
   const [etaMinutes, setEtaMinutes] = useState(7);
   const [progressPct, setProgressPct] = useState(32);
   const [statusLabel, setStatusLabel] = useState("Preparing your fresh order");
   const [riderName, setRiderName] = useState("Tariq Ahmad");
+
+  /* Track viewport height so the rail's lower bound follows rotation, resize and
+     the virtual keyboard — matching the dock policy of FloatingCartBar. */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const syncViewport = () => {
+      const h = window.visualViewport?.height || window.innerHeight;
+      setViewportH(h);
+      railY.set(Math.min(railY.get(), Math.max(RAIL_MIN_Y, h - RAIL_BOTTOM_GAP)));
+    };
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+    };
+  }, []);
 
   useEffect(() => {
     const checkOrder = () => {
@@ -90,35 +132,44 @@ export default function LiveOrderFloatingTracker() {
     };
   }, [activeOrder?.orderId]);
 
-  // Hide completely on checkout, full order tracking page, driver console, login
+  // Hide completely on checkout, full order tracking page, driver console, login, exclusive story deck, admin
   const isHiddenPage =
     router.pathname === "/orders" ||
     router.pathname === "/checkout" ||
     router.pathname === "/driver" ||
     router.pathname === "/login" ||
-    router.pathname === "/confirm-location";
+    router.pathname === "/confirm-location" ||
+    router.pathname === "/admin";
 
   if (!activeOrder || isHiddenPage) return null;
 
-  // Horizontal drag-to-dock handle
+  /**
+   * Omnidirectional dismissal: a flick or drag in ANY direction shrinks the card
+   * into the edge semicircle. The nearest horizontal border wins, and the dock
+   * anchors at the release Y so the puck lands where the finger left it.
+   */
   const handleDragEnd = (_, info) => {
-    const threshold = 35;
-    const velocityThreshold = 160;
-    if (info.offset.x > threshold || info.velocity.x > velocityThreshold) {
-      hapticLight();
-      setDockSide("right");
-      setIsMinimized(true);
-    } else if (info.offset.x < -threshold || info.velocity.x < -velocityThreshold) {
-      hapticLight();
-      setDockSide("left");
-      setIsMinimized(true);
-    }
+    const DISTANCE = 48;
+    const VELOCITY = 380;
+
+    const travelled = Math.hypot(info.offset.x, info.offset.y);
+    const flicked = Math.hypot(info.velocity.x, info.velocity.y);
+    if (travelled < DISTANCE && flicked < VELOCITY) return; // snap back
+
+    hapticLight();
+    const releaseX =
+      typeof info.point?.x === "number" ? info.point.x : window.innerWidth / 2;
+    const releaseY =
+      typeof info.point?.y === "number" ? info.point.y : RAIL_MIN_Y * 2;
+
+    setDockSide(releaseX > window.innerWidth / 2 ? "right" : "left");
+    railY.set(clampRailY(releaseY));
+    setIsMinimized(true);
   };
 
-  const handleMinimize = (side = "right") => {
-    hapticLight();
-    setDockSide(side);
-    setIsMinimized(true);
+  /** Safety clamp after a rail drag, in case constraints were bypassed. */
+  const handleRailDragEnd = () => {
+    railY.set(clampRailY(railY.get()));
   };
 
   const handleExpand = () => {
@@ -129,128 +180,77 @@ export default function LiveOrderFloatingTracker() {
   return (
     <AnimatePresence initial={false}>
       {isMinimized ? (
-        /* SLEEK FLOATING EDGE TAB (Docked to screen border with Dashit Logo) */
+        /* DOCKED EDGE SEMICIRCLE — flush at 90° against the nearest border */
         <motion.div
-          key="miui-edge-tab"
-          initial={{
-            x: dockSide === "right" ? 80 : -80,
-            opacity: 0,
-            scale: 0.7,
-          }}
-          animate={{
-            x: 0,
-            opacity: 1,
-            scale: 1,
-          }}
-          exit={{
-            x: dockSide === "right" ? 80 : -80,
-            opacity: 0,
-            scale: 0.7,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 25,
-            mass: 0.75,
-          }}
+          key="dashit-edge-dock"
+          initial={{ x: dockSide === "right" ? 60 : -60, opacity: 0, scale: 0.6 }}
+          animate={{ x: 0, opacity: 1, scale: 1 }}
+          exit={{ x: dockSide === "right" ? 60 : -60, opacity: 0, scale: 0.6 }}
+          transition={SPRING_SNAPPY}
           drag="y"
-          dragConstraints={{ top: 80, bottom: 450 }}
-          dragElastic={0.12}
+          dragMomentum={false}
+          dragElastic={0.06}
+          /* Absolute rail bounds — `y` is the viewport Y, so these are static:
+             never above RAIL_MIN_Y, never below the cart-dock keep-out zone. */
+          dragConstraints={{
+            top: RAIL_MIN_Y,
+            bottom: Math.max(RAIL_MIN_Y, viewportH - RAIL_BOTTOM_GAP),
+          }}
+          onDragEnd={handleRailDragEnd}
+          whileTap={{ scale: 0.93 }}
           onClick={handleExpand}
-          className={`fixed z-[250] cursor-pointer select-none active:scale-95 transition-transform ${
+          aria-label={`Live order, ${etaMinutes} minutes away. Tap to expand.`}
+          className={`fixed top-0 z-[250] cursor-pointer select-none touch-none ${
             dockSide === "right" ? "right-0" : "left-0"
           }`}
-          style={{ top: "45%" }}
+          style={{ y: railY }}
         >
           <div
-            className={`flex items-center space-x-2.5 bg-gradient-to-r from-[#06142A] via-[#081833] to-[#051124] text-white py-2 shadow-[0_14px_36px_rgba(2,10,24,0.55)] border border-slate-700/80 backdrop-blur-md ${
+            className={`relative flex flex-col items-center justify-center w-[52px] h-[76px] bg-neutral-950/95 backdrop-blur-xl border border-neutral-800 shadow-[0_12px_34px_rgba(0,0,0,0.55)] ${
               dockSide === "right"
-                ? "rounded-l-2xl pl-3 pr-2 border-r-0"
-                : "rounded-r-2xl pl-2 pr-3 border-l-0"
+                ? "rounded-l-[26px] border-r-0 pl-1"
+                : "rounded-r-[26px] border-l-0 pr-1"
             }`}
           >
-            {dockSide === "left" && <ChevronRight className="w-3.5 h-3.5 text-[#FF5B00]" />}
+            {/* Grab rail — signals the puck can be slid along the edge */}
+            <span
+              className={`absolute top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-white/15 ${
+                dockSide === "right" ? "right-1.5" : "left-1.5"
+              }`}
+            />
 
-            {/* Mini Dashit animated emblem */}
-            <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm ring-1.5 ring-[#FF5B00]/70 p-0.5 overflow-hidden">
-              <DashitAnimatedLogo size="xs" showGlow={false} />
-            </div>
+            <div className={`flex flex-col items-center ${dockSide === "right" ? "pr-1.5" : "pl-1.5"}`}>
+              {/* Animated status mark — packing at the hub, or rider en route */}
+              <DeliveryStatusIcon status={statusToMark(statusLabel)} size="md" />
 
-            <div className="flex flex-col text-left">
-              <span className="font-mono font-black text-xs text-white leading-tight">
-                {etaMinutes > 0 ? `${etaMinutes}m` : "Ready"}
+              {/* ETA with a quiet unit, so the number carries the weight */}
+              <span className="mt-1.5 flex items-baseline text-white leading-none">
+                <span className="font-black text-[13px] tabular-nums tracking-tight">
+                  {etaMinutes > 0 ? etaMinutes : "•"}
+                </span>
+                <span className="text-[9px] font-bold text-white/45 ml-[1px]">
+                  {etaMinutes > 0 ? "m" : ""}
+                </span>
               </span>
-              <span className="text-[7.5px] font-black text-[#FF5B00] uppercase tracking-wider leading-none mt-0.5">
-                LIVE ORDER
-              </span>
             </div>
-
-            {dockSide === "right" && <ChevronRight className="w-3.5 h-3.5 text-[#FF5B00]" />}
           </div>
         </motion.div>
       ) : (
-        /* EXPANDED ULTRA-SLEEK TOP NOTIFICATION (Smooth morph & close) */
+        /* EXPANDED OBSIDIAN CARD — beacon, status, ETA, route line. Nothing else. */
         <motion.div
-          key="zomato-tracker-full"
-          initial={{
-            scale: 0.6,
-            opacity: 0,
-            x: dockSide === "right" ? 50 : -50,
-          }}
-          animate={{
-            scale: 1,
-            opacity: 1,
-            x: 0,
-          }}
-          exit={{
-            scale: 0.6,
-            opacity: 0,
-            x: dockSide === "right" ? 50 : -50,
-          }}
-          transition={{
-            type: "spring",
-            stiffness: 280,
-            damping: 26,
-            mass: 0.8,
-          }}
-          drag="x"
-          dragConstraints={{ left: -70, right: 70 }}
-          dragElastic={0.25}
+          key="dashit-tracker-full"
+          initial={{ scale: 0.94, opacity: 0, y: -10 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.7, opacity: 0 }}
+          transition={SPRING_SOFT}
+          drag
+          dragSnapToOrigin
+          dragElastic={0.35}
           onDragEnd={handleDragEnd}
-          className="fixed left-3.5 right-3.5 z-[250] max-w-md mx-auto pointer-events-auto"
+          className="fixed left-3.5 right-3.5 z-[250] max-w-md mx-auto pointer-events-auto touch-none"
           style={{ top: "max(46px, calc(env(safe-area-inset-top, 0px) + 14px))" }}
         >
-          <div className="bg-gradient-to-b from-[#08152C] via-[#061124] to-[#040C1A] text-white rounded-[26px] px-4 py-3.5 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_1px_0_rgba(255,255,255,0.12)_inset] border border-slate-700/70 overflow-hidden select-none backdrop-blur-xl">
-            {/* TOP ROW: Outlet name + Sleek Slide-to-side Pill */}
-            <div className="flex items-center justify-between mb-2 border-b border-white/10 pb-2">
-              <div className="flex items-center space-x-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5B00] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5B00]" />
-                </span>
-                <span className="text-[11px] font-extrabold text-slate-300 tracking-tight">
-                  Dashit Central Hub · Anantnag
-                </span>
-              </div>
-
-              {/* Sleeker, smoother Slide to side pill */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMinimize(dockSide);
-                }}
-                className="flex items-center space-x-1.5 bg-white/10 hover:bg-white/20 active:scale-95 px-2.5 py-1 rounded-full cursor-pointer transition-all border border-white/10"
-              >
-                <ChevronsLeft className="w-2.5 h-2.5 text-slate-300" />
-                <span className="text-[9.5px] font-bold text-slate-200 tracking-tight">
-                  Slide to side
-                </span>
-                <ChevronsRight className="w-2.5 h-2.5 text-slate-300" />
-              </button>
-            </div>
-
-            {/* STATUS + ETA */}
+          <div className="bg-neutral-950/95 backdrop-blur-2xl text-white rounded-[26px] px-4 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.85)] border border-neutral-800 overflow-hidden select-none">
             <div
               onClick={() => {
                 hapticMedium();
@@ -258,68 +258,61 @@ export default function LiveOrderFloatingTracker() {
               }}
               className="cursor-pointer active:opacity-90 transition-opacity"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-[16.5px] font-black text-white tracking-tight leading-tight">
-                    {statusLabel}
-                  </h2>
-                  <div className="flex items-center space-x-1.5 mt-0.5">
-                    <span className="text-[#FF5B00] font-black text-[12px]">
-                      {activeOrder?.status === "Out for Delivery" ? "On time" : "Preparing fresh"}
-                    </span>
-                    <span className="text-slate-500 text-[12px] font-semibold">·</span>
-                    <span className="text-slate-200 text-[12px] font-bold">
-                      {activeOrder?.status === "Out for Delivery"
-                        ? `Arriving in ${etaMinutes} mins`
-                        : `Estimated in ${etaMinutes} mins`}
-                    </span>
+              {/* STATUS + ETA */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center space-x-2.5">
+                    {/* Animated status mark — packing at the hub, or rider en route */}
+                    <DeliveryStatusIcon status={statusToMark(statusLabel)} size="md" />
+                    <h2 className="text-[16px] font-black text-white tracking-tight leading-tight truncate">
+                      {statusLabel}
+                    </h2>
                   </div>
+
+                  {/* Arrival countdown */}
+                  <p className="text-[12.5px] font-bold text-slate-400 mt-1.5 ml-[46px]">
+                    {etaMinutes > 0 ? (
+                      <>
+                        Arriving in{" "}
+                        <span className="text-[#FF5B00] font-black">{etaMinutes} min</span>
+                      </>
+                    ) : (
+                      <span className="text-[#FF5B00] font-black">Arriving now</span>
+                    )}
+                  </p>
                 </div>
 
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0 shadow-xs border border-white/15">
+                <div className="w-8 h-8 rounded-full bg-white/[0.08] flex items-center justify-center text-white shrink-0 border border-white/10">
                   <ChevronRight className="w-4 h-4 stroke-[2.5]" />
                 </div>
               </div>
 
-              {/* PROGRESS TRACK (Zomato-Style Route with Animated Dashit Logo) */}
-              <div className="relative mt-3.5 h-[30px] flex items-center">
-                {/* Dotted route track */}
-                <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 flex items-center justify-between pointer-events-none">
-                  {[...Array(15)].map((_, i) => (
-                    <span
-                      key={i}
-                      className="shrink-0 h-[2.5px] rounded-full bg-slate-800"
-                      style={{ width: "7px" }}
-                    />
-                  ))}
-                </div>
+              {/* MINIMAL ROUTE PROGRESS LINE */}
+              <div className="relative mt-4 h-6 flex items-center">
+                {/* Rail */}
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-neutral-800" />
 
-                {/* Filled progress beam */}
+                {/* Filled beam */}
                 <motion.div
-                  className="absolute left-5 top-1/2 -translate-y-1/2 h-[3px] bg-gradient-to-r from-[#FF5B00]/70 to-[#FF5B00] rounded-full shadow-[0_0_8px_rgba(255,91,0,0.5)]"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-[#FF5B00] rounded-full"
                   initial={{ width: "0%" }}
                   animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{ duration: 0.9, ease: EASE_OUT }}
                 />
 
-                {/* Origin point (Central Hub) */}
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shadow-xs">
-                  <span className="w-2 h-2 rounded-full bg-[#FF5B00]" />
-                </div>
-
-                {/* ANIMATED DASHIT PROGRESS BADGE */}
+                {/* Travelling badge */}
                 <motion.div
-                  className="absolute top-1/2 -translate-y-1/2 z-10"
-                  initial={{ left: "6%" }}
-                  animate={{ left: `calc(${progressPct}% + 4px)` }}
-                  transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
+                  initial={{ left: "0%" }}
+                  animate={{ left: `${progressPct}%` }}
+                  transition={{ duration: 0.9, ease: EASE_OUT }}
                 >
                   <DashitProgressBadge size="sm" />
                 </motion.div>
 
-                {/* Destination point (Customer Home) */}
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white flex items-center justify-center shadow-md ring-1 ring-slate-200">
-                  <Home className="w-3.5 h-3.5 stroke-[2.8] text-[#061838]" />
+                {/* Destination */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center">
+                  <Home className="w-2.5 h-2.5 stroke-[2.8] text-slate-400" />
                 </div>
               </div>
             </div>

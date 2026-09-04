@@ -399,7 +399,7 @@ export default function CheckoutPage() {
               <span className="text-xs font-black text-slate-900 dark:text-white block">
                 {appliedCoupon ? `Coupon '${appliedCoupon.code}' Applied!` : "Avail Offers and Coupons"}
               </span>
-              <span className="text-[11px] font-bold text-[#FF6B00] block">
+              <span className="text-[11px] font-bold text-[#FF5B00] block">
                 {appliedCoupon ? `You are saving ₹${couponDiscount} with this order` : "Save up to ₹50 with GET30 & DASHIT50"}
               </span>
             </div>
@@ -421,7 +421,7 @@ export default function CheckoutPage() {
             </span>
           </div>
           {couponDiscount > 0 && (
-            <div className="flex justify-between text-[#FF6B00] font-bold">
+            <div className="flex justify-between text-[#FF5B00] font-bold">
               <span>Coupon discount ({appliedCoupon?.code})</span>
               <span className="font-mono">-₹{couponDiscount}</span>
             </div>
@@ -522,7 +522,7 @@ export default function CheckoutPage() {
 
               <button
                 onClick={() => setIsLocationModalOpen(true)}
-                className="text-xs font-black text-[#FF6B00] hover:underline shrink-0 pl-2"
+                className="text-xs font-black text-[#FF5B00] hover:underline shrink-0 pl-2"
               >
                 Change
               </button>

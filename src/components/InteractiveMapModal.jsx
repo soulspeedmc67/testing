@@ -111,7 +111,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
             isDragging ? "-translate-y-4 scale-110" : "translate-y-0 scale-100"
           }`}
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f9532d] to-[#ff7a59] shadow-xl flex items-center justify-center border-2 border-white ring-2 ring-orange-400/30">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#f9532d] to-[#FF5B00] shadow-xl flex items-center justify-center border-2 border-white ring-2 ring-orange-400/30">
             <div className="w-3.5 h-3.5 rounded-full bg-white shadow-xs" />
           </div>
           <div className="w-2 h-2.5 bg-[#f9532d] -mt-1 rotate-45 rounded-xs" />
@@ -152,7 +152,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
             placeholder="Search an area or address"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#0c831f]"
+            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
           />
           {searchQuery ? (
             <button
@@ -178,7 +178,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
                   key={item.id}
                   type="button"
                   onClick={() => handleSelectSearchResult(item)}
-                  className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-emerald-50/50 transition-colors"
+                  className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-orange-50/50 transition-colors"
                 >
                   <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
                   <div className="overflow-hidden">

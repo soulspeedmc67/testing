@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { hapticLight } from "../lib/haptics";
+import { stagger, scaleIn, inViewOnce, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 
 export const SIX_PACK_CATEGORIES = [
   {
@@ -60,34 +61,36 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
   };
 
   return (
-    <div className="grid grid-cols-3 gap-2.5">
+    <motion.div variants={stagger(0.05)} {...inViewOnce} className="grid grid-cols-3 gap-3">
       {SIX_PACK_CATEGORIES.map((item) => (
         <motion.div
           key={item.id}
-          whileTap={{ scale: 0.97 }}
+          variants={scaleIn}
+          whileTap={TAP_SOFT}
+          transition={SPRING_SNAPPY}
           onClick={() => handleCategoryClick(item)}
-          className="bg-white hover:bg-slate-50/60 border border-slate-200/90 rounded-2xl p-2.5 flex flex-col justify-between cursor-pointer transition-all shadow-2xs hover:shadow-xs group"
+          className="bg-white border border-slate-200/80 rounded-2xl p-3 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.09)] hover:-translate-y-0.5 hover:border-slate-300/80 transition-all duration-300 group"
         >
-          {/* Typographic Header: Category Name + Item Count */}
-          <div className="mb-2 min-h-[42px] flex flex-col justify-start">
-            <h4 className="font-black text-[11px] text-[#061838] leading-tight line-clamp-2 tracking-tight uppercase">
-              {item.name}
-            </h4>
-            <span className="text-[9px] font-bold text-[#FF6B00] mt-0.5">
-              {item.moreCount}
-            </span>
-          </div>
-
-          {/* High Quality Staged Image Container */}
-          <div className="relative w-full h-20 bg-gradient-to-b from-slate-50 to-white rounded-xl p-1.5 flex items-center justify-center overflow-hidden border border-slate-100 shadow-inner">
+          {/* Staged imagery leads, label reads underneath — calmer scan order */}
+          <div className="relative w-full h-[72px] bg-gradient-to-b from-slate-50 to-white rounded-xl p-1.5 flex items-center justify-center overflow-hidden border border-slate-100">
             <img
               src={item.img}
               alt={item.name}
               className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
             />
           </div>
+
+          {/* Label — sentence case at a readable size, count as quiet metadata */}
+          <div className="mt-2.5 min-h-[34px]">
+            <h4 className="font-bold text-[12px] text-[#061838] leading-snug line-clamp-2 tracking-tight">
+              {item.name}
+            </h4>
+            <span className="text-[10px] font-semibold text-slate-400 mt-0.5 block">
+              {item.moreCount}
+            </span>
+          </div>
         </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }

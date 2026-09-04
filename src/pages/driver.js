@@ -96,7 +96,7 @@ export default function DashItDriverApp() {
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs text-zinc-400">Assigned Delivery</span>
-          <span className="text-xs font-bold text-emerald-400">Earn ₹30</span>
+          <span className="text-xs font-bold text-orange-400">Earn ₹30</span>
         </div>
 
         <div>
@@ -152,7 +152,7 @@ export default function DashItDriverApp() {
               />
               <button
                 onClick={verifyOtpAndDeliver}
-                className="bg-emerald-500 text-zinc-950 font-bold text-xs px-4 rounded-lg hover:bg-emerald-400 transition-colors"
+                className="bg-orange-500 text-zinc-950 font-bold text-xs px-4 rounded-lg hover:bg-orange-400 transition-colors"
               >
                 VERIFY & COMPLETE
               </button>

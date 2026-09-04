@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { goBack } from "../lib/navigation";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ChevronLeft, Heart, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
@@ -56,7 +57,7 @@ export default function WishlistPage() {
         <div className="flex items-center space-x-3">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => goBack(router)}
             className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
           >
             <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
@@ -103,7 +104,7 @@ export default function WishlistPage() {
             </div>
             <Link
               href="/"
-              className="inline-flex items-center space-x-2 bg-[#0c831f] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-emerald-700/20 active:scale-95 transition-transform"
+              className="inline-flex items-center space-x-2 bg-[#FF5B00] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-orange-700/20 active:scale-95 transition-transform"
             >
               <span>Explore Storefront</span>
               <ArrowRight className="w-4 h-4" />
@@ -164,7 +165,7 @@ export default function WishlistPage() {
                   <button
                     type="button"
                     onClick={() => handleAddToCart(item)}
-                    className="bg-[#0c831f] hover:bg-[#0b721b] text-white px-3 py-1.5 rounded-xl font-extrabold text-xs shadow-xs active:scale-95 transition-transform"
+                    className="bg-[#FF5B00] hover:bg-[#0b721b] text-white px-3 py-1.5 rounded-xl font-extrabold text-xs shadow-xs active:scale-95 transition-transform"
                   >
                     ADD
                   </button>

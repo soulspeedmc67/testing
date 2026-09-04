@@ -127,9 +127,9 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
             <div className="flex items-center space-x-2">
               <span className="relative flex h-2.5 w-2.5">
                 {isListening && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF6B00] opacity-75" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5B00] opacity-75" />
                 )}
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF6B00]" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF5B00]" />
               </span>
               <span className="text-xs font-black uppercase tracking-wider text-slate-300">
                 Dashit Voice Search
@@ -155,12 +155,12 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
                   <motion.div
                     animate={{ scale: [1, 1.45, 1], opacity: [0.6, 0, 0.6] }}
                     transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute w-24 h-24 rounded-full bg-[#FF6B00]/25 border border-[#FF6B00]/40"
+                    className="absolute w-24 h-24 rounded-full bg-[#FF5B00]/25 border border-[#FF5B00]/40"
                   />
                   <motion.div
                     animate={{ scale: [1, 1.8, 1], opacity: [0.3, 0, 0.3] }}
                     transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                    className="absolute w-24 h-24 rounded-full bg-[#FF6B00]/15"
+                    className="absolute w-24 h-24 rounded-full bg-[#FF5B00]/15"
                   />
                 </>
               )}
@@ -168,9 +168,9 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
               <motion.button
                 whileTap={{ scale: 0.92 }}
                 onClick={isListening ? () => recognitionRef.current?.stop() : handleRetry}
-                className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-[0_12px_32px_rgba(255,107,0,0.35)] ${
+                className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-[0_12px_32px_rgba(255, 91, 0,0.35)] ${
                   isListening
-                    ? "bg-gradient-to-tr from-[#FF6B00] to-[#FF8C38] text-white"
+                    ? "bg-gradient-to-tr from-[#FF5B00] to-[#FF8A3D] text-white"
                     : "bg-white/10 text-slate-400 border border-white/10"
                 }`}
               >

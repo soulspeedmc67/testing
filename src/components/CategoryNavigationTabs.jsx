@@ -23,10 +23,10 @@ export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
                 isActive ? "text-[#061838] font-black" : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#0c831f]" : "text-slate-400"}`} />}
+              {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#FF5B00]" : "text-slate-400"}`} />}
               <span>{tab.label}</span>
               {tab.isNew && (
-                <span className="bg-[#0c831f] text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-0.5 shadow-sm animate-pulse">
+                <span className="bg-[#FF5B00] text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-0.5 shadow-sm animate-pulse">
                   NEW
                 </span>
               )}

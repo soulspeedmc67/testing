@@ -40,10 +40,10 @@ export default function CampaignSection({ onAddToCart, onUpdateQty, cart }) {
 
       {/* Organic Handwritten Campaign Heading */}
       <div className="text-center pt-2 pb-1">
-        <h2 className="font-handwritten text-3xl text-emerald-800 tracking-wide font-bold">
+        <h2 className="font-handwritten text-3xl text-orange-800 tracking-wide font-bold">
           To Your Teacher, With Love
         </h2>
-        <div className="w-16 h-0.5 bg-emerald-700/40 rounded-full mx-auto mt-0.5" />
+        <div className="w-16 h-0.5 bg-orange-700/40 rounded-full mx-auto mt-0.5" />
       </div>
 
       {/* Campaign Horizontal Product Rail */}

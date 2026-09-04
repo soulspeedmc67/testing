@@ -25,7 +25,7 @@ export default function AnimatedSearchBar({ value, onChange, onFocus, onBlur, is
   return (
     <div
       className={`relative flex items-center bg-white rounded-2xl p-3 shadow-md border border-amber-200/80 transition-all duration-300 ${
-        isFocused ? "ring-2 ring-[#0c831f] scale-[1.01]" : ""
+        isFocused ? "ring-2 ring-[#FF5B00] scale-[1.01]" : ""
       }`}
     >
       <Search className="w-4 h-4 text-slate-400 mr-2.5 shrink-0" />
@@ -50,7 +50,7 @@ export default function AnimatedSearchBar({ value, onChange, onFocus, onBlur, is
         )}
       </div>
 
-      <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer hover:text-[#0c831f] transition-colors" />
+      <Mic className="w-4 h-4 text-slate-500 ml-2 shrink-0 cursor-pointer hover:text-[#FF5B00] transition-colors" />
     </div>
   );
 }
