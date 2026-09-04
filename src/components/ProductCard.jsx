@@ -55,7 +55,7 @@ export default function ProductCard({
       whileTap={{ scale: 0.985 }}
       transition={SPRING_SNAPPY}
       onClick={() => openQuickView && openQuickView(product)}
-      className="bg-white rounded-2xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.09)] hover:-translate-y-0.5 hover:border-slate-300/80 transition-[box-shadow,border-color,transform] duration-300 cursor-pointer group select-none relative"
+      className="bg-white rounded-2xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.09)] hover:border-slate-300/80 transition-[box-shadow,border-color] duration-200 cursor-pointer group select-none relative"
     >
       {/* Top Image Container */}
       <div className="relative w-full aspect-square bg-slate-50/80 rounded-xl overflow-hidden flex items-center justify-center p-2 border border-slate-100">
@@ -89,13 +89,13 @@ export default function ProductCard({
       </div>
 
       {/* Unit & Add Button Row */}
-      <div className="flex items-center justify-between mt-2.5">
+      <div className="flex items-center justify-between mt-2.5 min-h-[32px]">
         <span className="text-[10px] font-bold text-slate-500 bg-slate-100/80 border border-slate-200/60 px-2 py-0.5 rounded-md whitespace-nowrap shrink-0">
           {product.unit}
         </span>
 
-        {/* Morphing Stepper / ADD Button */}
-        <div className="w-20">
+        {/* Morphing Stepper / ADD Button (Rigid dimensions to prevent layout reflow) */}
+        <div className="w-20 h-8 shrink-0 relative overflow-hidden">
           <ProductCardStepper
             product={product}
             qty={qty}
@@ -122,7 +122,7 @@ export default function ProductCard({
           )}
         </div>
 
-        <h3 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-snug">
+        <h3 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-snug min-h-[32px]">
           {product.name}
         </h3>
 
