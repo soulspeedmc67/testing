@@ -261,10 +261,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#061838] text-white font-sans flex flex-col justify-between overflow-hidden select-none relative">
+    <div className={`min-h-screen ${step === 1 ? "bg-[#D63800]" : "bg-[#061838]"} text-white font-sans flex flex-col justify-between overflow-hidden select-none relative`}>
       {/* STEP 1: Screenshot-styled Hero + Seamless Extensible Bottom Sheet */}
       {step === 1 && (
-        <div className="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#061838] via-[#0A2558] to-[#040E22] pb-[165px]">
+        <div className="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#FF5E00] via-[#F24E00] to-[#D63800] pb-[165px]">
           {/* Top Section: Navigation + Brand Squircle + Headline + Large Artwork */}
           <div className="relative z-10 flex-1 flex flex-col px-6 pt-[max(14px,env(safe-area-inset-top,14px))] pb-2 justify-between">
             {/* Top Navigation Row */}
@@ -283,7 +283,7 @@ export default function LoginPage() {
                     goBack(router, "/");
                   }
                 }}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white backdrop-blur-md transition-colors cursor-pointer"
+                className="w-10 h-10 rounded-full bg-black/15 hover:bg-black/25 active:scale-95 flex items-center justify-center text-white backdrop-blur-md transition-colors cursor-pointer"
                 aria-label="Go back"
               >
                 <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
@@ -292,15 +292,28 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={handleSkipSetup}
-                className="text-[11px] font-black text-white/75 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-full transition-colors active:scale-95 cursor-pointer"
+                className="text-[11px] font-black text-white/90 hover:text-white bg-black/15 hover:bg-black/25 px-3.5 py-1.5 rounded-full transition-colors active:scale-95 cursor-pointer"
               >
                 Skip for now
               </button>
             </div>
 
-            {/* Centered Squircle Brand Icon */}
-            <div className="text-center pt-2 shrink-0">
-              <div className="w-[72px] h-[72px] rounded-[22px] bg-[#FF5B00] border-[2.5px] border-white shadow-[0_10px_28px_rgba(0,0,0,0.35)] flex items-center justify-center p-3.5 mx-auto">
+            {/* Centered Squircle Brand Icon (Signature DASHit Navy Blue behind the icon) + Headline (Parallax Shift) */}
+            <motion.div
+              animate={{
+                scale: isSheetExtended ? 0.88 : 1,
+                y: isSheetExtended ? -14 : 0,
+                opacity: isSheetExtended ? 0.65 : 1,
+              }}
+              transition={{
+                type: "spring",
+                damping: 30,
+                stiffness: 280,
+                mass: 0.8,
+              }}
+              className="text-center pt-2 shrink-0 origin-top"
+            >
+              <div className="w-[72px] h-[72px] rounded-[22px] bg-[#061838] border-[2.5px] border-white shadow-[0_10px_28px_rgba(0,0,0,0.3)] flex items-center justify-center p-3.5 mx-auto">
                 <img
                   src="/dashit-mark-white.png"
                   alt="DASHit"
@@ -309,13 +322,26 @@ export default function LoginPage() {
               </div>
 
               {/* Bold Punchy Headline */}
-              <h1 className="text-[23px] sm:text-[25px] font-black text-white text-center leading-[1.18] tracking-tight max-w-[300px] mx-auto mt-3">
+              <h1 className="text-[23px] sm:text-[25px] font-black text-white text-center leading-[1.18] tracking-tight max-w-[300px] mx-auto mt-3 drop-shadow-sm">
                 One app for food, grocery, dining and more in mins!
               </h1>
-            </div>
+            </motion.div>
 
-            {/* Artwork Sitting Underneath Headline (Flush above Bottom Sheet, Enlarge Sizing) */}
-            <div className="flex-1 flex items-end justify-center pointer-events-none select-none overflow-hidden pb-1">
+            {/* Artwork Sitting Underneath Headline (Zooming out with Parallax Depth) */}
+            <motion.div
+              animate={{
+                scale: isSheetExtended ? 0.78 : 1,
+                y: isSheetExtended ? -22 : 0,
+                opacity: isSheetExtended ? 0.45 : 1,
+              }}
+              transition={{
+                type: "spring",
+                damping: 30,
+                stiffness: 280,
+                mass: 0.8,
+              }}
+              className="flex-1 min-h-0 flex items-end justify-center pointer-events-none select-none pb-1 origin-bottom"
+            >
               {heroFailed ? (
                 <img
                   src="/dashit-mark-white.png"
@@ -329,78 +355,92 @@ export default function LoginPage() {
                   src="/art/rider-scooter-hero-transparent.png"
                   alt="DASHit 8-minute delivery"
                   onError={() => setHeroFailed(true)}
-                  className="w-full max-w-[320px] max-h-[38vh] object-contain object-bottom drop-shadow-[0_16px_36px_rgba(0,0,0,0.5)]"
+                  className="w-full max-w-[320px] max-h-[38vh] object-contain object-bottom drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
                 />
               )}
-            </div>
+            </motion.div>
           </div>
 
-          {/* Collapsed Bottom Sheet Docked at Bottom */}
-          <div className="fixed inset-x-0 bottom-0 z-20 bg-white text-slate-900 rounded-t-[32px] shadow-[0_-12px_36px_rgba(0,0,0,0.28)] flex flex-col">
-            <div className="w-10 h-1.5 rounded-full bg-slate-200 mx-auto mt-2.5 mb-1 shrink-0" />
-            <div className="px-6 pt-2 pb-[max(20px,calc(12px+env(safe-area-inset-bottom,20px)))] space-y-3.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthTab("signup");
-                  setErrorMessage("");
-                  setIsSheetExtended(true);
-                }}
-                className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-[15.5px] py-4 rounded-2xl shadow-[0_4px_16px_rgba(255,91,0,0.32)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
-              >
-                Login
-              </button>
-
-              <p className="text-[11px] text-slate-500 text-center leading-relaxed max-w-[290px] mx-auto">
-                By tapping, I accept the{" "}
-                <span className="underline font-bold text-slate-700">Privacy Policy</span>
-                ,{" "}
-                <span className="underline font-bold text-slate-700">DASHit Terms of Use</span>{" "}
-                and{" "}
-                <span className="underline font-bold text-slate-700">Delivery Terms</span>
-              </p>
-
-              <p className="text-[10.5px] font-medium text-slate-400 text-center pt-0.5">
-                App version 1.0.0
-              </p>
-            </div>
-          </div>
-
-          {/* Extended Bottom Drawer Overlay & Backdrop */}
+          {/* Dimmed Backdrop: Clean dark overlay, NO BLUR */}
           <AnimatePresence>
             {isSheetExtended && (
-              <>
-                {/* Dimmed Backdrop: Clean dark overlay, NO BLUR */}
+              <motion.div
+                key="login-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                onClick={() => setIsSheetExtended(false)}
+                className="fixed inset-0 z-40 bg-black/50 cursor-pointer"
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Single Unified Bottom Sheet: Seamlessly morphs from collapsed card into extended details and pops towards top */}
+          <motion.div
+            animate={{
+              height: isSheetExtended ? "84vh" : "168px",
+            }}
+            transition={{
+              type: "spring",
+              damping: 30,
+              stiffness: 280,
+              mass: 0.8,
+            }}
+            className="fixed inset-x-0 bottom-0 z-50 bg-white text-slate-900 rounded-t-[34px] shadow-[0_-16px_44px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden will-change-[height]"
+          >
+            {/* Top Drag Affordance Handle */}
+            <div
+              onClick={() => setIsSheetExtended((prev) => !prev)}
+              className="w-10 h-1.5 rounded-full bg-slate-300 hover:bg-slate-400 mx-auto mt-2.5 mb-1 cursor-pointer shrink-0 transition-colors"
+            />
+
+            <AnimatePresence initial={false}>
+              {!isSheetExtended ? (
+                /* COLLAPSED VIEW: Minimal Login Button & Legal Terms */
                 <motion.div
-                  key="login-backdrop"
+                  key="collapsed-content"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  onClick={() => setIsSheetExtended(false)}
-                  className="fixed inset-0 z-40 bg-black/60 cursor-pointer"
-                />
-
-                {/* Ultra-smooth GPU-accelerated Extended Sheet (translateY spring) */}
-                <motion.div
-                  key="login-sheet"
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{
-                    type: "spring",
-                    damping: 32,
-                    stiffness: 380,
-                    mass: 0.75,
-                  }}
-                  className="fixed inset-x-0 bottom-0 z-50 bg-white text-slate-900 rounded-t-[34px] shadow-[0_-16px_44px_rgba(0,0,0,0.4)] h-[84vh] max-h-[88vh] flex flex-col overflow-hidden will-change-transform"
+                  transition={{ duration: 0.15 }}
+                  className="px-6 pt-2 pb-[max(20px,calc(12px+env(safe-area-inset-bottom,20px)))] space-y-3.5 shrink-0"
                 >
-                  {/* Top Drag Affordance Handle */}
-                  <div
-                    onClick={() => setIsSheetExtended(false)}
-                    className="w-10 h-1.5 rounded-full bg-slate-300 hover:bg-slate-400 mx-auto mt-2.5 mb-1 cursor-pointer shrink-0 transition-colors"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthTab("signup");
+                      setErrorMessage("");
+                      setIsSheetExtended(true);
+                    }}
+                    className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-[15.5px] py-4 rounded-2xl shadow-[0_4px_16px_rgba(255,91,0,0.32)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
+                  >
+                    Login
+                  </button>
 
+                  <p className="text-[11px] text-slate-500 text-center leading-relaxed max-w-[290px] mx-auto">
+                    By tapping, I accept the{" "}
+                    <span className="underline font-bold text-slate-700">Privacy Policy</span>
+                    ,{" "}
+                    <span className="underline font-bold text-slate-700">DASHit Terms of Use</span>{" "}
+                    and{" "}
+                    <span className="underline font-bold text-slate-700">Delivery Terms</span>
+                  </p>
+
+                  <p className="text-[10.5px] font-medium text-slate-400 text-center pt-0.5">
+                    App version 1.0.0
+                  </p>
+                </motion.div>
+              ) : (
+                /* EXTENDED VIEW: Navigation Header + Full Sign Up / Sign In Form */
+                <motion.div
+                  key="extended-content"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 12 }}
+                  transition={{ duration: 0.22, delay: 0.05 }}
+                  className="flex-1 flex flex-col overflow-hidden"
+                >
                   {/* Navigation Header: Left is Back, Center is Title, Right is balanced Spacer (NO cross button) */}
                   <div className="flex items-center justify-between px-5 py-2.5 border-b border-slate-100 shrink-0">
                     <button
@@ -576,9 +616,9 @@ export default function LoginPage() {
                     </div>
                   </div>
                 </motion.div>
-              </>
-            )}
-          </AnimatePresence>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       )}
 
