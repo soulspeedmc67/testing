@@ -29,8 +29,9 @@ export default function App({ Component, pageProps }) {
         document.documentElement.classList.remove("dark");
         const isHome = router.pathname === '/' || router.pathname === '';
         const isSearch = router.pathname === '/search';
-        const topColor = isSearch ? '#061838' : isHome ? '#FFE8D6' : '#FFFFFF';
-        const isTopDarkIcons = !isSearch;
+        const isLogin = router.pathname === '/login';
+        const topColor = '#00000000'; // Transparent status bar across the app
+        const isTopDarkIcons = !isSearch && !isLogin;
         const bottomColor = isHome ? '#FFFDF5' : '#FFFFFF';
         await setDeviceSystemBars({
           topColor,
