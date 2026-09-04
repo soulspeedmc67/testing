@@ -1,9 +1,9 @@
 {
   "android/app/build.gradle": {
-    "mtime": 1788265925.4868596,
-    "seen": 1788503555.7819827,
-    "ast_hash": "9fe7a98448edb80d5cc0cb1882b656ee",
-    "semantic_hash": "9fe7a98448edb80d5cc0cb1882b656ee"
+    "mtime": 1788522919.1370947,
+    "seen": 1788523002.8887844,
+    "ast_hash": "5068ed273eda0e1022fcd7e5d2587ed6",
+    "semantic_hash": ""
   },
   "android/app/capacitor.build.gradle": {
     "mtime": 1788517013.5669165,
@@ -16,12 +16,6 @@
     "seen": 1788503555.782817,
     "ast_hash": "fbaf7cc870c663eb52dcf218531c439d",
     "semantic_hash": "fbaf7cc870c663eb52dcf218531c439d"
-  },
-  "android/app/src/main/java/com/dashit/anantnag/MainActivity.java": {
-    "mtime": 1788447678.0648496,
-    "seen": 1788503555.7828453,
-    "ast_hash": "aa6e1c34ee54710488df0ddb46b6dcf2",
-    "semantic_hash": "aa6e1c34ee54710488df0ddb46b6dcf2"
   },
   "android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java": {
     "mtime": 1788213237.0,
@@ -66,10 +60,10 @@
     "semantic_hash": "992d8686d1f40bdc2756c7f7021d7bcb"
   },
   "capacitor.config.json": {
-    "mtime": 1788265954.649541,
-    "seen": 1788503555.7829013,
-    "ast_hash": "1cee89a2f4c1475b7c996324f7d2693d",
-    "semantic_hash": "1cee89a2f4c1475b7c996324f7d2693d"
+    "mtime": 1788522916.6560526,
+    "seen": 1788523002.8888607,
+    "ast_hash": "5ef09924cbafdcae30ee464931e3b1a6",
+    "semantic_hash": ""
   },
   "create_docx.py": {
     "mtime": 1788277177.9837475,
@@ -270,9 +264,9 @@
     "semantic_hash": ""
   },
   "src/components/LiveOrderFloatingTracker.jsx": {
-    "mtime": 1788518127.9741588,
-    "seen": 1788518434.3303838,
-    "ast_hash": "e7743392c3976076e6f0d4e26162b7e0",
+    "mtime": 1788522333.5226417,
+    "seen": 1788523002.8892224,
+    "ast_hash": "652bfe75ec09c3e2bd512b1453ec28cd",
     "semantic_hash": ""
   },
   "src/components/LocationPermissionModal.jsx": {
@@ -534,9 +528,9 @@
     "semantic_hash": ""
   },
   "src/pages/admin.js": {
-    "mtime": 1788513184.5164177,
-    "seen": 1788513496.6326551,
-    "ast_hash": "cb0062c0ea776db980bafec723b2e2ad",
+    "mtime": 1788521964.9203546,
+    "seen": 1788523002.889725,
+    "ast_hash": "0cf426ef6f4a64a92a4468e43702284a",
     "semantic_hash": ""
   },
   "src/pages/api/privacy/delete-account.js": {
@@ -690,9 +684,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1788503948.9126353,
-    "seen": 1788510023.3908865,
-    "ast_hash": "896795bcc7a6d83e3ebd1cea6187a3d6",
+    "mtime": 1788522955.3586955,
+    "seen": 1788523002.889949,
+    "ast_hash": "6fc93f13f0bc5ac6ab3d8fb1e55f236d",
     "semantic_hash": ""
   },
   "DASHit_Contract_Version1.html": {
@@ -720,9 +714,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1788517664.5644581,
-    "seen": 1788517676.2413983,
-    "ast_hash": "f7a2f8215bd69cb4ab423f3d36d47997",
+    "mtime": 1788518502.8329225,
+    "seen": 1788523002.889997,
+    "ast_hash": "afa4d79d6928ff071c18349f12970d4b",
     "semantic_hash": ""
   },
   "ios/App/CapApp-SPM/README.md": {
@@ -1008,15 +1002,15 @@
     "semantic_hash": ""
   },
   "src/lib/auth.js": {
-    "mtime": 1788517378.3446515,
-    "seen": 1788517676.241343,
-    "ast_hash": "4856143137af365768942a412e2b993a",
+    "mtime": 1788522644.921959,
+    "seen": 1788523002.8895643,
+    "ast_hash": "5ecbeea12d09b7c142419adac7d3ea50",
     "semantic_hash": ""
   },
   "src/lib/db.js": {
-    "mtime": 1788516966.1399534,
-    "seen": 1788517676.241344,
-    "ast_hash": "826618b1c782c6b707248312ff1d1ba7",
+    "mtime": 1788521931.3472602,
+    "seen": 1788523002.8895743,
+    "ast_hash": "26d6b167b35a5c7669bafc46a775b361",
     "semantic_hash": ""
   },
   "src/lib/firebase.js": {
@@ -1029,6 +1023,18 @@
     "mtime": 1788516859.2940392,
     "seen": 1788517676.241396,
     "ast_hash": "ee42ba3681011ea26de916f7774f9476",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/java/com/dashit/app/MainActivity.java": {
+    "mtime": 1788522925.7222056,
+    "seen": 1788523002.8888254,
+    "ast_hash": "1a40079c1946eb347b3bb0fb82bd0272",
+    "semantic_hash": ""
+  },
+  "src/lib/openFoodFacts.js": {
+    "mtime": 1788521763.1428697,
+    "seen": 1788523002.8896306,
+    "ast_hash": "e26ecf386ea6a587cc2e7a3e2d8283e9",
     "semantic_hash": ""
   }
 }

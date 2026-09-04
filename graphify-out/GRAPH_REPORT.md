@@ -1,16 +1,16 @@
 # Graph Report - Blinkit  (2026-09-04)
 
 ## Corpus Check
-- 129 files · ~129,597 words
+- 130 files · ~130,903 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 578 nodes · 1029 edges · 78 communities (48 shown, 30 thin omitted)
-- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.85)
+- 585 nodes · 1069 edges · 76 communities (46 shown, 30 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 3 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `91df1c91`
+- Built from commit: `2234253e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,10 +18,9 @@
 - hapticLight
 - orders.js
 - pages/index.js
-- InteractiveMapModal.jsx
+- account.js
 - AppDelegate
 - _app.js
-- admin.js
 - scripts
 - server/index.js
 - RemotionDeliveryBadge.jsx
@@ -34,7 +33,7 @@
 - AnimatedSearchBar.jsx
 - CategoryNavigationTabs.jsx
 - PromoCardsCarousel.jsx
-- db.js
+- admin.js
 - @capacitor/app
 - @capacitor/cli
 - 📋 Master Client Discovery & Setup Checklist
@@ -58,7 +57,6 @@
 - socket.io-client
 - tailwind-merge
 - vaul
-- login.js
 - DASHit — Claude OS & Architecture Constitution
 - Critical Gotchas & Pitfalls — DASHit
 - Awesome Design Skill
@@ -80,12 +78,12 @@
 2. `hapticMedium()` - 30 edges
 3. `getDb()` - 27 edges
 4. `cn()` - 19 edges
-5. `goBack()` - 12 edges
-6. `BottomNav()` - 11 edges
-7. `AppDelegate` - 10 edges
-8. `LiveOrderFloatingTracker()` - 10 edges
-9. `ProductCardStepper()` - 10 edges
-10. `SPRING_SNAPPY` - 10 edges
+5. `EasyAdminDashboard()` - 19 edges
+6. `goBack()` - 12 edges
+7. `BottomNav()` - 11 edges
+8. `AppDelegate` - 10 edges
+9. `LiveOrderFloatingTracker()` - 10 edges
+10. `ProductCardStepper()` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Tabs()` --references--> `react`  [EXTRACTED]
@@ -102,35 +100,31 @@
 ## Import Cycles
 - None detected.
 
-## Communities (78 total, 30 thin omitted)
+## Communities (76 total, 30 thin omitted)
 
 ### Community 0 - "hapticLight"
-Cohesion: 0.11
-Nodes (31): CAMPAIGN_CATEGORIES, CAMPAIGN_PRODUCTS, CheckoutLoginModal(), AVAILABLE_COUPONS, CouponsDrawer(), triggerFlyToCart(), FreeDeliveryCelebrationModal(), OrderingForSomeoneElseModal() (+23 more)
+Cohesion: 0.08
+Nodes (40): CAMPAIGN_CATEGORIES, CAMPAIGN_PRODUCTS, CheckoutLoginModal(), AVAILABLE_COUPONS, CouponsDrawer(), triggerFlyToCart(), FreeDeliveryCelebrationModal(), HUB_POS (+32 more)
 
 ### Community 1 - "orders.js"
 Cohesion: 0.08
 Nodes (34): react, react, DashitAnimatedLogo(), DashitProgressBadge(), DeliveryStatusIcon(), SIZES, statusToMark(), clampRailY() (+26 more)
 
 ### Community 2 - "pages/index.js"
-Cohesion: 0.09
-Nodes (37): CategoryGridSixPack(), SIX_PACK_CATEGORIES, CATEGORY_STRIP, CategoryScroller(), LocationPickerModal(), ProductCard(), ProductCardSkeleton(), CURATED_RAILS (+29 more)
-
-### Community 3 - "InteractiveMapModal.jsx"
 Cohesion: 0.15
-Nodes (13): HUB_POS, InteractiveMapModal(), MapWithPin, reverseGeocodeCoords(), searchPlacesAutocomplete(), goBack(), historyDepth(), AddAddressPage() (+5 more)
+Nodes (25): CategoryGridSixPack(), SIX_PACK_CATEGORIES, CATEGORY_STRIP, CategoryScroller(), ProductCard(), ProductCardSkeleton(), CURATED_RAILS, PromoBanner() (+17 more)
+
+### Community 3 - "account.js"
+Cohesion: 0.10
+Nodes (22): MapWithPin, hapticCartAdd, reverseGeocodeCoords(), searchPlacesAutocomplete(), goBack(), historyDepth(), hasSystemBackGesture(), isAndroid() (+14 more)
 
 ### Community 4 - "AppDelegate"
 Cohesion: 0.09
 Nodes (20): Any, Bool, Capacitor, AppDelegate, UIScene, UISceneSession, UIWindow, SceneDelegate (+12 more)
 
 ### Community 5 - "_app.js"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (16): AnimatedCounter(), AppHeader(), BottomNav(), NAV_ITEMS, STOREFRONT_TABS, FloatingCartBar(), NAVBAR_ROUTES, STOREFRONT_ROUTES (+8 more)
-
-### Community 6 - "admin.js"
-Cohesion: 0.22
-Nodes (16): BklitAreaChart(), DATA_MONTH, DATA_TODAY, DATA_WEEK, updateAdminOrderStatus(), addExclusiveOffer(), DEFAULT_OFFERS, deleteExclusiveOffer() (+8 more)
 
 ### Community 7 - "scripts"
 Cohesion: 0.10
@@ -164,9 +158,9 @@ Nodes (4): ANDROID_HOME, JAVA_HOME, PATH, build-app.sh script
 Cohesion: 0.83
 Nodes (3): gradlew script, die(), warn()
 
-### Community 20 - "db.js"
-Cohesion: 0.09
-Nodes (46): currentUid(), fetchAdminOrders(), fetchCatalogue(), fetchUserOrderHistory(), readLocal(), submitOrder(), writeLocal(), cacheLocalUser() (+38 more)
+### Community 20 - "admin.js"
+Cohesion: 0.07
+Nodes (68): BklitAreaChart(), DATA_MONTH, DATA_TODAY, DATA_WEEK, currentUid(), fetchAdminOrders(), fetchCatalogue(), fetchUserOrderHistory() (+60 more)
 
 ### Community 23 - "📋 Master Client Discovery & Setup Checklist"
 Cohesion: 0.18
@@ -175,10 +169,6 @@ Nodes (10): 📅 15-Day Milestone Tracker, **ADMIN PAGE**, 📋 Master Client Di
 ### Community 39 - "DASHit — Firestore Backend"
 Cohesion: 0.22
 Nodes (8): 1. One-time setup (you must do these — I cannot access your console), 2. Data model, 3. Security model, 4. Realtime, without Socket.io, 5. Known constraints on Spark, 6. Native (Capacitor) note for Phone Auth, DASHit — Firestore Backend, Why live tracking is a subcollection, not fields on the order
-
-### Community 48 - "login.js"
-Cohesion: 0.36
-Nodes (6): LoginProductMarquee(), ROW1, ROW2, sendOtp(), verifyOtp(), LoginPage()
 
 ### Community 64 - "DASHit — Claude OS & Architecture Constitution"
 Cohesion: 0.22
@@ -229,16 +219,16 @@ Nodes (6): chunk(), here, loadEnv(), main(), readJson(), root
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `orders.js`, `scripts`, `@capacitor/app`, `@capacitor/cli`, `@capacitor/haptics`, `@capacitor/ios`, `@capacitor/local-notifications`, `@capacitor/core`, `clsx`, `express`, `framer-motion`, `lucide-react`, `mongoose`, `leaflet`, `next`, `react-dom`, `@remotion/player`, `socket.io`, `socket.io-client`, `tailwind-merge`, `vaul`, `@capacitor/status-bar`, `animejs`, `firebase`, `remotion`?**
-  _High betweenness centrality (0.137) - this node is a cross-community bridge._
+  _High betweenness centrality (0.136) - this node is a cross-community bridge._
 - **Why does `react` connect `orders.js` to `dependencies`?**
   _High betweenness centrality (0.126) - this node is a cross-community bridge._
 - **What connects `build-app.sh script`, `JAVA_HOME`, `ANDROID_HOME` to the rest of the system?**
   _162 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `hapticLight` be split into smaller, more focused modules?**
-  _Cohesion score 0.10857142857142857 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07553143374038897 - nodes in this community are weakly interconnected._
 - **Should `orders.js` be split into smaller, more focused modules?**
   _Cohesion score 0.08235294117647059 - nodes in this community are weakly interconnected._
 - **Should `pages/index.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.0880503144654088 - nodes in this community are weakly interconnected._
-- **Should `AppDelegate` be split into smaller, more focused modules?**
-  _Cohesion score 0.08866995073891626 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.14583333333333334 - nodes in this community are weakly interconnected._
+- **Should `account.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.10476190476190476 - nodes in this community are weakly interconnected._
