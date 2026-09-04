@@ -161,7 +161,7 @@ export default function App({ Component, pageProps }) {
         </motion.div>
         <LiveOrderFloatingTracker />
         <FloatingCartBar />
-        <BottomNav />
+        {!['/login', '/driver'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />
       </ScrollChromeProvider>
     </MotionConfig>
