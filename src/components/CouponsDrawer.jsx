@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Tag, Check, Sparkles } from "lucide-react";
 import { hapticLight, hapticMedium } from "../lib/haptics";
@@ -32,6 +33,11 @@ const AVAILABLE_COUPONS = [
 
 export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupon, onApplyCoupon }) {
   const [customCode, setCustomCode] = useState("");
+
+  /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
+
+  useBodyScrollLock(Boolean(isOpen));
+
 
   if (!isOpen) return null;
 

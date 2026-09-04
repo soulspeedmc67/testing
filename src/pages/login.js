@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import {
   User,
   Home,
@@ -16,36 +17,23 @@ import {
   signUpWithEmail,
 } from "../lib/api";
 
-const TOP_FAVICONS = [
-  // Floating cleanly in the white header flanking the heading
-  { emoji: "🥑", top: "46%", left: "7%", size: "text-2xl", rotate: "-rotate-12", opacity: "opacity-45" },
-  { emoji: "🥐", top: "46%", right: "7%", size: "text-2xl", rotate: "rotate-12", opacity: "opacity-45" },
-];
-
-const BOTTOM_FAVICONS = [
-  // Flanking 'or Sign In with'
-  { emoji: "🍎", top: "51%", left: "10%", size: "text-xl", rotate: "rotate-6", opacity: "opacity-35" },
-  { emoji: "🥕", top: "51%", right: "10%", size: "text-2xl", rotate: "-rotate-12", opacity: "opacity-35" },
-  // Flanking Google & Truecaller buttons
-  { emoji: "🍿", top: "62%", left: "10%", size: "text-2xl", rotate: "rotate-6", opacity: "opacity-35" },
-  { emoji: "🍟", top: "62%", right: "10%", size: "text-2xl", rotate: "-rotate-12", opacity: "opacity-35" },
-  // Lower scattered snacks & vegetables
-  { emoji: "🍕", top: "73%", left: "18%", size: "text-2xl", rotate: "rotate-12", opacity: "opacity-35" },
-  { emoji: "🧀", top: "74%", right: "18%", size: "text-2xl", rotate: "rotate-12", opacity: "opacity-35" },
-  { emoji: "🍫", top: "82%", left: "10%", size: "text-2xl", rotate: "-rotate-12", opacity: "opacity-35" },
-  { emoji: "🥦", top: "82%", right: "12%", size: "text-2xl", rotate: "rotate-6", opacity: "opacity-35" },
-  { emoji: "🥤", top: "90%", left: "8%", size: "text-xl", rotate: "rotate-12", opacity: "opacity-30" },
-  { emoji: "🍇", top: "90%", right: "8%", size: "text-xl", rotate: "-rotate-6", opacity: "opacity-30" },
-];
-
 export default function LoginPage() {
   const router = useRouter();
+
+  // Attached zoom-out art: scale 1 -> 0.88, opacity 1 -> 0.55 across first ~300px of scroll
+  const shouldReduceMotion = useReducedMotion();
+  const { scrollY } = useScroll();
+  const rawScale = useTransform(scrollY, [0, 300], [1, 0.88], { clamp: true });
+  const rawOpacity = useTransform(scrollY, [0, 300], [1, 0.55], { clamp: true });
+  const heroScale = shouldReduceMotion ? 1 : rawScale;
+  const heroOpacity = shouldReduceMotion ? 1 : rawOpacity;
 
   // Step 1: Main Auth (Email/Password + Google & Truecaller), Step 3: Address & Profile Setup
   const [step, setStep] = useState(1);
 
-  // Auth Modes & State
-  const [authTab, setAuthTab] = useState("signin"); // "signin" | "signup"
+  // Auth Modes & State. Defaults to "signup": most visitors on this screen are
+  // new to the app, so account creation is the primary path, not the exception.
+  const [authTab, setAuthTab] = useState("signup"); // "signin" | "signup"
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -53,6 +41,17 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // Hero illustration falls back to the brand mark if the asset is absent.
+  const [heroFailed, setHeroFailed] = useState(false);
+  const heroImgRef = useRef(null);
+
+  /* The hero can finish loading (and fail) BEFORE React hydrates, in which case
+     onError never fires and the broken alt text renders. Re-check on mount:
+     a failed image reports complete === true with naturalWidth === 0. */
+  useEffect(() => {
+    const img = heroImgRef.current;
+    if (img && img.complete && img.naturalWidth === 0) setHeroFailed(true);
+  }, []);
 
   // User Profile & Delivery Details
   const [fullName, setFullName] = useState("Azan Iqbal Mir");
@@ -263,104 +262,131 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#061838] text-white font-sans flex flex-col justify-between overflow-x-hidden select-none relative">
       {/* STEP 1: Dual-tone Wavy Sign In / Sign Up Screen */}
       {step === 1 && (
-        <div className="flex-1 flex flex-col justify-between relative min-h-screen">
-          {/* Top White Curved Header with Wave Transition */}
-          <div className="relative bg-white text-slate-900 pt-7 pb-2 px-6 overflow-hidden">
-            {/* Subtle Floating Snack & Vegetable Favicons in top section */}
-            {TOP_FAVICONS.map((item, idx) => (
-              <span
-                key={idx}
-                className={`absolute ${item.size} ${item.rotate} ${item.opacity} pointer-events-none select-none transition-transform`}
-                style={{ top: item.top, left: item.left, right: item.right }}
+        <div className="relative min-h-screen bg-white">
+          {/*
+            The artwork sits on a FIXED white layer behind the sheet. Because it
+            never scrolls, scrolling moves only the dark panel — which rides up
+            *over* the illustration like a card being drawn across it, instead of
+            the whole page sliding away. The white ground matches the assets,
+            which are composited on white.
+          */}
+          <div className="fixed inset-x-0 top-0 h-[50vh] bg-white z-0 flex flex-col px-6 pt-[max(14px,env(safe-area-inset-top,14px))]">
+            <div className="flex items-center justify-between shrink-0">
+              {/* Mark only — no wordmark. The logo carries the brand on its own. */}
+              <img
+                src="/dashit-app-icon.png"
+                alt="Dashit"
+                className="w-11 h-11 rounded-2xl shadow-[0_4px_14px_rgba(6,24,56,0.18)]"
+              />
+              <button
+                type="button"
+                onClick={handleSkipSetup}
+                className="text-[11px] font-black text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-full transition-colors active:scale-95"
               >
-                {item.emoji}
-              </span>
-            ))}
-
-            {/* Header Top Bar */}
-            <div className="relative z-10 flex items-center justify-between mb-6">
-              {/* DASHit Brand Icon Mark */}
-              <div className="flex items-center space-x-1.5 bg-[#061838] text-white px-3.5 py-1.5 rounded-2xl shadow-sm">
-                <span className="font-logo font-black text-sm tracking-tight text-[#FF5B00]">DASH</span>
-                <span className="font-logo font-black text-sm tracking-tight text-[#0284c7]">it</span>
-              </div>
-
-              {/* Top-Right: Sign Up / Sign In Toggle + Skip Button */}
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthTab(authTab === "signin" ? "signup" : "signin");
-                    setErrorMessage("");
-                  }}
-                  className="flex items-center space-x-1.5 text-xs font-bold text-slate-800 hover:text-slate-950 bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-full transition-all active:scale-95"
-                >
-                  <User className="w-3.5 h-3.5 text-slate-600" />
-                  <span>{authTab === "signin" ? "Sign Up" : "Sign In"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleSkipSetup}
-                  className="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-1.5 rounded-full transition-all active:scale-95"
-                >
-                  Skip
-                </button>
-              </div>
+                Skip for now
+              </button>
             </div>
 
-            {/* Hero Main Heading: Sign In / Sign Up */}
-            <div className="relative z-10 text-center pb-2 pt-2">
-              <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                {authTab === "signup" ? "Sign Up" : "Sign In"}
+            {/* Brand slogan above the art */}
+            <div className="text-center shrink-0 pt-1.5 pb-0.5 pointer-events-none">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#FF5B00] bg-orange-50/90 px-3 py-0.5 rounded-full border border-[#FF5B00]/25 shadow-[0_1px_4px_rgba(255,91,0,0.06)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B00]" />
+                Anantnag&apos;s 8-Minute Grocery Delivery
+              </span>
+            </div>
+
+            {/* Attached zoom-out art: scale 1 -> 0.88, opacity 1 -> 0.55 as the sheet scrolls.
+                pb-[6vh] centers the art in the exact 44vh visible above the sheet. */}
+            <motion.div
+              style={{ scale: heroScale, opacity: heroOpacity }}
+              className="flex-1 min-h-0 flex items-center justify-center pb-[6vh] origin-center pointer-events-none select-none"
+            >
+              {heroFailed ? (
+                /* Asset missing — fall back to the brand mark rather than a
+                   broken-image glyph. Conditional render, not style mutation:
+                   hiding via e.currentTarget.style left the alt text visible. */
+                <img
+                  src="/dashit-mark.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="w-24 h-24 object-contain opacity-90"
+                />
+              ) : (
+                <img
+                  ref={heroImgRef}
+                  src="/art/rider-scooter-hero.png"
+                  alt="Dashit rider delivering groceries"
+                  onError={() => setHeroFailed(true)}
+                  className="w-full max-w-[245px] max-h-full object-contain"
+                />
+              )}
+            </motion.div>
+          </div>
+
+          {/* Scrolling sheet. The top margin exposes the art beneath; scrolling
+              slides this panel up across it. */}
+          <div className="relative z-10 mt-[44vh] rounded-t-[32px] bg-[#061838] border-t border-white/10 min-h-[66vh] px-6 pt-3 pb-10 shadow-[0_-16px_40px_rgba(6,24,56,0.36)] flex flex-col">
+            {/* Grab-handle affordance to reinforce sheet overlaying the art */}
+            <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-3.5" aria-hidden="true" />
+
+            {/* Genuine 2-step progress for sign-up (auth → delivery details).
+                Shown only when it is actually true — a decorative dot row on a
+                single-step sign-in would be a fake affordance. */}
+            {authTab === "signup" && (
+              <div className="flex items-center justify-center space-x-1.5 mb-3" aria-label="Step 1 of 2">
+                <span className="w-6 h-1.5 rounded-full bg-[#FF5B00] transition-all" />
+                <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+              </div>
+            )}
+
+            <div className="text-center mb-4">
+              <h1 className="text-[22px] font-black text-white tracking-tight leading-tight">
+                {authTab === "signup" ? "Create your account" : "Welcome back"}
               </h1>
-              <p className="text-xs text-slate-500 font-semibold mt-1">
+              <p className="text-[12px] font-medium text-[#FFB067] mt-1.5 leading-snug max-w-[270px] mx-auto">
                 {authTab === "signup"
-                  ? "Create your DASHit account in seconds"
-                  : "Welcome back! Enter your details to continue"}
+                  ? "Fresh groceries at your door in 8 minutes, across Anantnag."
+                  : "Sign in to pick up right where you left off."}
               </p>
             </div>
-          </div>
 
-          {/* Asymmetrical Organic SVG Wave Transition (dipping on left, rising on right) */}
-          <div className="relative w-full overflow-hidden bg-white -mt-[1px]">
-            <svg
-              viewBox="0 0 500 140"
-              preserveAspectRatio="none"
-              className="w-full h-18 md:h-22 fill-[#061838] block -mb-[1px]"
-            >
-              <path d="M 0,50 C 90,115 190,135 280,105 C 370,75 440,45 500,5 L 500,140 L 0,140 Z" />
-            </svg>
-          </div>
+            <div className="relative z-10 max-w-sm mx-auto w-full space-y-3">
+              {/* Segmented Sign Up / Sign In control — states are equally
+                  visible here rather than hidden behind a corner toggle. */}
+              <div className="grid grid-cols-2 gap-1 p-1 bg-white/[0.05] border border-white/10 rounded-2xl">
+                {["signup", "signin"].map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => {
+                      setAuthTab(tab);
+                      setErrorMessage("");
+                    }}
+                    className={`py-2.5 rounded-xl text-[12.5px] tracking-tight transition-all active:scale-[0.98] ${
+                      authTab === tab
+                        ? "bg-white text-[#061838] font-black shadow-sm"
+                        : "text-slate-400 hover:text-white font-bold"
+                    }`}
+                  >
+                    {tab === "signup" ? "Sign Up" : "Sign In"}
+                  </button>
+                ))}
+              </div>
 
-          {/* Lower Midnight Section */}
-          <div className="relative flex-1 bg-[#061838] px-6 pt-3 pb-8 flex flex-col justify-between overflow-hidden">
-            {/* Floating Snack & Vegetable Favicons in midnight section */}
-            {BOTTOM_FAVICONS.map((item, idx) => (
-              <span
-                key={idx}
-                className={`absolute ${item.size} ${item.rotate} ${item.opacity} pointer-events-none select-none`}
-                style={{ top: item.top, left: item.left, right: item.right }}
-              >
-                {item.emoji}
-              </span>
-            ))}
-
-            <div className="relative z-10 max-w-sm mx-auto w-full space-y-4">
               {/* Error message pill */}
               {errorMessage && (
-                <div className="bg-rose-950/80 border border-rose-500/60 text-rose-200 text-xs font-semibold p-3 rounded-2xl flex items-center space-x-2 animate-shake">
+                <div className="bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs font-semibold p-3 rounded-2xl flex items-center space-x-2 animate-shake">
                   <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
               {/* Form with Pill Inputs */}
-              <form onSubmit={handleEmailAuth} className="space-y-3.5">
+              <form onSubmit={handleEmailAuth} className="space-y-3">
                 {/* Full Name field (if Sign Up) */}
                 {authTab === "signup" && (
                   <div className="space-y-1">
-                    <label className="block text-xs font-semibold text-slate-400 pl-4">
+                    <label className="block text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
                       Full Name
                     </label>
                     <input
@@ -369,14 +395,14 @@ export default function LoginPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Azan Iqbal Mir"
-                      className="w-full bg-[#0d2247] border border-slate-700/80 text-white rounded-full py-3.5 px-5 text-sm placeholder:text-slate-500 focus:outline-none focus:border-[#FF5B00] shadow-inner transition-all"
+                      className="w-full bg-white/[0.05] border border-white/10 text-white rounded-2xl py-2.5 px-4 text-[13px] placeholder:text-slate-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 focus:bg-white/[0.08] transition-all"
                     />
                   </div>
                 )}
 
                 {/* Email Input */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-400 pl-4">
+                  <label className="block text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
                     Email
                   </label>
                   <input
@@ -385,13 +411,13 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full bg-[#0d2247] border border-slate-700/80 text-white rounded-full py-3.5 px-5 text-sm placeholder:text-slate-500 focus:outline-none focus:border-[#FF5B00] shadow-inner transition-all"
+                    className="w-full bg-white/[0.05] border border-white/10 text-white rounded-2xl py-2.5 px-4 text-[13px] placeholder:text-slate-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 focus:bg-white/[0.08] transition-all"
                   />
                 </div>
 
                 {/* Password Input */}
                 <div className="space-y-1">
-                  <label className="block text-xs font-semibold text-slate-400 pl-4">
+                  <label className="block text-[11px] font-bold text-slate-400 pl-1 uppercase tracking-wider">
                     Password
                   </label>
                   <div className="relative">
@@ -401,53 +427,57 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={authTab === "signup" ? "Create password (min 6 chars)" : "••••••••••••"}
-                      className="w-full bg-[#0d2247] border border-slate-700/80 text-white rounded-full py-3.5 pl-5 pr-12 text-sm placeholder:text-slate-500 focus:outline-none focus:border-[#FF5B00] shadow-inner transition-all"
+                      className="w-full bg-white/[0.05] border border-white/10 text-white rounded-2xl py-2.5 pl-4 pr-12 text-[13px] placeholder:text-slate-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 focus:bg-white/[0.08] transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
 
-                {/* Glowing Gradient Border Action Button */}
-                <div className="pt-2">
-                  <div className="p-[1.5px] rounded-full bg-gradient-to-r from-[#FF5B00] via-[#FF8533] to-[#f7c400] shadow-lg shadow-orange-950/50 hover:shadow-orange-500/20 active:scale-[0.98] transition-all">
-                    <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="w-full bg-[#061838] hover:bg-[#0b2552] text-white font-black text-sm py-3.5 px-6 rounded-full flex items-center justify-center space-x-2 transition-all"
-                    >
-                      <ArrowRight className="w-4 h-4 text-[#FF5B00]" />
-                      <span>
-                        {isProcessing
-                          ? "Processing..."
-                          : authTab === "signup"
-                          ? "Sign Up"
-                          : "Sign In"}
-                      </span>
-                    </button>
-                  </div>
+                {/* Primary action — flat brand orange, no gradient or glow */}
+                <div className="pt-1.5">
+                  <button
+                    type="submit"
+                    disabled={isProcessing}
+                    className="w-full bg-[#FF5B00] hover:bg-[#E04E00] disabled:opacity-60 text-white font-black text-[13.5px] py-3.5 px-6 rounded-2xl flex items-center justify-center space-x-2 active:scale-[0.98] shadow-[0_4px_16px_rgba(255,91,0,0.25)] transition-all"
+                  >
+                    <span>
+                      {isProcessing
+                        ? "Please wait…"
+                        : authTab === "signup"
+                        ? "Create account"
+                        : "Sign in"}
+                    </span>
+                    {!isProcessing && <ArrowRight className="w-4 h-4 stroke-[3]" />}
+                  </button>
                 </div>
               </form>
 
-              {/* Alternate 1-Tap Login with Google & Truecaller */}
-              <div className="pt-3 text-center space-y-3.5">
-                <p className="text-xs font-bold text-slate-400">or Sign In with</p>
+              {/* Alternate 1-tap sign-in. Labelled full-width rows rather than
+                  bare circles — an unlabelled icon is a guess, not an action. */}
+              <div className="pt-3.5 space-y-3">
+                <div className="flex items-center space-x-3">
+                  <span className="h-px flex-1 bg-white/10" />
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">or continue with</span>
+                  <span className="h-px flex-1 bg-white/10" />
+                </div>
 
-                <div className="flex items-center justify-center space-x-4">
-                  {/* Google Circular Button */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Google */}
                   <button
                     type="button"
                     onClick={handleGoogleLogin}
                     disabled={isProcessing}
-                    className="w-14 h-14 rounded-full bg-[#0d2247] border border-slate-700/80 hover:border-slate-500 p-3.5 flex items-center justify-center shadow-lg active:scale-95 transition-all"
-                    title="Sign in with Google"
+                    className="flex items-center justify-center space-x-2 bg-white/[0.05] hover:bg-white/[0.09] active:bg-white/[0.12] border border-white/10 py-2.5 rounded-2xl text-[12.5px] font-bold text-white active:scale-[0.97] transition-all disabled:opacity-60 shadow-sm"
+                    title="Continue with Google"
                   >
-                    <svg className="w-6 h-6" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -465,33 +495,35 @@ export default function LoginPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                       />
                     </svg>
+                    <span>Google</span>
                   </button>
 
-                  {/* Truecaller Circular Button */}
+                  {/* Truecaller */}
                   <button
                     type="button"
                     onClick={handleTruecallerLogin}
                     disabled={isProcessing}
-                    className="w-14 h-14 rounded-full bg-[#0087FF] hover:bg-[#0077e6] border border-blue-400/40 p-3.5 flex items-center justify-center shadow-lg shadow-blue-900/50 active:scale-95 transition-all text-white"
-                    title="1-Tap Login with Truecaller"
+                    className="flex items-center justify-center space-x-2 bg-white/[0.05] hover:bg-white/[0.09] active:bg-white/[0.12] border border-white/10 py-2.5 rounded-2xl text-[12.5px] font-bold text-white active:scale-[0.97] transition-all disabled:opacity-60 shadow-sm"
+                    title="1-tap login with Truecaller"
                   >
-                    <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 fill-[#0087FF]" viewBox="0 0 24 24">
                       <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 00-1.01.24l-2.2 2.2a15.05 15.05 0 01-6.59-6.59l2.2-2.21a.96.96 0 00.25-1.01A11.36 11.36 0 018.57 3.9c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.52c0-.55-.45-1-1-1z" />
                     </svg>
+                    <span>Truecaller</span>
                   </button>
                 </div>
               </div>
             </div>
 
             {/* Footer Terms */}
-            <div className="relative z-10 pt-6 text-center">
-              <p className="text-[11px] text-slate-500 font-medium">
+            <div className="relative z-10 pt-5 text-center">
+              <p className="text-[11px] text-slate-400 font-medium">
                 By continuing, you agree to our{" "}
-                <a href="#" className="underline text-slate-400 font-bold hover:text-white">
+                <a href="#" className="underline underline-offset-2 text-slate-300 font-bold hover:text-white transition-colors">
                   Terms
                 </a>{" "}
                 &{" "}
-                <a href="#" className="underline text-slate-400 font-bold hover:text-white">
+                <a href="#" className="underline underline-offset-2 text-slate-300 font-bold hover:text-white transition-colors">
                   Privacy Policy
                 </a>
               </p>
@@ -503,8 +535,8 @@ export default function LoginPage() {
       {/* STEP 3: Quick Doorstep Delivery Details (Skippable) */}
       {step === 3 && (
         <div className="flex-1 flex flex-col justify-center px-5 py-8 max-w-md mx-auto w-full">
-          <div className="bg-[#0b2046] border border-slate-700/80 rounded-[32px] p-6 md:p-7 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-700/60 pb-3">
+          <div className="bg-white/[0.05] border border-white/10 rounded-3xl p-6 md:p-7 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div>
                 <h3 className="font-black text-lg text-white">Delivery Details</h3>
                 <p className="text-xs text-slate-400 font-medium">
@@ -521,10 +553,10 @@ export default function LoginPage() {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   Full Name
                 </label>
-                <div className="flex items-center bg-[#061838] border border-slate-700/80 rounded-2xl px-3.5 py-2.5">
+                <div className="flex items-center bg-white/[0.06] border border-white/10 rounded-2xl px-3.5 py-3 focus-within:border-[#FF5B00]/60 transition-colors">
                   <User className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
                   <input
                     type="text"
@@ -537,10 +569,10 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   Mobile Number (For scooter rider to call you)
                 </label>
-                <div className="flex items-center bg-[#061838] border border-slate-700/80 rounded-2xl px-3.5 py-2.5">
+                <div className="flex items-center bg-white/[0.06] border border-white/10 rounded-2xl px-3.5 py-3 focus-within:border-[#FF5B00]/60 transition-colors">
                   <span className="text-xs font-bold text-slate-400 mr-2 border-r border-slate-700 pr-2">+91</span>
                   <input
                     type="tel"
@@ -554,10 +586,10 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   House / Flat / Landmark
                 </label>
-                <div className="flex items-center bg-[#061838] border border-slate-700/80 rounded-2xl px-3.5 py-2.5">
+                <div className="flex items-center bg-white/[0.06] border border-white/10 rounded-2xl px-3.5 py-3 focus-within:border-[#FF5B00]/60 transition-colors">
                   <Home className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
                   <input
                     type="text"
@@ -571,7 +603,7 @@ export default function LoginPage() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                     Area / Locality
                   </label>
                   <input
@@ -579,11 +611,11 @@ export default function LoginPage() {
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     placeholder="e.g. Nai Basti"
-                    className="w-full bg-[#061838] border border-slate-700/80 font-semibold p-2.5 rounded-2xl text-white focus:outline-none"
+                    className="w-full bg-white/[0.06] border border-white/10 font-semibold p-3 rounded-2xl text-white focus:outline-none focus:border-[#FF5B00]/60 transition-colors"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                     City & Pincode
                   </label>
                   <input
@@ -591,7 +623,7 @@ export default function LoginPage() {
                     value={`${city} - ${pincode}`}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="Anantnag - 192101"
-                    className="w-full bg-[#061838] border border-slate-700/80 font-semibold p-2.5 rounded-2xl text-white focus:outline-none"
+                    className="w-full bg-white/[0.06] border border-white/10 font-semibold p-3 rounded-2xl text-white focus:outline-none focus:border-[#FF5B00]/60 transition-colors"
                   />
                 </div>
               </div>

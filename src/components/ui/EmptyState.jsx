@@ -10,13 +10,16 @@ export function EmptyCartState() {
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
       className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-4 shadow-sm"
     >
-      <motion.div
+      {/* Brand illustration carries the empty state — warmer than a bare icon,
+          and the asset is composited on white so it sits flush on this card. */}
+      <motion.img
+        src="/art/rider-holding-groceries.png"
+        alt=""
+        aria-hidden="true"
         animate={{ y: [0, -6, 0] }}
-        transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-        className="w-16 h-16 bg-orange-50 text-[#FF5B00] rounded-3xl flex items-center justify-center mx-auto shadow-sm"
-      >
-        <ShoppingBag className="w-8 h-8 stroke-[2]" />
-      </motion.div>
+        transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+        className="w-36 h-36 object-contain mx-auto"
+      />
       <div>
         <h3 className="font-black text-base text-slate-900 tracking-tight">Your cart is empty</h3>
         <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto">
@@ -44,13 +47,16 @@ export function EmptySearchState({ query = "", onSelectChip }) {
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
       className="bg-white border border-slate-200/90 rounded-3xl p-6 text-center space-y-4 shadow-sm"
     >
-      <motion.div
-        animate={{ rotate: [0, -8, 8, 0] }}
-        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-        className="w-14 h-14 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center mx-auto shadow-sm"
-      >
-        <Search className="w-7 h-7 stroke-[2]" />
-      </motion.div>
+      {/* The winged-parcel art suits "nothing found here" better than a
+          magnifier, and keeps empty states on the same illustrated footing. */}
+      <motion.img
+        src="/art/flying-grocery-box.png"
+        alt=""
+        aria-hidden="true"
+        animate={{ y: [0, -5, 0], rotate: [0, -3, 3, 0] }}
+        transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+        className="w-32 h-32 object-contain mx-auto"
+      />
       <div>
         <h3 className="font-black text-sm text-slate-900 tracking-tight">No products found</h3>
         <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto">

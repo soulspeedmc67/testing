@@ -81,18 +81,6 @@
       "source_location": "L19"
     },
     {
-      "id": "src_components_cartdrawersheet_cartdrawersheet",
-      "label": "CartDrawerSheet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "cartdrawersheet()",
-      "source_file": "src/components/CartDrawerSheet.jsx",
-      "source_location": "L9"
-    },
-    {
       "id": "src_components_checkoutloginmodal_checkoutloginmodal",
       "label": "CheckoutLoginModal()",
       "_callable": true,
@@ -102,7 +90,7 @@
       "file_type": "code",
       "norm_label": "checkoutloginmodal()",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L7"
+      "source_location": "L8"
     },
     {
       "id": "src_components_couponsdrawer_couponsdrawer",
@@ -114,7 +102,19 @@
       "file_type": "code",
       "norm_label": "couponsdrawer()",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L33"
+      "source_location": "L34"
+    },
+    {
+      "id": "src_components_flyingbadgeoverlay_flyingbadgeoverlay",
+      "label": "FlyingBadgeOverlay()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "hapticLight",
+      "file_type": "code",
+      "norm_label": "flyingbadgeoverlay()",
+      "source_file": "src/components/FlyingBadgeOverlay.jsx",
+      "source_location": "L12"
     },
     {
       "id": "src_components_flyingbadgeoverlay_triggerflytocart",
@@ -141,40 +141,16 @@
       "source_location": "L7"
     },
     {
-      "id": "src_components_interactivemapmodal_interactivemapmodal",
-      "label": "InteractiveMapModal()",
+      "id": "src_components_locationpermissionmodal_locationpermissionmodal",
+      "label": "LocationPermissionModal()",
       "_callable": true,
       "_origin": "ast",
       "community": 0,
       "community_name": "hapticLight",
       "file_type": "code",
-      "norm_label": "interactivemapmodal()",
-      "source_file": "src/components/InteractiveMapModal.jsx",
-      "source_location": "L11"
-    },
-    {
-      "id": "src_components_locationpickermodal_locationpickermodal",
-      "label": "LocationPickerModal()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "locationpickermodal()",
-      "source_file": "src/components/LocationPickerModal.jsx",
-      "source_location": "L7"
-    },
-    {
-      "id": "src_components_loginproductmarquee_loginproductmarquee",
-      "label": "LoginProductMarquee()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "loginproductmarquee()",
-      "source_file": "src/components/LoginProductMarquee.jsx",
-      "source_location": "L15"
+      "norm_label": "locationpermissionmodal()",
+      "source_file": "src/components/LocationPermissionModal.jsx",
+      "source_location": "L5"
     },
     {
       "id": "src_components_orderingforsomeoneelsemodal_orderingforsomeoneelsemodal",
@@ -186,7 +162,7 @@
       "file_type": "code",
       "norm_label": "orderingforsomeoneelsemodal()",
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L6"
+      "source_location": "L7"
     },
     {
       "id": "src_components_paymentmethodmodal_paymentmethodmodal",
@@ -198,7 +174,7 @@
       "file_type": "code",
       "norm_label": "paymentmethodmodal()",
       "source_file": "src/components/PaymentMethodModal.jsx",
-      "source_location": "L6"
+      "source_location": "L7"
     },
     {
       "id": "src_components_productcardstepper_productcardstepper",
@@ -211,54 +187,6 @@
       "norm_label": "productcardstepper()",
       "source_file": "src/components/ProductCardStepper.jsx",
       "source_location": "L6"
-    },
-    {
-      "id": "src_components_quickproductsheet_quickproductsheet",
-      "label": "QuickProductSheet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "quickproductsheet()",
-      "source_file": "src/components/QuickProductSheet.jsx",
-      "source_location": "L13"
-    },
-    {
-      "id": "src_components_ui_emptystate_emptycartstate",
-      "label": "EmptyCartState()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "emptycartstate()",
-      "source_file": "src/components/ui/EmptyState.jsx",
-      "source_location": "L5"
-    },
-    {
-      "id": "src_components_ui_emptystate_emptysearchstate",
-      "label": "EmptySearchState()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "emptysearchstate()",
-      "source_file": "src/components/ui/EmptyState.jsx",
-      "source_location": "L39"
-    },
-    {
-      "id": "src_components_ui_vauldrawer_vauldrawer",
-      "label": "VaulDrawer()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "vauldrawer()",
-      "source_file": "src/components/ui/VaulDrawer.jsx",
-      "source_location": "L3"
     },
     {
       "id": "src_components_unserviceableareascreen_unserviceableareascreen",
@@ -282,7 +210,7 @@
       "file_type": "code",
       "norm_label": "variantcartid()",
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L8"
+      "source_location": "L9"
     },
     {
       "id": "src_components_variantselectormodal_variantselectormodal",
@@ -294,7 +222,7 @@
       "file_type": "code",
       "norm_label": "variantselectormodal()",
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L11"
+      "source_location": "L12"
     },
     {
       "id": "src_components_voicesearchmodal_voicesearchmodal",
@@ -318,7 +246,7 @@
       "file_type": "code",
       "norm_label": "sendotp()",
       "source_file": "src/lib/api.js",
-      "source_location": "L42"
+      "source_location": "L50"
     },
     {
       "id": "src_lib_api_verifyotp",
@@ -330,7 +258,7 @@
       "file_type": "code",
       "norm_label": "verifyotp()",
       "source_file": "src/lib/api.js",
-      "source_location": "L46"
+      "source_location": "L54"
     },
     {
       "id": "src_lib_haptics_hapticheavy",
@@ -393,6 +321,18 @@
       "source_location": "L10"
     },
     {
+      "id": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "label": "useBodyScrollLock()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "hapticLight",
+      "file_type": "code",
+      "norm_label": "usebodyscrolllock()",
+      "source_file": "src/lib/useBodyScrollLock.js",
+      "source_location": "L21"
+    },
+    {
       "id": "src_pages_checkout_checkoutpage",
       "label": "CheckoutPage()",
       "_callable": true,
@@ -403,30 +343,6 @@
       "norm_label": "checkoutpage()",
       "source_file": "src/pages/checkout.js",
       "source_location": "L56"
-    },
-    {
-      "id": "src_pages_login_loginpage",
-      "label": "LoginPage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "loginpage()",
-      "source_file": "src/pages/login.js",
-      "source_location": "L9"
-    },
-    {
-      "id": "src_pages_order_again_orderagainpage",
-      "label": "OrderAgainPage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "orderagainpage()",
-      "source_file": "src/pages/order-again.js",
-      "source_location": "L25"
     },
     {
       "id": "src_pages_search_searchpage",
@@ -441,100 +357,16 @@
       "source_location": "L27"
     },
     {
-      "id": "src_components_dashitanimatedlogo_dashitanimatedlogo",
-      "label": "DashitAnimatedLogo()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "dashitanimatedlogo()",
-      "source_file": "src/components/DashitAnimatedLogo.jsx",
-      "source_location": "L8"
-    },
-    {
-      "id": "src_components_dashitanimatedlogo_dashitprogressbadge",
-      "label": "DashitProgressBadge()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "dashitprogressbadge()",
-      "source_file": "src/components/DashitAnimatedLogo.jsx",
-      "source_location": "L67"
-    },
-    {
-      "id": "src_components_deliverystatusicon_deliverystatusicon",
-      "label": "DeliveryStatusIcon()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "deliverystatusicon()",
-      "source_file": "src/components/DeliveryStatusIcon.jsx",
-      "source_location": "L32"
-    },
-    {
-      "id": "src_components_deliverystatusicon_statustomark",
-      "label": "statusToMark()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "statustomark()",
-      "source_file": "src/components/DeliveryStatusIcon.jsx",
-      "source_location": "L19"
-    },
-    {
       "id": "src_components_homescreenliveordercard_homescreenliveordercard",
       "label": "HomeScreenLiveOrderCard()",
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "homescreenliveordercard()",
       "source_file": "src/components/HomeScreenLiveOrderCard.jsx",
       "source_location": "L8"
-    },
-    {
-      "id": "src_components_liveorderfloatingtracker_clampraily",
-      "label": "clampRailY()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "clampraily()",
-      "source_file": "src/components/LiveOrderFloatingTracker.jsx",
-      "source_location": "L17"
-    },
-    {
-      "id": "src_components_liveorderfloatingtracker_liveorderfloatingtracker",
-      "label": "LiveOrderFloatingTracker()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "liveorderfloatingtracker()",
-      "source_file": "src/components/LiveOrderFloatingTracker.jsx",
-      "source_location": "L23"
-    },
-    {
-      "id": "src_components_maptracking_maptracking",
-      "label": "MapTracking()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "maptracking()",
-      "source_file": "src/components/MapTracking.jsx",
-      "source_location": "L6"
     },
     {
       "id": "src_components_ui_badge_badge",
@@ -542,23 +374,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "badge()",
       "source_file": "src/components/ui/badge.jsx",
       "source_location": "L15"
-    },
-    {
-      "id": "src_components_ui_draggablesheet_draggablesheet",
-      "label": "DraggableSheet()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "draggablesheet()",
-      "source_file": "src/components/ui/DraggableSheet.jsx",
-      "source_location": "L5"
     },
     {
       "id": "src_components_ui_skeletonloader_categorygridskeleton",
@@ -566,7 +386,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "categorygridskeleton()",
       "source_file": "src/components/ui/SkeletonLoader.jsx",
@@ -578,7 +398,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "productcardskeleton()",
       "source_file": "src/components/ui/SkeletonLoader.jsx",
@@ -590,7 +410,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "skeleton()",
       "source_file": "src/components/ui/SkeletonLoader.jsx",
@@ -602,7 +422,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "tabs()",
       "source_file": "src/components/ui/tabs.jsx",
@@ -614,7 +434,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "tabscontent()",
       "source_file": "src/components/ui/tabs.jsx",
@@ -626,7 +446,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "tabslist()",
       "source_file": "src/components/ui/tabs.jsx",
@@ -638,71 +458,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "tabstrigger()",
       "source_file": "src/components/ui/tabs.jsx",
       "source_location": "L34"
-    },
-    {
-      "id": "src_lib_db_watchorder",
-      "label": "watchOrder()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "watchorder()",
-      "source_file": "src/lib/db.js",
-      "source_location": "L177"
-    },
-    {
-      "id": "src_lib_db_watchordertracking",
-      "label": "watchOrderTracking()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "watchordertracking()",
-      "source_file": "src/lib/db.js",
-      "source_location": "L253"
-    },
-    {
-      "id": "src_lib_maps_fetchroadroute",
-      "label": "fetchRoadRoute()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "fetchroadroute()",
-      "source_file": "src/lib/maps.js",
-      "source_location": "L78"
-    },
-    {
-      "id": "src_lib_notifications_clearorderlivenotification",
-      "label": "clearOrderLiveNotification()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "clearorderlivenotification()",
-      "source_file": "src/lib/notifications.js",
-      "source_location": "L85"
-    },
-    {
-      "id": "src_lib_notifications_showorderlivenotification",
-      "label": "showOrderLiveNotification()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "showorderlivenotification()",
-      "source_file": "src/lib/notifications.js",
-      "source_location": "L19"
     },
     {
       "id": "src_lib_utils_cn",
@@ -710,7 +470,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "cn()",
       "source_file": "src/lib/utils.js",
@@ -837,6 +597,30 @@
       "source_location": "L7"
     },
     {
+      "id": "src_components_appheader_appheader",
+      "label": "AppHeader()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "appheader()",
+      "source_file": "src/components/AppHeader.jsx",
+      "source_location": "L7"
+    },
+    {
+      "id": "src_components_cartdrawersheet_cartdrawersheet",
+      "label": "CartDrawerSheet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "cartdrawersheet()",
+      "source_file": "src/components/CartDrawerSheet.jsx",
+      "source_location": "L9"
+    },
+    {
       "id": "src_components_categorygridsixpack_categorygridsixpack",
       "label": "CategoryGridSixPack()",
       "_callable": true,
@@ -859,6 +643,18 @@
       "norm_label": "categoryscroller()",
       "source_file": "src/components/CategoryScroller.jsx",
       "source_location": "L21"
+    },
+    {
+      "id": "src_components_locationpickermodal_locationpickermodal",
+      "label": "LocationPickerModal()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "locationpickermodal()",
+      "source_file": "src/components/LocationPickerModal.jsx",
+      "source_location": "L7"
     },
     {
       "id": "src_components_productcard_productcard",
@@ -897,6 +693,54 @@
       "source_location": "L77"
     },
     {
+      "id": "src_components_quickproductsheet_quickproductsheet",
+      "label": "QuickProductSheet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "quickproductsheet()",
+      "source_file": "src/components/QuickProductSheet.jsx",
+      "source_location": "L13"
+    },
+    {
+      "id": "src_components_ui_emptystate_emptycartstate",
+      "label": "EmptyCartState()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "emptycartstate()",
+      "source_file": "src/components/ui/EmptyState.jsx",
+      "source_location": "L5"
+    },
+    {
+      "id": "src_components_ui_emptystate_emptysearchstate",
+      "label": "EmptySearchState()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "emptysearchstate()",
+      "source_file": "src/components/ui/EmptyState.jsx",
+      "source_location": "L42"
+    },
+    {
+      "id": "src_components_ui_vauldrawer_vauldrawer",
+      "label": "VaulDrawer()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "vauldrawer()",
+      "source_file": "src/components/ui/VaulDrawer.jsx",
+      "source_location": "L4"
+    },
+    {
       "id": "src_lib_motion_stagger",
       "label": "stagger()",
       "_callable": true,
@@ -909,6 +753,18 @@
       "source_location": "L53"
     },
     {
+      "id": "src_lib_systembars_setdevicesystembars",
+      "label": "setDeviceSystemBars()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "setdevicesystembars()",
+      "source_file": "src/lib/systemBars.js",
+      "source_location": "L11"
+    },
+    {
       "id": "src_pages_categories_categoriespage",
       "label": "CategoriesPage()",
       "_callable": true,
@@ -919,6 +775,18 @@
       "norm_label": "categoriespage()",
       "source_file": "src/pages/categories.js",
       "source_location": "L127"
+    },
+    {
+      "id": "src_pages_order_again_orderagainpage",
+      "label": "OrderAgainPage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "orderagainpage()",
+      "source_file": "src/pages/order-again.js",
+      "source_location": "L25"
     },
     {
       "id": "src_components_bklitareachart_bklitareachart",
@@ -942,7 +810,7 @@
       "file_type": "code",
       "norm_label": "currentuid()",
       "source_file": "src/lib/api.js",
-      "source_location": "L40"
+      "source_location": "L48"
     },
     {
       "id": "src_lib_api_fetchadminorders",
@@ -954,7 +822,7 @@
       "file_type": "code",
       "norm_label": "fetchadminorders()",
       "source_file": "src/lib/api.js",
-      "source_location": "L81"
+      "source_location": "L89"
     },
     {
       "id": "src_lib_api_fetchcatalogue",
@@ -966,7 +834,7 @@
       "file_type": "code",
       "norm_label": "fetchcatalogue()",
       "source_file": "src/lib/api.js",
-      "source_location": "L118"
+      "source_location": "L126"
     },
     {
       "id": "src_lib_api_fetchuserorderhistory",
@@ -978,7 +846,7 @@
       "file_type": "code",
       "norm_label": "fetchuserorderhistory()",
       "source_file": "src/lib/api.js",
-      "source_location": "L110"
+      "source_location": "L118"
     },
     {
       "id": "src_lib_api_readlocal",
@@ -990,7 +858,7 @@
       "file_type": "code",
       "norm_label": "readlocal()",
       "source_file": "src/lib/api.js",
-      "source_location": "L24"
+      "source_location": "L32"
     },
     {
       "id": "src_lib_api_submitorder",
@@ -1002,7 +870,7 @@
       "file_type": "code",
       "norm_label": "submitorder()",
       "source_file": "src/lib/api.js",
-      "source_location": "L50"
+      "source_location": "L58"
     },
     {
       "id": "src_lib_api_updateadminorderstatus",
@@ -1014,7 +882,7 @@
       "file_type": "code",
       "norm_label": "updateadminorderstatus()",
       "source_file": "src/lib/api.js",
-      "source_location": "L101"
+      "source_location": "L109"
     },
     {
       "id": "src_lib_api_writelocal",
@@ -1026,7 +894,7 @@
       "file_type": "code",
       "norm_label": "writelocal()",
       "source_file": "src/lib/api.js",
-      "source_location": "L33"
+      "source_location": "L41"
     },
     {
       "id": "src_lib_auth_cachelocaluser",
@@ -1038,7 +906,7 @@
       "file_type": "code",
       "norm_label": "cachelocaluser()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L70"
+      "source_location": "L74"
     },
     {
       "id": "src_lib_auth_ensurerecaptcha",
@@ -1050,7 +918,7 @@
       "file_type": "code",
       "norm_label": "ensurerecaptcha()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L84"
+      "source_location": "L88"
     },
     {
       "id": "src_lib_auth_ensureuserprofile",
@@ -1062,7 +930,7 @@
       "file_type": "code",
       "norm_label": "ensureuserprofile()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L224"
+      "source_location": "L228"
     },
     {
       "id": "src_lib_auth_getlocaluser",
@@ -1074,7 +942,7 @@
       "file_type": "code",
       "norm_label": "getlocaluser()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L60"
+      "source_location": "L64"
     },
     {
       "id": "src_lib_auth_getstaffrole",
@@ -1086,7 +954,7 @@
       "file_type": "code",
       "norm_label": "getstaffrole()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L243"
+      "source_location": "L408"
     },
     {
       "id": "src_lib_auth_issuecode",
@@ -1098,7 +966,7 @@
       "file_type": "code",
       "norm_label": "issuecode()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L47"
+      "source_location": "L51"
     },
     {
       "id": "src_lib_auth_sendotp",
@@ -1110,19 +978,55 @@
       "file_type": "code",
       "norm_label": "sendotp()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L97"
+      "source_location": "L101"
     },
     {
-      "id": "src_lib_auth_signout",
-      "label": "signOut()",
+      "id": "src_lib_auth_signinwithemail",
+      "label": "signInWithEmail()",
       "_callable": true,
       "_origin": "ast",
       "community": 20,
       "community_name": "admin.js",
       "file_type": "code",
-      "norm_label": "signout()",
+      "norm_label": "signinwithemail()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L267"
+      "source_location": "L287"
+    },
+    {
+      "id": "src_lib_auth_signinwithgoogle",
+      "label": "signInWithGoogle()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 20,
+      "community_name": "admin.js",
+      "file_type": "code",
+      "norm_label": "signinwithgoogle()",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L260"
+    },
+    {
+      "id": "src_lib_auth_signinwithtruecaller",
+      "label": "signInWithTruecaller()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 20,
+      "community_name": "admin.js",
+      "file_type": "code",
+      "norm_label": "signinwithtruecaller()",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L368"
+    },
+    {
+      "id": "src_lib_auth_signupwithemail",
+      "label": "signUpWithEmail()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 20,
+      "community_name": "admin.js",
+      "file_type": "code",
+      "norm_label": "signupwithemail()",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L325"
     },
     {
       "id": "src_lib_auth_toe164",
@@ -1134,7 +1038,7 @@
       "file_type": "code",
       "norm_label": "toe164()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L54"
+      "source_location": "L58"
     },
     {
       "id": "src_lib_auth_verifyotp",
@@ -1146,7 +1050,7 @@
       "file_type": "code",
       "norm_label": "verifyotp()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L136"
+      "source_location": "L140"
     },
     {
       "id": "src_lib_auth_watchauth",
@@ -1158,7 +1062,7 @@
       "file_type": "code",
       "norm_label": "watchauth()",
       "source_file": "src/lib/auth.js",
-      "source_location": "L258"
+      "source_location": "L423"
     },
     {
       "id": "src_lib_db_assigndriver",
@@ -1593,6 +1497,18 @@
       "source_location": "L6"
     },
     {
+      "id": "src_pages_login_loginpage",
+      "label": "LoginPage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 20,
+      "community_name": "admin.js",
+      "file_type": "code",
+      "norm_label": "loginpage()",
+      "source_file": "src/pages/login.js",
+      "source_location": "L20"
+    },
+    {
       "id": "create_docx_add_heading",
       "label": "add_heading()",
       "_callable": true,
@@ -1605,52 +1521,16 @@
       "source_location": "L43"
     },
     {
-      "id": "src_components_mapwithpininner_mapbridge",
-      "label": "MapBridge()",
+      "id": "src_lib_auth_signout",
+      "label": "signOut()",
       "_callable": true,
       "_origin": "ast",
       "community": 3,
       "community_name": "account.js",
       "file_type": "code",
-      "norm_label": "mapbridge()",
-      "source_file": "src/components/MapWithPinInner.jsx",
-      "source_location": "L21"
-    },
-    {
-      "id": "src_components_mapwithpininner_mapwithpininner",
-      "label": "MapWithPinInner()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "mapwithpininner()",
-      "source_file": "src/components/MapWithPinInner.jsx",
-      "source_location": "L86"
-    },
-    {
-      "id": "src_lib_maps_reversegeocodecoords",
-      "label": "reverseGeocodeCoords()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "reversegeocodecoords()",
-      "source_file": "src/lib/maps.js",
-      "source_location": "L6"
-    },
-    {
-      "id": "src_lib_maps_searchplacesautocomplete",
-      "label": "searchPlacesAutocomplete()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "searchplacesautocomplete()",
-      "source_file": "src/lib/maps.js",
-      "source_location": "L50"
+      "norm_label": "signout()",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L432"
     },
     {
       "id": "src_lib_navigation_goback",
@@ -1806,7 +1686,7 @@
       "file_type": "code",
       "norm_label": "accountpage()",
       "source_file": "src/pages/account.js",
-      "source_location": "L27"
+      "source_location": "L29"
     },
     {
       "id": "src_pages_add_address_addaddresspage",
@@ -1819,42 +1699,6 @@
       "norm_label": "addaddresspage()",
       "source_file": "src/pages/add-address.js",
       "source_location": "L7"
-    },
-    {
-      "id": "src_pages_confirm_location_confirmlocationpage",
-      "label": "ConfirmLocationPage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "confirmlocationpage()",
-      "source_file": "src/pages/confirm-location.js",
-      "source_location": "L13"
-    },
-    {
-      "id": "src_pages_index_storefronthome",
-      "label": "StorefrontHome()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "storefronthome()",
-      "source_file": "src/pages/index.js",
-      "source_location": "L31"
-    },
-    {
-      "id": "src_pages_orders_orderspage",
-      "label": "OrdersPage()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "orderspage()",
-      "source_file": "src/pages/orders.js",
-      "source_location": "L20"
     },
     {
       "id": "src_pages_wishlist_wishlistpage",
@@ -1965,16 +1809,16 @@
       "source_location": "L4"
     },
     {
-      "id": "src_components_locationpermissionmodal_locationpermissionmodal",
-      "label": "LocationPermissionModal()",
+      "id": "src_components_loginproductmarquee_loginproductmarquee",
+      "label": "LoginProductMarquee()",
       "_callable": true,
       "_origin": "ast",
       "community": 46,
-      "community_name": "LocationPermissionModal.jsx",
+      "community_name": "LoginProductMarquee.jsx",
       "file_type": "code",
-      "norm_label": "locationpermissionmodal()",
-      "source_file": "src/components/LocationPermissionModal.jsx",
-      "source_location": "L4"
+      "norm_label": "loginproductmarquee()",
+      "source_file": "src/components/LoginProductMarquee.jsx",
+      "source_location": "L15"
     },
     {
       "id": "src_components_ui_shimmerimage_shimmerimage",
@@ -2006,23 +1850,11 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "animatedcounter()",
       "source_file": "src/components/AnimatedCounter.jsx",
       "source_location": "L4"
-    },
-    {
-      "id": "src_components_appheader_appheader",
-      "label": "AppHeader()",
-      "_callable": true,
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "_app.js",
-      "file_type": "code",
-      "norm_label": "appheader()",
-      "source_file": "src/components/AppHeader.jsx",
-      "source_location": "L7"
     },
     {
       "id": "src_components_bottomnav_bottomnav",
@@ -2030,11 +1862,59 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "bottomnav()",
       "source_file": "src/components/BottomNav.jsx",
       "source_location": "L16"
+    },
+    {
+      "id": "src_components_dashitanimatedlogo_dashitanimatedlogo",
+      "label": "DashitAnimatedLogo()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "dashitanimatedlogo()",
+      "source_file": "src/components/DashitAnimatedLogo.jsx",
+      "source_location": "L8"
+    },
+    {
+      "id": "src_components_dashitanimatedlogo_dashitprogressbadge",
+      "label": "DashitProgressBadge()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "dashitprogressbadge()",
+      "source_file": "src/components/DashitAnimatedLogo.jsx",
+      "source_location": "L67"
+    },
+    {
+      "id": "src_components_deliverystatusicon_deliverystatusicon",
+      "label": "DeliveryStatusIcon()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "deliverystatusicon()",
+      "source_file": "src/components/DeliveryStatusIcon.jsx",
+      "source_location": "L32"
+    },
+    {
+      "id": "src_components_deliverystatusicon_statustomark",
+      "label": "statusToMark()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "statustomark()",
+      "source_file": "src/components/DeliveryStatusIcon.jsx",
+      "source_location": "L19"
     },
     {
       "id": "src_components_floatingcartbar_floatingcartbar",
@@ -2042,23 +1922,59 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "floatingcartbar()",
       "source_file": "src/components/FloatingCartBar.jsx",
       "source_location": "L12"
     },
     {
-      "id": "src_components_flyingbadgeoverlay_flyingbadgeoverlay",
-      "label": "FlyingBadgeOverlay()",
+      "id": "src_components_liveorderfloatingtracker_clampraily",
+      "label": "clampRailY()",
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
-      "norm_label": "flyingbadgeoverlay()",
-      "source_file": "src/components/FlyingBadgeOverlay.jsx",
-      "source_location": "L12"
+      "norm_label": "clampraily()",
+      "source_file": "src/components/LiveOrderFloatingTracker.jsx",
+      "source_location": "L17"
+    },
+    {
+      "id": "src_components_liveorderfloatingtracker_liveorderfloatingtracker",
+      "label": "LiveOrderFloatingTracker()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "liveorderfloatingtracker()",
+      "source_file": "src/components/LiveOrderFloatingTracker.jsx",
+      "source_location": "L23"
+    },
+    {
+      "id": "src_components_maptracking_maptracking",
+      "label": "MapTracking()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "maptracking()",
+      "source_file": "src/components/MapTracking.jsx",
+      "source_location": "L6"
+    },
+    {
+      "id": "src_components_ui_draggablesheet_draggablesheet",
+      "label": "DraggableSheet()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "draggablesheet()",
+      "source_file": "src/components/ui/DraggableSheet.jsx",
+      "source_location": "L5"
     },
     {
       "id": "src_context_scrollchromecontext_scrollchromeprovider",
@@ -2066,7 +1982,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "scrollchromeprovider()",
       "source_file": "src/context/ScrollChromeContext.jsx",
@@ -2078,11 +1994,59 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "usescrollchrome()",
       "source_file": "src/context/ScrollChromeContext.jsx",
       "source_location": "L70"
+    },
+    {
+      "id": "src_lib_db_watchorder",
+      "label": "watchOrder()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "watchorder()",
+      "source_file": "src/lib/db.js",
+      "source_location": "L177"
+    },
+    {
+      "id": "src_lib_db_watchordertracking",
+      "label": "watchOrderTracking()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "watchordertracking()",
+      "source_file": "src/lib/db.js",
+      "source_location": "L253"
+    },
+    {
+      "id": "src_lib_maps_fetchroadroute",
+      "label": "fetchRoadRoute()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "fetchroadroute()",
+      "source_file": "src/lib/maps.js",
+      "source_location": "L78"
+    },
+    {
+      "id": "src_lib_notifications_clearorderlivenotification",
+      "label": "clearOrderLiveNotification()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "clearorderlivenotification()",
+      "source_file": "src/lib/notifications.js",
+      "source_location": "L85"
     },
     {
       "id": "src_lib_notifications_initnotificationpermissions",
@@ -2090,23 +2054,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "initnotificationpermissions()",
       "source_file": "src/lib/notifications.js",
       "source_location": "L5"
     },
     {
-      "id": "src_lib_systembars_setdevicesystembars",
-      "label": "setDeviceSystemBars()",
+      "id": "src_lib_notifications_showorderlivenotification",
+      "label": "showOrderLiveNotification()",
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
-      "norm_label": "setdevicesystembars()",
-      "source_file": "src/lib/systemBars.js",
-      "source_location": "L11"
+      "norm_label": "showorderlivenotification()",
+      "source_file": "src/lib/notifications.js",
+      "source_location": "L19"
     },
     {
       "id": "src_pages_app_app",
@@ -2114,11 +2078,23 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "app()",
       "source_file": "src/pages/_app.js",
       "source_location": "L19"
+    },
+    {
+      "id": "src_pages_orders_orderspage",
+      "label": "OrdersPage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "orderspage()",
+      "source_file": "src/pages/orders.js",
+      "source_location": "L20"
     },
     {
       "id": "src_pages_product_id_productdetailpage",
@@ -2126,7 +2102,7 @@
       "_callable": true,
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "productdetailpage()",
       "source_file": "src/pages/product/[id].js",
@@ -2143,6 +2119,90 @@
       "norm_label": "cartredirectpage()",
       "source_file": "src/pages/cart.js",
       "source_location": "L4"
+    },
+    {
+      "id": "src_components_interactivemapmodal_interactivemapmodal",
+      "label": "InteractiveMapModal()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "interactivemapmodal()",
+      "source_file": "src/components/InteractiveMapModal.jsx",
+      "source_location": "L11"
+    },
+    {
+      "id": "src_components_mapwithpininner_mapbridge",
+      "label": "MapBridge()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "mapbridge()",
+      "source_file": "src/components/MapWithPinInner.jsx",
+      "source_location": "L21"
+    },
+    {
+      "id": "src_components_mapwithpininner_mapwithpininner",
+      "label": "MapWithPinInner()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "mapwithpininner()",
+      "source_file": "src/components/MapWithPinInner.jsx",
+      "source_location": "L86"
+    },
+    {
+      "id": "src_lib_maps_reversegeocodecoords",
+      "label": "reverseGeocodeCoords()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "reversegeocodecoords()",
+      "source_file": "src/lib/maps.js",
+      "source_location": "L6"
+    },
+    {
+      "id": "src_lib_maps_searchplacesautocomplete",
+      "label": "searchPlacesAutocomplete()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "searchplacesautocomplete()",
+      "source_file": "src/lib/maps.js",
+      "source_location": "L50"
+    },
+    {
+      "id": "src_pages_confirm_location_confirmlocationpage",
+      "label": "ConfirmLocationPage()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "confirmlocationpage()",
+      "source_file": "src/pages/confirm-location.js",
+      "source_location": "L13"
+    },
+    {
+      "id": "src_pages_index_storefronthome",
+      "label": "StorefrontHome()",
+      "_callable": true,
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "storefronthome()",
+      "source_file": "src/pages/index.js",
+      "source_location": "L33"
     },
     {
       "id": "scripts_seed_firestore_chunk",
@@ -2322,17 +2382,6 @@
       "source_location": "L12"
     },
     {
-      "id": "src_components_cartdrawersheet",
-      "label": "CartDrawerSheet.jsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "cartdrawersheet.jsx",
-      "source_file": "src/components/CartDrawerSheet.jsx",
-      "source_location": "L1"
-    },
-    {
       "id": "src_components_checkoutloginmodal",
       "label": "CheckoutLoginModal.jsx",
       "_origin": "ast",
@@ -2363,7 +2412,7 @@
       "file_type": "code",
       "norm_label": "available_coupons",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L6"
+      "source_location": "L7"
     },
     {
       "id": "src_components_flyingbadgeoverlay",
@@ -2388,70 +2437,15 @@
       "source_location": "L1"
     },
     {
-      "id": "src_components_interactivemapmodal",
-      "label": "InteractiveMapModal.jsx",
+      "id": "src_components_locationpermissionmodal",
+      "label": "LocationPermissionModal.jsx",
       "_origin": "ast",
       "community": 0,
       "community_name": "hapticLight",
       "file_type": "code",
-      "norm_label": "interactivemapmodal.jsx",
-      "source_file": "src/components/InteractiveMapModal.jsx",
+      "norm_label": "locationpermissionmodal.jsx",
+      "source_file": "src/components/LocationPermissionModal.jsx",
       "source_location": "L1"
-    },
-    {
-      "id": "src_components_interactivemapmodal_hub_pos",
-      "label": "HUB_POS",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "hub_pos",
-      "source_file": "src/components/InteractiveMapModal.jsx",
-      "source_location": "L9"
-    },
-    {
-      "id": "src_components_locationpickermodal",
-      "label": "LocationPickerModal.jsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "locationpickermodal.jsx",
-      "source_file": "src/components/LocationPickerModal.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_loginproductmarquee",
-      "label": "LoginProductMarquee.jsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "loginproductmarquee.jsx",
-      "source_file": "src/components/LoginProductMarquee.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_loginproductmarquee_row1",
-      "label": "ROW1",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "row1",
-      "source_file": "src/components/LoginProductMarquee.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_loginproductmarquee_row2",
-      "label": "ROW2",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "row2",
-      "source_file": "src/components/LoginProductMarquee.jsx",
-      "source_location": "L8"
     },
     {
       "id": "src_components_orderingforsomeoneelsemodal",
@@ -2484,50 +2478,6 @@
       "file_type": "code",
       "norm_label": "productcardstepper.jsx",
       "source_file": "src/components/ProductCardStepper.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_quickproductsheet",
-      "label": "QuickProductSheet.jsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "quickproductsheet.jsx",
-      "source_file": "src/components/QuickProductSheet.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_ui_emptystate",
-      "label": "EmptyState.jsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "emptystate.jsx",
-      "source_file": "src/components/ui/EmptyState.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_ui_emptystate_suggested_search_chips",
-      "label": "SUGGESTED_SEARCH_CHIPS",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "suggested_search_chips",
-      "source_file": "src/components/ui/EmptyState.jsx",
-      "source_location": "L37"
-    },
-    {
-      "id": "src_components_ui_vauldrawer",
-      "label": "VaulDrawer.jsx",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "vauldrawer.jsx",
-      "source_file": "src/components/ui/VaulDrawer.jsx",
       "source_location": "L1"
     },
     {
@@ -2564,28 +2514,6 @@
       "source_location": "L1"
     },
     {
-      "id": "src_data_products",
-      "label": "products.js",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "products.js",
-      "source_file": "src/data/products.js",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_data_products_all_products",
-      "label": "ALL_PRODUCTS",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "all_products",
-      "source_file": "src/data/products.js",
-      "source_location": "L1"
-    },
-    {
       "id": "src_lib_haptics",
       "label": "haptics.js",
       "_origin": "ast",
@@ -2608,6 +2536,17 @@
       "source_location": "L49"
     },
     {
+      "id": "src_lib_usebodyscrolllock",
+      "label": "useBodyScrollLock.js",
+      "_origin": "ast",
+      "community": 0,
+      "community_name": "hapticLight",
+      "file_type": "code",
+      "norm_label": "usebodyscrolllock.js",
+      "source_file": "src/lib/useBodyScrollLock.js",
+      "source_location": "L1"
+    },
+    {
       "id": "src_pages_checkout",
       "label": "checkout.js",
       "_origin": "ast",
@@ -2628,28 +2567,6 @@
       "norm_label": "you_might_also_like",
       "source_file": "src/pages/checkout.js",
       "source_location": "L17"
-    },
-    {
-      "id": "src_pages_login",
-      "label": "login.js",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "login.js",
-      "source_file": "src/pages/login.js",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_pages_order_again",
-      "label": "order-again.js",
-      "_origin": "ast",
-      "community": 0,
-      "community_name": "hapticLight",
-      "file_type": "code",
-      "norm_label": "order-again.js",
-      "source_file": "src/pages/order-again.js",
-      "source_location": "L1"
     },
     {
       "id": "src_pages_search",
@@ -2689,76 +2606,21 @@
       "label": "react",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "react",
       "source_file": "package.json",
       "source_location": "L35"
     },
     {
-      "id": "src_components_dashitanimatedlogo",
-      "label": "DashitAnimatedLogo.jsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "dashitanimatedlogo.jsx",
-      "source_file": "src/components/DashitAnimatedLogo.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_deliverystatusicon",
-      "label": "DeliveryStatusIcon.jsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "deliverystatusicon.jsx",
-      "source_file": "src/components/DeliveryStatusIcon.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_deliverystatusicon_sizes",
-      "label": "SIZES",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "sizes",
-      "source_file": "src/components/DeliveryStatusIcon.jsx",
-      "source_location": "L27"
-    },
-    {
       "id": "src_components_homescreenliveordercard",
       "label": "HomeScreenLiveOrderCard.jsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "homescreenliveordercard.jsx",
       "source_file": "src/components/HomeScreenLiveOrderCard.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_liveorderfloatingtracker",
-      "label": "LiveOrderFloatingTracker.jsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "liveorderfloatingtracker.jsx",
-      "source_file": "src/components/LiveOrderFloatingTracker.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_maptracking",
-      "label": "MapTracking.jsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "maptracking.jsx",
-      "source_file": "src/components/MapTracking.jsx",
       "source_location": "L1"
     },
     {
@@ -2766,7 +2628,7 @@
       "label": "badge.jsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "badge.jsx",
       "source_file": "src/components/ui/badge.jsx",
@@ -2777,7 +2639,7 @@
       "label": "badgeVariants",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "badgevariants",
       "source_file": "src/components/ui/badge.jsx",
@@ -2788,7 +2650,7 @@
       "label": "button.jsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "button.jsx",
       "source_file": "src/components/ui/button.jsx",
@@ -2799,7 +2661,7 @@
       "label": "Button",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "button",
       "source_file": "src/components/ui/button.jsx",
@@ -2810,7 +2672,7 @@
       "label": "buttonSizes",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "buttonsizes",
       "source_file": "src/components/ui/button.jsx",
@@ -2821,7 +2683,7 @@
       "label": "buttonVariants",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "buttonvariants",
       "source_file": "src/components/ui/button.jsx",
@@ -2832,7 +2694,7 @@
       "label": "card.jsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "card.jsx",
       "source_file": "src/components/ui/card.jsx",
@@ -2843,7 +2705,7 @@
       "label": "Card",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "card",
       "source_file": "src/components/ui/card.jsx",
@@ -2854,7 +2716,7 @@
       "label": "CardContent",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "cardcontent",
       "source_file": "src/components/ui/card.jsx",
@@ -2865,7 +2727,7 @@
       "label": "CardDescription",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "carddescription",
       "source_file": "src/components/ui/card.jsx",
@@ -2876,7 +2738,7 @@
       "label": "CardFooter",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "cardfooter",
       "source_file": "src/components/ui/card.jsx",
@@ -2887,7 +2749,7 @@
       "label": "CardHeader",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "cardheader",
       "source_file": "src/components/ui/card.jsx",
@@ -2898,29 +2760,18 @@
       "label": "CardTitle",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "cardtitle",
       "source_file": "src/components/ui/card.jsx",
       "source_location": "L25"
     },
     {
-      "id": "src_components_ui_draggablesheet",
-      "label": "DraggableSheet.jsx",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "draggablesheet.jsx",
-      "source_file": "src/components/ui/DraggableSheet.jsx",
-      "source_location": "L1"
-    },
-    {
       "id": "src_components_ui_skeletonloader",
       "label": "SkeletonLoader.jsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "skeletonloader.jsx",
       "source_file": "src/components/ui/SkeletonLoader.jsx",
@@ -2931,21 +2782,10 @@
       "label": "tabs.jsx",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "tabs.jsx",
       "source_file": "src/components/ui/tabs.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_lib_notifications",
-      "label": "notifications.js",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "notifications.js",
-      "source_file": "src/lib/notifications.js",
       "source_location": "L1"
     },
     {
@@ -2953,40 +2793,18 @@
       "label": "utils.js",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "code",
       "norm_label": "utils.js",
       "source_file": "src/lib/utils.js",
       "source_location": "L1"
     },
     {
-      "id": "src_pages_orders",
-      "label": "orders.js",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "orders.js",
-      "source_file": "src/pages/orders.js",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_pages_orders_maptracking",
-      "label": "MapTracking",
-      "_origin": "ast",
-      "community": 1,
-      "community_name": "orders.js",
-      "file_type": "code",
-      "norm_label": "maptracking",
-      "source_file": "src/pages/orders.js",
-      "source_location": "L18"
-    },
-    {
       "id": "react",
       "label": "react",
       "_origin": "ast",
       "community": 1,
-      "community_name": "orders.js",
+      "community_name": "cn",
       "file_type": "concept",
       "norm_label": "react",
       "source_file": "package.json",
@@ -3059,6 +2877,17 @@
       "source_location": "L15"
     },
     {
+      "id": "package_dependencies_animejs",
+      "label": "animejs",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "dependencies",
+      "file_type": "code",
+      "norm_label": "animejs",
+      "source_file": "package.json",
+      "source_location": "L25"
+    },
+    {
       "id": "package_dependencies_canvas_confetti",
       "label": "canvas-confetti",
       "_origin": "ast",
@@ -3068,17 +2897,6 @@
       "norm_label": "canvas-confetti",
       "source_file": "package.json",
       "source_location": "L26"
-    },
-    {
-      "id": "package_dependencies_capacitor_android",
-      "label": "@capacitor/android",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "dependencies",
-      "file_type": "code",
-      "norm_label": "@capacitor/android",
-      "source_file": "package.json",
-      "source_location": "L16"
     },
     {
       "id": "package_dependencies_react_leaflet",
@@ -3092,6 +2910,17 @@
       "source_location": "L37"
     },
     {
+      "id": "animejs",
+      "label": "animejs",
+      "_origin": "ast",
+      "community": 11,
+      "community_name": "dependencies",
+      "file_type": "concept",
+      "norm_label": "animejs",
+      "source_file": "package.json",
+      "source_location": "L25"
+    },
+    {
       "id": "canvas_confetti",
       "label": "canvas-confetti",
       "_origin": "ast",
@@ -3101,17 +2930,6 @@
       "norm_label": "canvas-confetti",
       "source_file": "package.json",
       "source_location": "L26"
-    },
-    {
-      "id": "capacitor_android",
-      "label": "@capacitor/android",
-      "_origin": "ast",
-      "community": 11,
-      "community_name": "dependencies",
-      "file_type": "concept",
-      "norm_label": "@capacitor/android",
-      "source_file": "package.json",
-      "source_location": "L16"
     },
     {
       "id": "react_leaflet",
@@ -3403,6 +3221,28 @@
       "source_location": "L1"
     },
     {
+      "id": "src_components_appheader",
+      "label": "AppHeader.jsx",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "appheader.jsx",
+      "source_file": "src/components/AppHeader.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_cartdrawersheet",
+      "label": "CartDrawerSheet.jsx",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "cartdrawersheet.jsx",
+      "source_file": "src/components/CartDrawerSheet.jsx",
+      "source_location": "L1"
+    },
+    {
       "id": "src_components_categorygridsixpack",
       "label": "CategoryGridSixPack.jsx",
       "_origin": "ast",
@@ -3447,6 +3287,17 @@
       "source_location": "L6"
     },
     {
+      "id": "src_components_locationpickermodal",
+      "label": "LocationPickerModal.jsx",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "locationpickermodal.jsx",
+      "source_file": "src/components/LocationPickerModal.jsx",
+      "source_location": "L1"
+    },
+    {
       "id": "src_components_productcard",
       "label": "ProductCard.jsx",
       "_origin": "ast",
@@ -3489,6 +3340,72 @@
       "norm_label": "curated_rails",
       "source_file": "src/components/PromoBanner.jsx",
       "source_location": "L18"
+    },
+    {
+      "id": "src_components_quickproductsheet",
+      "label": "QuickProductSheet.jsx",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "quickproductsheet.jsx",
+      "source_file": "src/components/QuickProductSheet.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_ui_emptystate",
+      "label": "EmptyState.jsx",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "emptystate.jsx",
+      "source_file": "src/components/ui/EmptyState.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_ui_emptystate_suggested_search_chips",
+      "label": "SUGGESTED_SEARCH_CHIPS",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "suggested_search_chips",
+      "source_file": "src/components/ui/EmptyState.jsx",
+      "source_location": "L40"
+    },
+    {
+      "id": "src_components_ui_vauldrawer",
+      "label": "VaulDrawer.jsx",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "vauldrawer.jsx",
+      "source_file": "src/components/ui/VaulDrawer.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_data_products",
+      "label": "products.js",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "products.js",
+      "source_file": "src/data/products.js",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_data_products_all_products",
+      "label": "ALL_PRODUCTS",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "all_products",
+      "source_file": "src/data/products.js",
+      "source_location": "L1"
     },
     {
       "id": "src_lib_motion",
@@ -3645,6 +3562,17 @@
       "source_location": "L69"
     },
     {
+      "id": "src_lib_systembars",
+      "label": "systemBars.js",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "systembars.js",
+      "source_file": "src/lib/systemBars.js",
+      "source_location": "L1"
+    },
+    {
       "id": "src_pages_categories",
       "label": "categories.js",
       "_origin": "ast",
@@ -3686,7 +3614,18 @@
       "file_type": "code",
       "norm_label": "search_suggestions",
       "source_file": "src/pages/index.js",
-      "source_location": "L22"
+      "source_location": "L24"
+    },
+    {
+      "id": "src_pages_order_again",
+      "label": "order-again.js",
+      "_origin": "ast",
+      "community": 2,
+      "community_name": "pages/index.js",
+      "file_type": "code",
+      "norm_label": "order-again.js",
+      "source_file": "src/pages/order-again.js",
+      "source_location": "L1"
     },
     {
       "id": "src_components_bklitareachart",
@@ -3931,26 +3870,37 @@
       "source_location": "L1"
     },
     {
-      "id": "package_dependencies_capacitor_app",
-      "label": "@capacitor/app",
+      "id": "src_pages_login",
+      "label": "login.js",
       "_origin": "ast",
-      "community": 21,
-      "community_name": "@capacitor/app",
+      "community": 20,
+      "community_name": "admin.js",
       "file_type": "code",
-      "norm_label": "@capacitor/app",
-      "source_file": "package.json",
-      "source_location": "L17"
+      "norm_label": "login.js",
+      "source_file": "src/pages/login.js",
+      "source_location": "L1"
     },
     {
-      "id": "capacitor_app",
-      "label": "@capacitor/app",
+      "id": "package_dependencies_capacitor_core",
+      "label": "@capacitor/core",
       "_origin": "ast",
       "community": 21,
-      "community_name": "@capacitor/app",
-      "file_type": "concept",
-      "norm_label": "@capacitor/app",
+      "community_name": "@capacitor/core",
+      "file_type": "code",
+      "norm_label": "@capacitor/core",
       "source_file": "package.json",
-      "source_location": "L17"
+      "source_location": "L19"
+    },
+    {
+      "id": "capacitor_core",
+      "label": "@capacitor/core",
+      "_origin": "ast",
+      "community": 21,
+      "community_name": "@capacitor/core",
+      "file_type": "concept",
+      "norm_label": "@capacitor/core",
+      "source_file": "package.json",
+      "source_location": "L19"
     },
     {
       "id": "package_dependencies_capacitor_cli",
@@ -4173,26 +4123,26 @@
       "source_location": "L22"
     },
     {
-      "id": "package_dependencies_capacitor_core",
-      "label": "@capacitor/core",
+      "id": "package_dependencies_capacitor_app",
+      "label": "@capacitor/app",
       "_origin": "ast",
       "community": 27,
-      "community_name": "@capacitor/core",
+      "community_name": "@capacitor/app",
       "file_type": "code",
-      "norm_label": "@capacitor/core",
+      "norm_label": "@capacitor/app",
       "source_file": "package.json",
-      "source_location": "L19"
+      "source_location": "L17"
     },
     {
-      "id": "capacitor_core",
-      "label": "@capacitor/core",
+      "id": "capacitor_app",
+      "label": "@capacitor/app",
       "_origin": "ast",
       "community": 27,
-      "community_name": "@capacitor/core",
+      "community_name": "@capacitor/app",
       "file_type": "concept",
-      "norm_label": "@capacitor/core",
+      "norm_label": "@capacitor/app",
       "source_file": "package.json",
-      "source_location": "L19"
+      "source_location": "L17"
     },
     {
       "id": "package_dependencies_clsx",
@@ -4239,28 +4189,6 @@
       "source_file": "next/router"
     },
     {
-      "id": "src_components_interactivemapmodal_mapwithpin",
-      "label": "MapWithPin",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "mapwithpin",
-      "source_file": "src/components/InteractiveMapModal.jsx",
-      "source_location": "L7"
-    },
-    {
-      "id": "src_components_mapwithpininner",
-      "label": "MapWithPinInner.jsx",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "mapwithpininner.jsx",
-      "source_file": "src/components/MapWithPinInner.jsx",
-      "source_location": "L1"
-    },
-    {
       "id": "src_lib_haptics_hapticcartadd",
       "label": "hapticCartAdd",
       "_origin": "ast",
@@ -4270,17 +4198,6 @@
       "norm_label": "hapticcartadd",
       "source_file": "src/lib/haptics.js",
       "source_location": "L31"
-    },
-    {
-      "id": "src_lib_maps",
-      "label": "maps.js",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "maps.js",
-      "source_file": "src/lib/maps.js",
-      "source_location": "L1"
     },
     {
       "id": "src_lib_navigation",
@@ -4336,39 +4253,6 @@
       "norm_label": "add-address.js",
       "source_file": "src/pages/add-address.js",
       "source_location": "L1"
-    },
-    {
-      "id": "src_pages_confirm_location",
-      "label": "confirm-location.js",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "confirm-location.js",
-      "source_file": "src/pages/confirm-location.js",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_pages_confirm_location_hub_pos",
-      "label": "HUB_POS",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "hub_pos",
-      "source_file": "src/pages/confirm-location.js",
-      "source_location": "L11"
-    },
-    {
-      "id": "src_pages_confirm_location_mapwithpin",
-      "label": "MapWithPin",
-      "_origin": "ast",
-      "community": 3,
-      "community_name": "account.js",
-      "file_type": "code",
-      "norm_label": "mapwithpin",
-      "source_file": "src/pages/confirm-location.js",
-      "source_location": "L9"
     },
     {
       "id": "src_pages_wishlist",
@@ -5032,15 +4916,37 @@
       "source_location": "L1"
     },
     {
-      "id": "src_components_locationpermissionmodal",
-      "label": "LocationPermissionModal.jsx",
+      "id": "src_components_loginproductmarquee",
+      "label": "LoginProductMarquee.jsx",
       "_origin": "ast",
       "community": 46,
-      "community_name": "LocationPermissionModal.jsx",
+      "community_name": "LoginProductMarquee.jsx",
       "file_type": "code",
-      "norm_label": "locationpermissionmodal.jsx",
-      "source_file": "src/components/LocationPermissionModal.jsx",
+      "norm_label": "loginproductmarquee.jsx",
+      "source_file": "src/components/LoginProductMarquee.jsx",
       "source_location": "L1"
+    },
+    {
+      "id": "src_components_loginproductmarquee_row1",
+      "label": "ROW1",
+      "_origin": "ast",
+      "community": 46,
+      "community_name": "LoginProductMarquee.jsx",
+      "file_type": "code",
+      "norm_label": "row1",
+      "source_file": "src/components/LoginProductMarquee.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_loginproductmarquee_row2",
+      "label": "ROW2",
+      "_origin": "ast",
+      "community": 46,
+      "community_name": "LoginProductMarquee.jsx",
+      "file_type": "code",
+      "norm_label": "row2",
+      "source_file": "src/components/LoginProductMarquee.jsx",
+      "source_location": "L8"
     },
     {
       "id": "src_components_ui_shimmerimage",
@@ -5052,6 +4958,28 @@
       "norm_label": "shimmerimage.jsx",
       "source_file": "src/components/ui/ShimmerImage.jsx",
       "source_location": "L1"
+    },
+    {
+      "id": "package_dependencies_capacitor_android",
+      "label": "@capacitor/android",
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "@capacitor/android",
+      "file_type": "code",
+      "norm_label": "@capacitor/android",
+      "source_file": "package.json",
+      "source_location": "L16"
+    },
+    {
+      "id": "capacitor_android",
+      "label": "@capacitor/android",
+      "_origin": "ast",
+      "community": 48,
+      "community_name": "@capacitor/android",
+      "file_type": "concept",
+      "norm_label": "@capacitor/android",
+      "source_file": "package.json",
+      "source_location": "L16"
     },
     {
       "id": "src_pages_api_privacy_delete_account",
@@ -5069,21 +4997,10 @@
       "label": "AnimatedCounter.jsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "animatedcounter.jsx",
       "source_file": "src/components/AnimatedCounter.jsx",
-      "source_location": "L1"
-    },
-    {
-      "id": "src_components_appheader",
-      "label": "AppHeader.jsx",
-      "_origin": "ast",
-      "community": 5,
-      "community_name": "_app.js",
-      "file_type": "code",
-      "norm_label": "appheader.jsx",
-      "source_file": "src/components/AppHeader.jsx",
       "source_location": "L1"
     },
     {
@@ -5091,7 +5008,7 @@
       "label": "BottomNav.jsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "bottomnav.jsx",
       "source_file": "src/components/BottomNav.jsx",
@@ -5102,7 +5019,7 @@
       "label": "NAV_ITEMS",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "nav_items",
       "source_file": "src/components/BottomNav.jsx",
@@ -5113,18 +5030,51 @@
       "label": "STOREFRONT_TABS",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "storefront_tabs",
       "source_file": "src/components/BottomNav.jsx",
       "source_location": "L8"
     },
     {
+      "id": "src_components_dashitanimatedlogo",
+      "label": "DashitAnimatedLogo.jsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "dashitanimatedlogo.jsx",
+      "source_file": "src/components/DashitAnimatedLogo.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_deliverystatusicon",
+      "label": "DeliveryStatusIcon.jsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "deliverystatusicon.jsx",
+      "source_file": "src/components/DeliveryStatusIcon.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_deliverystatusicon_sizes",
+      "label": "SIZES",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "sizes",
+      "source_file": "src/components/DeliveryStatusIcon.jsx",
+      "source_location": "L27"
+    },
+    {
       "id": "src_components_floatingcartbar",
       "label": "FloatingCartBar.jsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "floatingcartbar.jsx",
       "source_file": "src/components/FloatingCartBar.jsx",
@@ -5135,7 +5085,7 @@
       "label": "NAVBAR_ROUTES",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "navbar_routes",
       "source_file": "src/components/FloatingCartBar.jsx",
@@ -5146,18 +5096,51 @@
       "label": "STOREFRONT_ROUTES",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "storefront_routes",
       "source_file": "src/components/FloatingCartBar.jsx",
       "source_location": "L9"
     },
     {
+      "id": "src_components_liveorderfloatingtracker",
+      "label": "LiveOrderFloatingTracker.jsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "liveorderfloatingtracker.jsx",
+      "source_file": "src/components/LiveOrderFloatingTracker.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_maptracking",
+      "label": "MapTracking.jsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "maptracking.jsx",
+      "source_file": "src/components/MapTracking.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_ui_draggablesheet",
+      "label": "DraggableSheet.jsx",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "draggablesheet.jsx",
+      "source_file": "src/components/ui/DraggableSheet.jsx",
+      "source_location": "L1"
+    },
+    {
       "id": "src_context_scrollchromecontext",
       "label": "ScrollChromeContext.jsx",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "scrollchromecontext.jsx",
       "source_file": "src/context/ScrollChromeContext.jsx",
@@ -5168,21 +5151,21 @@
       "label": "ScrollChromeContext",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "scrollchromecontext",
       "source_file": "src/context/ScrollChromeContext.jsx",
       "source_location": "L3"
     },
     {
-      "id": "src_lib_systembars",
-      "label": "systemBars.js",
+      "id": "src_lib_notifications",
+      "label": "notifications.js",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
-      "norm_label": "systembars.js",
-      "source_file": "src/lib/systemBars.js",
+      "norm_label": "notifications.js",
+      "source_file": "src/lib/notifications.js",
       "source_location": "L1"
     },
     {
@@ -5190,18 +5173,40 @@
       "label": "_app.js",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "_app.js",
       "source_file": "src/pages/_app.js",
       "source_location": "L1"
     },
     {
+      "id": "src_pages_orders",
+      "label": "orders.js",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "orders.js",
+      "source_file": "src/pages/orders.js",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_pages_orders_maptracking",
+      "label": "MapTracking",
+      "_origin": "ast",
+      "community": 5,
+      "community_name": "orders.js",
+      "file_type": "code",
+      "norm_label": "maptracking",
+      "source_file": "src/pages/orders.js",
+      "source_location": "L18"
+    },
+    {
       "id": "src_pages_product_id",
       "label": "[id].js",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "[id].js",
       "source_file": "src/pages/product/[id].js",
@@ -5212,7 +5217,7 @@
       "label": "PRODUCT_IMAGES",
       "_origin": "ast",
       "community": 5,
-      "community_name": "_app.js",
+      "community_name": "orders.js",
       "file_type": "code",
       "norm_label": "product_images",
       "source_file": "src/pages/product/[id].js",
@@ -5316,6 +5321,94 @@
       "file_type": "code",
       "norm_label": "leaflet",
       "source_file": "leaflet"
+    },
+    {
+      "id": "src_components_interactivemapmodal",
+      "label": "InteractiveMapModal.jsx",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "interactivemapmodal.jsx",
+      "source_file": "src/components/InteractiveMapModal.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_components_interactivemapmodal_hub_pos",
+      "label": "HUB_POS",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "hub_pos",
+      "source_file": "src/components/InteractiveMapModal.jsx",
+      "source_location": "L9"
+    },
+    {
+      "id": "src_components_interactivemapmodal_mapwithpin",
+      "label": "MapWithPin",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "mapwithpin",
+      "source_file": "src/components/InteractiveMapModal.jsx",
+      "source_location": "L7"
+    },
+    {
+      "id": "src_components_mapwithpininner",
+      "label": "MapWithPinInner.jsx",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "mapwithpininner.jsx",
+      "source_file": "src/components/MapWithPinInner.jsx",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_lib_maps",
+      "label": "maps.js",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "maps.js",
+      "source_file": "src/lib/maps.js",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_pages_confirm_location",
+      "label": "confirm-location.js",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "confirm-location.js",
+      "source_file": "src/pages/confirm-location.js",
+      "source_location": "L1"
+    },
+    {
+      "id": "src_pages_confirm_location_hub_pos",
+      "label": "HUB_POS",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "hub_pos",
+      "source_file": "src/pages/confirm-location.js",
+      "source_location": "L11"
+    },
+    {
+      "id": "src_pages_confirm_location_mapwithpin",
+      "label": "MapWithPin",
+      "_origin": "ast",
+      "community": 6,
+      "community_name": "InteractiveMapModal.jsx",
+      "file_type": "code",
+      "norm_label": "mapwithpin",
+      "source_file": "src/pages/confirm-location.js",
+      "source_location": "L9"
     },
     {
       "id": "next_next",
@@ -5554,6 +5647,30 @@
       "source_location": "L25"
     },
     {
+      "id": "docs_gotchas_6b_modal_sheets_background_scroll_the_vaul_conflict",
+      "label": "6b. Modal Sheets: Background Scroll & the vaul Conflict",
+      "_origin": "ast",
+      "community": 65,
+      "community_name": "Critical Gotchas & Pitfalls \u2014 DASHit",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "6b. modal sheets: background scroll & the vaul conflict",
+      "source_file": "docs/GOTCHAS.md",
+      "source_location": "L29"
+    },
+    {
+      "id": "docs_gotchas_6c_hidden_but_mounted_chrome_is_still_tappable",
+      "label": "6c. Hidden-but-Mounted Chrome Is Still Tappable",
+      "_origin": "ast",
+      "community": 65,
+      "community_name": "Critical Gotchas & Pitfalls \u2014 DASHit",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "6c. hidden-but-mounted chrome is still tappable",
+      "source_file": "docs/GOTCHAS.md",
+      "source_location": "L37"
+    },
+    {
       "id": "docs_gotchas_7_leaflet_never_hand_roll_panning",
       "label": "7. Leaflet: Never Hand-Roll Panning",
       "_origin": "ast",
@@ -5563,7 +5680,7 @@
       "node_kind": "heading",
       "norm_label": "7. leaflet: never hand-roll panning",
       "source_file": "docs/GOTCHAS.md",
-      "source_location": "L29"
+      "source_location": "L41"
     },
     {
       "id": "docs_gotchas_8_component_prop_contracts_are_loose",
@@ -5575,7 +5692,7 @@
       "node_kind": "heading",
       "norm_label": "8. component prop contracts are loose",
       "source_file": "docs/GOTCHAS.md",
-      "source_location": "L34"
+      "source_location": "L46"
     },
     {
       "id": "docs_gotchas_9_tailwind_class_purging",
@@ -5587,7 +5704,7 @@
       "node_kind": "heading",
       "norm_label": "9. tailwind class purging",
       "source_file": "docs/GOTCHAS.md",
-      "source_location": "L39"
+      "source_location": "L51"
     },
     {
       "id": "docs_gotchas_critical_gotchas_pitfalls_dashit",
@@ -6329,7 +6446,7 @@
       "node_kind": "heading",
       "norm_label": "1. backend: express + socket.io \u2192 firestore",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L24"
+      "source_location": "L26"
     },
     {
       "id": "docs_handoff_2_how_auth_works_now_and_what_it_does_not_do",
@@ -6341,7 +6458,7 @@
       "node_kind": "heading",
       "norm_label": "2. how auth works now (and what it does not do)",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L74"
+      "source_location": "L76"
     },
     {
       "id": "docs_handoff_3_what_the_user_must_do_blocked_on_them_not_on_you",
@@ -6353,7 +6470,7 @@
       "node_kind": "heading",
       "norm_label": "3. what the user must do (blocked on them, not on you)",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L102"
+      "source_location": "L104"
     },
     {
       "id": "docs_handoff_4_earlier_work_this_session_all_verified_all_shipped_to_the_pixel",
@@ -6365,7 +6482,31 @@
       "node_kind": "heading",
       "norm_label": "4. earlier work this session (all verified, all shipped to the pixel)",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L118"
+      "source_location": "L120"
+    },
+    {
+      "id": "docs_handoff_4b_this_session_admin_js_fully_migrated_three_real_bugs_fixed",
+      "label": "4b. This session: admin.js fully migrated + three real bugs fixed",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "Session Handoff & Implementation Status",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "4b. this session: admin.js fully migrated + three real bugs fixed",
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L146"
+    },
+    {
+      "id": "docs_handoff_4c_src_lib_openfoodfacts_js_new",
+      "label": "4c. `src/lib/openFoodFacts.js` (new)",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "Session Handoff & Implementation Status",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "4c. `src/lib/openfoodfacts.js` (new)",
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L192"
     },
     {
       "id": "docs_handoff_5_next_tasks_in_order",
@@ -6377,7 +6518,7 @@
       "node_kind": "heading",
       "norm_label": "5. next tasks, in order",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L144"
+      "source_location": "L204"
     },
     {
       "id": "docs_handoff_6_environment_traps_that_cost_time_this_session",
@@ -6389,7 +6530,19 @@
       "node_kind": "heading",
       "norm_label": "6. environment traps that cost time this session",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L153"
+      "source_location": "L214"
+    },
+    {
+      "id": "docs_handoff_7_ui_ux_session_login_sheets_nav",
+      "label": "7. UI / UX session (login, sheets, nav)",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "Session Handoff & Implementation Status",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "7. ui / ux session (login, sheets, nav)",
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L235"
     },
     {
       "id": "docs_handoff_decisions_the_user_made_do_not_re_litigate",
@@ -6401,7 +6554,7 @@
       "node_kind": "heading",
       "norm_label": "decisions the user made (do not re-litigate)",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L30"
+      "source_location": "L32"
     },
     {
       "id": "docs_handoff_files_created_this_session",
@@ -6413,7 +6566,7 @@
       "node_kind": "heading",
       "norm_label": "files created this session",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L41"
+      "source_location": "L43"
     },
     {
       "id": "docs_handoff_session_handoff_implementation_status",
@@ -6437,7 +6590,43 @@
       "node_kind": "heading",
       "norm_label": "socket.io is now redundant",
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L56"
+      "source_location": "L58"
+    },
+    {
+      "id": "docs_handoff_still_open_from_this_session",
+      "label": "Still open from this session",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "Session Handoff & Implementation Status",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "still open from this session",
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L251"
+    },
+    {
+      "id": "docs_handoff_the_user_s_firebase_project_is_live_but_rules_are_not_deployed_yet",
+      "label": "The user's Firebase project is live but rules are not deployed yet",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "Session Handoff & Implementation Status",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "the user's firebase project is live but rules are not deployed yet",
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L15"
+    },
+    {
+      "id": "docs_handoff_three_real_bugs_found_and_fixed_while_wiring_this_up",
+      "label": "Three real bugs found and fixed while wiring this up",
+      "_origin": "ast",
+      "community": 73,
+      "community_name": "Session Handoff & Implementation Status",
+      "file_type": "document",
+      "node_kind": "heading",
+      "norm_label": "three real bugs found and fixed while wiring this up",
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L170"
     },
     {
       "id": "scripts_seed_firestore",
@@ -6495,28 +6684,6 @@
       "norm_label": "capapp-spm",
       "source_file": "ios/App/CapApp-SPM/README.md",
       "source_location": "L1"
-    },
-    {
-      "id": "package_dependencies_animejs",
-      "label": "animejs",
-      "_origin": "ast",
-      "community": 76,
-      "community_name": "animejs",
-      "file_type": "code",
-      "norm_label": "animejs",
-      "source_file": "package.json",
-      "source_location": "L25"
-    },
-    {
-      "id": "animejs",
-      "label": "animejs",
-      "_origin": "ast",
-      "community": 76,
-      "community_name": "animejs",
-      "file_type": "concept",
-      "norm_label": "animejs",
-      "source_file": "package.json",
-      "source_location": "L25"
     },
     {
       "id": "package_dependencies_firebase",
@@ -6949,7 +7116,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/BottomNav.jsx",
-      "source_location": "L113",
+      "source_location": "L121",
       "weight": 1.0
     },
     {
@@ -7002,6 +7169,18 @@
     },
     {
       "source": "src_components_checkoutloginmodal_checkoutloginmodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/CheckoutLoginModal.jsx",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_checkoutloginmodal_checkoutloginmodal",
       "target": "src_lib_haptics_hapticlight",
       "relation": "calls",
       "_origin": "ast",
@@ -7009,7 +7188,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L24",
+      "source_location": "L30",
       "weight": 1.0
     },
     {
@@ -7021,7 +7200,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L25",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -7033,7 +7212,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L38",
+      "source_location": "L44",
       "weight": 1.0
     },
     {
@@ -7045,7 +7224,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L39",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -7057,7 +7236,19 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L42",
+      "source_location": "L48",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_couponsdrawer_couponsdrawer",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/CouponsDrawer.jsx",
+      "source_location": "L39",
       "weight": 1.0
     },
     {
@@ -7069,7 +7260,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L46",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -7265,6 +7456,18 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_locationpermissionmodal_locationpermissionmodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/LocationPermissionModal.jsx",
+      "source_location": "L7",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_maptracking_maptracking",
       "target": "src_lib_db_watchordertracking",
       "relation": "calls",
@@ -7302,6 +7505,18 @@
     },
     {
       "source": "src_components_orderingforsomeoneelsemodal_orderingforsomeoneelsemodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_orderingforsomeoneelsemodal_orderingforsomeoneelsemodal",
       "target": "src_lib_haptics_hapticmedium",
       "relation": "calls",
       "_origin": "ast",
@@ -7309,7 +7524,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L16",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -7321,7 +7536,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L25",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -7333,7 +7548,19 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/PaymentMethodModal.jsx",
-      "source_location": "L10",
+      "source_location": "L14",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_paymentmethodmodal_paymentmethodmodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/PaymentMethodModal.jsx",
+      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -7613,6 +7840,30 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_ui_vauldrawer_vauldrawer",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/ui/VaulDrawer.jsx",
+      "source_location": "L16",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_variantselectormodal_variantselectormodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/components/VariantSelectorModal.jsx",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_variantselectormodal_variantselectormodal",
       "target": "src_lib_haptics_hapticmedium",
       "relation": "calls",
@@ -7621,7 +7872,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L31",
+      "source_location": "L36",
       "weight": 1.0
     },
     {
@@ -7633,7 +7884,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L35",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -7645,7 +7896,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L40",
+      "source_location": "L45",
       "weight": 1.0
     },
     {
@@ -7657,7 +7908,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L51",
+      "source_location": "L56",
       "weight": 1.0
     },
     {
@@ -7693,7 +7944,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L40",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -7705,7 +7956,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L82",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -7717,7 +7968,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L84",
+      "source_location": "L92",
       "weight": 1.0
     },
     {
@@ -7729,7 +7980,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L90",
+      "source_location": "L98",
       "weight": 1.0
     },
     {
@@ -7741,7 +7992,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L121",
+      "source_location": "L129",
       "weight": 1.0
     },
     {
@@ -7753,7 +8004,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L111",
+      "source_location": "L119",
       "weight": 1.0
     },
     {
@@ -7765,7 +8016,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L113",
+      "source_location": "L121",
       "weight": 1.0
     },
     {
@@ -7777,7 +8028,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L115",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -7789,7 +8040,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L51",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
@@ -7801,7 +8052,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L61",
+      "source_location": "L69",
       "weight": 1.0
     },
     {
@@ -7813,7 +8064,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L62",
+      "source_location": "L70",
       "weight": 1.0
     },
     {
@@ -7825,7 +8076,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L68",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -7837,7 +8088,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/api.js",
-      "source_location": "L104",
+      "source_location": "L112",
       "weight": 1.0
     },
     {
@@ -7849,7 +8100,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L225",
+      "source_location": "L229",
       "weight": 1.0
     },
     {
@@ -7861,7 +8112,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L233",
+      "source_location": "L237",
       "weight": 1.0
     },
     {
@@ -7873,43 +8124,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L244",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth_sendotp",
-      "target": "src_lib_auth_toe164",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/lib/auth.js",
-      "source_location": "L101",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth_sendotp",
-      "target": "src_lib_firebase_getfirebaseauth",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/lib/auth.js",
-      "source_location": "L110",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth_sendotp",
-      "target": "src_lib_auth_ensurerecaptcha",
-      "relation": "calls",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "call",
-      "source_file": "src/lib/auth.js",
-      "source_location": "L119",
+      "source_location": "L409",
       "weight": 1.0
     },
     {
@@ -7921,7 +8136,163 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L99",
+      "source_location": "L103",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_sendotp",
+      "target": "src_lib_auth_toe164",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L105",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_sendotp",
+      "target": "src_lib_firebase_getfirebaseauth",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L114",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_sendotp",
+      "target": "src_lib_auth_ensurerecaptcha",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L123",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithemail",
+      "target": "src_lib_firebase_getfirebaseauth",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L288",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithemail",
+      "target": "src_lib_auth_ensureuserprofile",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L300",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithemail",
+      "target": "src_lib_auth_cachelocaluser",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L304",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithgoogle",
+      "target": "src_lib_firebase_getfirebaseauth",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L261",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithgoogle",
+      "target": "src_lib_auth_ensureuserprofile",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L269",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithgoogle",
+      "target": "src_lib_auth_cachelocaluser",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L273",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithtruecaller",
+      "target": "src_lib_firebase_getfirebaseauth",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L369",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithtruecaller",
+      "target": "src_lib_auth_cachelocaluser",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L376",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithtruecaller",
+      "target": "src_lib_auth_toe164",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L380",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signinwithtruecaller",
+      "target": "src_lib_auth_ensureuserprofile",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L392",
       "weight": 1.0
     },
     {
@@ -7933,11 +8304,11 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L271",
+      "source_location": "L436",
       "weight": 1.0
     },
     {
-      "source": "src_lib_auth_verifyotp",
+      "source": "src_lib_auth_signupwithemail",
       "target": "src_lib_firebase_getfirebaseauth",
       "relation": "calls",
       "_origin": "ast",
@@ -7945,12 +8316,36 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L160",
+      "source_location": "L326",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signupwithemail",
+      "target": "src_lib_auth_ensureuserprofile",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L341",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_signupwithemail",
+      "target": "src_lib_auth_cachelocaluser",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L345",
       "weight": 1.0
     },
     {
       "source": "src_lib_auth_verifyotp",
-      "target": "src_lib_auth_cachelocaluser",
+      "target": "src_lib_firebase_getfirebaseauth",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -7962,6 +8357,18 @@
     },
     {
       "source": "src_lib_auth_verifyotp",
+      "target": "src_lib_auth_cachelocaluser",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/lib/auth.js",
+      "source_location": "L168",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth_verifyotp",
       "target": "src_lib_auth_ensureuserprofile",
       "relation": "calls",
       "_origin": "ast",
@@ -7969,7 +8376,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L193",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -7981,7 +8388,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/lib/auth.js",
-      "source_location": "L259",
+      "source_location": "L424",
       "weight": 1.0
     },
     {
@@ -8550,6 +8957,18 @@
     },
     {
       "source": "src_pages_account_accountpage",
+      "target": "src_lib_auth_signout",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/pages/account.js",
+      "source_location": "L271",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_account_accountpage",
       "target": "src_lib_platform_isios",
       "relation": "calls",
       "_origin": "ast",
@@ -8557,7 +8976,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/account.js",
-      "source_location": "L41",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -8569,7 +8988,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/account.js",
-      "source_location": "L53",
+      "source_location": "L55",
       "weight": 1.0
     },
     {
@@ -8581,7 +9000,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/account.js",
-      "source_location": "L63",
+      "source_location": "L65",
       "weight": 1.0
     },
     {
@@ -8593,7 +9012,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/account.js",
-      "source_location": "L64",
+      "source_location": "L66",
       "weight": 1.0
     },
     {
@@ -9018,6 +9437,18 @@
     },
     {
       "source": "src_pages_index_storefronthome",
+      "target": "src_lib_db_watchproducts",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/pages/index.js",
+      "source_location": "L118",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_index_storefronthome",
       "target": "src_lib_maps_reversegeocodecoords",
       "relation": "calls",
       "_origin": "ast",
@@ -9025,31 +9456,55 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/index.js",
-      "source_location": "L84",
+      "source_location": "L86",
       "weight": 1.0
     },
     {
       "source": "src_pages_login_loginpage",
-      "target": "src_lib_api_sendotp",
+      "target": "src_lib_auth_signinwithgoogle",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/login.js",
-      "source_location": "L29",
+      "source_location": "L154",
       "weight": 1.0
     },
     {
       "source": "src_pages_login_loginpage",
-      "target": "src_lib_api_verifyotp",
+      "target": "src_lib_auth_signupwithemail",
       "relation": "calls",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/pages/login.js",
-      "source_location": "L38",
+      "source_location": "L203",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_login_loginpage",
+      "target": "src_lib_auth_signinwithemail",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/pages/login.js",
+      "source_location": "L204",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_login_loginpage",
+      "target": "src_lib_auth_signinwithtruecaller",
+      "relation": "calls",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "call",
+      "source_file": "src/pages/login.js",
+      "source_location": "L78",
       "weight": 1.0
     },
     {
@@ -9217,7 +9672,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L40",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -9363,7 +9818,7 @@
       "context": "import",
       "deferred": true,
       "source_file": "src/lib/api.js",
-      "source_location": "L88",
+      "source_location": "L96",
       "weight": 1.0
     },
     {
@@ -10066,6 +10521,18 @@
     },
     {
       "source": "src_components_checkoutloginmodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/CheckoutLoginModal.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_checkoutloginmodal",
       "target": "src_lib_api_sendotp",
       "relation": "imports",
       "_origin": "ast",
@@ -10073,7 +10540,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -10085,7 +10552,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -10097,7 +10564,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -10109,7 +10576,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -10121,7 +10588,19 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_couponsdrawer",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/CouponsDrawer.jsx",
+      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -10133,7 +10612,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -10145,7 +10624,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -10425,6 +10904,18 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_locationpermissionmodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/LocationPermissionModal.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_locationpickermodal",
       "target": "src_components_interactivemapmodal_interactivemapmodal",
       "relation": "imports",
@@ -10486,6 +10977,18 @@
     },
     {
       "source": "src_components_orderingforsomeoneelsemodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_orderingforsomeoneelsemodal",
       "target": "src_lib_haptics_hapticlight",
       "relation": "imports",
       "_origin": "ast",
@@ -10493,7 +10996,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -10505,7 +11008,19 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_paymentmethodmodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/PaymentMethodModal.jsx",
+      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -10517,7 +11032,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/PaymentMethodModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -10905,6 +11420,18 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_ui_vauldrawer",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/ui/VaulDrawer.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_unserviceableareascreen",
       "target": "src_lib_haptics_hapticlight",
       "relation": "imports",
@@ -10974,6 +11501,18 @@
       "context": "import",
       "source_file": "src/components/VariantSelectorModal.jsx",
       "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_variantselectormodal",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/VariantSelectorModal.jsx",
+      "source_location": "L6",
       "weight": 1.0
     },
     {
@@ -11105,7 +11644,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/auth.js",
-      "source_location": "L9",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -11117,7 +11656,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/auth.js",
-      "source_location": "L9",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -11129,7 +11668,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/auth.js",
-      "source_location": "L9",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -11141,7 +11680,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/auth.js",
-      "source_location": "L9",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -11189,24 +11728,12 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/account.js",
-      "source_location": "L20",
-      "weight": 1.0
-    },
-    {
-      "source": "src_pages_account",
-      "target": "src_lib_wishlist_getwishlist",
-      "relation": "imports",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/pages/account.js",
       "source_location": "L21",
       "weight": 1.0
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_haptics_hapticlight",
+      "target": "src_lib_auth_signout",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11218,7 +11745,7 @@
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_navigation_goback",
+      "target": "src_lib_wishlist_getwishlist",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11230,7 +11757,7 @@
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_platform_isios",
+      "target": "src_lib_haptics_hapticlight",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11242,7 +11769,7 @@
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_motion_spring_snappy",
+      "target": "src_lib_navigation_goback",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -11250,6 +11777,30 @@
       "context": "import",
       "source_file": "src/pages/account.js",
       "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_account",
+      "target": "src_lib_platform_isios",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/account.js",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_account",
+      "target": "src_lib_motion_spring_snappy",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/account.js",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -12082,7 +12633,7 @@
     },
     {
       "source": "src_pages_index",
-      "target": "src_lib_motion_ease_out",
+      "target": "src_lib_db_watchproducts",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -12090,6 +12641,30 @@
       "context": "import",
       "source_file": "src/pages/index.js",
       "source_location": "L20",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_index",
+      "target": "src_lib_firebase_isfirebaseconfigured",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/index.js",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_index",
+      "target": "src_lib_motion_ease_out",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/index.js",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12101,7 +12676,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/index.js",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12113,7 +12688,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/index.js",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12125,7 +12700,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/index.js",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12137,7 +12712,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/index.js",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12149,7 +12724,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/index.js",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12161,7 +12736,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/index.js",
-      "source_location": "L20",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -12214,38 +12789,50 @@
     },
     {
       "source": "src_pages_login",
-      "target": "src_components_loginproductmarquee_loginproductmarquee",
+      "target": "src_lib_auth_signinwithemail",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/login.js",
-      "source_location": "L5",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
       "source": "src_pages_login",
-      "target": "src_lib_api_sendotp",
+      "target": "src_lib_auth_signinwithgoogle",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/login.js",
-      "source_location": "L7",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
       "source": "src_pages_login",
-      "target": "src_lib_api_verifyotp",
+      "target": "src_lib_auth_signinwithtruecaller",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/login.js",
-      "source_location": "L7",
+      "source_location": "L13",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_login",
+      "target": "src_lib_auth_signupwithemail",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/login.js",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -12790,6 +13377,18 @@
     },
     {
       "source": "src_components_checkoutloginmodal",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/CheckoutLoginModal.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_checkoutloginmodal",
       "target": "src_lib_api",
       "relation": "imports_from",
       "_origin": "ast",
@@ -12797,7 +13396,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -12809,7 +13408,19 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L5",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_couponsdrawer",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/CouponsDrawer.jsx",
+      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -12821,7 +13432,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -13005,6 +13616,18 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_locationpermissionmodal",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/LocationPermissionModal.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_locationpickermodal",
       "target": "src_components_interactivemapmodal",
       "relation": "imports_from",
@@ -13054,6 +13677,18 @@
     },
     {
       "source": "src_components_orderingforsomeoneelsemodal",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_orderingforsomeoneelsemodal",
       "target": "src_lib_haptics",
       "relation": "imports_from",
       "_origin": "ast",
@@ -13061,7 +13696,19 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
+      "weight": 1.0
+    },
+    {
+      "source": "src_components_paymentmethodmodal",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/PaymentMethodModal.jsx",
+      "source_location": "L2",
       "weight": 1.0
     },
     {
@@ -13073,7 +13720,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/components/PaymentMethodModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -13281,6 +13928,18 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_ui_vauldrawer",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/ui/VaulDrawer.jsx",
+      "source_location": "L2",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_unserviceableareascreen",
       "target": "src_lib_haptics",
       "relation": "imports_from",
@@ -13329,6 +13988,18 @@
       "weight": 1.0
     },
     {
+      "source": "src_components_variantselectormodal",
+      "target": "src_lib_usebodyscrolllock",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/components/VariantSelectorModal.jsx",
+      "source_location": "L6",
+      "weight": 1.0
+    },
+    {
       "source": "src_components_voicesearchmodal",
       "target": "src_lib_haptics",
       "relation": "imports_from",
@@ -13373,7 +14044,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/lib/auth.js",
-      "source_location": "L9",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -13409,24 +14080,12 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/account.js",
-      "source_location": "L20",
-      "weight": 1.0
-    },
-    {
-      "source": "src_pages_account",
-      "target": "src_lib_wishlist",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/pages/account.js",
       "source_location": "L21",
       "weight": 1.0
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_haptics",
+      "target": "src_lib_api",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -13438,7 +14097,7 @@
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_navigation",
+      "target": "src_lib_wishlist",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -13450,7 +14109,7 @@
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_platform",
+      "target": "src_lib_haptics",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -13462,7 +14121,7 @@
     },
     {
       "source": "src_pages_account",
-      "target": "src_lib_motion",
+      "target": "src_lib_navigation",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -13470,6 +14129,30 @@
       "context": "import",
       "source_file": "src/pages/account.js",
       "source_location": "L25",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_account",
+      "target": "src_lib_platform",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/account.js",
+      "source_location": "L26",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_account",
+      "target": "src_lib_motion",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/account.js",
+      "source_location": "L27",
       "weight": 1.0
     },
     {
@@ -13978,7 +14661,7 @@
     },
     {
       "source": "src_pages_index",
-      "target": "src_lib_motion",
+      "target": "src_lib_db",
       "relation": "imports_from",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -13986,6 +14669,30 @@
       "context": "import",
       "source_file": "src/pages/index.js",
       "source_location": "L20",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_index",
+      "target": "src_lib_firebase",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/index.js",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
+      "source": "src_pages_index",
+      "target": "src_lib_motion",
+      "relation": "imports_from",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "import",
+      "source_file": "src/pages/index.js",
+      "source_location": "L22",
       "weight": 1.0
     },
     {
@@ -14038,18 +14745,6 @@
     },
     {
       "source": "src_pages_login",
-      "target": "src_components_loginproductmarquee",
-      "relation": "imports_from",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "import",
-      "source_file": "src/pages/login.js",
-      "source_location": "L5",
-      "weight": 1.0
-    },
-    {
-      "source": "src_pages_login",
       "target": "src_lib_api",
       "relation": "imports_from",
       "_origin": "ast",
@@ -14057,7 +14752,7 @@
       "confidence_score": 1.0,
       "context": "import",
       "source_file": "src/pages/login.js",
-      "source_location": "L7",
+      "source_location": "L13",
       "weight": 1.0
     },
     {
@@ -14578,7 +15273,55 @@
     },
     {
       "source": "src_lib_api",
+      "target": "src_lib_auth_signinwithemail",
+      "relation": "re_exports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "re-export",
+      "source_file": "src/lib/api.js",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_api",
+      "target": "src_lib_auth_signinwithgoogle",
+      "relation": "re_exports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "re-export",
+      "source_file": "src/lib/api.js",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_api",
+      "target": "src_lib_auth_signinwithtruecaller",
+      "relation": "re_exports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "re-export",
+      "source_file": "src/lib/api.js",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_api",
       "target": "src_lib_auth_signout",
+      "relation": "re_exports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "re-export",
+      "source_file": "src/lib/api.js",
+      "source_location": "L22",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_api",
+      "target": "src_lib_auth_signupwithemail",
       "relation": "re_exports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -15354,7 +16097,7 @@
     },
     {
       "source": "docs_gotchas_critical_gotchas_pitfalls_dashit",
-      "target": "docs_gotchas_7_leaflet_never_hand_roll_panning",
+      "target": "docs_gotchas_6b_modal_sheets_background_scroll_the_vaul_conflict",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -15376,13 +16119,35 @@
     },
     {
       "source": "docs_gotchas_critical_gotchas_pitfalls_dashit",
+      "target": "docs_gotchas_6c_hidden_but_mounted_chrome_is_still_tappable",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/GOTCHAS.md",
+      "source_location": "L37",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_gotchas_critical_gotchas_pitfalls_dashit",
+      "target": "docs_gotchas_7_leaflet_never_hand_roll_panning",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/GOTCHAS.md",
+      "source_location": "L41",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_gotchas_critical_gotchas_pitfalls_dashit",
       "target": "docs_gotchas_8_component_prop_contracts_are_loose",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/GOTCHAS.md",
-      "source_location": "L34",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -15393,7 +16158,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/GOTCHAS.md",
-      "source_location": "L39",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -15419,6 +16184,17 @@
       "weight": 1.0
     },
     {
+      "source": "docs_handoff_0_where_the_work_stopped_read_this_first",
+      "target": "docs_handoff_the_user_s_firebase_project_is_live_but_rules_are_not_deployed_yet",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L15",
+      "weight": 1.0
+    },
+    {
       "source": "docs_handoff_1_backend_express_socket_io_firestore",
       "target": "docs_handoff_decisions_the_user_made_do_not_re_litigate",
       "relation": "contains",
@@ -15426,7 +16202,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L30",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -15437,7 +16213,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L41",
+      "source_location": "L43",
       "weight": 1.0
     },
     {
@@ -15448,7 +16224,29 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L56",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_handoff_4b_this_session_admin_js_fully_migrated_three_real_bugs_fixed",
+      "target": "docs_handoff_three_real_bugs_found_and_fixed_while_wiring_this_up",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L170",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_handoff_7_ui_ux_session_login_sheets_nav",
+      "target": "docs_handoff_still_open_from_this_session",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L251",
       "weight": 1.0
     },
     {
@@ -15459,7 +16257,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L102",
+      "source_location": "L104",
       "weight": 1.0
     },
     {
@@ -15470,7 +16268,29 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L118",
+      "source_location": "L120",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_handoff_session_handoff_implementation_status",
+      "target": "docs_handoff_4b_this_session_admin_js_fully_migrated_three_real_bugs_fixed",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L146",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_handoff_session_handoff_implementation_status",
+      "target": "docs_handoff_4c_src_lib_openfoodfacts_js_new",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L192",
       "weight": 1.0
     },
     {
@@ -15481,7 +16301,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L144",
+      "source_location": "L204",
       "weight": 1.0
     },
     {
@@ -15492,7 +16312,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L153",
+      "source_location": "L214",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_handoff_session_handoff_implementation_status",
+      "target": "docs_handoff_7_ui_ux_session_login_sheets_nav",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/HANDOFF.md",
+      "source_location": "L235",
       "weight": 1.0
     },
     {
@@ -15503,7 +16334,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L24",
+      "source_location": "L26",
       "weight": 1.0
     },
     {
@@ -15514,7 +16345,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/HANDOFF.md",
-      "source_location": "L74",
+      "source_location": "L76",
       "weight": 1.0
     },
     {
@@ -16537,7 +17368,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/CheckoutLoginModal.jsx",
-      "source_location": "L7",
+      "source_location": "L8",
       "weight": 1.0
     },
     {
@@ -16548,7 +17379,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -16559,7 +17390,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/CouponsDrawer.jsx",
-      "source_location": "L6",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -16768,7 +17599,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/LocationPermissionModal.jsx",
-      "source_location": "L4",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -16856,7 +17687,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/OrderingForSomeoneElseModal.jsx",
-      "source_location": "L6",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -16867,7 +17698,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/PaymentMethodModal.jsx",
-      "source_location": "L6",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -17164,7 +17995,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ui/EmptyState.jsx",
-      "source_location": "L37",
+      "source_location": "L40",
       "weight": 1.0
     },
     {
@@ -17175,7 +18006,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ui/EmptyState.jsx",
-      "source_location": "L39",
+      "source_location": "L42",
       "weight": 1.0
     },
     {
@@ -17285,7 +18116,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/ui/VaulDrawer.jsx",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0
     },
     {
@@ -17307,7 +18138,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L11",
+      "source_location": "L12",
       "weight": 1.0
     },
     {
@@ -17318,7 +18149,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/components/VariantSelectorModal.jsx",
-      "source_location": "L8",
+      "source_location": "L9",
       "weight": 1.0
     },
     {
@@ -17406,7 +18237,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L101",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -17417,7 +18248,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L110",
+      "source_location": "L118",
       "weight": 1.0
     },
     {
@@ -17428,7 +18259,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L118",
+      "source_location": "L126",
       "weight": 1.0
     },
     {
@@ -17439,7 +18270,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L24",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -17450,7 +18281,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L33",
+      "source_location": "L41",
       "weight": 1.0
     },
     {
@@ -17461,7 +18292,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L40",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -17472,7 +18303,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L42",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -17483,7 +18314,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L46",
+      "source_location": "L54",
       "weight": 1.0
     },
     {
@@ -17494,7 +18325,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L50",
+      "source_location": "L58",
       "weight": 1.0
     },
     {
@@ -17505,117 +18336,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/api.js",
-      "source_location": "L81",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_verifyotp",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L136",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_ensureuserprofile",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L224",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_getstaffrole",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L243",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_watchauth",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L258",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_signout",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L267",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_issuecode",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L47",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_toe164",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L54",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_getlocaluser",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L60",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_cachelocaluser",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L70",
-      "weight": 1.0
-    },
-    {
-      "source": "src_lib_auth",
-      "target": "src_lib_auth_ensurerecaptcha",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "src/lib/auth.js",
-      "source_location": "L84",
+      "source_location": "L89",
       "weight": 1.0
     },
     {
@@ -17626,7 +18347,161 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/lib/auth.js",
-      "source_location": "L97",
+      "source_location": "L101",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_verifyotp",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L140",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_ensureuserprofile",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L228",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_signinwithgoogle",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L260",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_signinwithemail",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L287",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_signupwithemail",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L325",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_signinwithtruecaller",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L368",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_getstaffrole",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L408",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_watchauth",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L423",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_signout",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L432",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_issuecode",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L51",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_toe164",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L58",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_getlocaluser",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L64",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_cachelocaluser",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L74",
+      "weight": 1.0
+    },
+    {
+      "source": "src_lib_auth",
+      "target": "src_lib_auth_ensurerecaptcha",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/auth.js",
+      "source_location": "L88",
       "weight": 1.0
     },
     {
@@ -18466,6 +19341,17 @@
       "weight": 1.0
     },
     {
+      "source": "src_lib_usebodyscrolllock",
+      "target": "src_lib_usebodyscrolllock_usebodyscrolllock",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/lib/useBodyScrollLock.js",
+      "source_location": "L21",
+      "weight": 1.0
+    },
+    {
       "source": "src_lib_utils",
       "target": "src_lib_utils_cn",
       "relation": "contains",
@@ -18539,7 +19425,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/account.js",
-      "source_location": "L27",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -18748,7 +19634,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/index.js",
-      "source_location": "L22",
+      "source_location": "L24",
       "weight": 1.0
     },
     {
@@ -18759,7 +19645,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/index.js",
-      "source_location": "L31",
+      "source_location": "L33",
       "weight": 1.0
     },
     {
@@ -18770,7 +19656,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "src/pages/login.js",
-      "source_location": "L9",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -19195,5 +20081,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "2234253ee632921dedc815a9bc71e67659e3f76a"
+  "built_at_commit": "916c2d45f571f2bf42655e78d801e12c49703aca"
 }

@@ -26,6 +26,18 @@
 - **Problem**: Edge-to-edge screens (iPhone notch/island, Android gesture bar) clip bottom pills.
 - **Rule**: Always pad floating docks with `bottom: max(16px, calc(12px + env(safe-area-inset-bottom, 16px)))`.
 
+### 6b. Modal Sheets: Background Scroll & the vaul Conflict
+- **Symptom**: opening a bottom sheet (variant "more options", address picker) and dragging scrolled the page *behind* the sheet instead of the sheet's own content.
+- **Two separate causes, both fixed**:
+  1. The hand-rolled sheets (`VariantSelectorModal`, `CheckoutLoginModal`, `OrderingForSomeoneElseModal`, `LocationPermissionModal`) had **no scroll container at all** — no `max-h`, no `overflow-y-auto`. They now have `max-h-[85vh] overflow-y-auto overscroll-contain`.
+  2. Nothing locked `<body>`. `src/lib/useBodyScrollLock.js` now does, and every sheet uses it — including `ui/VaulDrawer.jsx`.
+- **The trap worth remembering**: vaul is *supposed* to lock background scroll itself. Measured against this app it does not — and worse, it writes `body.style.position = "relative"` **after** the lock effect runs, silently undoing it (`top` was applied but computed position stayed `relative` and the page still scrolled). That is why `useBodyScrollLock` sets its properties with `"important"` priority. Do not "clean that up" — a plain inline write loses to vaul.
+- **Rule**: any new sheet gets `useBodyScrollLock(isOpen)` plus its own `overflow-y-auto overscroll-contain`. Call the hook **before** the `if (!isOpen) return null` guard — hooks cannot be conditional.
+
+### 6c. Hidden-but-Mounted Chrome Is Still Tappable
+- **Trap**: `BottomNav` never unmounts; when hidden it only animates to `opacity: 0` / `translateY(110)`. It stayed hit-testable, so an invisible tab near the bottom edge could be tapped on `/login` or `/admin` and navigate the user away.
+- **Rule**: anything hidden by animation rather than unmounting needs `pointer-events-none` and `aria-hidden` while hidden. Same applies to any future hidden overlay.
+
 ### 7. Leaflet: Never Hand-Roll Panning
 - **Problem**: `MapWithPinInner.jsx` once ran a custom `touchmove` handler calling `map.panBy()` *while* Leaflet's own `dragging` was enabled. Both moved the map, so it travelled ~2x the finger distance and stuttered — the "map doesn't work smoothly" symptom.
 - **Rule**: Let Leaflet own panning (`dragging` + `inertia`). Do not add manual `panBy` handlers.

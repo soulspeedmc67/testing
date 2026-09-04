@@ -224,3 +224,35 @@ fallback by design (Spark has no Cloud Functions to proxy through).
   Leaflet pane transform, but tiles will not render.
 - Physical device: Pixel 5 `08201FDD40016N`.
   `npm run build && npx cap sync android && cd android && ./gradlew installDebug`.
+- **The Android app id is now `com.dashit.app`, NOT `com.dashit.anantnag`.** It was
+  changed (matching the Truecaller deep-link scheme `com.dashit.app://`). The old
+  `adb shell am start -n com.dashit.anantnag/.MainActivity` fails with
+  `Error type 3 / Activity class does not exist`. Launch with:
+  `adb -s 08201FDD40016N shell monkey -p com.dashit.app -c android.intent.category.LAUNCHER 1`
+
+---
+
+## 7. UI / UX session (login, sheets, nav)
+
+- **Login redesigned** (`src/pages/login.js`): now defaults to **Sign Up**
+  (`authTab` initial state) rather than Sign In. Removed the 12 scattered food
+  emoji and the wavy SVG divider; uses the real app icon (`/dashit-app-icon.png`)
+  instead of a text logo chip. Pill inputs → `rounded-2xl` on `white/[0.06]`
+  surfaces, gradient-glow submit → flat `#FF5B00`, and the bare circular
+  Google/Truecaller icons became labelled full-width buttons. Step 3 (delivery
+  details) was re-skinned to the same surface language.
+- **Sheet scrolling fixed** — see `docs/GOTCHAS.md` §6b. New shared hook
+  `src/lib/useBodyScrollLock.js`, applied to all seven sheet surfaces including
+  `ui/VaulDrawer.jsx`. **Verified**: with the address sheet open the background
+  no longer scrolls (held at 0), and closing restores the exact prior offset
+  (1200), not the top of the page.
+- **Bottom nav no longer tappable while hidden** — see `docs/GOTCHAS.md` §6c.
+
+### Still open from this session
+- The catalogue currently served from Firestore has **no multi-variant products**,
+  so the variant "more options" sheet could not be opened live to confirm its
+  scroll fix end-to-end. Its lock + `max-h/overflow` classes are in place and the
+  identical mechanism was verified on the address sheet, but a live check is
+  worth doing once a multi-size product exists in Firestore.
+- "UI enhancement all over the app" was scoped to login + sheet + nav this
+  session. Other screens (cart, checkout, orders) have not had a consistency pass.

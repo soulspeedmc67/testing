@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Phone, ShieldCheck, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 import { sendOtp, verifyOtp } from "../lib/api";
@@ -10,6 +11,11 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+
+  /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
+
+  useBodyScrollLock(Boolean(isOpen));
+
 
   if (!isOpen) return null;
 
@@ -74,7 +80,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 360 }}
-          className="relative w-full max-w-md bg-white rounded-t-[36px] p-6 pb-8 shadow-2xl border-t border-slate-100 z-10 overflow-hidden"
+          className="relative w-full max-w-md bg-white rounded-t-[36px] p-6 pb-8 shadow-2xl border-t border-slate-100 z-10 max-h-[88vh] overflow-y-auto overscroll-contain"
         >
           {/* Top Grab Handle */}
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-4" />
