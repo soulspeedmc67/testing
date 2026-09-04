@@ -64,7 +64,7 @@ Skills are located in `.claude/skills/`. **Never load all skills.** Use only the
 - **Sync to Native Android**: `npx cap sync android`
 - **Build & Install to Physical Pixel**: `cd android && ./gradlew installDebug`
 - **Inspect on Physical Pixel**:
-  - Start app: `adb -s 08201FDD40016N shell am start -n com.dashit.anantnag/.MainActivity`
+  - Start app: `adb -s 08201FDD40016N shell am start -n com.dashit.app/.MainActivity`
   - Screenshot: `adb -s 08201FDD40016N exec-out screencap -p > /tmp/screen.png`
 
 ---
