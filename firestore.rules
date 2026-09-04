@@ -78,7 +78,7 @@ service cloud.firestore {
 
       allow read: if isAdmin()
                   || isOwner(resource.data.userId)
-                  || (isDriver() && resource.data.driverId == request.auth.uid);
+                  || (isDriver() && (resource.data.driverId == request.auth.uid || resource.data.driverId == null || !('driverId' in resource.data)));
 
       // A customer may only create an order for themselves, and may not
       // pre-assign a driver or invent a delivered status.
@@ -93,6 +93,11 @@ service cloud.firestore {
                     || (isDriver()
                         && resource.data.driverId == request.auth.uid
                         && onlyChanges(['status', 'updatedAt', 'statusHistory']))
+                    // Driver may claim an unassigned order
+                    || (isDriver()
+                        && (resource.data.driverId == null || !('driverId' in resource.data))
+                        && request.resource.data.driverId == request.auth.uid
+                        && onlyChanges(['driverId', 'driverName', 'status', 'updatedAt', 'statusHistory']))
                     // Customer may cancel, but only while it is still Placed.
                     || (isOwner(resource.data.userId)
                         && resource.data.status == 'Placed'
