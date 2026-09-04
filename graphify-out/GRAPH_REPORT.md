@@ -1,16 +1,16 @@
 # Graph Report - Blinkit  (2026-09-04)
 
 ## Corpus Check
-- 129 files · ~129,584 words
+- 129 files · ~129,597 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 578 nodes · 1010 edges · 79 communities (49 shown, 30 thin omitted)
+- 578 nodes · 1029 edges · 78 communities (48 shown, 30 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 2 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c4986dea`
+- Built from commit: `91df1c91`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,7 +20,7 @@
 - pages/index.js
 - InteractiveMapModal.jsx
 - AppDelegate
-- LiveOrderFloatingTracker.jsx
+- _app.js
 - admin.js
 - scripts
 - server/index.js
@@ -34,7 +34,7 @@
 - AnimatedSearchBar.jsx
 - CategoryNavigationTabs.jsx
 - PromoCardsCarousel.jsx
-- api.js
+- db.js
 - @capacitor/app
 - @capacitor/cli
 - 📋 Master Client Discovery & Setup Checklist
@@ -83,9 +83,9 @@
 5. `goBack()` - 12 edges
 6. `BottomNav()` - 11 edges
 7. `AppDelegate` - 10 edges
-8. `ProductCardStepper()` - 10 edges
-9. `SPRING_SNAPPY` - 10 edges
-10. `Critical Gotchas & Pitfalls — DASHit` - 10 edges
+8. `LiveOrderFloatingTracker()` - 10 edges
+9. `ProductCardStepper()` - 10 edges
+10. `SPRING_SNAPPY` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Tabs()` --references--> `react`  [EXTRACTED]
@@ -102,31 +102,31 @@
 ## Import Cycles
 - None detected.
 
-## Communities (79 total, 30 thin omitted)
+## Communities (78 total, 30 thin omitted)
 
 ### Community 0 - "hapticLight"
 Cohesion: 0.11
 Nodes (31): CAMPAIGN_CATEGORIES, CAMPAIGN_PRODUCTS, CheckoutLoginModal(), AVAILABLE_COUPONS, CouponsDrawer(), triggerFlyToCart(), FreeDeliveryCelebrationModal(), OrderingForSomeoneElseModal() (+23 more)
 
 ### Community 1 - "orders.js"
-Cohesion: 0.11
-Nodes (22): react, react, DashitAnimatedLogo(), DashitProgressBadge(), Badge(), badgeVariants, Button, buttonSizes (+14 more)
+Cohesion: 0.08
+Nodes (34): react, react, DashitAnimatedLogo(), DashitProgressBadge(), DeliveryStatusIcon(), SIZES, statusToMark(), clampRailY() (+26 more)
 
 ### Community 2 - "pages/index.js"
 Cohesion: 0.09
 Nodes (37): CategoryGridSixPack(), SIX_PACK_CATEGORIES, CATEGORY_STRIP, CategoryScroller(), LocationPickerModal(), ProductCard(), ProductCardSkeleton(), CURATED_RAILS (+29 more)
 
 ### Community 3 - "InteractiveMapModal.jsx"
-Cohesion: 0.13
-Nodes (16): HUB_POS, InteractiveMapModal(), MapWithPin, MapTracking(), fetchRoadRoute(), reverseGeocodeCoords(), searchPlacesAutocomplete(), goBack() (+8 more)
+Cohesion: 0.15
+Nodes (13): HUB_POS, InteractiveMapModal(), MapWithPin, reverseGeocodeCoords(), searchPlacesAutocomplete(), goBack(), historyDepth(), AddAddressPage() (+5 more)
 
 ### Community 4 - "AppDelegate"
 Cohesion: 0.09
 Nodes (20): Any, Bool, Capacitor, AppDelegate, UIScene, UISceneSession, UIWindow, SceneDelegate (+12 more)
 
-### Community 5 - "LiveOrderFloatingTracker.jsx"
-Cohesion: 0.11
-Nodes (23): AnimatedCounter(), AppHeader(), BottomNav(), NAV_ITEMS, STOREFRONT_TABS, DeliveryStatusIcon(), SIZES, statusToMark() (+15 more)
+### Community 5 - "_app.js"
+Cohesion: 0.14
+Nodes (16): AnimatedCounter(), AppHeader(), BottomNav(), NAV_ITEMS, STOREFRONT_TABS, FloatingCartBar(), NAVBAR_ROUTES, STOREFRONT_ROUTES (+8 more)
 
 ### Community 6 - "admin.js"
 Cohesion: 0.22
@@ -164,9 +164,9 @@ Nodes (4): ANDROID_HOME, JAVA_HOME, PATH, build-app.sh script
 Cohesion: 0.83
 Nodes (3): gradlew script, die(), warn()
 
-### Community 20 - "api.js"
+### Community 20 - "db.js"
 Cohesion: 0.09
-Nodes (47): currentUid(), fetchAdminOrders(), fetchCatalogue(), fetchUserOrderHistory(), readLocal(), submitOrder(), writeLocal(), cacheLocalUser() (+39 more)
+Nodes (46): currentUid(), fetchAdminOrders(), fetchCatalogue(), fetchUserOrderHistory(), readLocal(), submitOrder(), writeLocal(), cacheLocalUser() (+38 more)
 
 ### Community 23 - "📋 Master Client Discovery & Setup Checklist"
 Cohesion: 0.18
@@ -221,7 +221,7 @@ Cohesion: 0.43
 Nodes (6): chunk(), here, loadEnv(), main(), readJson(), root
 
 ## Knowledge Gaps
-- **163 isolated node(s):** `build-app.sh script`, `JAVA_HOME`, `ANDROID_HOME`, `PATH`, `PackageDescription` (+158 more)
+- **162 isolated node(s):** `build-app.sh script`, `JAVA_HOME`, `ANDROID_HOME`, `PATH`, `PackageDescription` (+157 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **30 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -229,16 +229,16 @@ Nodes (6): chunk(), here, loadEnv(), main(), readJson(), root
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `dependencies` connect `dependencies` to `orders.js`, `scripts`, `@capacitor/app`, `@capacitor/cli`, `@capacitor/haptics`, `@capacitor/ios`, `@capacitor/local-notifications`, `@capacitor/core`, `clsx`, `express`, `framer-motion`, `lucide-react`, `mongoose`, `leaflet`, `next`, `react-dom`, `@remotion/player`, `socket.io`, `socket.io-client`, `tailwind-merge`, `vaul`, `@capacitor/status-bar`, `animejs`, `firebase`, `remotion`?**
-  _High betweenness centrality (0.136) - this node is a cross-community bridge._
+  _High betweenness centrality (0.137) - this node is a cross-community bridge._
 - **Why does `react` connect `orders.js` to `dependencies`?**
-  _High betweenness centrality (0.125) - this node is a cross-community bridge._
+  _High betweenness centrality (0.126) - this node is a cross-community bridge._
 - **What connects `build-app.sh script`, `JAVA_HOME`, `ANDROID_HOME` to the rest of the system?**
-  _163 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _162 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `hapticLight` be split into smaller, more focused modules?**
   _Cohesion score 0.10857142857142857 - nodes in this community are weakly interconnected._
 - **Should `orders.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.11260504201680673 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08235294117647059 - nodes in this community are weakly interconnected._
 - **Should `pages/index.js` be split into smaller, more focused modules?**
   _Cohesion score 0.0880503144654088 - nodes in this community are weakly interconnected._
-- **Should `InteractiveMapModal.jsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.12535612535612536 - nodes in this community are weakly interconnected._
+- **Should `AppDelegate` be split into smaller, more focused modules?**
+  _Cohesion score 0.08866995073891626 - nodes in this community are weakly interconnected._

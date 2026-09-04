@@ -1,9 +1,7 @@
-import { useState, useEffect } from "react";
-import io from "socket.io-client";
+import { useState } from "react";
 import Link from "next/link";
 import { Navigation, Play, Square, MapPin, KeyRound, CheckCircle2, Home, LayoutDashboard } from "lucide-react";
-
-let socket;
+import { pushDriverLocation, updateOrderStatus, ORDER_STATUS } from "../lib/db";
 
 export default function DashItDriverApp() {
   const [isTracking, setIsTracking] = useState(false);
@@ -12,13 +10,6 @@ export default function DashItDriverApp() {
   const [statusMsg, setStatusMsg] = useState("Offline");
   const [enteredOtp, setEnteredOtp] = useState("");
   const [isDelivered, setIsDelivered] = useState(false);
-
-  useEffect(() => {
-    socket = io();
-    return () => {
-      if (socket) socket.disconnect();
-    };
-  }, []);
 
   const toggleTracking = () => {
     if (isTracking) {
@@ -33,15 +24,14 @@ export default function DashItDriverApp() {
           const newLat = prev.latitude + 0.0002;
           const newLng = prev.longitude + 0.0002;
 
-          if (socket) {
-            socket.emit("update_driver_location", {
-              orderId,
-              latitude: newLat,
-              longitude: newLng,
-              heading: 45,
-              driverName: "Tariq Scooter Rider (Nai Basti Hub)"
-            });
-          }
+          pushDriverLocation(orderId, {
+            latitude: newLat,
+            longitude: newLng,
+            heading: 45,
+            driverName: "Tariq Scooter Rider (Nai Basti Hub)",
+            status: ORDER_STATUS.OUT_FOR_DELIVERY,
+          });
+
           return { latitude: newLat, longitude: newLng };
         });
       }, 3000);
@@ -50,11 +40,12 @@ export default function DashItDriverApp() {
     }
   };
 
-  const verifyOtpAndDeliver = () => {
+  const verifyOtpAndDeliver = async () => {
     if (enteredOtp.length === 4) {
       setIsDelivered(true);
       setIsTracking(false);
       setStatusMsg("Order Delivered Successfully!");
+      await updateOrderStatus(orderId, ORDER_STATUS.DELIVERED);
       alert("Delivery verified with 4-digit OTP! Order marked completed.");
     } else {
       alert("Please enter a valid 4-digit Customer Delivery OTP!");

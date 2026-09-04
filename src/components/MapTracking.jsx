@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
 import { ShieldCheck, Phone, Navigation, Clock, CheckCircle2, Bike } from "lucide-react";
 import { fetchRoadRoute } from "../lib/maps";
-
-let socket;
+import { watchOrder, watchOrderTracking } from "../lib/db";
 
 export default function MapTracking({
   orderId = "DASH-98214",
@@ -110,19 +108,19 @@ export default function MapTracking({
       }
     });
 
-    // Socket.io for live updates
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5001";
-    socket = io(socketUrl);
-    socket.emit("join_order_room", orderId);
-
+    // Realtime Firestore listeners for driver location and order status
     let animationFrameId;
 
-    socket.on("driver_location_changed", (data) => {
-      const newLat = data.latitude;
-      const newLng = data.longitude;
+    const unsubTracking = watchOrderTracking(orderId, (data) => {
+      if (!data) return;
+      const newLat = data.latitude || data.lat;
+      const newLng = data.longitude || data.lng;
+      if (!newLat || !newLng) return;
+
       setRiderLocation({ lat: newLat, lng: newLng });
       if (data.driverName) setRiderName(data.driverName);
-      setRiderStatus("Approaching your neighborhood");
+      if (data.status) setRiderStatus(data.status);
+      else setRiderStatus("Approaching your neighborhood");
 
       if (riderMarkerRef.current) {
         const prev = riderMarkerRef.current.getLatLng();
@@ -151,9 +149,16 @@ export default function MapTracking({
       }
     });
 
+    const unsubOrder = watchOrder(orderId, (ord) => {
+      if (!ord) return;
+      if (ord.driverName) setRiderName(ord.driverName);
+      if (ord.status) setRiderStatus(ord.status);
+    });
+
     return () => {
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
-      if (socket) socket.disconnect();
+      if (typeof unsubTracking === "function") unsubTracking();
+      if (typeof unsubOrder === "function") unsubOrder();
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
