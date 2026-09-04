@@ -71,11 +71,14 @@ export default function DashItDriverApp() {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Navigation className="w-5 h-5 text-orange-500" />
-            <h1 className="font-bold text-lg text-white">
-              <span className="text-orange-500">DASH</span><span className="text-sky-400">it</span> Rider App
-            </h1>
+          <div className="flex items-center space-x-2.5">
+            {/* Mark only — the logo carries the brand, no wordmark alongside it. */}
+            <img
+              src="/dashit-app-icon.png"
+              alt="Dashit"
+              className="w-8 h-8 rounded-lg shrink-0"
+            />
+            <h1 className="font-bold text-lg text-white">Rider App</h1>
           </div>
           <span className="text-xs bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded text-orange-400 font-semibold">
             ID: #ANG-102

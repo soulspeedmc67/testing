@@ -91,7 +91,15 @@ export default function BottomNav({ forceHide = false }) {
         duration: 0.45,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className="fixed left-0 right-0 z-50 flex justify-center pointer-events-auto px-4"
+      /* When hidden this only animates to opacity 0 — it stays mounted. Without
+         disabling pointer events it remains hit-testable, so an invisible tab
+         near the bottom edge could still be tapped (e.g. on /login or /admin)
+         and navigate the user away. aria-hidden keeps it out of the a11y tree
+         for the same reason. */
+      aria-hidden={shouldHide}
+      className={`fixed left-0 right-0 z-50 flex justify-center px-4 ${
+        shouldHide ? "pointer-events-none" : "pointer-events-auto"
+      }`}
       style={{
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
       }}

@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { MapPin, Navigation, ShieldCheck, X } from "lucide-react";
 
 export default function LocationPermissionModal({ isOpen, onGrantLocation, onSetManually, onClose }) {
+  /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
+  useBodyScrollLock(Boolean(isOpen));
+
   if (!isOpen) return null;
 
   return (

@@ -1,13 +1,13 @@
 {
   "android/app/build.gradle": {
-    "mtime": 1788265925.4868596,
-    "seen": 1788503555.7819827,
-    "ast_hash": "9fe7a98448edb80d5cc0cb1882b656ee",
-    "semantic_hash": "9fe7a98448edb80d5cc0cb1882b656ee"
+    "mtime": 1788523647.2230601,
+    "seen": 1788529389.0852513,
+    "ast_hash": "24a87a03118712a8935e3db436612904",
+    "semantic_hash": ""
   },
   "android/app/capacitor.build.gradle": {
-    "mtime": 1788517013.5669165,
-    "seen": 1788517676.2412403,
+    "mtime": 1788532057.0457137,
+    "seen": 1788532107.367801,
     "ast_hash": "56631eb3f84de422288f9cfc8adab130",
     "semantic_hash": "56631eb3f84de422288f9cfc8adab130"
   },
@@ -16,12 +16,6 @@
     "seen": 1788503555.782817,
     "ast_hash": "fbaf7cc870c663eb52dcf218531c439d",
     "semantic_hash": "fbaf7cc870c663eb52dcf218531c439d"
-  },
-  "android/app/src/main/java/com/dashit/anantnag/MainActivity.java": {
-    "mtime": 1788447678.0648496,
-    "seen": 1788503555.7828453,
-    "ast_hash": "aa6e1c34ee54710488df0ddb46b6dcf2",
-    "semantic_hash": "aa6e1c34ee54710488df0ddb46b6dcf2"
   },
   "android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java": {
     "mtime": 1788213237.0,
@@ -36,8 +30,8 @@
     "semantic_hash": "682315a426653617c6a74fc12bef55b6"
   },
   "android/capacitor.settings.gradle": {
-    "mtime": 1788517013.5669165,
-    "seen": 1788517676.2412484,
+    "mtime": 1788532057.0447137,
+    "seen": 1788532107.3678193,
     "ast_hash": "4ad5521839385b924d75d5a2a773d718",
     "semantic_hash": "4ad5521839385b924d75d5a2a773d718"
   },
@@ -66,10 +60,10 @@
     "semantic_hash": "992d8686d1f40bdc2756c7f7021d7bcb"
   },
   "capacitor.config.json": {
-    "mtime": 1788265954.649541,
-    "seen": 1788503555.7829013,
-    "ast_hash": "1cee89a2f4c1475b7c996324f7d2693d",
-    "semantic_hash": "1cee89a2f4c1475b7c996324f7d2693d"
+    "mtime": 1788522916.6560526,
+    "seen": 1788523002.8888607,
+    "ast_hash": "5ef09924cbafdcae30ee464931e3b1a6",
+    "semantic_hash": ""
   },
   "create_docx.py": {
     "mtime": 1788277177.9837475,
@@ -180,9 +174,9 @@
     "semantic_hash": ""
   },
   "src/components/BottomNav.jsx": {
-    "mtime": 1788513128.9521284,
-    "seen": 1788513496.6325445,
-    "ast_hash": "bec2c61cd5302ac0ce57a9af6604c66d",
+    "mtime": 1788528907.4609616,
+    "seen": 1788529389.0853102,
+    "ast_hash": "e995da86a54bb2e92e6dad20a330e14e",
     "semantic_hash": ""
   },
   "src/components/CampaignSection.jsx": {
@@ -216,15 +210,15 @@
     "semantic_hash": ""
   },
   "src/components/CheckoutLoginModal.jsx": {
-    "mtime": 1788513111.02244,
-    "seen": 1788513496.6325552,
-    "ast_hash": "c7dd84cb51515e5aab3f99fd3d4a2e74",
+    "mtime": 1788528354.5452554,
+    "seen": 1788529389.08532,
+    "ast_hash": "834610fa95b7d2a44e1ffbc82b988386",
     "semantic_hash": ""
   },
   "src/components/CouponsDrawer.jsx": {
-    "mtime": 1788513111.025314,
-    "seen": 1788513496.632557,
-    "ast_hash": "358485f81c19250d48858f3df2907ddb",
+    "mtime": 1788528345.9291224,
+    "seen": 1788529389.0853212,
+    "ast_hash": "108920cc7d67f45184c6100d1520bd8c",
     "semantic_hash": ""
   },
   "src/components/DashitAnimatedLogo.jsx": {
@@ -270,16 +264,16 @@
     "semantic_hash": ""
   },
   "src/components/LiveOrderFloatingTracker.jsx": {
-    "mtime": 1788518127.9741588,
-    "seen": 1788518434.3303838,
-    "ast_hash": "e7743392c3976076e6f0d4e26162b7e0",
+    "mtime": 1788522333.5226417,
+    "seen": 1788523002.8892224,
+    "ast_hash": "652bfe75ec09c3e2bd512b1453ec28cd",
     "semantic_hash": ""
   },
   "src/components/LocationPermissionModal.jsx": {
-    "mtime": 1788513151.8228958,
-    "seen": 1788513496.6325736,
-    "ast_hash": "2aea51ac5c3348a777050011a8d5414f",
-    "semantic_hash": "2aea51ac5c3348a777050011a8d5414f"
+    "mtime": 1788528345.906407,
+    "seen": 1788529389.0853374,
+    "ast_hash": "09e3ca6c459d308cdd5f9cfba4dbc443",
+    "semantic_hash": ""
   },
   "src/components/LocationPickerModal.jsx": {
     "mtime": 1788513111.014215,
@@ -306,15 +300,15 @@
     "semantic_hash": ""
   },
   "src/components/OrderingForSomeoneElseModal.jsx": {
-    "mtime": 1788513111.0225434,
-    "seen": 1788513496.6325824,
-    "ast_hash": "10a874dc838bd88001b4b9502be77758",
+    "mtime": 1788528356.7342892,
+    "seen": 1788529389.085345,
+    "ast_hash": "39c5676f65931ca5af3514111d01676b",
     "semantic_hash": ""
   },
   "src/components/PaymentMethodModal.jsx": {
-    "mtime": 1788513111.0220292,
-    "seen": 1788513496.6325836,
-    "ast_hash": "c05be9416800e5cb1bd8a937bcb87492",
+    "mtime": 1788528345.9203634,
+    "seen": 1788529389.0853465,
+    "ast_hash": "a9d7ddbb51add35aad79d316c264cfe5",
     "semantic_hash": ""
   },
   "src/components/ProductCard.jsx": {
@@ -360,9 +354,9 @@
     "semantic_hash": ""
   },
   "src/components/VariantSelectorModal.jsx": {
-    "mtime": 1788514135.4434156,
-    "seen": 1788515428.042103,
-    "ast_hash": "78d07d510ef4e61b3f53adc965eed9d5",
+    "mtime": 1788528319.5327067,
+    "seen": 1788529389.085359,
+    "ast_hash": "d53b90bfa2ab7f3cc77ad5e7eda4b02a",
     "semantic_hash": ""
   },
   "src/components/VoiceSearchModal.jsx": {
@@ -402,9 +396,9 @@
     "semantic_hash": "af9e04247cecdc3ede300505eede00ef"
   },
   "src/components/ui/EmptyState.jsx": {
-    "mtime": 1788513175.2215173,
-    "seen": 1788513496.6326115,
-    "ast_hash": "bb9349dfdbc4c3883a2d13f82e8a7de4",
+    "mtime": 1788531738.7305458,
+    "seen": 1788532107.3680305,
+    "ast_hash": "65b22719a49dd06e4175d25020522b69",
     "semantic_hash": ""
   },
   "src/components/ui/ShimmerImage.jsx": {
@@ -420,10 +414,10 @@
     "semantic_hash": ""
   },
   "src/components/ui/VaulDrawer.jsx": {
-    "mtime": 1788443434.3386295,
-    "seen": 1788503555.7832758,
-    "ast_hash": "480a6919e5b02194dfbd8a7ff7400551",
-    "semantic_hash": "480a6919e5b02194dfbd8a7ff7400551"
+    "mtime": 1788528784.0797002,
+    "seen": 1788529389.085374,
+    "ast_hash": "8d51bc9999c12e9b2d74bc270a3ca696",
+    "semantic_hash": ""
   },
   "src/components/ui/badge.jsx": {
     "mtime": 1788513141.4260554,
@@ -468,9 +462,9 @@
     "semantic_hash": ""
   },
   "src/lib/api.js": {
-    "mtime": 1788516985.676938,
-    "seen": 1788517676.241342,
-    "ast_hash": "4ce01d57a1a0ba7d168ba406364eac2d",
+    "mtime": 1788523452.9871304,
+    "seen": 1788529389.0853872,
+    "ast_hash": "276c7370895a9a8ca51ad1719175dd40",
     "semantic_hash": ""
   },
   "src/lib/haptics.js": {
@@ -516,15 +510,15 @@
     "semantic_hash": "87431c6a95ea83162d97e0e7156bf760"
   },
   "src/pages/_app.js": {
-    "mtime": 1788512049.2113256,
-    "seen": 1788512790.329376,
-    "ast_hash": "596f6910195d7c56942082278b20cd85",
+    "mtime": 1788524367.6130493,
+    "seen": 1788529389.0854144,
+    "ast_hash": "b4c07f70c3f626a6dfe0edeb3a82e940",
     "semantic_hash": ""
   },
   "src/pages/account.js": {
-    "mtime": 1788514087.0234427,
-    "seen": 1788515428.042236,
-    "ast_hash": "d52d634d69cf2660d303548e0c07e759",
+    "mtime": 1788523884.5231822,
+    "seen": 1788529389.0854158,
+    "ast_hash": "992a067ff5275bd1dc8b84ab215a58ba",
     "semantic_hash": ""
   },
   "src/pages/add-address.js": {
@@ -534,9 +528,9 @@
     "semantic_hash": ""
   },
   "src/pages/admin.js": {
-    "mtime": 1788513184.5164177,
-    "seen": 1788513496.6326551,
-    "ast_hash": "cb0062c0ea776db980bafec723b2e2ad",
+    "mtime": 1788521964.9203546,
+    "seen": 1788523002.889725,
+    "ast_hash": "0cf426ef6f4a64a92a4468e43702284a",
     "semantic_hash": ""
   },
   "src/pages/api/privacy/delete-account.js": {
@@ -570,21 +564,21 @@
     "semantic_hash": ""
   },
   "src/pages/driver.js": {
-    "mtime": 1788518339.9070249,
-    "seen": 1788518434.3304753,
-    "ast_hash": "e68fb69c81a2559e2f188c905e7b89fd",
+    "mtime": 1788531779.6815662,
+    "seen": 1788532107.3681579,
+    "ast_hash": "352763b4aa6f246115bca3c1578f6c52",
     "semantic_hash": ""
   },
   "src/pages/index.js": {
-    "mtime": 1788514920.1307776,
-    "seen": 1788515428.042264,
-    "ast_hash": "b7d310bded5141d912b31e9aca06a89d",
+    "mtime": 1788523923.6015134,
+    "seen": 1788529389.0854292,
+    "ast_hash": "a90bff021960cff5f95f5e10b1196307",
     "semantic_hash": ""
   },
   "src/pages/login.js": {
-    "mtime": 1788517455.1385987,
-    "seen": 1788517676.2413735,
-    "ast_hash": "eaa7263b17b8c978a06c111ac9ecf41b",
+    "mtime": 1788531519.051437,
+    "seen": 1788532107.3681643,
+    "ast_hash": "fd6cd64a6763aa5233c8beb9a1ca4fce",
     "semantic_hash": ""
   },
   "src/pages/order-again.js": {
@@ -690,9 +684,9 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1788503948.9126353,
-    "seen": 1788510023.3908865,
-    "ast_hash": "896795bcc7a6d83e3ebd1cea6187a3d6",
+    "mtime": 1788522955.3586955,
+    "seen": 1788523002.889949,
+    "ast_hash": "6fc93f13f0bc5ac6ab3d8fb1e55f236d",
     "semantic_hash": ""
   },
   "DASHit_Contract_Version1.html": {
@@ -714,15 +708,15 @@
     "semantic_hash": ""
   },
   "docs/GOTCHAS.md": {
-    "mtime": 1788516060.7969275,
-    "seen": 1788516074.1008565,
-    "ast_hash": "7691509374415d79b661958b9b2ef5aa",
+    "mtime": 1788529359.4579828,
+    "seen": 1788529389.0854607,
+    "ast_hash": "e19d3f639602f64a202971418961f98b",
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1788517664.5644581,
-    "seen": 1788517676.2413983,
-    "ast_hash": "f7a2f8215bd69cb4ab423f3d36d47997",
+    "mtime": 1788529376.26712,
+    "seen": 1788529389.0854623,
+    "ast_hash": "d77db43358769e849a6f39b1587bac25",
     "semantic_hash": ""
   },
   "ios/App/CapApp-SPM/README.md": {
@@ -1002,21 +996,21 @@
     "semantic_hash": ""
   },
   "scripts/seed-firestore.mjs": {
-    "mtime": 1788517010.8789186,
-    "seen": 1788517676.2412727,
-    "ast_hash": "a4c8e44560012c06dbf36d448a98f63a",
+    "mtime": 1788523154.594619,
+    "seen": 1788529389.0852969,
+    "ast_hash": "bc65c8c58f3a13b1a86cbf3c25a9ef40",
     "semantic_hash": ""
   },
   "src/lib/auth.js": {
-    "mtime": 1788517378.3446515,
-    "seen": 1788517676.241343,
-    "ast_hash": "4856143137af365768942a412e2b993a",
+    "mtime": 1788523445.0920472,
+    "seen": 1788529389.0853887,
+    "ast_hash": "1bb257ec0c292d658c6c6b994544279b",
     "semantic_hash": ""
   },
   "src/lib/db.js": {
-    "mtime": 1788516966.1399534,
-    "seen": 1788517676.241344,
-    "ast_hash": "826618b1c782c6b707248312ff1d1ba7",
+    "mtime": 1788521931.3472602,
+    "seen": 1788523002.8895743,
+    "ast_hash": "26d6b167b35a5c7669bafc46a775b361",
     "semantic_hash": ""
   },
   "src/lib/firebase.js": {
@@ -1029,6 +1023,84 @@
     "mtime": 1788516859.2940392,
     "seen": 1788517676.241396,
     "ast_hash": "ee42ba3681011ea26de916f7774f9476",
+    "semantic_hash": ""
+  },
+  "android/app/src/main/java/com/dashit/app/MainActivity.java": {
+    "mtime": 1788524376.0051131,
+    "seen": 1788529389.0852594,
+    "ast_hash": "9e45d3418195d2813a036b34c078614c",
+    "semantic_hash": ""
+  },
+  "src/lib/openFoodFacts.js": {
+    "mtime": 1788521763.1428697,
+    "seen": 1788523002.8896306,
+    "ast_hash": "e26ecf386ea6a587cc2e7a3e2d8283e9",
+    "semantic_hash": ""
+  },
+  "src/lib/useBodyScrollLock.js": {
+    "mtime": 1788528827.180152,
+    "seen": 1788529389.0854092,
+    "ast_hash": "d9bfb218cee56498c8786ca737acf74e",
+    "semantic_hash": ""
+  },
+  "assets/dashit-logo-lockup-navy-original.png": {
+    "mtime": 1788531432.4109674,
+    "seen": 1788532107.3683283,
+    "ast_hash": "acf6456f37e800a51789c16174fd0e7e",
+    "semantic_hash": ""
+  },
+  "assets/dashit-logo-lockup-white-original.png": {
+    "mtime": 1788531432.7806108,
+    "seen": 1788532107.3683312,
+    "ast_hash": "96bcf80c9e7c74db612645332ea0488b",
+    "semantic_hash": ""
+  },
+  "assets/flying-grocery-box-original.png": {
+    "mtime": 1788531432.0882657,
+    "seen": 1788532107.3683333,
+    "ast_hash": "ff9f6beb152ccf13e8d08368ca89310f",
+    "semantic_hash": ""
+  },
+  "assets/rider-holding-groceries-original.png": {
+    "mtime": 1788531431.222676,
+    "seen": 1788532107.3683357,
+    "ast_hash": "bc3400b78fa3020d7b34e2da9bc46ba3",
+    "semantic_hash": ""
+  },
+  "assets/rider-scooter-hero-original.png": {
+    "mtime": 1788531430.3166432,
+    "seen": 1788532107.3683379,
+    "ast_hash": "4c2ea487661a96e3773db06d9593890f",
+    "semantic_hash": ""
+  },
+  "public/art/dashit-logo-lockup-navy.png": {
+    "mtime": 1788531432.4094875,
+    "seen": 1788532107.3683538,
+    "ast_hash": "42987fff98ddd763187b14b2803d3993",
+    "semantic_hash": ""
+  },
+  "public/art/dashit-logo-lockup-white.png": {
+    "mtime": 1788531457.4984846,
+    "seen": 1788532107.368356,
+    "ast_hash": "96bcf80c9e7c74db612645332ea0488b",
+    "semantic_hash": ""
+  },
+  "public/art/flying-grocery-box.png": {
+    "mtime": 1788531432.0864875,
+    "seen": 1788532107.3683584,
+    "ast_hash": "60c490ec3948cb7858ca3626a01e3c3a",
+    "semantic_hash": ""
+  },
+  "public/art/rider-holding-groceries.png": {
+    "mtime": 1788531431.2214875,
+    "seen": 1788532107.3683608,
+    "ast_hash": "d50c22d54fcef062894588cd02b74e65",
+    "semantic_hash": ""
+  },
+  "public/art/rider-scooter-hero.png": {
+    "mtime": 1788531430.3154879,
+    "seen": 1788532107.368363,
+    "ast_hash": "114582242ecea8ceefa29ee874bed2ab",
     "semantic_hash": ""
   }
 }

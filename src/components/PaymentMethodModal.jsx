@@ -1,9 +1,13 @@
 import { useState } from "react";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { ChevronDown, ChevronRight, CreditCard, Plus, AlertCircle, CheckCircle2, ArrowLeft } from "lucide-react";
 
 import { hapticMedium } from "../lib/haptics";
 
 export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, onSelectMethod, grandTotal }) {
+  /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
+  useBodyScrollLock(Boolean(isOpen));
+
   if (!isOpen) return null;
 
   const handleSelect = (methodId, label) => {

@@ -3,6 +3,7 @@ import { X, Minus, Plus } from "lucide-react";
 import { hapticMedium, hapticLight } from "../lib/haptics";
 import { triggerFlyToCart } from "./FlyingBadgeOverlay";
 import { SPRING_SNAPPY, SPRING_BOUNCY } from "../lib/motion";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 
 /** Stable cart id for a given product + size, shared by add and qty updates. */
 export const variantCartId = (product, variant) =>
@@ -16,6 +17,10 @@ export default function VariantSelectorModal({
   onAddToCart,
   onUpdateQty,
 }) {
+  /* Must run before the early return — hooks cannot be called conditionally.
+     Passing the open state in means the lock engages and releases with the sheet. */
+  useBodyScrollLock(Boolean(isOpen && product));
+
   if (!isOpen || !product) return null;
 
   const variants = product.variants || [
@@ -70,10 +75,13 @@ export default function VariantSelectorModal({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 320 }}
-          className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 pb-[max(20px,env(safe-area-inset-bottom,20px))]"
+          /* max-h + overflow-y-auto give the sheet its OWN scroll area, and
+             overscroll-contain stops a scroll that reaches the end of this list
+             from chaining out to the page behind it. */
+          className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 pb-[max(20px,env(safe-area-inset-bottom,20px))] max-h-[85vh] overflow-y-auto overscroll-contain"
         >
-          {/* Header Row */}
-          <div className="flex items-start justify-between">
+          {/* Header Row — sticks while the variant list scrolls under it */}
+          <div className="flex items-start justify-between sticky -top-5 -mx-5 px-5 -mt-5 pt-5 pb-3 bg-white z-10">
             <div className="flex items-center space-x-3">
               <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0">
                 <img

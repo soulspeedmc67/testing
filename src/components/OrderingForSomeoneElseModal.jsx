@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Phone, User, Check, Users } from "lucide-react";
 import { hapticLight, hapticMedium } from "../lib/haptics";
@@ -7,6 +8,11 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
   const [showInputForm, setShowInputForm] = useState(false);
   const [receiverName, setReceiverName] = useState("");
   const [receiverPhone, setReceiverPhone] = useState("");
+
+  /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
+
+  useBodyScrollLock(Boolean(isOpen));
+
 
   if (!isOpen) return null;
 
@@ -45,7 +51,7 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 360 }}
-          className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-[34px] px-6 pt-7 pb-8 shadow-2xl z-10 border-t border-slate-100 dark:border-zinc-800"
+          className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-t-[34px] px-6 pt-7 pb-8 shadow-2xl z-10 border-t border-slate-100 dark:border-zinc-800 max-h-[88vh] overflow-y-auto overscroll-contain"
         >
           {/* Close Button */}
           <button

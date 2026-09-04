@@ -1,4 +1,5 @@
 import { Drawer } from "vaul";
+import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 
 export default function VaulDrawer({
   open,
@@ -8,6 +9,12 @@ export default function VaulDrawer({
   description,
   maxHeight = "max-h-[88vh]"
 }) {
+  /* vaul is supposed to lock background scroll itself, but measured against
+     this app it does not — with a drawer open the page behind still scrolled
+     (body stayed `position: relative`). Locking explicitly here fixes every
+     VaulDrawer-based sheet at once (address picker, quick view, etc.). */
+  useBodyScrollLock(Boolean(open));
+
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
