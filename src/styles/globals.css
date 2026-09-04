@@ -26,6 +26,62 @@
   padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
 }
 
+/* ==========================================================================
+   NATIVE APP EXPERIENCE RULES (Non-selectable, Touch-optimized, App-feel)
+   ========================================================================== */
+
+html, body {
+  -webkit-touch-callout: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+  overscroll-behavior-x: none !important;
+  touch-action: manipulation;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 1. Global selection lockdown across all UI text, cards, buttons & containers */
+*, *::before, *::after {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* 2. Whitelist text selection & cursor strictly inside text input fields */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+/* 3. Disable image & anchor ghost dragging */
+img, a {
+  -webkit-user-drag: none !important;
+  user-drag: none !important;
+}
+
+/* 4. Hide browser scrollbars app-wide for clean native application feel */
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0px !important;
+  height: 0px !important;
+}
+
 html {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
@@ -34,11 +90,8 @@ html {
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    @apply bg-slate-50 text-slate-900 antialiased selection:bg-amber-200 selection:text-slate-900;
+    @apply bg-slate-50 text-slate-900 antialiased;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-    touch-action: pan-y;
-    overflow-x: hidden;
   }
 }
 

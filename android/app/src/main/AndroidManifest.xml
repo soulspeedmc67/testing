@@ -23,6 +23,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Custom URL Scheme Deep Linking for Capacitor & OAuth/Truecaller -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" />
+            </intent-filter>
+
         </activity>
 
         <provider
@@ -35,6 +43,15 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
     </application>
+
+    <!-- Queries for Truecaller App Package & Scheme (Android 11+ Package Visibility) -->
+    <queries>
+        <package android:name="com.truecaller" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="truecallersdk" />
+        </intent>
+    </queries>
 
     <!-- Permissions -->
 

@@ -85,12 +85,57 @@ export default function App({ Component, pageProps }) {
     };
   }, [router]);
 
+  // Enforce native app feel by blocking browser context menus on long-press
+  useEffect(() => {
+    const handleContextMenu = (e) => {
+      const tag = e.target?.tagName?.toUpperCase();
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target?.isContentEditable) {
+        return; // Allow standard text editing context in actual inputs
+      }
+      e.preventDefault();
+    };
+
+    window.addEventListener("contextmenu", handleContextMenu);
+    return () => window.removeEventListener("contextmenu", handleContextMenu);
+  }, []);
+
+  // Handle Capacitor native deep links (e.g. com.dashit.app:// or Truecaller callbacks)
+  useEffect(() => {
+    let urlListener = null;
+    const setupUrlListener = async () => {
+      try {
+        urlListener = await CapApp.addListener("appUrlOpen", (event) => {
+          if (!event?.url) return;
+          const urlStr = event.url;
+          // Check if it's our custom scheme com.dashit.app://
+          if (urlStr.includes("com.dashit.app://")) {
+            const pathWithQuery = urlStr.replace(/^.*?com\.dashit\.app:\/\//, "");
+            if (pathWithQuery.startsWith("login") || pathWithQuery.includes("requestNonce") || pathWithQuery.includes("endpoint")) {
+              router.push("/login?" + (pathWithQuery.split("?")[1] || ""));
+            }
+          }
+        });
+      } catch (err) {
+        console.warn("CapApp appUrlOpen listener skipped", err);
+      }
+    };
+    setupUrlListener();
+    return () => {
+      if (urlListener && urlListener.remove) {
+        urlListener.remove();
+      }
+    };
+  }, [router]);
+
   return (
     // reducedMotion="user" honours the OS accessibility setting app-wide
     <MotionConfig reducedMotion="user">
       <ScrollChromeProvider>
         <Head>
-          <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+          <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+          />
         </Head>
         <motion.div
           key={router.asPath}
