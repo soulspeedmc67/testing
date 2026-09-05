@@ -17,6 +17,7 @@ import {
   X,
   Sparkles,
   LogOut,
+  User,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import { signOut } from "../lib/api";
@@ -28,12 +29,7 @@ import { SPRING_SNAPPY } from "../lib/motion";
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState({
-    name: "Azan Iqbal Mir",
-    mobile: "9622720283",
-    email: "azan.mir@example.com",
-    address: "b-3,jamia appqrtment, Anantnag"
-  });
+  const [user, setUser] = useState(null);
   const [wishlistCount, setWishlistCount] = useState(0);
   /* The iOS-style edge swipe is opt-in per platform: Android already has a
      system back gesture, and running both makes the screen fire back twice. */
@@ -44,19 +40,30 @@ export default function AccountPage() {
   }, []);
 
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem("dashit_user");
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+    const syncUser = () => {
+      try {
+        const savedUser = localStorage.getItem("dashit_user");
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        } else {
+          setUser(null);
+        }
+      } catch (e) {
+        setUser(null);
       }
-    } catch (e) {}
+    };
+    syncUser();
+    window.addEventListener("storage", syncUser);
 
     const syncWishlist = () => {
       setWishlistCount(getWishlist().length);
     };
     syncWishlist();
     window.addEventListener("dashit_wishlist_updated", syncWishlist);
-    return () => window.removeEventListener("dashit_wishlist_updated", syncWishlist);
+    return () => {
+      window.removeEventListener("dashit_wishlist_updated", syncWishlist);
+      window.removeEventListener("storage", syncUser);
+    };
   }, []);
 
   /* Navigates back, or lands on Home when this screen was opened directly
@@ -110,14 +117,49 @@ export default function AccountPage() {
       </header>
 
       <main className="max-w-md mx-auto px-4 pt-3 space-y-4">
-        {/* 2. YOUR ACCOUNT TITLE & PHONE matching Screenshot 1 */}
-        <div className="pt-1">
-          <h2 className="text-xl font-black text-slate-900 tracking-tight">Your account</h2>
-          <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-semibold mt-1">
-            <Phone className="w-3.5 h-3.5 text-slate-500" />
-            <span className="font-mono font-bold">+91-{user.mobile || "9622720283"}</span>
+        {/* 2. USER PROFILE HEADER OR GUEST WELCOME CARD */}
+        {user && user.isLoggedIn ? (
+          <div className="pt-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight">{user.name || "Your account"}</h2>
+                <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-semibold mt-1">
+                  <Phone className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="font-mono font-bold">+91-{user.mobile || "9622720283"}</span>
+                </div>
+                {user.email && (
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">{user.email}</p>
+                )}
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 border border-orange-200 flex items-center justify-center text-[#FF5B00] font-black text-lg shadow-2xs">
+                {(user.name || "U")[0].toUpperCase()}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-gradient-to-r from-orange-500 via-[#FF5B00] to-[#E04E00] rounded-3xl p-5 text-white shadow-[0_6px_20px_rgba(255,91,0,0.22)] space-y-3.5">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shrink-0">
+                <User className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-white leading-tight">Welcome to DASHit</h2>
+                <p className="text-xs text-white/90 font-medium mt-0.5">8-minute groceries in Anantnag</p>
+              </div>
+            </div>
+            <p className="text-xs text-white/85 leading-relaxed font-medium">
+              Log in or create an account to view your live orders, saved addresses, and enjoy rapid delivery.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/login")}
+              className="w-full bg-white text-[#FF5B00] hover:bg-orange-50 font-black text-xs py-3 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+            >
+              <span>Log In / Sign Up</span>
+              <ChevronRight className="w-4 h-4 stroke-[3]" />
+            </button>
+          </div>
+        )}
 
         {/* 3. TWO SHORTCUT CARDS (Wallet removed) */}
         <div className="grid grid-cols-2 gap-3">
@@ -264,26 +306,46 @@ export default function AccountPage() {
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
-            {/* Log Out */}
-            <button
-              type="button"
-              onClick={async () => {
-                await signOut();
-                router.push("/login");
-              }}
-              className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
-                  <LogOut className="w-4 h-4" />
+            {/* Auth Action: Log Out (if logged in) or Log In (if guest) */}
+            {user && user.isLoggedIn ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  setUser(null);
+                  router.push("/login");
+                }}
+                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                    <LogOut className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-rose-600 block">Log out</span>
+                    <span className="text-[10px] font-medium text-slate-400">Sign in with another account</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-xs font-bold text-rose-600 block">Log out</span>
-                  <span className="text-[10px] font-medium text-slate-400">Sign in with another account</span>
+                <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => router.push("/login")}
+                className="w-full flex items-center justify-between p-3.5 hover:bg-orange-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-[#FF5B00]"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-[#FF5B00]">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-black text-[#FF5B00] block">Log In / Sign Up</span>
+                    <span className="text-[10px] font-medium text-slate-400">Sign in to sync your orders & addresses</span>
+                  </div>
                 </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+                <ChevronRight className="w-4 h-4 text-[#FF5B00] group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            )}
           </div>
         </div>
       </main>

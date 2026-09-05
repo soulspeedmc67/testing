@@ -65,10 +65,15 @@ export default function App({ Component, pageProps }) {
     const setupBackListener = async () => {
       try {
         backHandler = await CapApp.addListener('backButton', () => {
-          // 1. Check if any open drawer / modal exists and close it first
+          // 1. Check if any open drawer / modal / bottom sheet exists and close it first
           const openDrawer = document.querySelector('[data-vaul-drawer]');
           if (openDrawer) {
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            return;
+          }
+          const openModalDismiss = document.querySelector('[data-dismiss-modal], .modal-close-btn');
+          if (openModalDismiss) {
+            openModalDismiss.click();
             return;
           }
 
@@ -96,6 +101,77 @@ export default function App({ Component, pageProps }) {
       if (backHandler && backHandler.remove) {
         backHandler.remove();
       }
+    };
+  }, [router]);
+
+  // App-wide Edge Swipe-Back gesture recognizer for native iOS and Android feel
+  useEffect(() => {
+    let startX = 0;
+    let startY = 0;
+    let isEdgeSwipe = false;
+    let startTime = 0;
+
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      // Only initiate if touch started within 30px of the left edge
+      if (touch.clientX <= 30) {
+        startX = touch.clientX;
+        startY = touch.clientY;
+        startTime = Date.now();
+        isEdgeSwipe = true;
+      } else {
+        isEdgeSwipe = false;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!isEdgeSwipe || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const deltaY = Math.abs(touch.clientY - startY);
+      const deltaX = touch.clientX - startX;
+      // Abort if user is primarily scrolling vertically
+      if (deltaY > 40 && deltaY > deltaX) {
+        isEdgeSwipe = false;
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!isEdgeSwipe) return;
+      isEdgeSwipe = false;
+      const touch = e.changedTouches[0];
+      if (!touch) return;
+      const deltaX = touch.clientX - startX;
+      const deltaY = Math.abs(touch.clientY - startY);
+      const duration = Date.now() - startTime;
+
+      // Swipe right detected: minimum 60px horizontal distance, mostly horizontal, duration < 500ms
+      if (deltaX > 60 && deltaY < deltaX * 0.7 && duration < 500) {
+        const path = currentPathRef.current;
+        const openModalDismiss = document.querySelector('[data-dismiss-modal], .modal-close-btn');
+        if (openModalDismiss) {
+          openModalDismiss.click();
+          return;
+        }
+
+        if (path !== '/' && path !== '') {
+          if (window.history.length > 1) {
+            router.back();
+          } else {
+            router.push('/');
+          }
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
   }, [router]);
 
