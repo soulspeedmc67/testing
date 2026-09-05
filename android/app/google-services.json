@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "391742831837",
+    "project_id": "dashit-1ecba",
+    "storage_bucket": "dashit-1ecba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:391742831837:android:b7d80ae78e57d567f4ef34",
+        "android_client_info": {
+          "package_name": "com.dashit.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "391742831837-6f1p9j22s60ar9fpc9sm0j2gkd5c0t9s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6tH6rYJ3fDZ7SBVkTNL3i_lOTXkPYjsg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "391742831837-6f1p9j22s60ar9fpc9sm0j2gkd5c0t9s.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
