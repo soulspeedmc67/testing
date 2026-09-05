@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
-import { Home, RotateCcw, LayoutGrid, User } from "lucide-react";
+import { Home, ShoppingBag, LayoutGrid, User } from "lucide-react";
 import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticLight } from "../lib/haptics";
 
-const STOREFRONT_TABS = ["/", "/order-again", "/categories"];
+const STOREFRONT_TABS = ["/", "/orders", "/categories"];
 
 const NAV_ITEMS = [
   { id: "home", label: "Home", icon: Home, path: "/" },
   { id: "categories", label: "Categories", icon: LayoutGrid, path: "/categories" },
-  { id: "order-again", label: "Order Again", icon: RotateCcw, path: "/order-again" },
+  { id: "orders", label: "Orders", icon: ShoppingBag, path: "/orders" },
 ];
 
 export default function BottomNav({ forceHide = false }) {
@@ -18,6 +18,25 @@ export default function BottomNav({ forceHide = false }) {
   const currentPath = router.pathname;
   const { isNavVisible } = useScrollChrome();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false);
+
+  useEffect(() => {
+    const checkActiveOrder = () => {
+      try {
+        const order = localStorage.getItem("dashit_active_order");
+        setHasActiveOrder(Boolean(order && JSON.parse(order)));
+      } catch (e) {
+        setHasActiveOrder(false);
+      }
+    };
+    checkActiveOrder();
+    window.addEventListener("storage", checkActiveOrder);
+    window.addEventListener("dashit_order_updated", checkActiveOrder);
+    return () => {
+      window.removeEventListener("storage", checkActiveOrder);
+      window.removeEventListener("dashit_order_updated", checkActiveOrder);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -133,16 +152,16 @@ export default function BottomNav({ forceHide = false }) {
                 className="flex items-center justify-center relative"
                 animate={
                   tick > 0
-                    ? item.id === "order-again"
-                      ? { rotate: [0, -360], scale: [1, 1.25, 1] }
+                    ? item.id === "orders"
+                      ? { scale: [1, 1.25, 0.92, 1], rotate: [0, -10, 10, 0] }
                       : item.id === "categories"
                       ? { scale: [1, 1.28, 0.92, 1], rotate: [0, -16, 16, -6, 0] }
                       : { scale: [1, 1.3, 0.9, 1.08, 1], y: [0, -5, 2, 0] }
                     : { scale: 1, y: 0, rotate: 0 }
                 }
                 transition={
-                  item.id === "order-again"
-                    ? { duration: 0.65, ease: [0.34, 1.56, 0.64, 1] }
+                  item.id === "orders"
+                    ? { duration: 0.5, ease: [0.34, 1.56, 0.64, 1] }
                     : { duration: 0.48, ease: "easeOut" }
                 }
               >
@@ -151,6 +170,12 @@ export default function BottomNav({ forceHide = false }) {
                     isActive ? "stroke-[2.8] text-[#061838]" : "stroke-[2] text-slate-400"
                   }`}
                 />
+                {item.id === "orders" && hasActiveOrder && (
+                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5B00]"></span>
+                  </span>
+                )}
               </motion.div>
 
               <motion.span

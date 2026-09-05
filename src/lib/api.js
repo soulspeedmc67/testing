@@ -24,6 +24,7 @@ export {
   watchAuth,
   signOut,
   signInWithGoogle,
+  signInWithGoogleDirect,
   signInWithTruecaller,
   signInWithEmail,
   signUpWithEmail,

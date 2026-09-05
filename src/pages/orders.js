@@ -1,9 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { goBack } from "../lib/navigation";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
-import { Package, Clock, ArrowLeft, CheckCircle2, ChevronRight, ChevronDown, ChevronUp, ShoppingBag, X, RotateCcw, MapPin } from "lucide-react";
+import {
+  Package,
+  Clock,
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ShoppingBag,
+  X,
+  RotateCcw,
+  MapPin,
+  Sparkles,
+  Plus,
+  Minus,
+  Check,
+  Truck,
+} from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
 import { Button } from "../components/ui/button";
@@ -14,6 +31,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
 import { watchOrder } from "../lib/db";
+import { ALL_PRODUCTS } from "../data/products";
+import { hapticLight, hapticCartAdd } from "../lib/haptics";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -24,6 +43,92 @@ export default function OrdersPage() {
   const [orderHistory, setOrderHistory] = useState([]);
   const [showPastOrdersModal, setShowPastOrdersModal] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(false);
+  const [cart, setCart] = useState([]);
+  const [selectedCat, setSelectedCat] = useState("All");
+
+  // Cart sync
+  useEffect(() => {
+    const syncCart = () => {
+      try {
+        const saved = localStorage.getItem("dashit_cart");
+        if (saved) setCart(JSON.parse(saved));
+        else setCart([]);
+      } catch (e) {}
+    };
+    syncCart();
+    window.addEventListener("dashit_cart_updated", syncCart);
+    window.addEventListener("storage", syncCart);
+    return () => {
+      window.removeEventListener("dashit_cart_updated", syncCart);
+      window.removeEventListener("storage", syncCart);
+    };
+  }, []);
+
+  const saveCart = (newCart) => {
+    setCart(newCart);
+    try {
+      localStorage.setItem("dashit_cart", JSON.stringify(newCart));
+      window.dispatchEvent(new Event("dashit_cart_updated"));
+    } catch (e) {}
+  };
+
+  const handleAddToCart = (product) => {
+    hapticCartAdd();
+    const pId = String(product.id || product.barcode);
+    const existingIndex = cart.findIndex(
+      (item) => String(item.id || item.barcode) === pId
+    );
+    let newCart;
+    if (existingIndex > -1) {
+      newCart = [...cart];
+      newCart[existingIndex].qty += 1;
+    } else {
+      newCart = [...cart, { ...product, qty: 1 }];
+    }
+    saveCart(newCart);
+  };
+
+  const handleUpdateQty = (pId, delta) => {
+    hapticLight();
+    const item = cart.find((i) => String(i.id || i.barcode) === String(pId));
+    if (!item) return;
+    const newQty = item.qty + delta;
+    if (newQty <= 0) {
+      saveCart(cart.filter((i) => String(i.id || i.barcode) !== String(pId)));
+    } else {
+      saveCart(
+        cart.map((i) =>
+          String(i.id || i.barcode) === String(pId) ? { ...i, qty: newQty } : i
+        )
+      );
+    }
+  };
+
+  // Smart recommendations based on past orders and popular items
+  const recommendations = useMemo(() => {
+    const pastItemsMap = new Map();
+    [activeOrder, ...orderHistory].forEach((ord) => {
+      if (ord?.items && Array.isArray(ord.items)) {
+        ord.items.forEach((it) => {
+          const key = String(it.id || it.barcode || it.name);
+          if (!pastItemsMap.has(key)) {
+            pastItemsMap.set(key, { ...it, isPastOrder: true });
+          }
+        });
+      }
+    });
+
+    const combined = Array.from(pastItemsMap.values());
+    ALL_PRODUCTS.forEach((p) => {
+      const key = String(p.id || p.barcode || p.name);
+      if (!combined.some((c) => String(c.id || c.barcode || c.name) === key)) {
+        combined.push(p);
+      }
+    });
+
+    if (selectedCat === "All") return combined.slice(0, 10);
+    return combined.filter((p) => (p.cat || "").toLowerCase() === selectedCat.toLowerCase()).slice(0, 8);
+  }, [activeOrder, orderHistory, selectedCat]);
 
   useEffect(() => {
     const active = localStorage.getItem("dashit_active_order");
@@ -106,7 +211,7 @@ export default function OrdersPage() {
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="font-black text-base text-slate-900 tracking-tight">My Orders</h1>
+              <h1 className="font-black text-base text-slate-900 tracking-tight">Orders</h1>
               <p className="text-[10px] font-semibold text-slate-400">Live order status & receipts</p>
             </div>
           </div>
@@ -407,6 +512,117 @@ export default function OrdersPage() {
             </Link>
           </div>
         )}
+
+        {/* SMART PAST ORDER RECOMMENDATIONS & FREQUENT PICKS */}
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3.5 shadow-sm">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <div className="flex items-center space-x-2">
+              <div className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5B00] flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-xs text-slate-900 tracking-tight">
+                  Past Picks &amp; Recommendations
+                </h3>
+                <p className="text-[10px] text-slate-400 font-semibold">
+                  1-tap quick add from your favourites
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Category Filter Chips */}
+          <div className="flex space-x-1.5 overflow-x-auto scrollbar-none py-0.5">
+            {["All", "Snacks", "Dairy", "Bakery"].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setSelectedCat(cat)}
+                className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all shrink-0 cursor-pointer ${
+                  selectedCat === cat
+                    ? "bg-[#061838] text-white shadow-xs"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Recommendations Grid */}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            {recommendations.map((prod) => {
+              const pId = String(prod.id || prod.barcode);
+              const cartItem = cart.find((i) => String(i.id || i.barcode) === pId);
+              const qty = cartItem ? cartItem.qty : 0;
+
+              return (
+                <div
+                  key={pId}
+                  className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex flex-col justify-between transition-all group"
+                >
+                  <div className="relative">
+                    <div className="w-full aspect-square rounded-xl bg-white flex items-center justify-center p-2 mb-2 overflow-hidden border border-slate-100">
+                      <img
+                        src={prod.img}
+                        alt={prod.name}
+                        className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                      />
+                    </div>
+                    {prod.isPastOrder && (
+                      <span className="absolute top-1 left-1 bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                        Past Pick
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-extrabold text-slate-900 line-clamp-2 leading-tight">
+                      {prod.name}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-400 block">
+                      {prod.unit || "1 unit"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/60">
+                    <span className="font-mono font-black text-xs text-slate-900">
+                      ₹{prod.price}
+                    </span>
+
+                    {qty === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(prod)}
+                        className="bg-white hover:bg-orange-50 active:scale-90 border border-[#FF5B00] text-[#FF5B00] font-black text-[11px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-2xs"
+                      >
+                        ADD
+                      </button>
+                    ) : (
+                      <div className="flex items-center bg-[#FF5B00] text-white rounded-lg px-2 py-0.5 space-x-2 font-mono font-bold text-xs shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQty(pId, -1)}
+                          className="hover:scale-110 active:scale-90 cursor-pointer"
+                        >
+                          -
+                        </button>
+                        <span className="text-[11px]">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQty(pId, 1)}
+                          className="hover:scale-110 active:scale-90 cursor-pointer"
+                        >
+                          +
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* WELL-ORDERED PAST ORDERS SECTION */}
         <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3 shadow-sm">

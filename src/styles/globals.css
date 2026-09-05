@@ -14,8 +14,8 @@
   --primary-text: #0f172a;
   --secondary-text: #64748b;
   --bg-slate: #f8fafc;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: max(env(safe-area-inset-top, 0px), 0px);
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
 }
 
 .safe-top-padding {
@@ -37,10 +37,8 @@ html, body {
   -ms-user-select: none !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent !important;
-  overscroll-behavior: none !important;
-  overscroll-behavior-y: none !important;
-  overscroll-behavior-x: none !important;
-  touch-action: manipulation;
+  overscroll-behavior-y: contain;
+  overscroll-behavior-x: auto;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
