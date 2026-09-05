@@ -55,7 +55,7 @@ export const CATEGORIES_CATALOG = [
     label: "Snacks & Munchies",
     shortName: "Snacks",
     icon: Cookie,
-    img: "https://images.unsplash.com/photo-1621996346565-e3d5d6281699?w=120&auto=format&fit=crop&q=80",
+    img: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=120&auto=format&fit=crop&q=80",
     aliases: ["snacks", "munchies", "namkeen", "sev"]
   },
   {
@@ -314,18 +314,18 @@ export default function CategoriesPage() {
                     />
                   )}
 
-                  {/* Thumbnail / Icon Container */}
+                  {/* Thumbnail Container: square cropped */}
                   <div
-                    className={`w-11 h-11 rounded-2xl flex items-center justify-center p-1 mb-1 transition-all duration-300 ${
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden mb-1.5 transition-all duration-300 ${
                       isSelected
-                        ? "scale-105 bg-orange-50 border border-orange-200"
-                        : "bg-white/80 border border-slate-200"
+                        ? "scale-105 ring-2 ring-[#FF5B00] shadow-xs"
+                        : "border border-slate-200/90 shadow-2xs"
                     }`}
                   >
                     <img
                       src={cat.img}
                       alt={cat.label}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover aspect-square"
                       loading="lazy"
                     />
                   </div>

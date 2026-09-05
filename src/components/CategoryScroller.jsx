@@ -20,8 +20,8 @@ export const CATEGORY_STRIP = [
 
 export default function CategoryScroller({ activeCategory = "All", onSelectCategory }) {
   return (
-    <div className="w-full bg-[#FFFDF5] border-b border-amber-100/50 py-1.5">
-      <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 max-w-md mx-auto scroll-smooth">
+    <div className="w-full bg-[#FFFDF5] border-b border-amber-100/50 pt-2 pb-2">
+      <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 max-w-md mx-auto scroll-smooth pt-1 pb-1">
         {CATEGORY_STRIP.map((cat) => {
           const Icon = cat.icon;
           const isActive = activeCategory === cat.id;
@@ -36,7 +36,7 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
                 e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
                 if (onSelectCategory) onSelectCategory(cat.id);
               }}
-              className="flex flex-col items-center shrink-0 space-y-1 relative pb-1 group focus:outline-none select-none cursor-pointer"
+              className="flex flex-col items-center shrink-0 space-y-1 relative pt-0.5 pb-1 group focus:outline-none select-none cursor-pointer"
             >
               <div
                 className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all duration-300 ${
