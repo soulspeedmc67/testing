@@ -40,9 +40,11 @@ public class MainActivity extends BridgeActivity {
         }
         window.getDecorView().setSystemUiVisibility(initFlags);
 
-        // Initialize Official Google Play Services Sign-In
+        // Initialize Official Google Play Services Sign-In with Web Client ID for Firebase Auth
         try {
+            String serverClientId = "391742831837-6f1p9j22s60ar9fpc9sm0j2gkd5c0t9s.apps.googleusercontent.com";
             GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestIdToken(serverClientId)
                 .requestEmail()
                 .requestProfile()
                 .build();
@@ -121,7 +123,8 @@ public class MainActivity extends BridgeActivity {
                     String displayName = account.getDisplayName() != null ? account.getDisplayName() : "";
                     String id = account.getId() != null ? account.getId() : "";
                     String photoUrl = account.getPhotoUrl() != null ? account.getPhotoUrl().toString() : "";
-                    sendGoogleAuthSuccess(email, displayName, id, photoUrl);
+                    String idToken = account.getIdToken() != null ? account.getIdToken() : "";
+                    sendGoogleAuthSuccess(email, displayName, id, photoUrl, idToken);
                     return;
                 }
             } catch (ApiException e) {
@@ -159,11 +162,11 @@ public class MainActivity extends BridgeActivity {
                 email = "kanyualeem416@gmail.com";
             }
 
-            sendGoogleAuthSuccess(email, displayName, "google_" + System.currentTimeMillis(), "");
+            sendGoogleAuthSuccess(email, displayName, "google_" + System.currentTimeMillis(), "", "");
         }
     }
 
-    private void sendGoogleAuthSuccess(String email, String displayName, String id, String photoUrl) {
+    private void sendGoogleAuthSuccess(String email, String displayName, String id, String photoUrl, String idToken) {
         runOnUiThread(() -> {
             if (this.bridge != null && this.bridge.getWebView() != null) {
                 JSONObject obj = new JSONObject();
@@ -172,6 +175,7 @@ public class MainActivity extends BridgeActivity {
                     obj.put("displayName", displayName);
                     obj.put("id", id);
                     obj.put("photoUrl", photoUrl);
+                    obj.put("idToken", idToken != null ? idToken : "");
                 } catch (Exception ignored) {}
                 String script = "if (window.onNativeGoogleSignInSuccess) { window.onNativeGoogleSignInSuccess(" + obj.toString() + "); }";
                 this.bridge.getWebView().evaluateJavascript(script, null);

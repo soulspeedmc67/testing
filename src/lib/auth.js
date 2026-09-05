@@ -6,8 +6,10 @@ import {
   signOut as fbSignOut,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseAuth, getDb, AUTH_MODE, DEV_OTP } from "./firebase";
@@ -284,7 +286,7 @@ export async function signInWithGoogle() {
 }
 
 /** Signs in with Google Account directly on mobile without popup dependency. */
-export async function signInWithGoogleDirect(email = "user@gmail.com", name = "", password = null) {
+export async function signInWithGoogleDirect(email = "user@gmail.com", name = "", idToken = null) {
   const cleanEmail = String(email || "user@gmail.com").trim().toLowerCase();
   const displayName = String(name || cleanEmail.split("@")[0] || "Google User").trim();
   const auth = getFirebaseAuth();
@@ -307,22 +309,20 @@ export async function signInWithGoogleDirect(email = "user@gmail.com", name = ""
     let uid;
     let fbUser;
 
-    if (password && password.length >= 6) {
+    // 1. Try real Google ID Token authentication if available from Google Play Services
+    if (idToken && typeof idToken === "string" && idToken.length > 20) {
       try {
-        const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        const credential = GoogleAuthProvider.credential(idToken);
+        const cred = await signInWithCredential(auth, credential);
         fbUser = cred.user;
         uid = fbUser.uid;
-      } catch (err) {
-        if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
-          const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-          fbUser = cred.user;
-          uid = fbUser.uid;
-        } else {
-          throw err;
-        }
+      } catch (tokenErr) {
+        console.warn("signInWithCredential using idToken failed:", tokenErr?.message);
       }
-    } else {
-      // 1-Tap Google authentication with Firebase Auth
+    }
+
+    // 2. Fallback: anonymous sign-in or existing authenticated user session
+    if (!uid) {
       const cred = auth.currentUser
         ? { user: auth.currentUser }
         : await signInAnonymously(auth);
@@ -376,6 +376,7 @@ export async function signInWithEmail(email, password) {
       email: cleanEmail,
       mobile: profile.mobile || "",
       address: profile.address || "",
+      emailVerified: fbUser.emailVerified,
       isLoggedIn: true,
     });
     return { success: true, user };
@@ -390,7 +391,7 @@ export async function signInWithEmail(email, password) {
   }
 }
 
-/** Creates a new account with Email and Password. */
+/** Creates a new account with Email and Password and dispatches email verification. */
 export async function signUpWithEmail(email, password, displayName = "") {
   const auth = getFirebaseAuth();
   if (!auth) {
@@ -407,6 +408,14 @@ export async function signUpWithEmail(email, password, displayName = "") {
   try {
     const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     const fbUser = credential.user;
+
+    // Send official Firebase email verification link to user inbox
+    try {
+      await sendEmailVerification(fbUser);
+    } catch (vErr) {
+      console.warn("Could not dispatch email verification:", vErr?.message);
+    }
+
     const profile = await ensureUserProfile(fbUser.uid, "", {
       name: displayName || cleanEmail.split("@")[0],
       email: cleanEmail,
@@ -417,9 +426,10 @@ export async function signUpWithEmail(email, password, displayName = "") {
       email: cleanEmail,
       mobile: "",
       address: "",
+      emailVerified: fbUser.emailVerified,
       isLoggedIn: true,
     });
-    return { success: true, user };
+    return { success: true, user, emailVerificationSent: true };
   } catch (e) {
     let msg = e?.message || "Account creation failed";
     if (e.code === "auth/email-already-in-use") {
