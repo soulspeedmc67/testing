@@ -20,6 +20,7 @@ import {
   MapPin,
   Crosshair,
   Mail,
+  AlertCircle,
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
@@ -318,16 +319,22 @@ export default function LoginPage() {
   // FINALIZE SETUP (STEP 3)
   // --------------------------------------------------------------------------
   const handleCompleteSetup = () => {
+    const cleanMobile = (mobile || "").replace(/\D/g, "").slice(-10);
+    if (cleanMobile.length < 10) {
+      alert("Please verify your 10-digit mobile number carefully. You will be called on this number by the delivery driver.");
+      return;
+    }
     const fullAddress = `${flatNo}, ${area}, ${city} - ${pincode}`;
     const userData = {
       name: fullName || "Valued Customer",
-      mobile: mobile || "9622720283",
+      mobile: cleanMobile,
       email: email || "",
       address: fullAddress,
       isLoggedIn: true,
     };
     try {
       localStorage.setItem("dashit_user", JSON.stringify(userData));
+      localStorage.setItem("dashit_user_phone", cleanMobile);
       localStorage.setItem(
         "dashit_user_address",
         JSON.stringify({
@@ -877,11 +884,19 @@ export default function LoginPage() {
                   <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     value={mobile}
-                    onChange={(e) => setMobile(e.target.value)}
+                    onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="9622720283"
                     className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all"
                   />
+                </div>
+                <div className="flex items-start space-x-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 mt-1 shadow-2xs">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] font-semibold leading-tight">
+                    Please verify your number carefully. You will be called on this number by the delivery driver upon arrival.
+                  </p>
                 </div>
               </div>
             </div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { goBack } from "../lib/navigation";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { ChevronLeft, Contact } from "lucide-react";
+import { ChevronLeft, Contact, AlertCircle } from "lucide-react";
 
 export default function AddAddressPage() {
   const router = useRouter();
@@ -173,12 +173,20 @@ export default function AddAddressPage() {
             <span className="text-xs font-black text-slate-700 mr-2">+91</span>
             <input
               type="tel"
+              inputMode="numeric"
+              maxLength={10}
               placeholder="Receiver's phone number*"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
               className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none font-mono"
             />
             <Contact className="w-5 h-5 text-slate-500 shrink-0 ml-2" />
+          </div>
+          <div className="flex items-start space-x-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 shadow-2xs">
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[10.5px] font-semibold leading-tight">
+              Please verify your number carefully. Our delivery driver will call this number upon arrival.
+            </p>
           </div>
 
           {/* Save as Address (optional) */}
