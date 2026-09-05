@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
-  signInWithGoogle,
   signInWithGoogleDirect,
   signInWithTruecaller,
   signInWithEmail,
@@ -194,40 +193,6 @@ export default function LoginPage() {
       }
     } catch (err) {
       setErrorMessage(err?.message || "Google sign-in failed");
-    } finally {
-      setIsGoogleProcessing(false);
-    }
-  };
-
-  const handleGoogleBrowserPopup = async () => {
-    setIsGoogleProcessing(true);
-    setErrorMessage("");
-    try {
-      const res = await signInWithGoogle();
-      if (res.success) {
-        setIsGoogleModalOpen(false);
-        if (res.user?.name && res.user?.name !== "Valued Customer") {
-          setFullName(res.user.name);
-        }
-        if (res.user?.mobile) {
-          setMobile(res.user.mobile.replace(/^\+91/, ""));
-          const userData = {
-            name: res.user.name,
-            mobile: res.user.mobile,
-            email: res.user.email || "",
-            address: `${flatNo}, ${area}, ${city} - ${pincode}`,
-            isLoggedIn: true,
-          };
-          localStorage.setItem("dashit_user", JSON.stringify(userData));
-          router.push("/");
-        } else {
-          setStep(3);
-        }
-      } else {
-        setErrorMessage(res.message || "Google popup sign-in was cancelled");
-      }
-    } catch (err) {
-      setErrorMessage(err?.message || "Google popup error");
     } finally {
       setIsGoogleProcessing(false);
     }
@@ -1011,18 +976,6 @@ export default function LoginPage() {
                       </button>
                     </div>
                   )}
-                </div>
-
-                {/* Optional Browser Popup fallback */}
-                <div className="pt-2 text-center">
-                  <button
-                    type="button"
-                    disabled={isGoogleProcessing}
-                    onClick={handleGoogleBrowserPopup}
-                    className="text-[11px] font-semibold text-slate-400 hover:text-slate-600 underline cursor-pointer"
-                  >
-                    Or try browser popup sign-in
-                  </button>
                 </div>
               </div>
 
