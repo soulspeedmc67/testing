@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { motion, MotionConfig } from 'framer-motion';
@@ -10,6 +10,7 @@ import LiveOrderFloatingTracker from '../components/LiveOrderFloatingTracker';
 import FloatingCartBar from '../components/FloatingCartBar';
 import BottomNav from '../components/BottomNav';
 import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
+import PremiumSplashScreen from '../components/PremiumSplashScreen';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
 import { initNotificationPermissions } from '../lib/notifications';
 
@@ -19,6 +20,7 @@ import { EASE_OUT } from '../lib/motion';
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     currentPathRef.current = router.pathname;
@@ -27,6 +29,16 @@ export default function App({ Component, pageProps }) {
       try {
         // Force Light Mode as requested
         document.documentElement.classList.remove("dark");
+        if (showSplash) {
+          // While splash is active, ensure dark icons over pristine white canvas
+          await setDeviceSystemBars({
+            topColor: '#00000000',
+            topDarkIcons: true,
+            bottomColor: '#FFFFFF',
+            bottomDarkIcons: true,
+          });
+          return;
+        }
         const isHome = router.pathname === '/' || router.pathname === '';
         const isSearch = router.pathname === '/search';
         const isLogin = router.pathname === '/login';
@@ -42,7 +54,7 @@ export default function App({ Component, pageProps }) {
       } catch (e) {}
     };
     syncThemeAndStatusBar();
-  }, [router.pathname]);
+  }, [router.pathname, showSplash]);
 
   // On first launch or unauthenticated visit to storefront, route to /login to ask for login
   useEffect(() => {
@@ -227,6 +239,9 @@ export default function App({ Component, pageProps }) {
             content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
           />
         </Head>
+        {showSplash && (
+          <PremiumSplashScreen onComplete={() => setShowSplash(false)} />
+        )}
         <motion.div
           key={router.asPath}
           initial={{ opacity: 0, y: 6 }}
