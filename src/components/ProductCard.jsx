@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { Heart, Star } from "lucide-react";
 import ProductCardStepper from "./ProductCardStepper";
@@ -18,6 +19,7 @@ export default function ProductCard({
   isFavorite = false,
   onToggleFavorite
 }) {
+  const router = useRouter();
   const [favorite, setFavorite] = useState(() => {
     return isFavorite || isItemInWishlist(product?.id || product?.barcode);
   });
@@ -31,16 +33,20 @@ export default function ProductCard({
     return () => window.removeEventListener("dashit_wishlist_updated", syncFav);
   }, [product]);
 
-  /* Callers have used both names for this; accept either so a card is never
-     silently inert. (index.js passed onQuickView while this read onOpenQuickView,
-     which made home-screen cards untappable.) */
-  const openQuickView = onOpenQuickView || onQuickView;
-
   const handleHeartClick = (e) => {
     e.stopPropagation();
     const nextState = toggleWishlistItem(product);
     setFavorite(nextState);
     if (onToggleFavorite) onToggleFavorite(product.id || product.barcode, nextState);
+  };
+
+  const handleCardClick = () => {
+    const pId = product?.id || product?.barcode;
+    if (pId) {
+      router.push(`/product/${pId}`);
+    } else if (onOpenQuickView || onQuickView) {
+      (onOpenQuickView || onQuickView)(product);
+    }
   };
 
   const discountPercent =
@@ -54,7 +60,7 @@ export default function ProductCard({
       {...inViewOnce}
       whileTap={{ scale: 0.985 }}
       transition={SPRING_SNAPPY}
-      onClick={() => openQuickView && openQuickView(product)}
+      onClick={handleCardClick}
       className="bg-white rounded-2xl border border-slate-200/80 p-2.5 flex flex-col justify-between shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.09)] hover:border-slate-300/80 transition-[box-shadow,border-color] duration-200 cursor-pointer group select-none relative"
     >
       {/* Top Image Container */}

@@ -1,4 +1,5 @@
-import { Star, Clock, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/router";
+import { Star, Clock, ShieldCheck, ChevronRight } from "lucide-react";
 import VaulDrawer from "./ui/VaulDrawer";
 import ProductCardStepper from "./ProductCardStepper";
 
@@ -22,6 +23,7 @@ export default function QuickProductSheet({
   onIncrement,
   onDecrement,
 }) {
+  const router = useRouter();
   if (!product) return null;
 
   const productId = product.id || product.barcode;
@@ -75,6 +77,22 @@ export default function QuickProductSheet({
             </div>
           </div>
         </div>
+
+        {/* Link to Full Product Details & Variants */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose?.();
+            router.push(`/product/${productId}`);
+          }}
+          className="w-full py-2.5 px-3.5 bg-slate-50 hover:bg-slate-100 active:scale-[0.99] border border-slate-200/80 rounded-xl text-slate-800 text-xs font-black flex items-center justify-between transition-all cursor-pointer shadow-2xs"
+        >
+          <span className="flex items-center space-x-1.5">
+            <span className="text-[#FF5B00]">★</span>
+            <span>View Full Details, Sizes &amp; Specs</span>
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-400" />
+        </button>
 
         {/* Price & Morphing Stepper Footer */}
         <div className="pt-3 border-t border-slate-100 flex items-center justify-between">

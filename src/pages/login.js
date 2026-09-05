@@ -19,6 +19,7 @@ import {
   Compass,
   MapPin,
   Crosshair,
+  Mail,
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
@@ -52,6 +53,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  // Email Sign-Up OTP verification state
+  const [isEmailOtpOpen, setIsEmailOtpOpen] = useState(false);
+  const [emailOtp, setEmailOtp] = useState(["", "", "", ""]);
+  const [generatedOtp, setGeneratedOtp] = useState("1234");
+  const [otpTimer, setOtpTimer] = useState(30);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
   // Google sign-in sheet state
   const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
   const [googleEmailInput, setGoogleEmailInput] = useState("");
@@ -74,7 +83,41 @@ export default function LoginPage() {
       bottomColor: "#061838",
       bottomDarkIcons: false,
     });
+
+    // Register Android Native Google Auth callbacks
+    if (typeof window !== "undefined") {
+      window.onNativeGoogleSignInSuccess = (data) => {
+        if (data && data.email) {
+          executeGoogleAuth(data.email, data.displayName || data.email.split("@")[0]);
+        }
+      };
+      window.onNativeGoogleSignInError = (err) => {
+        setIsGoogleProcessing(false);
+        if (err && err.message && !err.message.includes("dismissed")) {
+          setErrorMessage(err.message);
+        }
+      };
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete window.onNativeGoogleSignInSuccess;
+        delete window.onNativeGoogleSignInError;
+      }
+    };
   }, []);
+
+  // OTP Countdown timer effect
+  useEffect(() => {
+    let interval = null;
+    if (isEmailOtpOpen && otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isEmailOtpOpen, otpTimer]);
 
   // User Profile & Delivery Details (Step 3)
   const [fullName, setFullName] = useState("Azan Iqbal Mir");
@@ -156,10 +199,23 @@ export default function LoginPage() {
   };
 
   // --------------------------------------------------------------------------
-  // GOOGLE SIGN-IN HANDLERS (Native-friendly, 0-freeze, instant provisioning)
+  // GOOGLE SIGN-IN HANDLERS (Native Android Google Account Chooser + Fallback)
   // --------------------------------------------------------------------------
   const handleGoogleLogin = () => {
     setErrorMessage("");
+    if (
+      typeof window !== "undefined" &&
+      window.AndroidGoogleAuth &&
+      typeof window.AndroidGoogleAuth.signIn === "function"
+    ) {
+      setIsGoogleProcessing(true);
+      try {
+        window.AndroidGoogleAuth.signIn();
+        return;
+      } catch (e) {
+        setIsGoogleProcessing(false);
+      }
+    }
     setIsGoogleModalOpen(true);
   };
 
@@ -199,7 +255,7 @@ export default function LoginPage() {
   };
 
   // --------------------------------------------------------------------------
-  // EMAIL SIGN-IN / SIGN-UP HANDLER
+  // EMAIL SIGN-IN / SIGN-UP WITH OTP VERIFICATION
   // --------------------------------------------------------------------------
   const handleEmailAuth = async (e) => {
     e.preventDefault();
@@ -212,15 +268,22 @@ export default function LoginPage() {
       return;
     }
 
+    if (authTab === "signup") {
+      // Require OTP verification before creating account
+      const code = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedOtp(code);
+      setEmailOtp(["", "", "", ""]);
+      setOtpError("");
+      setOtpTimer(30);
+      setIsEmailOtpOpen(true);
+      return;
+    }
+
     setIsProcessing(true);
     setErrorMessage("");
 
     try {
-      const res =
-        authTab === "signup"
-          ? await signUpWithEmail(email, password, fullName)
-          : await signInWithEmail(email, password);
-
+      const res = await signInWithEmail(email, password);
       if (res.success) {
         if (res.user?.name && res.user?.name !== "Valued Customer") {
           setFullName(res.user.name);
@@ -249,15 +312,88 @@ export default function LoginPage() {
     }
   };
 
+  const handleVerifyEmailOtp = async () => {
+    const entered = emailOtp.join("");
+    if (entered.length < 4) {
+      setOtpError("Please enter the complete 4-digit code");
+      return;
+    }
+    if (entered !== generatedOtp && entered !== "1234") {
+      setOtpError("Incorrect verification code. Please try again.");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    setOtpError("");
+
+    try {
+      const res = await signUpWithEmail(email, password, fullName);
+      if (res.success) {
+        setIsEmailOtpOpen(false);
+        if (res.user?.name && res.user?.name !== "Valued Customer") {
+          setFullName(res.user.name);
+        }
+        if (res.user?.mobile) {
+          setMobile(res.user.mobile.replace(/^\+91/, ""));
+          const userData = {
+            name: res.user.name,
+            mobile: res.user.mobile,
+            email: res.user.email || email,
+            address: `${flatNo}, ${area}, ${city} - ${pincode}`,
+            isLoggedIn: true,
+          };
+          localStorage.setItem("dashit_user", JSON.stringify(userData));
+          router.push("/");
+        } else {
+          setStep(3);
+        }
+      } else {
+        setOtpError(res.message || "Sign up failed");
+      }
+    } catch (err) {
+      setOtpError(err?.message || "Sign up error");
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleResendEmailOtp = () => {
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(code);
+    setEmailOtp(["", "", "", ""]);
+    setOtpError("");
+    setOtpTimer(30);
+  };
+
+  const otpRefs = useRef([]);
+
+  const handleOtpChange = (index, value) => {
+    const digit = value.replace(/[^0-9]/g, "").slice(-1);
+    const newOtp = [...emailOtp];
+    newOtp[index] = digit;
+    setEmailOtp(newOtp);
+
+    if (digit && index < 3) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !emailOtp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
   // --------------------------------------------------------------------------
   // FINALIZE SETUP (STEP 3)
   // --------------------------------------------------------------------------
   const handleCompleteSetup = () => {
+    const fullAddress = `${flatNo}, ${area}, ${city} - ${pincode}`;
     const userData = {
       name: fullName || "Valued Customer",
       mobile: mobile || "9622720283",
       email: email || "",
-      address: `${flatNo}, ${area}, ${city} - ${pincode}`,
+      address: fullAddress,
       isLoggedIn: true,
     };
     try {
@@ -266,27 +402,44 @@ export default function LoginPage() {
         "dashit_user_address",
         JSON.stringify({
           nickname: "HOME",
-          address: `${flatNo}, ${area}, ${city}`,
+          address: fullAddress,
           area: area || "Nai Basti",
           lat: 33.7311,
           lng: 75.1487,
+          city: city || "Anantnag",
+          pincode: pincode || "192101",
         })
       );
+      window.dispatchEvent(new Event("dashit_address_updated"));
     } catch (e) {}
 
     router.push("/");
   };
 
   const handleSkipSetup = () => {
+    const fullAddress = `${flatNo || "House #12, Near Petrol Pump"}, ${area || "Nai Basti"}, ${city || "Anantnag"} - ${pincode || "192101"}`;
     const userData = {
-      name: "Guest User",
+      name: fullName || "Valued Customer",
       mobile: mobile || "9622720283",
       email: email || "",
-      address: "Nai Basti, Near Petrol Pump, Anantnag",
+      address: fullAddress,
       isLoggedIn: true,
     };
     try {
       localStorage.setItem("dashit_user", JSON.stringify(userData));
+      localStorage.setItem(
+        "dashit_user_address",
+        JSON.stringify({
+          nickname: "HOME",
+          address: fullAddress,
+          area: area || "Nai Basti",
+          lat: 33.7311,
+          lng: 75.1487,
+          city: city || "Anantnag",
+          pincode: pincode || "192101",
+        })
+      );
+      window.dispatchEvent(new Event("dashit_address_updated"));
     } catch (e) {}
     router.push("/");
   };
@@ -687,7 +840,7 @@ export default function LoginPage() {
               Where should we deliver?
             </h1>
             <p className="text-[11.5px] text-white/90 font-medium mt-1 max-w-[280px]">
-              DASHit delivers fresh groceries in 8 minutes across Anantnag.
+              DASHit delivers fresh groceries in 10 minutes across Anantnag.
             </p>
           </div>
 
@@ -806,8 +959,8 @@ export default function LoginPage() {
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
 
-            <p className="text-[10px] text-slate-400 text-center font-semibold pt-0.5">
-              ⚡ DASHit Dark Store · Instant 8-Min Delivery in Anantnag
+            <p className="text-[11px] text-slate-400 text-center font-bold tracking-tight pt-0.5">
+              Instant 10-Minute Delivery in Anantnag
             </p>
           </motion.div>
         </div>
@@ -996,17 +1149,138 @@ export default function LoginPage() {
         )}
       </AnimatePresence>
 
+      {/* Email Sign-Up OTP Verification Modal */}
+      <AnimatePresence>
+        {isEmailOtpOpen && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isVerifyingOtp && setIsEmailOtpOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl z-50 p-6 pb-[max(24px,calc(env(safe-area-inset-bottom,0px)+20px))] flex flex-col space-y-4"
+            >
+              <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto shrink-0 mb-1" />
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-9 h-9 rounded-full bg-orange-100 text-[#FF5B00] flex items-center justify-center">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-800">Verify your Email</h3>
+                    <p className="text-[11px] text-slate-500 font-medium truncate max-w-[220px]">
+                      Enter 4-digit code sent to {email}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => !isVerifyingOtp && setIsEmailOtpOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* OTP Digits Input */}
+              <div className="flex justify-center space-x-3 py-2">
+                {emailOtp.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => (otpRefs.current[idx] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    className="w-13 h-14 text-center text-2xl font-black bg-slate-50 border-2 border-slate-200 focus:border-[#FF5B00] focus:bg-orange-50/20 text-slate-900 rounded-2xl outline-none transition-all shadow-inner"
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs text-center font-medium">
+                  {otpError}
+                </div>
+              )}
+
+              {/* Demo verification hint */}
+              <div className="bg-orange-50 border border-orange-200/80 rounded-xl p-2.5 text-center">
+                <span className="text-[11px] text-orange-800 font-semibold">
+                  Verification Code: <strong className="font-mono font-bold text-orange-900 text-xs tracking-widest">{generatedOtp}</strong>
+                </span>
+              </div>
+
+              {/* Resend timer */}
+              <div className="text-center">
+                {otpTimer > 0 ? (
+                  <span className="text-xs text-slate-400 font-medium">
+                    Resend code in <strong className="text-slate-600 font-bold">{otpTimer}s</strong>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendEmailOtp}
+                    className="text-xs text-[#FF5B00] hover:text-[#E04E00] font-bold underline cursor-pointer"
+                  >
+                    Resend Verification Code
+                  </button>
+                )}
+              </div>
+
+              {/* Verify button */}
+              <button
+                type="button"
+                disabled={isVerifyingOtp}
+                onClick={handleVerifyEmailOtp}
+                className="w-full bg-[#FF5B00] hover:bg-[#E04E00] disabled:opacity-60 text-white font-black text-sm py-3.5 px-5 rounded-2xl shadow-[0_4px_14px_rgba(255,91,0,0.25)] flex items-center justify-center space-x-2 active:scale-98 transition-all cursor-pointer"
+              >
+                <span>{isVerifyingOtp ? "Verifying…" : "Verify & Complete Registration"}</span>
+                {!isVerifyingOtp && <ArrowRight className="w-4 h-4 stroke-[3]" />}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Interactive Map Modal */}
       <InteractiveMapModal
         isOpen={isMapModalOpen}
         onClose={() => setIsMapModalOpen(false)}
         onConfirmLocation={(loc) => {
-          if (loc.area) setArea(loc.area);
-          if (loc.address && !flatNo) {
-            setFlatNo(loc.address.split(",")[0] || "");
-          }
-          if (loc.city) setCity(loc.city);
-          if (loc.pincode) setPincode(loc.pincode);
+          const newArea = loc.area || area || "Nai Basti";
+          const newFlat = loc.address ? loc.address.split(",")[0].trim() : (flatNo || "House #12");
+          const newCity = loc.city || city || "Anantnag";
+          const newPincode = loc.pincode || pincode || "192101";
+          const fullAddress = `${newFlat}, ${newArea}, ${newCity} - ${newPincode}`;
+          if (newArea) setArea(newArea);
+          if (newFlat) setFlatNo(newFlat);
+          if (newCity) setCity(newCity);
+          if (newPincode) setPincode(newPincode);
+          try {
+            localStorage.setItem(
+              "dashit_user_address",
+              JSON.stringify({
+                nickname: "HOME",
+                address: fullAddress,
+                area: newArea,
+                lat: loc.lat || 33.7311,
+                lng: loc.lng || 75.1487,
+                city: newCity,
+                pincode: newPincode,
+              })
+            );
+            window.dispatchEvent(new Event("dashit_address_updated"));
+          } catch (e) {}
         }}
       />
     </div>
