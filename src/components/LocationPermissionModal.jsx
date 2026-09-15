@@ -18,7 +18,7 @@ export default function LocationPermissionModal({ isOpen, onGrantLocation, onSet
         <div className="space-y-1.5">
           <h3 className="font-extrabold text-base text-slate-900">Allow Location Access</h3>
           <p className="text-xs text-slate-500 font-medium leading-relaxed">
-            DASHit needs your location to check instant delivery availability in Anantnag & enable guaranteed 10-minute doorstep delivery.
+            DASHit needs your location to check delivery availability in Anantnag and route your order to your doorstep.
           </p>
         </div>
 

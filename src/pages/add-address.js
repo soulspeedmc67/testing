@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { goBack } from "../lib/navigation";
-import Head from "next/head";
 import { useRouter } from "next/router";
 import { ChevronLeft, Contact, AlertCircle } from "lucide-react";
+import SEO from "../components/SEO";
 
 export default function AddAddressPage() {
   const router = useRouter();
-  const [city, setCity] = useState("Anantnag");
-  const [area, setArea] = useState("Nai Basti");
+  const [city, setCity] = useState("");
+  const [area, setArea] = useState("");
   const [completeAddress, setCompleteAddress] = useState("");
   const [mapsLink, setMapsLink] = useState("");
   const [contactType, setContactType] = useState("Someone else");
@@ -25,27 +25,25 @@ export default function AddAddressPage() {
     // Save address in localStorage
     const saved = {
       nickname: addressLabel || "Home",
-      address: `${completeAddress}, ${area}, ${city}`,
-      lat: 33.7311,
-      lng: 75.1487,
-      phone: phone || "9622720283",
+      address: [completeAddress, area, city].filter(Boolean).join(", "),
+      lat: 33.735832,
+      lng: 75.143614,
+      phone: phone || "",
       receiver: receiverName || "Self"
     };
     try {
       localStorage.setItem("dashit_user_address", JSON.stringify(saved));
     } catch (err) {}
 
-    router.push("/");
+    router.push("/shop");
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col justify-between">
-      <Head>
-        <title>Add Address Details — Dashit</title>
-      </Head>
+      <SEO title="Add Delivery Address" noindex={true} />
 
       {/* Top Header */}
-      <header className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center sticky top-0 z-30 shadow-xs">
+      <header className="bg-white border-b border-slate-100 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center sticky top-0 z-30 shadow-xs">
         <button
           type="button"
           onClick={() => goBack(router)}
@@ -182,9 +180,9 @@ export default function AddAddressPage() {
             />
             <Contact className="w-5 h-5 text-slate-500 shrink-0 ml-2" />
           </div>
-          <div className="flex items-start space-x-2 p-2.5 rounded-xl bg-amber-50/90 border border-amber-200/80 text-amber-900 shadow-2xs">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-[10.5px] font-semibold leading-tight">
+          <div className="flex items-start space-x-2 px-0.5">
+            <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+            <p className="text-[11px] font-medium leading-snug text-slate-500">
               Please verify your number carefully. Our delivery driver will call this number upon arrival.
             </p>
           </div>

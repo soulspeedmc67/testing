@@ -1,9 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Caveat:wght@700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
   /* DASHit brand palette — orange is the primary/interactive colour,
      midnight is the disciplined text/surface anchor. Green is reserved
      for semantic success only and is never used as a brand accent. */
@@ -14,12 +14,17 @@
   --primary-text: #0f172a;
   --secondary-text: #64748b;
   --bg-slate: #f8fafc;
-  --safe-top: max(env(safe-area-inset-top, 0px), 0px);
-  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-safe-pt: calc(env(safe-area-inset-top, 0px) + 12px);
 }
 
 .safe-top-padding {
-  padding-top: max(8px, env(safe-area-inset-top, 0px));
+  padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
+}
+
+.header-safe-padding {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
 }
 
 .safe-bottom-padding {
@@ -37,11 +42,51 @@ html, body {
   -ms-user-select: none !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent !important;
-  overscroll-behavior-y: contain;
-  overscroll-behavior-x: auto;
-  overflow-x: hidden;
+  overscroll-behavior-y: none !important;
+  overscroll-behavior-x: none !important;
+  overflow-x: clip;
+  min-height: 100%;
+  background-color: #FFFFFF;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.admin-scroll {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+.admin-scroll::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+}
+.admin-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+}
+.admin-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 9999px !important;
+}
+.admin-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+.dark .admin-scroll,
+html.dark .admin-scroll {
+  scrollbar-color: #3f3f46 #12141a !important;
+}
+.dark .admin-scroll::-webkit-scrollbar-track,
+html.dark .admin-scroll::-webkit-scrollbar-track {
+  background: #12141a !important;
+}
+.dark .admin-scroll::-webkit-scrollbar-thumb,
+html.dark .admin-scroll::-webkit-scrollbar-thumb {
+  background: #3f3f46 !important;
+}
+.dark .admin-scroll::-webkit-scrollbar-thumb:hover,
+html.dark .admin-scroll::-webkit-scrollbar-thumb:hover {
+  background: #52525b !important;
 }
 
 /* 1. Global selection lockdown across all UI text, cards, buttons & containers */
@@ -55,12 +100,78 @@ html, body {
 }
 
 /* 2. Whitelist text selection & cursor strictly inside text input fields */
-input, textarea, [contenteditable="true"] {
+input, textarea, select, [contenteditable="true"] {
   -webkit-user-select: text !important;
   -moz-user-select: text !important;
   -ms-user-select: text !important;
   user-select: text !important;
   -webkit-touch-callout: default !important;
+}
+
+/* Prevent iOS Safari / WKWebView auto-zoom when tapping inputs */
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Fast tap response & eliminate 300ms double-tap delay on iOS */
+button, a, [role="button"], input[type="submit"], input[type="button"] {
+  touch-action: manipulation;
+}
+
+/* 60 FPS Smooth Momentum Scrolling & Composited Scrolling Layers */
+.overflow-y-auto, .overflow-x-auto, .overflow-auto, [data-scrollable="true"] {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain;
+}
+
+/* 60 FPS GPU Promotion & Hardware Acceleration for high-frequency animations & fixed chrome */
+.gpu-accelerated,
+.floating-pill-nav,
+.animate-bottom-sheet,
+.animate-modal-pop,
+.ios-press,
+header.sticky {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
+}
+
+input, textarea, [contenteditable="true"] {
+  color-scheme: light;
+  color: #0f172a;
+}
+
+select {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+.dark input,
+.dark textarea,
+html.dark input,
+html.dark textarea {
+  color-scheme: dark;
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+}
+
+.dark select,
+html.dark select {
+  color-scheme: dark;
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
 }
 
 /* 3. Disable image & anchor ghost dragging */
@@ -82,7 +193,6 @@ img, a {
 
 html {
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
 }
 
 @layer base {
@@ -273,15 +383,15 @@ html {
 @keyframes searchWavePulse {
   0% {
     transform: scale(0.96);
-    box-shadow: 0 0 0 0 rgba(12, 131, 31, 0.25);
+    box-shadow: 0 0 0 0 rgba(255, 91, 0, 0.25);
   }
   50% {
     transform: scale(1.01);
-    box-shadow: 0 0 0 8px rgba(12, 131, 31, 0);
+    box-shadow: 0 0 0 8px rgba(255, 91, 0, 0);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(12, 131, 31, 0);
+    box-shadow: 0 0 0 0 rgba(255, 91, 0, 0);
   }
 }
 
@@ -290,3 +400,154 @@ html {
 }
 
 
+
+
+/* ---------------------------------------------------------------------------
+   Thermal packing slip printing.
+
+   PrintPackingSlip portals a copy of the slip to <body> as #dashit-print-root.
+   Everything else in <body> is display:none while printing — `visibility:hidden`
+   was used before, which hides an element but keeps the space it occupies, so
+   the whole admin console was still laid out invisibly and the slip printed
+   across seven mostly-blank pages.
+
+   `@page { margin: 0 }` is also what removes the browser's own header and
+   footer: the page title, the localhost URL, the date and "1 of 7".
+--------------------------------------------------------------------------- */
+@media screen {
+  #dashit-print-root { display: none; }
+}
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    height: auto !important;
+  }
+  body > * { display: none !important; }
+  body > #dashit-print-root { display: block !important; }
+  #dashit-print-root {
+    position: static !important;
+    width: 80mm;
+    margin: 0 auto;
+    padding: 3mm;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+  @page { size: 80mm auto; margin: 0; }
+}
+
+/* ==========================================================================
+   ACCESSIBILITY FOUNDATIONS
+
+   Three gaps that a native-feeling shell tends to open up, closed in one
+   place so every screen inherits the fix rather than each component
+   re-solving it.
+   ========================================================================== */
+
+/* 1. Focus visibility.
+
+   `-webkit-tap-highlight-color: transparent` and the reset above strip every
+   default focus affordance, which is correct for touch and wrong for
+   keyboards: nothing on the app rendered any focus indicator at all, so a
+   keyboard or switch-control user had no way to tell where they were.
+
+   :focus-visible is used rather than :focus so this never fires on a finger
+   tap — only when the browser judges a visible indicator is warranted.
+
+   Drawn with `outline` rather than `box-shadow` deliberately. Much of this UI
+   carries Tailwind `shadow-*` utilities, and those set the box-shadow
+   property outright, so a shadow-based ring was being silently overwritten on
+   exactly the buttons that most needed it. Outline is a separate property
+   nothing here competes for, and current WebKit and Blink both follow
+   border-radius when drawing it, so it still hugs the pills and cards. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #FF5B00;
+  outline-offset: 2px;
+}
+
+/* Against the midnight surfaces the orange keeps a 3.5:1 separation, but the
+   offset gap needs to read as a gap rather than as part of the button. */
+.bg-\[\#061838\] a:focus-visible,
+.bg-\[\#061838\] button:focus-visible,
+.bg-\[\#061838\] [role="button"]:focus-visible,
+.bg-slate-900 button:focus-visible,
+.bg-black button:focus-visible {
+  outline-color: #FFFFFF;
+}
+
+/* 2. Reduce Motion.
+
+   The interface drives ~200 Framer Motion animations plus the keyframes
+   above. Reduce Motion is a vestibular accessibility setting, not a
+   preference for a duller app, so transforms that move things across the
+   screen are collapsed to near-zero duration while opacity is left alone —
+   state changes still read, they just stop travelling. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-bottom-sheet,
+  .animate-modal-pop,
+  .animate-ios-blur,
+  .animate-search-text {
+    animation: fadeInOverlay 0.01ms forwards !important;
+  }
+
+  .ios-press:active {
+    transform: none;
+  }
+}
+
+/* 3. Selectable content.
+
+   The global user-select lockdown is deliberate — it is what stops long-press
+   from raising a text-selection bubble over the storefront. But it also makes
+   the few strings a customer genuinely needs to copy uncopyable: order IDs,
+   delivery addresses, support contact details. This opts those back in
+   without loosening the rule anywhere else. */
+.selectable,
+.selectable * {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+  -webkit-touch-callout: default !important;
+}
+
+/* 4. Minimum touch target.
+
+   Applies a 44x44 hit area to a control that is visually smaller, without
+   changing how it looks or how it sits in the layout. The pseudo-element is
+   centred on the control and sits behind its own content. */
+/* The ::after below needs a positioned ancestor, but plain `position: relative`
+   here also *overrides* Tailwind's `absolute` — same specificity, and this file
+   is emitted after the utilities, so it wins. That silently knocked the
+   wishlist heart out of its absolute corner and back into normal flow.
+   `:where()` contributes no specificity, so this now only supplies a
+   positioning context to elements that do not already carry one. */
+.tap-target-44:where(:not(.absolute):not(.fixed):not(.sticky)) {
+  position: relative;
+}
+.tap-target-44::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}

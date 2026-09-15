@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { setDeviceSystemBars } from "../lib/systemBars";
 
@@ -13,12 +13,42 @@ import { setDeviceSystemBars } from "../lib/systemBars";
  * - Delicate, thin strokes with subtle contrast against the background
  * - Subtle accent elements: tiny sky-blue and brand-orange dots, 4-point sparkle diamonds, hollow rings
  * - Dedicated focal breathing space around the center logo
- * - Center DASHit logo gently scales in (95% -> 100%) and fades in
- * - Elegant 1.8s total sequence fading seamlessly into the underlying app
+ *
+ * Logo choreography (assets cropped from the master lockup so they stay pixel-aligned):
+ *   0.00s  navy mark fades up and settles from 88% scale
+ *   0.30s  the orange dash hurtles in from off-screen left, overshoots its slot
+ *          and springs back to rest (see DASH_OVERSHOOT_BUDGET)
+ *   0.65s  the "dashit" wordmark rises underneath
+ *   1.35s  handoff — the lockup zooms through the viewer while the white
+ *          overlay clears, revealing whatever screen is mounted behind it
  */
-export default function PremiumSplashScreen({ onComplete }) {
+// Dash slot measured off the master lockup, expressed as a share of the mark box
+const DASH_SLOT = {
+  left: "-0.682%",
+  top: "41.912%",
+  width: "47.727%",
+  height: "16.667%",
+};
+
+// Overshoot budget: measured on the master lockup, across the dash's vertical
+// band the navy arc never comes closer than 143px = 68% of the dash's own
+// width. So the dash must not extend more than 68% of its width past its
+// resting right edge, or it collides with the arc. The keyframes below peak at
+// x 16% + scaleX 1.06 anchored left = 22% past rest, about a third of budget.
+
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1];
+const EASE_IN_OUT = [0.65, 0, 0.35, 1];
+
+export default function PremiumSplashScreen({ onComplete, onExitStart }) {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
+
+  // Callbacks arrive as inline arrows, so hold them in refs and let the
+  // sequence below run exactly once instead of restarting on every re-render
+  const onCompleteRef = useRef(onComplete);
+  const onExitStartRef = useRef(onExitStart);
+  onCompleteRef.current = onComplete;
+  onExitStartRef.current = onExitStart;
 
   useEffect(() => {
     // Set system status bar to transparent with dark icons during splash
@@ -30,23 +60,24 @@ export default function PremiumSplashScreen({ onComplete }) {
     });
 
     // Timing sequence:
-    // 0ms - 1350ms: Logo scales in and holds composition
-    // 1350ms - 1800ms: Smooth fade-out (450ms)
-    // 1800ms: Unmount and signal completion
+    // 0ms - 1450ms: mark, dash bounce and wordmark assemble, then hold
+    // 1450ms - 1950ms: lockup zooms through and the overlay clears
+    // 1950ms: unmount and hand control to the screen behind
     const exitTimer = setTimeout(() => {
       setIsExiting(true);
-    }, 1350);
+      if (onExitStartRef.current) onExitStartRef.current();
+    }, 1450);
 
     const completeTimer = setTimeout(() => {
       setIsVisible(false);
-      if (onComplete) onComplete();
-    }, 1800);
+      if (onCompleteRef.current) onCompleteRef.current();
+    }, 1950);
 
     return () => {
       clearTimeout(exitTimer);
       clearTimeout(completeTimer);
     };
-  }, [onComplete]);
+  }, []);
 
   if (!isVisible) return null;
 
@@ -56,7 +87,7 @@ export default function PremiumSplashScreen({ onComplete }) {
         key="dashit-splash-screen"
         initial={{ opacity: 1 }}
         animate={{ opacity: isExiting ? 0 : 1 }}
-        transition={{ duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: 0.5, ease: EASE_IN_OUT }}
         className={`fixed inset-0 z-[99999] bg-white flex items-center justify-center select-none overflow-hidden ${
           isExiting ? "pointer-events-none" : "pointer-events-auto"
         }`}
@@ -65,7 +96,24 @@ export default function PremiumSplashScreen({ onComplete }) {
           paddingBottom: "var(--safe-bottom, 0px)",
         }}
       >
-        {/* Full-bleed Scattered Monoline Doodle Pattern */}
+        {/* Full-bleed Scattered Monoline Doodle Pattern.
+            The transform lives on this wrapper, never on the <svg>: animating a
+            vector element re-rasterizes every path each frame, whereas a
+            promoted div rasterizes once and is then only composited. */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{
+            opacity: isExiting ? 0 : 1,
+            scale: isExiting ? 1.08 : 1,
+          }}
+          transition={
+            isExiting
+              ? { duration: 0.45, ease: EASE_IN_OUT }
+              : { duration: 0.9, ease: EASE_OUT_EXPO }
+          }
+          style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
+        >
         <svg
           className="absolute inset-0 w-full h-full"
           viewBox="0 0 420 900"
@@ -273,28 +321,86 @@ export default function PremiumSplashScreen({ onComplete }) {
           <circle className="accent-dot-blue" cx="275" cy="850" r="2.5" />
           <circle className="accent-dot-orange" cx="385" cy="770" r="2.5" />
         </svg>
+        </motion.div>
 
         {/* Center Logo: Clean, Focal, Breathing Space */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          // Handoff: the whole lockup zooms through the viewer as the overlay clears
           animate={{
-            opacity: 1,
-            scale: 1,
+            scale: isExiting ? 1.32 : 1,
+            opacity: isExiting ? 0 : 1,
           }}
-          transition={{
-            duration: 0.6,
-            delay: 0.1,
-            ease: [0.16, 1, 0.3, 1], // Smooth modern ease-out
-          }}
+          transition={
+            isExiting
+              ? { duration: 0.5, ease: EASE_IN_OUT }
+              : { duration: 0 }
+          }
           className="relative z-10 flex flex-col items-center justify-center pointer-events-none"
+          style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
         >
-          <div className="w-[96px] h-[96px] flex items-center justify-center drop-shadow-xs">
+          {/* Mark — navy shapes settle first, then the orange dash streaks into its slot */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.88, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: EASE_OUT_EXPO }}
+            className="relative w-[104px]"
+            style={{
+              aspectRatio: "440 / 408",
+              willChange: "transform, opacity",
+              backfaceVisibility: "hidden",
+            }}
+          >
             <img
-              src="/dashit-logo-centered.png"
+              src="/dashit-splash-mark.png"
               alt="DASHit"
-              className="w-full h-full object-contain"
+              className="absolute inset-0 w-full h-full object-contain"
             />
-          </div>
+
+            <motion.img
+              src="/dashit-splash-dash.png"
+              alt=""
+              aria-hidden="true"
+              initial={{ opacity: 0, x: "-620%", scaleX: 2.4 }}
+              animate={{
+                opacity: 1,
+                // hurtle in from off-screen -> overshoot -> swing back -> rest.
+                // Stretch resolves on arrival so the bounce reads as weight,
+                // not as a second streak.
+                x: ["-620%", "16%", "-4%", "0%"],
+                scaleX: [2.4, 1.06, 0.98, 1],
+              }}
+              transition={{
+                delay: 0.3,
+                duration: 0.72,
+                times: [0, 0.52, 0.78, 1],
+                ease: [
+                  [0.05, 0.7, 0.25, 1], // hurtle in, decelerating into the overshoot
+                  [0.45, 0, 0.55, 1], // swing back through the resting point
+                  [0.33, 0, 0.25, 1], // final settle
+                ],
+                opacity: { delay: 0.3, duration: 0.12, ease: "linear" },
+              }}
+              className="absolute object-contain"
+              style={{
+                ...DASH_SLOT,
+                transformOrigin: "left center",
+                willChange: "transform, opacity",
+                backfaceVisibility: "hidden",
+              }}
+            />
+          </motion.div>
+
+          {/* Wordmark rises underneath once the mark has resolved */}
+          <motion.img
+            src="/dashit-wordmark.png"
+            alt=""
+            aria-hidden="true"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.65, ease: EASE_OUT_EXPO }}
+            className="w-[92px] mt-3.5 object-contain"
+            style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
+          />
         </motion.div>
       </motion.div>
     </AnimatePresence>

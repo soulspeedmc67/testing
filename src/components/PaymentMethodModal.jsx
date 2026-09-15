@@ -32,158 +32,54 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
           </h1>
         </div>
 
-        {/* Scrollable Content matching media_1788424287625.png */}
+        {/* Scrollable Content */}
         <div className="overflow-y-auto p-4 space-y-4 pb-10">
-          {/* 1. RECOMMENDED */}
+          {/* 1. RECOMMENDED & ACTIVE: CASH ON DELIVERY */}
           <div className="space-y-1.5">
-            <h3 className="text-xs font-black text-slate-800 tracking-tight px-1">
-              Recommended
-            </h3>
-            <div className="bg-white border border-slate-200/90 rounded-2xl divide-y divide-slate-100 shadow-2xs overflow-hidden">
-              {/* Google Pay */}
-              <button
-                onClick={() => handleSelect("gpay", "Google Pay UPI")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center font-bold text-xs">
-                    <span className="text-blue-500 font-black">G</span><span className="text-orange-500 font-black">P</span>
-                  </div>
-                  <span className="text-xs font-bold text-slate-900">Google Pay UPI</span>
-                </div>
-                {selectedMethod?.id === "gpay" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
-
-              {/* PhonePe */}
-              <button
-                onClick={() => handleSelect("phonepe", "PhonePe UPI")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#5f259f] text-white flex items-center justify-center font-bold text-xs">
-                    पे
-                  </div>
-                  <span className="text-xs font-bold text-slate-900">PhonePe UPI</span>
-                </div>
-                {selectedMethod?.id === "phonepe" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
-
-              {/* Amazon Pay */}
-              <button
-                onClick={() => handleSelect("amazonpay", "Amazon Pay UPI")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#232F3E] text-[#FF5B00] flex items-center justify-center font-black text-[10px]">
-                    pay
-                  </div>
-                  <span className="text-xs font-bold text-slate-900">Amazon Pay UPI</span>
-                </div>
-                {selectedMethod?.id === "amazonpay" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                )}
-              </button>
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-black text-slate-800 tracking-tight">
+                Recommended Payment Method
+              </h3>
+              <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                Active &amp; Ready
+              </span>
             </div>
-          </div>
 
-          {/* 2. CARDS */}
-          <div className="space-y-1.5">
-            <h3 className="text-xs font-black text-slate-800 tracking-tight px-1">
-              Cards
-            </h3>
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-900">Add credit or debit cards</span>
-                </div>
-                <button
-                  onClick={() => handleSelect("card", "Credit/Debit Card")}
-                  className="text-xs font-black text-[#FF5B00] px-3 py-1 rounded-lg border border-orange-200 hover:bg-orange-50 active:scale-95"
-                >
-                  ADD
-                </button>
-              </div>
-
-              {/* Pluxee */}
-              <div className="pt-2 border-t border-slate-100">
-                <div className="flex items-center justify-between opacity-60">
-                  <div className="flex items-center space-x-3">
-                    <span className="px-2 py-0.5 rounded-md border border-slate-300 text-[10px] font-black text-slate-700">
-                      pluxee
-                    </span>
-                    <span className="text-xs font-bold text-slate-500">Pluxee</span>
-                  </div>
-                </div>
-                <div className="mt-2 bg-rose-50/90 border border-rose-200/70 rounded-xl p-2.5">
-                  <p className="text-[11px] font-semibold text-rose-600 leading-snug">
-                    This payment method is not applicable on orders containing non-food items
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 3. PAY BY ANY UPI APP */}
-          <div className="space-y-1.5">
-            <h3 className="text-xs font-black text-slate-800 tracking-tight px-1">
-              Pay by any UPI app
-            </h3>
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5B00] flex items-center justify-center font-black text-[10px]">
-                  UPI
-                </div>
-                <span className="text-xs font-bold text-slate-900">Add new UPI ID</span>
-              </div>
+            <div className="bg-white border-2 border-emerald-500/80 rounded-2xl shadow-sm overflow-hidden ring-2 ring-emerald-500/10">
               <button
-                onClick={() => handleSelect("upi_custom", "UPI ID")}
-                className="text-xs font-black text-[#FF5B00] px-3 py-1 rounded-lg border border-orange-200 hover:bg-orange-50 active:scale-95"
-              >
-                ADD
-              </button>
-            </div>
-          </div>
-
-          {/* 4. WALLETS & COD */}
-          <div className="space-y-1.5">
-            <h3 className="text-xs font-black text-slate-800 tracking-tight px-1">
-              Wallets & Others
-            </h3>
-            <div className="bg-white border border-slate-200/90 rounded-2xl divide-y divide-slate-100 shadow-2xs overflow-hidden">
-              <button
-                onClick={() => handleSelect("cod", "Cash on Delivery (COD)")}
-                className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 active:bg-orange-50/50 transition-colors"
+                type="button"
+                onClick={() => handleSelect("cod", "Cash on Delivery")}
+                className="w-full px-4 py-3.5 flex items-center justify-between bg-emerald-50/20 hover:bg-emerald-50/50 active:bg-emerald-50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm shadow-xs">
                     ₹
                   </div>
                   <div className="text-left">
-                    <span className="text-xs font-bold text-slate-900 block">Cash on Delivery</span>
-                    <span className="text-[10px] text-slate-500 font-medium">Pay cash directly at doorstep</span>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-xs font-black text-slate-900 block">Cash on Delivery (COD)</span>
+                      <span className="text-[9px] font-extrabold text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">Instant</span>
+                    </div>
+                    <span className="text-[10.5px] text-slate-500 font-medium">Pay cash or UPI directly to rider at doorstep</span>
                   </div>
                 </div>
-                {selectedMethod?.id === "cod" ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#FF5B00] stroke-[2.5]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                )}
+                <div className="flex items-center space-x-1">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                </div>
               </button>
             </div>
           </div>
+
+          {/*
+            The "Online Payments (Coming Soon)" section was removed.
+
+            It listed five disabled providers, each tagged "Not available yet",
+            plus an advisory that they were "undergoing scheduled integration".
+            Apple treats that as unfinished functionality (Guideline 2.2) and
+            Google Play as a Broken Functionality violation. Cash on delivery is
+            the only method the store actually accepts, so it is the only one
+            offered. Add providers back here when they genuinely work.
+          */}
         </div>
       </div>
     </div>

@@ -1,11 +1,13 @@
-import { Utensils, Cookie, GlassWater, Croissant } from "lucide-react";
+import { Home, Utensils, Carrot, Apple, Drumstick, Milk } from "lucide-react";
 
 const CATEGORY_TABS = [
   { id: "All", label: "All", icon: null },
-  { id: "Grocery", label: "Grocery & Kitchen", icon: Utensils, isNew: true },
-  { id: "Snacks", label: "Snacks & Munchies", icon: Cookie },
-  { id: "Drinks", label: "Drinks & Juices", icon: GlassWater },
-  { id: "Bakery", label: "Bakery & Biscuits", icon: Croissant },
+  { id: "Home Care", label: "Home Care", icon: Home },
+  { id: "Kitchen Care", label: "Kitchen Care", icon: Utensils },
+  { id: "Vegetables", label: "Vegetables", icon: Carrot },
+  { id: "Fresh Fruits", label: "Fresh Fruits", icon: Apple },
+  { id: "Chicken", label: "Chicken", icon: Drumstick },
+  { id: "Dairy", label: "Dairy", icon: Milk },
 ];
 
 export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {

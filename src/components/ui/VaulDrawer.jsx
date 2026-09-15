@@ -1,4 +1,5 @@
 import { Drawer } from "vaul";
+import { X } from "lucide-react";
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 
 export default function VaulDrawer({
@@ -7,7 +8,8 @@ export default function VaulDrawer({
   children,
   title,
   description,
-  maxHeight = "max-h-[88vh]"
+  maxHeight = "max-h-[88vh]",
+  hideCloseButton = false
 }) {
   /* vaul is supposed to lock background scroll itself, but measured against
      this app it does not — with a drawer open the page behind still scrolled
@@ -28,16 +30,31 @@ export default function VaulDrawer({
           </div>
 
           <div className="p-5 flex-1 overflow-y-auto overscroll-contain">
-            {title && (
-              <Drawer.Title className="font-black text-sm text-slate-900 tracking-tight">
-                {title}
-              </Drawer.Title>
-            )}
-            {description && (
-              <Drawer.Description className="text-xs text-slate-400 font-medium mb-3">
-                {description}
-              </Drawer.Description>
-            )}
+            <div className="flex items-start justify-between">
+              <div>
+                {title && (
+                  <Drawer.Title className="font-black text-base text-slate-900 tracking-tight">
+                    {title}
+                  </Drawer.Title>
+                )}
+                {description && (
+                  <Drawer.Description className="text-xs text-slate-400 font-medium mb-3">
+                    {description}
+                  </Drawer.Description>
+                )}
+              </div>
+              {!hideCloseButton && (
+                <Drawer.Close asChild>
+                  <button
+                    type="button"
+                    className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors -mr-1 -mt-1 active:scale-95"
+                    aria-label="Close"
+                  >
+                    <X className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </Drawer.Close>
+              )}
+            </div>
             {children}
           </div>
         </Drawer.Content>

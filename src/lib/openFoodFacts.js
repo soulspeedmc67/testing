@@ -1,23 +1,17 @@
 /**
- * Open Food Facts client — runs entirely in the admin's browser.
+ * Open Food Facts client + DASHit Verified FMCG Resolver.
  *
- * The old Express server proxied this (server/index.js: /api/admin/products/
- * search-off) partly to set a `User-Agent` header. Browsers refuse to let JS set
- * that header (it's on the fetch forbidden-header list) — dropping it is not
- * optional, it silently would have been ignored anyway. OFF's public read API
- * supports CORS, so a direct call works without a server in front of it. This
- * is exactly the client-side pattern docs/FIRESTORE.md commits to for Spark
- * (no Cloud Functions to proxy through).
- *
- * If your network/region ever blocks world.openfoodfacts.net, searches will
- * fail with a network error surfaced to the caller — there is no server-side
- * fallback by design.
+ * Runs client-side in the browser. Checks verified offline catalog first (0ms),
+ * then falls back to Open Food Facts API. Attaches 4K studio suggestions for
+ * crystal-clear imagery.
  */
 
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80";
+import { findInIndianCatalog, get4KPhotoSuggestions, STUDIO_4K_PHOTOS } from "./barcodeCatalog";
 
-/** Same heuristic the old server used, so imported products land in the same categories. */
+const FALLBACK_IMG =
+  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=95&w=1600";
+
+/** Classify text into Dashit category */
 export function classifyCategory(categoriesText = "", productName = "") {
   const combined = `${categoriesText} ${productName}`.toLowerCase();
   if (/chip|crisp|nacho|kurkure|lays|dorito|puff/i.test(combined)) return "Chips";
@@ -32,39 +26,72 @@ export function classifyCategory(categoriesText = "", productName = "") {
   if (/soap|shampoo|toothpaste|brush|facewash|deodorant|lotion|cream|shave|sanitary|personal care/i.test(combined)) return "Personal Care";
   if (/detergent|cleaner|dishwash|surf|vim|harpic|mop|toilet|foil|repellent|household/i.test(combined)) return "Household Items";
   if (/rice|atta|wheat|flour|dal|pulse|grain|cereal|staple|oil|mustard oil|sunflower oil/i.test(combined)) return "Staples";
+  if (/bread|bakery|cake|toast|pav|bun|lavas|croissant/i.test(combined)) return "Bakery";
   return "Snacks";
 }
 
-function extractBestFrontImage(product) {
-  if (!product) return FALLBACK_IMG;
+function extractBestFrontImage(product, category = "Snacks") {
+  if (!product) {
+    const suggestions = get4KPhotoSuggestions(category);
+    return suggestions[0] || FALLBACK_IMG;
+  }
   const selected = product.selected_images?.front;
   if (selected?.display?.en) return selected.display.en.replace(/\.400\.jpg$/, ".full.jpg");
   if (selected?.display?.in) return selected.display.in;
   if (product.image_front_url) return product.image_front_url.replace(/\.400\.jpg$/, ".full.jpg");
   if (product.image_url) return product.image_url.replace(/\.400\.jpg$/, ".full.jpg");
-  return FALLBACK_IMG;
+
+  // Fallback to high-definition 4K studio image
+  const categorySuggestions = get4KPhotoSuggestions(category);
+  return categorySuggestions[0] || FALLBACK_IMG;
 }
 
 function toCatalogueItem(p) {
   const name = p.product_name_en || p.product_name || "Indian FMCG Product";
+  const cat = classifyCategory(p.categories || "", name);
+  const img = extractBestFrontImage(p, cat);
+  const photoSuggestions = get4KPhotoSuggestions(cat);
+
   return {
     barcode: p.code || `IND-${Math.floor(10000000 + Math.random() * 90000000)}`,
     name,
     brand: p.brands ? p.brands.split(",")[0].trim() : "Indian Brand",
-    cat: classifyCategory(p.categories || "", name),
+    cat,
     unit: p.quantity || "1 pc",
-    img: extractBestFrontImage(p),
+    img,
     price: 40,
     originalPrice: 45,
-    badge: "Indian FMCG",
+    badge: "Verified Product",
+    stock: 100,
+    photoSuggestions
   };
 }
 
-/** Looks up one product by barcode. Returns { success, products, message? }. */
+/** Looks up one product by barcode (offline verified list first, then Open Food Facts API). */
 export async function searchOffByBarcode(barcode) {
+  const cleanBarcode = String(barcode || "").trim();
+  if (!cleanBarcode) {
+    return { success: false, message: "Barcode is empty", products: [] };
+  }
+
+  // 1. Instant check against local verified Indian catalog
+  const localMatch = findInIndianCatalog(cleanBarcode);
+  if (localMatch) {
+    return {
+      success: true,
+      products: [
+        {
+          ...localMatch,
+          photoSuggestions: get4KPhotoSuggestions(localMatch.cat)
+        }
+      ]
+    };
+  }
+
+  // 2. Query Open Food Facts API
   try {
     const resp = await fetch(
-      `https://world.openfoodfacts.net/api/v0/product/${encodeURIComponent(barcode.trim())}.json`
+      `https://world.openfoodfacts.net/api/v0/product/${encodeURIComponent(cleanBarcode)}.json`
     );
     const data = await resp.json();
     if (data.status === 1 && data.product) {
@@ -77,7 +104,7 @@ export async function searchOffByBarcode(barcode) {
   }
 }
 
-/** Searches Indian FMCG products by name. Returns { success, count, products, message? }. */
+/** Searches Indian FMCG products by name. */
 export async function searchOffByQuery(query) {
   try {
     const url =

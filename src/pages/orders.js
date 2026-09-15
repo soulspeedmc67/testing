@@ -3,6 +3,7 @@ import { goBack } from "../lib/navigation";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
+import SEO from "../components/SEO";
 import {
   Package,
   Clock,
@@ -20,6 +21,8 @@ import {
   Minus,
   Check,
   Truck,
+  KeyRound,
+  Zap
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
@@ -30,16 +33,52 @@ import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
-import { watchOrder } from "../lib/db";
+import { watchOrder, watchOrderTracking, updateOrderStatus, ORDER_STATUS } from "../lib/db";
 import { ALL_PRODUCTS } from "../data/products";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
+import { calculateDeliveryEta } from "../lib/deliveryEta";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
+
+/**
+ * Milliseconds for an order's creation time, whatever shape it arrives in:
+ * a Firestore Timestamp, a Date, an epoch number, or an ISO string.
+ */
+export function orderTimestampMs(order) {
+  const ts = order?.createdAt ?? order?.timestamp;
+  if (!ts) return 0;
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "string") {
+    const parsed = Date.parse(ts);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof ts.toMillis === "function") return ts.toMillis();
+  if (typeof ts.seconds === "number") return ts.seconds * 1000;
+  if (ts instanceof Date) return ts.getTime();
+  return 0;
+}
+
+function getRemainingCancellationSeconds(order) {
+  if (!order) return 0;
+  const status = String(order.status || "").toLowerCase();
+  if (status && status !== "placed") return 0;
+
+  /* createdAt arrives as a Firestore Timestamp ({seconds, nanoseconds}) for any
+     order read back from the server, and as an ISO string only for the local
+     copy. `new Date(timestampObject)` is Invalid Date, so the 60-second cancel
+     window silently never opened for real orders. */
+  const orderTime = orderTimestampMs(order);
+  if (!orderTime) return 0;
+
+  const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
+  return Math.max(0, 60 - elapsedSec);
+}
 
 export default function OrdersPage() {
   const router = useRouter();
   const [activeOrder, setActiveOrder] = useState(null);
-  const [cancellationSeconds, setCancellationSeconds] = useState(60);
+  const [liveEta, setLiveEta] = useState(null);
+  const [cancellationSeconds, setCancellationSeconds] = useState(0);
   const [orderHistory, setOrderHistory] = useState([]);
   const [showPastOrdersModal, setShowPastOrdersModal] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(false);
@@ -80,8 +119,12 @@ export default function OrdersPage() {
     );
     let newCart;
     if (existingIndex > -1) {
-      newCart = [...cart];
-      newCart[existingIndex].qty += 1;
+      // The item object is copied, not mutated in place: `[...cart]` is a
+      // shallow copy, so `newCart[i].qty += 1` was editing the object still
+      // held by the current state and could drop a re-render.
+      newCart = cart.map((item, i) =>
+        i === existingIndex ? { ...item, qty: item.qty + 1 } : item
+      );
     } else {
       newCart = [...cart, { ...product, qty: 1 }];
     }
@@ -130,6 +173,22 @@ export default function OrdersPage() {
     return combined.filter((p) => (p.cat || "").toLowerCase() === selectedCat.toLowerCase()).slice(0, 8);
   }, [activeOrder, orderHistory, selectedCat]);
 
+  /* Once the rider is broadcasting, their live road-routed ETA replaces the
+     static hub-to-address estimate — the header used to keep showing the
+     original promise long after the scooter had closed most of the distance. */
+  const etaData = useMemo(() => {
+    if (liveEta?.etaMinutes !== undefined && liveEta?.etaMinutes !== null) {
+      return {
+        etaMinutes: liveEta.etaMinutes,
+        distanceFormatted: liveEta.distanceFormatted || "En route",
+        isLive: true,
+      };
+    }
+    if (!activeOrder) return { etaMinutes: 10, distanceFormatted: "1.2 km away" };
+    const loc = activeOrder.location || activeOrder.userAddress || null;
+    return calculateDeliveryEta(loc);
+  }, [activeOrder, liveEta]);
+
   useEffect(() => {
     const active = localStorage.getItem("dashit_active_order");
     const history = localStorage.getItem("dashit_orders_history");
@@ -145,6 +204,26 @@ export default function OrdersPage() {
       setShowPastOrdersModal(true);
     }
   }, [router.query]);
+
+  /* Live rider telemetry: arrival time and remaining distance, rewritten on the
+     rider's broadcast cadence while the order is assigned. */
+  useEffect(() => {
+    if (!activeOrder?.orderId) return;
+    const unsub = watchOrderTracking(activeOrder.orderId, (data) => {
+      if (!data) return;
+      const mins = Number(data.etaMinutes);
+      if (!Number.isFinite(mins)) return;
+      setLiveEta({
+        etaMinutes: mins,
+        distanceFormatted:
+          data.distanceFormatted ||
+          (data.distanceKm ? `${Number(data.distanceKm).toFixed(1)} km away` : ""),
+      });
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [activeOrder?.orderId]);
 
   // Real-time status sync via Firestore watchOrder
   useEffect(() => {
@@ -169,19 +248,57 @@ export default function OrdersPage() {
   }, [activeOrder?.orderId]);
 
   useEffect(() => {
-    let timer;
-    if (activeOrder && cancellationSeconds > 0) {
-      timer = setInterval(() => setCancellationSeconds((prev) => prev - 1), 1000);
+    if (!activeOrder) {
+      setCancellationSeconds(0);
+      return;
     }
-    return () => clearInterval(timer);
-  }, [activeOrder, cancellationSeconds]);
+    const initialRem = getRemainingCancellationSeconds(activeOrder);
+    setCancellationSeconds(initialRem);
+    if (initialRem <= 0) return;
 
-  const handleCancelOrder = () => {
-    if (confirm("Are you sure you want to cancel this order? The 1-minute packing window is active.")) {
+    const timer = setInterval(() => {
+      const rem = getRemainingCancellationSeconds(activeOrder);
+      setCancellationSeconds(rem);
+      if (rem <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [activeOrder]);
+
+  /* Cancelling has to reach the store. This used to only delete the order from
+     the customer's own localStorage and then say "Order cancelled successfully"
+     — the order stayed 'Placed' in Firestore, so it was still picked, packed
+     and delivered, and the customer had no record of it to complain about. */
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const handleCancelOrder = async () => {
+    if (!activeOrder || isCancelling) return;
+    if (!confirm("Are you sure you want to cancel this order? The 1-minute packing window is active.")) {
+      return;
+    }
+
+    const orderId = activeOrder.orderId || activeOrder.id;
+    setIsCancelling(true);
+    try {
+      const res = await updateOrderStatus(orderId, ORDER_STATUS.CANCELLED);
+      if (res?.firestoreSynced === false) {
+        alert(
+          "We could not reach the store to cancel this order. Please call support on 6006990032 to confirm the cancellation."
+        );
+        return;
+      }
       localStorage.removeItem("dashit_active_order");
       setActiveOrder(null);
       clearOrderLiveNotification();
       alert("Order cancelled successfully.");
+    } catch (e) {
+      alert(
+        "We could not reach the store to cancel this order. Please call support on 6006990032 to confirm the cancellation."
+      );
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -193,9 +310,10 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-dock">
+      <SEO title="Order History" noindex={true} />
       {/* Minimalist Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[max(46px,calc(env(safe-area-inset-top,0px)+40px))] pb-3 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button
@@ -203,7 +321,7 @@ export default function OrdersPage() {
                 if (window.history.length > 1) {
                   goBack(router);
                 } else {
-                  router.push("/");
+                  router.push("/shop");
                 }
               }}
               className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95"
@@ -252,9 +370,12 @@ export default function OrdersPage() {
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">Delivery OTP</span>
-                <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">
-                  {activeOrder.otp || "4821"}
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total</span>
+                <span className="font-mono text-xs font-black text-slate-900">
+                  ₹{activeOrder.totalAmount || activeOrder.total || activeOrder.finalTotal || 0}
+                </span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80 block mt-0.5">
+                  {activeOrder.paymentMethod || "Cash on Delivery"}
                 </span>
               </div>
             </div>
@@ -354,9 +475,49 @@ export default function OrdersPage() {
               </div>
             </div>
 
+            {/* MINIMALIST DELIVERY VERIFICATION OTP & ARRIVAL TIME CARD */}
+            {activeOrder.status !== "Delivered" && (
+              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-2xs">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs">
+                      <KeyRound className="w-5 h-5 stroke-[2]" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Delivery Verification OTP
+                      </span>
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                        Share this code with your driver at delivery
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-slate-300 px-3.5 py-1.5 rounded-xl text-center shadow-2xs shrink-0">
+                    <span className="font-mono text-xl font-black tracking-[0.2em] text-slate-900">
+                      {activeOrder.otp || "4821"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dynamic Arrival Calculation */}
+                <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/80 text-xs font-medium text-slate-600">
+                  <div className="flex items-center space-x-1.5">
+                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    <span>
+                      Est. Delivery: <strong className="text-slate-900 font-bold">~{etaData.etaMinutes} mins</strong>
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    {etaData.distanceFormatted} • {etaData.isLive ? "Live from rider" : "Central Hub"}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Clean, Human-Crafted Packing Window Card */}
             {cancellationSeconds > 0 && (
-              <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-white border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
+              <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
                     <div className="w-8 h-8 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center shrink-0">
@@ -374,9 +535,10 @@ export default function OrdersPage() {
 
                   <button
                     onClick={handleCancelOrder}
-                    className="text-[11px] font-black text-rose-600 bg-white hover:bg-rose-50 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95"
+                    disabled={isCancelling}
+                    className="text-[11px] font-black text-rose-600 bg-white hover:bg-rose-50 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50"
                   >
-                    Cancel Order
+                    {isCancelling ? "Cancelling…" : "Cancel Order"}
                   </button>
                 </div>
 
@@ -385,7 +547,7 @@ export default function OrdersPage() {
                   <motion.div
                     animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / 60) * 100))}%` }}
                     transition={{ ease: "linear", duration: 0.9 }}
-                    className="h-full bg-gradient-to-r from-amber-500 to-[#FF5B00] rounded-full"
+                    className="h-full bg-[#FF5B00] rounded-full"
                   />
                 </div>
               </div>
@@ -402,8 +564,8 @@ export default function OrdersPage() {
                 </div>
                 <MapTracking
                   orderId={activeOrder.orderId}
-                  initialLat={33.7311}
-                  initialLng={75.1487}
+                  initialLat={33.735832}
+                  initialLng={75.143614}
                   customerLat={activeOrder.location?.lat || 33.7385}
                   customerLng={activeOrder.location?.lng || 75.1565}
                   destinationName={activeOrder.location?.address || "Your Doorstep"}
@@ -419,7 +581,7 @@ export default function OrdersPage() {
                     Packing at Dashit Central Hub
                   </h3>
                   <p className="text-xs text-slate-600 font-medium mt-1 max-w-xs mx-auto">
-                    Our team at Nai Basti Hub is picking and packing your fresh items.
+                    Our team is picking and packing your fresh items.
                   </p>
                 </div>
 
@@ -485,7 +647,7 @@ export default function OrdersPage() {
             {/* Actions Row */}
             <div className="flex space-x-2 pt-1">
               <Link
-                href="/"
+                href="/shop"
                 className="grow bg-[#061838] hover:bg-slate-900 text-white text-center text-xs font-black py-3 rounded-2xl transition-all shadow-md active:scale-95"
               >
                 + Add Items to Cart
@@ -501,11 +663,11 @@ export default function OrdersPage() {
             <div>
               <h3 className="font-extrabold text-sm text-slate-900">No active deliveries</h3>
               <p className="text-xs text-slate-400 mt-0.5 font-medium">
-                Your live 10-minute order path and courier ETA will appear here.
+                Your live order path and courier ETA will appear here.
               </p>
             </div>
             <Link
-              href="/"
+              href="/shop"
               className="inline-block bg-[#061838] hover:bg-slate-900 text-white font-black text-xs px-5 py-2.5 rounded-2xl shadow-md transition-all active:scale-95"
             >
               Start Shopping

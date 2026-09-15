@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+        allowBackup="false": with it on, `adb backup` pulls the app's private
+        data off any device with USB debugging on — including the WebView's
+        localStorage, which holds the signed-in session and the customer's
+        address and phone number.
+
+        usesCleartextTraffic="false": everything the app talks to (Firebase,
+        OpenStreetMap tiles, OSRM routing) is HTTPS, so permitting plaintext
+        only ever helped someone on the same Wi-Fi read or rewrite traffic.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:theme="@style/AppTheme">
 
         <activity
@@ -44,16 +54,42 @@
         </provider>
     </application>
 
-    <!-- Queries for Truecaller App Package & Scheme (Android 11+ Package Visibility) -->
-    <queries>
-        <package android:name="com.truecaller" />
-        <intent>
-            <action android:name="android.intent.action.VIEW" />
-            <data android:scheme="truecallersdk" />
-        </intent>
-    </queries>
+    <!--
+        No <queries> block. The Truecaller package-visibility declaration was
+        removed with the Truecaller deep link it served: declaring visibility of
+        another app without a live feature that needs it is a Play policy issue.
+    -->
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
+    <!--
+        Foreground location only. confirm-location.js and the map picker call
+        navigator.geolocation, which silently fails in the WebView without these.
+        ACCESS_BACKGROUND_LOCATION is deliberately NOT declared: the customer app
+        never needs a position while backgrounded, and asking for it triggers
+        Google Play's background-location review with a video justification.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Barcode scanning when staff add stock (BarcodeScannerView, getUserMedia). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Voice search (VoiceSearchModal, Web Speech API). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
+        Both are optional so the listing is not restricted to devices that have
+        them; the app degrades gracefully when either is absent.
+    -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <!--
+        GET_ACCOUNTS is deliberately absent. It was only used by the removed
+        sign-in fallback that read the device's Google account list to guess who
+        the user was. Play Services returns the chosen account without it, and
+        Google Play treats reading the account list as sensitive.
+    -->
 </manifest>

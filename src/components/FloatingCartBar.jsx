@@ -6,8 +6,8 @@ import AnimatedCounter from "./AnimatedCounter";
 import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticMedium } from "../lib/haptics";
 
-const STOREFRONT_ROUTES = ["/", "/order-again", "/categories", "/wishlist"];
-const NAVBAR_ROUTES = ["/", "/order-again", "/categories"];
+const STOREFRONT_ROUTES = ["/shop", "/order-again", "/categories", "/wishlist"];
+const NAVBAR_ROUTES = ["/shop", "/order-again", "/categories"];
 
 export default function FloatingCartBar() {
   const router = useRouter();
@@ -15,8 +15,17 @@ export default function FloatingCartBar() {
   const [cart, setCart] = useState([]);
   const [isBouncing, setIsBouncing] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const prevRouteRef = useRef(router.pathname);
   const prevCountRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const checkDesktop = () => setIsDesktop(window.innerWidth >= 768);
+    checkDesktop();
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
 
   // Detect virtual keyboard opening to immediately hide above keyboard
   useEffect(() => {
@@ -117,9 +126,9 @@ export default function FloatingCartBar() {
       key="global-floating-cart-bar"
       initial={isFirstAppearance ? { y: 60, opacity: 0, scale: 0.8 } : false}
       animate={{
-        // When navbar is visible on pages with navbar: docked above navbar with a clean 12px breathing gap (-70px).
-        // On pages without navbar (or when navbar hides): glides down smoothly to screen bottom (0px).
-        y: (NAVBAR_ROUTES.includes(router.pathname) && isNavVisible) ? -70 : 0,
+        // When navbar is visible on pages with navbar on mobile: docked above navbar with a clean 12px breathing gap (-70px).
+        // On desktop or pages without navbar: glides down smoothly to screen bottom (0px).
+        y: (!isDesktop && NAVBAR_ROUTES.includes(router.pathname) && isNavVisible) ? -70 : 0,
         opacity: 1,
         scale: isBouncing ? [1, 1.15, 0.94, 1.05, 1] : 1,
       }}
@@ -131,7 +140,7 @@ export default function FloatingCartBar() {
           : { type: "spring", stiffness: 320, damping: 28 },
         opacity: { duration: 0.18 },
       }}
-      className="fixed left-0 right-0 z-[55] flex justify-center pointer-events-none px-4"
+      className="fixed left-0 right-0 md:left-auto md:right-8 z-[55] flex justify-center md:justify-end pointer-events-none px-4"
       style={{
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
       }}
@@ -144,7 +153,7 @@ export default function FloatingCartBar() {
         }}
         role="button"
         tabIndex={0}
-        className="pointer-events-auto relative overflow-hidden bg-gradient-to-r from-[#061838] via-[#0A2558] to-[#061838] text-white rounded-full py-2 px-3.5 shadow-[0_8px_24px_rgba(6,24,56,0.3)] border border-slate-700/60 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
+        className="pointer-events-auto relative overflow-hidden bg-[#061838] text-white rounded-full py-2 px-3.5 shadow-[0_8px_24px_rgba(6,24,56,0.3)] border border-slate-700/60 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
       >
         {/* Left: Last 3 items added to cart in overlapping circular shapes */}
         <div className="flex items-center -space-x-2.5 shrink-0 py-0.5 pl-0.5">
@@ -163,7 +172,7 @@ export default function FloatingCartBar() {
                   />
                 ) : (
                   <span className="text-xs font-black text-[#FF5B00]">
-                    {item.name ? item.name.charAt(0) : "🛍️"}
+                    {item.name ? item.name.charAt(0) : <ShoppingBag className="w-3.5 h-3.5" />}
                   </span>
                 )}
               </div>

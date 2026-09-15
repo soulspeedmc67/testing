@@ -44,7 +44,7 @@ export default function QuickProductSheet({
         if (!open) onClose();
       }}
       title={product.cat || "Fresh Grocery"}
-      description="Guaranteed 10-minute delivery in Anantnag"
+      description="Fast delivery across Anantnag"
     >
       <div className="space-y-4 pt-1">
         {/* Product Image Box */}
@@ -73,7 +73,7 @@ export default function QuickProductSheet({
             <span className="text-slate-300">•</span>
             <div className="flex items-center space-x-1 text-[11px] text-[#FF5B00] font-bold">
               <Clock className="w-3 h-3" />
-              <span>{product.time || "10 mins"}</span>
+              <span>{product.time || "Fast delivery"}</span>
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function QuickProductSheet({
           className="w-full py-2.5 px-3.5 bg-slate-50 hover:bg-slate-100 active:scale-[0.99] border border-slate-200/80 rounded-xl text-slate-800 text-xs font-black flex items-center justify-between transition-all cursor-pointer shadow-2xs"
         >
           <span className="flex items-center space-x-1.5">
-            <span className="text-[#FF5B00]">★</span>
+            <Star className="w-3.5 h-3.5 fill-[#FF5B00] text-[#FF5B00] shrink-0" />
             <span>View Full Details, Sizes &amp; Specs</span>
           </span>
           <ChevronRight className="w-4 h-4 text-slate-400" />

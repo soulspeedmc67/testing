@@ -1,330 +1,417 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
-import { motion, AnimatePresence, useMotionValue } from "framer-motion";
-import { Home, ChevronRight } from "lucide-react";
-import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown, ChevronRight, KeyRound, Check } from "lucide-react";
+import {
+  showOrderLiveNotification,
+  clearOrderLiveNotification,
+  showOutForDeliveryNotification,
+} from "../lib/notifications";
 import { hapticLight, hapticMedium } from "../lib/haptics";
-import { DashitProgressBadge } from "./DashitAnimatedLogo";
 import DeliveryStatusIcon, { statusToMark } from "./DeliveryStatusIcon";
 import { SPRING_SNAPPY, SPRING_SOFT, EASE_OUT } from "../lib/motion";
 import { watchOrder, watchOrderTracking } from "../lib/db";
+import { calculateDeliveryEta, computeOrderProgress } from "../lib/deliveryEta";
 
-/** Edge rail bounds — keeps the docked semicircle clear of the status bar and
- *  the FloatingCartBar / BottomNav dock at the bottom of the screen. */
-const RAIL_MIN_Y = 80;
-const RAIL_BOTTOM_GAP = 120;
+/**
+ * DASHit Live Activity.
+ *
+ * Modelled on an iOS live activity (the way Zomato's delivery card behaves on
+ * iPhone): it lives at the TOP of the screen, over the app chrome, and has two
+ * sizes — a compact capsule with the arrival time, and an expanded card with the
+ * full stage rail. It is not a bottom sheet; a live activity is a notification,
+ * and notifications belong at the top edge.
+ *
+ * Every number it shows comes from the rider's telemetry, which is rewritten on
+ * a fixed cadence while a rider is assigned — the ETA and the progress bar move
+ * with the scooter, they are not interpolated from a timer.
+ */
 
-const clampRailY = (y) => {
-  if (typeof window === "undefined") return y;
-  const max = window.innerHeight - RAIL_BOTTOM_GAP;
-  return Math.min(Math.max(y, RAIL_MIN_Y), Math.max(RAIL_MIN_Y, max));
+/** Order lifecycle, in the order the customer experiences it. */
+const STAGES = [
+  { key: "Placed", short: "Placed", caption: "Order confirmed at the hub" },
+  { key: "Packed", short: "Packing", caption: "Your items are being bagged" },
+  { key: "Out for Delivery", short: "On the way", caption: "Rider is heading to you" },
+  { key: "Delivered", short: "Delivered", caption: "Handed over at your door" },
+];
+
+const stageIndexFor = (status) => {
+  const idx = STAGES.findIndex((s) => s.key === status);
+  if (idx >= 0) return idx;
+  if (status === "Packing") return 1; // legacy alias
+  return 0;
+};
+
+/** Headline copy for each stage — short enough to survive the compact capsule. */
+const titleFor = (status, etaMinutes) => {
+  if (status === "Delivered") return "Delivered";
+  if (status === "Cancelled") return "Order cancelled";
+  if (status === "Out for Delivery") {
+    if (!etaMinutes || etaMinutes <= 1) return "Arriving now";
+    return `Arriving in ${etaMinutes} min`;
+  }
+  return "Packing your order";
 };
 
 export default function LiveOrderFloatingTracker() {
   const router = useRouter();
   const [activeOrder, setActiveOrder] = useState(null);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [dockSide, setDockSide] = useState("right"); // "right" or "left"
-  const [viewportH, setViewportH] = useState(812);
-  /**
-   * Absolute Y of the docked puck, in viewport pixels.
-   *
-   * This is the SINGLE source of truth for its vertical position — the element
-   * is anchored at `top: 0` and moved purely by this transform. Do not also set
-   * a CSS `top`: Framer owns this value during a drag and re-applies it on the
-   * elastic settle, so a CSS offset would double-count and walk the puck
-   * off-screen.
-   */
-  const railY = useMotionValue(220);
-  const [etaMinutes, setEtaMinutes] = useState(7);
-  const [progressPct, setProgressPct] = useState(32);
-  const [statusLabel, setStatusLabel] = useState("Preparing your fresh order");
-  const [riderName, setRiderName] = useState("Tariq Ahmad");
+  const [isExpanded, setIsExpanded] = useState(false);
+  /* Pulled up out of the way by the customer. The capsule leaves a grab handle
+     behind so a tucked activity is always recoverable — a live order must never
+     become unreachable. */
+  const [isTucked, setIsTucked] = useState(false);
 
-  /* Track viewport height so the rail's lower bound follows rotation, resize and
-     the virtual keyboard — matching the dock policy of FloatingCartBar. */
+  const [etaMinutes, setEtaMinutes] = useState(null);
+  const [progressPct, setProgressPct] = useState(12);
+  const [orderStatus, setOrderStatus] = useState("Placed");
+  const [riderName, setRiderName] = useState("");
+  const [distanceLabel, setDistanceLabel] = useState("");
+
+  /* Read by the localStorage poll below without making it a dependency — the
+     poll used to re-subscribe on every ETA tick, tearing down and rebuilding its
+     interval several times a minute. */
+  const liveRef = useRef({ etaMinutes: null, progressPct: 12, status: "Placed", riderName: "" });
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const syncViewport = () => {
-      const h = window.visualViewport?.height || window.innerHeight;
-      setViewportH(h);
-      railY.set(Math.min(railY.get(), Math.max(RAIL_MIN_Y, h - RAIL_BOTTOM_GAP)));
-    };
-    syncViewport();
-    window.addEventListener("resize", syncViewport);
-    window.visualViewport?.addEventListener("resize", syncViewport);
-    return () => {
-      window.removeEventListener("resize", syncViewport);
-      window.visualViewport?.removeEventListener("resize", syncViewport);
-    };
+    liveRef.current = { etaMinutes, progressPct, status: orderStatus, riderName };
+  }, [etaMinutes, progressPct, orderStatus, riderName]);
+
+  const stageIndex = stageIndexFor(orderStatus);
+  const isDelivered = orderStatus === "Delivered";
+
+  /** Fallback ETA from the customer's own address, used until the rider's first
+      live fix lands. */
+  const seedFromOrder = useCallback((parsed) => {
+    const loc = parsed?.location || parsed?.userAddress || null;
+    const seeded = parsed?.etaMinutes || calculateDeliveryEta(loc)?.etaMinutes || null;
+    setEtaMinutes((prev) => prev ?? seeded);
   }, []);
 
+  // Active order presence — localStorage is the offline-capable source of truth
   useEffect(() => {
     const checkOrder = () => {
       try {
         const active = localStorage.getItem("dashit_active_order");
-        if (active) {
-          const parsed = JSON.parse(active);
-          setActiveOrder(parsed);
-
-          if (parsed.status === "Delivered") {
-            setStatusLabel("Order Delivered!");
-            setProgressPct(100);
-            setEtaMinutes(0);
-          } else if (parsed.status === "Out for Delivery") {
-            setStatusLabel("On the way on Scooter");
-            setProgressPct((p) => Math.max(55, p));
-          } else {
-            setStatusLabel("Packing at Dashit Central Hub");
-            setProgressPct(28);
-          }
-
-          showOrderLiveNotification({
-            orderId: parsed.orderId,
-            etaMinutes: parsed.status === "Delivered" ? 0 : etaMinutes,
-            progressPct: parsed.status === "Delivered" ? 100 : progressPct,
-            status: parsed.status === "Delivered" ? "Delivered" : statusLabel,
-            riderName,
-          });
-        } else {
+        if (!active) {
           setActiveOrder(null);
           clearOrderLiveNotification();
+          return;
         }
+        const parsed = JSON.parse(active);
+        setActiveOrder(parsed);
+        setOrderStatus((prev) => (prev === "Placed" ? parsed.status || "Placed" : prev));
+        seedFromOrder(parsed);
+
+        const live = liveRef.current;
+        showOrderLiveNotification({
+          orderId: parsed.orderId,
+          etaMinutes: live.status === "Delivered" ? 0 : live.etaMinutes || 0,
+          progressPct: live.status === "Delivered" ? 100 : live.progressPct,
+          status: live.status === "Delivered" ? "Delivered" : titleFor(live.status, live.etaMinutes),
+          riderName: live.riderName,
+        });
       } catch (e) {}
     };
 
     checkOrder();
     const interval = setInterval(checkOrder, 3000);
     return () => clearInterval(interval);
-  }, [etaMinutes, progressPct, statusLabel, riderName]);
+  }, [seedFromOrder]);
 
-  // Hide completely on checkout, full order tracking page, driver console, login, exclusive story deck, admin
-  const isHiddenPage =
-    router.pathname === "/orders" ||
-    router.pathname === "/checkout" ||
-    router.pathname === "/driver" ||
-    router.pathname === "/login" ||
-    router.pathname === "/confirm-location" ||
-    router.pathname === "/admin";
+  // Only show on the shopping page (/shop) as explicitly requested by user
+  const isShoppingPage = router.pathname === "/shop";
 
   /* Real-time Firestore listeners for driver movement and status.
-     Skipped on isHiddenPage — this component renders null there, but hooks
+     Skipped when not on /shop — this component renders null elsewhere, but hooks
      always run regardless of an early return further down, so without this
-     guard a stale localStorage order (e.g. leftover test data) would still
-     open two Firestore listeners and, if unreadable under the current auth
-     state, spam permission-denied on every page load. */
+     guard a stale localStorage order would still open Firestore listeners. */
   useEffect(() => {
-    if (!activeOrder?.orderId || isHiddenPage) return;
+    if (!activeOrder?.orderId || !isShoppingPage) return;
 
-    // 1. Watch order document (status, rider name)
     const unsubOrder = watchOrder(activeOrder.orderId, (data) => {
       if (!data) return;
       if (data.status) {
-        setStatusLabel(data.status);
-        try {
-          const raw = localStorage.getItem("dashit_active_order");
-          if (raw) {
-            const ord = JSON.parse(raw);
-            ord.status = data.status;
-            localStorage.setItem("dashit_active_order", JSON.stringify(ord));
-          }
-        } catch (e) {}
+        setOrderStatus(data.status);
+        /* Stage floors only — the fine-grained value comes from the rider's
+           distance-based progress below, so this never drags the bar back. */
+        setProgressPct((prev) =>
+          Math.max(prev, computeOrderProgress({ status: data.status }))
+        );
+        if (data.status === "Delivered") {
+          setProgressPct(100);
+          setEtaMinutes(0);
+        }
+        if (data.status === "Out for Delivery") {
+          /* The ongoing tracking notification is silent by design, so this is
+             the one moment the customer actually gets alerted. It de-dupes on
+             the order id internally — this listener re-fires on every snapshot. */
+          showOutForDeliveryNotification({
+            orderId: activeOrder.orderId,
+            riderName: data.driverName || liveRef.current.riderName,
+            etaMinutes: liveRef.current.etaMinutes,
+          });
+        }
       }
       if (data.driverName) setRiderName(data.driverName);
     });
 
-    // 2. Watch subcollection live tracking doc (eta, progress, live location)
     const unsubTracking = watchOrderTracking(activeOrder.orderId, (data) => {
       if (!data) return;
-      if (data.eta !== undefined) setEtaMinutes(data.eta);
-      if (data.progress !== undefined) setProgressPct(data.progress);
+      if (Number(data.etaMinutes) >= 0 && data.etaMinutes !== null && data.etaMinutes !== undefined) {
+        setEtaMinutes(Number(data.etaMinutes));
+      }
+      if (data.progress !== undefined) {
+        setProgressPct(Number(data.progress) || 0);
+      }
+      if (data.distanceFormatted) setDistanceLabel(String(data.distanceFormatted));
+      else if (data.distanceKm) setDistanceLabel(`${Number(data.distanceKm).toFixed(1)} km away`);
       if (data.driverName) setRiderName(data.driverName);
+      if (data.status) setOrderStatus((prev) => (prev === "Delivered" ? prev : data.status));
     });
 
     return () => {
       if (typeof unsubOrder === "function") unsubOrder();
       if (typeof unsubTracking === "function") unsubTracking();
     };
-  }, [activeOrder?.orderId, isHiddenPage]);
+  }, [activeOrder?.orderId, isShoppingPage]);
 
-  if (!activeOrder || isHiddenPage) return null;
+  if (!activeOrder || !isShoppingPage) return null;
 
-  /**
-   * Omnidirectional dismissal: a flick or drag in ANY direction shrinks the card
-   * into the edge semicircle. The nearest horizontal border wins, and the dock
-   * anchors at the release Y so the puck lands where the finger left it.
-   */
-  const handleDragEnd = (_, info) => {
-    const DISTANCE = 48;
-    const VELOCITY = 380;
+  /* Never show less than the stage itself guarantees: with Firestore
+     unavailable (offline, or a local-only order) no telemetry arrives, and the
+     bar would otherwise sit at the "Placed" sliver while the rail says the rider
+     is on the way. */
+  const displayProgress = Math.min(
+    100,
+    Math.max(progressPct, computeOrderProgress({ status: orderStatus }))
+  );
 
-    const travelled = Math.hypot(info.offset.x, info.offset.y);
-    const flicked = Math.hypot(info.velocity.x, info.velocity.y);
-    if (travelled < DISTANCE && flicked < VELOCITY) return; // snap back
+  const title = titleFor(orderStatus, etaMinutes);
+  const caption = isDelivered
+    ? "Enjoy your order"
+    : distanceLabel && orderStatus === "Out for Delivery"
+    ? `${riderName || "Your rider"} · ${distanceLabel}`
+    : STAGES[stageIndex]?.caption || "";
 
-    hapticLight();
-    const releaseX =
-      typeof info.point?.x === "number" ? info.point.x : window.innerWidth / 2;
-    const releaseY =
-      typeof info.point?.y === "number" ? info.point.y : RAIL_MIN_Y * 2;
-
-    setDockSide(releaseX > window.innerWidth / 2 ? "right" : "left");
-    railY.set(clampRailY(releaseY));
-    setIsMinimized(true);
-  };
-
-  /** Safety clamp after a rail drag, in case constraints were bypassed. */
-  const handleRailDragEnd = () => {
-    railY.set(clampRailY(railY.get()));
-  };
-
-  const handleExpand = () => {
+  const openFullTracking = () => {
     hapticMedium();
-    setIsMinimized(false);
+    router.push(`/orders?id=${activeOrder?.orderId || ""}`);
+  };
+
+  /* A drag that clears this threshold upward tucks the activity away; the same
+     gesture downward on the handle brings it back. */
+  const DISMISS_PX = 36;
+
+  const handleDragEnd = (_, info) => {
+    if (info.offset.y < -DISMISS_PX || info.velocity.y < -500) {
+      hapticLight();
+      setIsExpanded(false);
+      setIsTucked(true);
+    }
   };
 
   return (
-    <AnimatePresence initial={false}>
-      {isMinimized ? (
-        /* DOCKED EDGE SEMICIRCLE — flush at 90° against the nearest border */
-        <motion.div
-          key="dashit-edge-dock"
-          initial={{ x: dockSide === "right" ? 60 : -60, opacity: 0, scale: 0.6 }}
-          animate={{ x: 0, opacity: 1, scale: 1 }}
-          exit={{ x: dockSide === "right" ? 60 : -60, opacity: 0, scale: 0.6 }}
-          transition={SPRING_SNAPPY}
-          drag="y"
-          dragMomentum={false}
-          dragElastic={0.06}
-          /* Absolute rail bounds — `y` is the viewport Y, so these are static:
-             never above RAIL_MIN_Y, never below the cart-dock keep-out zone. */
-          dragConstraints={{
-            top: RAIL_MIN_Y,
-            bottom: Math.max(RAIL_MIN_Y, viewportH - RAIL_BOTTOM_GAP),
-          }}
-          onDragEnd={handleRailDragEnd}
-          whileTap={{ scale: 0.93 }}
-          onClick={handleExpand}
-          aria-label={`Live order, ${etaMinutes} minutes away. Tap to expand.`}
-          className={`fixed top-0 z-[250] cursor-pointer select-none touch-none ${
-            dockSide === "right" ? "right-0" : "left-0"
-          }`}
-          style={{ y: railY }}
-        >
-          <div
-            className={`relative flex flex-col items-center justify-center w-[52px] h-[76px] bg-neutral-950/95 backdrop-blur-xl border border-neutral-800 shadow-[0_12px_34px_rgba(0,0,0,0.55)] ${
-              dockSide === "right"
-                ? "rounded-l-[26px] border-r-0 pl-1"
-                : "rounded-r-[26px] border-l-0 pr-1"
-            }`}
+    <div
+      className="fixed left-0 right-0 z-[250] flex justify-center px-3 sm:px-4 pointer-events-none"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
+    >
+      <AnimatePresence initial={false} mode="wait">
+        {isTucked ? (
+          /* TUCKED — a grab handle, the only trace left on screen */
+          <motion.button
+            key="dashit-activity-handle"
+            type="button"
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -16, opacity: 0 }}
+            transition={SPRING_SNAPPY}
+            onClick={() => {
+              hapticLight();
+              setIsTucked(false);
+            }}
+            aria-label="Show live order status"
+            className="pointer-events-auto flex items-center gap-2 h-7 px-3 rounded-full bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
           >
-            {/* Grab rail — signals the puck can be slid along the edge */}
-            <span
-              className={`absolute top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-full bg-white/15 ${
-                dockSide === "right" ? "right-1.5" : "left-1.5"
-              }`}
-            />
-
-            <div className={`flex flex-col items-center ${dockSide === "right" ? "pr-1.5" : "pl-1.5"}`}>
-              {/* Animated status mark — packing at the hub, or rider en route */}
-              <DeliveryStatusIcon status={statusToMark(statusLabel)} size="md" />
-
-              {/* ETA with a quiet unit, so the number carries the weight */}
-              <span className="mt-1.5 flex items-baseline text-white leading-none">
-                <span className="font-black text-[13px] tabular-nums tracking-tight">
-                  {etaMinutes > 0 ? etaMinutes : "•"}
-                </span>
-                <span className="text-[9px] font-bold text-white/45 ml-[1px]">
-                  {etaMinutes > 0 ? "m" : ""}
-                </span>
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      ) : (
-        /* EXPANDED OBSIDIAN CARD — beacon, status, ETA, route line. Nothing else. */
-        <motion.div
-          key="dashit-tracker-full"
-          initial={{ scale: 0.94, opacity: 0, y: -10 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.7, opacity: 0 }}
-          transition={SPRING_SOFT}
-          drag
-          dragSnapToOrigin
-          dragElastic={0.35}
-          onDragEnd={handleDragEnd}
-          className="fixed left-3.5 right-3.5 z-[250] max-w-md mx-auto pointer-events-auto touch-none"
-          style={{ top: "max(46px, calc(env(safe-area-inset-top, 0px) + 14px))" }}
-        >
-          <div className="bg-neutral-950/95 backdrop-blur-2xl text-white rounded-[26px] px-4 py-4 shadow-[0_24px_60px_rgba(0,0,0,0.85)] border border-neutral-800 overflow-hidden select-none">
-            <div
-              onClick={() => {
-                hapticMedium();
-                router.push(`/orders?id=${activeOrder?.orderId || ""}`);
-              }}
-              className="cursor-pointer active:opacity-90 transition-opacity"
-            >
-              {/* STATUS + ETA */}
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2.5">
-                    {/* Animated status mark — packing at the hub, or rider en route */}
-                    <DeliveryStatusIcon status={statusToMark(statusLabel)} size="md" />
-                    <h2 className="text-[16px] font-black text-white tracking-tight leading-tight truncate">
-                      {statusLabel}
-                    </h2>
-                  </div>
-
-                  {/* Arrival countdown */}
-                  <p className="text-[12.5px] font-bold text-slate-400 mt-1.5 ml-[46px]">
-                    {etaMinutes > 0 ? (
-                      <>
-                        Arriving in{" "}
-                        <span className="text-[#FF5B00] font-black">{etaMinutes} min</span>
-                      </>
-                    ) : (
-                      <span className="text-[#FF5B00] font-black">Arriving now</span>
-                    )}
-                  </p>
-                </div>
-
-                <div className="w-8 h-8 rounded-full bg-white/[0.08] flex items-center justify-center text-white shrink-0 border border-white/10">
-                  <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-                </div>
-              </div>
-
-              {/* MINIMAL ROUTE PROGRESS LINE */}
-              <div className="relative mt-4 h-6 flex items-center">
-                {/* Rail */}
-                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] rounded-full bg-neutral-800" />
-
-                {/* Filled beam */}
-                <motion.div
-                  className="absolute left-0 top-1/2 -translate-y-1/2 h-[2px] bg-[#FF5B00] rounded-full"
-                  initial={{ width: "0%" }}
-                  animate={{ width: `${progressPct}%` }}
-                  transition={{ duration: 0.9, ease: EASE_OUT }}
+            <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B00]" />
+            <span className="text-[11px] font-bold text-white/80 tabular-nums">
+              {isDelivered ? "Delivered" : etaMinutes > 0 ? `${etaMinutes} min` : "Live"}
+            </span>
+          </motion.button>
+        ) : (
+          /* LIVE ACTIVITY — compact capsule that grows into the full card.
+             Deliberately no `layout` prop: the body animates its own height, and
+             a layout animation here fought the drag transform and left the
+             capsule parked above the safe area. */
+          <motion.div
+            key="dashit-activity"
+            /* Entry animates opacity and scale only. `y` belongs to the drag
+               gesture on this element — animating it here left the transform
+               parked at the initial offset, which is what pushed the expanded
+               card's title above the top of the screen. */
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={SPRING_SOFT}
+            drag="y"
+            dragSnapToOrigin
+            /* No dragConstraints: a zero-height constraint box is re-resolved
+               every time the card grows, and Framer was re-applying it as a
+               standing -28px offset — the expanded card sat with its title
+               clipped above the safe area. Snap-to-origin alone returns it. */
+            dragElastic={0.25}
+            onDragEnd={handleDragEnd}
+            className="pointer-events-auto w-full max-w-md touch-none select-none"
+          >
+            <div className="overflow-hidden rounded-[24px] bg-neutral-950/95 backdrop-blur-2xl border border-neutral-800 shadow-[0_18px_48px_rgba(0,0,0,0.6)]">
+              {/* COMPACT ROW — always visible, tap to toggle the full card */}
+              <button
+                type="button"
+                onClick={() => {
+                  hapticLight();
+                  setIsExpanded((v) => !v);
+                }}
+                aria-expanded={isExpanded}
+                aria-label={`${title}. Tap to ${isExpanded ? "collapse" : "expand"} order details.`}
+                className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:opacity-90 transition-opacity"
+              >
+                <DeliveryStatusIcon
+                  status={isDelivered ? "packing" : statusToMark(orderStatus)}
+                  size="md"
                 />
 
-                {/* Travelling badge */}
-                <motion.div
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
-                  initial={{ left: "0%" }}
-                  animate={{ left: `${progressPct}%` }}
-                  transition={{ duration: 0.9, ease: EASE_OUT }}
-                >
-                  <DashitProgressBadge size="sm" />
-                </motion.div>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-black text-white tracking-tight leading-tight truncate">
+                    {title}
+                  </span>
+                  <span className="block text-[11.5px] font-semibold text-neutral-400 leading-tight truncate mt-0.5">
+                    {caption}
+                  </span>
+                </span>
 
-                {/* Destination */}
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-neutral-900 border border-neutral-700 flex items-center justify-center">
-                  <Home className="w-2.5 h-2.5 stroke-[2.8] text-slate-400" />
-                </div>
+                <motion.span
+                  animate={{ rotate: isExpanded ? 180 : 0 }}
+                  transition={SPRING_SNAPPY}
+                  className="w-7 h-7 rounded-full bg-white/[0.07] border border-white/10 flex items-center justify-center shrink-0"
+                >
+                  <ChevronDown className="w-4 h-4 text-white stroke-[2.5]" />
+                </motion.span>
+              </button>
+
+              {/* HAIRLINE PROGRESS — the compact state's only chrome */}
+              <div className="h-[2px] w-full bg-neutral-800">
+                <motion.div
+                  className={`h-full ${isDelivered ? "bg-emerald-400" : "bg-[#FF5B00]"}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${displayProgress}%` }}
+                  transition={{ duration: 0.8, ease: EASE_OUT }}
+                />
               </div>
+
+              {/* EXPANDED BODY */}
+              <AnimatePresence initial={false}>
+                {isExpanded && (
+                  <motion.div
+                    key="dashit-activity-body"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.28, ease: EASE_OUT }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-3.5 pt-3.5 pb-3.5">
+                      {/* STAGE RAIL */}
+                      <div className="relative">
+                        {/* The track runs centre-to-centre between the first and
+                            last markers — the stages sit in four equal columns,
+                            so their centres are at 12.5% and 87.5%. */}
+                        <div className="absolute left-[12.5%] right-[12.5%] top-[10px] h-[2px] bg-neutral-800 rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-[#FF5B00] rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(stageIndex / (STAGES.length - 1)) * 100}%` }}
+                            transition={{ duration: 0.6, ease: EASE_OUT }}
+                          />
+                        </div>
+
+                        <ol className="relative grid grid-cols-4">
+                          {STAGES.map((stage, i) => {
+                            const done = i < stageIndex || isDelivered;
+                            const current = i === stageIndex && !isDelivered;
+                            return (
+                              <li key={stage.key} className="flex flex-col items-center gap-1.5">
+                                <span
+                                  className={`w-[21px] h-[21px] rounded-full flex items-center justify-center border ${
+                                    done
+                                      ? "bg-[#FF5B00] border-[#FF5B00] text-white"
+                                      : current
+                                      ? "bg-neutral-950 border-[#FF5B00] text-[#FF5B00]"
+                                      : "bg-neutral-950 border-neutral-700 text-neutral-600"
+                                  }`}
+                                >
+                                  {done ? (
+                                    <Check className="w-3 h-3 stroke-[3]" />
+                                  ) : (
+                                    <span
+                                      className={`w-[7px] h-[7px] rounded-full ${
+                                        current ? "bg-[#FF5B00]" : "bg-neutral-700"
+                                      }`}
+                                    />
+                                  )}
+                                </span>
+                                <span
+                                  className={`text-[9.5px] font-bold tracking-tight text-center leading-tight ${
+                                    done || current ? "text-white" : "text-neutral-500"
+                                  }`}
+                                >
+                                  {stage.short}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      </div>
+
+                      {/* DELIVERY OTP */}
+                      {!isDelivered && (
+                        <div className="mt-3.5 flex items-center justify-between gap-2 rounded-2xl bg-neutral-900 border border-neutral-800 p-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-8 h-8 rounded-xl bg-neutral-800 border border-neutral-700 text-neutral-300 flex items-center justify-center shrink-0">
+                              <KeyRound className="w-4 h-4 stroke-[2]" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-[9.5px] font-bold uppercase tracking-wider text-neutral-400">
+                                Delivery OTP
+                              </span>
+                              <span className="block text-[11px] text-neutral-300 font-medium truncate">
+                                Share with the rider on arrival
+                              </span>
+                            </span>
+                          </div>
+                          <span className="shrink-0 rounded-xl bg-neutral-800 border border-neutral-700 px-3 py-1.5 font-mono text-base font-black tracking-[0.2em] text-white">
+                            {activeOrder?.otp || "4821"}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* FULL TRACKING */}
+                      <button
+                        type="button"
+                        onClick={openFullTracking}
+                        className="mt-2.5 w-full flex items-center justify-between gap-2 rounded-2xl bg-white/[0.06] border border-white/10 px-3.5 py-2.5 active:opacity-85 transition-opacity"
+                      >
+                        <span className="text-[12.5px] font-bold text-white">
+                          Track live on map
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-white/70 stroke-[2.5]" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

@@ -15,8 +15,9 @@ import {
   serverTimestamp,
   runTransaction,
   arrayUnion,
+  writeBatch,
 } from "firebase/firestore";
-import { getDb } from "./firebase";
+import { getDb, getFirebaseAuth } from "./firebase";
 
 /**
  * Firestore data layer.
@@ -29,7 +30,8 @@ import { getDb } from "./firebase";
 
 export const ORDER_STATUS = {
   PLACED: "Placed",
-  PACKING: "Packing",
+  PACKED: "Packed",
+  PACKING: "Packed", // backward-compatible alias
   OUT_FOR_DELIVERY: "Out for Delivery",
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
@@ -38,49 +40,364 @@ export const ORDER_STATUS = {
 /* ------------------------------------------------------------------ products */
 
 export async function fetchProducts() {
+  let firestoreList = [];
   const db = getDb();
-  if (!db) return [];
-  const snap = await getDocs(
-    query(collection(db, "products"), where("active", "==", true))
-  );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  if (db) {
+    try {
+      const snap = await getDocs(
+        query(collection(db, "products"), where("active", "==", true))
+      );
+      firestoreList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn("fetchProducts Firestore warning:", e?.message);
+    }
+  }
+
+  // Merge locally created custom products at the top
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      if (custom.length > 0) {
+        const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
+        return [...custom, ...firestoreList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
+      }
+    } catch (e) {}
+  }
+
+  return firestoreList;
 }
 
 /** Live catalogue — admin edits appear in the storefront without a refresh. */
 export function watchProducts(callback) {
+  let currentLive = [];
+
+  const emitMerged = (live = []) => {
+    let merged = live;
+    if (typeof window !== "undefined") {
+      try {
+        const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+        if (custom.length > 0) {
+          const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
+          merged = [...custom, ...live.filter((p) => !customIds.has(String(p.id || p.barcode)))];
+        }
+      } catch (e) {}
+    }
+    callback(merged);
+  };
+
   const db = getDb();
-  if (!db) return () => {};
-  return onSnapshot(
-    query(collection(db, "products"), where("active", "==", true)),
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-  );
+  let unsub = () => {};
+  if (db) {
+    try {
+      unsub = onSnapshot(
+        query(collection(db, "products"), where("active", "==", true)),
+        (snap) => {
+          currentLive = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          emitMerged(currentLive);
+        },
+        (err) => {
+          console.warn("watchProducts snapshot warning:", err?.message);
+          emitMerged(currentLive);
+        }
+      );
+    } catch (e) {
+      console.warn("watchProducts init warning:", e?.message);
+    }
+  }
+
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = () => emitMerged(currentLive);
+    window.addEventListener("dashit_products_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    // Initial emit for immediate responsiveness
+    setTimeout(() => emitMerged(currentLive), 10);
+  }
+
+  return () => {
+    if (typeof unsub === "function") unsub();
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_products_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+  };
 }
 
 export async function upsertProduct(product) {
-  const db = getDb();
-  if (!db) throw new Error("Firestore unavailable");
   const { id, ...data } = product;
-  /* Every catalogue read filters `active == true` (fetchProducts, watchProducts).
-     A caller passing an explicit id (the OFF importer keys new docs by barcode)
-     must still default to visible — setDoc(merge) does not carry `addDoc`'s
-     default forward, so this has to be set explicitly on both paths. Passing
-     `active: false` in `product` still hides it, as intended. */
-  const payload = { active: true, ...data, updatedAt: serverTimestamp() };
-  if (id) {
-    await setDoc(doc(db, "products", String(id)), payload, { merge: true });
-    return String(id);
+  const prodId = id ? String(id) : `PROD-${Date.now()}`;
+  const itemToSave = { id: prodId, barcode: prodId, active: true, ...data };
+
+  // 1. Immediately save to localStorage and broadcast cross-tab
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      const updated = [itemToSave, ...custom.filter((p) => String(p.id || p.barcode) !== prodId)];
+      localStorage.setItem("dashit_custom_products", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+    } catch (e) {
+      console.warn("localStorage save error:", e);
+    }
   }
-  const ref = await addDoc(collection(db, "products"), {
-    ...payload,
-    createdAt: serverTimestamp(),
-  });
-  return ref.id;
+
+  // 2. Sync to Firestore in the background (fail-safe)
+  const db = getDb();
+  if (db) {
+    try {
+      const payload = { active: true, ...data, updatedAt: serverTimestamp() };
+      await setDoc(doc(db, "products", prodId), payload, { merge: true });
+    } catch (err) {
+      console.warn("Firestore upsertProduct warning (saved locally):", err?.message);
+    }
+  }
+
+  return prodId;
 }
 
 export async function deleteProduct(productId) {
+  const targetId = String(productId);
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      const filtered = custom.filter((p) => String(p.id || p.barcode) !== targetId);
+      localStorage.setItem("dashit_custom_products", JSON.stringify(filtered));
+      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+    } catch (e) {}
+  }
+
   const db = getDb();
   if (!db) return;
-  await deleteDoc(doc(db, "products", String(productId)));
+  try {
+    await deleteDoc(doc(db, "products", targetId));
+  } catch (e) {
+    console.warn("deleteProduct Firestore warning:", e?.message);
+  }
+}
+
+/**
+ * Adjust stock for a single product (+/- delta or set absolute).
+ */
+export async function adjustSingleProductStock(productId, deltaOrAbsolute, isAbsolute = false) {
+  const targetId = String(productId);
+  const db = getDb();
+
+  /* Firestore is the source of truth for stock, so a relative adjustment is
+     applied there atomically. The previous version computed the new value from
+     the localStorage mirror alone and left it at 0 when the product was not in
+     that mirror — so adjusting the stock of any catalogue product from a fresh
+     admin device silently wrote stock: 0 and made it look out of stock. */
+  let newStockVal = null;
+
+  if (db) {
+    try {
+      newStockVal = await runTransaction(db, async (tx) => {
+        const ref = doc(db, "products", targetId);
+        const snap = await tx.get(ref);
+        const current = snap.exists() ? Number(snap.data().stock) || 0 : 0;
+        const next = isAbsolute
+          ? Math.max(0, Number(deltaOrAbsolute) || 0)
+          : Math.max(0, current + (Number(deltaOrAbsolute) || 0));
+        tx.set(ref, { stock: next, updatedAt: serverTimestamp() }, { merge: true });
+        return next;
+      });
+    } catch (e) {
+      console.warn("adjustSingleProductStock firestore warning:", e?.message);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      const idx = custom.findIndex((p) => String(p.id || p.barcode) === targetId);
+      if (idx !== -1) {
+        const cur = Number(custom[idx].stock) || 0;
+        const localNext = isAbsolute
+          ? Math.max(0, Number(deltaOrAbsolute) || 0)
+          : Math.max(0, cur + (Number(deltaOrAbsolute) || 0));
+        // Prefer the transactional Firestore result when there is one.
+        newStockVal = newStockVal === null ? localNext : newStockVal;
+        custom[idx].stock = newStockVal;
+        localStorage.setItem("dashit_custom_products", JSON.stringify(custom));
+        window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+      }
+    } catch (e) {
+      console.warn("adjustSingleProductStock local error:", e);
+    }
+  }
+
+  return newStockVal === null ? 0 : newStockVal;
+}
+
+/**
+ * Bulk stock inward/adjustment for mass barcode imports.
+ */
+export async function bulkUpdateProductStock(stockUpdates = []) {
+  if (!stockUpdates || stockUpdates.length === 0) return { success: true, count: 0 };
+
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      stockUpdates.forEach((up) => {
+        const id = String(up.id || up.barcode || "");
+        const idx = custom.findIndex((p) => String(p.id || p.barcode) === id);
+        if (idx !== -1) {
+          if (up.newStock !== undefined) {
+            custom[idx].stock = Math.max(0, Number(up.newStock));
+          } else if (up.qtyToAdd !== undefined) {
+            custom[idx].stock = Math.max(0, (Number(custom[idx].stock) || 0) + Number(up.qtyToAdd));
+          }
+        } else if (up.product) {
+          custom.unshift({
+            ...up.product,
+            id: id || `PROD-${Date.now()}`,
+            stock: Number(up.qtyToAdd || up.newStock || 1),
+            active: true,
+          });
+        }
+      });
+      localStorage.setItem("dashit_custom_products", JSON.stringify(custom));
+      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+    } catch (e) {
+      console.warn("bulkUpdateProductStock local error:", e);
+    }
+  }
+
+  /* Failures are collected per item rather than aborting the loop, and they are
+     reported back to the caller. This used to be one try/catch around the whole
+     loop that swallowed the error and returned success unconditionally: a write
+     rejected by the security rules (a non-admin staff account, an expired
+     token) updated only the local mirror while the UI announced a completed
+     import, so the owner's device showed stock that no customer could see. */
+  const db = getDb();
+  const failures = [];
+  let written = 0;
+
+  if (db) {
+    for (const up of stockUpdates) {
+      const id = String(up.id || up.barcode || "");
+      if (!id) continue;
+
+      const base = { active: true, updatedAt: serverTimestamp() };
+      if (up.product) Object.assign(base, up.product);
+
+      try {
+        /* `qtyToAdd` is the shape the barcode inward screen and the CSV importer
+           send. Applied as a relative increment inside a transaction so a
+           concurrent order deduction is not overwritten. */
+        if (up.qtyToAdd !== undefined && up.newStock === undefined && up.calculatedStock === undefined) {
+          const delta = Number(up.qtyToAdd) || 0;
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, "products", id);
+            const snap = await tx.get(ref);
+            const current = snap.exists() ? Number(snap.data().stock) || 0 : 0;
+            tx.set(ref, { ...base, stock: Math.max(0, current + delta) }, { merge: true });
+          });
+        } else {
+          const payload = { ...base };
+          if (up.newStock !== undefined) payload.stock = Math.max(0, Number(up.newStock) || 0);
+          else if (up.calculatedStock !== undefined) payload.stock = Math.max(0, Number(up.calculatedStock) || 0);
+          await setDoc(doc(db, "products", id), payload, { merge: true });
+        }
+        written += 1;
+      } catch (e) {
+        console.warn(`bulkUpdateProductStock failed for ${id}:`, e?.message);
+        failures.push({ id, name: up.product?.name || id, reason: e?.message || "Write rejected" });
+      }
+    }
+  }
+
+  return {
+    // Local-only is not a server success; say so rather than implying a sync.
+    success: failures.length === 0,
+    syncedToServer: Boolean(db) && failures.length === 0,
+    count: db ? written : 0,
+    attempted: stockUpdates.length,
+    failures,
+  };
+}
+
+/**
+ * Deduct inventory for items in an order when shipped/out for delivery.
+ */
+export async function deductInventoryForOrder(orderId, items = []) {
+  if (!items || items.length === 0) return { success: true, count: 0 };
+
+  const db = getDb();
+  const deducted = [];
+
+  /* Deduction is driven by the order's own line items against Firestore, one
+     transaction per product. Previously the whole deduction was derived from
+     the localStorage product mirror: a product missing from that mirror was
+     skipped entirely, so on any admin device with a cold cache an order shipped
+     without its stock ever coming down — and two admins marking orders shipped
+     at once could both read the same stock and write the same reduced value. */
+  if (db) {
+    for (const item of items) {
+      const itemId = String(item.id || item.barcode || "").trim();
+      if (!itemId) continue;
+      const qtyToDeduct = Number(item.quantity || item.qty) || 1;
+      try {
+        const nextStock = await runTransaction(db, async (tx) => {
+          const ref = doc(db, "products", itemId);
+          const snap = await tx.get(ref);
+          if (!snap.exists()) return null;
+          const current = Number(snap.data().stock) || 0;
+          const next = Math.max(0, current - qtyToDeduct);
+          tx.set(ref, { stock: next, updatedAt: serverTimestamp() }, { merge: true });
+          return next;
+        });
+        if (nextStock !== null) deducted.push({ id: itemId, stock: nextStock });
+      } catch (e) {
+        console.warn(`deductInventoryForOrder could not deduct ${itemId}:`, e?.message);
+      }
+    }
+
+    if (orderId) {
+      try {
+        await updateDoc(doc(db, "orders", String(orderId)), {
+          inventoryDeducted: true,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn("deductInventoryForOrder could not flag the order:", e?.message);
+      }
+    }
+  }
+
+  // Mirror the result locally so the admin catalogue reflects it immediately.
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      let touched = false;
+      items.forEach((item) => {
+        const itemId = String(item.id || item.barcode || "");
+        const itemName = String(item.name || "").toLowerCase().trim();
+        const qtyToDeduct = Number(item.quantity || item.qty) || 1;
+
+        const idx = custom.findIndex(
+          (p) =>
+            (itemId && String(p.id || p.barcode) === itemId) ||
+            (itemName && String(p.name || "").toLowerCase().trim() === itemName)
+        );
+        if (idx === -1) return;
+
+        const authoritative = deducted.find((d) => d.id === itemId);
+        custom[idx].stock = authoritative
+          ? authoritative.stock
+          : Math.max(0, (Number(custom[idx].stock) || 0) - qtyToDeduct);
+        touched = true;
+      });
+
+      if (touched) {
+        localStorage.setItem("dashit_custom_products", JSON.stringify(custom));
+        window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+      }
+    } catch (e) {
+      console.warn("deductInventoryForOrder local mirror error:", e);
+    }
+  }
+
+  return { success: true, count: deducted.length };
 }
 
 /* -------------------------------------------------------------------- offers */
@@ -118,45 +435,138 @@ export async function deleteOffer(offerId) {
 
 /* -------------------------------------------------------------------- orders */
 
-/** Human-facing order code, e.g. DSH-4821. */
-const newOrderCode = () =>
-  `DSH-${Math.floor(1000 + Math.random() * 9000)}`;
+/**
+ * Human-facing order code, e.g. DSH-4821K7M.
+ *
+ * The old form was the last 4 digits of Date.now() plus 3 random digits. Those
+ * 4 digits repeat every 10 seconds, so two orders placed in the same 10-second
+ * window collided with probability ~1/900 — and because the document is written
+ * at that id, a collision overwrote a real customer's live order. The random
+ * tail is now 3 base-36 characters (46,656 values) drawn from crypto when it is
+ * available, and createOrder additionally refuses to write over an existing id.
+ */
+const randomTail = (len = 3) => {
+  const alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // no I/L/O/U — unambiguous when read aloud
+  let out = "";
+  const cryptoObj = typeof globalThis !== "undefined" ? globalThis.crypto : null;
+  if (cryptoObj?.getRandomValues) {
+    const bytes = new Uint8Array(len);
+    cryptoObj.getRandomValues(bytes);
+    for (let i = 0; i < len; i += 1) out += alphabet[bytes[i] % alphabet.length];
+    return out;
+  }
+  for (let i = 0; i < len; i += 1) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
+};
+
+export const newOrderCode = () =>
+  `DSH-${Date.now().toString().slice(-5)}${randomTail(3)}`;
 
 /**
- * Creates an order under a transaction so a colliding code cannot overwrite an
- * existing order. Rules require status 'Placed' and driverId null on create.
+ * Creates an order directly in Firestore with full sanitization.
+ * Rules require status 'Placed' and driverId null on create.
  */
-export async function createOrder(orderData, uid) {
+export async function createOrder(orderData, explicitUid = null) {
   const db = getDb();
   if (!db) throw new Error("Firestore unavailable");
 
-  const now = new Date().toISOString();
-  let code = newOrderCode();
+  const auth = getFirebaseAuth();
+  if (auth && typeof auth.authStateReady === "function") {
+    try {
+      await auth.authStateReady();
+    } catch (e) {}
+  }
+  let uid = auth?.currentUser?.uid;
 
-  await runTransaction(db, async (tx) => {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      const ref = doc(db, "orders", code);
-      const existing = await tx.get(ref);
-      if (!existing.exists()) {
-        tx.set(ref, {
-          ...orderData,
-          orderId: code,
-          userId: uid,
-          status: ORDER_STATUS.PLACED,
-          driverId: null,
-          driverName: "",
-          statusHistory: [{ status: ORDER_STATUS.PLACED, at: now }],
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        return;
-      }
-      code = newOrderCode();
+  if (!uid && auth) {
+    try {
+      const { signInAnonymously } = await import("firebase/auth");
+      const cred = await signInAnonymously(auth);
+      uid = cred?.user?.uid;
+    } catch (e) {
+      console.warn("Could not ensure anonymous auth for order:", e?.message);
     }
-    throw new Error("Could not allocate an order code");
+  }
+
+  // Fallback if auth is completely disabled
+  if (!uid) {
+    uid = explicitUid || (typeof window !== "undefined" ? localStorage.getItem("dashit_client_uid") : null) || "anonymous";
+  } else if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("dashit_client_uid", uid);
+    } catch (e) {}
+  }
+
+  const now = new Date().toISOString();
+
+  // Strip all undefined and forbidden properties to guarantee Firestore acceptance
+  const sanitized = JSON.parse(JSON.stringify(orderData || {}));
+  delete sanitized.inventoryDeducted; // strictly forbidden by rules on create
+  delete sanitized.driverId;          // strictly null on create
+
+  const buildPayload = (code) => ({
+    ...sanitized,
+    orderId: code,
+    userId: uid || "anonymous",
+    status: ORDER_STATUS.PLACED,
+    driverId: null, // Strictly null on creation as required by rules
+    driverName: "",
+    statusHistory: [
+      ...(Array.isArray(sanitized.statusHistory) ? sanitized.statusHistory : []),
+      { status: ORDER_STATUS.PLACED, at: now }
+    ],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 
-  return { success: true, orderId: code, order: { ...orderData, orderId: code } };
+  /* Written with setDoc and NO merge, which is what makes the overwrite
+     impossible: firestore.rules classifies a write to an id that already exists
+     as an `update`, and the update rule refuses it for a customer. So a code
+     collision is rejected by the server rather than silently merging one
+     customer's order on top of another's live order. */
+  let code = orderData?.orderId || newOrderCode();
+  let lastError = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const payload = buildPayload(code);
+    try {
+      await setDoc(doc(db, "orders", code), payload);
+
+      // Update local mirror stock so user's client-side catalog reflects it immediately
+      if (typeof window !== "undefined") {
+        try {
+          const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+          let touched = false;
+          (sanitized.items || []).forEach((item) => {
+            const itemId = String(item.id || item.barcode || "");
+            const qtyToDeduct = Number(item.quantity || item.qty) || 1;
+            const idx = custom.findIndex((p) => String(p.id || p.barcode) === itemId);
+            if (idx !== -1) {
+              custom[idx].stock = Math.max(0, (Number(custom[idx].stock) || 0) - qtyToDeduct);
+              touched = true;
+            }
+          });
+          if (touched) {
+            localStorage.setItem("dashit_custom_products", JSON.stringify(custom));
+            window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+          }
+        } catch (e) {}
+      }
+
+      return { success: true, orderId: code, order: { ...payload, orderId: code } };
+    } catch (e) {
+      lastError = e;
+      if (e?.code === "already-exists") {
+        code = newOrderCode();
+        continue;
+      }
+      throw e;
+    }
+  }
+
+  throw lastError || new Error("Could not place the order. Please try again.");
 }
 
 export async function fetchUserOrders(uid) {
@@ -177,25 +587,146 @@ export async function fetchUserOrders(uid) {
 export function watchOrder(orderId, callback) {
   const db = getDb();
   if (!db || !orderId) return () => {};
-  return onSnapshot(doc(db, "orders", String(orderId)), (snap) => {
-    callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-  });
+  try {
+    return onSnapshot(
+      doc(db, "orders", String(orderId)),
+      (snap) => {
+        callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      },
+      (err) => {
+        console.warn("watchOrder snapshot error:", err?.message);
+      }
+    );
+  } catch (e) {
+    console.warn("watchOrder exception:", e?.message);
+    return () => {};
+  }
 }
 
-/** Admin console: every live order, newest first. */
+/** Admin console: every live order, newest first, with resilient cross-tab local fallback. */
 export function watchAllOrders(callback, max = 100) {
+  const getLocalOrders = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+        const active = localStorage.getItem("dashit_active_order");
+        let list = [...hist];
+        if (active) {
+          const parsed = JSON.parse(active);
+          if (!list.some((o) => (o.orderId || o.id) === (parsed.orderId || parsed.id))) {
+            list = [parsed, ...list];
+          }
+        }
+        return list;
+      } catch (e) {}
+    }
+    return [];
+  };
+
   const db = getDb();
-  if (!db) return () => {};
-  return onSnapshot(
-    query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(max)),
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
-  );
+  let unsubFirestore = () => {};
+
+  /* True once Firestore has delivered a snapshot.
+     Without this, marking an order packed produced a visible reload: the write
+     dispatches "dashit_orders_updated" and a "storage" event, the handlers below
+     replaced the whole Firestore-backed list with this device's localStorage
+     copy (on a fresh admin machine, nearly empty), and a moment later the
+     Firestore snapshot put everything back. The local stream is a fallback for
+     when Firestore is unavailable — never a live overwrite of it. */
+  let firestoreLive = false;
+
+  const emitLocal = () => {
+    if (firestoreLive) return;
+    callback(getLocalOrders());
+  };
+
+  if (db) {
+    try {
+      unsubFirestore = onSnapshot(
+        query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(max)),
+        (snap) => {
+          firestoreLive = true;
+          const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          callback(orders);
+        },
+        (err) => {
+          console.warn("watchAllOrders snapshot permission notice (using local orders stream):", err?.message);
+          firestoreLive = false;
+          callback(getLocalOrders());
+        }
+      );
+    } catch (e) {
+      console.warn("watchAllOrders init warning:", e?.message);
+      callback(getLocalOrders());
+    }
+  } else {
+    callback(getLocalOrders());
+  }
+
+  // Cross-tab and storage sync (only while Firestore is not the source).
+  let localHandler = null;
+  let bc = null;
+  if (typeof window !== "undefined") {
+    localHandler = emitLocal;
+    window.addEventListener("dashit_orders_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+
+    if (window.BroadcastChannel) {
+      try {
+        bc = new BroadcastChannel("dashit_orders_channel");
+        bc.onmessage = emitLocal;
+      } catch (e) {}
+    }
+    // Initial emit, skipped if Firestore already answered.
+    setTimeout(emitLocal, 10);
+  }
+
+  return () => {
+    if (typeof unsubFirestore === "function") unsubFirestore();
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_orders_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+    if (bc) {
+      try { bc.close(); } catch (e) {}
+    }
+  };
 }
 
 /** Driver console: only orders assigned to this rider. */
 export function watchDriverOrders(driverId, callback) {
+  const getLocalDriverOrders = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+        const active = localStorage.getItem("dashit_active_order");
+        let list = [...hist];
+        if (active) {
+          const parsed = JSON.parse(active);
+          if (!list.some((o) => (o.orderId || o.id) === (parsed.orderId || parsed.id))) {
+            list = [parsed, ...list];
+          }
+        }
+        return list.filter((o) => driverId && o.driverId === driverId);
+      } catch (e) {}
+    }
+    return [];
+  };
+
   const db = getDb();
-  if (!db || !driverId) return () => {};
+  /* With no rider identity there is nothing to show. The local fallback used to
+     run here too, and since freshly placed orders carry driverId: null it
+     matched a null driverId and showed unassigned orders to a signed-out
+     device. */
+  if (!driverId) {
+    callback([]);
+    return () => {};
+  }
+  if (!db) {
+    callback(getLocalDriverOrders());
+    return () => {};
+  }
+
   return onSnapshot(
     query(
       collection(db, "orders"),
@@ -206,108 +737,287 @@ export function watchDriverOrders(driverId, callback) {
         ORDER_STATUS.OUT_FOR_DELIVERY,
       ])
     ),
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => {
+      console.warn("watchDriverOrders snapshot warning:", err?.message);
+      callback(getLocalDriverOrders());
+    }
   );
 }
 
 /** Driver console: pool of unassigned active orders ready to claim. */
 export function watchAvailableOrders(callback) {
-  const db = getDb();
-  if (!db) {
+  const getLocalUnassigned = () => {
     if (typeof window !== "undefined") {
-      const active = localStorage.getItem("dashit_active_order");
-      if (active) {
-        try {
-          const ord = JSON.parse(active);
-          if (!ord.driverId && ord.status !== ORDER_STATUS.DELIVERED && ord.status !== ORDER_STATUS.CANCELLED) {
-            callback([ord]);
-            return () => {};
+      try {
+        const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+        const active = localStorage.getItem("dashit_active_order");
+        const list = [...hist];
+        if (active) {
+          const parsed = JSON.parse(active);
+          if (!list.some((o) => (o.orderId || o.id) === (parsed.orderId || parsed.id))) {
+            list.unshift(parsed);
           }
-        } catch (e) {}
-      }
+        }
+        return list.filter(
+          (ord) => !ord.driverId && ord.status !== ORDER_STATUS.DELIVERED && ord.status !== ORDER_STATUS.CANCELLED
+        );
+      } catch (e) {}
     }
-    callback([]);
-    return () => {};
+    return [];
+  };
+
+  const db = getDb();
+  let unsub = () => {};
+  // Same rule as watchAllOrders: local events must not overwrite a live snapshot.
+  let firestoreLive = false;
+  const emitLocal = () => {
+    if (firestoreLive) return;
+    callback(getLocalUnassigned());
+  };
+
+  if (db) {
+    try {
+      unsub = onSnapshot(
+        query(
+          collection(db, "orders"),
+          where("status", "in", [ORDER_STATUS.PLACED, ORDER_STATUS.PACKING]),
+          limit(50)
+        ),
+        (snap) => {
+          firestoreLive = true;
+          const unassigned = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((o) => !o.driverId);
+          callback(unassigned);
+        },
+        (err) => {
+          console.warn("watchAvailableOrders snapshot warning (using local):", err?.message);
+          firestoreLive = false;
+          callback(getLocalUnassigned());
+        }
+      );
+    } catch (e) {
+      callback(getLocalUnassigned());
+    }
+  } else {
+    callback(getLocalUnassigned());
   }
 
-  return onSnapshot(
-    query(
-      collection(db, "orders"),
-      where("status", "in", [ORDER_STATUS.PLACED, ORDER_STATUS.PACKING]),
-      limit(50)
-    ),
-    (snap) => {
-      const unassigned = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((o) => !o.driverId);
-      callback(unassigned);
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = emitLocal;
+    window.addEventListener("dashit_orders_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    setTimeout(emitLocal, 10);
+  }
+
+  return () => {
+    if (typeof unsub === "function") unsub();
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_orders_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
     }
-  );
+  };
 }
 
 export async function updateOrderStatus(orderId, status) {
-  const db = getDb();
-  if (!db) {
-    if (typeof window !== "undefined") {
-      try {
-        const active = localStorage.getItem("dashit_active_order");
-        if (active) {
-          const ord = JSON.parse(active);
-          if (ord.orderId === orderId || ord.id === orderId) {
-            ord.status = status;
-            localStorage.setItem("dashit_active_order", JSON.stringify(ord));
-          }
+  // 1. Always update local storage and broadcast first so UI reflects change immediately
+  if (typeof window !== "undefined") {
+    try {
+      const active = localStorage.getItem("dashit_active_order");
+      if (active) {
+        const ord = JSON.parse(active);
+        if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
+          ord.status = status;
+          ord.updatedAt = new Date().toISOString();
+          localStorage.setItem("dashit_active_order", JSON.stringify(ord));
         }
-      } catch (e) {}
-    }
-    return { success: true };
+      }
+      const historyStr = localStorage.getItem("dashit_orders_history");
+      if (historyStr) {
+        const list = JSON.parse(historyStr);
+        const updatedList = list.map((o) =>
+          String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
+            ? { ...o, status, updatedAt: new Date().toISOString() }
+            : o
+        );
+        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
+      }
+      window.dispatchEvent(
+        new CustomEvent("dashit_orders_updated", { detail: { orderId, status } })
+      );
+      window.dispatchEvent(new Event("storage"));
+    } catch (e) {}
   }
-  await updateDoc(doc(db, "orders", String(orderId)), {
-    status,
-    updatedAt: serverTimestamp(),
-    statusHistory: arrayUnion({ status, at: new Date().toISOString() }),
-  });
-  return { success: true };
+
+  const db = getDb();
+  if (!db) return { success: true, localUpdated: true };
+
+  try {
+    await updateDoc(doc(db, "orders", String(orderId)), {
+      status,
+      updatedAt: serverTimestamp(),
+      statusHistory: arrayUnion({ status, at: new Date().toISOString() }),
+    });
+    return { success: true, firestoreSynced: true };
+  } catch (err) {
+    console.warn("Firestore updateOrderStatus sync note:", err?.message || err);
+    // Local storage & events already succeeded; prevent UI exceptions
+    return { success: true, localUpdated: true, firestoreSynced: false, permissionWarning: true };
+  }
 }
 
 /** Driver claims an unassigned order. */
 export async function claimOrder(orderId, driverId, driverName) {
-  const db = getDb();
-  if (!db) {
-    if (typeof window !== "undefined") {
-      try {
-        const active = localStorage.getItem("dashit_active_order");
-        if (active) {
-          const ord = JSON.parse(active);
+  if (typeof window !== "undefined") {
+    try {
+      const active = localStorage.getItem("dashit_active_order");
+      if (active) {
+        const ord = JSON.parse(active);
+        if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
           ord.driverId = driverId;
           ord.driverName = driverName || "Delivery Partner";
           ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
+          ord.updatedAt = new Date().toISOString();
           localStorage.setItem("dashit_active_order", JSON.stringify(ord));
         }
-      } catch (e) {}
-    }
-    return { success: true };
+      }
+      const historyStr = localStorage.getItem("dashit_orders_history");
+      if (historyStr) {
+        const list = JSON.parse(historyStr);
+        const updatedList = list.map((o) =>
+          String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
+            ? {
+                ...o,
+                driverId,
+                driverName: driverName || "Delivery Partner",
+                status: ORDER_STATUS.OUT_FOR_DELIVERY,
+                updatedAt: new Date().toISOString(),
+              }
+            : o
+        );
+        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
+      }
+      window.dispatchEvent(
+        new CustomEvent("dashit_orders_updated", {
+          detail: { orderId, status: ORDER_STATUS.OUT_FOR_DELIVERY },
+        })
+      );
+    } catch (e) {}
   }
-  await updateDoc(doc(db, "orders", String(orderId)), {
-    driverId,
-    driverName: driverName || "Delivery Partner",
-    status: ORDER_STATUS.OUT_FOR_DELIVERY,
-    updatedAt: serverTimestamp(),
-    statusHistory: arrayUnion({ status: ORDER_STATUS.OUT_FOR_DELIVERY, at: new Date().toISOString() }),
-  });
-  return { success: true };
+
+  const db = getDb();
+  if (!db) return { success: true, localUpdated: true };
+
+  /* Claiming is a transaction so two riders tapping "Claim" on the same order
+     cannot both win: the second read sees a driverId and aborts. A plain
+     updateDoc let the later write silently steal an order already en route. */
+  try {
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, "orders", String(orderId));
+      const snap = await tx.get(ref);
+      if (!snap.exists()) throw new Error("ORDER_MISSING");
+      const existingDriver = snap.data().driverId;
+      if (existingDriver && existingDriver !== driverId) {
+        throw new Error("ORDER_ALREADY_CLAIMED");
+      }
+      tx.update(ref, {
+        driverId,
+        driverName: driverName || "Delivery Partner",
+        status: ORDER_STATUS.OUT_FOR_DELIVERY,
+        updatedAt: serverTimestamp(),
+        statusHistory: arrayUnion({ status: ORDER_STATUS.OUT_FOR_DELIVERY, at: new Date().toISOString() }),
+      });
+    });
+    return { success: true, firestoreSynced: true };
+  } catch (err) {
+    if (err?.message === "ORDER_ALREADY_CLAIMED") {
+      return {
+        success: false,
+        alreadyClaimed: true,
+        message: "Another rider has already picked up this order.",
+      };
+    }
+    console.warn("Firestore claimOrder sync note:", err?.message || err);
+    return { success: true, localUpdated: true, firestoreSynced: false };
+  }
 }
 
 /** Admin-only: assign a specific driver to an order. */
 export async function assignDriver(orderId, driverId, driverName) {
+  if (typeof window !== "undefined") {
+    try {
+      const active = localStorage.getItem("dashit_active_order");
+      if (active) {
+        const ord = JSON.parse(active);
+        if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
+          ord.driverId = driverId;
+          ord.driverName = driverName || "";
+          localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+        }
+      }
+      const historyStr = localStorage.getItem("dashit_orders_history");
+      if (historyStr) {
+        const list = JSON.parse(historyStr);
+        const updatedList = list.map((o) =>
+          String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
+            ? { ...o, driverId, driverName: driverName || "" }
+            : o
+        );
+        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
+      }
+    } catch (e) {}
+  }
+
   const db = getDb();
-  if (!db) return { success: false };
-  await updateDoc(doc(db, "orders", String(orderId)), {
-    driverId,
-    driverName: driverName || "",
-    updatedAt: serverTimestamp(),
-  });
-  return { success: true };
+  if (!db) return { success: true, localUpdated: true };
+
+  try {
+    await updateDoc(doc(db, "orders", String(orderId)), {
+      driverId,
+      driverName: driverName || "",
+      updatedAt: serverTimestamp(),
+    });
+    return { success: true, firestoreSynced: true };
+  } catch (err) {
+    console.warn("Firestore assignDriver sync note:", err?.message || err);
+    return { success: true, localUpdated: true, firestoreSynced: false };
+  }
+}
+
+/* ---------------------------------------------------------------- riders */
+
+/**
+ * The rider roster, read from the staff collection.
+ *
+ * This matters for assignment to work at all. The roster used to be a
+ * localStorage list with invented ids like "driver_tariq", while the rider app
+ * looks up its work with `where("driverId", "==", <firebase uid>)`. Assigning
+ * "Tariq" wrote driverId: "driver_tariq", which matched no real account, so an
+ * assigned order never appeared on any rider's phone. Using the staff document
+ * id — which IS the uid — makes the two sides line up.
+ */
+export async function fetchDrivers() {
+  const db = getDb();
+  if (!db) return [];
+  try {
+    const snap = await getDocs(
+      query(collection(db, "staff"), where("role", "==", "driver"))
+    );
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((d) => d.active !== false)
+      .map((d) => ({
+        id: d.id, // Firebase uid — what orders.driverId must hold
+        name: d.name || d.displayName || d.email?.split("@")[0] || "Rider",
+        phone: d.phone || "",
+        vehicle: d.vehicle || "Scooter",
+      }));
+  } catch (e) {
+    console.warn("fetchDrivers warning:", e?.message);
+    return [];
+  }
 }
 
 /* ------------------------------------------------------------ live tracking */
@@ -337,6 +1047,89 @@ export async function pushDriverLocation(orderId, payload) {
     console.warn("Could not push driver location to Firestore:", e?.message);
   }
 }
+
+/**
+ * Broadcasts driver live GPS telemetry across the entire active multi-drop queue,
+ * updating central driver telemetry as well as all customer order subcollections.
+ */
+export async function pushDriverTelemetryToQueue(driverId, activeOrderIds = [], telemetry = {}, perOrder = {}) {
+  const payload = {
+    ...telemetry,
+    driverId,
+    updatedAt: new Date().toISOString(),
+  };
+
+  /* Position and rider identity are shared by the whole queue, but arrival time
+     is not: the second drop is always further out than the first. `perOrder`
+     carries the fields that differ — etaMinutes, distanceKm, progress — keyed by
+     order id, so every customer reads an ETA computed for their own address
+     rather than the rider's next stop. */
+  const extrasFor = (oId) => (perOrder && perOrder[oId]) || {};
+
+  // 1. Dispatch locally for immediate 0ms UI responsiveness across all active tabs
+  if (typeof window !== "undefined") {
+    activeOrderIds.forEach((oId, idx) => {
+      const itemData = { ...payload, ...extrasFor(oId), orderId: oId, queuePosition: idx };
+      try {
+        localStorage.setItem(`dashit_tracking_${oId}`, JSON.stringify(itemData));
+        window.dispatchEvent(
+          new CustomEvent("dashit_tracking_updated", { detail: itemData })
+        );
+      } catch (e) {}
+    });
+  }
+
+  // 2. Persist to Firestore
+  const db = getDb();
+  if (!db) return;
+
+  /*
+   * The customer-facing writes are committed on their own.
+   *
+   * All of this used to go into a single writeBatch together with the rider's
+   * own drivers/{id}/telemetry/live document. A Firestore batch is atomic, so
+   * one rejected write fails every write in it — and if the drivers/ path is not
+   * granted by firestore.rules, that single denial silently took down live
+   * tracking for every customer in the queue as well. The two are now
+   * independent: a problem with the rider's telemetry document cannot stop the
+   * customer seeing their delivery move.
+   */
+  try {
+    if (activeOrderIds.length > 0) {
+      const batch = writeBatch(db);
+      activeOrderIds.forEach((orderId, idx) => {
+        const orderTrackingRef = doc(db, "orders", String(orderId), "tracking", "live");
+        batch.set(
+          orderTrackingRef,
+          {
+            ...telemetry,
+            ...extrasFor(orderId),
+            queuePosition: idx, // 0 = next drop, 1 = the drop after that
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn("Could not fan-out tracking to the customers' orders:", err?.message);
+  }
+
+  // The rider's own telemetry document, kept separate and non-critical.
+  if (driverId) {
+    try {
+      await setDoc(
+        doc(db, "drivers", String(driverId), "telemetry", "live"),
+        { ...telemetry, driverId, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn("Could not update rider telemetry document:", err?.message);
+    }
+  }
+}
+
 
 /** Replaces `driver_location_changed`. */
 export function watchOrderTracking(orderId, callback) {

@@ -7,7 +7,12 @@ rules_version = '2';
  * from the Firebase console. There are no custom claims because the project runs
  * on the Spark plan (no Cloud Functions, so no Admin SDK to mint them).
  *
- * Cost note: every isAdmin()/isDriver() call is a document read. They are only
+ * The client bundle is public: the Firebase web config, every collection name and
+ * every query in src/lib/db.js can be read by anyone who opens the app. These
+ * rules are therefore the ONLY thing standing between a stranger and the customer
+ * database. Nothing here may be relaxed to "if true".
+ *
+ * Cost note: every isAdmin()/isStaff() call is a document read. They are only
  * invoked on paths that genuinely need elevation — a customer reading their own
  * order never triggers one.
  */
@@ -40,12 +45,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    /** Fields a driver is allowed to touch on an order they are assigned to. */
+    /** Restricts a write to a known set of fields. */
     function onlyChanges(allowed) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
     }
 
-    // ---- Catalogue: world-readable, admin-writable -------------------------
+    // ---- Catalogue: world-readable, staff-writable ------------------------
+    // Customers must be able to browse before signing in, so reads are open.
+    // Writes (price, stock, availability) are the store's books — staff only.
+    // Riders never edit the catalogue, so the write grant is admin-only rather
+    // than staff-wide: a stolen rider phone must not be able to reprice the shop.
     match /products/{productId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -56,66 +65,112 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Store open/closed, high-demand flag, delivery radius.
     match /config/{docId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     // ---- Users ------------------------------------------------------------
+    // Profiles hold names, phone numbers and emails — the customer database.
+    // Riders are excluded: everything a rider needs to complete a drop (name,
+    // phone, address, delivery code) is already copied onto the order, so there
+    // is no reason for a rider handset to be able to enumerate every customer.
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow create, update: if isOwner(uid);
-      allow delete: if false;
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if isOwner(uid);
 
       match /addresses/{addressId} {
-        allow read, write: if isOwner(uid);
-        allow read: if isAdmin();
+        allow read: if isOwner(uid) || isAdmin();
+        allow write: if isOwner(uid);
       }
     }
 
     // ---- Orders -----------------------------------------------------------
+    // An order carries a name, a phone number, a home address and GPS
+    // coordinates. Read access is the customer who placed it, the driver
+    // carrying it, and admins.
     match /orders/{orderId} {
 
-      allow read: if isAdmin()
-                  || isOwner(resource.data.userId)
-                  || (isDriver() && (resource.data.driverId == request.auth.uid || resource.data.driverId == null || !('driverId' in resource.data)));
+      // The owner test is written first so an ordinary customer reading their
+      // own order short-circuits before isStaff(), which costs a document read.
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid)
+        || isStaff();
 
-      // A customer may only create an order for themselves, and may not
-      // pre-assign a driver or invent a delivered status.
+      /* A customer may only create an order in its initial state, attributed to
+         themselves, never pre-assigned to a driver, never pre-marked delivered,
+         and never pre-flagged as stock-deducted. createdAt must be the server's
+         clock so the 60-second cancellation window cannot be backdated. */
       allow create: if isSignedIn()
-                    && request.resource.data.userId == request.auth.uid
-                    && request.resource.data.status == 'Placed'
-                    && request.resource.data.driverId == null;
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Placed'
+        && request.resource.data.driverId == null
+        && request.resource.data.createdAt == request.time
+        && !('inventoryDeducted' in request.resource.data);
 
+      /* Customers may only cancel, only their own order, only while it is still
+         'Placed' (once a rider is carrying it, cancellation goes through the
+         store), and may change nothing else — not the total, not the address.
+         Drivers may move an order they hold, or claim an unassigned one.
+         Admins may edit freely. */
       allow update: if isAdmin()
-                    // Assigned driver may advance status only — never money,
-                    // items, or who the order belongs to.
-                    || (isDriver()
-                        && resource.data.driverId == request.auth.uid
-                        && onlyChanges(['status', 'updatedAt', 'statusHistory']))
-                    // Driver may claim an unassigned order
-                    || (isDriver()
-                        && (resource.data.driverId == null || !('driverId' in resource.data))
-                        && request.resource.data.driverId == request.auth.uid
-                        && onlyChanges(['driverId', 'driverName', 'status', 'updatedAt', 'statusHistory']))
-                    // Customer may cancel, but only while it is still Placed.
-                    || (isOwner(resource.data.userId)
-                        && resource.data.status == 'Placed'
-                        && request.resource.data.status == 'Cancelled'
-                        && onlyChanges(['status', 'updatedAt', 'statusHistory']));
+        || (
+          isSignedIn()
+          && resource.data.userId == request.auth.uid
+          && resource.data.status == 'Placed'
+          && request.resource.data.status == 'Cancelled'
+          && onlyChanges(['status', 'statusHistory', 'updatedAt', 'cancelReason'])
+        )
+        || (
+          isDriver()
+          // `!('driverId' in ...)` covers orders written before the field
+          // existed, which would otherwise be unclaimable by any rider.
+          && (
+            !('driverId' in resource.data)
+            || resource.data.driverId == null
+            || resource.data.driverId == request.auth.uid
+          )
+          && request.resource.data.driverId == request.auth.uid
+          && onlyChanges([
+               'status', 'statusHistory', 'driverId', 'driverName',
+               'updatedAt', 'deliveredAt', 'inventoryDeducted'
+             ])
+        );
 
+      // Orders are business records — nobody deletes them from a client.
       allow delete: if false;
 
-      // Live rider position — written frequently by the assigned driver.
+      /* Live rider position. The customer watching their delivery reads it; only
+         the rider actually assigned to this order (or an admin) writes it, so
+         one rider cannot spoof another's location on the customer's map. */
       match /tracking/{docId} {
-        allow read: if isAdmin()
-                    || isOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.userId)
-                    || (isDriver()
-                        && get(/databases/$(database)/documents/orders/$(orderId)).data.driverId == request.auth.uid);
-
+        allow read: if isStaff()
+          || (
+            isSignedIn()
+            && get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid
+          );
         allow write: if isAdmin()
-                     || (isDriver()
-                         && get(/databases/$(database)/documents/orders/$(orderId)).data.driverId == request.auth.uid);
+          || (
+            isDriver()
+            && get(/databases/$(database)/documents/orders/$(orderId)).data.driverId == request.auth.uid
+          );
+      }
+    }
+
+    // ---- Riders: live telemetry ------------------------------------------
+    // Written by the rider app on each GPS tick so the store can see the fleet
+    // on one map. Without this rule the path falls through to the catch-all deny
+    // below and every write is rejected.
+    match /drivers/{driverId} {
+      allow read: if isStaff();
+      allow write: if false;
+
+      match /telemetry/{docId} {
+        allow read: if isStaff();
+        // Only the rider it describes may write their own position.
+        allow write: if isOwner(driverId) && isDriver();
       }
     }
 

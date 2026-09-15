@@ -1,39 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import Head from "next/head";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  Power,
-  Package,
-  Truck,
-  CheckCircle2,
-  RefreshCw,
   ShieldAlert,
-  Tag,
-  Clock,
-  IndianRupee,
-  Users,
-  Search,
-  Barcode,
-  Sparkles,
-  Check,
-  Trash2,
-  Plus,
-  Layers,
-  ShoppingBag,
-  Flame,
-  Eye,
-  EyeOff,
-  ExternalLink,
-  PlusCircle,
-  ToggleLeft,
-  ToggleRight,
+  Mail,
+  Lock,
+  Loader2,
   LogIn,
-  ShieldOff,
-  Loader2
+  Package,
+  Boxes,
+  Tag,
+  IndianRupee,
+  Power,
+  Moon,
+  CloudRain,
+  Zap,
+  Wrench,
+  Edit3,
+  X,
+  Sparkles,
+  ArrowDownToLine
 } from "lucide-react";
 
+import AdminLayout from "../components/admin/AdminLayout";
+import OrderProcessingView from "../components/admin/OrderProcessingView";
+import DriversView from "../components/admin/DriversView";
+import InventoryView from "../components/admin/InventoryView";
+import AddProductView from "../components/admin/AddProductView";
+import BatchInwardView from "../components/admin/BatchInwardView";
+import CatalogueView from "../components/admin/CatalogueView";
+import OffersView from "../components/admin/OffersView";
+import ImporterView from "../components/admin/ImporterView";
+import CsvInventoryView from "../components/admin/CsvInventoryView";
+import StoreControlsView from "../components/admin/StoreControlsView";
+
+import BarcodeScannerView from "../components/BarcodeScannerView";
+import { get4KPhotoSuggestions, findInIndianCatalog, STUDIO_4K_PHOTOS } from "../lib/barcodeCatalog";
 import { isFirebaseConfigured } from "../lib/firebase";
-import { watchAuth, getStaffRole } from "../lib/auth";
+import { watchAuth, getStaffRole, signInWithEmail, signOut } from "../lib/auth";
 import {
   watchAllOrders,
   updateOrderStatus as fsUpdateOrderStatus,
@@ -44,11 +48,21 @@ import {
   fetchProducts,
   upsertProduct,
   deleteProduct as fsDeleteProduct,
+  adjustSingleProductStock,
+  bulkUpdateProductStock,
+  deductInventoryForOrder,
   watchStoreConfig,
   setStoreConfig,
+  assignDriver,
+  ORDER_STATUS
 } from "../lib/db";
 import { searchOffByBarcode, searchOffByQuery } from "../lib/openFoodFacts";
-import BklitAreaChart from "../components/BklitAreaChart";
+import {
+  playOrderChime,
+  notifyNewOrder,
+  unlockAudio,
+  requestNotificationPermission
+} from "../lib/chime";
 import {
   getExclusiveOffers,
   addExclusiveOffer,
@@ -58,33 +72,132 @@ import {
   DEFAULT_OFFERS
 } from "../lib/offers";
 
-const OFFER_THEMES = [
-  { name: "Midnight Navy", gradient: "from-[#040E22] via-[#061838] to-[#0A2558]", accent: "text-amber-400", preview: "bg-[#061838] border-amber-400" },
-  { name: "Warm Oven Amber", gradient: "from-[#140C04] via-[#241406] to-[#361E0A]", accent: "text-[#FF8A3D]", preview: "bg-[#241406] border-orange-500" },
-  { name: "Forest Emerald", gradient: "from-[#02180E] via-[#062816] to-[#0B3D22]", accent: "text-emerald-400", preview: "bg-[#062816] border-emerald-400" },
-  { name: "Royal Violet", gradient: "from-[#140326] via-[#21073E] to-[#310C5C]", accent: "text-fuchsia-400", preview: "bg-[#21073E] border-fuchsia-400" },
-  { name: "Crimson Sunset", gradient: "from-[#1E0509] via-[#350912] to-[#4E0F1D]", accent: "text-rose-400", preview: "bg-[#350912] border-rose-400" }
+const QUICK_TEMPLATES = [
+  {
+    name: "Fresh Kashmiri Lavas Bread (4 pcs)",
+    cat: "Bakery",
+    price: 30,
+    originalPrice: 40,
+    unit: "4 pcs",
+    brand: "Local Kandur",
+    badge: "Hot Fresh",
+    img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80",
+    stock: 120,
+  },
+  {
+    name: "Amul Taaza Toned Fresh Milk 1L",
+    cat: "Dairy",
+    price: 66,
+    originalPrice: 70,
+    unit: "1 Litre",
+    brand: "Amul",
+    badge: "Daily Fresh",
+    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80",
+    stock: 200,
+  },
+  {
+    name: "Amul Pasteurised Salted Butter 100g",
+    cat: "Dairy",
+    price: 58,
+    originalPrice: 60,
+    unit: "100g",
+    brand: "Amul",
+    badge: "Bestseller",
+    img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80",
+    stock: 80,
+  },
+  {
+    name: "Fresh Kashmiri Red Apples (1 kg)",
+    cat: "Fruits",
+    price: 140,
+    originalPrice: 170,
+    unit: "1 kg",
+    brand: "Kashmir Orchards",
+    badge: "Crisp Sweet",
+    img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80",
+    stock: 60,
+  },
+  {
+    name: "Lay's Magic Masala Potato Chips",
+    cat: "Chips",
+    price: 20,
+    originalPrice: 20,
+    unit: "50g",
+    brand: "Lay's",
+    badge: "Crunchy",
+    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
+    stock: 150,
+  },
+  {
+    name: "Maggi 2-Minute Masala Noodles (4-Pack)",
+    cat: "Instant Food",
+    price: 56,
+    originalPrice: 60,
+    unit: "280g",
+    brand: "Nestle",
+    badge: "Quick 2-Min",
+    img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=600&auto=format&fit=crop&q=80",
+    stock: 100,
+  },
+  {
+    name: "Coca-Cola Refreshing Soft Drink",
+    cat: "Beverages",
+    price: 40,
+    originalPrice: 40,
+    unit: "750 ml",
+    brand: "Coca-Cola",
+    badge: "Chilled",
+    img: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80",
+    stock: 90,
+  },
+  {
+    name: "India Gate Basmati Rice Rozzana",
+    cat: "Staples",
+    price: 110,
+    originalPrice: 125,
+    unit: "1 kg",
+    brand: "India Gate",
+    badge: "Aromatic",
+    img: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
+    stock: 50,
+  },
+  {
+    name: "Tata Salt Vacuum Evaporated Iodized",
+    cat: "Spices",
+    price: 28,
+    originalPrice: 28,
+    unit: "1 kg",
+    brand: "Tata",
+    badge: "Purity",
+    img: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=600&auto=format&fit=crop&q=80",
+    stock: 100,
+  },
+  {
+    name: "Dettol Original Germ Protection Soap",
+    cat: "Personal Care",
+    price: 38,
+    originalPrice: 40,
+    unit: "75g",
+    brand: "Dettol",
+    badge: "100% Protection",
+    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=600&auto=format&fit=crop&q=80",
+    stock: 75,
+  }
 ];
 
-const OFFER_IMAGE_PRESETS = [
-  { label: "Gourmet Crisps & Sips", url: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80", cat: "Snacks" },
-  { label: "Oven Breads & Pastries", url: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80", cat: "Bakery" },
-  { label: "Farm Fresh Milk & Butter", url: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80", cat: "Dairy" },
-  { label: "Crisp Valley Kashmiri Apples", url: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80", cat: "Fruits" },
-  { label: "Artisan Coffee & Cold Brews", url: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80", cat: "Beverages" }
-];
-
-const FMCG_PRESETS = [
-  { label: "Lay's Magic Masala", query: "lays magic masala", cat: "Chips" },
-  { label: "Parle-G Biscuits", query: "parle-g", cat: "Biscuits" },
-  { label: "Maggi 2-Min Noodles", query: "maggi 2-minute noodles", cat: "Instant Food" },
-  { label: "Amul Butter", query: "amul butter", cat: "Dairy" },
-  { label: "Tata Salt Iodized", query: "tata salt", cat: "Spices" },
-  { label: "Haldiram's Bhujia", query: "haldiram bhujia", cat: "Snacks" },
-  { label: "Frooti Mango Drink", query: "frooti", cat: "Beverages" },
-  { label: "Dettol Soap", query: "dettol soap", cat: "Personal Care" },
-  { label: "Surf Excel Detergent", query: "surf excel", cat: "Household Items" },
-  { label: "India Gate Basmati", query: "india gate basmati rice", cat: "Staples" }
+const VISUAL_IMAGE_PALETTE = [
+  { label: "Kashmiri Lavas", url: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80", cat: "Bakery" },
+  { label: "Fresh Milk", url: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { label: "Salted Butter", url: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { label: "Kashmiri Apples", url: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80", cat: "Fruits" },
+  { label: "Chips & Crisps", url: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80", cat: "Chips" },
+  { label: "Cookies & Biscuits", url: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&auto=format&fit=crop&q=80", cat: "Biscuits" },
+  { label: "Cold Drinks", url: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80", cat: "Beverages" },
+  { label: "Instant Noodles", url: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=600&auto=format&fit=crop&q=80", cat: "Instant Food" },
+  { label: "Basmati Rice", url: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80", cat: "Staples" },
+  { label: "Salt & Spices", url: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=600&auto=format&fit=crop&q=80", cat: "Spices" },
+  { label: "Chocolates", url: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=600&auto=format&fit=crop&q=80", cat: "Snacks" },
+  { label: "Soaps & Hygiene", url: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=600&auto=format&fit=crop&q=80", cat: "Personal Care" }
 ];
 
 const CATEGORIES = [
@@ -104,278 +217,1035 @@ const CATEGORIES = [
   "Bakery"
 ];
 
-/**
- * Access gate.
- *
- * On Spark there are no custom claims, so privilege lives in firestore.rules
- * checking staff/{uid} (see docs/FIRESTORE.md §3). This gate mirrors that in the
- * UI: it does not replace the rules, it just avoids showing the dashboard shell
- * to someone the rules would reject anyway.
- *
- * Staff sign in through the ordinary customer OTP flow at /login once — that is
- * what mints the anonymous uid the admin later grants `staff/{uid}` to in the
- * Firebase console (docs/FIRESTORE.md step 5). If Firebase is not configured at
- * all, the gate is skipped entirely — matches every other page's "degrade to
- * localStorage, no auth" behaviour in that state.
- */
 export default function AdminAccessGate() {
-  const [authState, setAuthState] = useState(isFirebaseConfigured ? "checking" : "open");
+  const [currentUid, setCurrentUid] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
+  /* The session is restored from Firebase Auth, never from a sessionStorage
+     flag: a flag is writable from devtools, so trusting it would let anyone
+     open the console shell by typing one line in the browser. */
   useEffect(() => {
     if (!isFirebaseConfigured) return;
     const unsub = watchAuth(async (user) => {
       if (!user) {
-        setAuthState("signed-out");
+        setCurrentUid("");
+        setIsAuthenticated(false);
         return;
       }
+      setCurrentUid(user.uid);
       const role = await getStaffRole(user.uid);
-      setAuthState(role === "admin" ? "open" : "denied");
+      if (role === "admin") {
+        setIsAuthenticated(true);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("dashit_admin_email", user.email || "");
+        }
+      } else {
+        setIsAuthenticated(false);
+      }
     });
     return unsub;
   }, []);
 
-  if (authState === "open") return <EasyAdminDashboard />;
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setLoginError("");
 
-  const screens = {
-    checking: {
-      Icon: Loader2,
-      spin: true,
-      title: "Checking access…",
-      message: "Confirming your admin session.",
-    },
-    "signed-out": {
-      Icon: LogIn,
-      title: "Sign in required",
-      message: "Open the Dashit app and sign in once via the normal login screen, then come back here.",
-    },
-    denied: {
-      Icon: ShieldOff,
-      title: "Access denied",
-      message: "This account is not registered as store staff. Ask an existing admin to grant access.",
-    },
+    const cleanEmail = String(email || "").trim().toLowerCase();
+    const cleanPassword = String(password || "").trim();
+
+    if (!cleanEmail || !cleanPassword) {
+      setLoginError("Please enter both administrator email and password.");
+      setIsLoading(false);
+      return;
+    }
+
+    /* Authentication is Firebase Auth, and authorisation is the staff/{uid}
+       document — both are required. A correct password alone is not enough:
+       every customer who signs up with email also has a valid Firebase account,
+       so without the role check any of them could open the command console.
+       There are deliberately no hardcoded "master" credentials here; this file
+       ships to the browser, so anything hardcoded is public. */
+    try {
+      const res = await signInWithEmail(cleanEmail, cleanPassword);
+      if (!res.success) {
+        setLoginError(res.message || "Invalid administrator email or password. Access denied.");
+        return;
+      }
+
+      const role = await getStaffRole(res.user?.uid);
+      if (role !== "admin") {
+        // The uid is shown so a real administrator can create
+        // staff/<uid> = { role: "admin", active: true } in the Firebase console
+        // without having to hunt for it — otherwise the first deploy of these
+        // rules locks everyone out of their own store.
+        const uid = res.user?.uid || "";
+        await signOut();
+        setLoginError(
+          `This account is not authorised for the admin console. In the Firebase console create the document staff/${uid} with { role: "admin", active: true }.`
+        );
+        return;
+      }
+
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("dashit_admin_email", cleanEmail);
+      }
+      setIsAuthenticated(true);
+    } catch (err) {
+      setLoginError(err?.message || "Authentication error. Please check credentials.");
+    } finally {
+      setIsLoading(false);
+    }
   };
-  const { Icon, spin, title, message } = screens[authState] || screens.checking;
+
+  if (isAuthenticated) {
+    return <ProfessionalAdminDashboard isSandbox={false} currentUid={currentUid} />;
+  }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-8 max-w-sm w-full text-center space-y-3">
-        <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center mx-auto text-[#FF5B00]">
-          <Icon className={`w-6 h-6 ${spin ? "animate-spin" : ""}`} />
+    <div className="h-screen h-[100dvh] max-h-screen overflow-y-auto admin-scroll bg-[#090A0F] p-4 selection:bg-[#FF5B00] selection:text-white">
+      <Head>
+        <title>DASHIT — Partner Sign In</title>
+        {/* Staff console: never indexed, never surfaced in search results. */}
+        <meta name="robots" content="noindex, nofollow, noarchive" />
+      </Head>
+      <div className="min-h-full flex items-center justify-center py-6">
+        <div className="bg-[#12141A] border border-zinc-800 rounded-3xl shadow-2xl p-7 sm:p-8 max-w-sm w-full text-center space-y-5">
+          <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-[#FF5B00]/25 flex items-center justify-center mx-auto text-[#FF5B00] shadow-inner">
+          <ShieldAlert className="w-7 h-7" />
         </div>
-        <h1 className="font-black text-base text-slate-900">{title}</h1>
-        <p className="text-xs text-slate-500 font-medium leading-relaxed">{message}</p>
-        <Link
-          href="/"
-          className="inline-block mt-2 text-xs font-bold text-[#FF5B00] hover:underline"
-        >
-          ← Back to storefront
-        </Link>
+        
+        <div>
+          <span className="text-[10.5px] font-black uppercase tracking-widest text-[#FF5B00] block mb-1">
+            Restricted Partner Portal
+          </span>
+          <h1 className="font-black text-xl text-white tracking-tight">Store Console</h1>
+          <p className="text-xs text-zinc-400 font-medium leading-relaxed mt-1">
+            Sign in with your store administrator email and password to manage orders and inventory.
+          </p>
+        </div>
+
+        <form onSubmit={handleLoginSubmit} className="space-y-3.5 pt-1 text-left">
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-zinc-300 block">
+              Administrator Email
+            </label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setLoginError("");
+                }}
+                placeholder="admin@dashit.in"
+                className="w-full bg-[#181B24] border border-zinc-700 rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] transition-colors"
+                autoFocus
+                autoComplete="email"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-zinc-300 block">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setLoginError("");
+                }}
+                placeholder="••••••••"
+                className="w-full bg-[#181B24] border border-zinc-700 rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] transition-colors"
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+
+          {loginError && (
+            <p className="text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 py-2 px-3 rounded-lg text-center">
+              {loginError}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs py-3 rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+            <span>{isLoading ? "Authenticating..." : "Access Command Console"}</span>
+          </button>
+        </form>
+
+        <div className="pt-2 border-t border-zinc-800 text-[10.5px] text-slate-500 flex items-center justify-between">
+          <span>Anantnag</span>
+          <span className="text-slate-400 font-mono">v1.2 Metis</span>
+        </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function EasyAdminDashboard() {
-  const [activeTab, setActiveTab] = useState("orders"); // "orders" | "offers" | "importer" | "catalogue"
+// Helper to extract timestamp in milliseconds from an order object reliably
+function getOrderTimestampMs(order) {
+  if (!order) return 0;
+  const ts = order.createdAt || order.timestamp;
+  if (!ts) return 0;
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "object" && ts.seconds) return ts.seconds * 1000;
+  if (typeof ts === "string") {
+    const parsed = Date.parse(ts);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
+  // Tabs: "orders" | "inventory" | "add-product" | "batch-inward" | "catalogue" | "csv" | "offers" | "importer" | "settings"
+  const [activeTab, setActiveTab] = useState("orders");
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [orders, setOrders] = useState([]);
-  const [codBlacklist, setCodBlacklist] = useState(["9876543210"]);
-  const [newBlacklistNumber, setNewBlacklistNumber] = useState("");
 
-  // Exclusive Offers States
+  // Logout Handler
+  const handleAdminSignOut = async () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("dashit_admin_email");
+    }
+    try {
+      await signOut();
+    } catch (e) {}
+    window.location.reload();
+  };
+
+  // Audio Chime & Notifications State
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const soundEnabledRef = useRef(true);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  const [newOrderAlert, setNewOrderAlert] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // Orders tracking refs — guarantees past/historical orders NEVER fire notifications on login/reload
+  const previousOrderIdsRef = useRef(new Set());
+  const isInitialSyncDoneRef = useRef(false);
+  const adminSessionStartTimeRef = useRef(Date.now());
+
+  // Store Close Reason Modal & Presets
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [selectedReason, setSelectedReason] = useState("Night hours — reopening tomorrow at 7:00 AM");
+  const [customReasonText, setCustomReasonText] = useState("");
+  const [currentCloseReason, setCurrentCloseReason] = useState("");
+
+  const CLOSE_REASON_PRESETS = [
+    {
+      id: "night",
+      title: "Closed for Night Hours",
+      subtitle: "Reopening tomorrow morning at 7:00 AM",
+      text: "Night hours — reopening tomorrow at 7:00 AM",
+      Icon: Moon,
+      color: "text-indigo-400",
+    },
+    {
+      id: "restocking",
+      title: "Restocking Fresh Inventory",
+      subtitle: "Fresh shipments arriving, available in 30 minutes",
+      text: "Restocking fresh inventory — available in 30 minutes",
+      Icon: Boxes,
+      color: "text-amber-500",
+    },
+    {
+      id: "weather",
+      title: "Severe Weather / Heavy Rain or Snow",
+      subtitle: "Pausing temporarily for delivery partner safety",
+      text: "Severe weather conditions — pausing for delivery partner safety",
+      Icon: CloudRain,
+      color: "text-sky-400",
+    },
+    {
+      id: "rush",
+      title: "High Order Rush / Peak Surge",
+      subtitle: "Briefly pausing new orders to clear delivery queue",
+      text: "High order surge — pausing new orders for 20 minutes",
+      Icon: Zap,
+      color: "text-orange-500",
+    },
+    {
+      id: "maintenance",
+      title: "Store Maintenance & Stock Audit",
+      subtitle: "Brief inventory count — back shortly",
+      text: "Routine store maintenance & inventory audit — back shortly",
+      Icon: Wrench,
+      color: "text-slate-400",
+    },
+  ];
+
+  // Add Product Form State
+  const [productForm, setProductForm] = useState({
+    name: "",
+    cat: "Bakery",
+    price: "",
+    originalPrice: "",
+    unit: "1 pc",
+    brand: "Local Kandur",
+    badge: "Fresh",
+    barcode: "",
+    img: VISUAL_IMAGE_PALETTE[0].url,
+    stock: 100,
+  });
+  const [isPublishingProduct, setIsPublishingProduct] = useState(false);
+
+  // Catalogue State
+  const [catalogue, setCatalogue] = useState([]);
+  const [isLoadingCatalogue, setIsLoadingCatalogue] = useState(false);
+
+  // Offers State
   const [exclusiveOffers, setExclusiveOffers] = useState(DEFAULT_OFFERS);
-  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerForm, setOfferForm] = useState({
     title: "",
     badge: "DASHIT EXCLUSIVE",
-    subtitle: "",
+    subtitle: "Delivered to your doorstep in 8 minutes.",
     priceTag: "Flat 20% OFF",
     category: "Snacks",
-    promoCode: "OFFER20",
+    promoCode: "DASH20",
     discountPercent: 20,
     expiresIn: "Active Today",
-    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
+    img: VISUAL_IMAGE_PALETTE[4].url,
     gradient: "from-[#040E22] via-[#061838] to-[#0A2558]",
     accent: "text-amber-400"
   });
 
-  // Open Food Facts Importer States
+  // Open Food Facts Importer
   const [offSearchQuery, setOffSearchQuery] = useState("");
   const [isSearchingOff, setIsSearchingOff] = useState(false);
   const [offResults, setOffResults] = useState([]);
-  const [importedBarcodes, setImportedBarcodes] = useState({});
 
-  // App Catalogue State
-  const [catalogue, setCatalogue] = useState([]);
-  const [isLoadingCatalogue, setIsLoadingCatalogue] = useState(false);
-  const [catalogueFilter, setCatalogueFilter] = useState("All");
+  // COD Blacklist
+  const [codBlacklist, setCodBlacklist] = useState(["9876543210"]);
 
-  /* localStorage fallback for orders — only used when Firebase is not
-     configured. With Firebase, watchAllOrders() below replaces this entirely
-     with a live subscription (no polling, no manual reload). */
-  const loadOrdersLocal = () => {
-    const history = localStorage.getItem("dashit_orders_history");
-    const active = localStorage.getItem("dashit_active_order");
-    let combined = [];
-    if (active) {
-      try { combined.push(JSON.parse(active)); } catch (e) {}
-    }
-    if (history) {
-      try {
-        const hist = JSON.parse(history);
-        combined = [...combined, ...hist];
-      } catch (e) {}
-    }
-    setOrders(combined);
-  };
-
-  const loadOffersLocal = () => {
-    setExclusiveOffers(getExclusiveOffers());
-  };
-
-  // Orders: realtime when Firebase is configured, polled localStorage otherwise.
+  // Dark Mode Theme
+  const [darkMode, setDarkMode] = useState(false);
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      loadOrdersLocal();
-      const interval = setInterval(loadOrdersLocal, 5000);
-      return () => clearInterval(interval);
+    if (typeof window !== "undefined") {
+      const savedTheme = localStorage.getItem("dashit_admin_theme");
+      if (savedTheme === "dark") {
+        setDarkMode(true);
+      } else if (savedTheme === "light") {
+        setDarkMode(false);
+      } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        setDarkMode(true);
+      }
     }
-    return watchAllOrders(setOrders);
   }, []);
 
-  // Catalogue: realtime Firestore subscription. No localStorage fallback here —
-  // the admin catalogue is a Firestore-only concern (the storefront's bundled
-  // products.js is unrelated and unaffected either way).
   useEffect(() => {
-    if (!isFirebaseConfigured) {
-      setIsLoadingCatalogue(false);
-      return;
+    if (typeof window !== "undefined") {
+      if (darkMode) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
     }
+    return () => {
+      if (typeof window !== "undefined") {
+        document.documentElement.classList.remove("dark");
+      }
+    };
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("dashit_admin_theme", next ? "dark" : "light");
+      }
+      return next;
+    });
+  };
+
+  // Barcode Scanner & 4K Photo Suggestions
+  const [showScanner, setShowScanner] = useState(false);
+  const [photo4KSuggestions, setPhoto4KSuggestions] = useState(get4KPhotoSuggestions("Bakery"));
+
+  // Batch Inward Restock State
+  const [showBatchScanner, setShowBatchScanner] = useState(false);
+  const [batchInwardList, setBatchInwardList] = useState([]);
+  const [batchPasteText, setBatchPasteText] = useState("");
+  const [showBulkPasteModal, setShowBulkPasteModal] = useState(false);
+
+  const showToast = (msg, duration = 4000) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), duration);
+  };
+
+  // 1. Initialise Audio and permissions on user click
+  const handleTestChime = async () => {
+    unlockAudio();
+    playOrderChime();
+    const permGranted = await requestNotificationPermission();
+    showToast(
+      permGranted
+        ? "Audio Chime and Desktop Notifications are active."
+        : "Audio Chime tested. Enable notifications for popup alerts."
+    );
+  };
+
+  // 2. Realtime Order watching with Sound Chime
+  useEffect(() => {
+    // Record the exact time admin session started / mounted
+    adminSessionStartTimeRef.current = Date.now();
+    isInitialSyncDoneRef.current = false;
+
+    // Grace window: all orders received during initial connection (first 3s) are strictly seeded
+    const initialSyncTimer = setTimeout(() => {
+      isInitialSyncDoneRef.current = true;
+    }, 3000);
+
+    const handleNewOrdersList = (incomingOrders = []) => {
+      setOrders(incomingOrders);
+
+      // Auto-reconcile inventory for any placed orders so store inventory reflects all purchases
+      incomingOrders.forEach((o) => {
+        if (o && o.items && !o.inventoryDeducted && o.status !== "Cancelled") {
+          deductInventoryForOrder(o.orderId || o.id, o.items).catch(() => {});
+        }
+      });
+
+      // 1. Initial sync or connection warm-up: strictly register all existing order IDs, NEVER notify
+      if (!isInitialSyncDoneRef.current) {
+        incomingOrders.forEach((o) => {
+          const id = String(o.orderId || o.id || "");
+          if (id) previousOrderIdsRef.current.add(id);
+        });
+        return;
+      }
+
+      // 2. Online live mode: strictly identify orders created AFTER the admin logged in
+      const freshOrders = incomingOrders.filter((o) => {
+        const id = String(o.orderId || o.id || "");
+        if (!id) return false;
+        if (previousOrderIdsRef.current.has(id)) return false;
+
+        const orderTime = getOrderTimestampMs(o);
+        // Must have been created while admin is actively online (allow 10s clock skew)
+        const isCreatedWhileOnline = orderTime > 0 && orderTime >= (adminSessionStartTimeRef.current - 10000);
+
+        // Must be in initial "Placed" status
+        const isPlaced = !o.status || String(o.status).toLowerCase() === "placed";
+
+        return isCreatedWhileOnline && isPlaced;
+      });
+
+      // Register all incoming order IDs so we never alert repeatedly
+      incomingOrders.forEach((o) => {
+        const id = String(o.orderId || o.id || "");
+        if (id) previousOrderIdsRef.current.add(id);
+      });
+
+      // 3. Trigger chime & visual desktop notification ONLY for genuinely new orders placed while online
+      if (freshOrders.length > 0) {
+        freshOrders.forEach((newOrd) => {
+          if (soundEnabledRef.current) {
+            notifyNewOrder(newOrd);
+          }
+
+          setNewOrderAlert(newOrd);
+          setTimeout(() => setNewOrderAlert((prev) => (prev?.orderId === newOrd.orderId ? null : prev)), 15000);
+        });
+      }
+    };
+
+    let unsub = () => {};
+    if (isFirebaseConfigured) {
+      unsub = watchAllOrders(handleNewOrdersList);
+    } else {
+      const readLocal = () => {
+        try {
+          const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+          const active = localStorage.getItem("dashit_active_order");
+          let list = [...hist];
+          if (active) {
+            const parsed = JSON.parse(active);
+            if (!list.some((o) => (o.orderId || o.id) === (parsed.orderId || parsed.id))) {
+              list = [parsed, ...list];
+            }
+          }
+          handleNewOrdersList(list);
+        } catch (e) {}
+      };
+      readLocal();
+      const interval = setInterval(readLocal, 4000);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(initialSyncTimer);
+      };
+    }
+
+    return () => {
+      clearTimeout(initialSyncTimer);
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
+
+  // 3. Realtime Catalogue watching
+  useEffect(() => {
     setIsLoadingCatalogue(true);
-    const unsub = watchProducts((list) => {
-      setCatalogue(list);
+    const unsub = watchProducts((products) => {
+      setCatalogue(products);
       setIsLoadingCatalogue(false);
     });
-    return unsub;
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
   }, []);
 
-  // Offers: realtime when configured, localStorage + custom event otherwise.
+  // 4. Store Config watching (open/closed and closeReason)
+  useEffect(() => {
+    try {
+      const cachedOpen = localStorage.getItem("dashit_store_open");
+      if (cachedOpen !== null) setIsStoreOpen(JSON.parse(cachedOpen) !== false);
+      const cachedReason = localStorage.getItem("dashit_store_close_reason");
+      if (cachedReason) setCurrentCloseReason(cachedReason);
+    } catch (e) {}
+
+    if (isFirebaseConfigured) {
+      const unsub = watchStoreConfig((cfg) => {
+        if (cfg) {
+          if (typeof cfg.isOpen === "boolean") {
+            setIsStoreOpen(cfg.isOpen);
+            try {
+              localStorage.setItem("dashit_store_open", JSON.stringify(cfg.isOpen));
+            } catch (e) {}
+          }
+          if (cfg.closeReason !== undefined) {
+            setCurrentCloseReason(cfg.closeReason || "");
+            try {
+              localStorage.setItem("dashit_store_close_reason", cfg.closeReason || "");
+            } catch (e) {}
+          }
+        }
+      });
+      return () => {
+        if (typeof unsub === "function") unsub();
+      };
+    }
+  }, []);
+
+  // 5. Watch exclusive offers
   useEffect(() => {
     if (!isFirebaseConfigured) {
-      loadOffersLocal();
-      window.addEventListener("dashit_offers_updated", loadOffersLocal);
-      return () => window.removeEventListener("dashit_offers_updated", loadOffersLocal);
+      setExclusiveOffers(getExclusiveOffers());
+      return;
     }
-    return watchOffers((list) => setExclusiveOffers(list.length ? list : DEFAULT_OFFERS));
+    const unsub = watchOffers((firestoreOffers) => {
+      if (firestoreOffers && firestoreOffers.length > 0) {
+        setExclusiveOffers(firestoreOffers);
+      } else {
+        setExclusiveOffers(getExclusiveOffers());
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
   }, []);
 
-  // Store open/closed toggle, persisted when Firebase is configured.
-  useEffect(() => {
-    if (!isFirebaseConfigured) return;
-    return watchStoreConfig((cfg) => setIsStoreOpen(cfg.isOpen !== false));
-  }, []);
-
-  /** Manual re-fetch for the refresh button — the listener above already
-   *  keeps the catalogue live, this is just user-visible reassurance. */
-  const handleRefreshCatalogue = async () => {
-    if (!isFirebaseConfigured) return;
-    setIsLoadingCatalogue(true);
-    setCatalogue(await fetchProducts());
-    setIsLoadingCatalogue(false);
+  // Store Pause / Open Handlers
+  /* Both directions confirm through an in-app modal.
+     Opening used to call window.confirm(), which is unreliable inside the
+     Capacitor WebView — it can return false without ever drawing a dialog, so
+     the button looked completely dead and the store could not be opened. An
+     ordinary React modal has no such dependency and works identically on the
+     phone and the desktop. */
+  const handleToggleStoreClick = () => {
+    if (isStoreOpen) {
+      setShowCloseModal(true);
+    } else {
+      setShowOpenModal(true);
+    }
   };
 
-  const handleToggleStore = () => {
-    const next = !isStoreOpen;
-    setIsStoreOpen(next);
-    if (isFirebaseConfigured) setStoreConfig({ isOpen: next });
+  const handleConfirmOpenStore = async () => {
+    setShowOpenModal(false);
+    await handleOpenStoreDirect();
   };
 
-  const handleCreateOffer = async (e) => {
-    e.preventDefault();
+  const handleOpenStoreDirect = async () => {
+    setIsStoreOpen(true);
+    setCurrentCloseReason("");
+    try {
+      localStorage.setItem("dashit_store_open", "true");
+      localStorage.removeItem("dashit_store_close_reason");
+    } catch (e) {}
+
+    if (isFirebaseConfigured) {
+      try {
+        await setStoreConfig({ isOpen: true, closeReason: "" });
+      } catch (err) {
+        console.warn("Store open sync notice:", err?.message);
+      }
+    }
+    showToast("Store is now OPEN. Deliveries resumed across Anantnag!");
+  };
+
+  const handleConfirmCloseStore = async () => {
+    const finalReason = selectedReason === "custom" ? customReasonText.trim() : selectedReason;
+    setIsStoreOpen(false);
+    setCurrentCloseReason(finalReason);
+    setShowCloseModal(false);
+
+    try {
+      localStorage.setItem("dashit_store_open", "false");
+      if (finalReason) {
+        localStorage.setItem("dashit_store_close_reason", finalReason);
+      }
+    } catch (e) {}
+
+    if (isFirebaseConfigured) {
+      try {
+        await setStoreConfig({ isOpen: false, closeReason: finalReason });
+      } catch (err) {
+        console.warn("Store close sync notice:", err?.message);
+      }
+    }
+    showToast(`Store paused. Reason shown to customers: "${finalReason}"`);
+  };
+
+  // Order Status Update
+  const handleUpdateOrderStatus = async (orderId, newStatus, order = null) => {
+    try {
+      if (isFirebaseConfigured) {
+        await fsUpdateOrderStatus(orderId, newStatus);
+      }
+      setOrders((prev) =>
+        prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+
+      // Auto-deduct stock on Out for Delivery
+      if (newStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
+        const ordObj = order || orders.find((o) => o.orderId === orderId || o.id === orderId);
+        if (ordObj && ordObj.items && !ordObj.inventoryDeducted) {
+          await deductInventoryForOrder(orderId, ordObj.items);
+          showToast(`Order #${orderId} out for delivery. Auto-deducted inventory.`);
+          return;
+        }
+      }
+
+      showToast(`Order #${orderId} updated to "${newStatus}".`);
+    } catch (err) {
+      setOrders((prev) =>
+        prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus } : o))
+      );
+      showToast(`Order #${orderId} updated to "${newStatus}".`);
+    }
+  };
+
+  // Assign Driver to Order
+  const handleAssignDriver = async (orderId, driverId, driverName) => {
+    try {
+      await assignDriver(orderId, driverId, driverName);
+      setOrders((prev) =>
+        prev.map((o) =>
+          (o.orderId === orderId || o.id === orderId)
+            ? { ...o, driverId, driverName }
+            : o
+        )
+      );
+      if (driverName) {
+        showToast(`Assigned ${driverName} to Order #${orderId}`);
+      } else {
+        showToast(`Driver unassigned from Order #${orderId}`);
+      }
+    } catch (err) {
+      showToast(`Driver assignment note: ${err?.message}`);
+    }
+  };
+
+  // Quick Stock Adjust
+  const handleQuickStockAdjust = async (productId, delta) => {
+    try {
+      const newStock = await adjustSingleProductStock(productId, delta, false);
+      showToast(`Stock updated: ${newStock} units`);
+    } catch (err) {
+      showToast(`Stock adjust note: ${err?.message}`);
+    }
+  };
+
+  // Publish / Add Product
+  const handlePublishProduct = async (e) => {
+    if (e) e.preventDefault();
+    if (!productForm.name.trim()) {
+      alert("Please enter a product title.");
+      return;
+    }
+    if (!productForm.price || Number(productForm.price) <= 0) {
+      alert("Please enter a valid price.");
+      return;
+    }
+
+    setIsPublishingProduct(true);
+    const prodId = productForm.barcode || `prod-${Date.now()}`;
+    const newProduct = {
+      id: prodId,
+      barcode: productForm.barcode || prodId,
+      name: productForm.name.trim(),
+      cat: productForm.cat,
+      price: Number(productForm.price),
+      originalPrice: productForm.originalPrice ? Number(productForm.originalPrice) : Number(productForm.price),
+      unit: productForm.unit || "1 pc",
+      brand: productForm.brand.trim() || "Indian Brand",
+      badge: productForm.badge.trim() || "Fresh",
+      img: productForm.img || VISUAL_IMAGE_PALETTE[0].url,
+      stock: Number(productForm.stock) || 100,
+      updatedAt: Date.now()
+    };
+
+    try {
+      if (isFirebaseConfigured) {
+        await upsertProduct(newProduct);
+      }
+      setCatalogue((prev) => {
+        const idx = prev.findIndex((p) => p.id === prodId || p.barcode === prodId);
+        if (idx !== -1) {
+          const copy = [...prev];
+          copy[idx] = newProduct;
+          return copy;
+        }
+        return [newProduct, ...prev];
+      });
+
+      showToast(`Published "${newProduct.name}" to store.`);
+      setProductForm({
+        name: "",
+        cat: "Bakery",
+        price: "",
+        originalPrice: "",
+        unit: "1 pc",
+        brand: "Local Kandur",
+        badge: "Fresh",
+        barcode: "",
+        img: VISUAL_IMAGE_PALETTE[0].url,
+        stock: 100,
+      });
+      setActiveTab("catalogue");
+    } catch (err) {
+      showToast(`Notice: ${err?.message || "Saved product"}`);
+    } finally {
+      setIsPublishingProduct(false);
+    }
+  };
+
+  /* CSV import — the plan arriving here has already been confirmed line by line
+     in CsvInventoryView, so this only commits it. bulkUpdateProductStock creates
+     rows that do not exist yet and sets stock on the ones that do. */
+  const handleApplyCsvImport = async (stockUpdates, summary) => {
+    if (!stockUpdates || stockUpdates.length === 0) return { success: false };
+    try {
+      const res = await bulkUpdateProductStock(stockUpdates);
+      const fresh = await fetchProducts();
+      if (fresh && fresh.length > 0) setCatalogue(fresh);
+
+      /* Only claim an import when it actually reached Firestore. A partial or
+         rejected write leaves the plan on screen so the owner can retry it
+         rather than being told it worked. */
+      if (res?.failures?.length) {
+        showToast(
+          `${res.count} of ${res.attempted} saved — ${res.failures.length} rejected (${res.failures[0].reason}). Nothing else was changed.`,
+          8000
+        );
+        return res;
+      }
+      if (res && res.syncedToServer === false) {
+        showToast(
+          `Saved on this device only — the store database did not accept the write. Check you are signed in as an admin.`,
+          8000
+        );
+        return { ...res, success: false };
+      }
+
+      showToast(
+        `Imported ${summary.approved} items (${summary.newItems} new, ${summary.restocks} restocked, ${summary.units} units).`
+      );
+      setActiveTab("inventory");
+      return res;
+    } catch (err) {
+      showToast(`Import failed: ${err?.message || "Please try again."}`);
+      return { success: false };
+    }
+  };
+
+  // Delete Product
+  const handleDeleteProduct = async (id, name) => {
+    if (!confirm(`Are you sure you want to remove "${name}" from the store catalogue?`)) return;
+    try {
+      await fsDeleteProduct(id);
+      showToast(`Removed "${name}" from store.`);
+    } catch (err) {
+      showToast(`Delete notice: ${err?.message}`);
+    }
+  };
+
+  // Barcode Scanner: single item lookup
+  const handleBarcodeScanned = async (scannedCode) => {
+    setShowScanner(false);
+    showToast(`Looking up barcode ${scannedCode}...`);
+    try {
+      const res = await searchOffByBarcode(scannedCode);
+      if (res.success && res.products && res.products.length > 0) {
+        const prod = res.products[0];
+        const suggestions = prod.photoSuggestions || get4KPhotoSuggestions(prod.cat || "Snacks");
+        setProductForm((prev) => ({
+          ...prev,
+          barcode: scannedCode,
+          name: prod.name || prev.name,
+          brand: prod.brand || prev.brand,
+          cat: prod.cat || prev.cat,
+          unit: prod.unit || prev.unit,
+          price: prod.price || prev.price || 40,
+          originalPrice: prod.originalPrice || prod.price || prev.originalPrice || 45,
+          img: prod.img || suggestions[0] || prev.img,
+          badge: prod.badge || "Verified",
+          stock: prod.stock || 100,
+        }));
+        setPhoto4KSuggestions(suggestions);
+        showToast(`Auto-filled "${prod.name}" with 4K studio photo.`);
+      } else {
+        setProductForm((prev) => ({ ...prev, barcode: scannedCode }));
+        showToast(`Barcode ${scannedCode} captured.`);
+      }
+    } catch (err) {
+      setProductForm((prev) => ({ ...prev, barcode: scannedCode }));
+      showToast(`Captured barcode: ${scannedCode}`);
+    }
+  };
+
+  // Batch Inward continuous scanning
+  const handleBatchBarcodeScanned = async (scannedCode) => {
+    const clean = String(scannedCode).trim();
+    if (!clean) return;
+
+    let foundExisting = false;
+    setBatchInwardList((prev) => {
+      const idx = prev.findIndex((item) => item.barcode === clean);
+      if (idx !== -1) {
+        foundExisting = true;
+        const copy = [...prev];
+        const item = copy[idx];
+        const newQty = (item.qtyToAdd || 1) + 1;
+        copy[idx] = {
+          ...item,
+          qtyToAdd: newQty,
+          newStock: (item.currentStock || 0) + newQty,
+        };
+        showToast(`+1 ${item.name} (Inward: ${newQty})`);
+        return copy;
+      }
+      return prev;
+    });
+
+    if (foundExisting) return;
+
+    // Check existing catalogue
+    const inCat = catalogue.find((p) => String(p.barcode || p.id) === clean);
+    if (inCat) {
+      const curStock = Number(inCat.stock) || 0;
+      setBatchInwardList((prev) => [
+        {
+          id: inCat.id,
+          barcode: clean,
+          name: inCat.name,
+          brand: inCat.brand || "Indian Brand",
+          cat: inCat.cat || "Snacks",
+          img: inCat.img,
+          currentStock: curStock,
+          qtyToAdd: 1,
+          newStock: curStock + 1,
+          product: inCat,
+        },
+        ...prev,
+      ]);
+      showToast(`+1 Added: ${inCat.name}`);
+      return;
+    }
+
+    // Lookup via Open Food Facts
+    try {
+      const res = await searchOffByBarcode(clean);
+      if (res.success && res.products && res.products.length > 0) {
+        const prod = res.products[0];
+        setBatchInwardList((prev) => [
+          {
+            id: clean,
+            barcode: clean,
+            name: prod.name,
+            brand: prod.brand || "Indian Brand",
+            cat: prod.cat || "Snacks",
+            img: prod.img,
+            currentStock: 0,
+            qtyToAdd: 1,
+            newStock: 1,
+            product: prod,
+          },
+          ...prev,
+        ]);
+        showToast(`+1 Added: ${prod.name}`);
+      } else {
+        setBatchInwardList((prev) => [
+          {
+            id: clean,
+            barcode: clean,
+            name: `Product ${clean}`,
+            brand: "Custom",
+            cat: "Snacks",
+            img: VISUAL_IMAGE_PALETTE[4].url,
+            currentStock: 0,
+            qtyToAdd: 1,
+            newStock: 1,
+            product: {
+              id: clean,
+              barcode: clean,
+              name: `Product ${clean}`,
+              cat: "Snacks",
+              price: 40,
+              originalPrice: 45,
+              unit: "1 pc",
+              img: VISUAL_IMAGE_PALETTE[4].url,
+            },
+          },
+          ...prev,
+        ]);
+        showToast(`+1 Added: Barcode ${clean}`);
+      }
+    } catch (e) {
+      showToast(`Added barcode: ${clean}`);
+    }
+  };
+
+  // Apply Batch Inward Restock
+  const handleApplyBatchInward = async () => {
+    if (batchInwardList.length === 0) return;
+    try {
+      const updates = batchInwardList.map((item) => ({
+        id: item.id || item.barcode,
+        barcode: item.barcode,
+        qtyToAdd: item.qtyToAdd,
+        calculatedStock: item.newStock,
+        product: item.product,
+      }));
+      const inwardRes = await bulkUpdateProductStock(updates);
+      if (inwardRes?.failures?.length) {
+        showToast(
+          `${inwardRes.count} of ${inwardRes.attempted} saved — ${inwardRes.failures.length} rejected by the store database.`,
+          8000
+        );
+        return;
+      }
+      const totalUnits = batchInwardList.reduce((acc, curr) => acc + (curr.qtyToAdd || 1), 0);
+      showToast(`Restocked +${totalUnits} units across ${batchInwardList.length} products.`);
+      setBatchInwardList([]);
+      setShowBatchScanner(false);
+      setActiveTab("inventory");
+    } catch (err) {
+      showToast(`Batch update notice: ${err?.message}`);
+    }
+  };
+
+  // Bulk Paste list parser
+  const handleApplyBulkPaste = async () => {
+    if (!batchPasteText.trim()) return;
+    const lines = batchPasteText.split("\n").map((l) => l.trim()).filter(Boolean);
+    let count = 0;
+    for (const line of lines) {
+      const parts = line.split(/[,\t]+/).map((s) => s.trim());
+      const code = parts[0];
+      const qty = Number(parts[1]) || 1;
+      if (code) {
+        await handleBatchBarcodeScanned(code);
+        if (qty > 1) {
+          setBatchInwardList((prev) => {
+            const copy = [...prev];
+            const idx = copy.findIndex((i) => i.barcode === code);
+            if (idx !== -1) {
+              copy[idx].qtyToAdd = qty;
+              copy[idx].newStock = (copy[idx].currentStock || 0) + qty;
+            }
+            return copy;
+          });
+        }
+        count += 1;
+      }
+    }
+    setBatchPasteText("");
+    setShowBulkPasteModal(false);
+    showToast(`Processed ${count} items from paste list.`);
+  };
+
+  // Save Banner Offer
+  const handleSaveOffer = async (e) => {
+    if (e) e.preventDefault();
     if (!offerForm.title.trim()) {
       alert("Please enter an offer title.");
       return;
     }
     const newOffer = {
-      ...offerForm,
+      id: `offer-${Date.now()}`,
+      badge: offerForm.badge || "DASHIT EXCLUSIVE",
       title: offerForm.title.trim(),
-      badge: offerForm.badge.trim() || "DASHIT EXCLUSIVE",
-      subtitle: offerForm.subtitle.trim() || "Limited-time flash drop delivered in minutes.",
-      promoCode: offerForm.promoCode.trim().toUpperCase() || "FLASH20",
-      priceTag: offerForm.priceTag.trim() || "Special Deal",
-      expiresIn: offerForm.expiresIn.trim() || "Active Today",
-      active: true
-    };
-
-    if (isFirebaseConfigured) {
-      await saveOffer(newOffer);
-    } else {
-      addExclusiveOffer(newOffer);
-    }
-
-    setShowOfferForm(false);
-    setOfferForm({
-      title: "",
-      badge: "DASHIT EXCLUSIVE",
-      subtitle: "",
-      priceTag: "Flat 20% OFF",
-      category: "Snacks",
-      promoCode: "OFFER20",
-      discountPercent: 20,
-      expiresIn: "Active Today",
-      img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
+      subtitle: offerForm.subtitle.trim(),
+      priceTag: offerForm.priceTag.trim(),
+      category: offerForm.category || "Snacks",
+      promoCode: offerForm.promoCode || "DASHIT",
+      discountPercent: Number(offerForm.discountPercent) || 20,
+      expiresIn: offerForm.expiresIn || "Active Today",
+      img: offerForm.img || VISUAL_IMAGE_PALETTE[4].url,
       gradient: "from-[#040E22] via-[#061838] to-[#0A2558]",
-      accent: "text-amber-400"
-    });
-    alert("Exclusive offer published to storefront & Story Deck successfully!");
-  };
-
-  const handleToggleOffer = async (offer) => {
-    if (isFirebaseConfigured) {
-      await saveOffer({ ...offer, active: !offer.active });
-    } else {
-      toggleOfferActive(offer.id);
+      accent: "text-amber-400",
+      active: true,
+      createdAt: Date.now()
+    };
+    try {
+      if (isFirebaseConfigured) {
+        await saveOffer(newOffer);
+      }
+      addExclusiveOffer(newOffer);
+      setExclusiveOffers(getExclusiveOffers());
+      setShowOfferModal(false);
+      showToast(`Banner offer "${newOffer.title}" published.`);
+    } catch (err) {
+      showToast(`Offer notice: ${err?.message}`);
     }
   };
 
-  const handleDeleteOffer = async (id, title) => {
-    if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
-    if (isFirebaseConfigured) {
-      await fsDeleteOffer(id);
-    } else {
+  const handleDeleteOffer = async (id) => {
+    if (!confirm("Remove this promo banner?")) return;
+    try {
+      if (isFirebaseConfigured) {
+        await fsDeleteOffer(id);
+      }
       deleteExclusiveOffer(id);
+      setExclusiveOffers((p) => p.filter((o) => o.id !== id));
+      showToast("Offer removed.");
+    } catch (err) {
+      showToast(`Delete notice: ${err?.message}`);
     }
   };
 
-  const handleResetOffers = async () => {
-    if (!confirm("Reset all exclusive offers back to standard presets?")) return;
-    if (isFirebaseConfigured) {
-      await Promise.all(DEFAULT_OFFERS.map((o) => saveOffer(o)));
-    } else {
-      saveExclusiveOffers(DEFAULT_OFFERS);
-    }
-  };
-
-  const updateOrderStatus = async (orderId, newStatus) => {
-    if (isFirebaseConfigured) {
-      // No optimistic local update needed — watchAllOrders() reflects the
-      // write back within one round-trip, same as every other realtime page.
-      await fsUpdateOrderStatus(orderId, newStatus);
-      return;
-    }
-
-    const updated = orders.map((o) => (o.orderId === orderId ? { ...o, status: newStatus } : o));
-    setOrders(updated);
-    const targetOrder = updated.find((o) => o.orderId === orderId);
-    if (targetOrder) {
-      localStorage.setItem("dashit_active_order", JSON.stringify(targetOrder));
-    }
-  };
-
-  // Open Food Facts search — runs client-side against the public API directly,
-  // independent of whether Firebase is configured (see src/lib/openFoodFacts.js).
-  const handleSearchOff = async (customTerm = null) => {
-    const term = (customTerm !== null ? customTerm : offSearchQuery).trim();
+  // OFF Importer Search
+  const handleSearchOff = async () => {
+    const term = offSearchQuery.trim();
     if (!term) return;
 
     setIsSearchingOff(true);
@@ -390,891 +1260,682 @@ function EasyAdminDashboard() {
     setIsSearchingOff(false);
   };
 
-  /**
-   * Import Product to App Catalogue.
-   *
-   * `id: prod.barcode` mirrors the old server's dedup-by-barcode behaviour —
-   * upsertProduct() setDoc-merges at that id, so re-importing the same product
-   * updates it in place instead of creating a duplicate. No manual catalogue
-   * reload needed: watchProducts() picks the write up on its own.
-   */
-  const handleImportProduct = async (prod) => {
-    if (!isFirebaseConfigured) {
-      alert("Connect Firebase first (see docs/FIRESTORE.md) — there is no offline catalogue store to import into.");
-      return;
-    }
-    try {
-      await upsertProduct({ id: prod.barcode, ...prod });
-      setImportedBarcodes((prev) => ({ ...prev, [prod.barcode]: true }));
-    } catch (err) {
-      alert("Error importing product: " + err.message);
-    }
+  const handleImportOffProduct = (item) => {
+    setProductForm({
+      name: item.name || "",
+      cat: item.cat || "Snacks",
+      price: item.price || 40,
+      originalPrice: item.originalPrice || 45,
+      unit: item.unit || "1 pc",
+      brand: item.brand || "Indian Brand",
+      badge: "Verified",
+      barcode: item.id || item.barcode || "",
+      img: item.img || VISUAL_IMAGE_PALETTE[4].url,
+      stock: 100,
+    });
+    setPhoto4KSuggestions(item.photoSuggestions || get4KPhotoSuggestions(item.cat || "Snacks"));
+    setActiveTab("add-product");
+    showToast(`Loaded "${item.name}" into Add Product form.`);
   };
 
-  const handleDeleteProduct = async (id) => {
-    if (!confirm("Are you sure you want to remove this product from the storefront?")) return;
-    if (!isFirebaseConfigured) {
-      alert("Connect Firebase first — the catalogue only exists in Firestore.");
-      return;
-    }
-    try {
-      await fsDeleteProduct(id);
-    } catch (err) {
-      alert("Error deleting product: " + err.message);
-    }
-  };
+  // Inventory Summary
+  const inventorySummary = useMemo(() => {
+    const totalUnits = catalogue.reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
+    const lowStockCount = catalogue.filter((p) => Number(p.stock) > 0 && Number(p.stock) <= 10).length;
+    const outOfStockCount = catalogue.filter((p) => !p.stock || Number(p.stock) <= 0).length;
+    return { totalUnits, lowStockCount, outOfStockCount };
+  }, [catalogue]);
 
-  const handleAddBlacklist = (e) => {
-    e.preventDefault();
-    if (newBlacklistNumber.length === 10) {
-      setCodBlacklist([...codBlacklist, newBlacklistNumber]);
-      setNewBlacklistNumber("");
-      alert(`Mobile number ${newBlacklistNumber} added to COD Blacklist!`);
-    }
-  };
+  const activeOrdersCount = orders.filter(
+    (o) => o.status !== ORDER_STATUS.DELIVERED && o.status !== ORDER_STATUS.CANCELLED
+  ).length;
 
-  const totalRevenue = orders.reduce((s, o) => s + (o.totalAmount || 0), 0);
-
-  const filteredCatalogue = catalogue.filter((p) => {
-    if (catalogueFilter === "All") return true;
-    return (p.cat || "").toLowerCase() === catalogueFilter.toLowerCase();
-  });
+  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.totalAmount || o.total) || 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans p-3 sm:p-6 pb-24">
-      <div className="max-w-4xl mx-auto space-y-5">
-        {/* Header */}
-        <div className="flex items-center justify-between bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
-          <div className="flex items-center space-x-3">
-            <Link href="/" className="p-2 bg-slate-100 rounded-2xl text-slate-700 hover:bg-slate-200">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="font-black text-lg text-slate-900 tracking-tight">DASHit Fulfilment Admin Desk</h1>
-              <p className="text-xs text-slate-500 font-medium">Anantnag Store #01 Manager</p>
+    <AdminLayout
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      isStoreOpen={isStoreOpen}
+      currentCloseReason={currentCloseReason}
+      onToggleStoreClick={handleToggleStoreClick}
+      darkMode={darkMode}
+      toggleDarkMode={toggleDarkMode}
+      soundEnabled={soundEnabled}
+      onToggleSound={() => setSoundEnabled(!soundEnabled)}
+      onTestChime={handleTestChime}
+      onSignOut={handleAdminSignOut}
+      activeOrdersCount={activeOrdersCount}
+      lowStockCount={inventorySummary.lowStockCount}
+      catalogueCount={catalogue.length}
+      newOrderAlert={newOrderAlert}
+      onDismissNewOrderAlert={() => setNewOrderAlert(null)}
+      toastMessage={toastMessage}
+      onDismissToast={() => setToastMessage(null)}
+    >
+      {/* KPI METRICS OVERVIEW STRIP (Inspired by Metis Bootstrap Admin) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div
+          className={`p-4 rounded-2xl border transition-colors ${
+            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Live Active Orders
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-[#FF5B00]/10 text-[#FF5B00] flex items-center justify-center">
+              <Package className="w-4 h-4" />
             </div>
           </div>
-
-          {/* Master Store Power Switch */}
-          <button
-            onClick={handleToggleStore}
-            className={`flex items-center space-x-2 px-4 py-2.5 rounded-2xl font-black text-xs shadow-md transition-all ${
-              isStoreOpen ? "bg-[#FF5B00] text-white" : "bg-rose-600 text-white"
-            }`}
-          >
-            <Power className="w-4 h-4" />
-            <span>{isStoreOpen ? "STORE OPEN" : "STORE CLOSED"}</span>
-          </button>
+          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+            {activeOrdersCount}
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
+            Needs picking, packing or dispatch
+          </p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center space-x-2 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-xs overflow-x-auto no-scrollbar">
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`flex-1 min-w-[120px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
-              activeTab === "orders" ? "bg-[#FF5B00] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Orders ({orders.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("offers")}
-            className={`flex-1 min-w-[150px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
-              activeTab === "offers" ? "bg-amber-600 text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Flame className="w-4 h-4" />
-            <span>Exclusive Offers ({exclusiveOffers.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("importer")}
-            className={`flex-1 min-w-[140px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
-              activeTab === "importer" ? "bg-[#FF5B00] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Product Importer</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("catalogue")}
-            className={`flex-1 min-w-[130px] py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-1.5 shrink-0 ${
-              activeTab === "catalogue" ? "bg-[#FF5B00] text-white shadow-xs" : "text-slate-600 hover:bg-slate-50"
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Catalogue ({catalogue.length})</span>
-          </button>
+        <div
+          className={`p-4 rounded-2xl border transition-colors ${
+            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Warehouse Stock
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+              <Boxes className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-emerald-500 mt-1">
+            {inventorySummary.totalUnits.toLocaleString("en-IN")}
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
+            {inventorySummary.lowStockCount > 0 ? (
+              <span className="text-amber-500 font-black">{inventorySummary.lowStockCount} items low in stock</span>
+            ) : (
+              "Total inventory units ready"
+            )}
+          </p>
         </div>
 
-        {/* ======================================================== */}
-        {/* TAB 1: ORDERS DISPATCH                                   */}
-        {/* ======================================================== */}
-        {activeTab === "orders" && (
-          <div className="space-y-5">
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Today's Orders</span>
-                <div className="text-2xl font-black text-slate-900 font-mono">{orders.length}</div>
-              </div>
+        <div
+          className={`p-4 rounded-2xl border transition-colors ${
+            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Store Catalogue
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+              <Tag className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+            {catalogue.length}
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
+            Retail products active online
+          </p>
+        </div>
 
-              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Total Revenue</span>
-                <div className="text-2xl font-black text-[#FF5B00] font-mono">₹{totalRevenue}</div>
-              </div>
+        <div
+          className={`p-4 rounded-2xl border transition-colors ${
+            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              Processed Volume (GMV)
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
+              <IndianRupee className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+            ₹{totalRevenue.toLocaleString("en-IN")}
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
+            Total sales processed
+          </p>
+        </div>
+      </div>
 
-              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Riders Online</span>
-                <div className="text-2xl font-black text-sky-700 font-mono">4 Riders</div>
+      {/* ACTIVE TAB RENDER */}
+      {activeTab === "orders" && (
+        <OrderProcessingView
+          orders={orders}
+          onUpdateStatus={handleUpdateOrderStatus}
+          onAssignDriver={handleAssignDriver}
+          onNavigateTab={setActiveTab}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "drivers" && (
+        <DriversView
+          orders={orders}
+          darkMode={darkMode}
+          onNavigateTab={setActiveTab}
+        />
+      )}
+
+      {activeTab === "inventory" && (
+        <InventoryView
+          catalogue={catalogue}
+          onQuickStockAdjust={handleQuickStockAdjust}
+          onNavigateTab={setActiveTab}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "add-product" && (
+        <AddProductView
+          productForm={productForm}
+          setProductForm={setProductForm}
+          photoSuggestions={photo4KSuggestions}
+          setPhotoSuggestions={setPhoto4KSuggestions}
+          onOpenScanner={() => setShowScanner(true)}
+          onPublishProduct={handlePublishProduct}
+          isPublishing={isPublishingProduct}
+          quickTemplates={QUICK_TEMPLATES}
+          categories={CATEGORIES}
+          visualPalette={VISUAL_IMAGE_PALETTE}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "batch-inward" && (
+        <BatchInwardView
+          batchInwardList={batchInwardList}
+          setBatchInwardList={setBatchInwardList}
+          onOpenContinuousScanner={() => setShowBatchScanner(true)}
+          onOpenBulkPasteModal={() => setShowBulkPasteModal(true)}
+          onApplyBatchInward={handleApplyBatchInward}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "catalogue" && (
+        <CatalogueView
+          catalogue={catalogue}
+          onDeleteProduct={handleDeleteProduct}
+          onNavigateTab={setActiveTab}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "offers" && (
+        <OffersView
+          exclusiveOffers={exclusiveOffers}
+          onOpenOfferModal={() => setShowOfferModal(true)}
+          onDeleteOffer={handleDeleteOffer}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "csv" && (
+        <CsvInventoryView
+          catalogue={catalogue}
+          onApplyImport={handleApplyCsvImport}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "importer" && (
+        <ImporterView
+          searchQuery={offSearchQuery}
+          setSearchQuery={setOffSearchQuery}
+          onSearch={handleSearchOff}
+          isSearching={isSearchingOff}
+          results={offResults}
+          onImportProduct={handleImportOffProduct}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "settings" && (
+        <StoreControlsView
+          isStoreOpen={isStoreOpen}
+          currentCloseReason={currentCloseReason}
+          onToggleStoreClick={handleToggleStoreClick}
+          codBlacklist={codBlacklist}
+          onAddBlacklist={(num) => {
+            setCodBlacklist((p) => [...p, num]);
+            showToast(`Blocked +91-${num} from COD orders.`);
+          }}
+          onRemoveBlacklist={(num) => {
+            setCodBlacklist((p) => p.filter((n) => n !== num));
+            showToast(`Removed +91-${num} from blacklist.`);
+          }}
+          soundEnabled={soundEnabled}
+          onToggleSound={() => setSoundEnabled(!soundEnabled)}
+          onTestChime={handleTestChime}
+          darkMode={darkMode}
+        />
+      )}
+
+      {/* PAUSE STORE REASONS MODAL */}
+      {/* Confirm before putting the store live. Mobile-first sizing: full-width
+          on a phone, centred card on a desktop. */}
+      {showOpenModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70">
+          <div
+            className={`w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-5 sm:p-6 border space-y-4 pb-[max(20px,env(safe-area-inset-bottom,20px))] sm:pb-6 ${
+              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FF5B00]/10 text-[#FF5B00] flex items-center justify-center shrink-0">
+                <Power className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-semibold text-base text-slate-900 dark:text-white">Open the store?</h3>
+                <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                  Customers can order the moment you confirm.
+                </p>
               </div>
             </div>
 
-            {/* Bklit Area Chart Visualizer */}
-            <BklitAreaChart />
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-zinc-300">
+              Orders will start reaching the store and riders straight away.
+              Check that staff are on shift and stock is ready.
+            </p>
 
-            {/* Live Order Queue */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <h2 className="font-black text-sm text-slate-900 tracking-tight flex items-center space-x-2">
-                  <Package className="w-4 h-4 text-[#FF5B00]" />
-                  <span>Live Order Dispatch Desk</span>
-                </h2>
-                <span className="bg-orange-100 text-orange-800 text-[10px] font-extrabold px-3 py-1 rounded-full">
-                  AUTO-SYNCED
-                </span>
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowOpenModal(false)}
+                className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                  darkMode
+                    ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmOpenStore}
+                className="px-4 py-2.5 rounded-lg bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Open store
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCloseModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div
+            className={`rounded-3xl p-6 border shadow-2xl max-w-md w-full space-y-4 relative animate-in fade-in zoom-in-95 ${
+              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-start justify-between border-b pb-3 border-slate-200/50 dark:border-zinc-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center font-black border border-rose-500/20 shrink-0">
+                  <Power className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">Pause Store Deliveries</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">Why are you pausing deliveries right now?</p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowCloseModal(false)}
+                className="p-1.5 rounded-full bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-500 dark:text-zinc-300 cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-              <div className="space-y-4">
-                {orders.length === 0 ? (
-                  <div className="text-center py-10 text-slate-400 font-semibold text-xs">
-                    No active orders at this moment.
-                  </div>
-                ) : (
-                  orders.map((ord) => (
-                    <div key={ord.orderId} className="bg-slate-50 border border-slate-200 rounded-3xl p-4 space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-black text-sm text-slate-900">{ord.orderId}</span>
-                            <span className="bg-amber-200 text-amber-950 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full font-mono">
-                              OTP: {ord.otp}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-600 font-medium mt-0.5">
-                            Customer: <b className="text-slate-900">{ord.customerName || "Azan Iqbal Mir"}</b> ({ord.mobile || "9622720283"})
-                          </p>
-                          <p className="text-[11px] text-slate-500">{ord.address || "Nai Basti, Anantnag"}</p>
-                        </div>
+            <p className="text-xs text-slate-600 dark:text-zinc-300">
+              Customers in Anantnag will see: <span className="font-bold text-slate-900 dark:text-white">&quot;Store will be available: (Reason)&quot;</span> on the app banner. Select a reason or enter a custom one:
+            </p>
 
-                        <span className={`text-xs font-black px-3 py-1 rounded-full ${
-                          ord.status === "Delivered" ? "bg-emerald-100 text-emerald-800" :
-                          ord.status === "Out for Delivery" ? "bg-sky-100 text-sky-800" : "bg-amber-100 text-amber-800"
-                        }`}>
-                          {ord.status}
-                        </span>
-                      </div>
-
-                      {/* Items */}
-                      <div className="bg-white rounded-2xl p-3 border border-slate-200 space-y-1">
-                        {ord.items && ord.items.map((it, idx) => (
-                          <div key={idx} className="flex justify-between text-xs font-semibold text-slate-700">
-                            <span>{it.name} x {it.qty}</span>
-                            <span className="font-mono">₹{it.price * it.qty}</span>
-                          </div>
-                        ))}
-                        <div className="pt-2 border-t border-slate-100 flex justify-between font-black text-xs text-slate-900">
-                          <span>Total Amount ({ord.paymentMethod})</span>
-                          <span className="text-[#FF5B00] font-mono">₹{ord.totalAmount}</span>
-                        </div>
-                      </div>
-
-                      {/* Action buttons */}
-                      <div className="flex items-center space-x-2 pt-1">
-                        <button
-                          onClick={() => updateOrderStatus(ord.orderId, "Packing")}
-                          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
-                            ord.status === "Packing" ? "bg-amber-500 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700"
-                          }`}
-                        >
-                          Packing
-                        </button>
-                        <button
-                          onClick={() => updateOrderStatus(ord.orderId, "Out for Delivery")}
-                          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
-                            ord.status === "Out for Delivery" ? "bg-sky-600 text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700"
-                          }`}
-                        >
-                          Dispatched
-                        </button>
-                        <button
-                          onClick={() => updateOrderStatus(ord.orderId, "Delivered")}
-                          className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
-                            ord.status === "Delivered" ? "bg-[#FF5B00] text-white shadow-sm" : "bg-white border border-slate-200 text-slate-700"
-                          }`}
-                        >
-                          Delivered
-                        </button>
-                      </div>
+            <div className="space-y-2">
+              {CLOSE_REASON_PRESETS.map((preset) => {
+                const isSelected = selectedReason === preset.text;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setSelectedReason(preset.text)}
+                    className={`w-full text-left p-3 rounded-2xl border transition-all cursor-pointer flex items-start space-x-3 ${
+                      isSelected
+                        ? "border-[#FF5B00] bg-orange-500/10 ring-2 ring-[#FF5B00]/20"
+                        : darkMode
+                        ? "border-zinc-800 bg-[#1A1D26] hover:border-zinc-700"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 mt-0.5">
+                      <preset.Icon className={`w-4 h-4 ${preset.color}`} />
                     </div>
-                  ))
+                    <div className="flex-1 min-w-0">
+                      <span className="font-black text-xs text-slate-900 dark:text-white block">{preset.title}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium leading-tight block mt-0.5">
+                        {preset.subtitle}
+                      </span>
+                    </div>
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center mt-1 shrink-0 ${
+                        isSelected ? "border-[#FF5B00] bg-[#FF5B00]" : "border-slate-300 dark:border-zinc-700 bg-transparent"
+                      }`}
+                    >
+                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* Custom Reason */}
+              <div
+                className={`p-3 rounded-2xl border transition-all ${
+                  selectedReason === "custom"
+                    ? "border-[#FF5B00] bg-orange-500/10 ring-2 ring-[#FF5B00]/20"
+                    : darkMode
+                    ? "border-zinc-800 bg-[#1A1D26]"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelectedReason("custom")}
+                  className="w-full text-left flex items-start space-x-3 cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <Edit3 className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-black text-xs text-slate-900 dark:text-white block">Custom / Specific Reason</span>
+                    <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium block mt-0.5">
+                      Type your own custom message to display to customers
+                    </span>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border flex items-center justify-center mt-1 shrink-0 ${
+                      selectedReason === "custom" ? "border-[#FF5B00] bg-[#FF5B00]" : "border-slate-300 dark:border-zinc-700 bg-transparent"
+                    }`}
+                  >
+                    {selectedReason === "custom" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </button>
+
+                {selectedReason === "custom" && (
+                  <div className="mt-2.5 pt-2 border-t border-orange-200/60 dark:border-zinc-750">
+                    <input
+                      type="text"
+                      placeholder="e.g. Back in 45 mins after Friday prayers / Stock audit"
+                      value={customReasonText}
+                      onChange={(e) => setCustomReasonText(e.target.value)}
+                      className={`w-full border rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#FF5B00] ${
+                        darkMode
+                          ? "bg-[#14161E] border-zinc-700 text-white placeholder:text-zinc-500"
+                          : "bg-white border-slate-300 text-slate-900"
+                      }`}
+                      autoFocus
+                    />
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Bottom Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* COD Blacklist */}
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                <h3 className="font-black text-xs text-slate-900 flex items-center space-x-1.5">
-                  <ShieldAlert className="w-4 h-4 text-rose-600" />
-                  <span>COD Blacklist Manager</span>
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium">Prevent fake COD orders by blocking habitual fake customer numbers.</p>
-
-                <form onSubmit={handleAddBlacklist} className="flex space-x-2">
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    placeholder="Mobile number..."
-                    value={newBlacklistNumber}
-                    onChange={(e) => setNewBlacklistNumber(e.target.value)}
-                    className="bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-900 grow focus:outline-none focus:border-rose-500"
-                  />
-                  <button type="submit" className="bg-rose-600 text-white font-extrabold text-xs px-3 py-2 rounded-2xl hover:bg-rose-700">
-                    Block
-                  </button>
-                </form>
-              </div>
-
-              {/* Promo Coupon */}
-              <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-                <h3 className="font-black text-xs text-slate-900 flex items-center space-x-1.5">
-                  <Tag className="w-4 h-4 text-[#FF5B00]" />
-                  <span>Promo Coupon Manager</span>
-                </h3>
-                <p className="text-[11px] text-slate-500 font-medium">Active campaigns running in customer app:</p>
-                <div className="bg-orange-50 border border-orange-200 p-3 rounded-2xl text-xs space-y-1">
-                  <span className="font-black text-orange-900">GET30 · DASHIT50 · FREEDEL</span>
-                  <p className="text-[11px] text-orange-700 font-medium">Discounts automatically validated at checkout.</p>
-                </div>
-              </div>
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setShowCloseModal(false)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer transition-colors"
+              >
+                Keep Store Open
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCloseStore}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-md transition-all cursor-pointer active:scale-95 flex items-center space-x-1.5"
+              >
+                <Power className="w-3.5 h-3.5" />
+                <span>Confirm & Pause Store</span>
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ======================================================== */}
-        {/* TAB: EXCLUSIVE OFFERS MANAGER                            */}
-        {/* ======================================================== */}
-        {activeTab === "offers" && (
-          <div className="space-y-5">
-            {/* Action & Stats Header */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h2 className="font-black text-sm text-slate-900 flex items-center space-x-2">
-                  <Flame className="w-5 h-5 text-amber-500 fill-amber-400" />
-                  <span>Exclusive Offers & Live Flash Drops</span>
-                </h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Directly control the offers on the Dashit Spotlight banner and Home Screen Flash Drops.
-                </p>
-              </div>
+      {/* SINGLE ITEM BARCODE SCANNER MODAL */}
+      {showScanner && (
+        <BarcodeScannerView
+          onDetected={handleBarcodeScanned}
+          onClose={() => setShowScanner(false)}
+          darkMode={darkMode}
+          title="Scan Packaging Barcode (Single Item)"
+          continuous={false}
+        />
+      )}
 
-              <div className="flex items-center space-x-2 flex-wrap gap-2">
-                <button
-                  onClick={handleResetOffers}
-                  className="px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
-                  title="Reset to default offers"
-                >
-                  Reset Defaults
-                </button>
+      {/* CONTINUOUS BATCH BARCODE INWARD SCANNER */}
+      {showBatchScanner && (
+        <BarcodeScannerView
+          onDetected={handleBatchBarcodeScanned}
+          onClose={() => setShowBatchScanner(false)}
+          darkMode={darkMode}
+          title="Continuous Inward Barcode Scanner"
+          continuous={true}
+        />
+      )}
 
-                <Link
-                  href="/?deal=Snacks"
-                  className="flex items-center space-x-1 px-3.5 py-2 text-xs font-black text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 rounded-xl transition-all"
-                >
-                  <span>View Deals on Home</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
-
-                <button
-                  onClick={() => setShowOfferForm(!showOfferForm)}
-                  className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs font-black shadow-sm active:scale-95 transition-all"
-                >
-                  <PlusCircle className="w-4 h-4 stroke-[2.5]" />
-                  <span>{showOfferForm ? "Close Form" : "Launch New Offer"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Metrics */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Total Offers</span>
-                <div className="text-2xl font-black text-slate-900 font-mono">{exclusiveOffers.length}</div>
-              </div>
-
-              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Active on Store</span>
-                <div className="text-2xl font-black text-orange-600 font-mono">
-                  {exclusiveOffers.filter((o) => o.active).length}
+      {/* BULK PASTE RESTOCK MODAL */}
+      {showBulkPasteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div
+            className={`rounded-3xl p-6 border shadow-2xl max-w-lg w-full space-y-4 relative animate-in fade-in zoom-in-95 ${
+              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-start justify-between border-b pb-3 border-slate-200/50">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center font-black">
+                  <ArrowDownToLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base">Bulk Paste Barcodes List</h3>
+                  <p className="text-[11px] text-zinc-400 font-medium">Paste rows formatted as: barcode, quantity</p>
                 </div>
               </div>
-
-              <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm space-y-1">
-                <span className="text-[11px] font-extrabold text-slate-400 uppercase">Paused / Draft</span>
-                <div className="text-2xl font-black text-slate-400 font-mono">
-                  {exclusiveOffers.filter((o) => !o.active).length}
-                </div>
-              </div>
-            </div>
-
-            {/* Create Offer Drawer / Form */}
-            {showOfferForm && (
-              <form
-                onSubmit={handleCreateOffer}
-                className="bg-white p-5 rounded-3xl border-2 border-amber-200 shadow-md space-y-5"
+              <button
+                type="button"
+                onClick={() => setShowBulkPasteModal(false)}
+                className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-200 cursor-pointer"
               >
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center space-x-2">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    <h3 className="font-black text-sm text-slate-900">Create & Publish Exclusive Offer</h3>
-                  </div>
-                  <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                    Instant Live Sync
-                  </span>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-400">
+                Enter 1 barcode per line (optional: comma or tab separated quantity)
+              </label>
+              <textarea
+                rows={6}
+                value={batchPasteText}
+                onChange={(e) => setBatchPasteText(e.target.value)}
+                placeholder={`8901058852331, 24\n8901262010015, 12\n8901491101837, 50`}
+                className={`w-full font-mono text-xs p-3 rounded-2xl border outline-none ${
+                  darkMode
+                    ? "bg-[#1A1D26] border-zinc-700 text-white focus:border-emerald-500"
+                    : "bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-500"
+                }`}
+              />
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200/50">
+              <button
+                type="button"
+                onClick={() => setShowBulkPasteModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyBulkPaste}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
+              >
+                Parse & Queue Inward
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW BANNER OFFER MODAL */}
+      {showOfferModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div
+            className={`rounded-3xl p-6 border shadow-2xl max-w-md w-full space-y-4 relative animate-in fade-in zoom-in-95 ${
+              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-start justify-between border-b pb-3 border-slate-200/50">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-black">
+                  <Sparkles className="w-5 h-5" />
                 </div>
-
-                {/* Theme Selector */}
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
-                    Select Card Color Theme
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {OFFER_THEMES.map((theme) => {
-                      const isSelected = offerForm.gradient === theme.gradient;
-                      return (
-                        <button
-                          key={theme.name}
-                          type="button"
-                          onClick={() =>
-                            setOfferForm((prev) => ({
-                              ...prev,
-                              gradient: theme.gradient,
-                              accent: theme.accent
-                            }))
-                          }
-                          className={`flex items-center space-x-2 p-2 rounded-2xl border-2 transition-all text-left ${
-                            isSelected
-                              ? "border-amber-500 bg-amber-50/50 shadow-xs"
-                              : "border-slate-200 bg-slate-50 hover:border-slate-300"
-                          }`}
-                        >
-                          <div className={`w-6 h-6 rounded-xl border ${theme.preview} shrink-0`} />
-                          <span className="text-[11px] font-black text-slate-800 truncate">{theme.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div>
+                  <h3 className="font-black text-base">New Storefront Banner Drop</h3>
+                  <p className="text-[11px] text-zinc-400 font-medium">Add top promo card to customer homepage</p>
                 </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOfferModal(false)}
+                className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-                {/* Image Presets & URL */}
-                <div className="space-y-2">
-                  <label className="text-[11px] font-extrabold uppercase text-slate-500 tracking-wider">
-                    Offer Visual Image
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {OFFER_IMAGE_PRESETS.map((preset) => (
-                      <button
-                        key={preset.label}
-                        type="button"
-                        onClick={() =>
-                          setOfferForm((prev) => ({
-                            ...prev,
-                            img: preset.url,
-                            category: preset.cat
-                          }))
-                        }
-                        className={`text-[11px] font-bold px-2.5 py-1 rounded-xl transition-all ${
-                          offerForm.img === preset.url
-                            ? "bg-amber-500 text-white shadow-xs"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
+            <form onSubmit={handleSaveOffer} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Headline / Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Kashmiri Apples & Fresh Bakes"
+                  value={offerForm.title}
+                  onChange={(e) => setOfferForm((p) => ({ ...p, title: e.target.value }))}
+                  className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
+                    darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                  }`}
+                />
+              </div>
 
-                  <div className="flex items-center space-x-3 mt-2">
-                    <input
-                      type="url"
-                      placeholder="Or paste custom image URL..."
-                      value={offerForm.img}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, img: e.target.value }))}
-                      className="grow bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
-                    />
-                    {offerForm.img && (
-                      <img
-                        src={offerForm.img}
-                        alt="Preview"
-                        className="w-10 h-10 object-cover rounded-xl border border-slate-200 shrink-0"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Offer Fields Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Offer Title *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Gourmet Crisps & Sips"
-                      value={offerForm.title}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, title: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Top Badge Pill</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. DASHIT EXCLUSIVE"
-                      value={offerForm.badge}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, badge: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Price / Deal Tag</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Starting ₹20 / Flat 25% OFF"
-                      value={offerForm.priceTag}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, priceTag: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Promo Voucher Code</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. CRISP20"
-                      value={offerForm.promoCode}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, promoCode: e.target.value.toUpperCase() }))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-mono font-black text-amber-700 uppercase focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Target Category</label>
-                    <select
-                      value={offerForm.category}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, category: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
-                    >
-                      {CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-extrabold text-slate-600 uppercase">Expiry / Time Left</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Ends in 3 hours"
-                      value={offerForm.expiresIn}
-                      onChange={(e) => setOfferForm((prev) => ({ ...prev, expiresIn: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-extrabold text-slate-600 uppercase">Subtitle / Description</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Badge</label>
                   <input
                     type="text"
-                    placeholder="e.g. Artisanal crisps, premium chocolates & chilled sodas at 8-min dispatch."
-                    value={offerForm.subtitle}
-                    onChange={(e) => setOfferForm((prev) => ({ ...prev, subtitle: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500"
+                    placeholder="e.g. DASHIT EXCLUSIVE"
+                    value={offerForm.badge}
+                    onChange={(e) => setOfferForm((p) => ({ ...p, badge: e.target.value }))}
+                    className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
+                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                    }`}
                   />
                 </div>
-
-                {/* Form Buttons */}
-                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={() => setShowOfferForm(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex items-center space-x-1.5 px-5 py-2.5 rounded-xl text-xs font-black text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 shadow-md active:scale-95 transition-all"
-                  >
-                    <Flame className="w-4 h-4 fill-white" />
-                    <span>Publish Offer Now</span>
-                  </button>
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Price Tag</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Flat 20% OFF"
+                    value={offerForm.priceTag}
+                    onChange={(e) => setOfferForm((p) => ({ ...p, priceTag: e.target.value }))}
+                    className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
+                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                    }`}
+                  />
                 </div>
-              </form>
-            )}
-
-            {/* List of Offers */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                  Live Offers Registry ({exclusiveOffers.length})
-                </span>
-                <span className="text-[11px] text-slate-400 font-semibold">
-                  Toggling updates customer home screen & Story Deck live
-                </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-3">
-                {exclusiveOffers.map((offer) => (
-                  <div
-                    key={offer.id}
-                    className={`bg-white rounded-3xl p-4 border transition-all shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-                      offer.active ? "border-slate-200" : "border-slate-200/60 opacity-60 bg-slate-50"
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Promo Code</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. DASH20"
+                    value={offerForm.promoCode}
+                    onChange={(e) => setOfferForm((p) => ({ ...p, promoCode: e.target.value.toUpperCase() }))}
+                    className={`w-full text-xs font-mono font-bold px-3 py-2 rounded-xl border outline-none ${
+                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Category</label>
+                  <select
+                    value={offerForm.category}
+                    onChange={(e) => setOfferForm((p) => ({ ...p, category: e.target.value }))}
+                    className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
+                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
                     }`}
                   >
-                    <div className="flex items-start sm:items-center space-x-3.5 min-w-0">
-                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shrink-0 bg-slate-900 border border-slate-100">
-                        <img
-                          src={offer.img}
-                          alt={offer.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div
-                          className={`absolute inset-0 bg-gradient-to-t ${offer.gradient} opacity-40`}
-                        />
-                      </div>
-
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex items-center space-x-2 flex-wrap gap-1">
-                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
-                            {offer.badge}
-                          </span>
-                          <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                            {offer.category}
-                          </span>
-                          <span className="text-[9px] font-mono font-black px-1.5 py-0.5 rounded bg-orange-50 text-[#FF5B00] border border-orange-200">
-                            CODE: {offer.promoCode}
-                          </span>
-                        </div>
-
-                        <h4 className="font-black text-sm text-slate-900 truncate">
-                          {offer.title}
-                        </h4>
-
-                        <p className="text-xs text-slate-500 font-medium line-clamp-1 max-w-xl">
-                          {offer.subtitle}
-                        </p>
-
-                        <div className="flex items-center space-x-3 text-[11px] font-bold text-slate-600">
-                          <span className="text-amber-700 font-black">{offer.priceTag}</span>
-                          <span>•</span>
-                          <span className="text-slate-400 font-medium">{offer.expiresIn}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex items-center space-x-2 shrink-0 self-end md:self-center">
-                      {/* Active Status Switch */}
-                      <button
-                        onClick={() => handleToggleOffer(offer)}
-                        className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl text-xs font-black transition-all ${
-                          offer.active
-                            ? "bg-orange-50 border border-orange-300 text-[#FF5B00] hover:bg-orange-100"
-                            : "bg-slate-200 border border-slate-300 text-slate-600 hover:bg-slate-300"
-                        }`}
-                      >
-                        {offer.active ? (
-                          <>
-                            <Eye className="w-3.5 h-3.5 stroke-[2.5]" />
-                            <span>LIVE</span>
-                          </>
-                        ) : (
-                          <>
-                            <EyeOff className="w-3.5 h-3.5 stroke-[2.5]" />
-                            <span>PAUSED</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDeleteOffer(offer.id, offer.title)}
-                        className="p-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors"
-                        title="Delete Offer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 2: OPEN FOOD FACTS IMPORTER                          */}
-        {/* ======================================================== */}
-        {activeTab === "importer" && (
-          <div className="space-y-5">
-            {/* Search & Barcode Hub */}
-            <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-              <div>
-                <h2 className="font-black text-sm text-slate-900 flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-[#FF5B00]" />
-                  <span>Open Food Facts Indian FMCG Product Pipeline</span>
-                </h2>
-                <p className="text-xs text-slate-500 font-medium mt-0.5">
-                  Import authentic Indian FMCG products directly by barcode or brand name with highest-res front imagery.
-                </p>
-              </div>
-
-              {/* Search Bar */}
-              <div className="flex space-x-2">
-                <div className="relative grow">
-                  <input
-                    type="text"
-                    placeholder="Enter Indian Product Name (e.g. Parle-G, Maggi, Amul) or Barcode (e.g. 8901491101837)..."
-                    value={offSearchQuery}
-                    onChange={(e) => setOffSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearchOff()}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
-                  />
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    {CATEGORIES.filter((c) => c !== "All").map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Subtitle</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Delivered to your doorstep in 8 minutes."
+                  value={offerForm.subtitle}
+                  onChange={(e) => setOfferForm((p) => ({ ...p, subtitle: e.target.value }))}
+                  className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
+                    darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Banner Image URL</label>
+                <input
+                  type="url"
+                  value={offerForm.img}
+                  onChange={(e) => setOfferForm((p) => ({ ...p, img: e.target.value }))}
+                  className={`w-full text-xs font-mono px-3 py-2 rounded-xl border outline-none ${
+                    darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200/50">
                 <button
-                  onClick={() => handleSearchOff()}
-                  disabled={isSearchingOff}
-                  className="bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs px-5 py-3 rounded-2xl shadow-sm active:scale-95 transition-all flex items-center space-x-1.5 shrink-0"
+                  type="button"
+                  onClick={() => setShowOfferModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
                 >
-                  {isSearchingOff ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                  <span>Search India FMCG</span>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
+                >
+                  Publish Banner Offer
                 </button>
               </div>
-
-              {/* 1-Click FMCG Presets */}
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
-                  1-Click Popular Indian Brand Presets:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {FMCG_PRESETS.map((p, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setOffSearchQuery(p.query);
-                        handleSearchOff(p.query);
-                      }}
-                      className="bg-slate-100 hover:bg-orange-50 hover:text-[#FF5B00] text-slate-700 text-[11px] font-bold px-2.5 py-1 rounded-xl transition-colors border border-slate-200/80"
-                    >
-                      + {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Results Header & Category Filter */}
-            {offResults.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-black text-xs text-slate-900">
-                    Found {offResults.length} Indian FMCG Items in Open Food Facts
-                  </h3>
-                  <span className="text-[11px] text-slate-500 font-semibold">
-                    Images loaded directly via Open Food Facts CDN (Zero app bloat)
-                  </span>
-                </div>
-
-                {/* Grid of Results */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                  {offResults.map((item, idx) => {
-                    const isImported = importedBarcodes[item.barcode];
-
-                    return (
-                      <div
-                        key={idx}
-                        className="bg-white rounded-3xl p-3.5 border border-slate-200/90 shadow-xs flex flex-col justify-between space-y-3 transition-all hover:border-[#FF5B00]"
-                      >
-                        {/* Image Preview & Badges */}
-                        <div className="space-y-2">
-                          <div className="relative w-full h-36 bg-slate-50 rounded-2xl overflow-hidden flex items-center justify-center p-2 border border-slate-100">
-                            <img
-                              src={item.img}
-                              alt={item.name}
-                              className="max-h-full max-w-full object-contain rounded-lg"
-                              loading="lazy"
-                            />
-                            <span className="absolute top-2 left-2 bg-[#FF5B00] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                              {item.cat}
-                            </span>
-                            <span className="absolute bottom-2 right-2 bg-black/65 backdrop-blur-xs text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-md">
-                              {item.barcode}
-                            </span>
-                          </div>
-
-                          {/* Info */}
-                          <div>
-                            <span className="text-[10px] font-black uppercase text-slate-400 block tracking-wider">
-                              {item.brand}
-                            </span>
-                            <h4 className="font-black text-xs text-slate-900 line-clamp-2 leading-snug">
-                              {item.name}
-                            </h4>
-                            <span className="text-[11px] text-slate-500 font-medium">{item.unit}</span>
-                          </div>
-                        </div>
-
-                        {/* Price & Import CTA */}
-                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                          <div className="flex items-center space-x-1">
-                            <span className="text-xs font-extrabold text-slate-400">₹</span>
-                            <input
-                              type="number"
-                              defaultValue={item.price}
-                              onChange={(e) => { item.price = Number(e.target.value); }}
-                              className="w-14 bg-slate-100 font-black text-xs px-2 py-1 rounded-lg text-slate-900 border border-slate-200"
-                            />
-                          </div>
-
-                          <button
-                            onClick={() => handleImportProduct(item)}
-                            disabled={isImported}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center space-x-1 ${
-                              isImported
-                                ? "bg-orange-100 text-[#FF5B00] cursor-default"
-                                : "bg-[#FF5B00] text-white hover:bg-[#E04E00] active:scale-95 shadow-xs"
-                            }`}
-                          >
-                            {isImported ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                <span>Imported!</span>
-                              </>
-                            ) : (
-                              <>
-                                <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                                <span>Import to Store</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            </form>
           </div>
-        )}
-
-        {/* ======================================================== */}
-        {/* TAB 3: LIVE STORE CATALOGUE                              */}
-        {/* ======================================================== */}
-        {activeTab === "catalogue" && (
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="font-black text-sm text-slate-900 flex items-center space-x-2">
-                  <ShoppingBag className="w-4 h-4 text-[#FF5B00]" />
-                  <span>Active Storefront Catalogue ({catalogue.length} Products)</span>
-                </h2>
-                <p className="text-xs text-slate-500 font-medium">
-                  Products currently available to customers in Anantnag.
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <select
-                  value={catalogueFilter}
-                  onChange={(e) => setCatalogueFilter(e.target.value)}
-                  className="bg-slate-100 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 focus:outline-none"
-                >
-                  {CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleRefreshCatalogue}
-                  className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoadingCatalogue ? "animate-spin" : ""}`} />
-                </button>
-              </div>
-            </div>
-
-            {/* Product Table / Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {filteredCatalogue.map((prod) => (
-                <div
-                  key={prod.id || prod.barcode}
-                  className="bg-white rounded-3xl p-3.5 border border-slate-200 shadow-xs flex flex-col justify-between space-y-3"
-                >
-                  <div className="flex space-x-3">
-                    <img
-                      src={prod.img}
-                      alt={prod.name}
-                      className="w-16 h-16 object-contain rounded-xl bg-slate-50 p-1 border border-slate-100 shrink-0"
-                    />
-                    <div className="min-w-0">
-                      <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">
-                        {prod.brand || prod.cat}
-                      </span>
-                      <h4 className="font-black text-xs text-slate-900 truncate">{prod.name}</h4>
-                      <p className="text-[11px] text-slate-500 font-semibold">{prod.unit}</p>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-xs font-black text-[#FF5B00] font-mono">₹{prod.price}</span>
-                        <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
-                          {prod.cat}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-slate-400 truncate max-w-[140px]">
-                      {prod.barcode || prod.id}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteProduct(prod.id || prod.barcode)}
-                      className="text-rose-600 hover:text-rose-700 p-1.5 hover:bg-rose-50 rounded-xl transition-colors"
-                      title="Delete Product"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </AdminLayout>
   );
 }

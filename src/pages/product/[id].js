@@ -17,22 +17,49 @@ import {
   Share2,
   Package,
   ChevronRight,
+  Zap,
 } from "lucide-react";
 import ProductCardStepper from "../../components/ProductCardStepper";
 import ProductCard from "../../components/ProductCard";
+import SEO from "../../components/SEO";
+import { ProductJsonLd, BreadcrumbJsonLd } from "../../components/JsonLd";
 import { ALL_PRODUCTS } from "../../data/products";
 import { isItemInWishlist, toggleWishlistItem } from "../../lib/wishlist";
 import { hapticLight, hapticMedium, hapticCartAdd } from "../../lib/haptics";
 import { goBack } from "../../lib/navigation";
+import { useStoreDetails } from "../../lib/storeStatus";
+import { watchProducts } from "../../lib/db";
 
-export default function ProductDetailPage() {
+export default function ProductDetailPage({ initialProduct }) {
   const router = useRouter();
+  const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
   const { id } = router.query;
 
+  const [productsList, setProductsList] = useState(ALL_PRODUCTS);
   const [cart, setCart] = useState([]);
   const [isFav, setIsFav] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Sync products list from custom storage and Firestore
+  useEffect(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      if (custom.length > 0) {
+        const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
+        setProductsList([...custom, ...ALL_PRODUCTS.filter((p) => !customIds.has(String(p.id || p.barcode)))]);
+      }
+    } catch (e) {}
+
+    const unsub = watchProducts((liveList) => {
+      if (liveList && liveList.length > 0) {
+        setProductsList(liveList);
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
 
   // Sync cart from localStorage
   useEffect(() => {
@@ -52,12 +79,22 @@ export default function ProductDetailPage() {
 
   // Find product by id or barcode
   const product = useMemo(() => {
-    if (!id) return ALL_PRODUCTS[0];
-    const found = ALL_PRODUCTS.find(
+    if (initialProduct && (!id || String(id) === String(initialProduct.id))) {
+      return initialProduct;
+    }
+    if (!id) return initialProduct || productsList[0] || ALL_PRODUCTS[0];
+    const found = productsList.find(
       (p) => String(p.id) === String(id) || String(p.barcode) === String(id)
     );
-    return found || ALL_PRODUCTS[0];
-  }, [id]);
+    return (
+      found ||
+      ALL_PRODUCTS.find(
+        (p) => String(p.id) === String(id) || String(p.barcode) === String(id)
+      ) ||
+      initialProduct ||
+      ALL_PRODUCTS[0]
+    );
+  }, [id, productsList, initialProduct]);
 
   // Sync wishlist status
   useEffect(() => {
@@ -131,6 +168,10 @@ export default function ProductDetailPage() {
   };
 
   const handleAddToCart = () => {
+    if (!isStoreOpen) {
+      alert(`Store will be available: ${closeReason || "We will reopen shortly!"}`);
+      return;
+    }
     hapticCartAdd();
     const itemToAdd = {
       ...product,
@@ -191,7 +232,7 @@ export default function ProductDetailPage() {
       try {
         await navigator.share({
           title: product.name,
-          text: `Buy ${product.name} on DASHit with instant 10-minute delivery in Anantnag!`,
+          text: `Buy ${product.name} on DASHIT — fast grocery delivery in Anantnag!`,
           url: window.location.href,
         });
         return;
@@ -225,23 +266,43 @@ export default function ProductDetailPage() {
       case "Bakery":
         return `Oven-fresh ${product.name} baked fresh each morning. Soft, aromatic, and made with finest flour and traditional recipes. Great paired with morning Kahwa, Kashmiri tea, or breakfast spreads.`;
       case "Drinks":
-        return `Refreshing and invigorating ${product.name}. Served chilled from our temperature-controlled Anantnag dark store to quench your thirst anytime of the day.`;
+        return `Refreshing and invigorating ${product.name}. Served chilled from our temperature-controlled Anantnag fulfillment store to quench your thirst anytime of the day.`;
       default:
-        return `High-quality ${product.name} selected and verified by DASHit quality team. Delivered fresh to your doorstep in 10 minutes across Anantnag.`;
+        return `High-quality ${product.name} selected and verified by DASHIT quality team. Delivered fresh to your doorstep across Anantnag.`;
     }
   }, [product]);
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-36">
-      <Head>
-        <title>{product.name} — DASHit Anantnag</title>
-      </Head>
+      <SEO
+        title={`${product.name} — Buy Online in Anantnag`}
+        description={`Order fresh ${product.name} (${product.unit}) online in Anantnag, Kashmir. Fastest 8-minute delivery from DASHIT. 100% genuine quality assured.`}
+        canonical={`/product/${product.id}/`}
+        ogImage={product.img}
+        ogType="product"
+        keywords={`${product.name}, buy ${product.name} online Anantnag, ${product.cat} delivery Kashmir, DASHIT 192101`}
+      />
+      <ProductJsonLd
+        product={{ ...product, description: productDescription }}
+        url={`https://dashit.co.in/product/${product.id}/`}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", url: "/" },
+          { name: "Shop", url: "/shop/" },
+          {
+            name: product.cat || "Grocery",
+            url: `/shop/?cat=${encodeURIComponent(product.cat || "All")}`,
+          },
+          { name: product.name, url: `/product/${product.id}/` },
+        ]}
+      />
 
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 pt-[max(44px,calc(env(safe-area-inset-top,0px)+36px))] pb-2.5 flex items-center justify-between shadow-2xs">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-2.5 flex items-center justify-between shadow-2xs">
         <button
           type="button"
-          onClick={() => goBack(router, "/")}
+          onClick={() => goBack(router, "/shop")}
           className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
@@ -286,7 +347,7 @@ export default function ProductDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 mt-3 space-y-3.5">
+      <main className="max-w-md md:max-w-3xl mx-auto px-4 mt-3 space-y-3.5">
         {/* Product Image Stage */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs relative">
           <div className="relative w-full aspect-square max-h-72 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-slate-50/70 to-white">
@@ -300,8 +361,25 @@ export default function ProductDetailPage() {
               className="max-h-64 max-w-full object-contain drop-shadow-sm"
             />
 
+            {/* Out of Stock overlay */}
+            {product.stock !== undefined && Number(product.stock) <= 0 && (
+              <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] flex items-center justify-center">
+                <span className="bg-rose-600 text-white font-black text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-xl shadow-md">
+                  Currently Out of Stock
+                </span>
+              </div>
+            )}
+
+            {/* Low stock alert */}
+            {product.stock !== undefined && Number(product.stock) > 0 && Number(product.stock) <= 5 && (
+              <span className="absolute bottom-3 left-3 bg-amber-500 text-slate-950 font-black text-[10.5px] px-2.5 py-1 rounded-xl shadow-sm flex items-center space-x-1">
+                <Zap className="w-3 h-3 fill-slate-950 text-slate-950 shrink-0" />
+                <span>Only {product.stock} left in stock!</span>
+              </span>
+            )}
+
             {/* Discount pill */}
-            {discountPercent && (
+            {discountPercent && (!product.stock || Number(product.stock) > 0) && (
               <span className="absolute top-3 left-3 bg-[#FF5B00] text-white font-black text-xs px-2.5 py-1 rounded-xl shadow-xs">
                 {discountPercent}% OFF
               </span>
@@ -323,7 +401,7 @@ export default function ProductDetailPage() {
               </div>
               <div>
                 <span className="text-xs font-black text-slate-900 block leading-tight">
-                  Instant 10-Minute Delivery
+                  Fast Delivery
                 </span>
                 <span className="text-[10px] font-semibold text-slate-400">
                   Delivered from Anantnag Central Hub
@@ -494,19 +572,19 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        {/* Why Buy From DASHit Assurance */}
-        <div className="bg-gradient-to-br from-orange-50 via-amber-50 to-orange-50/50 rounded-3xl p-4.5 border border-orange-200/80 shadow-2xs space-y-3">
+        {/* Why Buy From DASHIT Assurance */}
+        <div className="bg-white rounded-3xl p-4.5 border border-orange-200/80 shadow-2xs space-y-3">
           <div className="flex items-center space-x-2 text-[#FF5B00]">
             <Sparkles className="w-4 h-4" />
             <span className="text-xs font-black uppercase tracking-wider text-orange-950">
-              DASHit Superfast Guarantee
+              Why shop with DASHIT
             </span>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="p-2 bg-white/80 rounded-2xl border border-orange-100">
               <Truck className="w-5 h-5 text-[#FF5B00] mx-auto mb-1" />
-              <span className="text-[10px] font-black text-slate-800 block">10-Min Delivery</span>
+              <span className="text-[10px] font-black text-slate-800 block">Fast Delivery</span>
               <span className="text-[9px] text-slate-500 block">Express dispatch</span>
             </div>
 
@@ -608,3 +686,29 @@ export default function ProductDetailPage() {
     </div>
   );
 }
+
+export async function getStaticPaths() {
+  const paths = ALL_PRODUCTS.map((prod) => ({
+    params: { id: String(prod.id) },
+  }));
+
+  return {
+    paths,
+    fallback: false,
+  };
+}
+
+export async function getStaticProps({ params }) {
+  const targetId = String(params?.id || "");
+  const product =
+    ALL_PRODUCTS.find(
+      (p) => String(p.id) === targetId || String(p.barcode) === targetId
+    ) || ALL_PRODUCTS[0];
+
+  return {
+    props: {
+      initialProduct: product || null,
+    },
+  };
+}
+

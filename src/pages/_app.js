@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { motion, MotionConfig } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
+import { SplashScreen } from '@capacitor/splash-screen';
 import '../styles/globals.css';
 import 'leaflet/dist/leaflet.css';
 import { StatusBar, Style } from '@capacitor/status-bar';
@@ -12,38 +13,69 @@ import BottomNav from '../components/BottomNav';
 import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
 import PremiumSplashScreen from '../components/PremiumSplashScreen';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
+import { AgeGateProvider } from '../context/AgeGateContext';
 import { initNotificationPermissions } from '../lib/notifications';
 
 import { setDeviceSystemBars } from '../lib/systemBars';
+import { isNative } from '../lib/platform';
 import { EASE_OUT } from '../lib/motion';
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
+  // Holds the first screen slightly forward while the splash covers it
+  const [splashHolding, setSplashHolding] = useState(false);
+  // Slow ease applies only for the duration of the splash handoff
+  const [isRevealing, setIsRevealing] = useState(false);
+
+  // 1. Hide native Capacitor splash screen smoothly once web app mounts
+  useEffect(() => {
+    const hideNativeSplash = async () => {
+      try {
+        await SplashScreen.hide({ fadeOutDuration: 300 });
+      } catch (e) {}
+    };
+    const timer = setTimeout(hideNativeSplash, 120);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 2. Control in-app splash choreography on initial cold launch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isInternalRole = ['/admin', '/driver'].includes(router.pathname);
+      let seen = false;
+      try { seen = !!sessionStorage.getItem("dashit_splash_seen"); } catch (e) {}
+      if (!isInternalRole && !seen) {
+        setShowSplash(true);
+        setSplashHolding(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     currentPathRef.current = router.pathname;
 
     const syncThemeAndStatusBar = async () => {
       try {
-        // Force Light Mode as requested
-        document.documentElement.classList.remove("dark");
+        // Keep customer storefront in light mode while allowing admin dark theme
+        if (router.pathname !== '/admin') {
+          document.documentElement.classList.remove("dark");
+        }
         if (showSplash) {
-          // While splash is active, ensure dark icons over pristine white canvas
           await setDeviceSystemBars({
-            topColor: '#00000000',
+            topColor: '#FFFFFF',
             topDarkIcons: true,
             bottomColor: '#FFFFFF',
             bottomDarkIcons: true,
           });
           return;
         }
-        const isHome = router.pathname === '/' || router.pathname === '';
+        const isHome = router.pathname === '/' || router.pathname === '/shop' || router.pathname === '';
         const isSearch = router.pathname === '/search';
-        const isLogin = router.pathname === '/login';
-        const topColor = '#00000000'; // Transparent status bar across the app
-        const isTopDarkIcons = !isSearch && !isLogin;
+        const isDriver = router.pathname === '/driver';
+        const topColor = isHome ? '#FFE8D6' : isSearch || isDriver ? '#061838' : '#FFFFFF';
+        const isTopDarkIcons = !isSearch && !isDriver;
         const bottomColor = isHome ? '#FFFDF5' : '#FFFFFF';
         await setDeviceSystemBars({
           topColor,
@@ -56,18 +88,66 @@ export default function App({ Component, pageProps }) {
     syncThemeAndStatusBar();
   }, [router.pathname, showSplash]);
 
-  // On first launch or unauthenticated visit to storefront, route to /login to ask for login
+
+
   useEffect(() => {
-    if (!router.isReady) return;
-    if (router.pathname === '/' || router.pathname === '') {
-      try {
-        const savedUser = localStorage.getItem('dashit_user');
-        if (!savedUser) {
-          router.replace('/login');
+    if (typeof window !== "undefined") {
+      const initAppRouting = async () => {
+        let role = window.__DASHIT_ROLE__ || "";
+
+        // 1. Android Flavor bridge
+        if (!role && window.AndroidFlavor && window.AndroidFlavor.getFlavor) {
+          role = window.AndroidFlavor.getFlavor();
         }
-      } catch (e) {}
+
+        // 2. Capacitor native app inspection (iOS & Android)
+        if (!role) {
+          try {
+            const { Capacitor } = require("@capacitor/core");
+            if (Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()) {
+              const { App } = require("@capacitor/app");
+              const info = await App.getInfo();
+              const id = (info.id || "").toLowerCase();
+              const name = (info.name || "").toLowerCase();
+              if (id.includes("admin") || name.includes("admin")) {
+                role = "admin";
+              } else if (id.includes("driver") || name.includes("driver")) {
+                role = "driver";
+              } else {
+                role = "customer";
+              }
+            }
+          } catch (e) {}
+        }
+
+        // Default role is customer
+        if (!role) role = "customer";
+
+        // 3. Execute role-based routing
+        if (role === "admin") {
+          setShowSplash(false);
+          if (router.pathname !== "/admin") {
+            router.replace("/admin");
+          }
+        } else if (role === "driver") {
+          setShowSplash(false);
+          if (router.pathname !== "/driver") {
+            router.replace("/driver");
+          }
+        } else if (role === "customer" || role === "user") {
+          /* The packaged app always opens straight into the storefront /shop.
+             Browsing is open and instant; login is only requested during checkout.
+             On the public web "/" remains the landing page front door. */
+          const isApp = isNative() || Boolean(window.__DASHIT_ROLE__);
+          if (isApp && (router.pathname === "/" || router.pathname === "" || router.pathname === "/index.html")) {
+            router.replace("/shop");
+          }
+        }
+      };
+
+      initAppRouting();
     }
-  }, [router.isReady, router.pathname]);
+  }, [router.pathname]);
 
   useEffect(() => {
     initNotificationPermissions();
@@ -91,14 +171,14 @@ export default function App({ Component, pageProps }) {
 
           // 2. Only exit the app if on the home screen
           const path = currentPathRef.current;
-          if (path === '/' || path === '') {
+          if (path === '/' || path === '/shop' || path === '') {
             CapApp.exitApp();
           } else {
             // Not on home screen: navigate back to previous screen or home
             if (window.history.length > 1) {
               router.back();
             } else {
-              router.push('/');
+              router.push('/shop');
             }
           }
         });
@@ -166,11 +246,12 @@ export default function App({ Component, pageProps }) {
           return;
         }
 
-        if (path !== '/' && path !== '') {
+        const rootPages = ['/', '/shop', '', '/driver', '/admin', '/login'];
+        if (!rootPages.includes(path)) {
           if (window.history.length > 1) {
             router.back();
           } else {
-            router.push('/');
+            router.push('/shop');
           }
         }
       }
@@ -233,28 +314,56 @@ export default function App({ Component, pageProps }) {
     // reducedMotion="user" honours the OS accessibility setting app-wide
     <MotionConfig reducedMotion="user">
       <ScrollChromeProvider>
+        <AgeGateProvider>
         <Head>
           <meta
             name="viewport"
             content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
           />
+          <meta name="color-scheme" content="light" />
         </Head>
         {showSplash && (
-          <PremiumSplashScreen onComplete={() => setShowSplash(false)} />
+          <PremiumSplashScreen
+            // Fires as the splash starts clearing, so the screen behind settles
+            // during the handoff rather than after it
+            onExitStart={() => {
+              setSplashHolding(false);
+              setIsRevealing(true);
+            }}
+            onComplete={() => {
+              setShowSplash(false);
+              try { sessionStorage.setItem("dashit_splash_seen", "true"); } catch (e) {}
+            }}
+          />
         )}
         <motion.div
           key={router.asPath}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, ease: EASE_OUT }}
-          className="w-full min-h-screen overflow-x-clip relative"
+          // The splash zooms toward the viewer, so the screen behind it settles
+          // back from 104% to meet the handoff as one continuous push. Ordinary
+          // route changes keep the plain quick fade.
+          initial={splashHolding ? { opacity: 0, scale: 1.04 } : false}
+          animate={{ opacity: 1, scale: splashHolding ? 1.04 : 1 }}
+          transition={
+            splashHolding || isRevealing
+              ? { duration: 0.55, ease: [0.16, 1, 0.3, 1] }
+              : { duration: 0.18, ease: EASE_OUT }
+          }
+          onAnimationComplete={() => {
+            if (isRevealing) setIsRevealing(false);
+          }}
+          className={
+            router.pathname === '/admin'
+              ? "w-full h-screen h-[100dvh] overflow-hidden relative"
+              : "w-full min-h-screen relative"
+          }
         >
           <Component {...pageProps} />
         </motion.div>
-        <LiveOrderFloatingTracker />
+        {router.pathname === '/shop' && <LiveOrderFloatingTracker />}
         <FloatingCartBar />
-        {!['/login', '/driver'].includes(router.pathname) && <BottomNav />}
+        {!['/login', '/driver', '/admin', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />
+        </AgeGateProvider>
       </ScrollChromeProvider>
     </MotionConfig>
   );

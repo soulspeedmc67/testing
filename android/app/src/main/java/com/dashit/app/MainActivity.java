@@ -23,20 +23,24 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        androidx.core.splashscreen.SplashScreen.installSplashScreen(this);
         super.onCreate(savedInstanceState);
         
         Window window = getWindow();
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-        window.setStatusBarColor(Color.TRANSPARENT);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         
-        int appBgColor = Color.parseColor("#FFFDF5");
-        window.setNavigationBarColor(appBgColor);
+        int appBgColor = Color.parseColor("#FFE8D6");
+        window.setStatusBarColor(appBgColor);
         
-        int initFlags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        int navBgColor = Color.parseColor("#FFFDF5");
+        window.setNavigationBarColor(navBgColor);
+        
+        int initFlags = 0;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            initFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            initFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            initFlags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            initFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         }
         window.getDecorView().setSystemUiVisibility(initFlags);
 
@@ -53,9 +57,19 @@ public class MainActivity extends BridgeActivity {
 
         if (this.bridge != null && this.bridge.getWebView() != null) {
             android.webkit.WebView webView = this.bridge.getWebView();
+            webView.setBackgroundColor(Color.parseColor("#FFFFFF"));
             webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
             webView.setVerticalScrollBarEnabled(false);
             webView.setHorizontalScrollBarEnabled(false);
+
+            // 60FPS+ Hardware acceleration & smooth performance optimizations
+            webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+            android.webkit.WebSettings settings = webView.getSettings();
+            if (settings != null) {
+                settings.setDomStorageEnabled(true);
+                settings.setDatabaseEnabled(true);
+                settings.setRenderPriority(android.webkit.WebSettings.RenderPriority.HIGH);
+            }
 
             // Interface 1: AndroidBars (Dynamic status & nav bar colors)
             webView.addJavascriptInterface(new Object() {
@@ -64,11 +78,13 @@ public class MainActivity extends BridgeActivity {
                     runOnUiThread(() -> {
                         try {
                             Window win = getWindow();
-                            win.setStatusBarColor(Color.TRANSPARENT);
+                            if (topColor != null && !topColor.isEmpty() && !topColor.equals("#00000000")) {
+                                win.setStatusBarColor(Color.parseColor(topColor));
+                            }
                             if (bottomColor != null && !bottomColor.isEmpty()) {
                                 win.setNavigationBarColor(Color.parseColor(bottomColor));
                             }
-                            int flags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+                            int flags = 0;
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && topDarkIcons) {
                                 flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                             }
@@ -106,6 +122,66 @@ public class MainActivity extends BridgeActivity {
                     return mGoogleSignInClient != null;
                 }
             }, "AndroidGoogleAuth");
+
+            // Interface 3: AndroidFlavor (Allows webview to detect Customer vs Admin vs Driver APK)
+            webView.addJavascriptInterface(new Object() {
+                @JavascriptInterface
+                public String getFlavor() {
+                    String pkg = MainActivity.this.getPackageName();
+                    if (pkg.contains("admin")) return "admin";
+                    if (pkg.contains("driver")) return "driver";
+                    return "customer";
+                }
+
+                @JavascriptInterface
+                public boolean isAdmin() {
+                    return MainActivity.this.getPackageName().contains("admin");
+                }
+
+                @JavascriptInterface
+                public boolean isDriver() {
+                    return MainActivity.this.getPackageName().contains("driver");
+                }
+            }, "AndroidFlavor");
+
+            // Interface 4: AndroidTruecaller (Native Truecaller 1-Tap intent dispatcher)
+            webView.addJavascriptInterface(new Object() {
+                /*
+                 * Only the Truecaller SDK scheme is dispatched, and only to the
+                 * Truecaller package.
+                 *
+                 * A @JavascriptInterface method is callable by whatever runs in the
+                 * WebView, so accepting an arbitrary URL here turned the app into a
+                 * general intent launcher: any script that got a foothold could fire
+                 * ACTION_VIEW at market://, tel:, an intent:// URI, or a file:// path
+                 * belonging to another app.
+                 */
+                @JavascriptInterface
+                public boolean openTruecaller(final String url) {
+                    try {
+                        if (url == null || !url.startsWith("truecallersdk://")) {
+                            return false;
+                        }
+                        Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+                        intent.setPackage("com.truecaller");
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }
+
+                @JavascriptInterface
+                public boolean isAppInstalled() {
+                    try {
+                        getPackageManager().getPackageInfo("com.truecaller", 0);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
+                }
+            }, "AndroidTruecaller");
         }
     }
 
@@ -113,56 +189,42 @@ public class MainActivity extends BridgeActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == RC_GOOGLE_SIGN_IN) {
-            android.util.Log.d("DashitAuth", "onActivityResult resultCode=" + resultCode + ", data=" + data);
-
+            /*
+             * A sign-in either produces a Google ID token or it fails. There is no
+             * middle ground and nothing is guessed.
+             *
+             * The previous version, when the Play Services call failed, fell back to
+             * reading the device's account list and — if that also came up empty —
+             * hardcoded a specific developer's email address, then reported SUCCESS
+             * with an empty idToken. The web layer accepted that, signed in
+             * anonymously and wrote the fabricated email onto the profile: a failed
+             * or cancelled sign-in silently became a logged-in session under someone
+             * else's identity.
+             */
             Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
             try {
                 GoogleSignInAccount account = task.getResult(ApiException.class);
-                if (account != null) {
-                    String email = account.getEmail() != null ? account.getEmail() : "";
-                    String displayName = account.getDisplayName() != null ? account.getDisplayName() : "";
-                    String id = account.getId() != null ? account.getId() : "";
-                    String photoUrl = account.getPhotoUrl() != null ? account.getPhotoUrl().toString() : "";
-                    String idToken = account.getIdToken() != null ? account.getIdToken() : "";
-                    sendGoogleAuthSuccess(email, displayName, id, photoUrl, idToken);
+                String idToken = (account != null && account.getIdToken() != null) ? account.getIdToken() : "";
+
+                if (account == null || idToken.isEmpty()) {
+                    // No verifiable token means no proof of identity.
+                    sendGoogleAuthError("Google Sign-In could not be verified. Please try again.");
                     return;
                 }
+
+                String email = account.getEmail() != null ? account.getEmail() : "";
+                String displayName = account.getDisplayName() != null ? account.getDisplayName() : "";
+                String id = account.getId() != null ? account.getId() : "";
+                String photoUrl = account.getPhotoUrl() != null ? account.getPhotoUrl().toString() : "";
+                sendGoogleAuthSuccess(email, displayName, id, photoUrl, idToken);
             } catch (ApiException e) {
-                android.util.Log.w("DashitAuth", "ApiException code=" + e.getStatusCode() + ": " + e.getMessage());
+                android.util.Log.w("DashitAuth", "Google Sign-In failed, code=" + e.getStatusCode());
                 if (e.getStatusCode() == 12501 || e.getStatusCode() == 16) {
-                    // User deliberately cancelled/pressed back
                     sendGoogleAuthError("Google Sign-In dismissed");
-                    return;
+                } else {
+                    sendGoogleAuthError("Google Sign-In failed. Please try again.");
                 }
             }
-
-            // If account was chosen in the system picker, extract account from device or default
-            String email = "";
-            String displayName = "Aleem Kanyu";
-            try {
-                if (data != null && data.hasExtra("googleSignInAccount")) {
-                    GoogleSignInAccount acc = data.getParcelableExtra("googleSignInAccount");
-                    if (acc != null && acc.getEmail() != null) email = acc.getEmail();
-                    if (acc != null && acc.getDisplayName() != null) displayName = acc.getDisplayName();
-                }
-            } catch (Exception ignored) {}
-
-            if (email == null || email.isEmpty()) {
-                try {
-                    android.accounts.Account[] accounts = android.accounts.AccountManager.get(this).getAccountsByType("com.google");
-                    if (accounts != null && accounts.length > 0 && accounts[0].name != null) {
-                        email = accounts[0].name;
-                        displayName = email.split("@")[0];
-                        displayName = Character.toUpperCase(displayName.charAt(0)) + displayName.substring(1);
-                    }
-                } catch (Exception ignored) {}
-            }
-
-            if (email == null || email.isEmpty()) {
-                email = "kanyualeem416@gmail.com";
-            }
-
-            sendGoogleAuthSuccess(email, displayName, "google_" + System.currentTimeMillis(), "", "");
         }
     }
 

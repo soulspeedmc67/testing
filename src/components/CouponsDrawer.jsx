@@ -23,8 +23,12 @@ const AVAILABLE_COUPONS = [
   },
   {
     code: "FREEDEL",
+    // The saving is the waived ₹25 delivery fee, applied by the checkout's
+    // deliveryFee rule. Carrying a `discount` here as well subtracted ₹25 from
+    // the subtotal *and* waived the fee — the coupon paid out twice.
     title: "100% Free Delivery on your order",
-    discount: 25,
+    discount: 0,
+    waivesDelivery: true,
     minOrder: 99,
     description: "Zero delivery fee applied",
     condition: "No minimum required"
@@ -33,6 +37,7 @@ const AVAILABLE_COUPONS = [
 
 export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupon, onApplyCoupon }) {
   const [customCode, setCustomCode] = useState("");
+  const [codeError, setCodeError] = useState("");
 
   /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
 
@@ -41,29 +46,28 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
 
   if (!isOpen) return null;
 
+  /* Only codes in AVAILABLE_COUPONS are honoured. The previous version fell
+     through to a "dynamic coupon" that granted ₹35 off for ANY string the
+     customer typed, with the minimum order never checked — so every order could
+     be discounted by simply entering a random word. */
   const handleApplyCustom = (e) => {
     e?.preventDefault();
-    const found = AVAILABLE_COUPONS.find(c => c.code.toUpperCase() === customCode.trim().toUpperCase());
-    if (found) {
-      if (cartTotal < found.minOrder) {
-        alert(`Minimum cart value of ₹${found.minOrder} required for ${found.code}`);
-        return;
-      }
-      hapticMedium();
-      onApplyCoupon(found);
-      onClose();
-    } else if (customCode.trim().length > 0) {
-      // Dynamic coupon
-      const dynamicCoupon = {
-        code: customCode.trim().toUpperCase(),
-        title: "Special Offer Applied",
-        discount: 35,
-        minOrder: 100
-      };
-      hapticMedium();
-      onApplyCoupon(dynamicCoupon);
-      onClose();
+    const entered = customCode.trim().toUpperCase();
+    if (!entered) return;
+
+    const found = AVAILABLE_COUPONS.find((c) => c.code.toUpperCase() === entered);
+    if (!found) {
+      setCodeError("That offer code is not valid.");
+      return;
     }
+    if (cartTotal < found.minOrder) {
+      setCodeError(`Minimum cart value of ₹${found.minOrder} required for ${found.code}.`);
+      return;
+    }
+    setCodeError("");
+    hapticMedium();
+    onApplyCoupon(found);
+    onClose();
   };
 
   return (
@@ -102,7 +106,10 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                 <input
                   type="text"
                   value={customCode}
-                  onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setCustomCode(e.target.value.toUpperCase());
+                    setCodeError("");
+                  }}
                   placeholder="Type offer code here..."
                   className="grow px-3 py-2 text-xs font-mono font-black text-slate-900 dark:text-white bg-transparent focus:outline-none uppercase"
                 />
@@ -114,6 +121,11 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                   Apply
                 </button>
               </form>
+              {codeError && (
+                <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 px-1">
+                  {codeError}
+                </p>
+              )}
             </div>
 
             {/* Offers list */}

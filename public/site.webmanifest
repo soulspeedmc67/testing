@@ -1,0 +1,29 @@
+{
+  "name": "DASHIT — 8-Minute Grocery Delivery",
+  "short_name": "DASHIT",
+  "description": "Hyperlocal 8-minute grocery and essentials delivery across Anantnag, Kashmir.",
+  "start_url": "/?source=pwa",
+  "display": "standalone",
+  "background_color": "#061838",
+  "theme_color": "#FF5B00",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon-light.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/dashit-app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "food", "lifestyle"]
+}

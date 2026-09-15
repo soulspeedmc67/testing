@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef } from "react";
 import { goBack } from "../lib/navigation";
-import Head from "next/head";
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
+import SEO from "../components/SEO";
 import { ArrowLeft, Search, Crosshair, MapPin, Check, X } from "lucide-react";
 import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
 
 const MapWithPin = dynamic(() => import("../components/MapWithPinInner"), { ssr: false });
 
-const HUB_POS = { lat: 33.7311, lng: 75.1487 }; // Nai Basti, Anantnag
+const HUB_POS = { lat: 33.735832, lng: 75.143614 }; // Lal Chowk hub, Anantnag
 
 export default function ConfirmLocationPage() {
   const router = useRouter();
   const [selectedPos, setSelectedPos] = useState(HUB_POS);
-  const [areaTitle, setAreaTitle] = useState("Kurhama");
-  const [addressSubtitle, setAddressSubtitle] = useState("Gulshan Mohalla, Safapore 191131. (Kurhama)");
+  // Empty until reverse geocoding answers; these held a hardcoded sample address.
+  const [areaTitle, setAreaTitle] = useState("");
+  const [addressSubtitle, setAddressSubtitle] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
@@ -36,20 +37,14 @@ export default function ConfirmLocationPage() {
       }
     } catch (e) {}
 
-    // Fallback: GPS locate on initial open
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setSelectedPos(coords);
-          const geocoded = await reverseGeocodeCoords(coords.lat, coords.lng);
-          setAreaTitle(geocoded.area);
-          setAddressSubtitle(geocoded.address);
-        },
-        () => {},
-        { timeout: 4000 }
-      );
-    }
+    /* No automatic GPS request.
+
+       This used to call getCurrentPosition() straight from the mount effect, so
+       the OS permission dialog appeared before the customer had been told what
+       the location was for. Google Play requires a prominent in-app disclosure
+       *before* the system prompt, and an unexplained prompt on first open is a
+       common rejection. The map opens on the store's own area, and location is
+       requested only when the customer taps "Use my current location". */
   }, []);
 
   const handleSearchChange = async (query) => {
@@ -77,15 +72,44 @@ export default function ConfirmLocationPage() {
   };
 
   const handleConfirm = () => {
-    const loc = {
+    const locObj = {
       nickname: areaTitle || "Home",
-      address: `${areaTitle}, ${addressSubtitle}`,
-      lat: selectedPos.lat,
-      lng: selectedPos.lng
+      area: areaTitle || "Anantnag",
+      // Same duplication as InteractiveMapModal: the address already has the area.
+      address: addressSubtitle || (areaTitle ? `${areaTitle}, Anantnag` : "Anantnag"),
+      lat: Number(selectedPos.lat),
+      lng: Number(selectedPos.lng),
+      city: "Anantnag",
+      pincode: "192101",
     };
     try {
-      localStorage.setItem("dashit_user_address", JSON.stringify(loc));
-      window.dispatchEvent(new Event("dashit_address_updated"));
+      localStorage.setItem("dashit_user_address", JSON.stringify(locObj));
+      localStorage.setItem("dashit_selected_location", JSON.stringify(locObj));
+
+      // Save to saved addresses list
+      const savedList = JSON.parse(localStorage.getItem("dashit_saved_addresses") || "[]");
+      const updatedList = [locObj, ...savedList.filter((s) => s.address !== locObj.address)].slice(0, 5);
+      localStorage.setItem("dashit_saved_addresses", JSON.stringify(updatedList));
+
+      // Update logged in user profile if exists
+      const userStr = localStorage.getItem("dashit_user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        u.address = locObj.address;
+        u.location = locObj;
+        localStorage.setItem("dashit_user", JSON.stringify(u));
+      }
+
+      // Update checkout data if active
+      const coStr = localStorage.getItem("dashit_checkout_data");
+      if (coStr) {
+        const co = JSON.parse(coStr);
+        co.location = locObj;
+        localStorage.setItem("dashit_checkout_data", JSON.stringify(co));
+      }
+
+      window.dispatchEvent(new CustomEvent("dashit_address_updated", { detail: locObj }));
+      window.dispatchEvent(new Event("storage"));
     } catch (e) {}
     goBack(router);
   };
@@ -121,9 +145,7 @@ export default function ConfirmLocationPage() {
 
   return (
     <div className="fixed inset-0 z-50 bg-white overflow-hidden">
-      <Head>
-        <title>Select Delivery Location — Dashit</title>
-      </Head>
+      <SEO title="Select Delivery Location" noindex={true} />
 
       {/* 1. FULLSCREEN MAP (Underneath everything, eliminating any gray bottom corner gaps) */}
       <div className="absolute inset-0 z-0">
@@ -170,7 +192,7 @@ export default function ConfirmLocationPage() {
       </div>
 
       {/* 4. TOP FLOATING SEARCH BAR & AUTOCOMPLETE DROPDOWN */}
-      <div className="absolute top-0 left-0 right-0 z-[2000] p-4 pt-[max(14px,env(safe-area-inset-top,14px))] flex items-center space-x-3 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-[2000] p-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] flex items-center space-x-3 pointer-events-none">
         <button
           type="button"
           onClick={() => goBack(router)}
@@ -243,8 +265,8 @@ export default function ConfirmLocationPage() {
         </div>
 
         {/* Zoom In Notice Pill matching media_1788424288259.png */}
-        <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-3 flex items-center justify-between">
-          <p className="text-xs font-bold text-rose-700">
+        <div className="border border-slate-200 rounded-xl p-3 flex items-center justify-between">
+          <p className="text-xs font-medium text-slate-600">
             Zoom in to place the pin at exact delivery location
           </p>
           <div className="w-8 h-8 rounded-full bg-white shadow-xs flex items-center justify-center shrink-0 ml-2">

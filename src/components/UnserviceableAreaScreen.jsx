@@ -39,7 +39,7 @@ export default function UnserviceableAreaScreen({
           We are not serving this area at the moment.
         </p>
         <p className="text-base font-extrabold text-[#7a1b2d] dark:text-rose-200">
-          Sorry for the inconvenience 😔
+          Sorry for the inconvenience.
         </p>
 
         {/* Store Closed Graphic */}
@@ -84,7 +84,7 @@ export default function UnserviceableAreaScreen({
         </div>
 
         <div
-          onClick={() => alert("Dashit: Superfast 10-minute grocery delivery in Anantnag, Kashmir.")}
+          onClick={() => alert("Dashit: Fast grocery delivery in Anantnag, Kashmir.")}
           className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200/80 dark:border-zinc-800 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99]"
         >
           <div className="flex items-center space-x-3">
