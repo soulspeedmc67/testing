@@ -1,0 +1,47 @@
+name: Inspect Hostinger FTP layout
+
+# Read-only helper. Lists the directories the deploy account can see so the
+# right `server-dir` can be set, for when an upload succeeds but the live site
+# does not change. Never uploads, deletes or modifies anything.
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: List remote directories
+        env:
+          HOST: ${{ secrets.HOSTINGER_FTP_HOST }}
+          USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          PASSWORD: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+        run: |
+          # set ssl:verify-certificate no — Hostinger shared FTPS presents a
+          # certificate for the server hostname, not the per-account one.
+          run_ftp() {
+            lftp -c "
+              set ssl:verify-certificate no;
+              set ftp:ssl-force true;
+              set ftp:ssl-protect-data true;
+              open -u \"$USERNAME\",\"$PASSWORD\" \"$HOST\";
+              $1
+            " 2>&1 || true
+          }
+
+          echo "=================== home directory ==================="
+          run_ftp "pwd; cls -l --sort=name"
+
+          echo ""
+          echo "=================== /public_html ====================="
+          run_ftp "cd /public_html && cls -l --sort=date | head -25"
+
+          echo ""
+          echo "=================== /domains ========================="
+          run_ftp "cd /domains && cls -l --sort=name"
+
+          echo ""
+          echo "========= every index.html within 3 levels ==========="
+          run_ftp "find -d 3 / | grep -i 'index.html$' | head -30"
