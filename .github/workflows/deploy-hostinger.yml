@@ -1,0 +1,99 @@
+name: Deploy site to Hostinger
+
+# Pushing to main updates the live site. The static export is built here on
+# GitHub — Hostinger shared hosting cannot run `npm run build` itself, so only
+# the compiled `out/` folder is uploaded.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "android/**"
+      - "ios/**"
+      - "**/*.apk"
+      - "**/*.ipa"
+      - ".github/workflows/android-build.yml"
+      - ".github/workflows/ios-build.yml"
+  workflow_dispatch:
+
+# A second push while a deploy is running cancels the older one, so the site
+# always ends up matching the newest commit rather than whichever upload
+# happened to finish last.
+concurrency:
+  group: hostinger-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build static export and upload
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Same public Firebase config the iOS workflow builds with. These are
+      # client-side keys that ship in the bundle either way; the repository
+      # secrets take precedence when they are set.
+      - name: Build static export
+        run: npm run build
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyB6tH6rYJ3fDZ7SBVkTNL3i_lOTXkPYjsg' }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'dashit-1ecba.firebaseapp.com' }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dashit-1ecba' }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dashit-1ecba.firebasestorage.app' }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '391742831837' }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID || '1:391742831837:web:a66d0d0920d75b24f4ef34' }}
+          NEXT_PUBLIC_AUTH_MODE: otp
+          NEXT_PUBLIC_OTP_FIXED: "0"
+          NEXT_PUBLIC_TRUECALLER_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_TRUECALLER_CLIENT_ID || 'yxekbcxiwocqnjm3ocnd2uk5kgqrzfooz1k635ezzrs' }}
+
+      # `next build` writes out/, but the Apache rules live in public/ and are
+      # only copied by the export:zip script. Do it here too, otherwise the
+      # deployed site loses its redirect and cache headers.
+      - name: Include .htaccess in the export
+        run: cp public/.htaccess out/.htaccess 2>/dev/null || true
+
+      # Fails the deploy before anything is uploaded if the build produced a
+      # shell without the pages that matter.
+      - name: Verify the export looks complete
+        run: |
+          for page in index.html shop/index.html admin/index.html driver/index.html orders/index.html checkout/index.html; do
+            if [ ! -f "out/$page" ]; then
+              echo "::error::Missing $page in the static export — refusing to deploy"
+              exit 1
+            fi
+          done
+          echo "Export OK: $(find out -type f | wc -l) files, $(du -sh out | cut -f1)"
+
+      - name: Upload to Hostinger over FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.HOSTINGER_FTP_HOST }}
+          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: ./out/
+          # Override with the HOSTINGER_FTP_REMOTE_DIR secret when the site is an
+          # addon domain living in a subfolder rather than at the account root.
+          server-dir: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR || '/public_html/' }}
+          # The action keeps a manifest on the server and uploads only what
+          # changed, so a routine deploy moves a few hundred KB rather than 18 MB.
+          state-name: .ftp-deploy-sync-state.json
+          dangerous-clean-slate: false
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/*.apk
+            **/*.ipa
+            **/*.zip
