@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, ArrowLeft, X, Plus, Minus, Heart, Mic, ShoppingBag, ArrowRight } from "lucide-react";
+import SEO from "../components/SEO";
 import confetti from "canvas-confetti";
 import BottomNav from "../components/BottomNav";
 import ProductCardStepper from "../components/ProductCardStepper";
@@ -11,18 +12,11 @@ import QuickProductSheet from "../components/QuickProductSheet";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { EmptySearchState } from "../components/ui/EmptyState";
 import { hapticLight, hapticMedium } from "../lib/haptics";
+import { goBack } from "../lib/navigation";
+import { ALL_PRODUCTS } from "../data/products";
+import { watchProducts } from "../lib/db";
 
-const ALL_SEARCH_PRODUCTS = [
-  { id: 1, name: "Lay's Magic Masala Potato Chips", unit: "50g", price: 20, originalPrice: 20, time: "10 mins", img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80", cat: "Snacks" },
-  { id: 2, name: "Fresh Kashmiri Lavas Bread (4 pcs)", unit: "4 pcs", price: 30, originalPrice: 40, time: "10 mins", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=300&auto=format&fit=crop&q=80", cat: "Bakery" },
-  { id: 3, name: "Amul Taaza Fresh Toned Milk 1L", unit: "1L", price: 66, originalPrice: 70, time: "10 mins", img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80", cat: "Grocery" },
-  { id: 4, name: "Fresh Kashmiri Red Apples (1kg)", unit: "1 kg", price: 140, originalPrice: 170, time: "10 mins", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&auto=format&fit=crop&q=80", cat: "Grocery" },
-  { id: 5, name: "Cadbury Dairy Milk Silk Chocolate", unit: "150g", price: 175, originalPrice: 190, time: "8 mins", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=300&auto=format&fit=crop&q=80", cat: "Grocery" },
-  { id: 6, name: "Maggi 2-Minute Masala Noodles (4-Pack)", unit: "280g", price: 56, originalPrice: 60, time: "8 mins", img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=300&auto=format&fit=crop&q=80", cat: "Snacks" },
-  { id: 7, name: "Amul Pasteurised Salted Butter 100g", unit: "100g", price: 58, originalPrice: 60, time: "10 mins", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80", cat: "Grocery" }
-];
-
-const POPULAR_SEARCH_CHIPS = ["Milk", "Lavas Bread", "Chips", "Apples", "Silk Chocolate", "Maggi"];
+const POPULAR_SEARCH_CHIPS = ["Milk", "Lavas Bread", "Chips", "Apples", "Silk Chocolate", "Maggi", "Butter", "Biscuits"];
 
 export default function SearchPage() {
   const router = useRouter();
@@ -31,6 +25,18 @@ export default function SearchPage() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [allProducts, setAllProducts] = useState(ALL_PRODUCTS);
+
+  useEffect(() => {
+    const unsub = watchProducts((liveList) => {
+      if (liveList && liveList.length > 0) {
+        setAllProducts(liveList);
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
 
   useEffect(() => {
     const savedCart = localStorage.getItem("dashit_cart");
@@ -76,27 +82,38 @@ export default function SearchPage() {
     saveCart(updated);
   };
 
-  const filteredProducts = ALL_SEARCH_PRODUCTS.filter((p) =>
-    p.name.toLowerCase().includes(query.toLowerCase()) || p.cat.toLowerCase().includes(query.toLowerCase())
-  );
+  const cleanQuery = (query || "").trim().toLowerCase();
+  const filteredProducts = cleanQuery
+    ? allProducts.filter((p) =>
+        (p.name || "").toLowerCase().includes(cleanQuery) ||
+        (p.cat || "").toLowerCase().includes(cleanQuery) ||
+        (p.brand || "").toLowerCase().includes(cleanQuery)
+      )
+    : allProducts.slice(0, 16);
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
+      <SEO
+        title="Search Groceries"
+        description="Search groceries, Kashmiri bakery, dairy, beverages, and daily essentials on DASHIT Anantnag."
+        canonical="/search/"
+        noindex="follow"
+      />
       {/* Search Header Bar with Smooth Entry Animation & Safe Area */}
       <motion.header
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 350, damping: 28 }}
-        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[max(48px,calc(42px+env(safe-area-inset-top,0px)))] pb-3.5 shadow-md"
+        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 shadow-md"
       >
-        <div className="max-w-md mx-auto flex items-center space-x-3">
+        <div className="max-w-md md:max-w-4xl mx-auto flex items-center space-x-3">
           <motion.button
             whileTap={{ scale: 0.88 }}
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => goBack(router, "/shop")}
             className="p-1.5 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
@@ -113,38 +130,33 @@ export default function SearchPage() {
             <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
             <input
               type="text"
-              autoFocus
-              placeholder="Search for milk, chips, bread, apples..."
+              placeholder="Search 'milk', 'chips', 'bread'..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsInputFocused(true)}
               onBlur={() => setIsInputFocused(false)}
-              className="w-full bg-transparent text-xs font-bold text-slate-900 focus:outline-none placeholder-slate-400"
+              className="w-full bg-transparent text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none"
+              autoFocus
             />
-            {query ? (
-              <button
-                onClick={() => {
-                  hapticLight();
-                  setQuery("");
-                }}
-                className="p-1 text-slate-400 hover:text-slate-700 active:scale-90 transition-transform"
-              >
-                <X className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
-            ) : (
+            {query && (
               <button
                 type="button"
-                onClick={() => {
-                  hapticMedium();
-                  setIsVoiceModalOpen(true);
-                }}
-                className="p-1 text-[#FF5B00] hover:text-[#e05f00] active:scale-90 transition-transform cursor-pointer"
-                title="Search with voice"
+                onClick={() => setQuery("")}
+                className="p-1 text-slate-400 hover:text-slate-600 ml-1"
               >
-                <Mic className="w-4 h-4 stroke-[2.5]" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </motion.div>
+
+          <motion.button
+            whileTap={{ scale: 0.88 }}
+            type="button"
+            onClick={() => setIsVoiceModalOpen(true)}
+            className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+          >
+            <Mic className="w-5 h-5" />
+          </motion.button>
         </div>
       </motion.header>
 
@@ -157,7 +169,7 @@ export default function SearchPage() {
         }}
       />
 
-      <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
+      <main className="max-w-md md:max-w-4xl mx-auto px-4 mt-4 space-y-4">
         {/* Popular Quick Search Chips */}
         {!query && (
           <div className="space-y-2">

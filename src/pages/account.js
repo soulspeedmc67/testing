@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
+import SEO from "../components/SEO";
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,9 +19,11 @@ import {
   Sparkles,
   LogOut,
   User,
+  Trash2,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import { signOut } from "../lib/api";
+import { deleteAccount } from "../lib/auth";
 import { getWishlist } from "../lib/wishlist";
 import { hapticLight } from "../lib/haptics";
 import { goBack } from "../lib/navigation";
@@ -30,6 +33,7 @@ import { SPRING_SNAPPY } from "../lib/motion";
 export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
   /* The iOS-style edge swipe is opt-in per platform: Android already has a
      system back gesture, and running both makes the screen fire back twice. */
@@ -70,7 +74,7 @@ export default function AccountPage() {
      (deep link / notification) and there is no history to pop. */
   const handleBack = () => {
     hapticLight();
-    goBack(router, "/");
+    goBack(router, "/shop");
   };
 
   const handleEdgeDragEnd = (event, info) => {
@@ -81,6 +85,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32 relative">
+      <SEO title="My Account" noindex={true} />
       {/*
         iOS edge-swipe back. Scoped to a 24px strip at the left edge instead of
         the whole page — dragging the entire screen made ordinary vertical
@@ -103,7 +108,7 @@ export default function AccountPage() {
       )}
 
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
-      <header className="bg-white px-4 pt-[max(46px,calc(env(safe-area-inset-top,0px)+40px))] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
+      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
         <button
           type="button"
           onClick={handleBack}
@@ -116,7 +121,7 @@ export default function AccountPage() {
         </h1>
       </header>
 
-      <main className="max-w-md mx-auto px-4 pt-3 space-y-4">
+      <main className="max-w-md mx-auto px-4 pt-3 pb-36 space-y-4">
         {/* 2. USER PROFILE HEADER OR GUEST WELCOME CARD */}
         {user && user.isLoggedIn ? (
           <div className="pt-1">
@@ -125,7 +130,11 @@ export default function AccountPage() {
                 <h2 className="text-xl font-black text-slate-900 tracking-tight">{user.name || "Your account"}</h2>
                 <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-semibold mt-1">
                   <Phone className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="font-mono font-bold">+91-{user.mobile || "9622720283"}</span>
+                  {user.mobile ? (
+                    <span className="font-mono font-bold">+91-{user.mobile.replace(/^\+91/, '')}</span>
+                  ) : (
+                    <span className="text-slate-400">Not provided</span>
+                  )}
                 </div>
                 {user.email && (
                   <p className="text-[11px] text-slate-400 font-medium mt-0.5">{user.email}</p>
@@ -137,13 +146,13 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-gradient-to-r from-orange-500 via-[#FF5B00] to-[#E04E00] rounded-3xl p-5 text-white shadow-[0_6px_20px_rgba(255,91,0,0.22)] space-y-3.5">
+          <div className="bg-[#FF5B00] rounded-3xl p-5 text-white shadow-sm space-y-3.5">
             <div className="flex items-center space-x-3.5">
               <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shrink-0">
                 <User className="w-6 h-6 stroke-[2.5]" />
               </div>
               <div>
-                <h2 className="text-lg font-black tracking-tight text-white leading-tight">Welcome to DASHit</h2>
+                <h2 className="text-lg font-black tracking-tight text-white leading-tight">Welcome to DASHIT</h2>
                 <p className="text-xs text-white/90 font-medium mt-0.5">8-minute groceries in Anantnag</p>
               </div>
             </div>
@@ -162,7 +171,9 @@ export default function AccountPage() {
         )}
 
         {/* 3. TWO SHORTCUT CARDS (Wallet removed) */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Payments tile removed: it opened an alert() and did nothing.
+            Both stores treat non-functional placeholder UI as a rejection. */}
+        <div className="grid grid-cols-1 gap-3">
           <a
             href="tel:6006990032"
             className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-all"
@@ -173,15 +184,6 @@ export default function AccountPage() {
             <span className="text-xs font-bold text-slate-800">Support</span>
           </a>
 
-          <div
-            onClick={() => alert("Payments & Saved Cards")}
-            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center cursor-pointer shadow-xs active:scale-95 transition-all"
-          >
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 mb-2">
-              <CreditCard className="w-6 h-6 stroke-[1.8]" />
-            </div>
-            <span className="text-xs font-bold text-slate-800">Payments</span>
-          </div>
         </div>
 
         {/* 6. YOUR INFORMATION GROUP matching Screenshot 1 */}
@@ -233,38 +235,10 @@ export default function AccountPage() {
               </div>
             </Link>
 
-            {/* Bookmarked recipes */}
-            <div
-              onClick={() => alert("No bookmarked recipes yet")}
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-800">Bookmarked recipes</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-
-            {/* Your prescriptions */}
-            <div
-              onClick={() => alert("Upload prescription at checkout")}
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
-            >
-              <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <span className="text-xs font-bold text-slate-800">Your prescriptions</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-
             {/* Address book */}
             <Link
               href="/add-address"
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100"
             >
               <div className="flex items-center space-x-3.5">
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
@@ -275,36 +249,35 @@ export default function AccountPage() {
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
-            {/* GST details */}
-            <div
-              onClick={() => alert("GST details management")}
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors cursor-pointer group"
+            {/* Legal. Both stores require these to be reachable from inside the
+                app, and Apple rejects a build where they are unclickable text. */}
+            <button
+              type="button"
+              onClick={() => router.push("/privacy")}
+              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer"
             >
               <div className="flex items-center space-x-3.5">
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
                   <FileText className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">GST details</span>
+                <span className="text-xs font-bold text-slate-800">Privacy Policy</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </div>
+            </button>
 
-            {/* Dashit Exclusive Deals on Home */}
-            <Link
-              href="/?deal=Snacks"
-              className="flex items-center justify-between p-3.5 hover:bg-amber-50/60 transition-colors group border-t border-slate-100"
+            <button
+              type="button"
+              onClick={() => router.push("/terms")}
+              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700">
-                  <Sparkles className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                  <BookOpen className="w-4 h-4" />
                 </div>
-                <div>
-                  <span className="text-xs font-black text-slate-900 block">Dashit Exclusive Deals</span>
-                  <span className="text-[10px] font-medium text-slate-500">Live flash offers sorted on home</span>
-                </div>
+                <span className="text-xs font-bold text-slate-800">Terms of Service</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            </button>
 
             {/* Auth Action: Log Out (if logged in) or Log In (if guest) */}
             {user && user.isLoggedIn ? (
@@ -328,6 +301,46 @@ export default function AccountPage() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
+            ) : null}
+
+            {/* Account deletion — required by Google Play and the App Store.
+                The privacy policy previously promised this control and pointed
+                at an API route that static export disables, so nothing existed. */}
+            {user && user.isLoggedIn ? (
+              <button
+                type="button"
+                disabled={isDeletingAccount}
+                onClick={async () => {
+                  const confirmed = window.confirm(
+                    "Permanently delete your DASHit account?\n\nYour profile, saved addresses and personal details will be erased. Past order records are kept for statutory accounting, as described in our Privacy Policy.\n\nThis cannot be undone."
+                  );
+                  if (!confirmed) return;
+                  setIsDeletingAccount(true);
+                  const res = await deleteAccount();
+                  setIsDeletingAccount(false);
+                  if (!res.success) {
+                    alert(res.message || "Could not delete your account. Please try again.");
+                  }
+                  setUser(null);
+                  router.push("/login");
+                }}
+                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 disabled:opacity-50"
+              >
+                <div className="flex items-center space-x-3.5">
+                  <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                    <Trash2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-rose-600 block">
+                      {isDeletingAccount ? "Deleting account…" : "Delete account"}
+                    </span>
+                    <span className="text-[10px] font-medium text-slate-400">
+                      Permanently erase your profile and personal data
+                    </span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
+              </button>
             ) : (
               <button
                 type="button"
@@ -347,6 +360,12 @@ export default function AccountPage() {
               </button>
             )}
           </div>
+        </div>
+
+        {/* App Version & Branding Footer (above bottom navbar with pb-36 main clearance) */}
+        <div className="text-center pt-2 pb-6 space-y-1">
+          <p className="text-[11px] font-bold text-slate-400">DASHIT Quick Commerce • Anantnag</p>
+          <p className="text-[10px] font-medium text-slate-400">App version 1.0.0</p>
         </div>
       </main>
     </div>

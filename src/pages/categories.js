@@ -1,22 +1,20 @@
 import { useState, useEffect, useMemo } from "react";
-import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import SEO from "../components/SEO";
+import { BreadcrumbJsonLd } from "../components/JsonLd";
 import { motion, AnimatePresence } from "framer-motion";
 import { fadeUp, EASE_OUT, SPRING_SOFT, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 import {
   ArrowLeft,
   Search,
-  Sparkles,
-  Cookie,
-  Coffee,
   Milk,
   Apple,
-  Package,
-  Heart,
+  Carrot,
+  Drumstick,
   Home,
-  Croissant,
   Utensils,
+  Package,
   Flame,
   Check
 } from "lucide-react";
@@ -24,6 +22,10 @@ import ProductCard from "../components/ProductCard";
 import QuickProductSheet from "../components/QuickProductSheet";
 import { ALL_PRODUCTS } from "../data/products";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
+import { watchProducts } from "../lib/db";
+import { isFirebaseConfigured } from "../lib/firebase";
+import { useStoreDetails } from "../lib/storeStatus";
+import { goBack } from "../lib/navigation";
 
 export const CATEGORIES_CATALOG = [
   {
@@ -35,98 +37,60 @@ export const CATEGORIES_CATALOG = [
     aliases: ["all", "everything"]
   },
   {
-    id: "Dairy",
-    label: "Dairy & Eggs",
-    shortName: "Dairy",
-    icon: Milk,
-    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=120&auto=format&fit=crop&q=80",
-    aliases: ["dairy", "milk", "eggs", "butter", "curd", "paneer"]
+    id: "Home Care",
+    label: "Home Care",
+    shortName: "Home",
+    icon: Home,
+    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=120&auto=format&fit=crop&q=80",
+    aliases: ["home care", "household", "cleaning", "detergent", "floor cleaner", "toilet cleaner", "freshener"]
   },
   {
-    id: "Chips",
-    label: "Chips & Crisps",
-    shortName: "Chips",
-    icon: Sparkles,
-    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=120&auto=format&fit=crop&q=80",
-    aliases: ["chips", "crisps", "wafers", "lays", "kurkure"]
-  },
-  {
-    id: "Snacks",
-    label: "Snacks & Munchies",
-    shortName: "Snacks",
-    icon: Cookie,
-    img: "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=120&auto=format&fit=crop&q=80",
-    aliases: ["snacks", "munchies", "namkeen", "sev"]
-  },
-  {
-    id: "Biscuits",
-    label: "Bakery & Biscuits",
-    shortName: "Biscuits",
-    icon: Croissant,
-    img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=120&auto=format&fit=crop&q=80",
-    aliases: ["biscuits", "cookies", "toast", "bakery", "bread", "rusk"]
-  },
-  {
-    id: "Drinks",
-    label: "Cold Drinks & Juices",
-    shortName: "Drinks",
-    icon: Coffee,
-    img: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=120&auto=format&fit=crop&q=80",
-    aliases: ["drinks", "beverages", "cold drink", "juice", "soda", "coke"]
-  },
-  {
-    id: "Chocolates",
-    label: "Sweets & Chocolates",
-    shortName: "Sweets",
-    icon: Heart,
-    img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=120&auto=format&fit=crop&q=80",
-    aliases: ["chocolates", "chocolate", "sweets", "candy", "treats"]
-  },
-  {
-    id: "Grocery",
-    label: "Grocery & Kitchen",
-    shortName: "Grocery",
-    icon: Package,
-    img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=120&auto=format&fit=crop&q=80",
-    aliases: ["grocery", "staples", "atta", "rice", "oil", "ghee", "masala", "salt"]
+    id: "Kitchen Care",
+    label: "Kitchen Care",
+    shortName: "Kitchen",
+    icon: Utensils,
+    img: "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=120&auto=format&fit=crop&q=80",
+    aliases: ["kitchen care", "dishwash", "scrub", "foil", "tissue", "garbage bag"]
   },
   {
     id: "Vegetables",
-    label: "Vegetables & Fruits",
-    shortName: "Fresh",
-    icon: Apple,
+    label: "Vegetables",
+    shortName: "Veggies",
+    icon: Carrot,
     img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=120&auto=format&fit=crop&q=80",
-    aliases: ["vegetables", "fruits", "veggies", "produce", "fresh"]
+    aliases: ["vegetables", "veggies", "onion", "potato", "tomato", "haakh", "capsicum", "coriander"]
   },
   {
-    id: "Instant Food",
-    label: "Instant & Frozen Food",
-    shortName: "Instant",
-    icon: Utensils,
-    img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=120&auto=format&fit=crop&q=80",
-    aliases: ["instant food", "noodles", "maggi", "pasta", "ready to eat"]
+    id: "Fresh Fruits",
+    label: "Fresh Fruits",
+    shortName: "Fruits",
+    icon: Apple,
+    img: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=120&auto=format&fit=crop&q=80",
+    aliases: ["fresh fruits", "fruits", "apple", "banana", "orange", "grapes", "cherries", "coconut"]
   },
   {
-    id: "Personal Care",
-    label: "Personal Care & Hygiene",
-    shortName: "Personal",
-    icon: Sparkles,
-    img: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=120&auto=format&fit=crop&q=80",
-    aliases: ["personal care", "soap", "shampoo", "toothpaste", "hygiene"]
+    id: "Chicken",
+    label: "Chicken",
+    shortName: "Chicken",
+    icon: Drumstick,
+    img: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=120&auto=format&fit=crop&q=80",
+    aliases: ["chicken", "kebab", "curry cut"]
   },
   {
-    id: "Household Items",
-    label: "Home & Cleaning",
-    shortName: "Household",
-    icon: Home,
-    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=120&auto=format&fit=crop&q=80",
-    aliases: ["household items", "household", "cleaning", "detergent"]
+    id: "Dairy",
+    label: "Dairy",
+    shortName: "Dairy",
+    icon: Milk,
+    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=120&auto=format&fit=crop&q=80",
+    aliases: ["dairy", "milk", "eggs", "butter", "curd", "paneer", "cheese"]
   }
 ];
 
+
 export default function CategoriesPage() {
   const router = useRouter();
-  const [selectedCatId, setSelectedCatId] = useState("Dairy");
+  const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
+  const [selectedCatId, setSelectedCatId] = useState("Home Care");
   const [productsList, setProductsList] = useState(ALL_PRODUCTS);
   const [cart, setCart] = useState([]);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
@@ -144,31 +108,16 @@ export default function CategoriesPage() {
     return () => window.removeEventListener("dashit_cart_updated", syncCart);
   }, []);
 
-  // Fetch live products
+  // Subscribe to live products (Firestore + custom admin products)
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const res = await fetch("http://192.168.217.22:5001/api/products");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.products?.length > 0) {
-            setProductsList(data.products);
-            return;
-          }
-        }
-      } catch (e) {}
-
-      try {
-        const res = await fetch("http://localhost:5001/api/products");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.products?.length > 0) {
-            setProductsList(data.products);
-          }
-        }
-      } catch (e) {}
+    const unsub = watchProducts((liveProducts) => {
+      if (liveProducts && liveProducts.length > 0) {
+        setProductsList(liveProducts);
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
     };
-    loadProducts();
   }, []);
 
   // Handle incoming query param ?cat=...
@@ -215,6 +164,10 @@ export default function CategoriesPage() {
   };
 
   const handleAddToCart = (product) => {
+    if (!isStoreOpen) {
+      alert(`Store will be available: ${closeReason || "We will reopen shortly!"}`);
+      return;
+    }
     hapticCartAdd();
     const pId = String(product.id || product.barcode);
     const existingIndex = cart.findIndex(
@@ -252,16 +205,27 @@ export default function CategoriesPage() {
 
   return (
     <div className="flex flex-col h-screen bg-[#F7F8FA] text-slate-900 font-sans overflow-hidden">
-      <Head>
-        <title>{activeCategoryObj.label} — Dashit Categories</title>
-      </Head>
+      <SEO
+        title={`${activeCategoryObj.label} — Grocery Categories`}
+        description={`Explore ${activeCategoryObj.label} on DASHIT. Fresh items delivered directly from our Anantnag fulfillment store in 8 minutes.`}
+        canonical="/categories/"
+        ogType="website"
+        keywords={`${activeCategoryObj.label}, groceries Anantnag, buy ${activeCategoryObj.shortName} Kashmir, DASHIT categories 192101`}
+      />
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Home", url: "/" },
+          { name: "Categories", url: "/categories/" },
+          { name: activeCategoryObj.label, url: `/categories/` },
+        ]}
+      />
 
       {/* 1. TOP HEADER */}
-      <header className="bg-white px-4 pt-[max(46px,calc(env(safe-area-inset-top,0px)+40px))] pb-2.5 flex items-center justify-between border-b border-slate-200/90 shadow-2xs z-30 shrink-0">
+      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-2.5 flex items-center justify-between border-b border-slate-200/90 shadow-2xs z-30 shrink-0">
         <div className="flex items-center space-x-3">
           <button
             type="button"
-            onClick={() => router.push("/")}
+            onClick={() => goBack(router, "/shop")}
             className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
@@ -287,7 +251,7 @@ export default function CategoriesPage() {
       {/* 2. SPLIT SCREEN BODY: Left Menu Bar + Right Items List */}
       <div className="flex grow overflow-hidden relative">
         {/* LEFT SIDEBAR: Categories Menu Bar */}
-        <aside className="w-[88px] sm:w-24 shrink-0 bg-[#F0F2F5] border-r border-slate-200/90 overflow-y-auto scrollbar-none pb-32">
+        <aside className="w-[88px] sm:w-24 shrink-0 bg-[#F0F2F5] border-r border-slate-200/90 overflow-y-auto scrollbar-none pb-dock">
           <div className="flex flex-col py-1.5 divide-y divide-slate-200/50">
             {CATEGORIES_CATALOG.map((cat) => {
               const isSelected = selectedCatId === cat.id;
@@ -345,7 +309,7 @@ export default function CategoriesPage() {
         </aside>
 
         {/* RIGHT CONTENT: Products List for Selected Category */}
-        <main className="grow bg-white overflow-y-auto px-3 pt-3 pb-36">
+        <main className="grow bg-white overflow-y-auto px-3 pt-3 pb-dock">
           <AnimatePresence mode="wait">
           <motion.div
             key={selectedCatId}
@@ -379,11 +343,11 @@ export default function CategoriesPage() {
                 Restocking fresh items
               </h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                Our Nai Basti dark store is restocking items for {activeCategoryObj.label}. Check back shortly!
+                We are restocking items for {activeCategoryObj.label}. Check back shortly!
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-2.5">
               {filteredProducts.map((p) => {
                 const pId = String(p.id || p.barcode);
                 const inCart = cart.find((i) => String(i.id || i.barcode) === pId);
@@ -392,6 +356,7 @@ export default function CategoriesPage() {
                   <ProductCard
                     key={pId}
                     product={p}
+                    compact={true}
                     qty={inCart ? inCart.qty : 0}
                     onAdd={() => handleAddToCart(p)}
                     onUpdateQty={(id, delta) => handleUpdateQty(id, delta)}

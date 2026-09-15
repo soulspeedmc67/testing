@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Minus } from "lucide-react";
 import { triggerFlyToCart } from "./FlyingBadgeOverlay";
 import { hapticMedium, hapticLight, hapticHeavy } from "../lib/haptics";
+import { useAgeGate } from "../context/AgeGateContext";
 
 export default function ProductCardStepper({
   product,
@@ -14,10 +16,23 @@ export default function ProductCardStepper({
   subtext = "",
   onSelectVariants
 }) {
+  const { requireAgeConfirmation } = useAgeGate();
   const prodId = product?.id || product?.barcode;
+  const isOutOfStock = product?.stock !== undefined && Number(product.stock) <= 0;
+  const maxStock = product?.stock !== undefined ? Number(product.stock) : Infinity;
+
+  // Local optimistic state so the button flips immediately on tap
+  const [optimisticQty, setOptimisticQty] = useState(null);
+
+  useEffect(() => {
+    setOptimisticQty(null);
+  }, [qty]);
+
+  const displayQty = optimisticQty !== null ? optimisticQty : qty;
 
   const handleAdd = (e) => {
     e.stopPropagation();
+    if (isOutOfStock) return;
     hapticMedium();
 
     if (product?.variants && product.variants.length > 1 && onSelectVariants) {
@@ -25,26 +40,44 @@ export default function ProductCardStepper({
       return;
     }
 
+    const commitAdd = () => {
+      if (onAdd) {
+        onAdd(product);
+      } else if (onUpdateQty) {
+        onUpdateQty(prodId, 1);
+      } else if (onIncrement) {
+        onIncrement();
+      }
+    };
+
+    /* The rect is read before any await — after the age sheet closes the button
+       may have re-rendered, and the fly-to-cart animation needs its origin. */
     const imgSrc = product?.img || product?.image;
-    if (imgSrc) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      triggerFlyToCart(imgSrc, rect);
-    }
-    if (onAdd) {
-      onAdd(product);
-    } else if (onUpdateQty) {
-      onUpdateQty(prodId, 1);
-    } else if (onIncrement) {
-      onIncrement();
-    }
+    const rect = imgSrc ? e.currentTarget.getBoundingClientRect() : null;
+
+    const proceed = () => {
+      setOptimisticQty(1);
+      if (rect) {
+        triggerFlyToCart(imgSrc, rect, commitAdd);
+      } else {
+        commitAdd();
+      }
+    };
+
+    /* Age-restricted lines cannot go in the cart until the shopper declares
+       they are over 18. Declining leaves the button untouched, so the optimistic
+       flip to the stepper only happens once the add is actually allowed. */
+    requireAgeConfirmation(product, proceed);
   };
 
   const handleMinus = (e) => {
     e.stopPropagation();
-    if (qty === 1) {
+    if (displayQty <= 1) {
       hapticHeavy();
+      setOptimisticQty(0);
     } else {
       hapticLight();
+      setOptimisticQty(displayQty - 1);
     }
     if (onUpdateQty) {
       onUpdateQty(prodId, -1);
@@ -55,26 +88,54 @@ export default function ProductCardStepper({
 
   const handlePlus = (e) => {
     e.stopPropagation();
+    if (displayQty >= maxStock) {
+      hapticHeavy();
+      return;
+    }
     hapticLight();
+    const nextVal = displayQty + 1;
+    setOptimisticQty(nextVal);
+
+    const commitPlus = () => {
+      if (onUpdateQty) {
+        onUpdateQty(prodId, 1);
+      } else if (onIncrement) {
+        onIncrement();
+      }
+    };
+
     const imgSrc = product?.img || product?.image;
     if (imgSrc) {
       const rect = e.currentTarget.getBoundingClientRect();
-      triggerFlyToCart(imgSrc, rect);
-    }
-    if (onUpdateQty) {
-      onUpdateQty(prodId, 1);
-    } else if (onIncrement) {
-      onIncrement();
+      triggerFlyToCart(imgSrc, rect, commitPlus);
+    } else {
+      commitPlus();
     }
   };
+
+  if (isOutOfStock) {
+    return (
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`relative ${className.includes("h-") ? "" : "h-8"} w-full shrink-0 overflow-hidden rounded-xl select-none ${className}`}
+      >
+        <button
+          disabled
+          className="w-full h-full bg-slate-100 text-slate-400 font-black text-[10px] uppercase rounded-xl flex items-center justify-center cursor-not-allowed border border-slate-200"
+        >
+          Sold Out
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className={`relative h-8 w-full shrink-0 overflow-hidden rounded-xl select-none ${className}`}
+      className={`relative ${className.includes("h-") ? "" : "h-8"} w-full shrink-0 overflow-hidden rounded-xl select-none ${className}`}
     >
       <AnimatePresence initial={false}>
-        {qty === 0 ? (
+        {displayQty === 0 ? (
           <motion.button
             key="add-btn"
             initial={{ opacity: 0, scale: 0.9 }}
@@ -114,13 +175,13 @@ export default function ProductCardStepper({
             </motion.button>
 
             <motion.span
-              key={`qty-${qty}`}
+              key={`qty-${displayQty}`}
               initial={{ scale: 1.3, y: -2 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
               className="font-mono font-black text-xs px-1 select-none text-center min-w-[14px]"
             >
-              {qty}
+              {displayQty}
             </motion.span>
 
             <motion.button

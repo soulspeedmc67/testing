@@ -47,26 +47,46 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<!-- armv7 is the deprecated 32-bit architecture; every supported device is arm64. -->
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
+	<!-- Portrait only: the layout is built for a phone held upright. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>DASHit needs your location to deliver groceries to your exact doorstep in 8 minutes.</string>
+	<string>DASHit uses your location to confirm your delivery address and guide the rider to your door.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>DASHit uses the camera to scan product barcodes when store staff add stock.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>DASHit uses the microphone for voice search, so you can speak the item you are looking for.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>DASHit converts your spoken words into a search query to find items faster.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>DASHit lets store staff pick product photos from the library when listing an item.</string>
+	<!--
+		App Transport Security stays ON. NSAllowsArbitraryLoads was true, which
+		switched off certificate and HTTPS enforcement for every request the app
+		makes — Firebase, the map tiles and the routing API included — so anyone
+		sharing a network with a customer could read or rewrite that traffic.
+		Every endpoint this app uses is HTTPS, so nothing needs the exemption.
+		Capacitor serves its own bundle over the capacitor:// scheme, which ATS
+		does not police, so local assets are unaffected.
+	-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
 </dict>
 </plist>

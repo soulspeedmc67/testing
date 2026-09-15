@@ -1,6 +1,14 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { initializeFirestore, getFirestore } from "firebase/firestore";
+import { isNative, isIOS } from "./platform";
+import {
+  initializeAuth,
+  getAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  inMemoryPersistence,
+  browserPopupRedirectResolver,
+} from "firebase/auth";
 
 /**
  * Firebase singleton.
@@ -25,6 +33,8 @@ export const isFirebaseConfigured = Boolean(
 );
 
 let cachedApp = null;
+let cachedDb = null;
+let cachedAuth = null;
 
 export function getFirebaseApp() {
   if (typeof window === "undefined") return null;
@@ -34,14 +44,68 @@ export function getFirebaseApp() {
   return cachedApp;
 }
 
+/**
+ * Firestore, with the transport pinned on iOS.
+ *
+ * The default WebChannel streaming transport does not complete its handshake
+ * inside the packaged iOS app: the connection opens and then hangs rather than
+ * erroring. Because every sign-in path awaits a profile read, that stall
+ * presented as "no sign-in method works on iPhone" while the same build worked
+ * in Safari and on Android.
+ *
+ * Long polling is forced only there. Auto-detection is already the default
+ * since SDK v9.22 and is what web and Android keep — it is deliberately not
+ * restated here, and the two settings cannot both be passed.
+ */
 export function getDb() {
   const app = getFirebaseApp();
-  return app ? getFirestore(app) : null;
+  if (!app) return null;
+  if (cachedDb) return cachedDb;
+  try {
+    cachedDb = initializeFirestore(app, {
+      ignoreUndefinedProperties: true,
+    });
+  } catch (e) {
+    /* initializeFirestore throws if Firestore was already started for this app
+       (a hot reload, or an earlier getFirestore call). The existing instance is
+       the right one to hand back. */
+    cachedDb = getFirestore(app);
+  }
+  return cachedDb;
 }
 
+/**
+ * Auth with an explicit persistence chain.
+ *
+ * getAuth() assumes IndexedDB is available. Under the custom `capacitor://`
+ * scheme iOS can refuse it, and the failure surfaces at sign-in rather than at
+ * startup. Listing fallbacks means a device that blocks IndexedDB degrades to
+ * localStorage, then to memory, instead of failing to authenticate.
+ *
+ * browserPopupRedirectResolver must be passed explicitly: initializeAuth does
+ * not install one, and without it signInWithPopup/signInWithRedirect throw
+ * auth/operation-not-supported-in-this-environment on the web.
+ */
 export function getFirebaseAuth() {
   const app = getFirebaseApp();
-  return app ? getAuth(app) : null;
+  if (!app) return null;
+  if (cachedAuth) return cachedAuth;
+  try {
+    const authOptions = {
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence],
+    };
+    if (typeof browserPopupRedirectResolver === "function") {
+      authOptions.popupRedirectResolver = browserPopupRedirectResolver;
+    }
+    cachedAuth = initializeAuth(app, authOptions);
+  } catch (e) {
+    try {
+      cachedAuth = getAuth(app);
+    } catch (err) {
+      console.warn("Firebase getAuth fallback notice:", err?.message);
+    }
+  }
+  return cachedAuth;
 }
 
 /**

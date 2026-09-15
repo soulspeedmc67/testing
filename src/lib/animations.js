@@ -28,11 +28,18 @@ export function flyToCart(sourceEventOrElement, targetSelector = "#floating-cart
 
   const targetEl =
     document.querySelector(targetSelector) ||
-    document.querySelector("#global-cart-bar-target") ||
-    document.body;
-  const targetRect = targetEl.getBoundingClientRect();
-  const endX = targetRect.left + targetRect.width / 2;
-  const endY = targetRect.top + targetRect.height / 2;
+    document.querySelector("#global-cart-bar-target");
+  let endX = window.innerWidth / 2;
+  let endY = window.innerHeight - 56;
+  if (targetEl && targetEl.getBoundingClientRect) {
+    const targetRect = targetEl.getBoundingClientRect();
+    if (targetRect.width > 0 && targetRect.height > 0) {
+      endX = targetRect.left + targetRect.width / 2;
+      endY = targetRect.top + targetRect.height / 2;
+    }
+  } else if (window.innerWidth >= 768) {
+    endX = window.innerWidth - 180;
+  }
 
   // Create flying particle
   const particle = document.createElement("div");

@@ -63,19 +63,17 @@ export default function OrderingForSomeoneElseModal({ isOpen, onClose, onSaveRec
 
           {!showInputForm ? (
             <div className="text-center">
-              {/* Confetti & Trio Avatar Illustration */}
+              {/* Vector Trio Avatar Graphic */}
               <div className="relative w-36 h-20 mx-auto mb-2 flex items-center justify-center">
-                <span className="absolute -left-3 top-2 text-amber-500 font-bold text-xs">✨</span>
-                <span className="absolute -right-3 top-3 text-rose-500 font-bold text-xs">🎉</span>
-                <div className="flex items-center -space-x-4">
-                  <div className="w-14 h-14 rounded-full bg-amber-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-2xl shadow-sm">
-                    👦
+                <div className="flex items-center -space-x-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-50 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-[#061838] shadow-sm">
+                    <User className="w-6 h-6" />
                   </div>
-                  <div className="w-16 h-16 rounded-full bg-orange-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-3xl z-10 shadow-md">
-                    👩
+                  <div className="w-14 h-14 rounded-full bg-orange-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-[#FF5B00] z-10 shadow-md">
+                    <Users className="w-7 h-7" />
                   </div>
-                  <div className="w-14 h-14 rounded-full bg-rose-100 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-2xl shadow-sm">
-                    👵
+                  <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-white dark:border-zinc-900 overflow-hidden flex items-center justify-center text-emerald-600 shadow-sm">
+                    <User className="w-6 h-6" />
                   </div>
                 </div>
               </div>

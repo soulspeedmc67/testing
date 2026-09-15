@@ -1,0 +1,121 @@
+# DASHit - Hostinger Apache Configuration
+
+# ---------------------------------------------------------------------------
+# Staff consoles (/admin, /driver) ARE served from this host, deliberately.
+#
+# They are reachable so the store can be run from a desktop browser. Being
+# reachable is not the same as being open: the page a stranger loads is only a
+# sign-in form, and getting past it needs a Firebase Authentication account that
+# also carries a staff/{uid} role, which no client can create. firestore.rules
+# then refuse the underlying data to anyone without that role. Access is
+# controlled by identity, not by hiding the URL.
+#
+# Both routes are kept out of search results (robots.txt and a noindex meta tag)
+# so nobody stumbles onto the login form, which costs nothing and does not
+# affect anyone typing the address directly.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Security response headers
+# ---------------------------------------------------------------------------
+<IfModule mod_headers.c>
+  # The site is never framed, so clickjacking has nothing to overlay.
+  Header always set X-Frame-Options "DENY"
+  Header always set Content-Security-Policy "frame-ancestors 'none'"
+
+  # Stop browsers guessing a different Content-Type than the one served.
+  Header always set X-Content-Type-Options "nosniff"
+
+  # Don't leak the customer's path (which can name an order) to third parties.
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+  # Nothing here needs these; deny them by default.
+  Header always set Permissions-Policy "camera=(self), geolocation=(self), microphone=(self), payment=(), usb=(), interest-cohort=()"
+
+  # HTTPS only, once the certificate is confirmed working.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+  # Session-bearing pages must not be cached by shared proxies.
+  <FilesMatch "\.html$">
+    Header always set Cache-Control "no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>
+
+# Never serve dotfiles (.env, .git config, editor leftovers).
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(env|log|sh|bak|old|orig|rules)$">
+  Require all denied
+</FilesMatch>
+
+# Directory listings expose the whole export tree.
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Force HTTPS
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Serve existing files or directories directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Direct access for sitemap and robots
+  RewriteRule ^sitemap\.xml$ /sitemap.xml [L]
+  RewriteRule ^robots\.txt$ /robots.txt [L]
+  RewriteRule ^site\.webmanifest$ /site.webmanifest [L]
+
+  # Clean URLs: try path/index.html
+  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+  RewriteRule ^(.*)/?$ /$1/index.html [L]
+
+  # Dynamic product fallback for non-prerendered custom catalog IDs
+  RewriteCond %{REQUEST_URI} ^/product/([^/]+)/?$
+  RewriteCond %{DOCUMENT_ROOT}/product/%1/index.html !-f
+  RewriteRule ^product/([^/]+)/?$ /product/[id]/index.html [L]
+
+  # Clean URLs: try path.html
+  RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+  RewriteRule ^(.*)$ /$1.html [L]
+
+  # Fallback to 404 page
+  ErrorDocument 404 /404.html
+</IfModule>
+
+# MIME Types for SEO & Web Standards
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+  AddType application/xml .xml
+</IfModule>
+
+# Browser Caching for Fast Loading
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+
+  # Next.js hashed assets (immutable)
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType application/x-javascript "access plus 1 year"
+
+  # Media & Images
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+
+  # HTML & JSON data (revalidate)
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/json "access plus 0 seconds"
+</IfModule>
+
+# Compression
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json image/svg+xml
+</IfModule>

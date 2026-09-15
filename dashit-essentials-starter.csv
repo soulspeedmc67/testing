@@ -1,0 +1,33 @@
+barcode,name,category,quantity,price,mrp,unit,brand,badge,image
+30,Surf Excel Easy Wash Detergent,Home Care,50,165,185,1 kg,,Laundry,https://images.unsplash.com/photo-1610557892470-55d9e80c0bce?w=400&auto=format&fit=crop&q=80
+31,Lizol Disinfectant Floor Cleaner,Home Care,50,199,225,975 ml,,Disinfectant,https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=400&auto=format&fit=crop&q=80
+32,Harpic Power Toilet Cleaner,Home Care,50,98,110,500 ml,,Bathroom,https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=400&auto=format&fit=crop&q=80
+33,Good Knight Gold Flash Refill,Home Care,50,85,95,45 ml,,Mosquito Free,https://images.unsplash.com/photo-1585421514738-01798e348b17?w=400&auto=format&fit=crop&q=80
+34,Odonil Room Air Freshener,Home Care,50,75,85,48 g,,Fresh Home,https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=400&auto=format&fit=crop&q=80
+35,Vim Dishwash Gel Lemon,Kitchen Care,50,115,130,500 ml,,Bestseller,https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=400&auto=format&fit=crop&q=80
+36,Scotch-Brite Scrub Pad,Kitchen Care,50,45,55,3 pcs,,Essential,https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&auto=format&fit=crop&q=80
+37,Home Foil Aluminium Wrap,Kitchen Care,50,99,115,9 m,,Kitchen,https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=400&auto=format&fit=crop&q=80
+38,Origami Kitchen Tissue Roll,Kitchen Care,50,80,95,2 rolls,,Handy,https://images.unsplash.com/photo-1584556812952-905ffd0c611a?w=400&auto=format&fit=crop&q=80
+39,Garbage Bags Medium,Kitchen Care,50,99,120,30 pcs,,Value Pack,https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&auto=format&fit=crop&q=80
+40,Fresh Onion,Vegetables,50,35,45,1 kg,,Daily Staple,https://images.unsplash.com/photo-1518977956812-cd3dbadaaf31?w=400&auto=format&fit=crop&q=80
+41,Fresh Potato,Vegetables,50,32,40,1 kg,,Daily Staple,https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=400&auto=format&fit=crop&q=80
+42,Fresh Tomato,Vegetables,50,25,32,500 g,,Farm Fresh,https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80
+43,Kashmiri Haakh Greens,Vegetables,50,30,35,250 g,,Local Favourite,https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&auto=format&fit=crop&q=80
+44,Green Capsicum,Vegetables,50,28,35,250 g,,Farm Fresh,https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=400&auto=format&fit=crop&q=80
+45,Coriander & Green Chilli Combo,Vegetables,50,20,25,1 pack,,Tadka Pack,https://images.unsplash.com/photo-1600335895229-6e75511892c8?w=400&auto=format&fit=crop&q=80
+4,Fresh Kashmiri Red Apples,Fresh Fruits,50,140,170,1 kg,,Orchard Fresh,https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&auto=format&fit=crop&q=80
+2,Fresh Tender Green Coconut,Fresh Fruits,50,90,108,1 pc,,Fresh Produce,https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80
+46,Fresh Bananas,Fresh Fruits,50,45,55,6 pcs,,Everyday,https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&auto=format&fit=crop&q=80
+47,Nagpur Sweet Oranges,Fresh Fruits,50,90,110,1 kg,,Juicy,https://images.unsplash.com/photo-1547514701-42782101795e?w=400&auto=format&fit=crop&q=80
+48,Kashmiri Cherries,Fresh Fruits,50,150,180,250 g,,Seasonal,https://images.unsplash.com/photo-1528821128474-27f963b062bf?w=400&auto=format&fit=crop&q=80
+49,Seedless Green Grapes,Fresh Fruits,50,75,90,500 g,,Sweet,https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=400&auto=format&fit=crop&q=80
+50,Fresh Chicken Curry Cut,Chicken,50,160,190,500 g,,Bestseller,https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&auto=format&fit=crop&q=80
+51,Boneless Chicken Breast,Chicken,50,220,260,450 g,,High Protein,https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&auto=format&fit=crop&q=80
+52,Chicken Seekh Kebab,Chicken,50,185,210,250 g,,Ready to Cook,https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&auto=format&fit=crop&q=80
+53,Whole Chicken Skinless,Chicken,50,230,270,1 kg,,Farm Fresh,https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&auto=format&fit=crop&q=80
+1,Amul Gold Full Cream Milk,Dairy,50,36,38,500 ml,,Full Cream,https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80
+3,Mother Dairy Classic Curd,Dairy,50,35,38,390 g,,Bestseller,https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&auto=format&fit=crop&q=80
+11,Amul Butter Salted,Dairy,50,58,60,100 g,,Bestseller,https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&fit=crop&q=80
+54,Farm Fresh Eggs,Dairy,50,48,55,6 pcs,,Daily Staple,https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=400&auto=format&fit=crop&q=80
+55,Amul Fresh Paneer,Dairy,50,95,105,200 g,,Fresh,https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&auto=format&fit=crop&q=80
+56,Amul Cheese Slices,Dairy,50,85,95,100 g,,Breakfast,https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&auto=format&fit=crop&q=80

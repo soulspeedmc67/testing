@@ -34,11 +34,6 @@ export default function VariantSelectorModal({
    */
   const handleAddVariant = (e, variant) => {
     hapticMedium();
-    const imgSrc = product.img || product.image;
-    if (imgSrc) {
-      const rect = e.currentTarget.getBoundingClientRect();
-      triggerFlyToCart(imgSrc, rect);
-    }
 
     const itemToAdd = {
       ...product,
@@ -49,7 +44,17 @@ export default function VariantSelectorModal({
       originalPrice: variant.originalPrice || variant.price,
     };
 
-    if (onAddToCart) onAddToCart(itemToAdd);
+    const commit = () => {
+      if (onAddToCart) onAddToCart(itemToAdd);
+    };
+
+    const imgSrc = product.img || product.image;
+    if (imgSrc) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      triggerFlyToCart(imgSrc, rect, commit);
+    } else {
+      commit();
+    }
   };
 
   const handleStep = (variant, delta) => {

@@ -7,3 +7,9 @@ build/
 *.log
 graphify-out/cache/
 dist/
+
+# Android release signing — never commit these
+android/keystore.properties
+*.jks
+*.keystore
+release/

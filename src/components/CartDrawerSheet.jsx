@@ -5,16 +5,18 @@ import { ShoppingBag, ArrowRight, MapPin, Plus, Minus, ShieldCheck, Tag } from "
 import VaulDrawer from "./ui/VaulDrawer";
 import { EmptyCartState } from "./ui/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
+import { useStoreDetails } from "../lib/storeStatus";
 
 export default function CartDrawerSheet({
   isOpen,
   onClose,
   cart = [],
   onUpdateQty,
-  location = { nickname: "Home", address: "Nai Basti, Near Petrol Pump, Anantnag" },
+  location = { nickname: "Home", address: "" },
   onChangeLocation
 }) {
   const router = useRouter();
+  const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
   const [couponCode, setCouponCode] = useState("");
   const [discount, setDiscount] = useState(0);
 
@@ -26,6 +28,10 @@ export default function CartDrawerSheet({
   const grandTotal = Math.max(0, subtotal + deliveryFee + handlingFee - discount);
 
   const proceedToCheckout = () => {
+    if (!isStoreOpen) {
+      alert(`Store will be available: ${closeReason || "Checkout will resume shortly!"}`);
+      return;
+    }
     if (cart.length === 0) return;
     localStorage.setItem(
       "dashit_checkout_data",
@@ -41,6 +47,7 @@ export default function CartDrawerSheet({
       })
     );
     onClose();
+
     router.push("/checkout");
   };
 
@@ -51,7 +58,7 @@ export default function CartDrawerSheet({
         if (!open) onClose();
       }}
       title={`My Cart (${cart.reduce((s, i) => s + i.qty, 0)})`}
-      description="Delivery in 10 minutes from Anantnag Central Hub"
+      description="Delivered from our Anantnag Central Hub"
     >
       <div className="space-y-4 pt-1">
         {cart.length === 0 ? (
@@ -147,10 +154,20 @@ export default function CartDrawerSheet({
             {/* Checkout CTA */}
             <button
               onClick={proceedToCheckout}
-              className="w-full bg-[#061838] hover:bg-[#0c2552] text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2"
+              className={`w-full text-white font-extrabold text-xs py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2 ${
+                isStoreOpen
+                  ? "bg-[#061838] hover:bg-[#0c2552] active:scale-95 cursor-pointer"
+                  : "bg-rose-700 hover:bg-rose-800 cursor-pointer"
+              }`}
             >
-              <span>Proceed to Checkout (₹{grandTotal})</span>
-              <ArrowRight className="w-4 h-4" />
+              {isStoreOpen ? (
+                <>
+                  <span>Proceed to Checkout (₹{grandTotal})</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              ) : (
+                <span className="truncate px-2">Store will be available: {closeReason || "Reopening shortly"}</span>
+              )}
             </button>
           </>
         )}

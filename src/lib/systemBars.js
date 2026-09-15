@@ -1,4 +1,5 @@
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { Capacitor } from "@capacitor/core";
 
 /**
  * Dynamically synchronizes top status bar and bottom navigation bar colors across Android & iOS.
@@ -16,6 +17,8 @@ export async function setDeviceSystemBars({
 }) {
   if (typeof window === "undefined") return;
 
+  const validTopColor = topColor && topColor !== "#00000000" ? topColor : "#FFFDF5";
+
   // 1. Web meta theme-color (for mobile browsers / PWA / iOS Webview)
   try {
     let meta = document.querySelector('meta[name="theme-color"]');
@@ -24,22 +27,34 @@ export async function setDeviceSystemBars({
       meta.name = "theme-color";
       document.head.appendChild(meta);
     }
-    meta.setAttribute("content", topColor);
+    meta.setAttribute("content", validTopColor);
   } catch (e) {}
 
   // 2. Capacitor Official StatusBar plugin (iOS + Android)
   try {
-    await StatusBar.setOverlaysWebView({ overlay: true });
-    await StatusBar.setBackgroundColor({ color: "#00000000" });
-    await StatusBar.setStyle({
-      style: topDarkIcons ? Style.Light : Style.Dark,
-    });
+    const isNative = Capacitor.isNativePlatform();
+    const platform = Capacitor.getPlatform();
+
+    if (isNative) {
+      if (platform === "android") {
+        // On Android: Do not overlay so content never renders behind system clock/battery icons
+        await StatusBar.setOverlaysWebView({ overlay: false });
+        await StatusBar.setBackgroundColor({ color: validTopColor });
+      } else if (platform === "ios") {
+        // On iOS: Overlay webview with contentInset: 'never' in config so CSS safe-area-inset-top handles notch cleanly
+        await StatusBar.setOverlaysWebView({ overlay: true });
+      }
+
+      await StatusBar.setStyle({
+        style: topDarkIcons ? Style.Light : Style.Dark,
+      });
+    }
   } catch (e) {}
 
   // 3. Android Native Bridge for both top and bottom system bars
   try {
     if (window.AndroidBars && typeof window.AndroidBars.setBars === "function") {
-      window.AndroidBars.setBars(topColor, topDarkIcons, bottomColor, bottomDarkIcons);
+      window.AndroidBars.setBars(validTopColor, topDarkIcons, bottomColor, bottomDarkIcons);
     }
   } catch (e) {}
 }

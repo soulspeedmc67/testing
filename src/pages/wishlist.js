@@ -3,6 +3,7 @@ import { goBack } from "../lib/navigation";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { ChevronLeft, Heart, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
+import SEO from "../components/SEO";
 import { getWishlist, removeFromWishlist } from "../lib/wishlist";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 
@@ -51,9 +52,10 @@ export default function WishlistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32">
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-dock">
+      <SEO title="My Wishlist" noindex={true} />
       {/* Top Header */}
-      <header className="bg-white px-4 pt-[max(12px,env(safe-area-inset-top,12px))] pb-3 flex items-center justify-between sticky top-0 z-30 border-b border-slate-100 shadow-xs">
+      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center justify-between sticky top-0 z-30 border-b border-slate-100 shadow-xs">
         <div className="flex items-center space-x-3">
           <button
             type="button"
@@ -103,7 +105,7 @@ export default function WishlistPage() {
               </p>
             </div>
             <Link
-              href="/"
+              href="/shop"
               className="inline-flex items-center space-x-2 bg-[#FF5B00] text-white px-5 py-2.5 rounded-xl font-bold text-xs shadow-md shadow-orange-700/20 active:scale-95 transition-transform"
             >
               <span>Explore Storefront</span>

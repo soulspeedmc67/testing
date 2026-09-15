@@ -1,50 +1,45 @@
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
+import { Tag, ArrowRight } from "lucide-react";
 import { hapticLight } from "../lib/haptics";
 import { stagger, scaleIn, inViewOnce, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 
 export const SIX_PACK_CATEGORIES = [
   {
-    id: "veg-fruits",
-    name: "Vegetables & Fruits",
-    moreCount: "193+ items",
+    id: "home-care",
+    name: "Home Care",
+    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=250&auto=format&fit=crop&q=80",
+    cat: "Home Care"
+  },
+  {
+    id: "kitchen-care",
+    name: "Kitchen Care",
+    img: "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=250&auto=format&fit=crop&q=80",
+    cat: "Kitchen Care"
+  },
+  {
+    id: "vegetables",
+    name: "Vegetables",
     img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=250&auto=format&fit=crop&q=80",
     cat: "Vegetables"
   },
   {
-    id: "dairy-bread",
-    name: "Dairy, Bread & Eggs",
-    moreCount: "30+ items",
+    id: "fresh-fruits",
+    name: "Fresh Fruits",
+    img: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=250&auto=format&fit=crop&q=80",
+    cat: "Fresh Fruits"
+  },
+  {
+    id: "chicken",
+    name: "Chicken",
+    img: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=250&auto=format&fit=crop&q=80",
+    cat: "Chicken"
+  },
+  {
+    id: "dairy",
+    name: "Dairy",
     img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=250&auto=format&fit=crop&q=80",
     cat: "Dairy"
-  },
-  {
-    id: "oil-ghee",
-    name: "Oil, Ghee & Masala",
-    moreCount: "370+ items",
-    img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=250&auto=format&fit=crop&q=80",
-    cat: "Grocery"
-  },
-  {
-    id: "chips-namkeen",
-    name: "Chips & Namkeen",
-    moreCount: "539+ items",
-    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=250&auto=format&fit=crop&q=80",
-    cat: "Snacks"
-  },
-  {
-    id: "bakery-biscuits",
-    name: "Bakery & Biscuits",
-    moreCount: "263+ items",
-    img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=250&auto=format&fit=crop&q=80",
-    cat: "Bakery"
-  },
-  {
-    id: "drinks-juices",
-    name: "Drinks & Juices",
-    moreCount: "274+ items",
-    img: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=250&auto=format&fit=crop&q=80",
-    cat: "Drinks"
   },
 ];
 
@@ -61,7 +56,38 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
   };
 
   return (
-    <motion.div variants={stagger(0.05)} {...inViewOnce} className="grid grid-cols-3 gap-3">
+    <motion.div variants={stagger(0.05)} {...inViewOnce} className="space-y-3">
+      {/* Offers leads the grid as one wide highlighted card — it is a destination
+          rather than a filter, so it reads differently from the six tiles below. */}
+      <motion.button
+        type="button"
+        variants={scaleIn}
+        whileTap={TAP_SOFT}
+        transition={SPRING_SNAPPY}
+        onClick={() => {
+          hapticLight();
+          router.push("/offers");
+        }}
+        className="w-full rounded-2xl bg-gradient-to-r from-[#FF5B00] via-[#FF3D68] to-[#C026D3] p-3.5 flex items-center justify-between text-white shadow-[0_8px_22px_-10px_rgba(255,91,0,0.65)] relative overflow-hidden"
+      >
+        <span aria-hidden className="absolute -right-6 -top-8 w-24 h-24 rounded-full bg-white/15" />
+        <span className="flex items-center space-x-3 relative">
+          <span className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+            <Tag className="w-4 h-4 stroke-[2.5]" />
+          </span>
+          <span className="text-left">
+            <span className="block text-[13.5px] font-black tracking-tight leading-tight">
+              Offers &amp; Deals
+            </span>
+            <span className="block text-[10.5px] font-medium text-white/80 leading-tight">
+              Today&apos;s best savings
+            </span>
+          </span>
+        </span>
+        <ArrowRight className="w-4 h-4 stroke-[2.5] relative shrink-0" />
+      </motion.button>
+
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4">
       {SIX_PACK_CATEGORIES.map((item) => (
         <motion.div
           key={item.id}
@@ -69,28 +95,23 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
           whileTap={TAP_SOFT}
           transition={SPRING_SNAPPY}
           onClick={() => handleCategoryClick(item)}
-          className="bg-white border border-slate-200/80 rounded-2xl p-3 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:shadow-[0_10px_24px_rgba(15,23,42,0.09)] hover:-translate-y-0.5 hover:border-slate-300/80 transition-all duration-300 group"
+          className="bg-white border border-slate-200/80 rounded-2xl p-2.5 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
         >
-          {/* Staged imagery leads, label reads underneath — calmer scan order */}
-          <div className="relative w-full h-[72px] bg-gradient-to-b from-slate-50 to-white rounded-xl p-1.5 flex items-center justify-center overflow-hidden border border-slate-100">
+          {/* Imagery leads, a single label reads underneath — nothing else competes */}
+          <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white rounded-xl overflow-hidden flex items-center justify-center border border-slate-100">
             <img
               src={item.img}
               alt={item.name}
-              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full object-cover"
             />
           </div>
 
-          {/* Label — sentence case at a readable size, count as quiet metadata */}
-          <div className="mt-2.5 min-h-[34px]">
-            <h4 className="font-bold text-[12px] text-[#061838] leading-snug line-clamp-2 tracking-tight">
-              {item.name}
-            </h4>
-            <span className="text-[10px] font-semibold text-slate-400 mt-0.5 block">
-              {item.moreCount}
-            </span>
-          </div>
+          <h4 className="mt-2 text-[11.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight">
+            {item.name}
+          </h4>
         </motion.div>
       ))}
+      </div>
     </motion.div>
   );
 }

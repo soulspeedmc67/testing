@@ -5,10 +5,10 @@ import { Home, ShoppingBag, LayoutGrid, User } from "lucide-react";
 import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticLight } from "../lib/haptics";
 
-const STOREFRONT_TABS = ["/", "/orders", "/categories"];
+const STOREFRONT_TABS = ["/shop", "/orders", "/categories"];
 
 const NAV_ITEMS = [
-  { id: "home", label: "Home", icon: Home, path: "/" },
+  { id: "home", label: "Home", icon: Home, path: "/shop" },
   { id: "categories", label: "Categories", icon: LayoutGrid, path: "/categories" },
   { id: "orders", label: "Orders", icon: ShoppingBag, path: "/orders" },
 ];
@@ -92,7 +92,7 @@ export default function BottomNav({ forceHide = false }) {
 
   useEffect(() => {
     const activeItem = NAV_ITEMS.find(
-      (item) => currentPath === item.path || (item.id === "home" && (currentPath === "/" || currentPath === ""))
+      (item) => currentPath === item.path || (item.id === "home" && (currentPath === "/shop" || currentPath === "/"))
     );
     if (activeItem) {
       triggerIconAnimation(activeItem.id);
@@ -116,17 +116,17 @@ export default function BottomNav({ forceHide = false }) {
          and navigate the user away. aria-hidden keeps it out of the a11y tree
          for the same reason. */
       aria-hidden={shouldHide}
-      className={`fixed left-0 right-0 z-50 flex justify-center px-4 ${
+      className={`fixed left-0 right-0 z-50 md:hidden flex justify-center px-4 ${
         shouldHide ? "pointer-events-none" : "pointer-events-auto"
       }`}
       style={{
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
       }}
     >
-      <nav className="relative max-w-[290px] w-full mx-auto bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-full p-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.06)] grid grid-cols-3 items-center select-none">
+      <nav className="relative max-w-[280px] w-full mx-auto bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-full p-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.06)] grid grid-cols-3 items-center select-none">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
-          const isActive = currentPath === item.path || (item.id === "home" && currentPath === "/");
+          const isActive = currentPath === item.path || (item.id === "home" && (currentPath === "/shop" || currentPath === "/"));
           const tick = animTick[item.id] || 0;
 
           return (

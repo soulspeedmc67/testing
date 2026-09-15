@@ -23,11 +23,11 @@ export function EmptyCartState() {
       <div>
         <h3 className="font-black text-base text-slate-900 tracking-tight">Your cart is empty</h3>
         <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto">
-          Explore fresh groceries, Kashmiri bakery, and snacks delivered in 10 minutes.
+          Explore fresh groceries, Kashmiri bakery, and snacks delivered fast.
         </p>
       </div>
       <Link
-        href="/"
+        href="/shop"
         className="inline-flex items-center space-x-1.5 bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-sm transition-all active:scale-95"
       >
         <span>Browse Products</span>

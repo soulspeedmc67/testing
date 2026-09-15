@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMapEvents, useMap, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 /**
@@ -100,12 +100,24 @@ export default function MapWithPinInner({ pos, onChangePos, onDragStateChange, m
       doubleClickZoom={true}
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles by <a href="https://www.hotosm.org/">Humanitarian OSM</a>'
-        url="https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png"
-        subdomains="abc"
-        maxZoom={19}
+        attribution='&copy; Google Maps'
+        url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+        subdomains={["0", "1", "2", "3"]}
+        maxZoom={20}
         keepBuffer={6}
         updateWhenIdle={false}
+      />
+      {/* 5.0 KM STRICT DELIVERY BOUNDARY CIRCLE */}
+      <Circle
+        center={[33.735832, 75.143614]}
+        radius={5000}
+        pathOptions={{
+          color: "#FF5B00",
+          fillColor: "#FF5B00",
+          fillOpacity: 0.05,
+          weight: 2,
+          dashArray: "6, 8",
+        }}
       />
       <MapBridge
         pos={pos}

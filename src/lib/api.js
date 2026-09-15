@@ -45,8 +45,47 @@ const writeLocal = (key, value) => {
   } catch (e) {}
 };
 
+/** Ensures a valid UID for the order, signing in anonymously with Firebase if needed */
+export async function ensureAuthenticatedUid() {
+  const auth = getFirebaseAuth();
+  if (auth && typeof auth.authStateReady === "function") {
+    try {
+      await auth.authStateReady();
+    } catch (e) {}
+  }
+  if (auth?.currentUser?.uid) {
+    return auth.currentUser.uid;
+  }
+  if (auth) {
+    try {
+      const { signInAnonymously } = await import("firebase/auth");
+      const cred = await signInAnonymously(auth);
+      if (cred?.user?.uid) {
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("dashit_client_uid", cred.user.uid);
+          } catch (err) {}
+        }
+        return cred.user.uid;
+      }
+    } catch (e) {
+      console.warn("Anonymous sign-in skipped:", e?.message);
+    }
+  }
+  // Persistent fallback for guest/phone users so order write NEVER drops
+  let clientUid = typeof window !== "undefined" ? localStorage.getItem("dashit_client_uid") : null;
+  if (!clientUid && typeof window !== "undefined") {
+    const phone = localStorage.getItem("dashit_user_phone");
+    clientUid = phone ? `cust_${phone}` : `guest_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    try {
+      localStorage.setItem("dashit_client_uid", clientUid);
+    } catch (e) {}
+  }
+  return clientUid || "anonymous_customer";
+}
+
 /** Current signed-in uid, or null. */
-const currentUid = () => getFirebaseAuth()?.currentUser?.uid || null;
+const currentUid = () => getFirebaseAuth()?.currentUser?.uid || (typeof window !== "undefined" ? localStorage.getItem("dashit_client_uid") : null);
 
 export async function sendOtp(mobile) {
   return authSendOtp(mobile);
@@ -57,34 +96,74 @@ export async function verifyOtp(mobile, otp) {
 }
 
 export async function submitOrder(orderData) {
-  const uid = currentUid();
+  const uid = await ensureAuthenticatedUid();
 
-  if (!isFirebaseConfigured || !uid) {
-    // Offline / unauthenticated: keep the order locally so the tracker still works.
-    const local = {
-      ...orderData,
-      orderId: orderData.orderId || `DSH-${Math.floor(1000 + Math.random() * 9000)}`,
-      status: "Placed",
-      createdAt: new Date().toISOString(),
-    };
-    writeLocal("dashit_active_order", local);
-    const history = readLocal("dashit_orders_history", []);
-    writeLocal("dashit_orders_history", [local, ...history]);
-    return { success: true, order: local, offline: true };
+  // If Firebase is available, submit directly to Firestore
+  if (isFirebaseConfigured) {
+    try {
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Connection timeout contacting store")), 8000)
+      );
+      const result = await Promise.race([createOrder(orderData, uid), timeoutPromise]);
+      const confirmedOrder = {
+        ...orderData,
+        orderId: result.orderId,
+        status: "Placed",
+      };
+      writeLocal("dashit_active_order", confirmedOrder);
+      const history = readLocal("dashit_orders_history", []);
+      const filtered = history.filter((h) => h.orderId !== result.orderId && h.orderId !== orderData.orderId);
+      writeLocal("dashit_orders_history", [confirmedOrder, ...filtered]);
+
+      // Broadcast order across browser tabs, windows, and dark store portals
+      if (typeof window !== "undefined") {
+        try {
+          window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: confirmedOrder }));
+          if (window.BroadcastChannel) {
+            const bc = new BroadcastChannel("dashit_orders_channel");
+            bc.postMessage({ type: "NEW_ORDER", order: confirmedOrder });
+          }
+        } catch (e) {}
+      }
+
+      return result;
+    } catch (e) {
+      console.error("Firestore order write error:", e);
+
+      /* A configured backend that rejects the write is a real failure and has to
+         reach the customer. This used to fall through to the local branch below,
+         which stored the order on the device and returned success — so the
+         customer saw "Order placed", waited, and the store never received
+         anything. The offline branch is now only for a build with no Firebase at
+         all. */
+      throw new Error(
+        "We could not reach the store to place your order. Please check your connection and try again."
+      );
+    }
   }
 
-  try {
-    const result = await createOrder(orderData, uid);
-    writeLocal("dashit_active_order", {
-      ...orderData,
-      orderId: result.orderId,
-      status: "Placed",
-    });
-    return result;
-  } catch (e) {
-    console.warn("Order write failed, storing locally:", e?.message);
-    return { success: false, message: e?.message };
+  // Fallback for a build with no Firebase configured at all (local demo mode).
+  const local = {
+    ...orderData,
+    orderId: orderData.orderId || `DSH-${Date.now().toString().slice(-4)}${Math.floor(1000 + Math.random() * 9000)}`,
+    status: "Placed",
+    createdAt: new Date().toISOString(),
+  };
+  writeLocal("dashit_active_order", local);
+  const history = readLocal("dashit_orders_history", []);
+  writeLocal("dashit_orders_history", [local, ...history]);
+
+  if (typeof window !== "undefined") {
+    try {
+      window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: local }));
+      if (window.BroadcastChannel) {
+        const bc = new BroadcastChannel("dashit_orders_channel");
+        bc.postMessage({ type: "NEW_ORDER", order: local });
+      }
+    } catch (e) {}
   }
+
+  return { success: true, orderId: local.orderId, order: local, offline: true };
 }
 
 export async function fetchAdminOrders() {

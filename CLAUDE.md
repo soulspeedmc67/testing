@@ -1,6 +1,6 @@
 # DASHit — Claude OS & Architecture Constitution
 
-**DASHit** is a high-performance 10-minute quick-commerce mobile & web application for Anantnag, Kashmir (Web, Android, iOS via Capacitor 8).
+**DASHit** is a high-performance quick-commerce mobile & web application for Anantnag, Kashmir (Web, Android, iOS via Capacitor 8).
 
 ---
 
@@ -24,7 +24,7 @@ Do **not** load documentation files preemptively. Load only the specific documen
 
 ## 3. Strict Project Constraints (NEVER VIOLATE)
 1. **NO UNPROMPTED RELEASES**: Never build or upload `.ipa` or `.apk` to GitHub releases unless the user explicitly commands it. Verify locally or on the connected physical Pixel (`08201FDD40016N`).
-2. **STATIC EXPORT COMPATIBILITY**: `output: 'export'` is active in `next.config.js`. No SSR, no dynamic Next.js API routes inside the client app. `src/lib/api.js` connects to `http://<LAN_IP>:5001` with seamless fallback to `localStorage`.
+2. **STATIC EXPORT COMPATIBILITY**: `output: 'export'` is active in `next.config.js`. No SSR, no dynamic Next.js API routes inside the client app. All data, auth, orders, and real-time operations run through Firebase/Firestore (`src/lib/db.js`, `src/lib/auth.js`) with seamless fallback to `localStorage`.
 3. **NO SEPARATE EXCLUSIVE SCREEN**: Offers sort and filter directly on the home screen (`/?deal=<category>`). Do not restore `/exclusive`.
 4. **HAPTICS POLICY**: Crisp tactile feedback is restricted to iOS via `isIOS()` in `src/lib/haptics.js`. Keep Android vibrations disabled to prevent harsh motor buzz.
 5. **DOCK COORDINATION**: `FloatingCartBar` and `LiveOrderFloatingTracker` coordinate via `ScrollChromeContext`. They must respect `env(safe-area-inset-bottom)` and auto-hide when the keyboard opens.
@@ -35,7 +35,7 @@ Do **not** load documentation files preemptively. Load only the specific documen
 - **Framework**: Next.js 14 (Pages Router, static export), React 18, Tailwind CSS v3
 - **Animations**: Framer Motion, Anime.js, Canvas-Confetti, Remotion Player
 - **Mobile Wrapper**: Capacitor 8 (`@capacitor/android`, `@capacitor/ios`, `@capacitor/haptics`, `@capacitor/status-bar`, `@capacitor/app`, `@capacitor/local-notifications`)
-- **Backend / Partner Hub**: Express + Socket.io in `server/index.js` (port 5001) with persistent JSON files in `server/data/`
+- **Backend & Database**: Firebase Firestore & Firebase Auth (Client Web SDK, Spark free tier). Realtime `onSnapshot` listeners replace WebSockets. No Node/Express server needed.
 - **Key Files**:
   - `src/pages/index.js`: Main storefront & dynamic deals filter
   - `src/components/PromoBanner.jsx`: Obsidian Hero Spotlight & Curated Everyday Rails

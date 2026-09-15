@@ -14,6 +14,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { initializeApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword, signInAnonymously } from "firebase/auth";
 import {
   getFirestore,
   doc,
@@ -66,10 +67,31 @@ async function main() {
     process.exit(1);
   }
 
-  const db = getFirestore(initializeApp(config));
+  const app = initializeApp(config);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD;
+
+  if (adminEmail && adminPassword) {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+      console.log(`✓ Authenticated as admin: ${cred.user.email} (${cred.user.uid})`);
+    } catch (authErr) {
+      console.warn(`Admin sign-in failed (${authErr.message}). Attempting anonymous sign-in...`);
+      try {
+        await signInAnonymously(auth);
+      } catch (e) {}
+    }
+  } else {
+    try {
+      await signInAnonymously(auth);
+    } catch (e) {}
+  }
 
   // ---- products ----------------------------------------------------------
-  const serverProducts = await readJson("server/data/products.json");
+  const serverProducts = (await readJson("scripts/data/products.json")) || (await readJson("server/data/products.json"));
   const products = Array.isArray(serverProducts)
     ? serverProducts
     : serverProducts?.products || [];
@@ -179,7 +201,7 @@ async function main() {
 
   // ---- orders (opt-in) ---------------------------------------------------
   if (process.argv.includes("--orders")) {
-    const raw = await readJson("server/data/orders.json");
+    const raw = (await readJson("scripts/data/orders.json")) || (await readJson("server/data/orders.json"));
     const orders = Array.isArray(raw) ? raw : raw?.orders || [];
     for (const group of chunk(orders, 400)) {
       const batch = writeBatch(db);

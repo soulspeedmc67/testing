@@ -3,15 +3,17 @@ import { animate } from "animejs";
 
 let globalTriggerFly = null;
 
-export function triggerFlyToCart(imgUrl, startRect) {
+export function triggerFlyToCart(imgUrl, startRect, onLand) {
   if (globalTriggerFly) {
-    globalTriggerFly(imgUrl, startRect);
+    globalTriggerFly(imgUrl, startRect, onLand);
+  } else if (onLand) {
+    onLand();
   }
 }
 
 export default function FlyingBadgeOverlay() {
   useEffect(() => {
-    globalTriggerFly = (imgUrl, startRect) => {
+    globalTriggerFly = (imgUrl, startRect, onLand) => {
       if (typeof window === "undefined") return;
 
       // 1. Calculate Start Coordinates (where the button was clicked)
@@ -24,14 +26,18 @@ export default function FlyingBadgeOverlay() {
       }
 
       // 2. Calculate Destination Coordinates (center of floating cart bar)
-      let endX = window.innerWidth / 2;
-      let endY = window.innerHeight - 60;
+      const isDesktop = window.innerWidth >= 768;
+      // On desktop, the floating cart bar is docked at md:right-8 (~320px width), so the left thumbnail circle is ~280px from right edge
+      let endX = isDesktop ? Math.max(window.innerWidth - 280, window.innerWidth / 2) : window.innerWidth / 2;
+      let endY = window.innerHeight - 56;
 
       const cartBarEl = document.getElementById("global-cart-bar-target");
       if (cartBarEl) {
         const cartRect = cartBarEl.getBoundingClientRect();
-        endX = cartRect.left + 24; // land inside left thumbnail circle
-        endY = cartRect.top + cartRect.height / 2;
+        if (cartRect.width > 0 && cartRect.height > 0) {
+          endX = cartRect.left + 24; // land inside left thumbnail circle
+          endY = cartRect.top + cartRect.height / 2;
+        }
       }
 
       // 3. Create flying clone DOM element
@@ -89,6 +95,15 @@ export default function FlyingBadgeOverlay() {
         onComplete: () => {
           if (flyer.parentNode) {
             flyer.parentNode.removeChild(flyer);
+          }
+
+          // Trigger the cart addition right as the badge drops into the basket
+          if (onLand) {
+            try {
+              onLand();
+            } catch (err) {
+              console.error("Error executing onLand callback:", err);
+            }
           }
 
           // Trigger bounce ripple on the View Cart bar

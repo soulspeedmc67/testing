@@ -7,7 +7,7 @@ export const ALL_PRODUCTS = [
     price: 36,
     originalPrice: 38,
     rating: "4.8",
-    ratingCount: "16.7 lac",
+    ratingCount: "189",
     time: "8 mins",
     options: "2 sizes",
     badge: "Full Cream",
@@ -25,7 +25,7 @@ export const ALL_PRODUCTS = [
     price: 35,
     originalPrice: 38,
     rating: "4.7",
-    ratingCount: "2 lac",
+    ratingCount: "101",
     time: "8 mins",
     options: "2 sizes",
     badge: "Bestseller",
@@ -36,8 +36,8 @@ export const ALL_PRODUCTS = [
       { id: "3-1kg", unit: "1 kg", price: 85, originalPrice: 95 }
     ]
   },
-  { id: 11, name: "Amul Butter Salted", unit: "100 g", price: 58, originalPrice: 60, rating: "4.9", ratingCount: "8.2 lac", time: "8 mins", options: null, badge: "Bestseller", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
-  { id: 12, name: "Nestlé MUNCH Chocolate Bar", unit: "12 g", price: 10, originalPrice: 10, rating: "4.6", ratingCount: "5 lac", time: "8 mins", options: null, badge: "Chocolate", img: "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { id: 11, name: "Amul Butter Salted", unit: "100 g", price: 58, originalPrice: 60, rating: "4.9", ratingCount: "226", time: "8 mins", options: null, badge: "Bestseller", img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { id: 12, name: "Nestlé MUNCH Chocolate Bar", unit: "12 g", price: 10, originalPrice: 10, rating: "4.6", ratingCount: "357", time: "8 mins", options: null, badge: "Chocolate", img: "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
 
   // Snacks
   {
@@ -47,7 +47,7 @@ export const ALL_PRODUCTS = [
     price: 20,
     originalPrice: 20,
     rating: "4.5",
-    ratingCount: "12 lac",
+    ratingCount: "48",
     time: "8 mins",
     options: "3 sizes",
     badge: "Snacks",
@@ -59,13 +59,13 @@ export const ALL_PRODUCTS = [
       { id: "5-200g", unit: "200 g", price: 95, originalPrice: 110 }
     ]
   },
-  { id: 6, name: "Cadbury Dairy Milk Silk", unit: "150 g", price: 175, originalPrice: 190, rating: "4.9", ratingCount: "5.4 lac", time: "8 mins", options: null, badge: "Treats", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
-  { id: 13, name: "Kurkure Masala Munch", unit: "90 g", price: 30, originalPrice: 30, rating: "4.4", ratingCount: "9 lac", time: "8 mins", options: null, badge: "Snacks", img: "https://images.unsplash.com/photo-1613919113640-25732ec5e61f?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
-  { id: 14, name: "Good Day Cashew Cookies", unit: "120 g", price: 35, originalPrice: 40, rating: "4.6", ratingCount: "3 lac", time: "8 mins", options: null, badge: "Biscuits", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
+  { id: 6, name: "Cadbury Dairy Milk Silk", unit: "150 g", price: 175, originalPrice: 190, rating: "4.9", ratingCount: "61", time: "8 mins", options: null, badge: "Treats", img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
+  { id: 13, name: "Kurkure Masala Munch", unit: "90 g", price: 30, originalPrice: 30, rating: "4.4", ratingCount: "444", time: "8 mins", options: null, badge: "Snacks", img: "https://images.unsplash.com/photo-1613919113640-25732ec5e61f?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
+  { id: 14, name: "Good Day Cashew Cookies", unit: "120 g", price: 35, originalPrice: 40, rating: "4.6", ratingCount: "298", time: "8 mins", options: null, badge: "Biscuits", img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&auto=format&fit=crop&q=80", cat: "Snacks" },
 
   // Grocery
-  { id: 8, name: "Fortune Kachi Ghani Mustard Oil", unit: "1 L", price: 145, originalPrice: 165, rating: "4.8", ratingCount: "9.1 lac", time: "10 mins", options: null, badge: "Cooking Essential", img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80", cat: "Grocery" },
-  { id: 15, name: "Tata Salt Iodized", unit: "1 kg", price: 22, originalPrice: 24, rating: "4.8", ratingCount: "20 lac", time: "8 mins", options: null, badge: "Essential", img: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=400&auto=format&fit=crop&q=80", cat: "Grocery" },
+  { id: 8, name: "Fortune Kachi Ghani Mustard Oil", unit: "1 L", price: 145, originalPrice: 165, rating: "4.8", ratingCount: "72", time: "8 mins", options: null, badge: "Cooking Essential", img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=80", cat: "Grocery" },
+  { id: 15, name: "Tata Salt Iodized", unit: "1 kg", price: 22, originalPrice: 24, rating: "4.8", ratingCount: "211", time: "8 mins", options: null, badge: "Essential", img: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=400&auto=format&fit=crop&q=80", cat: "Grocery" },
   {
     id: 16,
     name: "Patanjali Organic Atta",
@@ -73,8 +73,8 @@ export const ALL_PRODUCTS = [
     price: 299,
     originalPrice: 320,
     rating: "4.5",
-    ratingCount: "4 lac",
-    time: "10 mins",
+    ratingCount: "322",
+    time: "8 mins",
     options: "2 sizes",
     badge: "Organic",
     img: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=400&auto=format&fit=crop&q=80",
@@ -91,8 +91,8 @@ export const ALL_PRODUCTS = [
     price: 110,
     originalPrice: 125,
     rating: "4.8",
-    ratingCount: "11 lac",
-    time: "10 mins",
+    ratingCount: "53",
+    time: "8 mins",
     options: "2 sizes",
     badge: "Premium",
     img: "https://images.unsplash.com/photo-1586201375761-83865001e8ac?w=400&auto=format&fit=crop&q=80",
@@ -104,12 +104,12 @@ export const ALL_PRODUCTS = [
   },
 
   // Bakery
-  { id: 7, name: "Fresh Kashmiri Lavas Bread", unit: "4 pcs", price: 30, originalPrice: 40, rating: "4.8", ratingCount: "34k", time: "8 mins", options: null, badge: "Freshly Baked", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=400&auto=format&fit=crop&q=80", cat: "Bakery" },
-  { id: 18, name: "Modern Sandwich White Bread", unit: "400 g", price: 40, originalPrice: 45, rating: "4.5", ratingCount: "7 lac", time: "8 mins", options: null, badge: "Fresh", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=80", cat: "Bakery" },
-  { id: 19, name: "Britannia Cake Delights", unit: "100 g", price: 35, originalPrice: 40, rating: "4.4", ratingCount: "2.8 lac", time: "8 mins", options: null, badge: "Treats", img: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=80", cat: "Bakery" },
+  { id: 7, name: "Fresh Kashmiri Lavas Bread", unit: "4 pcs", price: 30, originalPrice: 40, rating: "4.8", ratingCount: "112", time: "8 mins", options: null, badge: "Freshly Baked", img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=400&auto=format&fit=crop&q=80", cat: "Bakery" },
+  { id: 18, name: "Modern Sandwich White Bread", unit: "400 g", price: 40, originalPrice: 45, rating: "4.5", ratingCount: "283", time: "8 mins", options: null, badge: "Fresh", img: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=80", cat: "Bakery" },
+  { id: 19, name: "Britannia Cake Delights", unit: "100 g", price: 35, originalPrice: 40, rating: "4.4", ratingCount: "133", time: "8 mins", options: null, badge: "Treats", img: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=80", cat: "Bakery" },
 
   // Drinks
-  { id: 20, name: "Coca-Cola Classic Can", unit: "330 ml", price: 45, originalPrice: 50, rating: "4.7", ratingCount: "15 lac", time: "8 mins", options: null, badge: "Cold", img: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&auto=format&fit=crop&q=80", cat: "Drinks" },
+  { id: 20, name: "Coca-Cola Classic Can", unit: "330 ml", price: 45, originalPrice: 50, rating: "4.7", ratingCount: "43", time: "8 mins", options: null, badge: "Cold", img: "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=400&auto=format&fit=crop&q=80", cat: "Drinks" },
   {
     id: 21,
     name: "Tropicana Mixed Fruit Juice",
@@ -117,7 +117,7 @@ export const ALL_PRODUCTS = [
     price: 25,
     originalPrice: 30,
     rating: "4.5",
-    ratingCount: "6 lac",
+    ratingCount: "68",
     time: "8 mins",
     options: "2 sizes",
     badge: "Fresh Juice",
@@ -128,7 +128,55 @@ export const ALL_PRODUCTS = [
       { id: "21-1l", unit: "1 L", price: 110, originalPrice: 130 }
     ]
   },
-  { id: 22, name: "Red Bull Energy Drink", unit: "250 ml", price: 115, originalPrice: 125, rating: "4.6", ratingCount: "3 lac", time: "8 mins", options: null, badge: "Energy", img: "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=400&auto=format&fit=crop&q=80", cat: "Drinks" },
-  { id: 4, name: "Fresh Kashmiri Red Apples", unit: "1 kg", price: 140, originalPrice: 170, rating: "4.9", ratingCount: "85k", time: "10 mins", options: null, badge: "Orchard Fresh", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&auto=format&fit=crop&q=80", cat: "Grocery" },
-  { id: 2, name: "Fresh Tender Green Coconut", unit: "1 pc", price: 90, originalPrice: 108, rating: "4.6", ratingCount: "4.2 lac", time: "8 mins", options: null, badge: "Fresh Produce", img: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80", cat: "Grocery" },
+  { id: 22, name: "Red Bull Energy Drink", unit: "250 ml", price: 115, originalPrice: 125, rating: "4.6", ratingCount: "298", time: "8 mins", options: null, badge: "Energy", img: "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=400&auto=format&fit=crop&q=80", cat: "Drinks" },
+  { id: 4, name: "Fresh Kashmiri Red Apples", unit: "1 kg", price: 140, originalPrice: 170, rating: "4.9", ratingCount: "167", time: "8 mins", options: null, badge: "Orchard Fresh", img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&auto=format&fit=crop&q=80", cat: "Fresh Fruits" },
+  { id: 2, name: "Fresh Tender Green Coconut", unit: "1 pc", price: 90, originalPrice: 108, rating: "4.6", ratingCount: "246", time: "8 mins", options: null, badge: "Fresh Produce", img: "https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&auto=format&fit=crop&q=80", cat: "Fresh Fruits" },
+  // Home Care
+  { id: 30, name: "Surf Excel Easy Wash Detergent", unit: "1 kg", price: 165, originalPrice: 185, rating: "4.7", ratingCount: "412", time: "8 mins", options: null, badge: "Laundry", img: "https://images.unsplash.com/photo-1610557892470-55d9e80c0bce?w=400&auto=format&fit=crop&q=80", cat: "Home Care" },
+  { id: 31, name: "Lizol Disinfectant Floor Cleaner", unit: "975 ml", price: 199, originalPrice: 225, rating: "4.8", ratingCount: "276", time: "8 mins", options: null, badge: "Disinfectant", img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=400&auto=format&fit=crop&q=80", cat: "Home Care" },
+  { id: 32, name: "Harpic Power Toilet Cleaner", unit: "500 ml", price: 98, originalPrice: 110, rating: "4.6", ratingCount: "188", time: "8 mins", options: null, badge: "Bathroom", img: "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=400&auto=format&fit=crop&q=80", cat: "Home Care" },
+  { id: 33, name: "Good Knight Gold Flash Refill", unit: "45 ml", price: 85, originalPrice: 95, rating: "4.5", ratingCount: "154", time: "8 mins", options: null, badge: "Mosquito Free", img: "https://images.unsplash.com/photo-1585421514738-01798e348b17?w=400&auto=format&fit=crop&q=80", cat: "Home Care" },
+  { id: 34, name: "Odonil Room Air Freshener", unit: "48 g", price: 75, originalPrice: 85, rating: "4.4", ratingCount: "97", time: "8 mins", options: null, badge: "Fresh Home", img: "https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=400&auto=format&fit=crop&q=80", cat: "Home Care" },
+
+  // Kitchen Care
+  { id: 35, name: "Vim Dishwash Gel Lemon", unit: "500 ml", price: 115, originalPrice: 130, rating: "4.8", ratingCount: "364", time: "8 mins", options: null, badge: "Bestseller", img: "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=400&auto=format&fit=crop&q=80", cat: "Kitchen Care" },
+  { id: 36, name: "Scotch-Brite Scrub Pad", unit: "3 pcs", price: 45, originalPrice: 55, rating: "4.7", ratingCount: "231", time: "8 mins", options: null, badge: "Essential", img: "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&auto=format&fit=crop&q=80", cat: "Kitchen Care" },
+  { id: 37, name: "Home Foil Aluminium Wrap", unit: "9 m", price: 99, originalPrice: 115, rating: "4.5", ratingCount: "118", time: "8 mins", options: null, badge: "Kitchen", img: "https://images.unsplash.com/photo-1556909212-d5b604d0c90d?w=400&auto=format&fit=crop&q=80", cat: "Kitchen Care" },
+  { id: 38, name: "Origami Kitchen Tissue Roll", unit: "2 rolls", price: 80, originalPrice: 95, rating: "4.6", ratingCount: "142", time: "8 mins", options: null, badge: "Handy", img: "https://images.unsplash.com/photo-1584556812952-905ffd0c611a?w=400&auto=format&fit=crop&q=80", cat: "Kitchen Care" },
+  { id: 39, name: "Garbage Bags Medium", unit: "30 pcs", price: 99, originalPrice: 120, rating: "4.5", ratingCount: "203", time: "8 mins", options: null, badge: "Value Pack", img: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&auto=format&fit=crop&q=80", cat: "Kitchen Care" },
+
+  // Vegetables
+  { id: 40, name: "Fresh Onion", unit: "1 kg", price: 35, originalPrice: 45, rating: "4.6", ratingCount: "521", time: "8 mins", options: null, badge: "Daily Staple", img: "https://images.unsplash.com/photo-1518977956812-cd3dbadaaf31?w=400&auto=format&fit=crop&q=80", cat: "Vegetables" },
+  { id: 41, name: "Fresh Potato", unit: "1 kg", price: 32, originalPrice: 40, rating: "4.7", ratingCount: "487", time: "8 mins", options: null, badge: "Daily Staple", img: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=400&auto=format&fit=crop&q=80", cat: "Vegetables" },
+  { id: 42, name: "Fresh Tomato", unit: "500 g", price: 25, originalPrice: 32, rating: "4.5", ratingCount: "398", time: "8 mins", options: null, badge: "Farm Fresh", img: "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80", cat: "Vegetables" },
+  { id: 43, name: "Kashmiri Haakh Greens", unit: "250 g", price: 30, originalPrice: 35, rating: "4.9", ratingCount: "176", time: "8 mins", options: null, badge: "Local Favourite", img: "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&auto=format&fit=crop&q=80", cat: "Vegetables" },
+  { id: 44, name: "Green Capsicum", unit: "250 g", price: 28, originalPrice: 35, rating: "4.4", ratingCount: "132", time: "8 mins", options: null, badge: "Farm Fresh", img: "https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=400&auto=format&fit=crop&q=80", cat: "Vegetables" },
+  { id: 45, name: "Coriander & Green Chilli Combo", unit: "1 pack", price: 20, originalPrice: 25, rating: "4.6", ratingCount: "214", time: "8 mins", options: null, badge: "Tadka Pack", img: "https://images.unsplash.com/photo-1600335895229-6e75511892c8?w=400&auto=format&fit=crop&q=80", cat: "Vegetables" },
+
+  // Fresh Fruits
+  { id: 46, name: "Fresh Bananas", unit: "6 pcs", price: 45, originalPrice: 55, rating: "4.6", ratingCount: "289", time: "8 mins", options: null, badge: "Everyday", img: "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&auto=format&fit=crop&q=80", cat: "Fresh Fruits" },
+  { id: 47, name: "Nagpur Sweet Oranges", unit: "1 kg", price: 90, originalPrice: 110, rating: "4.7", ratingCount: "163", time: "8 mins", options: null, badge: "Juicy", img: "https://images.unsplash.com/photo-1547514701-42782101795e?w=400&auto=format&fit=crop&q=80", cat: "Fresh Fruits" },
+  { id: 48, name: "Kashmiri Cherries", unit: "250 g", price: 150, originalPrice: 180, rating: "4.9", ratingCount: "88", time: "8 mins", options: null, badge: "Seasonal", img: "https://images.unsplash.com/photo-1528821128474-27f963b062bf?w=400&auto=format&fit=crop&q=80", cat: "Fresh Fruits" },
+  { id: 49, name: "Seedless Green Grapes", unit: "500 g", price: 75, originalPrice: 90, rating: "4.5", ratingCount: "127", time: "8 mins", options: null, badge: "Sweet", img: "https://images.unsplash.com/photo-1537640538966-79f369143f8f?w=400&auto=format&fit=crop&q=80", cat: "Fresh Fruits" },
+
+  // Chicken
+  { id: 50, name: "Fresh Chicken Curry Cut", unit: "500 g", price: 160, originalPrice: 190, rating: "4.7", ratingCount: "342", time: "8 mins", options: "2 sizes", badge: "Bestseller", img: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&auto=format&fit=crop&q=80", cat: "Chicken", variants: [
+      { id: "50-500g", unit: "500 g", price: 160, originalPrice: 190 },
+      { id: "50-1kg", unit: "1 kg", price: 310, originalPrice: 360 }
+    ] },
+  { id: 51, name: "Boneless Chicken Breast", unit: "450 g", price: 220, originalPrice: 260, rating: "4.8", ratingCount: "196", time: "8 mins", options: null, badge: "High Protein", img: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&auto=format&fit=crop&q=80", cat: "Chicken" },
+  { id: 52, name: "Chicken Seekh Kebab", unit: "250 g", price: 185, originalPrice: 210, rating: "4.6", ratingCount: "134", time: "8 mins", options: null, badge: "Ready to Cook", img: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&auto=format&fit=crop&q=80", cat: "Chicken" },
+  { id: 53, name: "Whole Chicken Skinless", unit: "1 kg", price: 230, originalPrice: 270, rating: "4.7", ratingCount: "151", time: "8 mins", options: null, badge: "Farm Fresh", img: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=400&auto=format&fit=crop&q=80", cat: "Chicken" },
+
+  // Dairy additions
+  { id: 54, name: "Farm Fresh Eggs", unit: "6 pcs", price: 48, originalPrice: 55, rating: "4.8", ratingCount: "409", time: "8 mins", options: "2 sizes", badge: "Daily Staple", img: "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=400&auto=format&fit=crop&q=80", cat: "Dairy", variants: [
+      { id: "54-6pcs", unit: "6 pcs", price: 48, originalPrice: 55 },
+      { id: "54-12pcs", unit: "12 pcs", price: 92, originalPrice: 105 }
+    ] },
+  { id: 55, name: "Amul Fresh Paneer", unit: "200 g", price: 95, originalPrice: 105, rating: "4.7", ratingCount: "178", time: "8 mins", options: null, badge: "Fresh", img: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
+  { id: 56, name: "Amul Cheese Slices", unit: "100 g", price: 85, originalPrice: 95, rating: "4.6", ratingCount: "144", time: "8 mins", options: null, badge: "Breakfast", img: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
+  // Tobacco — age restricted, gated behind an 18+ declaration at add-to-cart
+  { id: 60, name: "Classic Filter Kings Cigarettes", unit: "10 sticks", price: 220, originalPrice: 240, rating: "4.2", ratingCount: "64", time: "8 mins", options: null, badge: "18+ Only", img: "https://images.unsplash.com/photo-1548094878-84ced0f6896d?w=400&auto=format&fit=crop&q=80", cat: "Tobacco", ageRestricted: true, minAge: 18 },
+  { id: 61, name: "Gold Flake Small Pack", unit: "10 sticks", price: 130, originalPrice: 140, rating: "4.1", ratingCount: "88", time: "8 mins", options: null, badge: "18+ Only", img: "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=400&auto=format&fit=crop&q=80", cat: "Tobacco", ageRestricted: true, minAge: 18 },
+  { id: 62, name: "Rolling Paper Booklet", unit: "1 pack", price: 45, originalPrice: 55, rating: "4.3", ratingCount: "37", time: "8 mins", options: null, badge: "18+ Only", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&auto=format&fit=crop&q=80", cat: "Tobacco", ageRestricted: true, minAge: 18 },
 ];

@@ -23,7 +23,7 @@ const historyDepth = () => {
  * @param {import('next/router').NextRouter} router
  * @param {string} fallback route to use when the history stack is empty
  */
-export const goBack = (router, fallback = "/") => {
+export const goBack = (router, fallback = "/shop") => {
   if (!router) return;
   if (historyDepth() > 1) {
     router.back();

@@ -1,13 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ChevronRight, X, Navigation, Zap } from "lucide-react";
+import { ChevronRight, X, Navigation, Zap, KeyRound } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import DashitAnimatedLogo from "./DashitAnimatedLogo";
+import { calculateDeliveryEta } from "../lib/deliveryEta";
 
 export default function HomeScreenLiveOrderCard() {
   const [activeOrder, setActiveOrder] = useState(null);
   const [isDismissed, setIsDismissed] = useState(false);
+
+  const etaData = useMemo(() => {
+    if (!activeOrder) return { etaMinutes: 10, distanceFormatted: "1.2 km away" };
+    const loc = activeOrder.location || activeOrder.userAddress || null;
+    return calculateDeliveryEta(loc);
+  }, [activeOrder]);
 
   useEffect(() => {
     // Check if dismissed in this session
@@ -79,8 +86,8 @@ export default function HomeScreenLiveOrderCard() {
         </button>
       </div>
 
-      {/* Status & ETA */}
-      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100/90">
+      {/* Status & ETA & OTP */}
+      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100/90 gap-2">
         <div>
           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
             Estimated Arrival
@@ -88,17 +95,29 @@ export default function HomeScreenLiveOrderCard() {
           <div className="flex items-center space-x-1 mt-0.5">
             <Zap className="w-3.5 h-3.5 stroke-[2.8] text-amber-500 fill-amber-500 shrink-0" />
             <span className="font-mono font-black text-sm text-slate-900">
-              Under 7 Mins
+              ~{etaData.etaMinutes} Mins
             </span>
             <span className="text-[10px] text-slate-500 font-medium ml-1">
-              (2.3 km away)
+              ({etaData.distanceFormatted})
             </span>
           </div>
         </div>
 
+        {/* OTP Callout */}
+        {activeOrder.otp && (
+          <div className="bg-white border border-slate-200/90 px-2.5 py-1 rounded-xl text-center shadow-2xs">
+            <span className="text-[8.5px] font-bold uppercase tracking-wider text-slate-400 block leading-tight">
+              OTP
+            </span>
+            <span className="font-mono text-xs font-black text-slate-900 tracking-wider">
+              {activeOrder.otp}
+            </span>
+          </div>
+        )}
+
         <Link
           href="/orders"
-          className="bg-[#061838] hover:bg-slate-900 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center space-x-1"
+          className="bg-[#061838] hover:bg-slate-900 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center space-x-1 shrink-0"
         >
           <Navigation className="w-3.5 h-3.5" />
           <span>Track Live</span>
