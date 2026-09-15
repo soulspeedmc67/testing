@@ -169,7 +169,13 @@ export default function ProductCardStepper({
               whileTap={{ scale: 0.75 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
               onClick={handleMinus}
-              className="w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900"
+              aria-label={`Remove one ${product?.name || "item"}`}
+              /* The pill keeps its compact size — grid density depends on it —
+                 but the pseudo-element extends the touch area to ~40px so the
+                 control the whole catalogue is operated with is not a 24px
+                 target. It stops short of the quantity label, so a stray tap
+                 cannot hit the opposite button. */
+              className="relative w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900 before:absolute before:-inset-2 before:content-['']"
             >
               <Minus className="w-3.5 h-3.5 stroke-[3]" />
             </motion.button>
@@ -179,6 +185,8 @@ export default function ProductCardStepper({
               initial={{ scale: 1.3, y: -2 }}
               animate={{ scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
+              aria-live="polite"
+              aria-label={`Quantity ${displayQty}`}
               className="font-mono font-black text-xs px-1 select-none text-center min-w-[14px]"
             >
               {displayQty}
@@ -189,7 +197,8 @@ export default function ProductCardStepper({
               whileTap={{ scale: 0.75 }}
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
               onClick={handlePlus}
-              className="w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900"
+              aria-label={`Add one more ${product?.name || "item"}`}
+              className="relative w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900 before:absolute before:-inset-2 before:content-['']"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
             </motion.button>

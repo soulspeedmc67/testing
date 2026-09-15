@@ -27,6 +27,16 @@ export default function AddProductView({
   visualPalette = [],
   darkMode = false,
 }) {
+  /* One definition for every box on this form: the styling used to be pasted
+     onto each input, which is how they drifted apart in the first place. */
+  const labelCls =
+    "text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1";
+  const fieldCls = `w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none transition-all ${
+    darkMode
+      ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500 focus:border-[#FF5B00]"
+      : "bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 focus:border-[#FF5B00]"
+  }`;
+
   const handleCategoryChange = (newCat) => {
     setProductForm((prev) => ({ ...prev, cat: newCat }));
     const newSuggestions = get4KPhotoSuggestions(newCat);
@@ -67,11 +77,11 @@ export default function AddProductView({
           <div className="flex items-center space-x-2">
             <Camera className="w-5 h-5 text-[#FF5B00]" />
             <h2 className="font-black text-base text-slate-900 dark:text-white">
-              Scan Barcode & Auto-Populate Product
+              Scan the barcode — we fill the rest
             </h2>
           </div>
           <p className="text-xs text-slate-600 dark:text-zinc-400">
-            Aim camera at any Indian retail packaging barcode. DASHit will automatically lookup verified title, brand, and clean studio 4K photos.
+            Point the camera at the barcode on the pack. The name, brand and a photo are filled in for you — you only add the price and how many you have.
           </p>
         </div>
 
@@ -178,42 +188,40 @@ export default function AddProductView({
             <h3 className="font-black text-sm text-slate-900 dark:text-white">
               Product Information
             </h3>
-            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold">* Mandatory fields</span>
+            <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold">Only the starred boxes are needed</span>
           </div>
 
-          {/* Product Title */}
+          {/* Item name */}
           <div>
-            <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-              Product Title *
+            <label htmlFor="add-name" className={labelCls}>
+              Item name *
             </label>
             <input
+              id="add-name"
               type="text"
               required
+              autoComplete="off"
               value={productForm.name}
               onChange={(e) => setProductForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="e.g. Amul Taaza Fresh Toned Milk 1L"
-              className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none transition-all ${
-                darkMode
-                  ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500 focus:border-[#FF5B00]"
-                  : "bg-slate-50 border-slate-200 text-slate-900 focus:border-[#FF5B00]"
-              }`}
+              placeholder="Amul Taaza Toned Milk"
+              className={fieldCls}
             />
           </div>
 
-          {/* Category & Brand */}
+          {/* Only the boxes needed to sell something stay in the open: shelf,
+              size, price, count. Everything else is prefilled or cosmetic and
+              sits under the disclosure below, so manual entry is five taps and
+              a name rather than a ten-field form. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Category *
+              <label htmlFor="add-cat" className={labelCls}>
+                Which shelf? *
               </label>
               <select
+                id="add-cat"
                 value={productForm.cat}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none cursor-pointer ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
+                className={`${fieldCls} cursor-pointer`}
               >
                 {categories
                   .filter((c) => c !== "All")
@@ -226,154 +234,142 @@ export default function AddProductView({
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Brand Name
+              <label htmlFor="add-unit" className={labelCls}>
+                Size on the pack
               </label>
               <input
-                type="text"
-                value={productForm.brand}
-                onChange={(e) => setProductForm((p) => ({ ...p, brand: e.target.value }))}
-                placeholder="e.g. Amul / Local Kandur"
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* Pricing: Price & MRP */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Selling Price (₹) *
-              </label>
-              <input
-                type="number"
-                required
-                min="1"
-                value={productForm.price}
-                onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))}
-                placeholder="40"
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                MRP / Strikethrough (₹)
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={productForm.originalPrice}
-                onChange={(e) => setProductForm((p) => ({ ...p, originalPrice: e.target.value }))}
-                placeholder="45"
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Unit / Pack Size
-              </label>
-              <input
+                id="add-unit"
                 type="text"
                 value={productForm.unit}
                 onChange={(e) => setProductForm((p) => ({ ...p, unit: e.target.value }))}
-                placeholder="e.g. 500 ml / 1 kg"
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
+                placeholder="1 kg, 500 ml, 6 pcs"
+                className={fieldCls}
               />
             </div>
           </div>
 
-          {/* Barcode & Stock */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Initial Stock Units *
+              <label htmlFor="add-price" className={labelCls}>
+                Price you charge (₹) *
               </label>
               <input
+                id="add-price"
+                type="number"
+                required
+                min="1"
+                inputMode="decimal"
+                value={productForm.price}
+                onChange={(e) => setProductForm((p) => ({ ...p, price: e.target.value }))}
+                placeholder="40"
+                className={fieldCls}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="add-stock" className={labelCls}>
+                How many do you have? *
+              </label>
+              <input
+                id="add-stock"
                 type="number"
                 required
                 min="0"
+                inputMode="numeric"
                 value={productForm.stock}
                 onChange={(e) => setProductForm((p) => ({ ...p, stock: e.target.value }))}
                 placeholder="100"
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Badge / Tag
-              </label>
-              <input
-                type="text"
-                value={productForm.badge}
-                onChange={(e) => setProductForm((p) => ({ ...p, badge: e.target.value }))}
-                placeholder="Fresh / Bestseller"
-                className={`w-full text-xs font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-                Barcode Number
-              </label>
-              <input
-                type="text"
-                value={productForm.barcode}
-                onChange={(e) => setProductForm((p) => ({ ...p, barcode: e.target.value }))}
-                placeholder="8901..."
-                className={`w-full text-xs font-mono font-bold px-3 py-2.5 rounded-xl border outline-none ${
-                  darkMode
-                    ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                    : "bg-slate-50 border-slate-200 text-slate-900"
-                }`}
+                className={fieldCls}
               />
             </div>
           </div>
 
-          {/* Image URL */}
-          <div>
-            <label className="text-[11px] font-bold uppercase text-slate-600 dark:text-zinc-300 block mb-1">
-              Image URL *
-            </label>
-            <input
-              type="url"
-              required
-              value={productForm.img}
-              onChange={(e) => setProductForm((p) => ({ ...p, img: e.target.value }))}
-              placeholder="https://..."
-              className={`w-full text-xs font-mono px-3 py-2.5 rounded-xl border outline-none ${
-                darkMode
-                  ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500"
-                  : "bg-slate-50 border-slate-200 text-slate-900"
-              }`}
-            />
-          </div>
+          {/* A plain <details>: no extra state, opens with the keyboard. */}
+          <details className="group">
+            <summary className="cursor-pointer list-none py-2.5 select-none text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              <span className="group-open:hidden">+ Add more details (not needed)</span>
+              <span className="hidden group-open:inline">− Hide extra details</span>
+            </summary>
+
+            <div className="space-y-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="add-brand" className={labelCls}>
+                    Brand
+                  </label>
+                  <input
+                    id="add-brand"
+                    type="text"
+                    value={productForm.brand}
+                    onChange={(e) => setProductForm((p) => ({ ...p, brand: e.target.value }))}
+                    placeholder="Amul, Local Kandur"
+                    className={fieldCls}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="add-mrp" className={labelCls}>
+                    Printed MRP (₹)
+                  </label>
+                  <input
+                    id="add-mrp"
+                    type="number"
+                    min="1"
+                    inputMode="decimal"
+                    value={productForm.originalPrice}
+                    onChange={(e) => setProductForm((p) => ({ ...p, originalPrice: e.target.value }))}
+                    placeholder="Shown crossed out"
+                    className={fieldCls}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="add-badge" className={labelCls}>
+                    Tag on the card
+                  </label>
+                  <input
+                    id="add-badge"
+                    type="text"
+                    value={productForm.badge}
+                    onChange={(e) => setProductForm((p) => ({ ...p, badge: e.target.value }))}
+                    placeholder="Fresh, Bestseller"
+                    className={fieldCls}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="add-barcode" className={labelCls}>
+                    Barcode number
+                  </label>
+                  <input
+                    id="add-barcode"
+                    type="text"
+                    inputMode="numeric"
+                    value={productForm.barcode}
+                    onChange={(e) => setProductForm((p) => ({ ...p, barcode: e.target.value }))}
+                    placeholder="8901..."
+                    className={`${fieldCls} font-mono`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="add-img" className={labelCls}>
+                  Photo link
+                </label>
+                <input
+                  id="add-img"
+                  type="url"
+                  value={productForm.img}
+                  onChange={(e) => setProductForm((p) => ({ ...p, img: e.target.value }))}
+                  placeholder="Already filled in — change only if you have a better photo"
+                  className={`${fieldCls} font-mono`}
+                />
+              </div>
+            </div>
+          </details>
 
           {/* Submit Button */}
           <div className="pt-2 border-t border-slate-200/50 flex justify-end">
@@ -383,7 +379,7 @@ export default function AddProductView({
               className="bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs px-6 py-3 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center space-x-2 disabled:opacity-50"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
-              <span>{isPublishing ? "Publishing..." : "Publish Product to Store"}</span>
+              <span>{isPublishing ? "Saving..." : "Put this item in the shop"}</span>
             </button>
           </div>
         </form>

@@ -174,7 +174,10 @@ export default function PromoBanner({ onSelectPromo }) {
                         hapticLight();
                         setSlideIdx(idx);
                       }}
-                      className={`h-[2px] transition-all duration-300 cursor-pointer ${
+                      /* The indicator stays a 2px hairline; the pseudo-element
+                         gives it a finger-sized target, since a 2px-tall button
+                         is unhittable on a phone. */
+                      className={`relative h-[2px] transition-all duration-300 cursor-pointer before:absolute before:-inset-x-1.5 before:-inset-y-[14px] before:content-[''] ${
                         idx === slideIdx ? "w-5 bg-[#FF5B00]" : "w-2 bg-white/25"
                       }`}
                       aria-label={`Slide ${idx + 1}`}

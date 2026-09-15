@@ -5,6 +5,10 @@ import { ShoppingBag, ChevronRight } from "lucide-react";
 import AnimatedCounter from "./AnimatedCounter";
 import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticMedium } from "../lib/haptics";
+import { useStoredJson } from "../lib/useStoredJson";
+
+/* Stable identity so an empty cart does not produce a new array each render. */
+const EMPTY_CART = [];
 
 const STOREFRONT_ROUTES = ["/shop", "/order-again", "/categories", "/wishlist"];
 const NAVBAR_ROUTES = ["/shop", "/order-again", "/categories"];
@@ -12,7 +16,14 @@ const NAVBAR_ROUTES = ["/shop", "/order-again", "/categories"];
 export default function FloatingCartBar() {
   const router = useRouter();
   const { isNavVisible } = useScrollChrome();
-  const [cart, setCart] = useState([]);
+  /* The bar sits in _app, so it is mounted on every screen: it reads the cart
+     through the shared store hook, which only re-renders when the stored cart
+     actually changes instead of on a 2-second timer. */
+  const cart = useStoredJson("dashit_cart", {
+    events: ["dashit_cart_updated"],
+    intervalMs: 4000,
+    fallback: EMPTY_CART,
+  });
   const [isBouncing, setIsBouncing] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -72,41 +83,19 @@ export default function FloatingCartBar() {
     };
   }, []);
 
-  // Sync cart from localStorage and custom event
+  // Bounce is a one-off animation cue, independent of the cart contents
   useEffect(() => {
-    const syncCart = () => {
-      try {
-        const saved = localStorage.getItem("dashit_cart");
-        if (saved) {
-          setCart(JSON.parse(saved));
-        } else {
-          setCart([]);
-        }
-      } catch (e) {
-        setCart([]);
-      }
-    };
-
     const handleBounce = () => {
       setIsBouncing(true);
       setTimeout(() => setIsBouncing(false), 450);
     };
-
-    syncCart();
-    window.addEventListener("dashit_cart_updated", syncCart);
     window.addEventListener("dashit_cart_bounce", handleBounce);
-    window.addEventListener("storage", syncCart);
-    const interval = setInterval(syncCart, 2000);
-
-    return () => {
-      window.removeEventListener("dashit_cart_updated", syncCart);
-      window.removeEventListener("dashit_cart_bounce", handleBounce);
-      window.removeEventListener("storage", syncCart);
-      clearInterval(interval);
-    };
+    return () => window.removeEventListener("dashit_cart_bounce", handleBounce);
   }, []);
 
-  const itemCount = cart.reduce((sum, item) => sum + (item.qty || 0), 0);
+  /* Storage can hold anything a previous build wrote; never trust its shape. */
+  const items = Array.isArray(cart) ? cart : EMPTY_CART;
+  const itemCount = items.reduce((sum, item) => sum + (item.qty || 0), 0);
   const isStorefront = STOREFRONT_ROUTES.includes(router.pathname);
 
   // Determine if this is a "first appearance" (from 0 items or from non-storefront page)
@@ -157,8 +146,8 @@ export default function FloatingCartBar() {
       >
         {/* Left: Last 3 items added to cart in overlapping circular shapes */}
         <div className="flex items-center -space-x-2.5 shrink-0 py-0.5 pl-0.5">
-          {cart.length > 0 ? (
-            cart.slice(-3).reverse().map((item, idx) => (
+          {items.length > 0 ? (
+            items.slice(-3).reverse().map((item, idx) => (
               <div
                 key={item.id || idx}
                 className="w-8 h-8 rounded-full bg-white border-2 border-[#061838] overflow-hidden flex items-center justify-center shadow-xs shrink-0"

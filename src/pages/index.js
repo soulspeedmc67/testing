@@ -162,7 +162,7 @@ export default function LandingPage() {
             <div className="flex items-center space-x-3">
               <Link
                 href="/shop"
-                className="bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold px-5 py-2 rounded-full shadow-md shadow-[#FF5B00]/30 transition-all hover:scale-105 active:scale-95 flex items-center space-x-1.5"
+                className="bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold px-5 min-h-[44px] rounded-full shadow-md shadow-[#FF5B00]/30 transition-all hover:scale-105 active:scale-95 inline-flex items-center justify-center space-x-1.5"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span>Shop Now</span>
@@ -171,7 +171,11 @@ export default function LandingPage() {
               {/* Mobile Hamburger */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                type="button"
+                aria-expanded={mobileMenuOpen}
+                /* The only route into navigation on a phone: padded out to the
+                   44px minimum without changing how the icon looks. */
+                className="lg:hidden inline-flex items-center justify-center min-w-[44px] min-h-[44px] -mr-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
                 aria-label="Toggle menu"
               >
                 <Menu className="w-5 h-5" />
@@ -313,11 +317,25 @@ export default function LandingPage() {
 
               {/* FLYING GROCERY BOX — seated, not drifting */}
               <div className="relative z-10 w-[112%] sm:w-[120%] xl:w-[124%] -mt-4">
-                <img
-                  src="/art/flying-grocery-box-transparent.png"
-                  alt="DASHIT Flying Grocery Delivery Box"
-                  className="w-full h-auto drop-shadow-xl"
-                />
+                {/* The landing page's LCP element. It was a 1.4 MB 1536px PNG on
+                    a screen that never shows it wider than ~500 CSS px, which is
+                    most of what a first-time visitor on mobile data waited for.
+                    WebP first, PNG kept as the fallback; the intrinsic size
+                    reserves the box so the hero does not jump when it lands. */}
+                <picture>
+                  <source srcSet="/art/flying-grocery-box-transparent.webp" type="image/webp" />
+                  <img
+                    src="/art/flying-grocery-box-transparent.png"
+                    alt="DASHIT Flying Grocery Delivery Box"
+                    width={1536}
+                    height={1024}
+                    /* lowercase: the React runtime in this project does not
+                       recognise the camelCase prop and drops it with a warning */
+                    fetchpriority="high"
+                    decoding="async"
+                    className="w-full h-auto drop-shadow-xl"
+                  />
+                </picture>
               </div>
 
               {/* Badge Top Right — pinned to the disc, static */}
@@ -511,7 +529,7 @@ export default function LandingPage() {
                     <div className="mt-2 text-center">
                       <Link
                         href="/shop"
-                        className="text-[10px] font-bold text-[#FF5B00] hover:underline"
+                        className="inline-flex items-center justify-center min-h-[44px] px-3 text-[10px] font-bold text-[#FF5B00] hover:underline"
                       >
                         Tap to open live store →
                       </Link>
@@ -626,7 +644,7 @@ export default function LandingPage() {
             </div>
             <Link
               href="/categories"
-              className="mt-2 sm:mt-0 text-xs sm:text-sm font-bold text-[#FF5B00] hover:text-[#E04E00] flex items-center space-x-1 group"
+              className="mt-2 sm:mt-0 text-xs sm:text-sm font-bold text-[#FF5B00] hover:text-[#E04E00] inline-flex items-center min-h-[44px] space-x-1 group"
             >
               <span>View all categories</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -762,17 +780,19 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 font-semibold">
-              <Link href="/shop" className="hover:text-white transition-colors">
+            {/* Footer links were 16px tall. The gap absorbs the added padding,
+                so the row looks the same but each link is now thumb-sized. */}
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-slate-400 font-semibold">
+              <Link href="/shop" className="inline-flex items-center min-h-[44px] hover:text-white transition-colors">
                 Shop Groceries
               </Link>
-              <Link href="/categories" className="hover:text-white transition-colors">
+              <Link href="/categories" className="inline-flex items-center min-h-[44px] hover:text-white transition-colors">
                 Categories
               </Link>
-              <Link href="/privacy" className="hover:text-[#FF5B00] transition-colors font-bold text-slate-300">
+              <Link href="/privacy" className="inline-flex items-center min-h-[44px] hover:text-[#FF5B00] transition-colors font-bold text-slate-300">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="hover:text-[#FF5B00] transition-colors font-bold text-slate-300">
+              <Link href="/terms" className="inline-flex items-center min-h-[44px] hover:text-[#FF5B00] transition-colors font-bold text-slate-300">
                 Terms &amp; Conditions
               </Link>
             </div>

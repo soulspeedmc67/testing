@@ -629,13 +629,23 @@ export default function LoginPage() {
                   className="w-24 h-24 object-contain opacity-80 mb-4"
                 />
               ) : (
-                <img
-                  ref={heroImgRef}
-                  src="/art/rider-scooter-hero-transparent.png"
-                  alt="DASHIT 8-minute delivery"
-                  onError={() => setHeroFailed(true)}
-                  className="w-full max-w-[320px] max-h-[38vh] object-contain object-bottom drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
-                />
+                /* WebP first with the PNG as fallback: this art is never shown
+                   wider than 320 CSS px, but the PNG behind it was over a
+                   megabyte. onError stays on the <img>, which is what actually
+                   fails if neither source loads. */
+                <picture>
+                  <source srcSet="/art/rider-scooter-hero-transparent.webp" type="image/webp" />
+                  <img
+                    ref={heroImgRef}
+                    src="/art/rider-scooter-hero-transparent.png"
+                    alt="DASHIT 8-minute delivery"
+                    width={1142}
+                    height={1377}
+                    decoding="async"
+                    onError={() => setHeroFailed(true)}
+                    className="w-full max-w-[320px] max-h-[38vh] object-contain object-bottom drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
+                  />
+                </picture>
               )}
             </motion.div>
           </div>
@@ -1107,11 +1117,17 @@ export default function LoginPage() {
               transition={{ duration: 0.35, ease: "easeOut" }}
               className="w-full max-w-[210px] h-[19vh] flex items-center justify-center select-none pointer-events-none"
             >
-              <img
-                src="/art/rider-holding-groceries-transparent.png"
-                alt="DASHIT Delivery Partner"
-                className="w-full h-full object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.3)]"
-              />
+              <picture className="w-full h-full">
+                <source srcSet="/art/rider-holding-groceries-transparent.webp" type="image/webp" />
+                <img
+                  src="/art/rider-holding-groceries-transparent.png"
+                  alt="DASHIT Delivery Partner"
+                  width={878}
+                  height={1327}
+                  decoding="async"
+                  className="w-full h-full object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.3)]"
+                />
+              </picture>
             </motion.div>
 
             <h1 className="text-[21px] sm:text-[23px] font-black text-white leading-tight tracking-tight mt-1 drop-shadow-xs">

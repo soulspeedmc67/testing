@@ -10,18 +10,22 @@ import {
   Layers,
   CheckCircle2,
   Download,
+  Ban,
 } from "lucide-react";
 import { generateCsvString, triggerCsvDownload, INVENTORY_CSV_COLUMNS } from "../../lib/csvExport";
 
 export default function InventoryView({
   catalogue = [],
   onQuickStockAdjust,
+  onClearAllStock,
+  isClearingStock = false,
   onNavigateTab,
   darkMode = false,
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [stockFilter, setStockFilter] = useState("all"); // "all", "low", "out"
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleExportStockCsv = () => {
     const csvContent = generateCsvString(filteredProducts, INVENTORY_CSV_COLUMNS);
@@ -69,48 +73,23 @@ export default function InventoryView({
 
   return (
     <div className="space-y-4">
-      {/* 1. Metric Overview Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div
-          className={`p-4 rounded-2xl border transition-colors ${
-            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
-          }`}
-        >
-          <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 block">
-            Total Catalogue Items
-          </span>
-          <span className="text-2xl font-black text-slate-900 dark:text-white mt-1 block">
-            {catalogue.length}
-          </span>
-          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Active retail listings</p>
-        </div>
-
-        <div
-          className={`p-4 rounded-2xl border transition-colors ${
-            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
-          }`}
-        >
-          <span className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 block">
-            Units in Warehouse
-          </span>
-          <span className="text-2xl font-black text-emerald-500 mt-1 block">
-            {summary.totalUnits.toLocaleString("en-IN")}
-          </span>
-          <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Physical store inventory</p>
-        </div>
-
+      {/* Only the two numbers that ask for an action. Total items and total
+          units are already on the console header above this view, and showing
+          each figure twice on one screen just invites the question of which one
+          is right. */}
+      <div className="grid grid-cols-2 gap-3">
         <div
           className={`p-4 rounded-2xl border transition-colors ${
             darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
           }`}
         >
           <span className="text-[10.5px] font-black uppercase tracking-wider text-amber-500 block">
-            Low Stock (≤10)
+            Running low
           </span>
           <span className="text-2xl font-black text-amber-500 mt-1 block">
             {summary.lowStockCount}
           </span>
-          <p className="text-[10px] text-amber-500/80 font-semibold mt-0.5">Needs reordering</p>
+          <p className="text-[10px] text-amber-500/80 font-semibold mt-0.5">10 or fewer left · reorder soon</p>
         </div>
 
         <div
@@ -119,12 +98,12 @@ export default function InventoryView({
           }`}
         >
           <span className="text-[10.5px] font-black uppercase tracking-wider text-rose-500 block">
-            Out of Stock (0)
+            Sold out
           </span>
           <span className="text-2xl font-black text-rose-500 mt-1 block">
             {summary.outOfStockCount}
           </span>
-          <p className="text-[10px] text-rose-500/80 font-semibold mt-0.5">Unavailable to customers</p>
+          <p className="text-[10px] text-rose-500/80 font-semibold mt-0.5">Customers cannot order these</p>
         </div>
       </div>
 
@@ -156,7 +135,7 @@ export default function InventoryView({
             <button
               type="button"
               onClick={() => setStockFilter("all")}
-              className={`text-xs font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`text-xs font-black px-3 min-h-[40px] rounded-xl transition-all cursor-pointer ${
                 stockFilter === "all"
                   ? darkMode
                     ? "bg-white text-zinc-950 font-black shadow-xs"
@@ -171,7 +150,7 @@ export default function InventoryView({
             <button
               type="button"
               onClick={() => setStockFilter("low")}
-              className={`text-xs font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`text-xs font-black px-3 min-h-[40px] rounded-xl transition-all cursor-pointer ${
                 stockFilter === "low"
                   ? "bg-amber-500 text-slate-950"
                   : "bg-amber-500/15 text-amber-500 hover:bg-amber-500/25"
@@ -179,13 +158,13 @@ export default function InventoryView({
             >
               <span className="inline-flex items-center space-x-1">
                 <AlertTriangle className="w-3.5 h-3.5" />
-                <span>Low Stock ({summary.lowStockCount})</span>
+                <span>Running low ({summary.lowStockCount})</span>
               </span>
             </button>
             <button
               type="button"
               onClick={() => setStockFilter("out")}
-              className={`text-xs font-black px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              className={`text-xs font-black px-3 min-h-[40px] rounded-xl transition-all cursor-pointer ${
                 stockFilter === "out"
                   ? "bg-rose-500 text-white"
                   : "bg-rose-500/15 text-rose-500 hover:bg-rose-500/25"
@@ -193,17 +172,19 @@ export default function InventoryView({
             >
               <span className="inline-flex items-center space-x-1">
                 <XCircle className="w-3.5 h-3.5" />
-                <span>Out of Stock ({summary.outOfStockCount})</span>
+                <span>Sold out ({summary.outOfStockCount})</span>
               </span>
             </button>
           </div>
 
-          {/* Direct Shortcuts */}
-          <div className="flex items-center space-x-2">
+          {/* Direct Shortcuts. These sat in a non-wrapping row, so on a phone the
+              labels were squeezed until they broke mid-word ("Clear all sto…").
+              They wrap onto a second line now and each keeps its full label. */}
+          <div className="flex items-center flex-wrap gap-2 [&>button]:whitespace-nowrap [&>a]:whitespace-nowrap">
             <button
               type="button"
               onClick={handleExportStockCsv}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              className={`flex items-center space-x-1.5 px-3 min-h-[40px] rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                 darkMode
                   ? "bg-[#1A1D26] hover:bg-zinc-800 text-zinc-200 border-zinc-700"
                   : "bg-white hover:bg-slate-50 text-slate-800 border-slate-200 shadow-xs"
@@ -214,10 +195,28 @@ export default function InventoryView({
               <span>Export CSV</span>
             </button>
 
+            {/* Marks the whole shop sold out in one step — for a power cut, a
+                shutdown, or a day the shop simply cannot deliver. Deliberately
+                not styled as a primary action, and it always asks first. */}
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              disabled={isClearingStock || catalogue.length === 0}
+              className={`flex items-center space-x-1.5 px-3 min-h-[40px] rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                darkMode
+                  ? "bg-rose-950/30 hover:bg-rose-950/60 text-rose-300 border-rose-900"
+                  : "bg-white hover:bg-rose-50 text-rose-600 border-rose-200 shadow-xs"
+              }`}
+              title="Set every item's stock to zero"
+            >
+              <Ban className="w-3.5 h-3.5" />
+              <span>{isClearingStock ? "Clearing..." : "Clear all stock"}</span>
+            </button>
+
             <button
               type="button"
               onClick={() => onNavigateTab("add-product")}
-              className="flex items-center space-x-1.5 bg-[#FF5B00] hover:bg-[#E04E00] text-white px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
+              className="flex items-center space-x-1.5 bg-[#FF5B00] hover:bg-[#E04E00] text-white px-3.5 min-h-[40px] rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95"
             >
               <Camera className="w-3.5 h-3.5" />
               <span>Scan / Add Item</span>
@@ -402,6 +401,74 @@ export default function InventoryView({
           </table>
         </div>
       </div>
+
+      {/* CONFIRM SHEET — slides up from the bottom, the way every dialog in this
+          app does. Zeroing the shop's stock hides every product from customers,
+          so it states plainly what will happen and how to undo it. */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => !isClearingStock && setShowClearConfirm(false)}
+          />
+
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-stock-title"
+            className={`relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl sm:mb-6 p-5 pb-[max(20px,calc(16px+env(safe-area-inset-bottom,0px)))] shadow-2xl animate-in slide-in-from-bottom-4 ${
+              darkMode ? "bg-[#14161E] border-t border-zinc-800" : "bg-white"
+            }`}
+          >
+            <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-slate-300 dark:bg-zinc-700" />
+
+            <div className="flex items-start gap-3">
+              <span className="w-10 h-10 shrink-0 rounded-2xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 flex items-center justify-center">
+                <Ban className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <h3
+                  id="clear-stock-title"
+                  className="text-base font-black text-slate-900 dark:text-white leading-tight"
+                >
+                  Mark everything sold out?
+                </h3>
+                <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                  All {catalogue.length} items will be set to 0 units, and customers
+                  will not be able to order any of them. Nothing is deleted — type
+                  the stock back in, or use Excel file, whenever you restock.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                disabled={isClearingStock}
+                className={`min-h-[48px] rounded-2xl text-sm font-bold border transition-colors ${
+                  darkMode
+                    ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                Keep stock
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (onClearAllStock) await onClearAllStock();
+                  setShowClearConfirm(false);
+                }}
+                disabled={isClearingStock}
+                className="min-h-[48px] rounded-2xl text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-60"
+              >
+                {isClearingStock ? "Clearing..." : "Yes, clear all"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -33,7 +33,7 @@ import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
-import { watchOrder, watchOrderTracking, updateOrderStatus, ORDER_STATUS } from "../lib/db";
+import { watchOrder, watchOrderTracking, updateOrderStatus, retireFinishedOrder, ORDER_STATUS } from "../lib/db";
 import { ALL_PRODUCTS } from "../data/products";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
@@ -266,6 +266,27 @@ export default function OrdersPage() {
 
     return () => clearInterval(timer);
   }, [activeOrder]);
+
+  /* The orders page is where a finished delivery becomes a receipt: once the
+     order reads Delivered, it is held on screen briefly and then moved into
+     history, so the page stops presenting a completed order as in-flight. */
+  useEffect(() => {
+    const orderId = activeOrder?.orderId;
+    const status = activeOrder?.status;
+    if (!orderId || (status !== "Delivered" && status !== "Cancelled")) return undefined;
+
+    const timer = setTimeout(() => {
+      if (retireFinishedOrder(orderId, status)) {
+        setActiveOrder(null);
+        setLiveEta(null);
+        try {
+          const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+          setOrderHistory(hist);
+        } catch (e) {}
+      }
+    }, 20000);
+    return () => clearTimeout(timer);
+  }, [activeOrder?.orderId, activeOrder?.status]);
 
   /* Cancelling has to reach the store. This used to only delete the order from
      the customer's own localStorage and then say "Order cancelled successfully"
