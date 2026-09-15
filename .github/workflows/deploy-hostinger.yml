@@ -83,9 +83,11 @@ jobs:
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           protocol: ftps
           local-dir: ./out/
-          # Override with the HOSTINGER_FTP_REMOTE_DIR secret when the site is an
-          # addon domain living in a subfolder rather than at the account root.
-          server-dir: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR || '/public_html/' }}
+          # dashit.co.in is an addon domain, so its document root is NOT the
+          # account's own /public_html/ — that belongs to a different site and
+          # uploading there succeeds while the live domain never changes. The
+          # account confirms it with a DO_NOT_UPLOAD_HERE marker one level up.
+          server-dir: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR || '/domains/dashit.co.in/public_html/' }}
           # The action keeps a manifest on the server and uploads only what
           # changed, so a routine deploy moves a few hundred KB rather than 18 MB.
           state-name: .ftp-deploy-sync-state.json
