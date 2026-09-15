@@ -154,6 +154,12 @@ export default function DashItDriverApp() {
      immediately switch broadcasting back on. Cleared on the next manual start
      or once the queue empties. */
   const manualPauseRef = useRef(false);
+  /* Live position, mirrored into a ref. The map builder below reads it from
+     here: as an effect dependency it rebuilt the entire map on every GPS fix. */
+  const currentCoordsRef = useRef(NAI_BASTI_HUB);
+  /* Position at which the drawn route was last re-queried, so a route refresh
+     costs a lookup only after the rider has actually travelled. */
+  const routeRefreshedAtRef = useRef(null);
   /* Road distance to each drop at the moment broadcasting began, keyed by order
      id. The customer's progress bar is a fraction of this, so it reflects ground
      actually covered rather than time elapsed. */
@@ -228,6 +234,15 @@ export default function DashItDriverApp() {
   })();
 
   const currentOrder = activeQueue[0] || null;
+  useEffect(() => {
+    currentCoordsRef.current = currentCoords;
+  }, [currentCoords.latitude, currentCoords.longitude]);
+
+  /* Identity of the stops on screen. The map is rebuilt when this changes — a
+     claimed, reordered or completed drop — and NOT when the rider moves. */
+  const queueSignature = activeQueue
+    .map((o) => `${o.orderId || o.id}:${o.location?.lat ?? ""},${o.location?.lng ?? ""}`)
+    .join("|");
 
   // External Google Maps multi-stop navigation URL
   const multiStopNavUrl = (() => {
@@ -276,12 +291,14 @@ export default function DashItDriverApp() {
       const targetLng = Number(currentOrder?.location?.lng || currentOrder?.location?.longitude || 75.1565);
 
       // Query real shortest road path in Anantnag for active leg (Driver -> Stop 1)
+      const coords = currentCoordsRef.current;
       const roadRoute = await fetchRoadRoute(
-        currentCoords.latitude,
-        currentCoords.longitude,
+        coords.latitude,
+        coords.longitude,
         targetLat,
         targetLng
       );
+      routeRefreshedAtRef.current = { lat: coords.latitude, lng: coords.longitude };
       if (!isMounted) return;
 
       if (roadRoute?.points?.length) {
@@ -315,7 +332,7 @@ export default function DashItDriverApp() {
         }
 
         const map = L.map(mapContainerRef.current, {
-          center: [(currentCoords.latitude + targetLat) / 2, (currentCoords.longitude + targetLng) / 2],
+          center: [(coords.latitude + targetLat) / 2, (coords.longitude + targetLng) / 2],
           zoom: 14,
           zoomControl: false,
           attributionControl: false,
@@ -360,7 +377,7 @@ export default function DashItDriverApp() {
           iconAnchor: [20, 20],
         });
 
-        const rMarker = L.marker([currentCoords.latitude, currentCoords.longitude], { icon: riderIcon }).addTo(map);
+        const rMarker = L.marker([coords.latitude, coords.longitude], { icon: riderIcon }).addTo(map);
 
         mapInstanceRef.current = map;
         riderMarkerRef.current = rMarker;
@@ -375,7 +392,7 @@ export default function DashItDriverApp() {
       } else {
         // Update vehicle marker & active route
         if (riderMarkerRef.current) {
-          riderMarkerRef.current.setLatLng([currentCoords.latitude, currentCoords.longitude]);
+          riderMarkerRef.current.setLatLng([coords.latitude, coords.longitude]);
         }
         if (routePolylineRef.current && roadRoute?.points) {
           routePolylineRef.current.setLatLngs(roadRoute.points);
@@ -404,7 +421,7 @@ export default function DashItDriverApp() {
         }
         secondaryRoutesRef.current = [];
 
-        const allBoundsPoints = [[currentCoords.latitude, currentCoords.longitude]];
+        const allBoundsPoints = [[coords.latitude, coords.longitude]];
 
         activeQueue.forEach((ord, idx) => {
           const sLat = Number(ord.location?.lat || ord.location?.latitude || (33.7385 + idx * 0.005));
@@ -459,7 +476,45 @@ export default function DashItDriverApp() {
     return () => {
       isMounted = false;
     };
-  }, [activeTab, currentCoords.latitude, currentCoords.longitude, activeQueue.length, currentOrder?.orderId || currentOrder?.id]);
+    /* Deliberately not keyed on the rider's position. This effect tears down and
+       re-adds every destination pin, redraws the dashed inter-stop routes and
+       calls fitBounds — running it on each GPS fix rebuilt the map several times
+       a minute and snapped the camera back every time the rider panned it. */
+  }, [activeTab, queueSignature, currentOrder?.orderId || currentOrder?.id]);
+
+  /* Position updates move the existing layers instead of rebuilding the map. */
+  useEffect(() => {
+    const marker = riderMarkerRef.current;
+    if (!marker || !mapInstanceRef.current) return;
+
+    marker.setLatLng([currentCoords.latitude, currentCoords.longitude]);
+
+    const order = currentOrderRef.current;
+    const target = order?.location;
+    if (!target) return;
+
+    // Re-query the drawn route only once the rider has covered ~120 m.
+    const last = routeRefreshedAtRef.current;
+    const movedKm = last
+      ? Math.hypot(currentCoords.latitude - last.lat, currentCoords.longitude - last.lng) * 111
+      : 1;
+    if (movedKm < 0.12) return;
+    routeRefreshedAtRef.current = { lat: currentCoords.latitude, lng: currentCoords.longitude };
+
+    fetchRoadRoute(
+      currentCoords.latitude,
+      currentCoords.longitude,
+      Number(target.lat || target.latitude),
+      Number(target.lng || target.longitude)
+    )
+      .then((route) => {
+        if (!route?.points?.length) return;
+        currentRoutePointsRef.current = route.points;
+        if (routePolylineRef.current) routePolylineRef.current.setLatLngs(route.points);
+        if (routeCasingRef.current) routeCasingRef.current.setLatLngs(route.points);
+      })
+      .catch(() => {});
+  }, [currentCoords.latitude, currentCoords.longitude]);
 
   // Clean up Leaflet & WakeLock on unmount
   useEffect(() => {
@@ -485,6 +540,7 @@ export default function DashItDriverApp() {
     activeQueueRef.current = activeQueue;
     currentOrderRef.current = currentOrder;
   }, [activeQueue, currentOrder]);
+
 
   // 4. Stop GPS tracking helper
   const stopTracking = useCallback(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
@@ -61,6 +61,11 @@ export default function CheckoutPage() {
   const [isFreeDeliveryModalOpen, setIsFreeDeliveryModalOpen] = useState(false);
   const [hasShownFreeDelivery, setHasShownFreeDelivery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  /* `isProcessing` only disables the button on the next render, which leaves a
+     frame in which a second tap — or the login modal's callback racing the
+     button — can start a second order. A ref closes that window synchronously:
+     placing an order twice charges the customer twice. */
+  const placingRef = useRef(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [processedOrder, setProcessedOrder] = useState(null);
   const [cartItems, setCartItems] = useState([]);
@@ -321,6 +326,8 @@ export default function CheckoutPage() {
   };
 
   const executeOrderPlacement = async (authenticatedUser) => {
+    if (placingRef.current) return;
+    placingRef.current = true;
     setIsProcessing(true);
     hapticOrderPlaced();
 
@@ -345,6 +352,7 @@ export default function CheckoutPage() {
        the rider a map pinned on the shop rather than the customer's door. The
        customer is asked to drop a pin instead. */
     if (!orderLocation || !orderLocation.lat || !orderLocation.lng || !orderLocation.address) {
+      placingRef.current = false;
       setIsProcessing(false);
       setIsLocationModalOpen(true);
       return;
@@ -352,6 +360,7 @@ export default function CheckoutPage() {
 
     const orderEta = calculateDeliveryEta(orderLocation);
     if (!orderEta.isDeliverable) {
+      placingRef.current = false;
       setIsProcessing(false);
       alert("Delivery is not available in your area yet.\n\nWe are expanding across Anantnag and will reach you soon. Please pick another address for now.");
       return;
@@ -395,6 +404,7 @@ export default function CheckoutPage() {
       const finalOrderId = res?.orderId || generatedCode;
       const confirmedOrder = { ...newOrder, orderId: finalOrderId };
       setProcessedOrder(confirmedOrder);
+      placingRef.current = false;
       setIsProcessing(false);
       setShowProcessingModal(true);
 
@@ -416,6 +426,7 @@ export default function CheckoutPage() {
       window.dispatchEvent(new Event("dashit_cart_updated"));
     } catch (err) {
       console.error("Order placement error:", err);
+      placingRef.current = false;
       setIsProcessing(false);
       setShowProcessingModal(false);
       alert(err?.message || "Unable to process order. Please check your connection and try again.");
@@ -432,7 +443,11 @@ export default function CheckoutPage() {
             whileTap={{ scale: 0.88 }}
             type="button"
             onClick={handleSmoothClose}
-            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-transform cursor-pointer"
+            aria-label="Go back"
+            /* Icon-only controls carried no accessible name and sat under the
+               44px target: the circle keeps its size, the button grows around
+               it, and the negative margin keeps the header spacing intact. */
+            className="w-9 h-9 min-w-[44px] min-h-[44px] -m-[3.5px] rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-transform cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </motion.button>
@@ -443,18 +458,21 @@ export default function CheckoutPage() {
 
         <div className="flex items-center space-x-2">
           <button
+            type="button"
+            aria-label="Search products"
             onClick={() => router.push("/search")}
-            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-transform"
+            className="w-9 h-9 min-w-[44px] min-h-[44px] rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-transform"
           >
             <Search className="w-4 h-4 stroke-[2.5]" />
           </button>
           <button
+            type="button"
             onClick={() => {
               if (navigator.share) {
                 navigator.share({ title: "My Dashit Cart", text: "Check out what I am ordering on Dashit!" });
               }
             }}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-transform"
+            className="flex items-center space-x-1.5 px-3 min-h-[44px] rounded-full border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-transform"
           >
             <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Share</span>
@@ -560,7 +578,7 @@ export default function CheckoutPage() {
                       addToWishlist(item);
                       updateItemQty(item.id, -item.qty);
                     }}
-                    className="text-[11px] font-bold text-slate-400 hover:text-[#061838] underline mt-1 text-left active:scale-95 transition-transform"
+                    className="text-[11px] font-bold text-slate-400 hover:text-[#061838] underline mt-1 py-1.5 -my-0.5 text-left active:scale-95 transition-transform"
                   >
                     Move to wishlist
                   </button>
@@ -568,16 +586,25 @@ export default function CheckoutPage() {
 
                 <div className="flex flex-col items-end space-y-1.5 shrink-0">
                   <div className="flex items-center space-x-2 bg-[#061838] text-white rounded-xl px-2.5 py-1 font-bold text-xs shadow-xs">
+                    {/* These were 16px targets with no accessible name, on the
+                        control customers use most before paying. The pill keeps
+                        its size; the pseudo-element carries the touch area. */}
                     <button
+                      type="button"
+                      aria-label={`Remove one ${item.name || "item"}`}
                       onClick={() => updateItemQty(item.id, -1)}
-                      className="p-0.5 active:scale-75 transition-transform"
+                      className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
                     >
                       <Minus className="w-3 h-3 stroke-[3]" />
                     </button>
-                    <span className="font-mono px-1">{item.qty}</span>
+                    <span className="font-mono px-1" aria-live="polite" aria-label={`Quantity ${item.qty}`}>
+                      {item.qty}
+                    </span>
                     <button
+                      type="button"
+                      aria-label={`Add one more ${item.name || "item"}`}
                       onClick={() => updateItemQty(item.id, 1)}
-                      className="p-0.5 active:scale-75 transition-transform"
+                      className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
                     >
                       <Plus className="w-3 h-3 stroke-[3]" />
                     </button>
@@ -710,16 +737,18 @@ export default function CheckoutPage() {
                         <div className="flex items-center space-x-1 bg-[#061838] text-white rounded-xl px-2 py-1 font-bold text-xs shadow-xs">
                           <button
                             type="button"
+                            aria-label={`Remove one ${prod.name || "item"}`}
                             onClick={() => updateItemQty(prod.id, -1)}
-                            className="p-0.5 active:scale-75 transition-transform"
+                            className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
                           >
                             <Minus className="w-3 h-3 stroke-[3]" />
                           </button>
-                          <span className="font-mono px-1">{inCart.qty}</span>
+                          <span className="font-mono px-1" aria-live="polite">{inCart.qty}</span>
                           <button
                             type="button"
+                            aria-label={`Add one more ${prod.name || "item"}`}
                             onClick={() => updateItemQty(prod.id, 1)}
-                            className="p-0.5 active:scale-75 transition-transform"
+                            className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
                           >
                             <Plus className="w-3 h-3 stroke-[3]" />
                           </button>
@@ -1120,6 +1149,7 @@ export default function CheckoutPage() {
         orderDetails={processedOrder}
         onComplete={() => {
           setShowProcessingModal(false);
+          placingRef.current = false;
           setIsProcessing(false);
           router.push("/orders");
         }}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 import Head from 'next/head';
 import { motion, MotionConfig } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
@@ -7,7 +8,6 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import '../styles/globals.css';
 import 'leaflet/dist/leaflet.css';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import LiveOrderFloatingTracker from '../components/LiveOrderFloatingTracker';
 import FloatingCartBar from '../components/FloatingCartBar';
 import BottomNav from '../components/BottomNav';
 import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
@@ -18,6 +18,16 @@ import { initNotificationPermissions } from '../lib/notifications';
 
 import { setDeviceSystemBars } from '../lib/systemBars';
 import { isNative } from '../lib/platform';
+
+/* Loaded on demand rather than with the app shell. This component is the only
+   thing in _app that reaches Firestore and Firebase Auth, and a static import
+   pulled the whole Firebase SDK into the chunk every page downloads before it
+   can render — including /privacy, /terms and the 404. It renders on /shop
+   alone, so the cost now falls only on the page that uses it. */
+const LiveOrderFloatingTracker = dynamic(
+  () => import('../components/LiveOrderFloatingTracker'),
+  { ssr: false }
+);
 import { EASE_OUT } from '../lib/motion';
 
 export default function App({ Component, pageProps }) {
@@ -353,7 +363,9 @@ export default function App({ Component, pageProps }) {
           }}
           className={
             router.pathname === '/admin'
-              ? "w-full h-screen h-[100dvh] overflow-hidden relative"
+              /* Only the desktop console is viewport-locked; on a phone the
+                 admin page scrolls like any other page. */
+              ? "w-full min-h-screen relative lg:h-screen lg:h-[100dvh] lg:overflow-hidden"
               : "w-full min-h-screen relative"
           }
         >

@@ -10,8 +10,9 @@ import {
 import { hapticLight, hapticMedium } from "../lib/haptics";
 import DeliveryStatusIcon, { statusToMark } from "./DeliveryStatusIcon";
 import { SPRING_SNAPPY, SPRING_SOFT, EASE_OUT } from "../lib/motion";
-import { watchOrder, watchOrderTracking } from "../lib/db";
+import { watchOrder, watchOrderTracking, retireFinishedOrder } from "../lib/db";
 import { calculateDeliveryEta, computeOrderProgress } from "../lib/deliveryEta";
+import { useStoredJson } from "../lib/useStoredJson";
 
 /**
  * DASHit Live Activity.
@@ -28,12 +29,33 @@ import { calculateDeliveryEta, computeOrderProgress } from "../lib/deliveryEta";
  */
 
 /** Order lifecycle, in the order the customer experiences it. */
+/* How long the finished activity stays on screen before it retires itself. Long
+   enough for the customer to register that the order arrived, short enough that
+   it is gone by their next visit to the shop. */
+const FINISHED_HOLD_MS = 20000;
+
 const STAGES = [
   { key: "Placed", short: "Placed", caption: "Order confirmed at the hub" },
   { key: "Packed", short: "Packing", caption: "Your items are being bagged" },
   { key: "Out for Delivery", short: "On the way", caption: "Rider is heading to you" },
   { key: "Delivered", short: "Delivered", caption: "Handed over at your door" },
 ];
+
+/**
+ * Status changes only ever move forward, except for the two terminal states.
+ *
+ * The widget reads status from two places — the order document in Firestore and
+ * the copy in localStorage — and they can disagree for a moment. Taking the
+ * furthest-along of the two keeps the stage rail from flicking backwards while
+ * still letting a locally written change through, which matters when Firestore
+ * is unreachable and localStorage is the only source the app has.
+ */
+const advanceStatus = (prev, next) => {
+  if (!next) return prev;
+  if (next === "Delivered" || next === "Cancelled") return next;
+  if (prev === "Delivered" || prev === "Cancelled") return prev;
+  return stageIndexFor(next) > stageIndexFor(prev) ? next : prev;
+};
 
 const stageIndexFor = (status) => {
   const idx = STAGES.findIndex((s) => s.key === status);
@@ -55,7 +77,6 @@ const titleFor = (status, etaMinutes) => {
 
 export default function LiveOrderFloatingTracker() {
   const router = useRouter();
-  const [activeOrder, setActiveOrder] = useState(null);
   const [isExpanded, setIsExpanded] = useState(false);
   /* Pulled up out of the way by the customer. The capsule leaves a grab handle
      behind so a tucked activity is always recoverable — a live order must never
@@ -68,9 +89,9 @@ export default function LiveOrderFloatingTracker() {
   const [riderName, setRiderName] = useState("");
   const [distanceLabel, setDistanceLabel] = useState("");
 
-  /* Read by the localStorage poll below without making it a dependency — the
-     poll used to re-subscribe on every ETA tick, tearing down and rebuilding its
-     interval several times a minute. */
+  /* Latest figures, readable from inside the Firestore listener below without
+     listing them as dependencies — naming them there would tear the snapshot
+     subscription down and rebuild it on every ETA tick. */
   const liveRef = useRef({ etaMinutes: null, progressPct: 12, status: "Placed", riderName: "" });
   useEffect(() => {
     liveRef.current = { etaMinutes, progressPct, status: orderStatus, riderName };
@@ -87,36 +108,49 @@ export default function LiveOrderFloatingTracker() {
     setEtaMinutes((prev) => prev ?? seeded);
   }, []);
 
-  // Active order presence — localStorage is the offline-capable source of truth
+  /* Active order presence — localStorage is the offline-capable source of truth.
+     The shared hook republishes only when the stored order really changes, so
+     this component is no longer re-rendered every three seconds for nothing. */
+  const activeOrder = useStoredJson("dashit_active_order", {
+    events: ["dashit_orders_updated"],
+  });
+
   useEffect(() => {
-    const checkOrder = () => {
-      try {
-        const active = localStorage.getItem("dashit_active_order");
-        if (!active) {
-          setActiveOrder(null);
-          clearOrderLiveNotification();
-          return;
-        }
-        const parsed = JSON.parse(active);
-        setActiveOrder(parsed);
-        setOrderStatus((prev) => (prev === "Placed" ? parsed.status || "Placed" : prev));
-        seedFromOrder(parsed);
+    if (!activeOrder) {
+      clearOrderLiveNotification();
+      return;
+    }
+    setOrderStatus((prev) => advanceStatus(prev, activeOrder.status));
+    seedFromOrder(activeOrder);
+  }, [activeOrder, seedFromOrder]);
 
-        const live = liveRef.current;
-        showOrderLiveNotification({
-          orderId: parsed.orderId,
-          etaMinutes: live.status === "Delivered" ? 0 : live.etaMinutes || 0,
-          progressPct: live.status === "Delivered" ? 100 : live.progressPct,
-          status: live.status === "Delivered" ? "Delivered" : titleFor(live.status, live.etaMinutes),
-          riderName: live.riderName,
-        });
-      } catch (e) {}
-    };
+  /* Keep the OS notification in step with the live figures rather than with a
+     polling tick — it used to be rewritten every three seconds regardless. */
+  useEffect(() => {
+    if (!activeOrder?.orderId) return;
+    showOrderLiveNotification({
+      orderId: activeOrder.orderId,
+      etaMinutes: isDelivered ? 0 : etaMinutes || 0,
+      progressPct: isDelivered ? 100 : progressPct,
+      status: isDelivered ? "Delivered" : titleFor(orderStatus, etaMinutes),
+      riderName,
+    });
+  }, [activeOrder?.orderId, orderStatus, etaMinutes, progressPct, riderName, isDelivered]);
 
-    checkOrder();
-    const interval = setInterval(checkOrder, 3000);
-    return () => clearInterval(interval);
-  }, [seedFromOrder]);
+  /* A delivered order is not an active one. It lingers briefly so the customer
+     sees the confirmation, then moves to history and the capsule leaves. */
+  useEffect(() => {
+    const orderId = activeOrder?.orderId;
+    if (!orderId) return undefined;
+    if (orderStatus !== "Delivered" && orderStatus !== "Cancelled") return undefined;
+
+    const timer = setTimeout(() => {
+      if (retireFinishedOrder(orderId, orderStatus)) {
+        clearOrderLiveNotification();
+      }
+    }, FINISHED_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [activeOrder?.orderId, orderStatus]);
 
   // Only show on the shopping page (/shop) as explicitly requested by user
   const isShoppingPage = router.pathname === "/shop";
@@ -131,7 +165,7 @@ export default function LiveOrderFloatingTracker() {
     const unsubOrder = watchOrder(activeOrder.orderId, (data) => {
       if (!data) return;
       if (data.status) {
-        setOrderStatus(data.status);
+        setOrderStatus((prev) => advanceStatus(prev, data.status));
         /* Stage floors only — the fine-grained value comes from the rider's
            distance-based progress below, so this never drags the bar back. */
         setProgressPct((prev) =>
@@ -166,7 +200,7 @@ export default function LiveOrderFloatingTracker() {
       if (data.distanceFormatted) setDistanceLabel(String(data.distanceFormatted));
       else if (data.distanceKm) setDistanceLabel(`${Number(data.distanceKm).toFixed(1)} km away`);
       if (data.driverName) setRiderName(data.driverName);
-      if (data.status) setOrderStatus((prev) => (prev === "Delivered" ? prev : data.status));
+      if (data.status) setOrderStatus((prev) => advanceStatus(prev, data.status));
     });
 
     return () => {
@@ -230,11 +264,16 @@ export default function LiveOrderFloatingTracker() {
               setIsTucked(false);
             }}
             aria-label="Show live order status"
-            className="pointer-events-auto flex items-center gap-2 h-7 px-3 rounded-full bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+            /* The pill stays visually small, but the padding (cancelled out by
+               the negative margin) gives it a ~44px tap target: this handle is
+               the only way back to a live order, so it must not be fiddly. */
+            className="pointer-events-auto flex items-center justify-center px-2 py-2 -mx-2 -my-2"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B00]" />
-            <span className="text-[11px] font-bold text-white/80 tabular-nums">
-              {isDelivered ? "Delivered" : etaMinutes > 0 ? `${etaMinutes} min` : "Live"}
+            <span className="flex items-center gap-2 h-7 px-3 rounded-full bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B00]" />
+              <span className="text-[11px] font-bold text-white/80 tabular-nums">
+                {isDelivered ? "Delivered" : etaMinutes > 0 ? `${etaMinutes} min` : "Live"}
+              </span>
             </span>
           </motion.button>
         ) : (

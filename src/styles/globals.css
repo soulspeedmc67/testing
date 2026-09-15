@@ -51,8 +51,11 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Scrollbar cosmetics only. This used to force `overflow-y: auto !important`,
+   which re-imposed an inner scroll region on the admin console even where the
+   layout wanted the page itself to scroll. Elements that need to scroll say so
+   with their own overflow class. */
 .admin-scroll {
-  overflow-y: auto !important;
   -webkit-overflow-scrolling: touch !important;
   scrollbar-width: thin !important;
   scrollbar-color: #cbd5e1 #f1f5f9;

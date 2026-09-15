@@ -5,9 +5,14 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import DashitAnimatedLogo from "./DashitAnimatedLogo";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
+import { useStoredJson } from "../lib/useStoredJson";
 
 export default function HomeScreenLiveOrderCard() {
-  const [activeOrder, setActiveOrder] = useState(null);
+  /* Read through the shared store hook: it publishes a new value only when the
+     stored order actually changes, and stops polling while the app is hidden. */
+  const activeOrder = useStoredJson("dashit_active_order", {
+    events: ["dashit_orders_updated"],
+  });
   const [isDismissed, setIsDismissed] = useState(false);
 
   const etaData = useMemo(() => {
@@ -25,20 +30,6 @@ export default function HomeScreenLiveOrderCard() {
       }
     }
 
-    const checkOrder = () => {
-      try {
-        const saved = localStorage.getItem("dashit_active_order");
-        if (saved) {
-          setActiveOrder(JSON.parse(saved));
-        } else {
-          setActiveOrder(null);
-        }
-      } catch (e) {}
-    };
-
-    checkOrder();
-    const interval = setInterval(checkOrder, 3000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleDismiss = () => {

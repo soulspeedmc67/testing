@@ -49,82 +49,79 @@ export default function AdminLayout({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  /* Labels are the words a shopkeeper uses, not warehouse software jargon:
+     "Batch Inward", "Catalogue", "FMCG Importer" and "CSV Import / Export" told
+     the person running this store nothing about what the screen does. The groups
+     are ordered by how often the day actually needs them. */
   const navItems = [
     {
-      group: "Operations",
+      group: "Every day",
       items: [
         {
           id: "orders",
-          label: "Live Orders",
+          label: "Orders",
           icon: Package,
           badge: activeOrdersCount > 0 ? activeOrdersCount : null,
           badgeColor: "bg-[#FF5B00] text-white",
         },
         {
-          id: "drivers",
-          label: "Driver Fleet",
-          icon: Truck,
-        },
-        {
           id: "inventory",
-          label: "Inventory & Stock",
+          label: "Stock",
           icon: Boxes,
           badge: lowStockCount > 0 ? `${lowStockCount} low` : null,
           badgeColor: "bg-amber-500 text-slate-950",
         },
+        {
+          id: "add-product",
+          label: "Add an item",
+          icon: Camera,
+        },
+        {
+          id: "drivers",
+          label: "Delivery riders",
+          icon: Truck,
+        },
       ],
     },
     {
-      group: "Catalogue & Sourcing",
+      group: "Shop setup",
       items: [
         {
-          id: "add-product",
-          label: "Add / Scan Item",
-          icon: Camera,
-          badge: "4K Auto",
-          badgeColor: "bg-emerald-500/15 text-emerald-500",
-        },
-        {
-          id: "batch-inward",
-          label: "Batch Inward",
-          icon: ArrowDownToLine,
-        },
-        {
           id: "catalogue",
-          label: "Store Catalogue",
+          label: "All items",
           icon: Tag,
           badge: catalogueCount > 0 ? `${catalogueCount}` : null,
           badgeColor: "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300",
         },
         {
-          id: "csv",
-          label: "CSV Import / Export",
-          icon: FileSpreadsheet,
-        },
-      ],
-    },
-    {
-      group: "Marketing & Growth",
-      items: [
-        {
           id: "offers",
-          label: "Storefront Offers",
+          label: "Discounts",
           icon: Sparkles,
         },
         {
-          id: "importer",
-          label: "FMCG Importer",
-          icon: Barcode,
+          id: "settings",
+          label: "Shop settings",
+          icon: Store,
         },
       ],
     },
     {
-      group: "Store Management",
+      group: "Bulk tools",
       items: [
         {
-          id: "settings",
-          label: "Store Controls",
-          icon: Store,
+          id: "batch-inward",
+          label: "Add many at once",
+          icon: ArrowDownToLine,
+        },
+        {
+          id: "csv",
+          label: "Excel file",
+          icon: FileSpreadsheet,
+        },
+        {
+          id: "importer",
+          label: "Find by barcode",
+          icon: Barcode,
         },
       ],
     },
@@ -136,8 +133,14 @@ export default function AdminLayout({
   };
 
   return (
+    /* Phones and tablets scroll the document itself. The console used to pin
+       itself to the viewport height and scroll an inner <main> instead, which is
+       fragile on a phone browser — the address bar resize, the on-screen
+       keyboard and a flick that starts on any non-scrolling child all leave the
+       page looking frozen. The fixed two-pane layout is kept from `lg` up, where
+       a sidebar plus its own scroll region is the right shape. */
     <div
-      className={`h-screen h-[100dvh] max-h-screen overflow-hidden font-sans flex flex-col transition-colors ${
+      className={`min-h-screen lg:h-screen lg:h-[100dvh] lg:max-h-screen lg:overflow-hidden font-sans flex flex-col transition-colors ${
         darkMode ? "dark bg-[#0D0E12] text-zinc-100" : "bg-[#F4F6F9] text-slate-900"
       }`}
     >
@@ -326,7 +329,7 @@ export default function AdminLayout({
       )}
 
       {/* 3. MAIN DASHBOARD BODY (Metis-Style Layout: Sidebar + Content) */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex lg:overflow-hidden min-h-0">
         {/* LEFT SIDEBAR (Desktop) */}
         <aside
           className={`w-64 border-r hidden lg:flex flex-col justify-between shrink-0 min-h-0 transition-colors ${
@@ -489,9 +492,11 @@ export default function AdminLayout({
 
         {/* RIGHT MAIN CONTENT AREA */}
         <main
-          className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 min-h-0 admin-scroll"
+          /* `min-w-0` matters: as a flex item this defaults to min-width:auto,
+             so a wide child (the stat grid) stretched the column past the
+             viewport and the right-hand cards were clipped out of reach. */
+          className="flex-1 min-w-0 lg:overflow-y-auto p-4 sm:p-6 pb-[max(24px,calc(16px+env(safe-area-inset-bottom,0px)))] space-y-6 min-h-0 admin-scroll"
           data-scrollable="true"
-          tabIndex={0}
         >
           {children}
         </main>

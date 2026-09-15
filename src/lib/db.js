@@ -821,6 +821,61 @@ export function watchAvailableOrders(callback) {
   };
 }
 
+/** Terminal states: an order in one of these is finished, not in flight. */
+export const FINISHED_STATUSES = ["Delivered", "Cancelled"];
+
+/**
+ * Retires a finished order out of the "active order" slot and into history.
+ *
+ * Nothing used to do this on delivery — only cancellation removed the key — so a
+ * completed order stayed the customer's active delivery forever: the live
+ * activity kept sitting at the top of the shop, the home screen kept showing the
+ * order card, the ongoing notification was never cleared, and every visit to
+ * /shop reopened Firestore listeners on an order that had already arrived.
+ *
+ * Safe to call repeatedly; it does nothing unless the stored active order is the
+ * one named and is genuinely finished.
+ *
+ * @returns {boolean} whether an order was actually retired.
+ */
+export function retireFinishedOrder(orderId, status) {
+  if (typeof window === "undefined") return false;
+  if (!FINISHED_STATUSES.includes(status)) return false;
+
+  try {
+    const activeRaw = localStorage.getItem("dashit_active_order");
+    if (!activeRaw) return false;
+    const active = JSON.parse(activeRaw);
+    const matches =
+      String(active.orderId) === String(orderId) || String(active.id) === String(orderId);
+    if (!matches) return false;
+
+    const finished = { ...active, status, completedAt: new Date().toISOString() };
+
+    // Keep the receipt: history is what /orders reads for past purchases.
+    const history = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+    const withoutThis = history.filter(
+      (o) => String(o.orderId) !== String(orderId) && String(o.id) !== String(orderId)
+    );
+    localStorage.setItem(
+      "dashit_orders_history",
+      JSON.stringify([finished, ...withoutThis])
+    );
+
+    localStorage.removeItem("dashit_active_order");
+    localStorage.removeItem(`dashit_tracking_${orderId}`);
+
+    /* Tell the docked chrome immediately rather than letting it find out on its
+       next poll, so the capsule and the home card disappear together. */
+    window.dispatchEvent(
+      new CustomEvent("dashit_orders_updated", { detail: finished })
+    );
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 export async function updateOrderStatus(orderId, status) {
   // 1. Always update local storage and broadcast first so UI reflects change immediately
   if (typeof window !== "undefined") {

@@ -875,6 +875,35 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   };
 
   // Quick Stock Adjust
+  /* Sets every catalogue item to zero units in one pass. The confirm step lives
+     in InventoryView; by the time this runs the admin has already agreed. */
+  const [isClearingStock, setIsClearingStock] = useState(false);
+  const handleClearAllStock = async () => {
+    if (!catalogue || catalogue.length === 0) return;
+    setIsClearingStock(true);
+    try {
+      const updates = catalogue
+        .map((p) => ({ id: p.id || p.barcode, newStock: 0 }))
+        .filter((u) => u.id);
+      const res = await bulkUpdateProductStock(updates);
+
+      setCatalogue((prev) => prev.map((p) => ({ ...p, stock: 0 })));
+
+      /* bulkUpdateProductStock reports per-item failures rather than throwing,
+         so say how many actually landed instead of claiming a clean sweep. */
+      const failed = res?.failures?.length || 0;
+      showToast(
+        failed > 0
+          ? `Cleared ${updates.length - failed} of ${updates.length} items · ${failed} could not be saved`
+          : `All ${updates.length} items marked sold out`
+      );
+    } catch (err) {
+      showToast(`Could not clear stock: ${err?.message || "please try again"}`);
+    } finally {
+      setIsClearingStock(false);
+    }
+  };
+
   const handleQuickStockAdjust = async (productId, delta) => {
     try {
       const newStock = await adjustSingleProductStock(productId, delta, false);
@@ -1427,6 +1456,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         <InventoryView
           catalogue={catalogue}
           onQuickStockAdjust={handleQuickStockAdjust}
+          onClearAllStock={handleClearAllStock}
+          isClearingStock={isClearingStock}
           onNavigateTab={setActiveTab}
           darkMode={darkMode}
         />
