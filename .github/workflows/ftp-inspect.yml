@@ -43,5 +43,9 @@ jobs:
           run_ftp "cd /domains && cls -l --sort=name"
 
           echo ""
-          echo "========= every index.html within 3 levels ==========="
-          run_ftp "find -d 3 / | grep -i 'index.html$' | head -30"
+          echo "=========== /domains/dashit.co.in ===================="
+          run_ftp "cd /domains/dashit.co.in && cls -l --sort=name"
+
+          echo ""
+          echo "====== /domains/dashit.co.in/public_html (newest) ====="
+          run_ftp "cd /domains/dashit.co.in/public_html && cls -l --sort=date | head -12"
