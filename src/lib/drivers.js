@@ -1,13 +1,43 @@
-import { ORDER_STATUS } from "./db";
+import { ORDER_STATUS, watchDrivers, fetchDrivers } from "./db";
 
 export const DEFAULT_DRIVERS = [
-  { id: "DOf5enic8SXBZTupGJbxDrNdrOt2", name: "Rider M4K (m4k3ditz)", phone: "9876543210", email: "m4k3ditz@gmail.com" },
-  { id: "driver_tariq", name: "Tariq", phone: "9876543210" },
-  { id: "driver_bilal", name: "Bilal", phone: "9876543211" },
-  { id: "driver_aamir", name: "Aamir", phone: "9876543212" },
+  { id: "DOf5enic8SXBZTupGJbxDrNdrOt2", name: "Rider M4K (m4k3ditz)", phone: "9876543210", email: "m4k3ditz@gmail.com", vehicle: "Scooter" },
+  { id: "driver_tariq", name: "Tariq", phone: "9876543210", vehicle: "Scooter" },
+  { id: "driver_bilal", name: "Bilal", phone: "9876543211", vehicle: "Scooter" },
+  { id: "driver_aamir", name: "Aamir", phone: "9876543212", vehicle: "Scooter" },
 ];
 
 const ROSTER_KEY = "dashit_driver_roster";
+
+/**
+ * Merges a list of Firestore staff drivers with a local roster,
+ * giving precedence to Firestore data and avoiding duplicates by ID or email/name.
+ */
+export function mergeDriversWithRoster(localList = [], firestoreList = []) {
+  const merged = [];
+  const seenIds = new Set();
+  const seenEmails = new Set();
+
+  // 1. Add Firestore drivers first (authoritative source)
+  firestoreList.forEach((fd) => {
+    if (!fd || !fd.id) return;
+    seenIds.add(String(fd.id));
+    if (fd.email) seenEmails.add(fd.email.toLowerCase().trim());
+    merged.push(fd);
+  });
+
+  // 2. Add local roster items that do not duplicate Firestore drivers
+  localList.forEach((ld) => {
+    if (!ld || !ld.id) return;
+    const emailKey = ld.email ? ld.email.toLowerCase().trim() : null;
+    if (seenIds.has(String(ld.id))) return;
+    if (emailKey && seenEmails.has(emailKey)) return;
+    seenIds.add(String(ld.id));
+    merged.push(ld);
+  });
+
+  return merged;
+}
 
 /**
  * Reads the driver roster from localStorage with fallback to default team.
@@ -19,7 +49,7 @@ export function getDriverRoster() {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return mergeDriversWithRoster(parsed, DEFAULT_DRIVERS);
       }
     }
   } catch (e) {
@@ -27,6 +57,49 @@ export function getDriverRoster() {
   }
   return DEFAULT_DRIVERS;
 }
+
+/**
+ * Watches all drivers in real-time by combining Firestore staff drivers with the local roster.
+ * Broadcasts updates via the callback whenever either changes.
+ */
+export function watchAllDrivers(callback) {
+  let firestoreDrivers = [];
+  let localDrivers = getDriverRoster();
+
+  const emit = () => {
+    const combined = mergeDriversWithRoster(localDrivers, firestoreDrivers);
+    callback(combined);
+  };
+
+  // 1. Immediate emit of initial state
+  emit();
+
+  // 2. Subscribe to Firestore drivers
+  const unsubFs = watchDrivers((fsList) => {
+    firestoreDrivers = fsList || [];
+    emit();
+  });
+
+  // 3. Subscribe to local window updates
+  const handleLocalUpdate = (e) => {
+    localDrivers = (e?.detail && Array.isArray(e.detail)) ? e.detail : getDriverRoster();
+    emit();
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("dashit_driver_roster_updated", handleLocalUpdate);
+    window.addEventListener("storage", handleLocalUpdate);
+  }
+
+  return () => {
+    if (typeof unsubFs === "function") unsubFs();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("dashit_driver_roster_updated", handleLocalUpdate);
+      window.removeEventListener("storage", handleLocalUpdate);
+    }
+  };
+}
+
 
 /**
  * Saves driver roster to localStorage and broadcasts the update.
