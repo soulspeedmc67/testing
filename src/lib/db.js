@@ -722,27 +722,58 @@ export function watchDriverOrders(driverId, callback) {
     callback([]);
     return () => {};
   }
-  if (!db) {
+  let firestoreLive = false;
+  const emitLocal = () => {
+    if (firestoreLive) return;
     callback(getLocalDriverOrders());
-    return () => {};
-  }
+  };
 
-  return onSnapshot(
-    query(
-      collection(db, "orders"),
-      where("driverId", "==", driverId),
-      where("status", "in", [
-        ORDER_STATUS.PLACED,
-        ORDER_STATUS.PACKING,
-        ORDER_STATUS.OUT_FOR_DELIVERY,
-      ])
-    ),
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
-    (err) => {
-      console.warn("watchDriverOrders snapshot warning:", err?.message);
+  let unsub = () => {};
+  if (db) {
+    try {
+      unsub = onSnapshot(
+        query(
+          collection(db, "orders"),
+          where("driverId", "==", driverId),
+          where("status", "in", [
+            ORDER_STATUS.PLACED,
+            ORDER_STATUS.PACKED,
+            "Packing",
+            ORDER_STATUS.OUT_FOR_DELIVERY,
+          ])
+        ),
+        (snap) => {
+          firestoreLive = true;
+          callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        },
+        (err) => {
+          console.warn("watchDriverOrders snapshot warning:", err?.message);
+          firestoreLive = false;
+          callback(getLocalDriverOrders());
+        }
+      );
+    } catch (e) {
       callback(getLocalDriverOrders());
     }
-  );
+  } else {
+    callback(getLocalDriverOrders());
+  }
+
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = emitLocal;
+    window.addEventListener("dashit_orders_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    setTimeout(emitLocal, 10);
+  }
+
+  return () => {
+    if (typeof unsub === "function") unsub();
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_orders_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+  };
 }
 
 /** Driver console: pool of unassigned active orders ready to claim. */
@@ -760,7 +791,10 @@ export function watchAvailableOrders(callback) {
           }
         }
         return list.filter(
-          (ord) => !ord.driverId && ord.status !== ORDER_STATUS.DELIVERED && ord.status !== ORDER_STATUS.CANCELLED
+          (ord) =>
+            (!ord.driverId || ord.driverId === "") &&
+            ord.status !== ORDER_STATUS.DELIVERED &&
+            ord.status !== ORDER_STATUS.CANCELLED
         );
       } catch (e) {}
     }
@@ -781,14 +815,19 @@ export function watchAvailableOrders(callback) {
       unsub = onSnapshot(
         query(
           collection(db, "orders"),
-          where("status", "in", [ORDER_STATUS.PLACED, ORDER_STATUS.PACKING]),
+          where("status", "in", [
+            ORDER_STATUS.PLACED,
+            ORDER_STATUS.PACKED,
+            "Packing",
+            ORDER_STATUS.OUT_FOR_DELIVERY,
+          ]),
           limit(50)
         ),
         (snap) => {
           firestoreLive = true;
           const unassigned = snap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
-            .filter((o) => !o.driverId);
+            .filter((o) => !o.driverId || o.driverId === "");
           callback(unassigned);
         },
         (err) => {
