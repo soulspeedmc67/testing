@@ -276,7 +276,7 @@ export default function ProductDetailPage({ initialProduct }) {
     <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-36 dark:bg-surface dark:text-content">
       <SEO
         title={`${product.name} — Buy Online in Anantnag`}
-        description={`Order fresh ${product.name} (${product.unit}) online in Anantnag, Kashmir. Fastest 8-minute delivery from DASHIT. 100% genuine quality assured.`}
+        description={`Order fresh ${product.name} (${product.unit}) online in Anantnag, Kashmir. Fastest delivery from DASHIT. 100% genuine quality assured.`}
         canonical={`/product/${product.id}/`}
         ogImage={product.img}
         ogType="product"

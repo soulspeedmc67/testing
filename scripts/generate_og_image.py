@@ -67,23 +67,23 @@ def generate_og_image():
     draw.text((165, 88), "DASH", fill="#FFFFFF", font=font_brand)
     draw.text((310, 88), "IT", fill="#FF5B00", font=font_brand)
 
-    # Badge Pill: "#1 HYPERLOCAL DELIVERY IN ANANTNAG"
+    # Badge Pill: "#1 GROCERY DELIVERY IN ANANTNAG"
     badge_x, badge_y = 80, 190
-    draw.rounded_rectangle([(badge_x, badge_y), (badge_x + 360, badge_y + 36)], radius=18, fill="#122B55", outline="#FF5B00", width=1)
-    draw.text((badge_x + 18, badge_y + 8), "⚡ 8-MINUTE DELIVERY IN ANANTNAG", fill="#FF5B00", font=font_badge)
+    draw.rounded_rectangle([(badge_x, badge_y), (badge_x + 390, badge_y + 36)], radius=18, fill="#122B55", outline="#FF5B00", width=1)
+    draw.text((badge_x + 18, badge_y + 8), "⚡ #1 GROCERY DELIVERY APP IN ANANTNAG", fill="#FF5B00", font=font_badge)
 
     # Headline
-    draw.text((80, 250), "Groceries & Daily\nEssentials in 8 Mins.", fill="#FFFFFF", font=font_headline, spacing=10)
+    draw.text((80, 250), "Groceries & Daily\nEssentials Delivered Fast.", fill="#FFFFFF", font=font_headline, spacing=10)
 
     # Subtitle
     subtext = "Fresh Kashmiri bakery, milk, dairy, snacks,\nbeverages & staples delivered to your door."
     draw.text((80, 390), subtext, fill="#94A3B8", font=font_sub, spacing=8)
 
     # Stat Badges at the bottom
-    # Stat 1: 8 Mins ETA
-    draw.rounded_rectangle([(80, 485), (240, 560)], radius=20, fill="#0B1E40", outline="#1E3A6E", width=1)
-    draw.text((100, 495), "8 Mins", fill="#FFFFFF", font=font_stats)
-    draw.text((100, 532), "Average Drop", fill="#94A3B8", font=font_stats_sub)
+    # Stat 1: #1 Fastest
+    draw.rounded_rectangle([(80, 485), (250, 560)], radius=20, fill="#0B1E40", outline="#1E3A6E", width=1)
+    draw.text((100, 495), "#1 Fastest", fill="#FFFFFF", font=font_stats)
+    draw.text((100, 532), "Delivery in Anantnag", fill="#94A3B8", font=font_stats_sub)
 
     # Stat 2: ₹0 Min Order
     draw.rounded_rectangle([(260, 485), (430, 560)], radius=20, fill="#0B1E40", outline="#1E3A6E", width=1)

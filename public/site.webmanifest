@@ -1,7 +1,7 @@
 {
-  "name": "DASHIT — 8-Minute Grocery Delivery",
+  "name": "DASHIT — #1 Grocery Delivery App in Anantnag",
   "short_name": "DASHIT",
-  "description": "Hyperlocal 8-minute grocery and essentials delivery across Anantnag, Kashmir.",
+  "description": "#1 fastest grocery and essentials delivery across Anantnag, Kashmir.",
   "start_url": "/?source=pwa",
   "display": "standalone",
   "background_color": "#061838",

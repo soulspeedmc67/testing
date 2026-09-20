@@ -71,7 +71,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
 
             {/* Doorstep payment notice */}
             <div className="p-3 rounded-xl bg-slate-100/80 dark:bg-surface-muted border border-slate-200 dark:border-line-soft text-slate-600 dark:text-content-secondary text-[11px] leading-relaxed">
-              💡 For instant 10-minute dispatch in Anantnag, all orders are processed via Cash on Delivery. You can hand cash or scan the rider&apos;s UPI QR code directly at delivery.
+              💡 For fastest doorstep dispatch in Anantnag, all orders are processed via Cash on Delivery. You can hand cash or scan the rider&apos;s UPI QR code directly at delivery.
             </div>
           </div>
         </div>

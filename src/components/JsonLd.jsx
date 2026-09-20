@@ -52,7 +52,7 @@ export function OrganizationJsonLd() {
     logo: `${SITE_URL}/dashit-full-logo.png`,
     image: `${SITE_URL}/dashit-app-icon.png`,
     description:
-      "DASHIT is Anantnag's premier hyperlocal quick-commerce platform delivering fresh groceries, milk, Kashmiri bakery, and daily essentials in 8 minutes.",
+      "DASHIT is Anantnag's #1 grocery delivery platform delivering fresh groceries, milk, Kashmiri bakery, and daily essentials with fastest delivery.",
     address: {
       "@type": "PostalAddress",
       streetAddress: "Central Store Hub, Nai Basti",
@@ -75,14 +75,14 @@ export function OrganizationJsonLd() {
 }
 
 /**
- * Hyperlocal Store / GroceryStore Schema (LocalBusiness)
+ * GroceryStore Schema (LocalBusiness)
  */
 export function GroceryStoreJsonLd() {
   const schema = {
     "@context": "https://schema.org",
     "@type": "GroceryStore",
     "@id": `${SITE_URL}/#store`,
-    name: "DASHIT Hyperlocal Quick Store",
+    name: "DASHIT #1 Grocery Store",
     image: `${SITE_URL}/art/landing-hero-groceries.jpg`,
     url: SITE_URL,
     telephone: "+91-6006990032",
@@ -153,7 +153,7 @@ export function ProductJsonLd({ product, url }) {
     image: [product.img],
     description:
       product.description ||
-      `Buy fresh ${product.name} online in Anantnag with 8-minute delivery from DASHIT. Verified quality and best price guarantee.`,
+      `Buy fresh ${product.name} online in Anantnag with fastest delivery from DASHIT. Verified quality and best price guarantee.`,
     sku: String(product.barcode || product.id || "DASHIT-PROD"),
     mpn: String(product.id || "DASHIT-MPN"),
     brand: {

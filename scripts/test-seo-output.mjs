@@ -24,8 +24,8 @@ console.log("\n=================== VERIFYING COMPILED HTML IN out/ =============
 
 // 1. Home Page SEO
 const homeHtml = fs.readFileSync(path.join(OUT, "index.html"), "utf8");
-assert(homeHtml.includes("<title>DASHIT — Hyperlocal Grocery Delivery in Anantnag"), "Home title optimized");
-assert(homeHtml.includes('name="description" content="Anantnag&#x27;s #1 quick-commerce service.'), "Home description present");
+assert(homeHtml.includes("<title>DASHIT — #1 Grocery Delivery App in Anantnag"), "Home title optimized");
+assert(homeHtml.includes('name="description" content="Download the DASHIT mobile app for Android &amp; iOS. #1 fastest grocery delivery across Anantnag.'), "Home description present");
 assert(homeHtml.includes('<link rel="canonical" href="https://dashit.co.in/"/>'), "Home canonical link present");
 assert(homeHtml.includes('property="og:image" content="https://dashit.co.in/og-image.png"'), "Home og:image present");
 assert(homeHtml.includes('name="twitter:card" content="summary_large_image"'), "Home twitter:card present");
@@ -36,7 +36,7 @@ assert(homeHtml.includes('<link rel="manifest" href="/site.webmanifest"/>'), "Ho
 
 // 2. Shop Page SEO
 const shopHtml = fs.readFileSync(path.join(OUT, "shop/index.html"), "utf8");
-assert(shopHtml.includes("<title>Online Grocery Store Anantnag — Fresh Essentials in 8 Mins"), "Shop title optimized");
+assert(shopHtml.includes("<title>Online Grocery Store Anantnag — #1 Fastest Grocery Delivery"), "Shop title optimized");
 assert(shopHtml.includes('<link rel="canonical" href="https://dashit.co.in/shop/"/>'), "Shop canonical link present");
 assert(shopHtml.includes('"@type":"BreadcrumbList"'), "Shop BreadcrumbList JSON-LD present");
 

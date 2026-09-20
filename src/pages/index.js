@@ -129,11 +129,11 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white dark:bg-[#0B0E14] dark:text-slate-100 transition-colors duration-300">
       <SEO
-        title="DASHIT — Anantnag's #1 Quick Grocery Delivery App | 8-Minute Delivery"
-        description="Download the DASHIT mobile app for Android & iOS. Fastest 8-minute grocery delivery across Anantnag. Fresh Kashmiri bakery, milk, dairy, pantry essentials with live GPS tracking."
+        title="DASHIT — #1 Grocery Delivery App in Anantnag | Fastest Delivery"
+        description="Download the DASHIT mobile app for Android & iOS. #1 fastest grocery delivery across Anantnag. Fresh Kashmiri bakery, milk, dairy, pantry essentials with live GPS tracking."
         canonical="/"
         ogType="website"
-        keywords="DASHIT, grocery delivery app Anantnag, 8 minute delivery Anantnag, quick commerce Kashmir, download DASHIT app, buy milk online Anantnag 192101"
+        keywords="DASHIT, grocery delivery app Anantnag, fastest grocery delivery Anantnag, quick commerce Kashmir, download DASHIT app, buy milk online Anantnag 192101"
       />
       <WebSiteJsonLd />
       <OrganizationJsonLd />
@@ -319,14 +319,14 @@ export default function LandingPage() {
             <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black tracking-tight leading-[1.08] text-[#061838] dark:text-white">
               Anantnag&apos;s <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF5B00] via-[#FF7A29] to-[#F59E0B]">
-                8-Minute Grocery
+                #1 Fastest Grocery
               </span> <br />
-              Mobile App
+              Delivery App
             </h1>
 
             {/* App-first Subheadline */}
             <p className="mt-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl">
-              Get the full DASHIT experience on your phone. Enjoy <strong className="text-slate-900 dark:text-white font-bold">live GPS delivery tracking</strong>, instant 1-tap reordering, fresh Kashmiri bakery, dairy, and daily essentials delivered in 8 minutes.
+              Get the full DASHIT experience on your phone. Enjoy <strong className="text-slate-900 dark:text-white font-bold">live GPS delivery tracking</strong>, instant 1-tap reordering, fresh Kashmiri bakery, dairy, and daily essentials with fastest delivery across Anantnag.
             </p>
 
             {/* PRIMARY DOWNLOAD APP BADGES (ABOVE THE FOLD) */}
@@ -404,10 +404,10 @@ export default function LandingPage() {
             <div className="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800/80 w-full grid grid-cols-3 gap-4 text-left">
               <div>
                 <span className="text-xl sm:text-2xl font-black text-[#061838] dark:text-white block">
-                  8 Mins
+                  #1 Fastest
                 </span>
                 <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mt-0.5">
-                  Average Delivery Speed
+                  Delivery in Anantnag
                 </span>
               </div>
               <div>
@@ -448,7 +448,7 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
                   <div>
                     <span className="text-[9.5px] font-black uppercase tracking-widest text-[#FF5B00] block">
-                      DASHIT IN 8 MINS
+                      FASTEST DELIVERY
                     </span>
                     <h3 className="text-xs font-black text-white flex items-center space-x-1">
                       <MapPin className="w-3 h-3 text-[#FF5B00]" />
@@ -512,7 +512,7 @@ export default function LandingPage() {
                       <p className="text-[11px] font-extrabold text-white truncate">
                         Amul Gold Milk 500ml
                       </p>
-                      <p className="text-[9px] text-slate-400">Chilled • 8 mins</p>
+                      <p className="text-[9px] text-slate-400">Chilled • Direct Store</p>
                       <span className="text-[10px] font-black text-[#FF5B00]">₹36</span>
                     </div>
                     <span className="bg-white/10 text-white font-bold text-[9px] px-2.5 py-1 rounded-lg border border-white/15">
@@ -529,7 +529,7 @@ export default function LandingPage() {
                     </div>
                     <div>
                       <p className="text-[10px] font-black text-white leading-tight">Order Arriving</p>
-                      <p className="text-[9px] text-emerald-400 font-bold">Rider on KP Road • 4 mins</p>
+                      <p className="text-[9px] text-emerald-400 font-bold">Rider on KP Road • On The Way</p>
                     </div>
                   </div>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1" />
@@ -540,7 +540,7 @@ export default function LandingPage() {
             {/* Floating Trust Pills */}
             <div className="absolute -top-3 -right-2 sm:-right-4 bg-white dark:bg-[#1A202C] text-slate-900 dark:text-white px-3.5 py-2 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-700 flex items-center space-x-2 text-xs font-black z-20">
               <Zap className="w-4 h-4 text-[#FF5B00] fill-[#FF5B00]" />
-              <span>8-Minute Promise</span>
+              <span>Fastest Delivery Promise</span>
             </div>
 
             <div className="absolute -bottom-4 -left-2 sm:-left-4 bg-white dark:bg-[#1A202C] text-slate-900 dark:text-white px-3.5 py-2 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-700 flex items-center space-x-2 text-xs font-black z-20">
@@ -682,7 +682,7 @@ export default function LandingPage() {
           {/* HOW DASHIT WORKS 3-STEP */}
           <div className="mt-16 bg-white dark:bg-[#141824] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-10">
             <h3 className="text-xl sm:text-2xl font-black text-[#061838] dark:text-white mb-6">
-              How DASHIT Delivers in 8 Minutes
+              How DASHIT Delivers Across Anantnag
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -703,7 +703,7 @@ export default function LandingPage() {
                   2
                 </div>
                 <div>
-                  <h5 className="text-sm font-black text-[#061838] dark:text-white">Packed in 2 Minutes</h5>
+                  <h5 className="text-sm font-black text-[#061838] dark:text-white">Quickly Packed</h5>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium leading-relaxed">
                     Our local fulfillment team scans and double-checks your bag with barcode accuracy.
                   </p>
@@ -715,7 +715,7 @@ export default function LandingPage() {
                   3
                 </div>
                 <div>
-                  <h5 className="text-sm font-black text-[#061838] dark:text-white">8-Minute Doorstep Arrival</h5>
+                  <h5 className="text-sm font-black text-[#061838] dark:text-white">Fastest Doorstep Arrival</h5>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium leading-relaxed">
                     Our dedicated rider delivers right to your door with live GPS tracking.
                   </p>

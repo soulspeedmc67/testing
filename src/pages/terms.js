@@ -19,7 +19,7 @@ export default function TermsAndConditionsPage() {
     <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white dark:bg-surface">
       <SEO
         title="Terms & Conditions — DASHIT Quick Commerce"
-        description="Terms and conditions of service for DASHIT hyperlocal grocery delivery in Anantnag, Jammu & Kashmir (PIN: 192101)."
+        description="Terms and conditions of service for DASHIT grocery delivery in Anantnag, Jammu & Kashmir (PIN: 192101)."
         canonical="/terms/"
         ogType="website"
       />
@@ -82,7 +82,7 @@ export default function TermsAndConditionsPage() {
           <section className="space-y-3">
             <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">2. Delivery Area &amp; Service Promise</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
-              DASHIT operates a hyperlocal quick-commerce delivery service in Anantnag, Jammu &amp; Kashmir.
+              DASHIT operates Anantnag&apos;s #1 quick grocery delivery service in Jammu &amp; Kashmir.
             </p>
             <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-content-secondary">
               <li>
