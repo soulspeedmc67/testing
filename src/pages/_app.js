@@ -442,7 +442,7 @@ export default function App({ Component, pageProps }) {
         >
           <Component {...pageProps} />
         </motion.div>
-        {!['/admin', '/driver', '/login'].includes(router.pathname) && <LiveOrderFloatingTracker />}
+        {!['/admin', '/driver', '/login', '/orders'].includes(router.pathname) && <LiveOrderFloatingTracker />}
         <FloatingCartBar />
         {!['/login', '/driver', '/admin', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />

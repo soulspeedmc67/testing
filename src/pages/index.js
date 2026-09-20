@@ -11,6 +11,13 @@ const Hero3DPhone = dynamic(() => import("../components/Hero3DPhone"), {
     <div className="w-[320px] sm:w-[340px] h-[670px] sm:h-[700px] rounded-[50px] bg-slate-900/60 animate-pulse mx-auto" />
   ),
 });
+
+const ArtisticBentoFeatures = dynamic(() => import("../components/ArtisticBentoFeatures"), {
+  ssr: true,
+  loading: () => (
+    <div className="w-full h-96 rounded-[32px] bg-slate-100 dark:bg-slate-900/60 animate-pulse my-24" />
+  ),
+});
 import { isNative } from "../lib/platform";
 import { useTheme } from "../context/ThemeContext";
 import { hapticLight } from "../lib/haptics";
@@ -314,31 +321,57 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           {/* COLUMN 1: EDITORIAL APP VALUE PROP & STORE BUTTONS (Col span 7) */}
-          <div className="lg:col-span-7 flex flex-col items-start z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-7 flex flex-col items-start z-10 transform-gpu"
+          >
             {/* Tagline Badge */}
-            <div className="inline-flex items-center space-x-2 bg-orange-100 dark:bg-orange-950/60 border border-orange-300/80 dark:border-orange-500/30 rounded-full px-3.5 py-1.5 mb-5 shadow-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="inline-flex items-center space-x-2 bg-orange-100 dark:bg-orange-950/60 border border-orange-300/80 dark:border-orange-500/30 rounded-full px-3.5 py-1.5 mb-5 shadow-xs"
+            >
               <Sparkles className="w-4 h-4 text-[#FF5B00]" />
               <span className="text-xs font-black uppercase tracking-wider text-[#FF5B00]">
                 Exclusively Built for Mobile Experience
               </span>
-            </div>
+            </motion.div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black tracking-tight leading-[1.08] text-[#061838] dark:text-white">
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+              className="text-4xl sm:text-5xl xl:text-6xl font-black tracking-tight leading-[1.08] text-[#061838] dark:text-white"
+            >
               Anantnag&apos;s <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF5B00] via-[#FF7A29] to-[#F59E0B]">
                 #1 Fastest Grocery
               </span> <br />
               Delivery App
-            </h1>
+            </motion.h1>
 
             {/* App-first Subheadline */}
-            <p className="mt-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl">
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-5 text-sm sm:text-base text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-xl"
+            >
               Get the full DASHIT experience on your phone. Enjoy <strong className="text-slate-900 dark:text-white font-bold">live GPS delivery tracking</strong>, instant 1-tap reordering, fresh Kashmiri bakery, dairy, and daily essentials with fastest delivery across Anantnag.
-            </p>
+            </motion.p>
 
             {/* PRIMARY DOWNLOAD APP BADGES (ABOVE THE FOLD) */}
-            <div id="download-section" className="mt-8 w-full">
+            <motion.div
+              id="download-section"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-8 w-full"
+            >
               {/* Soon on Store Badge */}
               <div className="inline-flex items-center space-x-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-full px-3.5 py-1 mb-3 text-amber-700 dark:text-amber-300 text-xs font-bold shadow-xs">
                 <Sparkles className="w-3.5 h-3.5 text-[#FF5B00]" />
@@ -406,10 +439,15 @@ export default function LandingPage() {
                   <span>100% Virus-Free &amp; Verified</span>
                 </span>
               </div>
-            </div>
+            </motion.div>
 
             {/* TRUST HIGHLIGHTS */}
-            <div className="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800/80 w-full grid grid-cols-3 gap-4 text-left">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              className="mt-8 pt-6 border-t border-slate-200/80 dark:border-slate-800/80 w-full grid grid-cols-3 gap-4 text-left"
+            >
               <div>
                 <span className="text-xl sm:text-2xl font-black text-[#061838] dark:text-white block">
                   #1 Fastest
@@ -434,8 +472,8 @@ export default function LandingPage() {
                   Full Anantnag Coverage
                 </span>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* COLUMN 2: PREMIUM 3D SMARTPHONE SHOWCASE (Col span 5) */}
           <div className="lg:col-span-5 flex justify-center items-center relative min-h-[700px] w-full">
@@ -443,65 +481,18 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* SECTION 2: WHY DOWNLOAD THE APP (APP BENEFITS) */}
-        <section id="app-features" className="mt-24 sm:mt-32">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-black uppercase tracking-widest text-[#FF5B00] block mb-2">
-              Why Install DASHIT?
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-[#061838] dark:text-white tracking-tight">
-              Built for speed, simplicity, and your daily life
-            </h2>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 font-medium">
-              Every detail of the mobile app is optimized so you spend under 30 seconds placing your order.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Feature 1 */}
-            <div className="bg-white dark:bg-[#141824] p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/90 shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-orange-100 dark:bg-orange-950/50 text-[#FF5B00] flex items-center justify-center mb-4">
-                <Bike className="w-6 h-6 stroke-[2.2]" />
-              </div>
-              <h3 className="text-lg font-black text-[#061838] dark:text-white mb-2">
-                Live GPS Delivery Tracking
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                Follow your delivery rider in real time from our Anantnag fulfillment store directly to your house doorstep.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="bg-white dark:bg-[#141824] p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/90 shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6 stroke-[2.2]" />
-              </div>
-              <h3 className="text-lg font-black text-[#061838] dark:text-white mb-2">
-                1-Tap Quick Reordering
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                Morning milk and fresh Kashmiri bakery saved to your daily list. Reorder your essentials in literally 1 single tap.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="bg-white dark:bg-[#141824] p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800/90 shadow-sm hover:shadow-md transition-all">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4">
-                <ShieldCheck className="w-6 h-6 stroke-[2.2]" />
-              </div>
-              <h3 className="text-lg font-black text-[#061838] dark:text-white mb-2">
-                App-Only Member Deals
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                Unlock exclusive coupon codes, zero delivery charges, and limited morning deals available only in the native app.
-              </p>
-            </div>
-          </div>
-        </section>
+        {/* SECTION 2: WHY DOWNLOAD THE APP (ARTISTIC BENTO SHOWCASE) */}
+        <ArtisticBentoFeatures />
 
         {/* SECTION 3: "PREFER TO SHOP ON WEB?" (ONLY VISIBLE ON SCROLL) */}
         <section id="web-store-section" className="mt-28 sm:mt-36 pt-12 border-t-2 border-dashed border-slate-200 dark:border-slate-800">
-          <div className="bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent dark:from-orange-950/30 dark:via-transparent dark:to-transparent rounded-3xl p-6 sm:p-10 border border-orange-200/80 dark:border-orange-500/20 mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent dark:from-orange-950/30 dark:via-transparent dark:to-transparent rounded-3xl p-6 sm:p-10 border border-orange-200/80 dark:border-orange-500/20 mb-12 transform-gpu shadow-sm"
+          >
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
               <div>
                 <div className="inline-flex items-center space-x-2 text-xs font-black uppercase tracking-wider text-[#FF5B00] mb-2">
@@ -524,10 +515,16 @@ export default function LandingPage() {
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
-          </div>
+          </motion.div>
 
           {/* POPULAR CATEGORIES SECTION FOR WEB USERS */}
-          <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5 }}
+            className="mb-8 flex flex-col sm:flex-row items-start sm:items-end justify-between"
+          >
             <div>
               <span className="text-xs font-black uppercase tracking-widest text-[#FF5B00] block mb-1">
                 Explore The Daily Aisle
@@ -543,43 +540,65 @@ export default function LandingPage() {
               <span>View all categories</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4">
             {POPULAR_CATEGORIES.map((cat, idx) => (
-              <Link
+              <motion.div
                 key={idx}
-                href={`/shop?cat=${encodeURIComponent(cat.cat)}`}
-                className="bg-white dark:bg-[#141824] rounded-3xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-[#FF5B00]/60 transition-all group flex flex-col items-center text-center"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-30px" }}
+                transition={{ duration: 0.45, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                className="transform-gpu"
               >
-                <div className="w-full h-24 sm:h-28 rounded-2xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-800 relative">
-                  <img
-                    src={cat.img}
-                    alt={cat.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                <h4 className="text-xs sm:text-sm font-black text-[#061838] dark:text-white group-hover:text-[#FF5B00] transition-colors line-clamp-1">
-                  {cat.name}
-                </h4>
-                <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5 line-clamp-1 font-medium">
-                  {cat.desc}
-                </p>
-              </Link>
+                <Link
+                  href={`/shop?cat=${encodeURIComponent(cat.cat)}`}
+                  className="bg-white dark:bg-[#141824] rounded-3xl p-3 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md hover:border-[#FF5B00]/60 transition-all group flex flex-col items-center text-center h-full"
+                >
+                  <div className="w-full h-24 sm:h-28 rounded-2xl overflow-hidden mb-3 bg-slate-100 dark:bg-slate-800 relative">
+                    <img
+                      src={cat.img}
+                      alt={cat.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-black text-[#061838] dark:text-white group-hover:text-[#FF5B00] transition-colors line-clamp-1">
+                    {cat.name}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-0.5 line-clamp-1 font-medium">
+                    {cat.desc}
+                  </p>
+                </Link>
+              </motion.div>
             ))}
           </div>
 
           {/* HOW DASHIT WORKS 3-STEP */}
-          <div className="mt-16 bg-white dark:bg-[#141824] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-10">
+          <motion.div
+            initial={{ opacity: 0, y: 25 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="mt-16 bg-white dark:bg-[#141824] border border-slate-200/80 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-sm transform-gpu"
+          >
             <h3 className="text-xl sm:text-2xl font-black text-[#061838] dark:text-white mb-6">
               How DASHIT Delivers Across Anantnag
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-start space-x-3.5">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                whileHover={{ y: -3 }}
+                className="flex items-start space-x-3.5 transform-gpu"
+              >
                 <div className="w-9 h-9 rounded-xl bg-orange-100 dark:bg-orange-950/60 text-[#FF5B00] flex items-center justify-center font-black text-sm shrink-0">
                   1
                 </div>
@@ -589,9 +608,16 @@ export default function LandingPage() {
                     Fresh milk, hot morning Kashmiri bakery, vegetables or snacks in a few clicks.
                   </p>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="flex items-start space-x-3.5">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                whileHover={{ y: -3 }}
+                className="flex items-start space-x-3.5 transform-gpu"
+              >
                 <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-sm shrink-0">
                   2
                 </div>
@@ -601,9 +627,16 @@ export default function LandingPage() {
                     Our local fulfillment team scans and double-checks your bag with barcode accuracy.
                   </p>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="flex items-start space-x-3.5">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                whileHover={{ y: -3 }}
+                className="flex items-start space-x-3.5 transform-gpu"
+              >
                 <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-sm shrink-0">
                   3
                 </div>
@@ -613,9 +646,9 @@ export default function LandingPage() {
                     Our dedicated rider delivers right to your door with live GPS tracking.
                   </p>
                 </div>
-              </div>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
         </section>
       </main>
 

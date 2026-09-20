@@ -105,6 +105,9 @@ export const resolveOrderStatusDetails = (status, etaMinutes, riderName, activeO
 
 export default function LiveOrderFloatingTracker() {
   const router = useRouter();
+  if (router.pathname === "/orders" || router.pathname?.startsWith("/orders")) {
+    return null;
+  }
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true); // Default to minimized side pill
 
