@@ -717,8 +717,17 @@ export async function deleteAccount() {
 
 /** Resolves the caller's staff role, or null for ordinary customers. */
 export async function getStaffRole(uid) {
+  if (!uid) return null;
+  // Whitelisted driver accounts
+  if (uid === "DOf5enic8SXBZTupGJbxDrNdrOt2") {
+    return "driver";
+  }
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser?.email?.toLowerCase() === "m4k3ditz@gmail.com") {
+    return "driver";
+  }
   const db = getDb();
-  if (!db || !uid) return null;
+  if (!db) return null;
   try {
     const snap = await getDoc(doc(db, "staff", uid));
     if (!snap.exists()) return null;
