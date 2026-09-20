@@ -181,6 +181,15 @@ export default function DashItDriverApp() {
      set from devtools. */
   // 1. Auth Subscription
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isCustomerApp =
+        (window.AndroidFlavor && window.AndroidFlavor.getFlavor && window.AndroidFlavor.getFlavor() === "customer") ||
+        (window.__DASHIT_ROLE__ === "customer");
+      if (isCustomerApp) {
+        window.location.replace("/shop");
+        return;
+      }
+    }
     const unsub = watchAuth(async (fbUser) => {
       setUser(fbUser);
       if (!fbUser) {
@@ -197,6 +206,7 @@ export default function DashItDriverApp() {
     return () => unsub();
   }, []);
 
+
   /* No shared fallback id: an unauthenticated session must resolve to no rider,
      otherwise every device without auth would share one identity and see (and
      could claim) each other's deliveries. */
@@ -208,9 +218,12 @@ export default function DashItDriverApp() {
     // Watch driver assigned orders
     const unsubDriverOrders = watchDriverOrders(driverId, (orders) => {
       setActiveOrders(orders);
-      if (orders.length > 0 && !selectedOrderId) {
-        setSelectedOrderId(orders[0].orderId || orders[0].id);
-      }
+      setSelectedOrderId((prev) => {
+        if (orders.length > 0 && (!prev || !orders.some((o) => (o.orderId || o.id) === prev))) {
+          return orders[0].orderId || orders[0].id;
+        }
+        return prev;
+      });
     });
 
     // Watch unassigned orders in available pool
@@ -222,7 +235,7 @@ export default function DashItDriverApp() {
       unsubDriverOrders();
       unsubAvailable();
     };
-  }, [driverId, selectedOrderId]);
+  }, [driverId]);
 
   // Multi-Drop Active Queue: ordered so the selected/active drop is Stop #1, followed by upcoming drops
   const activeQueue = (() => {
