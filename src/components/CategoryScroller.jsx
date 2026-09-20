@@ -19,7 +19,7 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
   const router = useRouter();
 
   return (
-    <div className="w-full bg-[#FFFDF5] border-b border-amber-100/50 pt-2 pb-2 dark:bg-surface-raised">
+    <div className="w-full bg-[#FFFDF5] pt-2 pb-2 dark:bg-surface-raised">
       <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 sm:px-6 lg:px-8 max-w-md md:max-w-7xl mx-auto scroll-smooth pt-1 pb-1">
         {CATEGORY_STRIP.map((cat) => {
           const Icon = cat.icon;
@@ -47,8 +47,8 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
                   cat.highlight
                     ? "bg-gradient-to-br from-[#FF5B00] to-[#FF2E93] text-white shadow-[0_4px_12px_-4px_rgba(255,91,0,0.7)] ring-2 ring-[#FF5B00]/15"
                     : isActive
-                    ? "bg-[#061838] text-white shadow-sm ring-2 ring-[#061838]/10 scale-105"
-                    : "bg-white text-slate-700 border border-slate-200/90 group-hover:border-slate-400 dark:bg-surface-raised dark:text-content-secondary"
+                    ? "bg-[#061838] text-white shadow-sm ring-2 ring-[#061838]/10 scale-105 dark:bg-[#FF5B00] dark:ring-[#FF5B00]/25"
+                    : "bg-white text-slate-700 border border-slate-200/90 group-hover:border-slate-400 dark:bg-surface-muted dark:border-line dark:text-content-secondary dark:group-hover:border-line-strong"
                 } dark:border-line/90`}
               >
                 <Icon className={`w-4 h-4 ${cat.highlight || isActive ? "stroke-[2.8] text-white" : "stroke-[2.2] text-slate-700 dark:text-content-secondary"}`} />
@@ -56,11 +56,11 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
               <span
                 className={`text-[10px] tracking-tight whitespace-nowrap transition-colors duration-300 ${
                   cat.highlight
-                    ? "text-[#C2410C] font-black"
+                    ? "text-[#C2410C] font-black dark:text-[#FF5B00]"
                     : isActive
-                    ? "text-[#061838] font-black"
-                    : "text-slate-600 font-semibold"
-                } dark:text-content`}
+                    ? "text-[#061838] font-black dark:text-white"
+                    : "text-slate-600 font-semibold dark:text-content-secondary"
+                }`}
               >
                 {cat.label}
               </span>

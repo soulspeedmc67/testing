@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, Mic, ChevronDown, Store, Clock, TrendingUp, User, ShoppingBag, MapPin, AlertTriangle, Zap } from "lucide-react";
 import { setDeviceSystemBars } from "../lib/systemBars";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
+import { useTheme } from "../context/ThemeContext";
 
 export default function AppHeader({
   location = { nickname: "LOCATION", address: "Select delivery address" },
@@ -22,31 +23,56 @@ export default function AppHeader({
   const router = useRouter();
   const [showTopWarning, setShowTopWarning] = useState(isHighDemand);
   const [showSmallBadge, setShowSmallBadge] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const { theme } = useTheme();
+
+  const syncSystemBars = (warningActive = false) => {
+    const isDark = theme === "dark";
+    if (warningActive) {
+      setDeviceSystemBars({
+        topColor: "#8B1A1A",
+        topDarkIcons: false,
+        bottomColor: isDark ? "#14171F" : "#FFFFFF",
+        bottomDarkIcons: !isDark,
+      });
+      return;
+    }
+
+    if (isDark) {
+      setDeviceSystemBars({
+        topColor: "#14171F",
+        topDarkIcons: false,
+        bottomColor: "#14171F",
+        bottomDarkIcons: false,
+      });
+    } else {
+      setDeviceSystemBars({
+        topColor: isScrolled ? "#FFFDF5" : "#FFE8D6",
+        topDarkIcons: true,
+        bottomColor: "#FFFFFF",
+        bottomDarkIcons: true,
+      });
+    }
+  };
 
   useEffect(() => {
     if (isHighDemand) {
       setShowTopWarning(true);
       setShowSmallBadge(false);
-      // Synchronize top phone bar to crimson delay banner
-      setDeviceSystemBars({
-        topColor: "#8B1A1A",
-        topDarkIcons: false,
-        bottomColor: "#FFFDF5",
-        bottomDarkIcons: true,
-      });
+      syncSystemBars(true);
 
-      // Auto-vanish after exactly 7 seconds
       const timer = setTimeout(() => {
         setShowTopWarning(false);
-        // Switch top phone bar to header gradient cream color
-        setDeviceSystemBars({
-          topColor: "#FFE8D6",
-          topDarkIcons: true,
-          bottomColor: "#FFFDF5",
-          bottomDarkIcons: true,
-        });
-
-        // Small badge only reveals after the top bar has finished vanishing
+        syncSystemBars(false);
         setTimeout(() => {
           setShowSmallBadge(true);
         }, 400);
@@ -55,14 +81,10 @@ export default function AppHeader({
     } else {
       setShowTopWarning(false);
       setShowSmallBadge(false);
-      setDeviceSystemBars({
-        topColor: "#FFE8D6",
-        topDarkIcons: true,
-        bottomColor: "#FFFDF5",
-        bottomDarkIcons: true,
-      });
+      syncSystemBars(false);
     }
-  }, [isHighDemand]);
+  }, [isHighDemand, isScrolled, theme]);
+
 
   const [cartCount, setCartCount] = useState(0);
   const [searchPlaceholderIdx, setSearchPlaceholderIdx] = useState(0);
@@ -302,13 +324,13 @@ export default function AppHeader({
 
                 {!isHighDemand && (
                   deliveryEta.isDeliverable ? (
-                    <span className="inline-flex items-center space-x-1 bg-sky-50 text-[#061838] text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-sky-200">
-                      <Store className="w-2.5 h-2.5 stroke-[2.5] shrink-0 text-[#061838]" />
+                    <span className="inline-flex items-center space-x-1 bg-sky-50 text-[#061838] text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-sky-200 dark:bg-sky-950/40 dark:border-sky-900/50 dark:text-sky-300">
+                      <Store className="w-2.5 h-2.5 stroke-[2.5] shrink-0 text-[#061838] dark:text-sky-300" />
                       <span>{deliveryEta.distanceFormatted}</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center space-x-1 bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-rose-200">
-                      <AlertTriangle className="w-2.5 h-2.5 stroke-[2.5] shrink-0 text-rose-600" />
+                    <span className="inline-flex items-center space-x-1 bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900/50 dark:text-rose-300">
+                      <AlertTriangle className="w-2.5 h-2.5 stroke-[2.5] shrink-0 text-rose-600 dark:text-rose-400" />
                       <span>Beyond 5km</span>
                     </span>
                   )
@@ -320,9 +342,9 @@ export default function AppHeader({
               type="button"
               onClick={() => router.push("/account")}
               aria-label="Account Profile"
-              className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-amber-200/80 flex items-center justify-center text-slate-800 shadow-2xs active:scale-95 transition-all dark:bg-surface-raised/90 dark:hover:bg-surface-muted dark:text-content"
+              className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-amber-200/80 flex items-center justify-center text-slate-800 shadow-2xs active:scale-95 transition-all dark:bg-surface-raised/90 dark:hover:bg-surface-muted dark:text-content dark:border-line"
             >
-              <User className="w-5 h-5 fill-slate-800 text-slate-800 stroke-none dark:text-content" />
+              <User className="w-5 h-5 fill-slate-800 text-slate-800 stroke-none dark:fill-white dark:text-white" />
             </button>
           </div>
 
@@ -337,7 +359,7 @@ export default function AppHeader({
               <span className="font-black text-xs text-slate-900 uppercase tracking-tight dark:text-content">
                 {location.alias || location.nickname || "HOME"}
               </span>
-              <ChevronDown className="w-3 h-3 stroke-[2.5] text-slate-400 group-hover:translate-y-0.5 transition-transform dark:text-content-faint" />
+              <ChevronDown className="w-3 h-3 stroke-[2.5] text-slate-400 group-hover:translate-y-0.5 transition-transform dark:text-content-secondary" />
             </div>
           </button>
         </div>
@@ -345,7 +367,9 @@ export default function AppHeader({
 
       {/* 2. OPTIONAL STICKY SEARCH BAR (When rendered standalone) */}
       {!hideStickySearch && (
-        <div className="sticky top-0 z-40 bg-[#FFFDF5]/98 dark:bg-surface/98 backdrop-blur-xl border-b border-amber-100/60 dark:border-line shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+        <div className={`sticky top-0 z-40 bg-[#FFFDF5]/98 dark:bg-surface/98 backdrop-blur-xl border-b border-amber-100/60 dark:border-line shadow-[0_2px_10px_rgba(0,0,0,0.03)] transition-[padding] duration-150 ${
+          isScrolled ? "pt-[env(safe-area-inset-top,0px)]" : ""
+        }`}>
           <div className="max-w-md mx-auto px-4 pt-1.5 pb-2">
             <div
               onClick={handleSearchClick}

@@ -107,14 +107,14 @@ export default function SearchPage() {
         initial={{ y: -30, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 350, damping: 28 }}
-        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 shadow-md"
+        className="sticky top-0 z-40 bg-[#061838] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 shadow-md dark:bg-surface-raised dark:border-b dark:border-line/80"
       >
         <div className="max-w-md md:max-w-4xl mx-auto flex items-center space-x-3">
           <motion.button
             whileTap={{ scale: 0.88 }}
             type="button"
             onClick={() => goBack(router, "/shop")}
-            className="p-1.5 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer dark:text-content-faint"
+            className="p-1.5 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer dark:text-content-secondary dark:hover:text-white"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </motion.button>
@@ -123,11 +123,11 @@ export default function SearchPage() {
             initial={{ scale: 0.94, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 380, damping: 26, delay: 0.05 }}
-            className={`relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner transition-all ${
+            className={`relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner transition-all dark:bg-surface-muted dark:border dark:border-line-strong ${
               isInputFocused ? "ring-2 ring-[#FF5B00]" : ""
             }`}
           >
-            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0 dark:text-content-faint" />
+            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0 dark:text-content-secondary" />
             <input
               type="text"
               placeholder="Search 'milk', 'chips', 'bread'..."
@@ -153,7 +153,7 @@ export default function SearchPage() {
             whileTap={{ scale: 0.88 }}
             type="button"
             onClick={() => setIsVoiceModalOpen(true)}
-            className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer dark:bg-surface-muted dark:text-content-secondary dark:hover:text-white"
           >
             <Mic className="w-5 h-5" />
           </motion.button>

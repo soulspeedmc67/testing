@@ -58,8 +58,10 @@ export default function Document() {
         {/* Splash lockup — fetched before hydration so the opening choreography
             never plays against a frame that has not painted yet */}
         <link rel="preload" as="image" href="/dashit-splash-mark.png" />
+        <link rel="preload" as="image" href="/dashit-splash-mark-white.png" />
         <link rel="preload" as="image" href="/dashit-splash-dash.png" />
         <link rel="preload" as="image" href="/dashit-wordmark.png" />
+        <link rel="preload" as="image" href="/dashit-wordmark-white.png" />
       </Head>
       {/* The ground colour comes from the `--surface` token (globals.css) so
           it follows the theme. It used to be pinned to #FFFFFF with an inline

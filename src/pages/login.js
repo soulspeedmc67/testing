@@ -676,12 +676,12 @@ export default function LoginPage() {
               stiffness: 280,
               mass: 0.8,
             }}
-            className="fixed inset-x-0 bottom-0 z-50 bg-white text-slate-900 rounded-t-[34px] shadow-[0_-16px_44px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden will-change-[height] max-h-[620px] dark:text-content"
+            className="fixed inset-x-0 bottom-0 z-50 bg-white text-slate-900 rounded-t-[34px] shadow-[0_-16px_44px_rgba(0,0,0,0.35)] flex flex-col overflow-hidden will-change-[height] max-h-[620px] dark:bg-surface-raised dark:border-t dark:border-line/60 dark:text-content"
           >
             {/* Top Drag Affordance Handle */}
             <div
               onClick={() => setIsSheetExtended((prev) => !prev)}
-              className="w-10 h-1.5 rounded-full bg-slate-300 hover:bg-slate-400 mx-auto mt-2.5 mb-1 cursor-pointer shrink-0 transition-colors"
+              className="w-10 h-1.5 rounded-full bg-slate-300 hover:bg-slate-400 mx-auto mt-2.5 mb-1 cursor-pointer shrink-0 transition-colors dark:bg-slate-700 dark:hover:bg-slate-600"
             />
 
             <AnimatePresence initial={false}>
@@ -767,7 +767,7 @@ export default function LoginPage() {
                   {/* Scrollable Form Content */}
                   <div className="flex-1 overflow-y-auto overscroll-contain px-6 pt-3 pb-[max(32px,calc(20px+env(safe-area-inset-bottom,20px)))] space-y-3">
                     {/* Primary Mode Tabs: Mobile Number (Fast) vs Email */}
-                    <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200/80 shrink-0 dark:border-line/80">
+                    <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200/80 shrink-0 dark:border-line/80 dark:bg-surface-muted">
                       <button
                         type="button"
                         onClick={() => {
@@ -776,9 +776,9 @@ export default function LoginPage() {
                         }}
                         className={`py-2 rounded-xl text-[12px] tracking-tight transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 ${
                           authTab === "phone"
-                            ? "bg-white text-slate-900 font-black shadow-xs dark:bg-surface-raised"
-                            : "text-slate-500 hover:text-slate-900 font-bold"
-                        } dark:hover:text-content`}
+                            ? "bg-white text-slate-900 font-black shadow-xs dark:bg-surface-overlay dark:text-white"
+                            : "text-slate-500 hover:text-slate-900 font-bold dark:text-content-muted dark:hover:text-white"
+                        }`}
                       >
                         <Phone className="w-3.5 h-3.5 text-[#FF5B00]" />
                         <span>Mobile Number</span>
@@ -792,18 +792,18 @@ export default function LoginPage() {
                         }}
                         className={`py-2 rounded-xl text-[12px] tracking-tight transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-1.5 ${
                           authTab === "email"
-                            ? "bg-white text-slate-900 font-black shadow-xs dark:bg-surface-raised"
-                            : "text-slate-500 hover:text-slate-900 font-bold"
-                        } dark:hover:text-content`}
+                            ? "bg-white text-slate-900 font-black shadow-xs dark:bg-surface-overlay dark:text-white"
+                            : "text-slate-500 hover:text-slate-900 font-bold dark:text-content-muted dark:hover:text-white"
+                        }`}
                       >
-                        <Mail className="w-3.5 h-3.5 text-slate-500" />
+                        <Mail className="w-3.5 h-3.5 text-slate-500 dark:text-content-muted" />
                         <span>Email &amp; Password</span>
                       </button>
                     </div>
 
                     {/* Error message pill */}
                     {errorMessage && (
-                      <div className="text-rose-600 text-xs font-medium py-1 flex items-center space-x-2 shrink-0">
+                      <div className="text-rose-600 text-xs font-medium py-1 flex items-center space-x-2 shrink-0 dark:text-rose-400">
                         <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                         <span>{errorMessage}</span>
                       </div>
@@ -821,8 +821,7 @@ export default function LoginPage() {
                             value={fullName}
                             onChange={(e) => setFullName(e.target.value)}
                             placeholder="Enter your name"
-                            style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                            className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
+                            className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                           />
                         </div>
 
@@ -831,7 +830,7 @@ export default function LoginPage() {
                             10-Digit Mobile Number
                           </label>
                           <div className="relative flex items-center">
-                            <span className="absolute left-3.5 text-xs font-black text-slate-700 select-none dark:text-content-secondary">
+                            <span className="absolute left-3.5 text-xs font-black text-slate-700 select-none dark:text-content">
                               +91
                             </span>
                             <input
@@ -845,14 +844,13 @@ export default function LoginPage() {
                                 setTruecallerMobile(e.target.value.replace(/\D/g, "").slice(0, 10));
                               }}
                               placeholder="98765 43210"
-                              style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                              className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-[14px] rounded-xl pl-12 pr-4 py-2.5 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all tracking-wide dark:border-line-strong dark:text-content"
+                              className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-[14px] rounded-xl pl-12 pr-4 py-2.5 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all tracking-wide dark:bg-surface-muted dark:border-line-strong dark:text-content"
                             />
                           </div>
                         </div>
 
                         <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 pl-1 pt-0.5 dark:text-content-muted">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>We'll link your orders and delivery address to this number</span>
                         </div>
 
@@ -870,7 +868,7 @@ export default function LoginPage() {
                     {/* 2. EMAIL & PASSWORD FORM */}
                     {authTab === "email" && (
                       <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-100 rounded-xl border border-slate-200 dark:border-line">
+                        <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-100 rounded-xl border border-slate-200 dark:border-line dark:bg-surface-muted">
                           {["signup", "signin"].map((mode) => (
                             <button
                               key={mode}
@@ -881,8 +879,8 @@ export default function LoginPage() {
                               }}
                               className={`py-1.5 rounded-lg text-[11px] font-black transition-all ${
                                 emailMode === mode
-                                  ? "bg-white text-slate-900 shadow-2xs dark:bg-surface-raised dark:text-content"
-                                  : "text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-content"
+                                  ? "bg-white text-slate-900 shadow-2xs dark:bg-surface-overlay dark:text-white"
+                                  : "text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-white"
                               }`}
                             >
                               {mode === "signup" ? "New Account" : "Existing Account"}
@@ -902,8 +900,7 @@ export default function LoginPage() {
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
                                 placeholder="Enter your full name"
-                                style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
+                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                               />
                             </div>
                           )}
@@ -918,8 +915,7 @@ export default function LoginPage() {
                               value={email}
                               onChange={(e) => setEmail(e.target.value)}
                               placeholder="customer@dashit.co.in"
-                              style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                              className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
+                              className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                             />
                           </div>
 
@@ -934,8 +930,7 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder={emailMode === "signup" ? "Create password (min 6 chars)" : "••••••••••••"}
-                                style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 pl-3.5 pr-10 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
+                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 pl-3.5 pr-10 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                               />
                               <button
                                 type="button"
@@ -954,12 +949,12 @@ export default function LoginPage() {
                               <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider dark:text-content-secondary">
                                 Delivery Contact Mobile (+91)
                               </label>
-                              <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800/60 dark:text-emerald-300">
                                 For Driver Delivery
                               </span>
                             </div>
                             <div className="relative flex items-center">
-                              <span className="absolute left-3 text-xs font-black text-slate-700 select-none dark:text-content-secondary">
+                              <span className="absolute left-3 text-xs font-black text-slate-700 select-none dark:text-content">
                                 +91
                               </span>
                               <input
@@ -969,8 +964,7 @@ export default function LoginPage() {
                                 value={mobile}
                                 onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                                 placeholder="10-digit mobile number"
-                                style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 pl-12 pr-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
+                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 pl-12 pr-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                               />
                             </div>
                             <p className="text-[10px] text-slate-500 font-medium pl-1 dark:text-content-muted">
@@ -979,8 +973,8 @@ export default function LoginPage() {
                           </div>
 
                           {verificationNotice && (
-                            <div className="py-1 text-emerald-700 text-xs font-medium text-center flex items-center justify-center space-x-1.5">
-                              <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <div className="py-1 text-emerald-700 text-xs font-medium text-center flex items-center justify-center space-x-1.5 dark:text-emerald-400">
+                              <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                               <span>{verificationNotice}</span>
                             </div>
                           )}
@@ -1010,7 +1004,7 @@ export default function LoginPage() {
                           <div className="absolute inset-0 flex items-center">
                             <div className="w-full border-t border-slate-200 dark:border-line" />
                           </div>
-                          <span className="relative bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-content-faint">
+                          <span className="relative bg-white px-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider dark:text-content-faint dark:bg-surface-raised">
                             Or continue with
                           </span>
                         </div>
@@ -1020,7 +1014,7 @@ export default function LoginPage() {
                             type="button"
                             onClick={handleGoogleLogin}
                             disabled={isProcessing || isGoogleProcessing}
-                            className="w-full bg-white hover:bg-slate-50 active:scale-[0.98] border border-slate-200 text-slate-800 font-extrabold text-[12.5px] py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all shadow-2xs cursor-pointer dark:hover:bg-surface-muted dark:border-line dark:text-content"
+                            className="w-full bg-white hover:bg-slate-50 active:scale-[0.98] border border-slate-200 text-slate-800 font-extrabold text-[12.5px] py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all shadow-2xs cursor-pointer dark:bg-surface-muted dark:hover:bg-surface-overlay dark:border-line-strong dark:text-content"
                           >
                             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                               <path
@@ -1143,12 +1137,12 @@ export default function LoginPage() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="relative z-20 rounded-t-[32px] bg-white text-slate-900 px-6 pt-5 pb-[max(32px,calc(20px+env(safe-area-inset-bottom,20px)))] shadow-[0_-14px_44px_rgba(0,0,0,0.25)] flex flex-col space-y-3.5 dark:text-content"
+            className="relative z-20 rounded-t-[32px] bg-white text-slate-900 px-6 pt-5 pb-[max(32px,calc(20px+env(safe-area-inset-bottom,20px)))] shadow-[0_-14px_44px_rgba(0,0,0,0.25)] flex flex-col space-y-3.5 dark:bg-surface-raised dark:border-t dark:border-line/60 dark:text-content"
           >
             {/* Interactive Choose on Map Card */}
             <div
               onClick={() => setIsMapModalOpen(true)}
-              className="group bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs active:scale-[0.98] transition-all cursor-pointer dark:border-line"
+              className="group bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs active:scale-[0.98] transition-all cursor-pointer dark:bg-surface-muted dark:border-line"
             >
               <div className="flex items-center space-x-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-[#FF5E00] text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
@@ -1182,14 +1176,13 @@ export default function LoginPage() {
                   House / Flat / Landmark
                 </label>
                 <div className="relative flex items-center">
-                  <Home className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none dark:text-content-faint" />
+                  <Home className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none dark:text-content-secondary" />
                   <input
                     type="text"
                     value={flatNo}
                     onChange={(e) => setFlatNo(e.target.value)}
                     placeholder="e.g. Flat #4B, Near Jamia Masjid"
-                    style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                    className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:border-line-strong dark:text-content"
+                    className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                   />
                 </div>
               </div>
@@ -1200,14 +1193,13 @@ export default function LoginPage() {
                     Area / Locality
                   </label>
                   <div className="relative flex items-center">
-                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none dark:text-content-faint" />
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none dark:text-content-secondary" />
                     <input
                       type="text"
                       value={area}
                       onChange={(e) => setArea(e.target.value)}
                       placeholder="e.g. Nai Basti"
-                      style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                      className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:border-line-strong dark:text-content"
+                      className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                     />
                   </div>
                 </div>
@@ -1217,14 +1209,13 @@ export default function LoginPage() {
                     City
                   </label>
                   <div className="relative flex items-center">
-                    <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none dark:text-content-faint" />
+                    <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none dark:text-content-secondary" />
                     <input
                       type="text"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       placeholder="e.g. Anantnag"
-                      style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                      className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:border-line-strong dark:text-content"
+                      className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-9 pr-3 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                     />
                   </div>
                 </div>
@@ -1241,8 +1232,7 @@ export default function LoginPage() {
                   value={pincode}
                   onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                   placeholder="e.g. 192101"
-                  style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                  className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl px-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:border-line-strong dark:text-content"
+                  className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl px-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                 />
               </div>
 
@@ -1251,7 +1241,7 @@ export default function LoginPage() {
                   Contact Mobile
                 </label>
                 <div className="relative flex items-center">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none dark:text-content-faint" />
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none dark:text-content-secondary" />
                   <input
                     type="tel"
                     inputMode="numeric"
@@ -1259,12 +1249,11 @@ export default function LoginPage() {
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="Enter 10-digit mobile number"
-                    style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                    className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:border-line-strong dark:text-content"
+                    className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-xl pl-10 pr-3.5 py-3 focus:outline-none focus:border-[#FF5E00] focus:ring-1 focus:ring-[#FF5E00] transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
                   />
                 </div>
                 <div className="flex items-start space-x-2 mt-1.5 px-0.5">
-                  <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5 dark:text-content-faint" />
+                  <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5 dark:text-content-secondary" />
                   <p className="text-[11px] font-medium leading-snug text-slate-500 dark:text-content-muted">
                     Please verify your number carefully. You will be called on this number by the delivery driver upon arrival.
                   </p>
@@ -1305,13 +1294,13 @@ export default function LoginPage() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-3xl p-6 shadow-2xl z-50 space-y-4 pb-[max(28px,calc(16px+env(safe-area-inset-bottom,16px)))]"
+              className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-3xl p-6 shadow-2xl z-50 space-y-4 pb-[max(28px,calc(16px+env(safe-area-inset-bottom,16px)))] dark:bg-surface-raised dark:border-t dark:border-line/60"
             >
-              <div className="w-10 h-1.5 rounded-full bg-slate-300 mx-auto -mt-2 mb-2" />
+              <div className="w-10 h-1.5 rounded-full bg-slate-300 mx-auto -mt-2 mb-2 dark:bg-slate-700" />
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-[#0087FF]/10 text-[#0087FF] flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-[#0087FF]/10 text-[#0087FF] flex items-center justify-center dark:bg-[#0087FF]/20">
                     <Phone className="w-5 h-5 stroke-[2.5]" />
                   </div>
                   <div>
@@ -1322,14 +1311,14 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setIsTruecallerModalOpen(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer dark:hover:bg-surface-muted"
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition-colors cursor-pointer dark:bg-surface-muted dark:hover:bg-surface-overlay dark:text-content"
                 >
                   <X className="w-4 h-4 stroke-[2.5]" />
                 </button>
               </div>
 
               {errorMessage && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-2.5 rounded-xl flex items-center space-x-2">
+                <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-2.5 rounded-xl flex items-center space-x-2 dark:bg-rose-950/40 dark:border-rose-900/50 dark:text-rose-400">
                   <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
                   <span>{errorMessage}</span>
                 </div>
@@ -1341,7 +1330,7 @@ export default function LoginPage() {
                     Mobile Number
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-3.5 text-xs font-black text-slate-700 select-none dark:text-content-secondary">
+                    <span className="absolute left-3.5 text-xs font-black text-slate-700 select-none dark:text-content">
                       +91
                     </span>
                     <input
@@ -1353,8 +1342,7 @@ export default function LoginPage() {
                       value={truecallerMobile}
                       onChange={(e) => setTruecallerMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                       placeholder="98765 43210"
-                      style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                      className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-sm rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] transition-all dark:border-line-strong dark:text-content"
+                      className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-sm rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content"
                     />
                   </div>
                 </div>
@@ -1370,7 +1358,7 @@ export default function LoginPage() {
               </form>
 
               <div className="flex items-center justify-center space-x-1.5 text-[11px] font-medium text-slate-400 dark:text-content-faint">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Your driver will call this number on delivery</span>
               </div>
             </motion.div>

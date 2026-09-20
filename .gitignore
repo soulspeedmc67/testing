@@ -13,3 +13,22 @@ android/keystore.properties
 *.jks
 *.keystore
 release/
+
+# Build binaries
+*.apk
+*.aab
+*-User.ipa
+*-Driver.ipa
+*-Admin.ipa
+*-darkmode.ipa
+dashit-*.ipa
+!Dashit.ipa
+
+# Temporary and export archives
+*.zip
+dashit-hostinger-deploy/
+brag-output/
+playstore-final/
+playstore-screenshots/
+scripts/__pycache__/
+__pycache__/

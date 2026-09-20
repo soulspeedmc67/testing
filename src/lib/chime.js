@@ -105,35 +105,15 @@ export async function notifyNewOrder(order) {
     }
   }
 
-  // 2. Capacitor Local Notifications for Native Android APK
-  try {
-    const { LocalNotifications } = await import("@capacitor/local-notifications");
+  // 2. Native Android bridge for APK
+  if (
+    typeof window !== "undefined" &&
+    window.AndroidNotifications &&
+    typeof window.AndroidNotifications.postAlertNotification === "function"
+  ) {
     try {
-      await LocalNotifications.createChannel({
-        id: "admin_orders_channel",
-        name: "Dashit Store Alerts",
-        description: "High-priority alerts for incoming store orders",
-        importance: 5,
-        visibility: 1,
-        vibration: true,
-        sound: "default",
-      });
-    } catch (chanErr) {}
-
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          title,
-          body,
-          id: Math.floor(Math.random() * 100000),
-          channelId: "admin_orders_channel",
-          schedule: { at: new Date(Date.now() + 100) },
-          sound: "default",
-          smallIcon: "res://drawable/splash",
-        },
-      ],
-    });
-  } catch (e) {
-    // skipped if not in native capacitor
+      window.AndroidNotifications.postAlertNotification(title, body);
+      return;
+    } catch (e) {}
   }
 }

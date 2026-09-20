@@ -92,7 +92,7 @@ export default function PrivacyPolicyPage() {
                 <strong>Precise Geographic Location:</strong> GPS coordinates collected while placing an order or using address pin features, strictly to route delivery riders to your doorstep in Anantnag.
               </li>
               <li>
-                <strong>Order &amp; Transaction Details:</strong> Products purchased, order amounts, timestamps, payment confirmation tokens (handled securely through compliant payment gateways like Razorpay/UPI), and delivery notes.
+                <strong>Order &amp; Transaction Details:</strong> Products purchased, order amounts, timestamps, payment mode details (Cash on Delivery or UPI collected upon delivery), and delivery notes.
               </li>
               <li>
                 <strong>Rider Partners (DASHit rider app only):</strong> Identity verification documents, vehicle registration, and live location while a delivery is in progress. This applies to the separate rider app, not the customer app.

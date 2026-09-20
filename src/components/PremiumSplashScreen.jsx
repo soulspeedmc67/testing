@@ -42,6 +42,12 @@ const EASE_IN_OUT = [0.65, 0, 0.35, 1];
 export default function PremiumSplashScreen({ onComplete, onExitStart }) {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document !== "undefined") {
+      return document.documentElement.classList.contains("dark");
+    }
+    return false;
+  });
 
   // Callbacks arrive as inline arrows, so hold them in refs and let the
   // sequence below run exactly once instead of restarting on every re-render
@@ -52,14 +58,16 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
 
   useEffect(() => {
     // Set system status bar to transparent with dark icons during splash
-    const isDark = typeof document !== "undefined"
+    const dark = typeof document !== "undefined"
       && document.documentElement.classList.contains("dark");
+    setIsDark(dark);
     setDeviceSystemBars({
       topColor: "#00000000",
-      topDarkIcons: !isDark,
-      bottomColor: isDark ? "#0A0A0C" : "#FFFFFF",
-      bottomDarkIcons: !isDark,
+      topDarkIcons: !dark,
+      bottomColor: dark ? "#14171F" : "#FFFFFF",
+      bottomDarkIcons: !dark,
     });
+
 
     // Timing sequence:
     // 0ms - 1450ms: mark, dash bounce and wordmark assemble, then hold
@@ -90,9 +98,9 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
         initial={{ opacity: 1 }}
         animate={{ opacity: isExiting ? 0 : 1 }}
         transition={{ duration: 0.5, ease: EASE_IN_OUT }}
-        className={`fixed inset-0 z-[99999] bg-white dark:bg-surface flex items-center justify-center select-none overflow-hidden ${
+        className={`fixed inset-0 z-[99999] bg-white dark:bg-[#14171F] flex items-center justify-center select-none overflow-hidden ${
           isExiting ? "pointer-events-none" : "pointer-events-auto"
-        } dark:bg-surface-raised`}
+        }`}
         style={{
           paddingTop: "var(--safe-top, 0px)",
           paddingBottom: "var(--safe-bottom, 0px)",
@@ -125,14 +133,14 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
           <defs>
             <style>{`
               .doodle-stroke {
-                stroke: #CBD5E1;
+                stroke: ${isDark ? "#28303F" : "#CBD5E1"};
                 stroke-width: 1.35;
                 stroke-linecap: round;
                 stroke-linejoin: round;
                 fill: none;
               }
               .doodle-faint {
-                stroke: #CBD5E1;
+                stroke: ${isDark ? "#1E2430" : "#CBD5E1"};
                 stroke-width: 1.1;
                 stroke-linecap: round;
                 stroke-linejoin: round;
@@ -141,19 +149,19 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
               }
               .accent-dot-blue {
                 fill: #38BDF8;
-                opacity: 0.65;
+                opacity: ${isDark ? "0.45" : "0.65"};
               }
               .accent-dot-orange {
                 fill: #FB923C;
-                opacity: 0.6;
+                opacity: ${isDark ? "0.4" : "0.6"};
               }
               .accent-ring {
-                stroke: #CBD5E1;
+                stroke: ${isDark ? "#28303F" : "#CBD5E1"};
                 stroke-width: 1.2;
                 fill: none;
               }
               .accent-sparkle {
-                stroke: #CBD5E1;
+                stroke: ${isDark ? "#28303F" : "#CBD5E1"};
                 stroke-width: 1.2;
                 fill: none;
                 stroke-linecap: round;
@@ -352,10 +360,16 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
               backfaceVisibility: "hidden",
             }}
           >
+            {/* Signature D mark: Navy in light mode, crisp pure white in dark mode */}
             <img
               src="/dashit-splash-mark.png"
               alt="DASHit"
-              className="absolute inset-0 w-full h-full object-contain"
+              className="absolute inset-0 w-full h-full object-contain dark:hidden"
+            />
+            <img
+              src="/dashit-splash-mark-white.png"
+              alt="DASHit"
+              className="absolute inset-0 w-full h-full object-contain hidden dark:block"
             />
 
             <motion.img
@@ -395,12 +409,22 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
           {/* Wordmark rises underneath once the mark has resolved */}
           <motion.img
             src="/dashit-wordmark.png"
-            alt=""
+            alt="dashit"
             aria-hidden="true"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.65, ease: EASE_OUT_EXPO }}
-            className="w-[92px] mt-3.5 object-contain"
+            className="w-[92px] mt-3.5 object-contain dark:hidden"
+            style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
+          />
+          <motion.img
+            src="/dashit-wordmark-white.png"
+            alt="dashit"
+            aria-hidden="true"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.65, ease: EASE_OUT_EXPO }}
+            className="w-[92px] mt-3.5 object-contain hidden dark:block"
             style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
           />
         </motion.div>

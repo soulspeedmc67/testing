@@ -1,18 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect } from "react";
 import { X } from "lucide-react";
+import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 
 export default function DraggableSheet({ isOpen, onClose, title, subtitle, children, maxHeight = "85vh" }) {
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
+  useBodyScrollLock(Boolean(isOpen));
+
 
   return (
     <AnimatePresence>

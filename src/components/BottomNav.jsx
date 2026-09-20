@@ -19,22 +19,32 @@ export default function BottomNav({ forceHide = false }) {
   const { isNavVisible } = useScrollChrome();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [isTrackerActive, setIsTrackerActive] = useState(false);
 
   useEffect(() => {
-    const checkActiveOrder = () => {
+    const updateTrackerState = () => {
       try {
         const order = localStorage.getItem("dashit_active_order");
-        setHasActiveOrder(Boolean(order && JSON.parse(order)));
+        const hasOrder = Boolean(order && JSON.parse(order));
+        const isMin = typeof window !== "undefined" && window.__dashit_tracker_minimized !== false;
+        setIsTrackerActive(hasOrder && isMin);
+        setHasActiveOrder(hasOrder);
       } catch (e) {
+        setIsTrackerActive(false);
         setHasActiveOrder(false);
       }
     };
-    checkActiveOrder();
-    window.addEventListener("storage", checkActiveOrder);
-    window.addEventListener("dashit_order_updated", checkActiveOrder);
+    updateTrackerState();
+    const handleTrackerChange = (e) => {
+      setIsTrackerActive(Boolean(e.detail?.isMinimized && e.detail?.hasOrder));
+    };
+    window.addEventListener("dashit_tracker_minimized_changed", handleTrackerChange);
+    window.addEventListener("storage", updateTrackerState);
+    window.addEventListener("dashit_order_updated", updateTrackerState);
     return () => {
-      window.removeEventListener("storage", checkActiveOrder);
-      window.removeEventListener("dashit_order_updated", checkActiveOrder);
+      window.removeEventListener("dashit_tracker_minimized_changed", handleTrackerChange);
+      window.removeEventListener("storage", updateTrackerState);
+      window.removeEventListener("dashit_order_updated", updateTrackerState);
     };
   }, []);
 
@@ -110,20 +120,19 @@ export default function BottomNav({ forceHide = false }) {
         duration: 0.45,
         ease: [0.16, 1, 0.3, 1],
       }}
-      /* When hidden this only animates to opacity 0 — it stays mounted. Without
-         disabling pointer events it remains hit-testable, so an invisible tab
-         near the bottom edge could still be tapped (e.g. on /login or /admin)
-         and navigate the user away. aria-hidden keeps it out of the a11y tree
-         for the same reason. */
       aria-hidden={shouldHide}
-      className={`fixed left-0 right-0 z-50 md:hidden flex justify-center px-4 ${
-        shouldHide ? "pointer-events-none" : "pointer-events-auto"
-      }`}
+      className="fixed left-0 right-0 z-50 md:hidden flex justify-center px-4 pointer-events-none"
       style={{
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
       }}
     >
-      <nav className="relative max-w-[280px] w-full mx-auto bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-full p-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.06)] grid grid-cols-3 items-center select-none dark:bg-surface-raised/95 dark:border-line/90">
+      <nav
+        className={`relative ${
+          isTrackerActive ? "max-w-[245px]" : "max-w-[288px]"
+        } w-full mx-auto h-[52px] bg-white border border-slate-200/80 rounded-full px-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.08)] grid grid-cols-3 items-center select-none dark:bg-[#1C1F2A] dark:border-slate-700/60 transition-all duration-300 ${
+          shouldHide ? "pointer-events-none" : "pointer-events-auto"
+        }`}
+      >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path || (item.id === "home" && (currentPath === "/shop" || currentPath === "/"));
@@ -144,8 +153,8 @@ export default function BottomNav({ forceHide = false }) {
                 }
               }}
               className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full cursor-pointer touch-manipulation select-none ${
-                isActive ? "text-[#061838]" : "text-slate-400 hover:text-slate-600"
-              } dark:text-content`}
+                isActive ? "text-[#061838] dark:text-[#FF5B00]" : "text-slate-400 hover:text-slate-600 dark:text-content-secondary dark:hover:text-white"
+              }`}
             >
               <motion.div
                 key={`${item.id}-${tick}`}
@@ -166,33 +175,31 @@ export default function BottomNav({ forceHide = false }) {
                 }
               >
                 <Icon
-                  className={`w-4 h-4 transition-colors duration-250 ${
-                    isActive ? "stroke-[2.8] text-[#061838]" : "stroke-[2] text-slate-400"
-                  } dark:text-content`}
+                  className={`w-[19px] h-[19px] transition-colors duration-250 ${
+                    isActive ? "stroke-[2.4] text-[#061838] dark:text-[#FF5B00]" : "stroke-[1.9] text-slate-400 dark:text-content-secondary"
+                  }`}
                 />
                 {item.id === "orders" && hasActiveOrder && (
-                  <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                  <span className="absolute -top-1 -right-1.5 flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5B00]"></span>
                   </span>
                 )}
               </motion.div>
 
-              <motion.span
-                animate={{ scale: isActive ? 1.04 : 1 }}
-                transition={{ duration: 0.2 }}
+              <span
                 className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors duration-250 ${
-                  isActive ? "font-black text-[#061838]" : "font-semibold text-slate-500"
-                } dark:text-content`}
+                  isActive ? "font-extrabold text-[#061838] dark:text-[#FF5B00]" : "font-medium text-slate-500 dark:text-content-secondary"
+                }`}
               >
                 {item.label}
-              </motion.span>
+              </span>
 
-              {/* Minimal Active Indicator Dot with Smooth Physics */}
+              {/* Active Indicator Dot */}
               {isActive && (
                 <motion.span
                   layoutId="activeTabIndicator"
-                  className="w-1.5 h-1.5 rounded-full bg-[#FF5B00] mt-0.5 shadow-[0_1px_4px_rgba(255, 91, 0,0.4)]"
+                  className="w-1 h-1 rounded-full bg-[#FF5B00] mt-0.5 shadow-[0_1px_4px_rgba(255,91,0,0.4)]"
                   transition={{
                     type: "spring",
                     stiffness: 380,

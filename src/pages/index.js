@@ -479,6 +479,8 @@ export default function LandingPage() {
                       <img
                         src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=120&auto=format&fit=crop&q=80"
                         alt="Amul Milk"
+                        loading="lazy"
+                        decoding="async"
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
@@ -505,6 +507,8 @@ export default function LandingPage() {
                       <img
                         src="https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=120&auto=format&fit=crop&q=80"
                         alt="Kashmiri Lavas"
+                        loading="lazy"
+                        decoding="async"
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
@@ -662,6 +666,8 @@ export default function LandingPage() {
                   <img
                     src={cat.img}
                     alt={cat.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />

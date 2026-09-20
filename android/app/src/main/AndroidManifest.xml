@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
         allowBackup="false": with it on, `adb backup` pulls the app's private
@@ -70,6 +71,16 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!--
+        SCHEDULE_EXACT_ALARM & USE_EXACT_ALARM are declared upstream by @capacitor/local-notifications.
+        Google Play restricts exact alarms strictly to alarm clock, timer,
+        or calendar apps (Google Play Exact Alarm Policy). All other apps are rejected.
+        Because DASHit delivers real-time quick-commerce orders via immediate notifications,
+        exact background alarms are not needed, so we explicitly strip them from the build.
+    -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" tools:node="remove" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:node="remove" />
 
     <!--
         Foreground location only. confirm-location.js and the map picker call

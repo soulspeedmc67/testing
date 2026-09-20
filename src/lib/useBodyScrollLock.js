@@ -1,73 +1,99 @@
 import { useEffect } from "react";
 
+let activeLocks = 0;
+let originalStyles = null;
+let savedScrollY = 0;
+
 /**
  * Locks background scrolling while a modal / bottom sheet is open.
- *
- * THE BUG THIS FIXES: the hand-rolled sheets render as `fixed inset-0` overlays
- * on top of a still-scrollable page. Dragging inside the sheet — especially when
- * its own content is short or has no scroll container — chains the gesture
- * through to <body>, so the screen *behind* the sheet scrolls instead. On iOS
- * WebView this is the default behaviour and `overflow: hidden` alone does not
- * stop it.
- *
- * The fix is position-fixing the body at its current offset (which iOS does
- * honour) and restoring the exact scroll position on close, so reopening a sheet
- * never jumps the page to the top.
- *
- * Sheets built on VaulDrawer do NOT need this — vaul does its own locking.
- *
- * @param {boolean} isLocked whether a sheet is currently open
+ * Uses reference counting so multiple or overlapping sheets do not
+ * overwrite previous styles or leave the page permanently frozen.
+ * Avoids position:fixed on body which causes viewport jumps on mobile.
  */
-export function useBodyScrollLock(isLocked) {
-  useEffect(() => {
-    if (!isLocked || typeof document === "undefined") return;
+export function lockBodyScroll() {
+  if (typeof document === "undefined") return;
+  const body = document.body;
+  const html = document.documentElement;
 
-    const body = document.body;
-    const scrollY = window.scrollY;
-
-    const previous = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      right: body.style.right,
-      width: body.style.width,
-      overflow: body.style.overflow,
-      overscrollBehavior: body.style.overscrollBehavior,
+  if (activeLocks === 0) {
+    originalStyles = {
+      bodyOverflow: body.style.overflow || "",
+      htmlOverflow: html.style.overflow || "",
+      bodyOverscroll: body.style.overscrollBehavior || "",
+      htmlOverscroll: html.style.overscrollBehavior || "",
+      touchAction: body.style.touchAction || "",
     };
 
-    /* position:fixed is what actually stops iOS WebView scroll chaining;
-       overflow:hidden alone is ignored there. Pinning `top` to the negative
-       current offset keeps the page visually still while it is locked.
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    html.style.overscrollBehavior = "none";
+    body.style.touchAction = "pan-y";
+  }
+  activeLocks++;
+}
 
-       `important` is deliberate, not defensive noise: vaul writes
-       `body.style.position = "relative"` for its own drawer handling AFTER
-       this effect runs, which silently un-did the lock (measured: `top` was
-       applied but computed position stayed `relative` and the page still
-       scrolled). An important inline value beats vaul's plain inline write. */
-    body.style.setProperty("position", "fixed", "important");
-    body.style.setProperty("top", `-${scrollY}px`, "important");
-    body.style.setProperty("left", "0", "important");
-    body.style.setProperty("right", "0", "important");
-    body.style.setProperty("width", "100%", "important");
-    body.style.setProperty("overflow", "hidden", "important");
-    body.style.setProperty("overscroll-behavior", "none", "important");
+export function unlockBodyScroll() {
+  if (typeof document === "undefined") return;
+  if (activeLocks <= 0) {
+    activeLocks = 0;
+    return;
+  }
 
+  activeLocks--;
+
+  if (activeLocks === 0) {
+    const body = document.body;
+    const html = document.documentElement;
+
+    if (originalStyles) {
+      body.style.overflow = originalStyles.bodyOverflow;
+      html.style.overflow = originalStyles.htmlOverflow;
+      body.style.overscrollBehavior = originalStyles.bodyOverscroll;
+      html.style.overscrollBehavior = originalStyles.htmlOverscroll;
+      body.style.touchAction = originalStyles.touchAction;
+      originalStyles = null;
+    } else {
+      body.style.removeProperty("overflow");
+      html.style.removeProperty("overflow");
+      body.style.removeProperty("overscroll-behavior");
+      html.style.removeProperty("overscroll-behavior");
+      body.style.removeProperty("touch-action");
+    }
+  }
+}
+
+/**
+ * Emergency unlock: immediately restores native body scrolling and
+ * clears any stuck lock counters. Safe to call on route changes.
+ */
+export function forceUnlockBodyScroll() {
+  if (typeof document === "undefined") return;
+  activeLocks = 0;
+  originalStyles = null;
+  const body = document.body;
+  const html = document.documentElement;
+  body.style.removeProperty("overflow");
+  html.style.removeProperty("overflow");
+  body.style.removeProperty("overscroll-behavior");
+  html.style.removeProperty("overscroll-behavior");
+  body.style.removeProperty("touch-action");
+  body.style.removeProperty("position");
+  body.style.removeProperty("top");
+  body.style.removeProperty("left");
+  body.style.removeProperty("right");
+  body.style.removeProperty("width");
+}
+
+export function useBodyScrollLock(isLocked) {
+  useEffect(() => {
+    if (!isLocked) return;
+    lockBodyScroll();
     return () => {
-      for (const prop of ["position", "top", "left", "right", "width", "overflow", "overscroll-behavior"]) {
-        body.style.removeProperty(prop);
-      }
-      // Put back anything the page had set inline before we locked it.
-      if (previous.position) body.style.position = previous.position;
-      if (previous.top) body.style.top = previous.top;
-      if (previous.left) body.style.left = previous.left;
-      if (previous.right) body.style.right = previous.right;
-      if (previous.width) body.style.width = previous.width;
-      if (previous.overflow) body.style.overflow = previous.overflow;
-      if (previous.overscrollBehavior) body.style.overscrollBehavior = previous.overscrollBehavior;
-      // Restore where the user actually was, not the top of the page.
-      window.scrollTo(0, scrollY);
+      unlockBodyScroll();
     };
   }, [isLocked]);
 }
 
 export default useBodyScrollLock;
+

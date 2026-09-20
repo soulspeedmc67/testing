@@ -8,6 +8,8 @@
     "build": "node scripts/generate-sitemap.mjs && next build",
     "export:zip": "rm -f dashit-hostinger-deploy.zip && next build && (cp public/.htaccess out/.htaccess 2>/dev/null || true) && (cd out && zip -q -r ../dashit-hostinger-deploy.zip . -x '*.apk' -x '*.ipa' -x '*.zip' -x '*.tar' -x '*.gz')",
     "start": "next start",
+    "server": "node server.js",
+    "serve:static": "node scripts/serve-local.js",
     "test": "jest",
     "seed:firestore": "node scripts/seed-firestore.mjs",
     "fb:rules": "firebase-tools deploy --only firestore:rules,firestore:indexes",

@@ -250,8 +250,8 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               }}
               className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 authMode === "signin"
-                  ? "bg-white text-[#061838] shadow-xs dark:bg-surface-raised"
-                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-content"
+                  ? "bg-white text-[#061838] shadow-xs dark:bg-surface-raised dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-white"
               }`}
             >
               Sign In
@@ -264,8 +264,8 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               }}
               className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 authMode === "signup"
-                  ? "bg-white text-[#061838] shadow-xs dark:bg-surface-raised"
-                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-content"
+                  ? "bg-white text-[#061838] shadow-xs dark:bg-surface-raised dark:text-white"
+                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-white"
               }`}
             >
               Create Account
@@ -278,8 +278,8 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               }}
               className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer ${
                 authMode === "quickphone"
-                  ? "bg-white text-[#FF5B00] shadow-xs dark:bg-surface-raised"
-                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-content"
+                  ? "bg-white text-[#FF5B00] shadow-xs dark:bg-surface-raised dark:text-[#FF5B00]"
+                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-white"
               }`}
             >
               Phone Only
@@ -323,15 +323,14 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                       setMobile(e.target.value.replace(/\D/g, "").slice(0, 10));
                     }}
                     placeholder="10-digit mobile number"
-                    style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-transparent border-0 outline-none text-base font-black text-slate-900 tracking-wider py-2 dark:text-content"
+                    className="w-full bg-transparent border-0 outline-none text-base font-black text-slate-900 tracking-wider py-2 dark:text-white placeholder:text-slate-400 dark:placeholder:text-content-faint"
                     autoFocus
                   />
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-2.5 flex items-start space-x-2 text-amber-900 text-[11px]">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
+              <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-2.5 flex items-start space-x-2 text-amber-900 text-[11px] dark:bg-amber-950/40 dark:border-amber-800/60 dark:text-amber-300">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0 dark:text-amber-400" />
                 <span>Our rider calls this number for doorstep drop coordinates.</span>
               </div>
 
@@ -359,8 +358,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Your Name"
-                      style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-content dark:focus:bg-surface-muted"
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-white dark:placeholder:text-content-faint dark:focus:bg-surface-muted"
                     />
                   </div>
                 </div>
@@ -379,8 +377,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="customer@dashit.co.in"
-                    style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-content dark:focus:bg-surface-muted"
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-white dark:placeholder:text-content-faint dark:focus:bg-surface-muted"
                     autoFocus={authMode !== "signup"}
                   />
                 </div>
@@ -398,8 +395,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-10 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-content dark:focus:bg-surface-muted"
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-10 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-white dark:placeholder:text-content-faint dark:focus:bg-surface-muted"
                   />
                   <button
                     type="button"
@@ -417,7 +413,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block dark:text-content-secondary">
                     Delivery Contact Mobile (+91)
                   </label>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
                     For Delivery Rider
                   </span>
                 </div>
@@ -432,8 +428,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="10-digit delivery mobile"
-                    style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-transparent border-0 outline-none text-xs font-bold text-slate-900 py-1.5 dark:text-content"
+                    className="w-full bg-transparent border-0 outline-none text-xs font-bold text-slate-900 py-1.5 dark:text-white placeholder:text-slate-400 dark:placeholder:text-content-faint"
                   />
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium pl-1 dark:text-content-muted">

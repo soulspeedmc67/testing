@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const { handleApiRequest } = require("../server");
 
 const PORT = 3000;
 const ROOT = path.resolve(__dirname, "..", "out");
@@ -22,6 +23,11 @@ const MIME = {
 };
 
 const server = http.createServer((req, res) => {
+  // Delegate backend API routes
+  if (req.url.startsWith("/api/")) {
+    return handleApiRequest(req, res);
+  }
+
   let urlPath = decodeURIComponent(req.url.split("?")[0]);
   let filePath = path.join(ROOT, urlPath);
 

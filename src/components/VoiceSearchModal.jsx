@@ -22,6 +22,46 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
       return;
     }
 
+    // 1. Android Native Voice Search Bridge
+    if (typeof window !== "undefined" && window.AndroidSpeech && window.AndroidSpeech.isAvailable()) {
+      setIsListening(true);
+      setErrorMessage("");
+      hapticLight();
+
+      window.onNativeSpeechResult = (data) => {
+        setIsListening(false);
+        const text = data?.text || "";
+        if (text) {
+          setTranscript(text);
+          hapticMedium();
+          setTimeout(() => {
+            if (onResult) onResult(text);
+            onClose();
+          }, 450);
+        }
+      };
+
+      window.onNativeSpeechError = (err) => {
+        setIsListening(false);
+        const msg = err?.message || "Could not recognize voice. Tap below to retry.";
+        setErrorMessage(msg);
+      };
+
+      try {
+        window.AndroidSpeech.startListening();
+      } catch (e) {
+        setIsListening(false);
+        setErrorMessage("Failed to start voice search. Tap to retry.");
+      }
+
+      return () => {
+        delete window.onNativeSpeechResult;
+        delete window.onNativeSpeechError;
+        setIsListening(false);
+      };
+    }
+
+    // 2. Web Speech API Fallback (Desktop / Web Browsers)
     const SpeechRecognition =
       typeof window !== "undefined" &&
       (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -93,6 +133,16 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
   const handleRetry = () => {
     setErrorMessage("");
     setTranscript("");
+    if (typeof window !== "undefined" && window.AndroidSpeech && window.AndroidSpeech.isAvailable()) {
+      setIsListening(true);
+      try {
+        window.AndroidSpeech.startListening();
+      } catch (e) {
+        setIsListening(false);
+        setErrorMessage("Could not restart voice search.");
+      }
+      return;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.start();

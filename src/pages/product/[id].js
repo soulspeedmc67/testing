@@ -688,8 +688,30 @@ export default function ProductDetailPage({ initialProduct }) {
 }
 
 export async function getStaticPaths() {
-  const paths = ALL_PRODUCTS.map((prod) => ({
-    params: { id: String(prod.id) },
+  const allIds = new Set();
+
+  ALL_PRODUCTS.forEach((prod) => {
+    if (prod.id) allIds.add(String(prod.id));
+    if (prod.barcode) allIds.add(String(prod.barcode));
+  });
+
+  try {
+    const jsonProducts = require("../../../scripts/data/products.json");
+    if (Array.isArray(jsonProducts)) {
+      jsonProducts.forEach((p) => {
+        if (p.id) allIds.add(String(p.id));
+        if (p.barcode) allIds.add(String(p.barcode));
+      });
+    }
+  } catch (e) {}
+
+  // Pre-generate PROD-1 through PROD-100 to cover all seeded and future products
+  for (let i = 1; i <= 100; i++) {
+    allIds.add(`PROD-${i}`);
+  }
+
+  const paths = Array.from(allIds).map((id) => ({
+    params: { id },
   }));
 
   return {
@@ -700,8 +722,15 @@ export async function getStaticPaths() {
 
 export async function getStaticProps({ params }) {
   const targetId = String(params?.id || "");
+  let jsonProducts = [];
+  try {
+    jsonProducts = require("../../../scripts/data/products.json");
+  } catch (e) {}
+
+  const allKnown = [...ALL_PRODUCTS, ...(Array.isArray(jsonProducts) ? jsonProducts : [])];
+
   const product =
-    ALL_PRODUCTS.find(
+    allKnown.find(
       (p) => String(p.id) === targetId || String(p.barcode) === targetId
     ) || ALL_PRODUCTS[0];
 
@@ -711,4 +740,5 @@ export async function getStaticProps({ params }) {
     },
   };
 }
+
 

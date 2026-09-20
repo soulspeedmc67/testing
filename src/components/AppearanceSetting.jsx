@@ -47,7 +47,7 @@ export default function AppearanceSetting() {
               screen opens with the indicator travelling from Light. */}
           <span
             aria-hidden="true"
-            className={`absolute inset-y-0 left-0 w-1/3 rounded-2xl bg-slate-900 dark:bg-surface-muted ${
+            className={`absolute inset-y-0 left-0 w-1/3 rounded-2xl bg-slate-900 dark:bg-surface-muted dark:border dark:border-line-strong shadow-xs ${
               hydrated ? 'transition-transform duration-300 ease-out' : ''
             }`}
             style={{ transform: `translateX(${index * 100}%)` }}

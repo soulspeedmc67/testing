@@ -98,10 +98,12 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
           className="bg-white border border-slate-200/80 rounded-2xl p-2.5 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] dark:bg-surface-raised dark:border-line/80"
         >
           {/* Imagery leads, a single label reads underneath — nothing else competes */}
-          <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 dark:border-line-soft">
+          <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white dark:from-surface-muted dark:to-surface-raised rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 dark:border-line-soft">
             <img
               src={item.img}
               alt={item.name}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
             />
           </div>

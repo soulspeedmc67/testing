@@ -10,14 +10,15 @@ import { Capacitor } from "@capacitor/core";
  * @param {boolean} options.bottomDarkIcons - True if icons on the nav bar should be dark
  */
 export async function setDeviceSystemBars({
-  topColor = "#FFFDF5",
+  topColor = "#FFFFFF",
   topDarkIcons = true,
-  bottomColor = "#FFFDF5",
+  bottomColor = "#FFFFFF",
   bottomDarkIcons = true,
 }) {
   if (typeof window === "undefined") return;
 
-  const validTopColor = topColor && topColor !== "#00000000" ? topColor : "#FFFDF5";
+  const validTopColor = topColor && topColor !== "#00000000" ? topColor : "#FFFFFF";
+  const validBottomColor = bottomColor && bottomColor !== "#00000000" ? bottomColor : "#FFFFFF";
 
   // 1. Web meta theme-color (for mobile browsers / PWA / iOS Webview)
   try {
@@ -54,7 +55,13 @@ export async function setDeviceSystemBars({
   // 3. Android Native Bridge for both top and bottom system bars
   try {
     if (window.AndroidBars && typeof window.AndroidBars.setBars === "function") {
-      window.AndroidBars.setBars(validTopColor, topDarkIcons, bottomColor, bottomDarkIcons);
+      window.AndroidBars.setBars(
+        validTopColor,
+        Boolean(topDarkIcons),
+        validBottomColor,
+        Boolean(bottomDarkIcons)
+      );
     }
   } catch (e) {}
 }
+

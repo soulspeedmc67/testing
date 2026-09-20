@@ -398,39 +398,44 @@ export default function CheckoutPage() {
 
     setProcessedOrder(newOrder);
 
-    try {
-      // 1. Submit directly to Firestore & await confirmation
-      const res = await submitOrder(newOrder);
-      const finalOrderId = res?.orderId || generatedCode;
-      const confirmedOrder = { ...newOrder, orderId: finalOrderId };
-      setProcessedOrder(confirmedOrder);
-      placingRef.current = false;
-      setIsProcessing(false);
-      setShowProcessingModal(true);
-
+    const finalizeOrder = async (orderPayload) => {
       try {
-        showOrderPlacedNotification(confirmedOrder);
-      } catch (notifErr) {
-        console.warn("Could not dispatch placed order notification:", notifErr);
+        // 1. Submit directly to Firestore & await confirmation
+        const res = await submitOrder(orderPayload);
+        const finalOrderId = res?.orderId || generatedCode;
+        const confirmedOrder = { ...orderPayload, orderId: finalOrderId };
+        setProcessedOrder(confirmedOrder);
+        placingRef.current = false;
+        setIsProcessing(false);
+        setShowProcessingModal(true);
+
+        try {
+          showOrderPlacedNotification(confirmedOrder);
+        } catch (notifErr) {
+          console.warn("Could not dispatch placed order notification:", notifErr);
+        }
+
+        const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+        const filtered = existingOrders.filter((o) => o.orderId !== finalOrderId);
+        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered]));
+        localStorage.setItem("dashit_active_order", JSON.stringify(confirmedOrder));
+
+        localStorage.removeItem("dashit_cart");
+        localStorage.removeItem("dashit_checkout_data");
+        // Reset free delivery popup so future orders can see it again
+        localStorage.removeItem("dashit_free_delivery_seen");
+        window.dispatchEvent(new Event("dashit_cart_updated"));
+      } catch (err) {
+        console.error("Order placement error:", err);
+        placingRef.current = false;
+        setIsProcessing(false);
+        setShowProcessingModal(false);
+        alert(err?.message || "Unable to process order. Please check your connection and try again.");
       }
+    };
 
-      const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
-      const filtered = existingOrders.filter((o) => o.orderId !== finalOrderId);
-      localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered]));
-      localStorage.setItem("dashit_active_order", JSON.stringify(confirmedOrder));
-
-      localStorage.removeItem("dashit_cart");
-      localStorage.removeItem("dashit_checkout_data");
-      // Reset free delivery popup so future orders can see it again
-      localStorage.removeItem("dashit_free_delivery_seen");
-      window.dispatchEvent(new Event("dashit_cart_updated"));
-    } catch (err) {
-      console.error("Order placement error:", err);
-      placingRef.current = false;
-      setIsProcessing(false);
-      setShowProcessingModal(false);
-      alert(err?.message || "Unable to process order. Please check your connection and try again.");
-    }
+    // Process order with Cash on Delivery
+    await finalizeOrder(newOrder);
   };
 
   return (
@@ -483,7 +488,7 @@ export default function CheckoutPage() {
       {/* MAIN CONTENT */}
       {cartItems.length === 0 ? (
         <main className="max-w-md mx-auto p-6 py-20 text-center space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-blue-50 text-[#061838] mx-auto flex items-center justify-center border border-blue-100 shadow-sm">
+          <div className="w-20 h-20 rounded-3xl bg-blue-50 text-[#061838] mx-auto flex items-center justify-center border border-blue-100 shadow-sm dark:bg-surface-raised dark:text-content dark:border-line">
             <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
           </div>
           <div className="space-y-1">
@@ -494,7 +499,7 @@ export default function CheckoutPage() {
           </div>
           <Link
             href="/shop"
-            className="inline-block bg-[#061838] hover:bg-slate-900 text-white font-black text-xs px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-all"
+            className="inline-block bg-[#061838] hover:bg-slate-900 dark:bg-accent dark:hover:bg-[#e05000] text-white font-black text-xs px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-all"
           >
             Browse Storefront →
           </Link>
@@ -509,7 +514,7 @@ export default function CheckoutPage() {
             </div>
             <div>
               <h3 className="font-semibold text-sm text-slate-900 dark:text-content">Ordering paused</h3>
-              <p className="text-xs text-red-700 font-medium mt-0.5 leading-relaxed">
+              <p className="text-xs text-red-700 font-medium mt-0.5 leading-relaxed dark:text-rose-400">
                 Store Reopening Schedule: {closeReason || "Reopening shortly"}
               </p>
             </div>
@@ -520,7 +525,7 @@ export default function CheckoutPage() {
         <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3 dark:bg-surface-raised dark:border-line/90">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60">
                 <Clock className="w-5 h-5 stroke-[2.5]" />
               </div>
               <div>
@@ -537,22 +542,22 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={handleClearAllCart}
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 text-xs font-black active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 text-xs font-black active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 dark:text-rose-400 dark:border-rose-900/60"
               title="Remove all items from cart"
             >
-              <Trash2 className="w-3.5 h-3.5 stroke-[2.5] text-red-600" />
+              <Trash2 className="w-3.5 h-3.5 stroke-[2.5] text-red-600 dark:text-rose-400" />
               <span>Remove all</span>
             </button>
           </div>
 
           {/* Open box delivery badge */}
-          <div className="bg-[#f0f7ff] border border-blue-200/60 rounded-2xl p-3">
-            <span className="font-extrabold text-xs text-slate-900 block leading-tight">
+          <div className="bg-[#f0f7ff] border border-blue-200/60 rounded-2xl p-3 dark:bg-blue-950/30 dark:border-blue-900/50">
+            <span className="font-extrabold text-xs text-slate-900 block leading-tight dark:text-content">
               Open box delivery eligible
             </span>
-            <div className="flex items-center justify-between text-[11px] text-slate-600 mt-0.5">
+            <div className="flex items-center justify-between text-[11px] text-slate-600 mt-0.5 dark:text-content-secondary">
               <span>Check & accept at doorstep</span>
-              <span className="text-blue-600 font-bold underline cursor-pointer">Know more</span>
+              <span className="text-blue-600 font-bold underline cursor-pointer dark:text-blue-400">Know more</span>
             </div>
           </div>
 
@@ -627,14 +632,14 @@ export default function CheckoutPage() {
         {/* Coupons & Offers Banner matching Screenshot 3 */}
         <div
           onClick={() => setIsCouponsOpen(true)}
-          className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-4 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99] transition-transform"
+          className="bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-4 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99] transition-transform"
         >
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center border border-blue-200 dark:border-blue-900">
+            <div className="w-9 h-9 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200 dark:border-blue-900/60">
               <Tag className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
-              <span className="text-xs font-black text-slate-900 dark:text-white block">
+              <span className="text-xs font-black text-slate-900 dark:text-content block">
                 {appliedCoupon ? `Coupon '${appliedCoupon.code}' Applied!` : "Avail Offers and Coupons"}
               </span>
               <span className="text-[11px] font-bold text-[#FF5B00] block">
@@ -646,15 +651,15 @@ export default function CheckoutPage() {
         </div>
 
         {/* Bill Details */}
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-4 space-y-2.5 shadow-2xs text-xs">
-          <h4 className="font-black text-slate-900 dark:text-white text-xs">Bill Details</h4>
-          <div className="flex justify-between text-slate-600 dark:text-zinc-400">
+        <div className="bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-4 space-y-2.5 shadow-2xs text-xs">
+          <h4 className="font-black text-slate-900 dark:text-content text-xs">Bill Details</h4>
+          <div className="flex justify-between text-slate-600 dark:text-content-secondary">
             <span>Items total</span>
-            <span className="font-mono font-bold text-slate-900 dark:text-white">₹{subtotal}</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-content">₹{subtotal}</span>
           </div>
-          <div className="flex justify-between text-slate-600 dark:text-zinc-400">
+          <div className="flex justify-between text-slate-600 dark:text-content-secondary">
             <span>Delivery fee</span>
-            <span className="font-mono font-bold text-[#2563EB]">
+            <span className="font-mono font-bold text-[#2563EB] dark:text-blue-400">
               {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
             </span>
           </div>
@@ -664,9 +669,9 @@ export default function CheckoutPage() {
               <span className="font-mono">-₹{couponDiscount}</span>
             </div>
           )}
-          <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex justify-between font-black text-sm text-slate-900 dark:text-white">
+          <div className="pt-2 border-t border-slate-100 dark:border-line flex justify-between font-black text-sm text-slate-900 dark:text-content">
             <span>To Pay</span>
-            <span className="font-mono text-[#061838] dark:text-white">₹{grandTotal}</span>
+            <span className="font-mono text-[#061838] dark:text-[#FF6A1A]">₹{grandTotal}</span>
           </div>
         </div>
 
@@ -675,10 +680,10 @@ export default function CheckoutPage() {
           <section className="space-y-3 pt-2">
             <div className="flex items-center justify-between px-1">
               <div>
-                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
+                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-content tracking-tight">
                   Pairs Well with Your Items
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                <p className="text-[11px] text-slate-500 dark:text-content-secondary font-medium">
                   Smart additions tailored to your cart
                 </p>
               </div>
@@ -694,24 +699,24 @@ export default function CheckoutPage() {
                 return (
                   <div
                     key={prod.id}
-                    className="w-[175px] shrink-0 bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs hover:shadow-sm transition-shadow"
+                    className="w-[175px] shrink-0 bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs hover:shadow-sm transition-shadow"
                   >
                     <div className="relative">
                       {savings > 0 && (
-                        <span className="absolute top-0 left-0 bg-emerald-50 text-emerald-700 font-bold text-[9.5px] px-2 py-0.5 rounded-md border border-emerald-200/70">
+                        <span className="absolute top-0 left-0 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 font-bold text-[9.5px] px-2 py-0.5 rounded-md border border-emerald-200/70">
                           Save ₹{savings}
                         </span>
                       )}
                       <img
                         src={prod.img}
                         alt={prod.name}
-                        className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-zinc-800 rounded-2xl p-2 mt-2"
+                        className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-surface-muted rounded-2xl p-2 mt-2"
                       />
                     </div>
 
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{prod.unit || "1 unit"}</span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-2 mt-0.5">
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-content leading-tight line-clamp-2 mt-0.5">
                         {prod.name}
                       </h4>
                       <div className="flex items-center space-x-1 mt-1 text-[10px] text-amber-500 font-black">
@@ -721,14 +726,14 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-100 dark:border-line flex items-center justify-between">
                       <div>
                         {prod.originalPrice > prod.price && (
                           <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none dark:text-content-faint">
                             ₹{prod.originalPrice}
                           </span>
                         )}
-                        <span className="text-xs font-black text-slate-900 dark:text-white font-mono">
+                        <span className="text-xs font-black text-slate-900 dark:text-content font-mono">
                           ₹{prod.price}
                         </span>
                       </div>
@@ -763,7 +768,7 @@ export default function CheckoutPage() {
                             window.dispatchEvent(new Event("dashit_cart_updated"));
                             hapticLight();
                           }}
-                          className="bg-white dark:bg-zinc-800 border-2 border-[#061838] text-[#061838] dark:text-white font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 active:scale-95 shadow-2xs transition-all"
+                          className="bg-white dark:bg-surface-muted border-2 border-[#061838] dark:border-line-strong text-[#061838] dark:text-content font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-raised active:scale-95 shadow-2xs transition-all"
                         >
                           ADD
                         </button>
@@ -781,10 +786,10 @@ export default function CheckoutPage() {
           <section className="space-y-3 pt-2">
             <div className="flex items-center justify-between px-1">
               <div>
-                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-white tracking-tight">
+                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-content tracking-tight">
                   Frequently Ordered in Anantnag
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                <p className="text-[11px] text-slate-500 dark:text-content-secondary font-medium">
                   Popular pantry staples, snacks & beverages customers often add
                 </p>
               </div>
@@ -800,24 +805,24 @@ export default function CheckoutPage() {
                 return (
                   <div
                     key={prod.id}
-                    className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs hover:shadow-sm transition-shadow"
+                    className="bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs hover:shadow-sm transition-shadow"
                   >
                     <div className="relative">
                       {savings > 0 && (
-                        <span className="absolute top-0 left-0 bg-emerald-50 text-emerald-700 font-bold text-[9.5px] px-2 py-0.5 rounded-md border border-emerald-200/70">
+                        <span className="absolute top-0 left-0 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 font-bold text-[9.5px] px-2 py-0.5 rounded-md border border-emerald-200/70">
                           Save ₹{savings}
                         </span>
                       )}
                       <img
                         src={prod.img}
                         alt={prod.name}
-                        className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-zinc-800 rounded-2xl p-2 mt-2"
+                        className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-surface-muted rounded-2xl p-2 mt-2"
                       />
                     </div>
 
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{prod.unit || "1 unit"}</span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-2 mt-0.5">
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-content leading-tight line-clamp-2 mt-0.5">
                         {prod.name}
                       </h4>
                       <div className="flex items-center space-x-1 mt-1 text-[10px] text-amber-500 font-black">
@@ -827,14 +832,14 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="pt-2 border-t border-slate-100 dark:border-line flex items-center justify-between">
                       <div>
                         {prod.originalPrice > prod.price && (
                           <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none dark:text-content-faint">
                             ₹{prod.originalPrice}
                           </span>
                         )}
-                        <span className="text-xs font-black text-slate-900 dark:text-white font-mono">
+                        <span className="text-xs font-black text-slate-900 dark:text-content font-mono">
                           ₹{prod.price}
                         </span>
                       </div>
@@ -867,7 +872,7 @@ export default function CheckoutPage() {
                             window.dispatchEvent(new Event("dashit_cart_updated"));
                             hapticLight();
                           }}
-                          className="bg-white dark:bg-zinc-800 border-2 border-[#061838] text-[#061838] dark:text-white font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 active:scale-95 shadow-2xs transition-all"
+                          className="bg-white dark:bg-surface-muted border-2 border-[#061838] dark:border-line-strong text-[#061838] dark:text-content font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-raised active:scale-95 shadow-2xs transition-all"
                         >
                           ADD
                         </button>
@@ -884,41 +889,41 @@ export default function CheckoutPage() {
 
       {/* 5. STICKY BOTTOM BAR (Always anchored to viewport bottom) */}
       {cartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-zinc-800 shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-[max(12px,env(safe-area-inset-bottom,12px))]">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-surface-overlay/95 backdrop-blur-md border-t border-slate-200/90 dark:border-line shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-[max(12px,env(safe-area-inset-bottom,12px))]">
           <div className="max-w-2xl mx-auto px-2">
             {/* Address Strip */}
-            <div className="px-3 py-2 border-b border-slate-100 dark:border-zinc-800 space-y-1.5">
+            <div className="px-3 py-2 border-b border-slate-100 dark:border-line space-y-1.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2.5 overflow-hidden">
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center shrink-0 border border-slate-200 dark:border-zinc-700">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-surface-muted flex items-center justify-center shrink-0 border border-slate-200 dark:border-line">
                     {checkoutData?.location?.alias === "Work" ? (
-                      <Briefcase className="w-4 h-4 text-[#061838] dark:text-white" />
+                      <Briefcase className="w-4 h-4 text-[#061838] dark:text-content" />
                     ) : checkoutData?.location?.alias === "Parents" ? (
-                      <Users className="w-4 h-4 text-[#061838] dark:text-white" />
+                      <Users className="w-4 h-4 text-[#061838] dark:text-content" />
                     ) : checkoutData?.location?.alias === "Shop" ? (
-                      <Building2 className="w-4 h-4 text-[#061838] dark:text-white" />
+                      <Building2 className="w-4 h-4 text-[#061838] dark:text-content" />
                     ) : (
-                      <Home className="w-4 h-4 text-[#061838] dark:text-white" />
+                      <Home className="w-4 h-4 text-[#061838] dark:text-content" />
                     )}
                   </div>
                   <div className="overflow-hidden">
                     <div className="flex items-center space-x-1.5 flex-wrap">
-                      <span className="text-xs font-black text-slate-900 dark:text-white uppercase">
+                      <span className="text-xs font-black text-slate-900 dark:text-content uppercase">
                         Delivering to {checkoutData?.location?.alias || checkoutData?.location?.nickname || "Home"}
                       </span>
                       {checkoutEta.isDeliverable ? (
-                        <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80 flex items-center space-x-1">
-                          <Zap className="w-2.5 h-2.5 fill-emerald-600 text-emerald-600 shrink-0" />
+                        <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 px-1.5 py-0.5 rounded border border-emerald-200/80 flex items-center space-x-1">
+                          <Zap className="w-2.5 h-2.5 fill-emerald-600 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <span>{checkoutEta.pillText} ({checkoutEta.distanceFormatted})</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/80 flex items-center space-x-1">
-                          <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0" />
+                        <span className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60 px-1.5 py-0.5 rounded border border-rose-200/80 flex items-center space-x-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
                           <span>Beyond 5km ({checkoutEta.distanceFormatted})</span>
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium truncate max-w-[280px]">
+                    <p className="text-[11px] text-slate-500 dark:text-content-secondary font-medium truncate max-w-[280px]">
                       {checkoutData?.location?.address || "Tap to set delivery address"}
                     </p>
                   </div>
@@ -933,16 +938,7 @@ export default function CheckoutPage() {
                 </button>
               </div>
 
-              {/*
-                Outside the service area.
-
-                This must never be a dead end. The Place Order button is disabled
-                here, so without an obvious way forward anyone opening the app from
-                outside Anantnag — an App Store or Play reviewer included — simply
-                cannot reach checkout, which is an automatic rejection under
-                Apple's Guideline 2.1. The button below sets the pin to a
-                serviceable address in one tap.
-              */}
+              {/* Outside the service area warning */}
               {!checkoutEta.isDeliverable && (
                 <div className="mt-2 space-y-2">
                   <div className="flex items-start space-x-2 text-slate-600 dark:text-content-secondary">
@@ -968,7 +964,7 @@ export default function CheckoutPage() {
               )}
 
               {/* Ordering for someone else button */}
-              <div className="pt-1 flex items-center justify-between border-t border-slate-100 dark:border-zinc-800/80">
+              <div className="pt-1 flex items-center justify-between border-t border-slate-100 dark:border-line">
                 <button
                   type="button"
                   onClick={() => setIsOrderingForSomeoneElseOpen(true)}
@@ -1020,14 +1016,10 @@ export default function CheckoutPage() {
                   <ChevronUp className="w-3 h-3 text-slate-500 stroke-[3] dark:text-content-muted" />
                 </span>
                 <div className="flex items-center space-x-1.5 mt-0.5">
-                  {selectedMethod?.id === "cod" ? (
-                    <span className="w-4 h-4 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-black leading-none font-mono">
-                      ₹
-                    </span>
-                  ) : (
-                    <span className="text-xs font-black text-blue-600">UPI</span>
-                  )}
-                  <span className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[110px]">
+                  <span className="w-4 h-4 rounded-md bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px] font-black leading-none font-mono">
+                    ₹
+                  </span>
+                  <span className="text-xs font-black text-slate-900 dark:text-content truncate max-w-[110px]">
                     {selectedMethod.label}
                   </span>
                 </div>
@@ -1040,10 +1032,10 @@ export default function CheckoutPage() {
                 disabled={isProcessing || !isStoreOpen || !checkoutEta.isDeliverable}
                 className={`grow rounded-2xl py-3 px-4 border transition-all flex items-center justify-between ${
                   !isStoreOpen || !checkoutEta.isDeliverable
-                    ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:text-content-secondary"
+                    ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:bg-surface-muted dark:border-line dark:text-content-faint"
                     : !isUserLoggedIn
                     ? "bg-[#FF5B00] hover:bg-[#E04E00] text-white shadow-sm border-orange-500/40 active:scale-[0.98] cursor-pointer"
-                    : "bg-[#061838] hover:bg-[#0A2450] text-white shadow-sm border-slate-700/60 active:scale-[0.98] cursor-pointer"
+                    : "bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white shadow-sm border-slate-700/60 dark:border-orange-500/40 active:scale-[0.98] cursor-pointer"
                 }`}
               >
                 <div className="text-left pr-3 border-r border-white/25">
@@ -1068,9 +1060,7 @@ export default function CheckoutPage() {
                       ? "Store Closed"
                       : !isUserLoggedIn
                       ? "Sign In to Place Order"
-                      : selectedMethod?.id === "cod"
-                      ? "Place Order (COD)"
-                      : "Place Order"}
+                      : "Place Order (COD)"}
                   </span>
                   {!isProcessing && isStoreOpen && checkoutEta.isDeliverable && (
                     !isUserLoggedIn ? (
