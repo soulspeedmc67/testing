@@ -52,7 +52,7 @@ function RotatingSearchPlaceholder() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -5 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="text-xs font-semibold text-slate-500 select-none truncate block absolute w-full"
+          className="text-xs font-semibold text-slate-500 select-none truncate block absolute w-full dark:text-content-muted"
         >
           {SEARCH_SUGGESTIONS[suggestionIdx]}
         </motion.span>
@@ -214,7 +214,7 @@ export default function ShopPage() {
 
   const handleAddToCart = (product) => {
     if (!isStoreOpen) {
-      alert(`Store will be available: ${closeReason || "Reopening shortly!"}`);
+      alert(`Store Reopening Schedule: ${closeReason || "Reopening shortly!"}`);
       return;
     }
     const pId = String(product.id || product.barcode);
@@ -280,7 +280,7 @@ export default function ShopPage() {
   }, [productsList, activeCategory, activeDealPromo]);
 
   return (
-    <div className="min-h-screen bg-[#FFFDF5] text-slate-900 font-sans pb-dock">
+    <div className="min-h-screen bg-[#FFFDF5] text-slate-900 font-sans pb-dock dark:bg-surface dark:text-content">
       <SEO
         title="Online Grocery Store Anantnag — Fresh Essentials in 8 Mins"
         description="Shop farm milk, curd, Kashmiri lavas bread, snacks, beverages, and pantry staples online with DASHIT. 8-minute delivery across Anantnag (PIN: 192101)."
@@ -311,7 +311,7 @@ export default function ShopPage() {
           <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping shrink-0" />
-              <span>Deliveries Paused · Store will be available: {closeReason || "Reopening shortly"}</span>
+              <span>Deliveries Paused · Store Reopening Schedule: {closeReason || "Reopening shortly"}</span>
             </div>
             <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded font-mono uppercase tracking-wider">Closed</span>
           </div>
@@ -319,16 +319,16 @@ export default function ShopPage() {
       )}
 
       {/* 2. STICKY SEARCH BAR & CATEGORIES SCROLLER */}
-      <div className="sticky top-0 md:top-[74px] z-40 bg-[#FFFDF5]/95 backdrop-blur-md border-b border-amber-100/80 shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all">
+      <div className="sticky top-0 md:top-[74px] z-40 bg-[#FFFDF5]/95 dark:bg-surface/95 backdrop-blur-md border-b border-amber-100/80 dark:border-line shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all">
         <div className="max-w-md mx-auto px-4 pt-1.5 pb-2 md:hidden">
           <div
             onClick={() => router.push("/search")}
             className={`relative flex items-center bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/90 cursor-pointer active:scale-[0.99] transition-all ${
               isSearchPulsing ? "animate-search-pulse ring-2 ring-[#FF5B00]/40" : ""
-            }`}
+            } dark:bg-surface-raised dark:text-content dark:border-line/90`}
           >
-            <Search className="w-4 h-4 stroke-[2.5] text-[#061838]/60 mr-2 shrink-0" />
-            <span className="text-xs font-bold text-slate-800 select-none shrink-0 mr-1.5">
+            <Search className="w-4 h-4 stroke-[2.5] text-[#061838]/60 mr-2 shrink-0 dark:text-content" />
+            <span className="text-xs font-bold text-slate-800 select-none shrink-0 mr-1.5 dark:text-content">
               Search
             </span>
             <RotatingSearchPlaceholder />
@@ -373,10 +373,10 @@ export default function ShopPage() {
             {activeCategory !== "All" && (
               <div className="flex items-baseline justify-between px-1 pt-1 pb-0">
                 <div className="flex items-baseline space-x-2 min-w-0">
-                  <h2 className="font-bold text-[17px] md:text-xl text-[#061838] tracking-tight truncate">
+                  <h2 className="font-bold text-[17px] md:text-xl text-[#061838] tracking-tight truncate dark:text-content">
                     {activeCategory}
                   </h2>
-                  <span className="text-[11px] font-medium text-slate-500 shrink-0">
+                  <span className="text-[11px] font-medium text-slate-500 shrink-0 dark:text-content-muted">
                     {filteredProducts.length} items
                   </span>
                 </div>
@@ -402,7 +402,7 @@ export default function ShopPage() {
             {activeCategory === "All" && (
               <section className="space-y-3">
                 <motion.div variants={fadeUp} {...inViewOnce} className="flex items-center justify-between px-1">
-                  <h3 className="font-bold text-[15px] md:text-lg text-[#061838] tracking-tight">
+                  <h3 className="font-bold text-[15px] md:text-lg text-[#061838] tracking-tight dark:text-content">
                     Shop by category
                   </h3>
                   <motion.button
@@ -427,17 +427,17 @@ export default function ShopPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between mb-3"
+                  className="bg-white border border-slate-200 rounded-2xl p-3 flex items-center justify-between mb-3 dark:bg-surface-raised dark:border-line"
                 >
                   <div className="flex items-center space-x-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-[#FF5B00] text-white flex items-center justify-center shadow-xs shrink-0">
                       <Sparkles className="w-4 h-4 stroke-[2.5]" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[12.5px] font-semibold text-[#061838] truncate">
+                      <p className="text-[12.5px] font-semibold text-[#061838] truncate dark:text-content">
                         {activeDealPromo.title}
                       </p>
-                      <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate">
+                      <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 truncate dark:text-content-muted">
                         {activeDealPromo.priceTag || "Special deals"}
                         {activeDealPromo.promoCode ? ` · ${activeDealPromo.promoCode}` : ""}
                       </p>
@@ -449,7 +449,7 @@ export default function ShopPage() {
                       setActiveDealPromo(null);
                       setActiveCategory("All");
                     }}
-                    className="text-[12px] font-semibold text-slate-500 hover:text-slate-900 shrink-0 ml-3 active:scale-95 transition-all cursor-pointer"
+                    className="text-[12px] font-semibold text-slate-500 hover:text-slate-900 shrink-0 ml-3 active:scale-95 transition-all cursor-pointer dark:text-content-muted dark:hover:text-content"
                   >
                     Clear
                   </button>
@@ -459,7 +459,7 @@ export default function ShopPage() {
               {/* Only "All" needs a heading here — a picked category already has one above */}
               {activeCategory === "All" && (
                 <motion.div variants={fadeUp} {...inViewOnce} className="flex items-center justify-between px-1">
-                  <h3 className="font-bold text-[15px] md:text-lg text-[#061838] tracking-tight">
+                  <h3 className="font-bold text-[15px] md:text-lg text-[#061838] tracking-tight dark:text-content">
                     Bestsellers
                   </h3>
                 </motion.div>

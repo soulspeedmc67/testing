@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==========================================================================
+   THEME TOKENS
+
+   Two palettes, one set of names. Every surface, text and border colour in the
+   app should resolve through these rather than naming a literal Tailwind shade,
+   so a change to the dark palette is one edit here instead of a sweep through
+   130 files. The Tailwind aliases (`bg-surface`, `text-content`, `border-line`
+   and friends) are declared in tailwind.config.js and point straight at these.
+
+   Naming is by ROLE, not by lightness — `surface-raised` is the colour of a
+   card whether that card is white or near-black. That is what makes the two
+   palettes swappable: in light mode a card is lighter than the page, in dark
+   mode it is lighter than the page too, and neither the markup nor anyone
+   reading it has to think about which direction "raised" goes.
+   ========================================================================== */
 :root {
   color-scheme: light;
   /* DASHit brand palette — orange is the primary/interactive colour,
@@ -17,6 +32,127 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --header-safe-pt: calc(env(safe-area-inset-top, 0px) + 12px);
+
+  /* Surfaces, from the page backwards to the frontmost sheet. */
+  --surface: #FFFFFF;          /* the page ground */
+  --surface-sunken: #F7F8FA;   /* wells and inset lists that recede */
+  --surface-raised: #FFFFFF;   /* cards and rows sitting on the page */
+  --surface-overlay: #FFFFFF;  /* bottom sheets, modals, the floating dock */
+  --surface-muted: #F1F5F9;    /* chips, steppers, quiet fills */
+
+  /* Text, from loudest to quietest. */
+  --content: #0F172A;
+  --content-secondary: #475569;
+  --content-muted: #64748B;
+  --content-faint: #94A3B8;
+  --content-inverse: #FFFFFF;  /* text on a brand-coloured or inverted fill */
+
+  /* Hairlines. `line` is the default rule; `soft` barely separates, `strong`
+     is for controls that need a visible edge. */
+  --line: #E2E8F0;
+  --line-soft: #F1F5F9;
+  --line-strong: #CBD5E1;
+
+  /* Accent used for text and icons. Held separate from --brand-orange because
+     the fill colour and the legible-text colour diverge in dark mode. */
+  --accent: #FF5B00;
+  --accent-contrast: #FFFFFF;
+
+  /* Scrims behind sheets and modals. */
+  --scrim: rgb(15 23 42 / 0.45);
+
+  /* Skeleton shimmer, which has to track the surface it loads into. */
+  --shimmer-base: #F1F5F9;
+  --shimmer-highlight: #E2E8F0;
+
+  /* Channel-separated mirrors of the tokens above.
+
+     Tailwind needs `R G B` rather than a hex string to splice an alpha in, so
+     `bg-surface-raised/80` compiles to `rgb(var(--surface-raised-rgb) / 0.8)`.
+     Both forms are kept because plain CSS in this file reads better with the
+     hex form. They must be edited in pairs. */
+  --surface-rgb: 255 255 255;
+  --surface-sunken-rgb: 247 248 250;
+  --surface-raised-rgb: 255 255 255;
+  --surface-overlay-rgb: 255 255 255;
+  --surface-muted-rgb: 241 245 249;
+
+  --content-rgb: 15 23 42;
+  --content-secondary-rgb: 71 85 105;
+  --content-muted-rgb: 100 116 139;
+  --content-faint-rgb: 148 163 184;
+  --content-inverse-rgb: 255 255 255;
+
+  --line-rgb: 226 232 240;
+  --line-soft-rgb: 241 245 249;
+  --line-strong-rgb: 203 213 225;
+
+  --accent-rgb: 255 91 0;
+  --accent-contrast-rgb: 255 255 255;
+}
+
+/* --------------------------------------------------------------------------
+   DARK PALETTE
+
+   A neutral near-black rather than Tailwind's slate, which is blue enough that
+   the brand orange turns muddy against it. Surfaces climb in small steps —
+   #0A0A0C to #141417 to #1A1A1E — because on an OLED phone a large jump
+   between a card and its page reads as a glowing panel. The page itself is not
+   pure #000: true black makes scrolling content smear on OLED and removes any
+   room for a surface to sit *below* the page.
+   -------------------------------------------------------------------------- */
+.dark {
+  color-scheme: dark;
+
+  --surface: #0A0A0C;
+  --surface-sunken: #060608;
+  --surface-raised: #141417;
+  --surface-overlay: #1A1A1E;
+  --surface-muted: #212126;
+
+  --content: #FAFAFA;
+  --content-secondary: #A6A6AD;
+  --content-muted: #7A7A83;
+  --content-faint: #6B6B75;
+  --content-inverse: #0A0A0C;
+
+  --line: #26262C;
+  --line-soft: #1C1C21;
+  --line-strong: #35353D;
+
+  /* The fill stays the brand orange, but orange *text* at body size only
+     clears 4.5:1 against the dark ground once it is lightened, so the two
+     tokens part company here. */
+  --accent: #FF6A1A;
+  --accent-contrast: #16060A;
+
+  /* Heavier than the light scrim: against a dark page a 45% veil does not
+     read as a layer at all, and the sheet appears to float with nothing
+     behind it. */
+  --scrim: rgb(0 0 0 / 0.66);
+
+  --shimmer-base: #17171B;
+  --shimmer-highlight: #232329;
+
+  /* Channel mirrors — see the note in :root. Edit in pairs. */
+  --surface-rgb: 10 10 12;
+  --surface-sunken-rgb: 6 6 8;
+  --surface-raised-rgb: 20 20 23;
+  --surface-overlay-rgb: 26 26 30;
+  --surface-muted-rgb: 33 33 38;
+
+  --content-rgb: 250 250 250;
+  --content-secondary-rgb: 166 166 173;
+  --content-muted-rgb: 122 122 131;
+  --content-faint-rgb: 107 107 117;
+  --content-inverse-rgb: 10 10 12;
+
+  --line-rgb: 38 38 44;
+  --line-soft-rgb: 28 28 33;
+  --line-strong-rgb: 53 53 61;
+
+  --accent-rgb: 255 106 26;
+  --accent-contrast-rgb: 22 6 10;
 }
 
 .safe-top-padding {
@@ -46,7 +182,10 @@ html, body {
   overscroll-behavior-x: none !important;
   overflow-x: clip;
   min-height: 100%;
-  background-color: #FFFFFF;
+  /* Follows the theme. This was pinned to #FFFFFF, which is the colour the
+     browser paints in the overscroll gutter above and below the page — so on
+     a dark app every rubber-band bounce flashed a white band. */
+  background-color: var(--surface);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -147,8 +286,7 @@ header.sticky {
 }
 
 input, textarea, [contenteditable="true"] {
-  color-scheme: light;
-  color: #0f172a;
+  color: var(--content);
 }
 
 select {
@@ -156,13 +294,16 @@ select {
   -webkit-text-fill-color: currentColor;
 }
 
+/* iOS WKWebView keeps its own text-fill colour for form fields and ignores
+   `color` alone, which is why this restates it rather than relying on the rule
+   above. `color-scheme` is inherited from the root element, so unlike the
+   previous version this no longer has to set it per control. */
 .dark input,
 .dark textarea,
 html.dark input,
 html.dark textarea {
-  color-scheme: dark;
-  color: inherit;
-  -webkit-text-fill-color: currentColor;
+  color: var(--content);
+  -webkit-text-fill-color: var(--content);
 }
 
 .dark select,
@@ -173,8 +314,8 @@ html.dark select {
 }
 
 input::placeholder, textarea::placeholder {
-  color: #64748b !important;
-  -webkit-text-fill-color: #64748b !important;
+  color: var(--content-muted) !important;
+  -webkit-text-fill-color: var(--content-muted) !important;
 }
 
 /* 3. Disable image & anchor ghost dragging */
@@ -201,7 +342,7 @@ html {
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    @apply bg-slate-50 text-slate-900 antialiased;
+    @apply bg-surface text-content antialiased;
     -webkit-overflow-scrolling: touch;
   }
 }
@@ -333,7 +474,12 @@ html {
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-base) 0%,
+    var(--shimmer-highlight) 50%,
+    var(--shimmer-base) 100%
+  );
   background-size: 200% 100%;
   animation: shimmerSweep 1.8s infinite linear;
 }
@@ -350,6 +496,34 @@ html {
 /* Map Custom Styling */
 .fancy-map-container .leaflet-tile {
   filter: contrast(102%) brightness(101%);
+}
+
+/* Dark map tiles.
+
+   The tile images themselves are photographic light-mode raster, so there is
+   nothing to re-theme server-side without swapping tile providers. Inverting
+   and rotating the hue 180deg turns a light street map into a dark one while
+   leaving road and label colours roughly where they were — the standard trick,
+   and the reason the hue rotation is there: invert alone turns blue water
+   orange. Brightness and contrast are pulled back so the result sits at the
+   same value as the surrounding surfaces instead of glowing.
+
+   Markers, pins and overlays are deliberately excluded: they are UI, already
+   drawn in brand colours, and inverting them would turn the orange pin cyan. */
+.dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.85);
+}
+
+.dark .leaflet-container {
+  background: var(--surface-muted);
+}
+
+/* Leaflet's zoom and attribution chrome is light-on-light by default. */
+.dark .leaflet-control-zoom a,
+.dark .leaflet-control-attribution {
+  background: var(--surface-raised) !important;
+  color: var(--content-secondary) !important;
+  border-color: var(--line) !important;
 }
 
 .scrollbar-none::-webkit-scrollbar {
@@ -415,7 +589,7 @@ html {
    across seven mostly-blank pages.
 
    `@page { margin: 0 }` is also what removes the browser's own header and
-   footer: the page title, the localhost URL, the date and "1 of 7".
+   footer: the page title, the page URL, the date and pagination markers.
 --------------------------------------------------------------------------- */
 @media screen {
   #dashit-print-root { display: none; }

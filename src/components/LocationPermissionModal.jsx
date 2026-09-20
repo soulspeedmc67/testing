@@ -10,14 +10,14 @@ export default function LocationPermissionModal({ isOpen, onGrantLocation, onSet
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4 text-center shadow-2xl border border-slate-100 animate-modal-pop">
+      <div className="bg-white rounded-3xl p-6 w-full max-w-sm space-y-4 text-center shadow-2xl border border-slate-100 animate-modal-pop dark:bg-surface-raised dark:border-line-soft">
         <div className="w-14 h-14 bg-blue-100 text-[#061838] rounded-3xl flex items-center justify-center mx-auto shadow-sm">
           <Navigation className="w-7 h-7 animate-bounce" />
         </div>
 
         <div className="space-y-1.5">
-          <h3 className="font-extrabold text-base text-slate-900">Allow Location Access</h3>
-          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          <h3 className="font-extrabold text-base text-slate-900 dark:text-content">Allow Location Access</h3>
+          <p className="text-xs text-slate-500 font-medium leading-relaxed dark:text-content-muted">
             DASHit needs your location to check delivery availability in Anantnag and route your order to your doorstep.
           </p>
         </div>
@@ -33,13 +33,13 @@ export default function LocationPermissionModal({ isOpen, onGrantLocation, onSet
 
           <button
             onClick={onSetManually}
-            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-2xl transition-all"
+            className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-2xl transition-all dark:bg-surface-muted dark:hover:bg-surface-muted"
           >
             Set Location Manually
           </button>
         </div>
 
-        <div className="flex items-center justify-center space-x-1 text-[11px] text-slate-400 pt-1">
+        <div className="flex items-center justify-center space-x-1 text-[11px] text-slate-400 pt-1 dark:text-content-faint">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
           <span>Your location is private & encrypted</span>
         </div>

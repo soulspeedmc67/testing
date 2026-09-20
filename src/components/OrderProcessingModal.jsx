@@ -50,10 +50,10 @@ export default function OrderProcessingModal({
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 40, scale: 0.96 }}
           transition={{ type: "spring", damping: 28, stiffness: 340 }}
-          className="relative w-full sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] sm:pb-6 shadow-2xl border border-slate-100 overflow-hidden z-10 select-none text-slate-900"
+          className="relative w-full sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] sm:pb-6 shadow-2xl border border-slate-100 overflow-hidden z-10 select-none text-slate-900 dark:bg-surface-overlay dark:border-line-soft dark:text-content"
         >
           {/* Top Notch Pill for Mobile Sheet */}
-          <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-4 sm:hidden" />
+          <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-4 sm:hidden dark:bg-surface-muted" />
 
           {/* Centered Success Checkmark */}
           <div className="flex flex-col items-center text-center">
@@ -80,7 +80,7 @@ export default function OrderProcessingModal({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-2xl font-black text-slate-900 tracking-tight"
+              className="text-2xl font-black text-slate-900 tracking-tight dark:text-content"
             >
               Order Placed!
             </motion.h3>
@@ -89,7 +89,7 @@ export default function OrderProcessingModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15 }}
-              className="text-xs font-mono font-bold text-slate-400 mt-0.5 tracking-wide uppercase"
+              className="text-xs font-mono font-bold text-slate-400 mt-0.5 tracking-wide uppercase dark:text-content-faint"
             >
               {orderDetails?.orderId || "DSH-PROCESSING"}
             </motion.p>
@@ -100,15 +100,15 @@ export default function OrderProcessingModal({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-5 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3"
+            className="mt-5 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3 dark:bg-surface-raised dark:border-line/80"
           >
             {/* ETA & Status pill */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200/60">
-              <div className="flex items-center space-x-2 text-slate-800">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-line/60">
+              <div className="flex items-center space-x-2 text-slate-800 dark:text-content">
                 <span className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5B00] flex items-center justify-center shrink-0">
                   <Zap className="w-3.5 h-3.5 fill-[#FF5B00]" />
                 </span>
-                <span className="text-xs font-black text-slate-900">
+                <span className="text-xs font-black text-slate-900 dark:text-content">
                   Arriving in ~{eta} mins
                 </span>
               </div>
@@ -118,16 +118,16 @@ export default function OrderProcessingModal({
             </div>
 
             {/* Items and Address snippet */}
-            <div className="space-y-1.5 text-left text-xs text-slate-600">
+            <div className="space-y-1.5 text-left text-xs text-slate-600 dark:text-content-secondary">
               <div className="flex items-center space-x-2">
-                <ShoppingBag className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <ShoppingBag className="w-3.5 h-3.5 text-slate-400 shrink-0 dark:text-content-faint" />
                 <span className="font-semibold truncate">
                   {itemCount} {itemCount === 1 ? "item" : "items"} • ₹{total}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="font-medium text-slate-500 truncate text-[11.5px]">
+                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 dark:text-content-faint" />
+                <span className="font-medium text-slate-500 truncate text-[11.5px] dark:text-content-muted">
                   {address}
                 </span>
               </div>

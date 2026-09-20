@@ -284,7 +284,7 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = () => {
     if (!isStoreOpen) {
-      alert(`Store will be available: ${closeReason || "Please check back shortly!"}`);
+      alert(`Store Reopening Schedule: ${closeReason || "Please check back shortly!"}`);
       return;
     }
 
@@ -434,10 +434,10 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] text-slate-900 font-sans relative flex flex-col justify-between">
+    <div className="min-h-screen bg-[#F4F6F8] text-slate-900 font-sans relative flex flex-col justify-between dark:bg-surface dark:text-content">
       <SEO title="Checkout" noindex={true} />
       {/* 1. TOP HEADER with Smooth Return */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center justify-between shadow-2xs">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center justify-between shadow-2xs dark:bg-surface dark:border-line/80">
         <div className="flex items-center space-x-3">
           <motion.button
             whileTap={{ scale: 0.88 }}
@@ -447,11 +447,11 @@ export default function CheckoutPage() {
             /* Icon-only controls carried no accessible name and sat under the
                44px target: the circle keeps its size, the button grows around
                it, and the negative margin keeps the header spacing intact. */
-            className="w-9 h-9 min-w-[44px] min-h-[44px] -m-[3.5px] rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-transform cursor-pointer"
+            className="w-9 h-9 min-w-[44px] min-h-[44px] -m-[3.5px] rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-transform cursor-pointer dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
           >
             <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </motion.button>
-          <h1 className="font-extrabold text-base text-slate-900">
+          <h1 className="font-extrabold text-base text-slate-900 dark:text-content">
             Checkout
           </h1>
         </div>
@@ -461,7 +461,7 @@ export default function CheckoutPage() {
             type="button"
             aria-label="Search products"
             onClick={() => router.push("/search")}
-            className="w-9 h-9 min-w-[44px] min-h-[44px] rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-transform"
+            className="w-9 h-9 min-w-[44px] min-h-[44px] rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-transform dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
           >
             <Search className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -472,7 +472,7 @@ export default function CheckoutPage() {
                 navigator.share({ title: "My Dashit Cart", text: "Check out what I am ordering on Dashit!" });
               }
             }}
-            className="flex items-center space-x-1.5 px-3 min-h-[44px] rounded-full border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-transform"
+            className="flex items-center space-x-1.5 px-3 min-h-[44px] rounded-full border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-transform dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
           >
             <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Share</span>
@@ -487,8 +487,8 @@ export default function CheckoutPage() {
             <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-lg font-black text-slate-900">Your cart is empty</h2>
-            <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto">
+            <h2 className="text-lg font-black text-slate-900 dark:text-content">Your cart is empty</h2>
+            <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto dark:text-content-muted">
               You haven't added any items to your cart yet. Explore our fresh categories with fastest delivery in Anantnag!
             </p>
           </div>
@@ -503,31 +503,31 @@ export default function CheckoutPage() {
         <main className="max-w-2xl mx-auto w-full p-4 sm:p-6 space-y-4 pb-64">
         {/* STORE CLOSED BANNER */}
         {!isStoreOpen && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-start space-x-3 text-slate-800">
-            <div className="w-8 h-8 rounded-full bg-slate-100 text-rose-600 flex items-center justify-center shrink-0">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-start space-x-3 text-slate-800 dark:bg-surface-raised dark:border-line dark:text-content">
+            <div className="w-8 h-8 rounded-full bg-slate-100 text-rose-600 flex items-center justify-center shrink-0 dark:bg-surface-muted">
               <X className="w-4 h-4 stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-slate-900">Ordering paused</h3>
+              <h3 className="font-semibold text-sm text-slate-900 dark:text-content">Ordering paused</h3>
               <p className="text-xs text-red-700 font-medium mt-0.5 leading-relaxed">
-                Store will be available: {closeReason || "Reopening shortly"}
+                Store Reopening Schedule: {closeReason || "Reopening shortly"}
               </p>
             </div>
           </div>
         )}
 
         {/* 2. DELIVERY IN 12 MINUTES BANNER */}
-        <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3">
+        <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3 dark:bg-surface-raised dark:border-line/90">
           <div className="flex items-start justify-between">
             <div className="flex items-start space-x-3">
               <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100">
                 <Clock className="w-5 h-5 stroke-[2.5]" />
               </div>
               <div>
-                <h2 className="font-black text-base text-slate-900 leading-tight">
+                <h2 className="font-black text-base text-slate-900 leading-tight dark:text-content">
                   Delivery in 12 minutes
                 </h2>
-                <p className="text-slate-500 font-semibold text-xs mt-0.5">
+                <p className="text-slate-500 font-semibold text-xs mt-0.5 dark:text-content-muted">
                   Shipment of {cartItems.reduce((s, i) => s + i.qty, 0)} item{cartItems.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -557,20 +557,20 @@ export default function CheckoutPage() {
           </div>
 
           {/* Product Items List matching screenshot */}
-          <div className="divide-y divide-slate-100 pt-1">
+          <div className="divide-y divide-slate-100 pt-1 dark:divide-line-soft">
             {cartItems.map((item) => (
               <div key={item.id} className="py-3 flex items-start justify-between space-x-3">
                 <img
                   src={item.img}
                   alt={item.name}
-                  className="w-16 h-16 object-contain bg-slate-50 rounded-2xl p-1.5 border border-slate-100 shrink-0"
+                  className="w-16 h-16 object-contain bg-slate-50 rounded-2xl p-1.5 border border-slate-100 shrink-0 dark:bg-surface-raised dark:border-line-soft"
                 />
 
                 <div className="grow">
-                  <h3 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2">
+                  <h3 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2 dark:text-content">
                     {item.name}
                   </h3>
-                  <span className="text-[11px] font-semibold text-slate-500 block mt-0.5">
+                  <span className="text-[11px] font-semibold text-slate-500 block mt-0.5 dark:text-content-muted">
                     {item.unit || "1 unit"}
                   </span>
                   <button
@@ -578,7 +578,7 @@ export default function CheckoutPage() {
                       addToWishlist(item);
                       updateItemQty(item.id, -item.qty);
                     }}
-                    className="text-[11px] font-bold text-slate-400 hover:text-[#061838] underline mt-1 py-1.5 -my-0.5 text-left active:scale-95 transition-transform"
+                    className="text-[11px] font-bold text-slate-400 hover:text-[#061838] underline mt-1 py-1.5 -my-0.5 text-left active:scale-95 transition-transform dark:text-content-faint"
                   >
                     Move to wishlist
                   </button>
@@ -611,10 +611,10 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-400 line-through mr-1 font-mono">
+                    <span className="text-[10px] text-slate-400 line-through mr-1 font-mono dark:text-content-faint">
                       ₹{(item.originalPrice || item.price + 20) * item.qty}
                     </span>
-                    <span className="font-black text-xs text-slate-900 font-mono">
+                    <span className="font-black text-xs text-slate-900 font-mono dark:text-content">
                       ₹{item.price * item.qty}
                     </span>
                   </div>
@@ -642,7 +642,7 @@ export default function CheckoutPage() {
               </span>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
+          <ChevronRight className="w-4 h-4 text-slate-400 dark:text-content-faint" />
         </div>
 
         {/* Bill Details */}
@@ -710,21 +710,21 @@ export default function CheckoutPage() {
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400">{prod.unit || "1 unit"}</span>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{prod.unit || "1 unit"}</span>
                       <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-2 mt-0.5">
                         {prod.name}
                       </h4>
                       <div className="flex items-center space-x-1 mt-1 text-[10px] text-amber-500 font-black">
                         <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
                         <span>{prod.rating || "4.8"}</span>
-                        <span className="text-slate-400 font-medium">({prod.ratingCount || "10k"})</span>
+                        <span className="text-slate-400 font-medium dark:text-content-faint">({prod.ratingCount || "10k"})</span>
                       </div>
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
                       <div>
                         {prod.originalPrice > prod.price && (
-                          <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none">
+                          <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none dark:text-content-faint">
                             ₹{prod.originalPrice}
                           </span>
                         )}
@@ -816,21 +816,21 @@ export default function CheckoutPage() {
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400">{prod.unit || "1 unit"}</span>
+                      <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{prod.unit || "1 unit"}</span>
                       <h4 className="font-bold text-xs text-slate-900 dark:text-white leading-tight line-clamp-2 mt-0.5">
                         {prod.name}
                       </h4>
                       <div className="flex items-center space-x-1 mt-1 text-[10px] text-amber-500 font-black">
                         <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
                         <span>{prod.rating || "4.8"}</span>
-                        <span className="text-slate-400 font-medium">({prod.ratingCount || "10k"})</span>
+                        <span className="text-slate-400 font-medium dark:text-content-faint">({prod.ratingCount || "10k"})</span>
                       </div>
                     </div>
 
                     <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between">
                       <div>
                         {prod.originalPrice > prod.price && (
-                          <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none">
+                          <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none dark:text-content-faint">
                             ₹{prod.originalPrice}
                           </span>
                         )}
@@ -945,13 +945,13 @@ export default function CheckoutPage() {
               */}
               {!checkoutEta.isDeliverable && (
                 <div className="mt-2 space-y-2">
-                  <div className="flex items-start space-x-2 text-slate-600">
+                  <div className="flex items-start space-x-2 text-slate-600 dark:text-content-secondary">
                     <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                     <div className="min-w-0 text-left">
-                      <span className="text-[11px] font-semibold block leading-tight text-slate-900">
+                      <span className="text-[11px] font-semibold block leading-tight text-slate-900 dark:text-content">
                         Not available in your area yet
                       </span>
-                      <p className="text-[10.5px] text-slate-500 font-medium leading-snug mt-0.5">
+                      <p className="text-[10.5px] text-slate-500 font-medium leading-snug mt-0.5 dark:text-content-muted">
                         DASHit currently delivers around Anantnag, Jammu &amp; Kashmir.
                         We are expanding soon.
                       </p>
@@ -960,7 +960,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={() => setIsLocationModalOpen(true)}
-                    className="w-full text-[11px] font-semibold text-[#061838] border border-slate-200 rounded-lg py-2 hover:bg-slate-50 cursor-pointer"
+                    className="w-full text-[11px] font-semibold text-[#061838] border border-slate-200 rounded-lg py-2 hover:bg-slate-50 cursor-pointer dark:border-line dark:hover:bg-surface-muted dark:text-content"
                   >
                     Choose an address in our delivery area
                   </button>
@@ -972,7 +972,7 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setIsOrderingForSomeoneElseOpen(true)}
-                  className="flex items-center space-x-1.5 text-[11px] font-black text-[#061838] hover:underline cursor-pointer"
+                  className="flex items-center space-x-1.5 text-[11px] font-black text-[#061838] hover:underline cursor-pointer dark:text-content"
                 >
                   <Users className="w-3.5 h-3.5 stroke-[2.5]" />
                   <span>
@@ -987,14 +987,14 @@ export default function CheckoutPage() {
             {/* Account Verification Prompt if not logged in */}
             {!isUserLoggedIn && (
               <div className="px-3 pt-2">
-                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between">
+                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between dark:bg-surface-raised dark:border-line">
                   <div className="flex items-center space-x-2.5 min-w-0 pr-2">
                     <div className="w-7 h-7 rounded-xl bg-[#061838] text-white flex items-center justify-center shrink-0">
                       <LogIn className="w-3.5 h-3.5 text-[#FF5B00] stroke-[2.5]" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-xs font-black text-slate-900 truncate">Account Verification Required</h4>
-                      <p className="text-[10px] text-slate-600 font-medium truncate">Sign in to confirm delivery address &amp; place order.</p>
+                      <h4 className="text-xs font-black text-slate-900 truncate dark:text-content">Account Verification Required</h4>
+                      <p className="text-[10px] text-slate-600 font-medium truncate dark:text-content-secondary">Sign in to confirm delivery address &amp; place order.</p>
                     </div>
                   </div>
                   <button
@@ -1015,9 +1015,9 @@ export default function CheckoutPage() {
                 onClick={() => setIsPaymentModalOpen(true)}
                 className="text-left active:scale-95 transition-transform cursor-pointer"
               >
-                <span className="text-[9px] font-black text-slate-400 flex items-center space-x-1 uppercase tracking-wider">
+                <span className="text-[9px] font-black text-slate-400 flex items-center space-x-1 uppercase tracking-wider dark:text-content-faint">
                   <span>PAY USING</span>
-                  <ChevronUp className="w-3 h-3 text-slate-500 stroke-[3]" />
+                  <ChevronUp className="w-3 h-3 text-slate-500 stroke-[3] dark:text-content-muted" />
                 </span>
                 <div className="flex items-center space-x-1.5 mt-0.5">
                   {selectedMethod?.id === "cod" ? (
@@ -1040,7 +1040,7 @@ export default function CheckoutPage() {
                 disabled={isProcessing || !isStoreOpen || !checkoutEta.isDeliverable}
                 className={`grow rounded-2xl py-3 px-4 border transition-all flex items-center justify-between ${
                   !isStoreOpen || !checkoutEta.isDeliverable
-                    ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90"
+                    ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:text-content-secondary"
                     : !isUserLoggedIn
                     ? "bg-[#FF5B00] hover:bg-[#E04E00] text-white shadow-sm border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : "bg-[#061838] hover:bg-[#0A2450] text-white shadow-sm border-slate-700/60 active:scale-[0.98] cursor-pointer"

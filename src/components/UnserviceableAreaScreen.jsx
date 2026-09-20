@@ -80,7 +80,7 @@ export default function UnserviceableAreaScreen({
               Need help with your previous orders?
             </span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
+          <ChevronRight className="w-4 h-4 text-slate-400 dark:text-content-faint" />
         </div>
 
         <div
@@ -95,7 +95,7 @@ export default function UnserviceableAreaScreen({
               About us
             </span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
+          <ChevronRight className="w-4 h-4 text-slate-400 dark:text-content-faint" />
         </div>
 
         <a
@@ -112,7 +112,7 @@ export default function UnserviceableAreaScreen({
               Follow us on Instagram for updates
             </span>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
+          <ChevronRight className="w-4 h-4 text-slate-400 dark:text-content-faint" />
         </a>
       </div>
     </div>

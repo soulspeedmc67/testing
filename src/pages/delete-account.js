@@ -19,7 +19,7 @@ import { BreadcrumbJsonLd } from "../components/JsonLd";
  */
 export default function DeleteAccountPage() {
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans">
+    <div className="min-h-screen bg-white text-slate-900 font-sans dark:bg-surface dark:text-content">
       <SEO
         title="Delete Your Account — DASHIT"
         description="Request permanent deletion of your DASHIT account and personal data in accordance with Google Play and Apple App Store compliance policies."
@@ -33,11 +33,11 @@ export default function DeleteAccountPage() {
         ]}
       />
 
-      <header className="border-b border-slate-200 px-4 sm:px-8 py-4">
+      <header className="border-b border-slate-200 px-4 sm:px-8 py-4 dark:border-line">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors dark:text-content-muted dark:hover:text-content"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to DASHit</span>
@@ -53,37 +53,34 @@ export default function DeleteAccountPage() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             Delete your DASHit account
           </h1>
-          <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+          <p className="text-sm text-slate-600 mt-2 leading-relaxed dark:text-content-secondary">
             You can permanently delete your DASHit account and the personal data
             attached to it at any time. There are two ways to do it.
           </p>
         </div>
 
-        <section className="border border-slate-200 rounded-2xl p-5 space-y-3">
+        <section className="border border-slate-200 rounded-2xl p-5 space-y-3 dark:border-line">
           <div className="flex items-center gap-2.5">
-            <Smartphone className="w-4 h-4 text-slate-400" />
+            <Smartphone className="w-4 h-4 text-slate-400 dark:text-content-faint" />
             <h2 className="font-semibold text-base">From the app</h2>
           </div>
-          <ol className="text-sm text-slate-600 space-y-1.5 list-decimal pl-5 leading-relaxed">
+          <ol className="text-sm text-slate-600 space-y-1.5 list-decimal pl-5 leading-relaxed dark:text-content-secondary">
             <li>Open DASHit and go to <strong>Profile</strong>.</li>
             <li>Scroll to the bottom and tap <strong>Delete account</strong>.</li>
             <li>Confirm. Your profile is erased immediately.</li>
           </ol>
         </section>
 
-        <section className="border border-slate-200 rounded-2xl p-5 space-y-3">
+        <section className="border border-slate-200 rounded-2xl p-5 space-y-3 dark:border-line">
           <div className="flex items-center gap-2.5">
-            <Mail className="w-4 h-4 text-slate-400" />
+            <Mail className="w-4 h-4 text-slate-400 dark:text-content-faint" />
             <h2 className="font-semibold text-base">By email</h2>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            If you no longer have the app installed, email{" "}
-            <a
-              href="mailto:support@dashit.co.in?subject=Account%20deletion%20request"
-              className="text-[#FF5B00] font-semibold underline"
-            >
+          <p className="text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
+            If you no longer have the app installed, write to{" "}
+            <span className="text-[#FF5B00] font-semibold">
               support@dashit.co.in
-            </a>{" "}
+            </span>{" "}
             from your registered address, or include the mobile number on the
             account. We action verified requests within 7 business days.
           </p>
@@ -91,7 +88,7 @@ export default function DeleteAccountPage() {
 
         <section className="space-y-3">
           <h2 className="font-semibold text-base">What is deleted</h2>
-          <ul className="text-sm text-slate-600 space-y-1.5 list-disc pl-5 leading-relaxed">
+          <ul className="text-sm text-slate-600 space-y-1.5 list-disc pl-5 leading-relaxed dark:text-content-secondary">
             <li>Your name, phone number and email address</li>
             <li>Every saved delivery address and map pin</li>
             <li>Your sign-in credentials and session</li>
@@ -99,7 +96,7 @@ export default function DeleteAccountPage() {
           </ul>
 
           <h2 className="font-semibold text-base pt-2">What is kept, and why</h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
+          <p className="text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
             Records of completed orders are retained where we are legally
             required to keep them for statutory accounting and tax obligations.
             They are no longer linked to a usable account and cannot be used to
@@ -107,9 +104,9 @@ export default function DeleteAccountPage() {
           </p>
         </section>
 
-        <footer className="border-t border-slate-200 pt-6 text-xs text-slate-400">
+        <footer className="border-t border-slate-200 pt-6 text-xs text-slate-400 dark:border-line dark:text-content-faint">
           DASHit &middot; Anantnag, Jammu &amp; Kashmir 192101 &middot;{" "}
-          <Link href="/privacy" className="underline hover:text-slate-600">
+          <Link href="/privacy" className="underline hover:text-slate-600 dark:hover:text-content-secondary">
             Privacy Policy
           </Link>
         </footer>

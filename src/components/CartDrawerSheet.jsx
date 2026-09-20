@@ -29,7 +29,7 @@ export default function CartDrawerSheet({
 
   const proceedToCheckout = () => {
     if (!isStoreOpen) {
-      alert(`Store will be available: ${closeReason || "Checkout will resume shortly!"}`);
+      alert(`Store Reopening Schedule: ${closeReason || "Checkout will resume shortly!"}`);
       return;
     }
     if (cart.length === 0) return;
@@ -66,12 +66,12 @@ export default function CartDrawerSheet({
         ) : (
           <>
             {/* Delivery Address Pill */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 flex items-center justify-between text-xs">
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3 flex items-center justify-between text-xs dark:bg-surface-raised dark:border-line/90">
               <div className="flex items-center space-x-2.5">
                 <MapPin className="w-4 h-4 text-[#FF5B00] shrink-0" />
                 <div>
-                  <span className="font-extrabold text-slate-900">Deliver to {location.nickname}</span>
-                  <p className="text-[10px] text-slate-500 font-medium truncate max-w-[210px]">{location.address}</p>
+                  <span className="font-extrabold text-slate-900 dark:text-content">Deliver to {location.nickname}</span>
+                  <p className="text-[10px] text-slate-500 font-medium truncate max-w-[210px] dark:text-content-muted">{location.address}</p>
                 </div>
               </div>
               {onChangeLocation && (
@@ -85,7 +85,7 @@ export default function CartDrawerSheet({
             </div>
 
             {/* Selected Items */}
-            <div className="space-y-2.5 divide-y divide-slate-100">
+            <div className="space-y-2.5 divide-y divide-slate-100 dark:divide-line-soft">
               <AnimatePresence initial={false}>
                 {cart.map((item) => (
                   <motion.div
@@ -101,11 +101,11 @@ export default function CartDrawerSheet({
                       <img
                         src={item.img}
                         alt={item.name}
-                        className="w-10 h-10 object-contain bg-slate-50 p-1 rounded-xl border border-slate-100"
+                        className="w-10 h-10 object-contain bg-slate-50 p-1 rounded-xl border border-slate-100 dark:bg-surface-raised dark:border-line-soft"
                       />
                       <div>
-                        <h4 className="font-bold text-xs text-slate-900 line-clamp-1">{item.name}</h4>
-                        <p className="text-[10px] font-semibold text-slate-500">₹{item.price} x {item.qty}</p>
+                        <h4 className="font-bold text-xs text-slate-900 line-clamp-1 dark:text-content">{item.name}</h4>
+                        <p className="text-[10px] font-semibold text-slate-500 dark:text-content-muted">₹{item.price} x {item.qty}</p>
                       </div>
                     </div>
 
@@ -132,20 +132,20 @@ export default function CartDrawerSheet({
             </div>
 
             {/* Bill Summary */}
-            <div className="bg-slate-50 rounded-2xl p-3.5 space-y-1.5 text-xs border border-slate-200/80">
-              <div className="flex justify-between text-slate-600">
+            <div className="bg-slate-50 rounded-2xl p-3.5 space-y-1.5 text-xs border border-slate-200/80 dark:bg-surface-raised dark:border-line/80">
+              <div className="flex justify-between text-slate-600 dark:text-content-secondary">
                 <span>Item Subtotal</span>
                 <span className="font-mono font-bold">₹{subtotal}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-600 dark:text-content-secondary">
                 <span>Delivery Charge</span>
                 <span className="font-mono font-bold text-[#FF5B00]">{deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}</span>
               </div>
-              <div className="flex justify-between text-slate-600">
+              <div className="flex justify-between text-slate-600 dark:text-content-secondary">
                 <span>Handling Fee</span>
                 <span className="font-mono font-bold">₹{handlingFee}</span>
               </div>
-              <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-sm text-slate-900">
+              <div className="pt-2 border-t border-slate-200 flex justify-between font-black text-sm text-slate-900 dark:border-line dark:text-content">
                 <span>Total to Pay</span>
                 <span className="font-mono text-[#FF5B00]">₹{grandTotal}</span>
               </div>
@@ -166,7 +166,7 @@ export default function CartDrawerSheet({
                   <ArrowRight className="w-4 h-4" />
                 </>
               ) : (
-                <span className="truncate px-2">Store will be available: {closeReason || "Reopening shortly"}</span>
+                <span className="truncate px-2">Store Reopening Schedule: {closeReason || "Reopening shortly"}</span>
               )}
             </button>
           </>

@@ -121,7 +121,7 @@ export default function ProductCardStepper({
       >
         <button
           disabled
-          className="w-full h-full bg-slate-100 text-slate-400 font-black text-[10px] uppercase rounded-xl flex items-center justify-center cursor-not-allowed border border-slate-200"
+          className="w-full h-full bg-slate-100 text-slate-400 font-black text-[10px] uppercase rounded-xl flex items-center justify-center cursor-not-allowed border border-slate-200 dark:bg-surface-muted dark:border-line"
         >
           Sold Out
         </button>
@@ -145,11 +145,11 @@ export default function ProductCardStepper({
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.15 }}
             onClick={handleAdd}
-            className="absolute inset-0 w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5"
+            className="absolute inset-0 w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5 dark:bg-surface-raised dark:hover:bg-surface-muted dark:text-content"
           >
             <span className="leading-tight">ADD</span>
             {subtext && (
-              <span className="text-[7.5px] font-semibold text-slate-500 -mt-0.5 normal-case">
+              <span className="text-[7.5px] font-semibold text-slate-500 -mt-0.5 normal-case dark:text-content-muted">
                 {subtext}
               </span>
             )}

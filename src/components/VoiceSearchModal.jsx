@@ -131,7 +131,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
                 )}
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF5B00]" />
               </span>
-              <span className="text-xs font-black uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-300 dark:text-content-faint">
                 Dashit Voice Search
               </span>
             </div>
@@ -141,7 +141,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
                 hapticLight();
                 onClose();
               }}
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 transition-colors"
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 transition-colors dark:text-content-faint"
             >
               <X className="w-4 h-4 stroke-[2.5]" />
             </button>
@@ -171,7 +171,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
                 className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-[0_12px_32px_rgba(255, 91, 0,0.35)] ${
                   isListening
                     ? "bg-gradient-to-tr from-[#FF5B00] to-[#FF8A3D] text-white"
-                    : "bg-white/10 text-slate-400 border border-white/10"
+                    : "bg-white/10 text-slate-400 border border-white/10 dark:text-content-faint"
                 }`}
               >
                 {isListening ? (
@@ -190,7 +190,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
                   ? "Voice input paused"
                   : "Tap mic to speak"}
               </h3>
-              <p className="text-xs font-semibold text-slate-400">
+              <p className="text-xs font-semibold text-slate-400 dark:text-content-faint">
                 {transcript
                   ? `"${transcript}"`
                   : errorMessage || "Try saying: \"Amul Milk\", \"Lay's chips\", or \"Bread\""}
@@ -200,7 +200,7 @@ export default function VoiceSearchModal({ isOpen, onClose, onResult }) {
 
           {/* Quick Voice Suggestion Chips */}
           <div className="pt-1 border-t border-white/10">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 text-center dark:text-content-faint">
               Or tap to search directly
             </span>
             <div className="flex flex-wrap justify-center gap-1.5">

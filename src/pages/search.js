@@ -95,7 +95,7 @@ export default function SearchPage() {
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-32 dark:bg-surface dark:text-content">
       <SEO
         title="Search Groceries"
         description="Search groceries, Kashmiri bakery, dairy, beverages, and daily essentials on DASHIT Anantnag."
@@ -114,7 +114,7 @@ export default function SearchPage() {
             whileTap={{ scale: 0.88 }}
             type="button"
             onClick={() => goBack(router, "/shop")}
-            className="p-1.5 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer dark:text-content-faint"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </motion.button>
@@ -127,7 +127,7 @@ export default function SearchPage() {
               isInputFocused ? "ring-2 ring-[#FF5B00]" : ""
             }`}
           >
-            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0" />
+            <Search className="w-4 h-4 text-slate-400 mr-2 shrink-0 dark:text-content-faint" />
             <input
               type="text"
               placeholder="Search 'milk', 'chips', 'bread'..."
@@ -135,14 +135,14 @@ export default function SearchPage() {
               onChange={(e) => setQuery(e.target.value)}
               onFocus={() => setIsInputFocused(true)}
               onBlur={() => setIsInputFocused(false)}
-              className="w-full bg-transparent text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-sm font-semibold text-slate-800 placeholder-slate-400 focus:outline-none dark:text-content dark:placeholder-content-faint"
               autoFocus
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="p-1 text-slate-400 hover:text-slate-600 ml-1"
+                className="p-1 text-slate-400 hover:text-slate-600 ml-1 dark:text-content-faint dark:hover:text-content-secondary"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -173,13 +173,13 @@ export default function SearchPage() {
         {/* Popular Quick Search Chips */}
         {!query && (
           <div className="space-y-2">
-            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">Popular Searches</h3>
+            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">Popular Searches</h3>
             <div className="flex flex-wrap gap-2">
               {POPULAR_SEARCH_CHIPS.map((chip, idx) => (
                 <button
                   key={idx}
                   onClick={() => setQuery(chip)}
-                  className="bg-white border border-slate-200 hover:border-[#FF5B00] text-xs font-bold text-slate-700 px-3.5 py-1.5 rounded-full shadow-sm active:scale-95 transition-all"
+                  className="bg-white border border-slate-200 hover:border-[#FF5B00] text-xs font-bold text-slate-700 px-3.5 py-1.5 rounded-full shadow-sm active:scale-95 transition-all dark:bg-surface-raised dark:border-line dark:text-content-secondary"
                 >
                   {chip}
                 </button>
@@ -191,7 +191,7 @@ export default function SearchPage() {
         {/* Live Filtered Search Results */}
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">
               {query ? `Search Results for "${query}" (${filteredProducts.length})` : "All Products"}
             </h3>
           </div>
@@ -203,26 +203,26 @@ export default function SearchPage() {
               {filteredProducts.map((p) => {
                 const inCart = cart.find((i) => i.id === p.id);
                 return (
-                  <div key={p.id} className="bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between shadow-sm space-y-2">
+                  <div key={p.id} className="bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between shadow-sm space-y-2 dark:bg-surface-raised dark:border-line/90">
                     <button
                       onClick={() => setSelectedQuickProduct(p)}
-                      className="bg-slate-50 rounded-2xl p-2 h-28 flex items-center justify-center cursor-pointer w-full"
+                      className="bg-slate-50 rounded-2xl p-2 h-28 flex items-center justify-center cursor-pointer w-full dark:bg-surface-raised"
                     >
                       <img src={p.img} alt={p.name} className="h-20 w-20 object-contain rounded-lg transform hover:scale-105 transition-transform" />
                     </button>
 
                     <div>
-                      <span className="text-[9px] font-bold text-slate-400">{p.unit}</span>
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-content-faint">{p.unit}</span>
                       <button
                         onClick={() => setSelectedQuickProduct(p)}
                         className="text-left w-full cursor-pointer"
                       >
-                        <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2 hover:text-[#FF5B00]">{p.name}</h4>
+                        <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2 hover:text-[#FF5B00] dark:text-content">{p.name}</h4>
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                      <span className="text-xs font-black text-slate-900 font-mono">₹{p.price}</span>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-line-soft">
+                      <span className="text-xs font-black text-slate-900 font-mono dark:text-content">₹{p.price}</span>
 
                       <div className="w-16">
                         <ProductCardStepper

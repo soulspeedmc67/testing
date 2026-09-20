@@ -44,24 +44,24 @@ export default function HomeScreenLiveOrderCard() {
   }
 
   return (
-    <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-sm space-y-3 animate-fade-in relative overflow-hidden">
+    <div className="bg-white border border-slate-200/90 rounded-3xl p-4 shadow-sm space-y-3 animate-fade-in relative overflow-hidden dark:bg-surface-raised dark:border-line/90">
       {/* Subtle orange highlight strip */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-[#FF5B00]" />
 
       {/* Header: Title, Order ID, Dismiss X */}
       <div className="flex items-center justify-between pt-0.5">
         <div className="flex items-center space-x-2.5">
-          <div className="w-8 h-8 rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0 border border-slate-200/90 p-0.5">
+          <div className="w-8 h-8 rounded-xl bg-white shadow-2xs flex items-center justify-center shrink-0 border border-slate-200/90 p-0.5 dark:bg-surface-raised dark:border-line/90">
             <DashitAnimatedLogo size="xs" showGlow={false} />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h3 className="font-extrabold text-xs text-slate-900">Live Order Tracking</h3>
+              <h3 className="font-extrabold text-xs text-slate-900 dark:text-content">Live Order Tracking</h3>
               <Badge variant="success">
                 ON THE WAY
               </Badge>
             </div>
-            <p className="text-[10px] font-mono text-slate-400 font-semibold">
+            <p className="text-[10px] font-mono text-slate-400 font-semibold dark:text-content-faint">
               #{activeOrder.orderId}
             </p>
           </div>
@@ -70,7 +70,7 @@ export default function HomeScreenLiveOrderCard() {
         {/* Dismiss Button */}
         <button
           onClick={handleDismiss}
-          className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+          className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors dark:hover:bg-surface-muted dark:text-content-faint dark:hover:text-content-secondary"
           title="Dismiss from home screen"
         >
           <X className="w-4 h-4 stroke-[2.5]" />
@@ -78,17 +78,17 @@ export default function HomeScreenLiveOrderCard() {
       </div>
 
       {/* Status & ETA & OTP */}
-      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100/90 gap-2">
+      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100/90 gap-2 dark:bg-surface-raised dark:border-line-soft/90">
         <div>
-          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block dark:text-content-faint">
             Estimated Arrival
           </span>
           <div className="flex items-center space-x-1 mt-0.5">
             <Zap className="w-3.5 h-3.5 stroke-[2.8] text-amber-500 fill-amber-500 shrink-0" />
-            <span className="font-mono font-black text-sm text-slate-900">
+            <span className="font-mono font-black text-sm text-slate-900 dark:text-content">
               ~{etaData.etaMinutes} Mins
             </span>
-            <span className="text-[10px] text-slate-500 font-medium ml-1">
+            <span className="text-[10px] text-slate-500 font-medium ml-1 dark:text-content-muted">
               ({etaData.distanceFormatted})
             </span>
           </div>
@@ -96,11 +96,11 @@ export default function HomeScreenLiveOrderCard() {
 
         {/* OTP Callout */}
         {activeOrder.otp && (
-          <div className="bg-white border border-slate-200/90 px-2.5 py-1 rounded-xl text-center shadow-2xs">
-            <span className="text-[8.5px] font-bold uppercase tracking-wider text-slate-400 block leading-tight">
+          <div className="bg-white border border-slate-200/90 px-2.5 py-1 rounded-xl text-center shadow-2xs dark:bg-surface-raised dark:border-line/90">
+            <span className="text-[8.5px] font-bold uppercase tracking-wider text-slate-400 block leading-tight dark:text-content-faint">
               OTP
             </span>
-            <span className="font-mono text-xs font-black text-slate-900 tracking-wider">
+            <span className="font-mono text-xs font-black text-slate-900 tracking-wider dark:text-content">
               {activeOrder.otp}
             </span>
           </div>
@@ -121,7 +121,7 @@ export default function HomeScreenLiveOrderCard() {
         <div className="grid grid-cols-3 gap-1.5">
           <div className="space-y-1 text-center">
             <div className="h-1 w-full bg-[#061838] rounded-full" />
-            <span className="text-[9px] font-bold text-[#061838] block">Placed</span>
+            <span className="text-[9px] font-bold text-[#061838] block dark:text-content">Placed</span>
           </div>
           <div className="space-y-1 text-center">
             <div className="h-1 w-full bg-[#FF5B00] animate-pulse rounded-full" />
@@ -130,13 +130,13 @@ export default function HomeScreenLiveOrderCard() {
           <div className="space-y-1 text-center">
             <div
               className={`h-1 w-full ${
-                activeOrder?.status === "Out for Delivery" ? "bg-[#FF5B00]" : "bg-slate-200"
+                activeOrder?.status === "Out for Delivery" ? "bg-[#FF5B00]" : "bg-slate-200 dark:bg-surface-muted"
               } rounded-full`}
             />
             <span
               className={`text-[9px] font-bold ${
                 activeOrder?.status === "Out for Delivery" ? "text-[#061838]" : "text-slate-400"
-              } block`}
+              } block dark:text-content`}
             >
               On Way
             </span>

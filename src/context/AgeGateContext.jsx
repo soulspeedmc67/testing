@@ -80,7 +80,7 @@ export function AgeGateProvider({ children }) {
                   <span className="text-white font-black text-xl tracking-tight">{MIN_AGE}+</span>
                 </div>
 
-                <Drawer.Title className="text-[19px] font-black text-[#061838] tracking-tight">
+                <Drawer.Title className="text-[19px] font-black text-[#061838] tracking-tight dark:text-content">
                   Confirm your age
                 </Drawer.Title>
 

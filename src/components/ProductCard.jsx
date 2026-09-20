@@ -87,7 +87,7 @@ function ProductCard({
         isOutOfStock
           ? "border-slate-200 opacity-80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
           : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-[0_6px_18px_-8px_rgba(15,23,42,0.18)]"
-      }`}
+      } dark:bg-surface-raised dark:hover:border-line-strong`}
     >
       {/* Photo well.
           Every product photo fills this square edge to edge via object-cover, so
@@ -95,12 +95,12 @@ function ProductCard({
           The previous object-contain fit let each photo keep its own aspect
           ratio inside the square, so a wide shot became a thin letterboxed strip
           next to a square one and the grid read as ragged. */}
-      <div className="relative w-full aspect-square bg-slate-100 overflow-hidden">
+      <div className="relative w-full aspect-square bg-slate-100 overflow-hidden dark:bg-surface-muted">
         {imgFailed || !product.img ? (
           <div
             role="img"
             aria-label={product.name}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-50 text-slate-300"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-50 text-slate-300 dark:bg-surface-raised dark:text-content-faint"
           >
             <ImageOff className={compact ? "w-5 h-5" : "w-6 h-6"} strokeWidth={1.75} />
           </div>
@@ -125,7 +125,7 @@ function ProductCard({
           onClick={handleHeartClick}
           aria-label={favorite ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
           aria-pressed={favorite}
-          className={`tap-target-44 absolute ${compact ? "top-1.5 right-1.5 p-1" : "top-2 right-2 p-1.5"} rounded-full bg-white/85 backdrop-blur-sm text-slate-600 hover:text-rose-500 shadow-2xs transition-colors`}
+          className={`tap-target-44 absolute ${compact ? "top-1.5 right-1.5 p-1" : "top-2 right-2 p-1.5"} rounded-full bg-white/85 backdrop-blur-sm text-slate-600 hover:text-rose-500 shadow-2xs transition-colors dark:bg-surface-raised/85 dark:text-content-secondary`}
         >
           <Heart
             className={`${compact ? "w-3 h-3" : "w-3.5 h-3.5"} ${
@@ -170,7 +170,7 @@ function ProductCard({
         <h3
           className={`${
             compact ? "text-[11px] min-h-[28px]" : "text-[12.5px] min-h-[34px]"
-          } font-semibold text-[#061838] line-clamp-2 leading-snug tracking-tight`}
+          } font-semibold text-[#061838] line-clamp-2 leading-snug tracking-tight dark:text-content`}
         >
           {pId ? (
             <Link
@@ -188,14 +188,14 @@ function ProductCard({
         {/* Single quiet metadata line — stock warning replaces the unit only when it matters */}
         <p
           className={`${compact ? "text-[9.5px]" : "text-[10.5px]"} mt-0.5 font-medium truncate ${
-            isLowStock ? "text-amber-700" : "text-slate-500"
+            isLowStock ? "text-amber-700" : "text-slate-500 dark:text-content-muted"
           }`}
         >
           {isLowStock ? `Only ${product.stock} left` : product.unit}
         </p>
 
         {ageRestricted && (
-          <p className={`${compact ? "text-[9px]" : "text-[9.5px]"} font-semibold text-slate-400 truncate`}>
+          <p className={`${compact ? "text-[9px]" : "text-[9.5px]"} font-semibold text-slate-400 truncate dark:text-content-faint`}>
             Age verification required
           </p>
         )}
@@ -206,7 +206,7 @@ function ProductCard({
               <span
                 className={`${
                   compact ? "text-[9px]" : "text-[10px]"
-                } text-slate-400 line-through font-mono mb-0.5`}
+                } text-slate-400 line-through font-mono mb-0.5 dark:text-content-faint`}
               >
                 ₹{product.originalPrice}
               </span>
@@ -214,7 +214,7 @@ function ProductCard({
             <span
               className={`${
                 compact ? "text-[13px]" : "text-[15px]"
-              } font-black text-[#061838] font-mono tracking-tight`}
+              } font-black text-[#061838] font-mono tracking-tight dark:text-content`}
             >
               ₹{product.price}
             </span>

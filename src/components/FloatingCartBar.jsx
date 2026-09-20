@@ -167,7 +167,7 @@ export default function FloatingCartBar() {
               </div>
             ))
           ) : (
-            <div className="w-8 h-8 rounded-full bg-white text-[#061838] flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-8 h-8 rounded-full bg-white text-[#061838] flex items-center justify-center shrink-0 shadow-xs dark:text-content">
               <ShoppingBag className="w-4 h-4 stroke-[2.8]" />
             </div>
           )}

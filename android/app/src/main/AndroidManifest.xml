@@ -41,6 +41,14 @@
                 <data android:scheme="@string/custom_url_scheme" />
             </intent-filter>
 
+            <!-- App Links verification (assetlinks.json) for https://dashit.co.in -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="dashit.co.in" />
+            </intent-filter>
+
         </activity>
 
         <provider
@@ -66,9 +74,9 @@
     <!--
         Foreground location only. confirm-location.js and the map picker call
         navigator.geolocation, which silently fails in the WebView without these.
-        ACCESS_BACKGROUND_LOCATION is deliberately NOT declared: the customer app
-        never needs a position while backgrounded, and asking for it triggers
-        Google Play's background-location review with a video justification.
+        Background location permission is deliberately NOT requested: the customer app
+        never needs a position while backgrounded, avoiding Google Play's
+        sensitive background-location review.
     -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

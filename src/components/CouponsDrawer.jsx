@@ -155,14 +155,14 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                           <p className="text-xs font-extrabold text-slate-800 dark:text-zinc-200 mt-1">
                             {coupon.title}
                           </p>
-                          <p className="text-[10px] font-semibold text-slate-400 mt-0.5">
+                          <p className="text-[10px] font-semibold text-slate-400 mt-0.5 dark:text-content-faint">
                             {coupon.description}
                           </p>
                         </div>
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="text-[10px] font-black text-slate-400 uppercase block">Save up to</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase block dark:text-content-faint">Save up to</span>
                         <span className="text-sm font-mono font-black text-[#FF5B00] block">₹{coupon.discount}</span>
                         <button
                           type="button"

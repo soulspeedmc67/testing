@@ -18,16 +18,16 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
 
   return (
     <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex flex-col justify-end sm:items-center sm:justify-center">
-      <div className="bg-slate-50 rounded-t-[32px] sm:rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200/80">
+      <div className="bg-slate-50 rounded-t-[32px] sm:rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-slate-200/80 dark:bg-surface-raised dark:border-line/80">
         {/* Top Header */}
-        <div className="bg-white px-4 py-3.5 border-b border-slate-200 flex items-center space-x-3 sticky top-0 z-20">
+        <div className="bg-white px-4 py-3.5 border-b border-slate-200 flex items-center space-x-3 sticky top-0 z-20 dark:bg-surface dark:border-line">
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-90 transition-transform"
+            className="w-9 h-9 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 active:scale-90 transition-transform dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
           >
             <ChevronDown className="w-5 h-5 stroke-[2.5]" />
           </button>
-          <h1 className="font-extrabold text-base text-slate-900">
+          <h1 className="font-extrabold text-base text-slate-900 dark:text-content">
             Select Payment Method
           </h1>
         </div>
@@ -37,7 +37,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
           {/* 1. RECOMMENDED & ACTIVE: CASH ON DELIVERY */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-black text-slate-800 tracking-tight">
+              <h3 className="text-xs font-black text-slate-800 tracking-tight dark:text-content">
                 Recommended Payment Method
               </h3>
               <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
@@ -45,7 +45,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
               </span>
             </div>
 
-            <div className="bg-white border-2 border-emerald-500/80 rounded-2xl shadow-sm overflow-hidden ring-2 ring-emerald-500/10">
+            <div className="bg-white border-2 border-emerald-500/80 rounded-2xl shadow-sm overflow-hidden ring-2 ring-emerald-500/10 dark:bg-surface-raised">
               <button
                 type="button"
                 onClick={() => handleSelect("cod", "Cash on Delivery")}
@@ -71,7 +71,7 @@ export default function PaymentMethodModal({ isOpen, onClose, selectedMethod, on
           </div>
 
           {/*
-            The "Online Payments (Coming Soon)" section was removed.
+            The online payments placeholder section was removed.
 
             It listed five disabled providers, each tagged "Not available yet",
             plus an advisory that they were "undergoing scheduled integration".

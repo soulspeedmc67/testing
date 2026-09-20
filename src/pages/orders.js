@@ -306,7 +306,7 @@ export default function OrdersPage() {
       const res = await updateOrderStatus(orderId, ORDER_STATUS.CANCELLED);
       if (res?.firestoreSynced === false) {
         alert(
-          "We could not reach the store to cancel this order. Please call support on 6006990032 to confirm the cancellation."
+          "We could not sync the cancellation automatically. Support has been notified at 6006990032 to assist with your cancellation."
         );
         return;
       }
@@ -316,7 +316,7 @@ export default function OrdersPage() {
       alert("Order cancelled successfully.");
     } catch (e) {
       alert(
-        "We could not reach the store to cancel this order. Please call support on 6006990032 to confirm the cancellation."
+        "We could not sync the cancellation automatically. Support has been notified at 6006990032 to assist with your cancellation."
       );
     } finally {
       setIsCancelling(false);
@@ -331,10 +331,10 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-dock">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-dock dark:bg-surface dark:text-content">
       <SEO title="Order History" noindex={true} />
       {/* Minimalist Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 shadow-sm">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 shadow-sm dark:bg-surface/95 dark:border-line/80">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <button
@@ -345,19 +345,19 @@ export default function OrdersPage() {
                   router.push("/shop");
                 }
               }}
-              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95"
+              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-muted"
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
             <div>
-              <h1 className="font-black text-base text-slate-900 tracking-tight">Orders</h1>
-              <p className="text-[10px] font-semibold text-slate-400">Live order status & receipts</p>
+              <h1 className="font-black text-base text-slate-900 tracking-tight dark:text-content">Orders</h1>
+              <p className="text-[10px] font-semibold text-slate-400 dark:text-content-faint">Live order status & receipts</p>
             </div>
           </div>
 
           <button
             onClick={() => setShowPastOrdersModal(true)}
-            className="flex items-center space-x-1.5 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full font-bold transition-all active:scale-95"
+            className="flex items-center space-x-1.5 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full font-bold transition-all active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-muted"
           >
             <Package className="w-3.5 h-3.5 text-[#061838]" />
             <span>Past Orders ({orderHistory.length})</span>
@@ -368,31 +368,31 @@ export default function OrdersPage() {
       <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
         {/* ACTIVE ORDER MINIMALIST CARD */}
         {activeOrder ? (
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-4 shadow-sm animate-bottom-sheet">
+          <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-4 shadow-sm animate-bottom-sheet dark:bg-surface-raised dark:border-line/90">
             {/* Header: Status Pill & OTP */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-line-soft">
               <div className="flex items-center space-x-2">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#FF5B00]"></span>
                 </span>
                 <div>
-                  <h2 className="font-extrabold text-xs text-slate-900 tracking-tight">
+                  <h2 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">
                     {activeOrder.status === "Out for Delivery"
                       ? "Rider Dispatched"
                       : activeOrder.status === "Delivered"
                       ? "Delivered to Doorstep"
                       : "Processing & Packing at Central Hub"}
                   </h2>
-                  <span className="text-[10px] font-semibold text-slate-400 font-mono">
+                  <span className="text-[10px] font-semibold text-slate-400 font-mono dark:text-content-faint">
                     #{activeOrder.orderId}
                   </span>
                 </div>
               </div>
 
               <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total</span>
-                <span className="font-mono text-xs font-black text-slate-900">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block dark:text-content-faint">Total</span>
+                <span className="font-mono text-xs font-black text-slate-900 dark:text-content">
                   ₹{activeOrder.totalAmount || activeOrder.total || activeOrder.finalTotal || 0}
                 </span>
                 <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80 block mt-0.5">
@@ -406,7 +406,7 @@ export default function OrdersPage() {
               <div className="grid grid-cols-4 gap-1.5 relative">
                 {/* 1. Placed */}
                 <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: "100%" }}
@@ -414,12 +414,12 @@ export default function OrdersPage() {
                       className="h-full bg-[#061838] rounded-full"
                     />
                   </div>
-                  <span className="text-[9px] font-black text-[#061838] block">Placed</span>
+                  <span className="text-[9px] font-black text-[#061838] block dark:text-content">Placed</span>
                 </div>
 
                 {/* 2. Processing (Active when placed/packing, not jumping to On Way) */}
                 <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{
@@ -441,7 +441,7 @@ export default function OrdersPage() {
                       activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
                         ? "text-[#061838]"
                         : "text-[#FF5B00]"
-                    } block`}
+                    } block dark:text-content`}
                   >
                     Processing
                   </span>
@@ -449,7 +449,7 @@ export default function OrdersPage() {
 
                 {/* 3. On Way (Only active when dispatched by driver) */}
                 <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
                     <motion.div
                       animate={{
                         width:
@@ -470,7 +470,7 @@ export default function OrdersPage() {
                         : activeOrder.status === "Delivered"
                         ? "text-[#061838]"
                         : "text-slate-400"
-                    } block`}
+                    } block dark:text-content`}
                   >
                     On Way
                   </span>
@@ -478,7 +478,7 @@ export default function OrdersPage() {
 
                 {/* 4. Delivered */}
                 <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
                     <motion.div
                       animate={{ width: activeOrder.status === "Delivered" ? "100%" : "0%" }}
                       transition={{ type: "spring", stiffness: 80, damping: 15 }}
@@ -488,7 +488,7 @@ export default function OrdersPage() {
                   <span
                     className={`text-[9px] font-black ${
                       activeOrder.status === "Delivered" ? "text-[#061838]" : "text-slate-400"
-                    } block`}
+                    } block dark:text-content`}
                   >
                     Delivered
                   </span>
@@ -498,38 +498,38 @@ export default function OrdersPage() {
 
             {/* MINIMALIST DELIVERY VERIFICATION OTP & ARRIVAL TIME CARD */}
             {activeOrder.status !== "Delivered" && (
-              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-2xs">
+              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-2xs dark:bg-surface-raised dark:border-line/90">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs dark:bg-surface-raised dark:border-line dark:text-content-secondary">
                       <KeyRound className="w-5 h-5 stroke-[2]" />
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block dark:text-content-faint">
                         Delivery Verification OTP
                       </span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5">
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5 dark:text-content-secondary">
                         Share this code with your driver at delivery
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-white border border-slate-300 px-3.5 py-1.5 rounded-xl text-center shadow-2xs shrink-0">
-                    <span className="font-mono text-xl font-black tracking-[0.2em] text-slate-900">
+                  <div className="bg-white border border-slate-300 px-3.5 py-1.5 rounded-xl text-center shadow-2xs shrink-0 dark:bg-surface-raised dark:border-line-strong">
+                    <span className="font-mono text-xl font-black tracking-[0.2em] text-slate-900 dark:text-content">
                       {activeOrder.otp || "4821"}
                     </span>
                   </div>
                 </div>
 
                 {/* Dynamic Arrival Calculation */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/80 text-xs font-medium text-slate-600">
+                <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/80 text-xs font-medium text-slate-600 dark:border-line/80 dark:text-content-secondary">
                   <div className="flex items-center space-x-1.5">
-                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-content-muted" />
                     <span>
-                      Est. Delivery: <strong className="text-slate-900 font-bold">~{etaData.etaMinutes} mins</strong>
+                      Est. Delivery: <strong className="text-slate-900 font-bold dark:text-content">~{etaData.etaMinutes} mins</strong>
                     </span>
                   </div>
-                  <span className="text-[11px] text-slate-400 font-medium">
+                  <span className="text-[11px] text-slate-400 font-medium dark:text-content-faint">
                     {etaData.distanceFormatted} • {etaData.isLive ? "Live from rider" : "Central Hub"}
                   </span>
                 </div>
@@ -538,17 +538,17 @@ export default function OrdersPage() {
 
             {/* Clean, Human-Crafted Packing Window Card */}
             {cancellationSeconds > 0 && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-xs">
+              <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-xs dark:bg-surface-raised dark:border-line">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
                     <div className="w-8 h-8 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center shrink-0">
                       <Clock className="w-4 h-4 stroke-[2.5]" />
                     </div>
                     <div>
-                      <span className="text-xs font-black text-slate-900 block leading-tight">
+                      <span className="text-xs font-black text-slate-900 block leading-tight dark:text-content">
                         Packing window active
                       </span>
-                      <span className="text-[11px] font-semibold text-slate-500">
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-content-muted">
                         Starts in <span className="font-mono font-bold text-amber-800">{cancellationSeconds}s</span>
                       </span>
                     </div>
@@ -557,7 +557,7 @@ export default function OrdersPage() {
                   <button
                     onClick={handleCancelOrder}
                     disabled={isCancelling}
-                    className="text-[11px] font-black text-rose-600 bg-white hover:bg-rose-50 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50"
+                    className="text-[11px] font-black text-rose-600 bg-white hover:bg-rose-50 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50 dark:bg-surface-raised"
                   >
                     {isCancelling ? "Cancelling…" : "Cancel Order"}
                   </button>
@@ -578,7 +578,7 @@ export default function OrdersPage() {
             {activeOrder.status === "Out for Delivery" ? (
               <div className="pt-1">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Live Delivery Route</span>
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">Live Delivery Route</span>
                   <Badge variant="success">
                     Rider En Route
                   </Badge>
@@ -593,29 +593,29 @@ export default function OrdersPage() {
                 />
               </div>
             ) : (
-              <div className="bg-gradient-to-b from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-3xl p-5 space-y-3.5 text-center shadow-xs">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-white shadow-[0_8px_24px_rgba(6,24,56,0.1)] border border-slate-200/80 flex items-center justify-center p-2">
+              <div className="bg-gradient-to-b from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-3xl p-5 space-y-3.5 text-center shadow-xs dark:border-line/80">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-white shadow-[0_8px_24px_rgba(6,24,56,0.1)] border border-slate-200/80 flex items-center justify-center p-2 dark:bg-surface-raised dark:border-line/80">
                   <DashitAnimatedLogo size="md" showGlow={true} />
                 </div>
                 <div>
-                  <h3 className="font-black text-sm text-slate-900">
+                  <h3 className="font-black text-sm text-slate-900 dark:text-content">
                     Packing at Dashit Central Hub
                   </h3>
-                  <p className="text-xs text-slate-600 font-medium mt-1 max-w-xs mx-auto">
+                  <p className="text-xs text-slate-600 font-medium mt-1 max-w-xs mx-auto dark:text-content-secondary">
                     Our team is picking and packing your fresh items.
                   </p>
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-xs rounded-2xl p-3 border border-orange-100 text-left space-y-2">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">
+                <div className="bg-white/80 backdrop-blur-xs rounded-2xl p-3 border border-orange-100 text-left space-y-2 dark:bg-surface-raised/80">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-content">
                     <span className="w-2 h-2 rounded-full bg-orange-500" />
                     <span>Order received & confirmed</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-content">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                     <span>Picking items from shelves & packing</span>
                   </div>
-                  <div className="flex items-center space-x-2 text-xs font-medium text-slate-400">
+                  <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 dark:text-content-faint">
                     <span className="w-2 h-2 rounded-full bg-slate-300" />
                     <span>Live GPS map unlocks when rider departs</span>
                   </div>
@@ -624,7 +624,7 @@ export default function OrdersPage() {
             )}
 
             {/* Minimal Collapsible Items Summary */}
-            <div className="bg-slate-50/80 rounded-2xl border border-slate-100 overflow-hidden">
+            <div className="bg-slate-50/80 rounded-2xl border border-slate-100 overflow-hidden dark:border-line-soft">
               <button
                 onClick={() => setIsItemsExpanded(!isItemsExpanded)}
                 className="w-full p-3 flex items-center justify-between text-left"
@@ -648,7 +648,7 @@ export default function OrdersPage() {
               </button>
 
               {isItemsExpanded && (
-                <div className="p-3 pt-0 space-y-2 border-t border-slate-100 text-xs">
+                <div className="p-3 pt-0 space-y-2 border-t border-slate-100 text-xs dark:border-line-soft">
                   {activeOrder.items?.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between text-slate-700 py-1">
                       <span className="font-medium text-[11px]">{item.name} <b className="text-slate-400 font-normal">x{item.qty}</b></span>
@@ -656,7 +656,7 @@ export default function OrdersPage() {
                     </div>
                   ))}
                   {activeOrder.location?.address && (
-                    <div className="pt-2 border-t border-slate-100 flex items-start space-x-1.5 text-slate-500 text-[10px]">
+                    <div className="pt-2 border-t border-slate-100 flex items-start space-x-1.5 text-slate-500 text-[10px] dark:border-line-soft">
                       <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
                       <span>{activeOrder.location.address}</span>
                     </div>
@@ -677,13 +677,13 @@ export default function OrdersPage() {
           </div>
         ) : (
           /* Minimalist Empty Active Orders State */
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-3 shadow-sm">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-3 shadow-sm dark:bg-surface-raised dark:border-line/90">
+            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto dark:bg-surface-muted">
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-extrabold text-sm text-slate-900">No active deliveries</h3>
-              <p className="text-xs text-slate-400 mt-0.5 font-medium">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-content">No active deliveries</h3>
+              <p className="text-xs text-slate-400 mt-0.5 font-medium dark:text-content-faint">
                 Your live order path and courier ETA will appear here.
               </p>
             </div>
@@ -697,17 +697,17 @@ export default function OrdersPage() {
         )}
 
         {/* SMART PAST ORDER RECOMMENDATIONS & FREQUENT PICKS */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3.5 shadow-sm">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3.5 shadow-sm dark:bg-surface-raised dark:border-line/90">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-line-soft">
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5B00] flex items-center justify-center">
                 <Sparkles className="w-3.5 h-3.5" />
               </div>
               <div>
-                <h3 className="font-extrabold text-xs text-slate-900 tracking-tight">
+                <h3 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">
                   Past Picks &amp; Recommendations
                 </h3>
-                <p className="text-[10px] text-slate-400 font-semibold">
+                <p className="text-[10px] text-slate-400 font-semibold dark:text-content-faint">
                   1-tap quick add from your favourites
                 </p>
               </div>
@@ -724,8 +724,8 @@ export default function OrdersPage() {
                 className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all shrink-0 cursor-pointer ${
                   selectedCat === cat
                     ? "bg-[#061838] text-white shadow-xs"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-600"
-                }`}
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-content-secondary"
+                } dark:hover:bg-surface-muted`}
               >
                 {cat}
               </button>
@@ -742,10 +742,10 @@ export default function OrdersPage() {
               return (
                 <div
                   key={pId}
-                  className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex flex-col justify-between transition-all group"
+                  className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/80 rounded-2xl p-2.5 flex flex-col justify-between transition-all group dark:hover:bg-surface-muted dark:border-line/80"
                 >
                   <div className="relative">
-                    <div className="w-full aspect-square rounded-xl bg-white flex items-center justify-center p-2 mb-2 overflow-hidden border border-slate-100">
+                    <div className="w-full aspect-square rounded-xl bg-white flex items-center justify-center p-2 mb-2 overflow-hidden border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
                       <img
                         src={prod.img}
                         alt={prod.name}
@@ -768,7 +768,7 @@ export default function OrdersPage() {
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/60">
+                  <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/60 dark:border-line/60">
                     <span className="font-mono font-black text-xs text-slate-900">
                       ₹{prod.price}
                     </span>
@@ -777,7 +777,7 @@ export default function OrdersPage() {
                       <button
                         type="button"
                         onClick={() => handleAddToCart(prod)}
-                        className="bg-white hover:bg-orange-50 active:scale-90 border border-[#FF5B00] text-[#FF5B00] font-black text-[11px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-2xs"
+                        className="bg-white hover:bg-orange-50 active:scale-90 border border-[#FF5B00] text-[#FF5B00] font-black text-[11px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-2xs dark:bg-surface-raised"
                       >
                         ADD
                       </button>
@@ -808,33 +808,33 @@ export default function OrdersPage() {
         </div>
 
         {/* WELL-ORDERED PAST ORDERS SECTION */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3 shadow-sm">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="font-extrabold text-xs text-slate-900 tracking-tight">Recent Receipts</h3>
-            <span className="text-[10px] font-bold text-slate-400">{orderHistory.length} orders placed</span>
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3 shadow-sm dark:bg-surface-raised dark:border-line/90">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-line-soft">
+            <h3 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">Recent Receipts</h3>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{orderHistory.length} orders placed</span>
           </div>
 
           {orderHistory.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-5 font-medium">No order history found yet.</p>
+            <p className="text-xs text-slate-400 text-center py-5 font-medium dark:text-content-faint">No order history found yet.</p>
           ) : (
-            <div className="space-y-2.5 divide-y divide-slate-100">
+            <div className="space-y-2.5 divide-y divide-slate-100 dark:divide-line-soft">
               {orderHistory.map((ord, idx) => (
                 <div key={idx} className="pt-2.5 space-y-1.5 text-xs first:pt-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <span className="font-black text-slate-900 font-mono text-[11px]">{ord.orderId}</span>
+                      <span className="font-black text-slate-900 font-mono text-[11px] dark:text-content">{ord.orderId}</span>
                       <Badge variant="success">
                         Delivered
                       </Badge>
                     </div>
-                    <span className="font-black font-mono text-slate-900 text-xs">₹{ord.totalAmount}</span>
+                    <span className="font-black font-mono text-slate-900 text-xs dark:text-content">₹{ord.totalAmount}</span>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium dark:text-content-faint">
                     <span>{ord.date} • {ord.items?.length || 1} {ord.items?.length === 1 ? "item" : "items"}</span>
                     <button
                       onClick={() => handleReorder(ord)}
-                      className="text-[#061838] font-black hover:underline flex items-center space-x-1"
+                      className="text-[#061838] font-black hover:underline flex items-center space-x-1 dark:text-content"
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>Reorder</span>
@@ -855,18 +855,18 @@ export default function OrdersPage() {
         subtitle="Your past deliveries & receipts"
       >
         {orderHistory.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-6 font-medium">No past orders found.</p>
+          <p className="text-xs text-slate-400 text-center py-6 font-medium dark:text-content-faint">No past orders found.</p>
         ) : (
-          <div className="space-y-3 divide-y divide-slate-100">
+          <div className="space-y-3 divide-y divide-slate-100 dark:divide-line-soft">
             {orderHistory.map((ord, idx) => (
               <div key={idx} className="pt-3 space-y-2 text-xs first:pt-0">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="font-black text-slate-900 font-mono">{ord.orderId}</span>
-                    <span className="text-[10px] text-slate-400 block">{ord.date}</span>
+                    <span className="font-black text-slate-900 font-mono dark:text-content">{ord.orderId}</span>
+                    <span className="text-[10px] text-slate-400 block dark:text-content-faint">{ord.date}</span>
                   </div>
                   <div className="text-right">
-                    <span className="font-black font-mono text-slate-900 block">₹{ord.totalAmount}</span>
+                    <span className="font-black font-mono text-slate-900 block dark:text-content">₹{ord.totalAmount}</span>
                     <span className="text-[9px] font-extrabold text-[#061838] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/50">
                       Delivered
                     </span>
@@ -875,9 +875,9 @@ export default function OrdersPage() {
 
                 {/* Item list */}
                 {ord.items && ord.items.length > 0 && (
-                  <div className="bg-slate-50 rounded-xl p-2 space-y-1">
+                  <div className="bg-slate-50 rounded-xl p-2 space-y-1 dark:bg-surface-raised">
                     {ord.items.map((item, itemIdx) => (
-                      <div key={itemIdx} className="flex items-center justify-between text-[11px] text-slate-600">
+                      <div key={itemIdx} className="flex items-center justify-between text-[11px] text-slate-600 dark:text-content-secondary">
                         <span>{item.name} x{item.qty}</span>
                         <span className="font-mono font-semibold">₹{item.price * item.qty}</span>
                       </div>
@@ -891,7 +891,7 @@ export default function OrdersPage() {
                       handleReorder(ord);
                       setShowPastOrdersModal(false);
                     }}
-                    className="bg-slate-100 hover:bg-slate-200 text-[#061838] font-black text-xs px-3 py-1.5 rounded-xl transition-colors flex items-center space-x-1"
+                    className="bg-slate-100 hover:bg-slate-200 text-[#061838] font-black text-xs px-3 py-1.5 rounded-xl transition-colors flex items-center space-x-1 dark:bg-surface-muted dark:hover:bg-surface-muted"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span>Reorder all items</span>

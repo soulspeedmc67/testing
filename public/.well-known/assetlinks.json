@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.dashit.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7D:0F:52:AB:E0:85:41:86:E1:D1:C1:BC:B6:59:B4:73:27:50:47:43:42:F3:72:67:34:56:05:43:A3"
+      ]
+    }
+  }
+]

@@ -269,7 +269,7 @@ export default function LiveOrderFloatingTracker() {
                the only way back to a live order, so it must not be fiddly. */
             className="pointer-events-auto flex items-center justify-center px-2 py-2 -mx-2 -my-2"
           >
-            <span className="flex items-center gap-2 h-7 px-3 rounded-full bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
+            <span className="flex items-center gap-2 h-7 px-3 rounded-full bg-neutral-950/90 backdrop-blur-xl border border-neutral-800 shadow-[0_8px_24px_rgba(0,0,0,0.45)] dark:bg-surface-overlay/90 dark:border-line-strong">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B00]" />
               <span className="text-[11px] font-bold text-white/80 tabular-nums">
                 {isDelivered ? "Delivered" : etaMinutes > 0 ? `${etaMinutes} min` : "Live"}
@@ -301,7 +301,7 @@ export default function LiveOrderFloatingTracker() {
             onDragEnd={handleDragEnd}
             className="pointer-events-auto w-full max-w-md touch-none select-none"
           >
-            <div className="overflow-hidden rounded-[24px] bg-neutral-950/95 backdrop-blur-2xl border border-neutral-800 shadow-[0_18px_48px_rgba(0,0,0,0.6)]">
+            <div className="overflow-hidden rounded-[24px] bg-neutral-950/95 backdrop-blur-2xl border border-neutral-800 shadow-[0_18px_48px_rgba(0,0,0,0.6)] dark:bg-surface-overlay/95 dark:border-line-strong">
               {/* COMPACT ROW — always visible, tap to toggle the full card */}
               <button
                 type="button"

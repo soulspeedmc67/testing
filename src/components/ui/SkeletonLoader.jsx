@@ -20,7 +20,7 @@ export function Skeleton({ className, ...props }) {
 
 export function ProductCardSkeleton() {
   return (
-    <div className="bg-white border border-slate-200/80 rounded-3xl p-3 flex flex-col justify-between w-36 sm:w-40 shrink-0 h-64 space-y-2">
+    <div className="bg-white border border-slate-200/80 rounded-3xl p-3 flex flex-col justify-between w-36 sm:w-40 shrink-0 h-64 space-y-2 dark:bg-surface-raised dark:border-line/80">
       <Skeleton className="w-full h-28 rounded-2xl" />
       <div className="space-y-1.5">
         <Skeleton className="h-3 w-14 rounded-md" />
@@ -39,7 +39,7 @@ export function CategoryGridSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3">
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="bg-white border border-slate-200/80 rounded-3xl p-4 h-36 flex flex-col justify-between">
+        <div key={i} className="bg-white border border-slate-200/80 rounded-3xl p-4 h-36 flex flex-col justify-between dark:bg-surface-raised dark:border-line/80">
           <div className="space-y-1">
             <Skeleton className="h-4 w-24 rounded-md" />
             <Skeleton className="h-3 w-14 rounded-md" />

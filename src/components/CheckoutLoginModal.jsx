@@ -196,16 +196,16 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
           transition={{ type: "spring", damping: 28, stiffness: 360 }}
-          className="relative w-full max-w-md bg-white rounded-t-[36px] p-6 pb-8 shadow-2xl border-t border-slate-100 z-10 max-h-[90vh] overflow-y-auto overscroll-contain"
+          className="relative w-full max-w-md bg-white rounded-t-[36px] p-6 pb-8 shadow-2xl border-t border-slate-100 z-10 max-h-[90vh] overflow-y-auto overscroll-contain dark:bg-surface-overlay dark:border-line-soft"
         >
           {/* Top Grab Handle */}
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-3" />
+          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-3 dark:bg-surface-muted" />
 
           {/* Dismiss button */}
           <button
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 active:scale-90 transition-transform cursor-pointer"
+            className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 active:scale-90 transition-transform cursor-pointer dark:bg-surface-muted dark:hover:text-content"
           >
             <X className="w-4 h-4 stroke-[2.5]" />
           </button>
@@ -224,14 +224,14 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               <span>DASHIT Account &amp; Delivery Verification</span>
             </div>
 
-            <h3 className="text-xl font-black text-[#061838] tracking-tight">
+            <h3 className="text-xl font-black text-[#061838] tracking-tight dark:text-content">
               {authMode === "signup"
                 ? "Create Your Account"
                 : authMode === "quickphone"
                 ? "Quick Delivery Contact"
                 : "Sign In to Place Order"}
             </h3>
-            <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto mt-0.5">
+            <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto mt-0.5 dark:text-content-muted">
               {authMode === "signup"
                 ? "Sign up with email to receive order invoices & live GPS tracking."
                 : authMode === "quickphone"
@@ -241,7 +241,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="bg-slate-100 p-1 rounded-2xl flex items-center mb-4 select-none">
+          <div className="bg-slate-100 p-1 rounded-2xl flex items-center mb-4 select-none dark:bg-surface-muted">
             <button
               type="button"
               onClick={() => {
@@ -250,8 +250,8 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               }}
               className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 authMode === "signin"
-                  ? "bg-white text-[#061838] shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-[#061838] shadow-xs dark:bg-surface-raised"
+                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-content"
               }`}
             >
               Sign In
@@ -264,8 +264,8 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               }}
               className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
                 authMode === "signup"
-                  ? "bg-white text-[#061838] shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-[#061838] shadow-xs dark:bg-surface-raised"
+                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-content"
               }`}
             >
               Create Account
@@ -278,8 +278,8 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               }}
               className={`flex-1 py-2 text-[11px] font-bold rounded-xl transition-all cursor-pointer ${
                 authMode === "quickphone"
-                  ? "bg-white text-[#FF5B00] shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
+                  ? "bg-white text-[#FF5B00] shadow-xs dark:bg-surface-raised"
+                  : "text-slate-500 hover:text-slate-800 dark:text-content-muted dark:hover:text-content"
               }`}
             >
               Phone Only
@@ -306,11 +306,11 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
             /* Quick Phone Entry */
             <form onSubmit={handleQuickMobileSubmit} className="space-y-3.5">
               <div className="space-y-1">
-                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wider block dark:text-content-secondary">
                   Delivery Contact Number
                 </label>
-                <div className="flex items-center bg-slate-50 border-2 border-slate-200 rounded-2xl px-3 py-1.5 focus-within:border-[#FF5B00] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(255,91,0,0.12)] transition-all">
-                  <span className="shrink-0 text-xs font-black text-[#061838] bg-slate-200/80 px-2.5 py-1.5 rounded-xl border border-slate-300/80 mr-2.5 select-none">
+                <div className="flex items-center bg-slate-50 border-2 border-slate-200 rounded-2xl px-3 py-1.5 focus-within:border-[#FF5B00] focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(255,91,0,0.12)] transition-all dark:bg-surface-raised dark:border-line dark:focus-within:bg-surface-raised">
+                  <span className="shrink-0 text-xs font-black text-[#061838] bg-slate-200/80 px-2.5 py-1.5 rounded-xl border border-slate-300/80 mr-2.5 select-none dark:border-line-strong/80 dark:text-content">
                     +91
                   </span>
                   <input
@@ -324,7 +324,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     }}
                     placeholder="10-digit mobile number"
                     style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-transparent border-0 outline-none text-base font-black text-slate-900 tracking-wider py-2"
+                    className="w-full bg-transparent border-0 outline-none text-base font-black text-slate-900 tracking-wider py-2 dark:text-content"
                     autoFocus
                   />
                 </div>
@@ -349,49 +349,49 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
             <form onSubmit={handleEmailAuthSubmit} className="space-y-3">
               {authMode === "signup" && (
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block dark:text-content-secondary">
                     Full Name
                   </label>
                   <div className="relative flex items-center">
-                    <User className="absolute left-3.5 w-4 h-4 text-slate-400" />
+                    <User className="absolute left-3.5 w-4 h-4 text-slate-400 dark:text-content-faint" />
                     <input
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="Your Name"
                       style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all"
+                      className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-content dark:focus:bg-surface-muted"
                     />
                   </div>
                 </div>
               )}
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block dark:text-content-secondary">
                   Email Address
                 </label>
                 <div className="relative flex items-center">
-                  <Mail className="absolute left-3.5 w-4 h-4 text-slate-400" />
+                  <Mail className="absolute left-3.5 w-4 h-4 text-slate-400 dark:text-content-faint" />
                   <input
                     type="email"
                     inputMode="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="customer@dashit.co.in"
                     style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all"
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-3 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-content dark:focus:bg-surface-muted"
                     autoFocus={authMode !== "signup"}
                   />
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block dark:text-content-secondary">
                   Password
                 </label>
                 <div className="relative flex items-center">
-                  <Lock className="absolute left-3.5 w-4 h-4 text-slate-400" />
+                  <Lock className="absolute left-3.5 w-4 h-4 text-slate-400 dark:text-content-faint" />
                   <input
                     type={showPassword ? "text" : "password"}
                     required
@@ -399,12 +399,12 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
                     style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-10 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all"
+                    className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-xs font-bold rounded-2xl pl-10 pr-10 py-3 outline-none focus:border-[#FF5B00] focus:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:text-content dark:focus:bg-surface-muted"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
+                    className="absolute right-3 text-slate-400 hover:text-slate-700 p-1 cursor-pointer dark:text-content-faint dark:hover:text-content-secondary"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -414,15 +414,15 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               {/* Delivery Contact Mobile Number at Bottom of Form */}
               <div className="space-y-1 pt-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block dark:text-content-secondary">
                     Delivery Contact Mobile (+91)
                   </label>
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                     For Delivery Rider
                   </span>
                 </div>
-                <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 focus-within:border-[#FF5B00] focus-within:bg-white transition-all">
-                  <span className="shrink-0 text-xs font-bold text-slate-700 mr-2 select-none">
+                <div className="flex items-center bg-slate-50 border border-slate-300 rounded-2xl px-3 py-1.5 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-raised dark:border-line-strong dark:focus-within:bg-surface-raised">
+                  <span className="shrink-0 text-xs font-bold text-slate-700 mr-2 select-none dark:text-content-secondary">
                     +91
                   </span>
                   <input
@@ -433,10 +433,10 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                     placeholder="10-digit delivery mobile"
                     style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a" }}
-                    className="w-full bg-transparent border-0 outline-none text-xs font-bold text-slate-900 py-1.5"
+                    className="w-full bg-transparent border-0 outline-none text-xs font-bold text-slate-900 py-1.5 dark:text-content"
                   />
                 </div>
-                <p className="text-[10px] text-slate-500 font-medium pl-1">
+                <p className="text-[10px] text-slate-500 font-medium pl-1 dark:text-content-muted">
                   Delivery partner will call this number for location handover.
                 </p>
               </div>
@@ -459,7 +459,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
           )}
 
           {/* Bottom links and advisory */}
-          <div className="pt-3 border-t border-slate-100 mt-4 text-center space-y-2">
+          <div className="pt-3 border-t border-slate-100 mt-4 text-center space-y-2 dark:border-line-soft">
             <button
               type="button"
               onClick={() => {
@@ -471,7 +471,7 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated })
               Open Full Sign In &amp; Registration Screen →
             </button>
 
-            <p className="text-[10.5px] text-slate-400 font-medium flex items-center justify-center gap-1">
+            <p className="text-[10.5px] text-slate-400 font-medium flex items-center justify-center gap-1 dark:text-content-faint">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 inline shrink-0" />
               <span>Secure SSL encrypted authentication · Verified delivery in Anantnag</span>
             </p>

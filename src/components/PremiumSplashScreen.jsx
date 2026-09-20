@@ -52,11 +52,13 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
 
   useEffect(() => {
     // Set system status bar to transparent with dark icons during splash
+    const isDark = typeof document !== "undefined"
+      && document.documentElement.classList.contains("dark");
     setDeviceSystemBars({
       topColor: "#00000000",
-      topDarkIcons: true,
-      bottomColor: "#FFFFFF",
-      bottomDarkIcons: true,
+      topDarkIcons: !isDark,
+      bottomColor: isDark ? "#0A0A0C" : "#FFFFFF",
+      bottomDarkIcons: !isDark,
     });
 
     // Timing sequence:
@@ -88,9 +90,9 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
         initial={{ opacity: 1 }}
         animate={{ opacity: isExiting ? 0 : 1 }}
         transition={{ duration: 0.5, ease: EASE_IN_OUT }}
-        className={`fixed inset-0 z-[99999] bg-white flex items-center justify-center select-none overflow-hidden ${
+        className={`fixed inset-0 z-[99999] bg-white dark:bg-surface flex items-center justify-center select-none overflow-hidden ${
           isExiting ? "pointer-events-none" : "pointer-events-auto"
-        }`}
+        } dark:bg-surface-raised`}
         style={{
           paddingTop: "var(--safe-top, 0px)",
           paddingBottom: "var(--safe-bottom, 0px)",

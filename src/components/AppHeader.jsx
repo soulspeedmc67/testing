@@ -116,7 +116,7 @@ export default function AppHeader({
       {/* ========================================================================= */}
       {/* DESKTOP UNIFIED HEADER (md: and above) — Clean, cohesive, single-row bar */}
       {/* ========================================================================= */}
-      <div className="hidden md:block w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+      <div className="hidden md:block w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:bg-surface-raised/95 dark:border-line/90">
         <div className="max-w-7xl mx-auto px-6 h-[74px] flex items-center justify-between">
           {/* Left: Brand Logo & Location Lockup */}
           <div className="flex items-center space-x-6">
@@ -125,7 +125,7 @@ export default function AppHeader({
                 <img src="/dashit-mark-white.png" alt="DASHit" className="w-full h-full object-contain" />
               </div>
               <div>
-                <span className="font-black text-xl tracking-tight text-[#061838] leading-none block">
+                <span className="font-black text-xl tracking-tight text-[#061838] leading-none block dark:text-content">
                   DASH<span className="text-[#FF5B00]">it</span>
                 </span>
                 <span className="text-[9.5px] font-extrabold uppercase tracking-widest text-[#FF5B00] block mt-0.5">
@@ -135,13 +135,13 @@ export default function AppHeader({
             </Link>
 
             {/* Vertical Divider */}
-            <div className="h-8 w-px bg-slate-200" />
+            <div className="h-8 w-px bg-slate-200 dark:bg-surface-muted" />
 
             {/* Location & Delivery ETA Pill (Alias Only) */}
             <button
               type="button"
               onClick={openLocationHandler}
-              className="text-left group cursor-pointer hover:bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 transition-all flex items-center space-x-2"
+              className="text-left group cursor-pointer hover:bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80 transition-all flex items-center space-x-2 dark:hover:bg-surface-muted dark:border-line/80"
             >
               <span
                 className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border flex items-center space-x-1 ${
@@ -159,10 +159,10 @@ export default function AppHeader({
               </span>
               <div className="flex items-center space-x-1">
                 <MapPin className="w-3.5 h-3.5 text-[#FF5B00] stroke-[2.5]" />
-                <span className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                <span className="text-xs font-black text-slate-900 uppercase tracking-tight dark:text-content">
                   {location.alias || location.nickname || "HOME"}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-colors" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 transition-colors dark:text-content-faint dark:group-hover:text-content-secondary" />
               </div>
             </button>
           </div>
@@ -171,7 +171,7 @@ export default function AppHeader({
           <div className="flex-1 max-w-xl mx-8">
             <div
               onClick={handleSearchClick}
-              className="w-full relative flex items-center bg-slate-100 hover:bg-slate-50/80 text-slate-900 rounded-2xl px-4 py-2.5 shadow-2xs border border-slate-200 hover:border-[#FF5B00]/60 cursor-pointer transition-all group"
+              className="w-full relative flex items-center bg-slate-100 hover:bg-slate-50/80 text-slate-900 rounded-2xl px-4 py-2.5 shadow-2xs border border-slate-200 hover:border-[#FF5B00]/60 cursor-pointer transition-all group dark:bg-surface-muted dark:border-line"
             >
               <Search className="w-4 h-4 stroke-[2.5] text-slate-400 group-hover:text-[#FF5B00] mr-2.5 shrink-0 transition-colors" />
               <span className="text-xs font-semibold text-slate-500 select-none truncate">
@@ -184,13 +184,13 @@ export default function AppHeader({
           <div className="flex items-center space-x-4">
             <Link
               href="/categories"
-              className="text-xs font-bold text-slate-700 hover:text-[#061838] px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+              className="text-xs font-bold text-slate-700 hover:text-[#061838] px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors dark:text-content-secondary dark:hover:bg-surface-muted"
             >
               Categories
             </Link>
             <Link
               href="/orders"
-              className="text-xs font-bold text-slate-700 hover:text-[#061838] px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors"
+              className="text-xs font-bold text-slate-700 hover:text-[#061838] px-3 py-2 rounded-xl hover:bg-slate-100 transition-colors dark:text-content-secondary dark:hover:bg-surface-muted"
             >
               My Orders
             </Link>
@@ -210,7 +210,7 @@ export default function AppHeader({
               type="button"
               onClick={() => router.push("/account")}
               aria-label="Account Profile"
-              className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200 flex items-center justify-center text-slate-800 shadow-2xs active:scale-95 transition-all cursor-pointer"
+              className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200/80 border border-slate-200 flex items-center justify-center text-slate-800 shadow-2xs active:scale-95 transition-all cursor-pointer dark:bg-surface-muted dark:border-line"
             >
               <User className="w-5 h-5 fill-slate-800 text-slate-800 stroke-none" />
             </button>
@@ -221,7 +221,7 @@ export default function AppHeader({
       {/* ========================================================================= */}
       {/* MOBILE COMPACT HEADER (< md) — Exactly preserved for mobile devices        */}
       {/* ========================================================================= */}
-      <div className="md:hidden w-full bg-gradient-to-b from-[#FFE8D6] via-[#FFF5EB] to-[#FFFDF5] transition-colors duration-500">
+      <div className="md:hidden w-full bg-gradient-to-b from-[#FFE8D6] via-[#FFF5EB] to-[#FFFDF5] transition-colors duration-500 dark:from-surface dark:via-surface dark:to-surface">
         {/* 0. RESERVED STATUS BAR SPACE */}
         <div
           className={`w-full h-[env(safe-area-inset-top,0px)] shrink-0 pointer-events-none transition-colors duration-300 ${
@@ -268,7 +268,7 @@ export default function AppHeader({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.25 }}
-                className="text-[10px] font-black uppercase tracking-wider text-slate-500 block leading-tight"
+                className="text-[10px] font-black uppercase tracking-wider text-slate-500 block leading-tight dark:text-content-muted"
               >
                 Dashit in
               </motion.span>
@@ -278,7 +278,7 @@ export default function AppHeader({
                   initial={{ opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="text-[28px] font-black tracking-tight text-slate-900 leading-none"
+                  className="text-[28px] font-black tracking-tight text-slate-900 leading-none dark:text-content"
                 >
                   {isHighDemand ? "18 minutes" : deliveryEta.displayText}
                 </motion.h1>
@@ -320,9 +320,9 @@ export default function AppHeader({
               type="button"
               onClick={() => router.push("/account")}
               aria-label="Account Profile"
-              className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-amber-200/80 flex items-center justify-center text-slate-800 shadow-2xs active:scale-95 transition-all"
+              className="w-9 h-9 rounded-full bg-white/90 hover:bg-white border border-amber-200/80 flex items-center justify-center text-slate-800 shadow-2xs active:scale-95 transition-all dark:bg-surface-raised/90 dark:hover:bg-surface-muted dark:text-content"
             >
-              <User className="w-5 h-5 fill-slate-800 text-slate-800 stroke-none" />
+              <User className="w-5 h-5 fill-slate-800 text-slate-800 stroke-none dark:text-content" />
             </button>
           </div>
 
@@ -330,14 +330,14 @@ export default function AppHeader({
           <button
             type="button"
             onClick={openLocationHandler}
-            className="inline-flex items-center space-x-1.5 text-slate-800 text-left group active:opacity-75 transition-opacity pt-1.5 cursor-pointer"
+            className="inline-flex items-center space-x-1.5 text-slate-800 text-left group active:opacity-75 transition-opacity pt-1.5 cursor-pointer dark:text-content"
           >
-            <div className="flex items-center space-x-1.5 bg-white/95 border border-slate-200/90 px-2.5 py-1 rounded-xl shadow-2xs group-hover:border-slate-300">
+            <div className="flex items-center space-x-1.5 bg-white/95 border border-slate-200/90 px-2.5 py-1 rounded-xl shadow-2xs group-hover:border-slate-300 dark:bg-surface-raised/95 dark:border-line/90 dark:group-hover:border-line-strong">
               <MapPin className="w-3 h-3 text-[#FF5B00] stroke-[2.5] shrink-0" />
-              <span className="font-black text-xs text-slate-900 uppercase tracking-tight">
+              <span className="font-black text-xs text-slate-900 uppercase tracking-tight dark:text-content">
                 {location.alias || location.nickname || "HOME"}
               </span>
-              <ChevronDown className="w-3 h-3 stroke-[2.5] text-slate-400 group-hover:translate-y-0.5 transition-transform" />
+              <ChevronDown className="w-3 h-3 stroke-[2.5] text-slate-400 group-hover:translate-y-0.5 transition-transform dark:text-content-faint" />
             </div>
           </button>
         </div>
@@ -345,22 +345,22 @@ export default function AppHeader({
 
       {/* 2. OPTIONAL STICKY SEARCH BAR (When rendered standalone) */}
       {!hideStickySearch && (
-        <div className="sticky top-0 z-40 bg-[#FFFDF5]/98 backdrop-blur-xl border-b border-amber-100/60 shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
+        <div className="sticky top-0 z-40 bg-[#FFFDF5]/98 dark:bg-surface/98 backdrop-blur-xl border-b border-amber-100/60 dark:border-line shadow-[0_2px_10px_rgba(0,0,0,0.03)]">
           <div className="max-w-md mx-auto px-4 pt-1.5 pb-2">
             <div
               onClick={handleSearchClick}
-              className="relative flex items-center bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/90 cursor-pointer active:scale-[0.99] transition-transform"
+              className="relative flex items-center bg-white text-slate-900 rounded-2xl px-3.5 py-2.5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-200/90 cursor-pointer active:scale-[0.99] transition-transform dark:bg-surface-raised dark:text-content dark:border-line/90"
             >
-              <Search className="w-4 h-4 stroke-[2.5] text-slate-400 mr-2.5 shrink-0" />
+              <Search className="w-4 h-4 stroke-[2.5] text-slate-400 mr-2.5 shrink-0 dark:text-content-faint" />
               <input
                 type="text"
                 placeholder="Search for atta, dal, coke and more"
                 value={searchQuery}
                 onChange={(e) => onSearchChange && onSearchChange(e.target.value)}
                 readOnly={isSearchClickable}
-                className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400 cursor-pointer"
+                className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400 cursor-pointer dark:text-content dark:placeholder-content-faint"
               />
-              <Mic className="w-4 h-4 stroke-[2.5] text-slate-500 ml-2 shrink-0 hover:text-[#FF5B00] transition-colors" />
+              <Mic className="w-4 h-4 stroke-[2.5] text-slate-500 ml-2 shrink-0 hover:text-[#FF5B00] transition-colors dark:text-content-muted" />
             </div>
           </div>
 

@@ -123,7 +123,7 @@ export default function BottomNav({ forceHide = false }) {
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
       }}
     >
-      <nav className="relative max-w-[280px] w-full mx-auto bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-full p-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.06)] grid grid-cols-3 items-center select-none">
+      <nav className="relative max-w-[280px] w-full mx-auto bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-full p-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.06)] grid grid-cols-3 items-center select-none dark:bg-surface-raised/95 dark:border-line/90">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = currentPath === item.path || (item.id === "home" && (currentPath === "/shop" || currentPath === "/"));
@@ -145,7 +145,7 @@ export default function BottomNav({ forceHide = false }) {
               }}
               className={`relative flex flex-col items-center justify-center w-full py-1 rounded-full cursor-pointer touch-manipulation select-none ${
                 isActive ? "text-[#061838]" : "text-slate-400 hover:text-slate-600"
-              }`}
+              } dark:text-content`}
             >
               <motion.div
                 key={`${item.id}-${tick}`}
@@ -168,7 +168,7 @@ export default function BottomNav({ forceHide = false }) {
                 <Icon
                   className={`w-4 h-4 transition-colors duration-250 ${
                     isActive ? "stroke-[2.8] text-[#061838]" : "stroke-[2] text-slate-400"
-                  }`}
+                  } dark:text-content`}
                 />
                 {item.id === "orders" && hasActiveOrder && (
                   <span className="absolute -top-1 -right-1 flex h-2 w-2">
@@ -183,7 +183,7 @@ export default function BottomNav({ forceHide = false }) {
                 transition={{ duration: 0.2 }}
                 className={`text-[9.5px] mt-0.5 tracking-tight whitespace-nowrap transition-colors duration-250 ${
                   isActive ? "font-black text-[#061838]" : "font-semibold text-slate-500"
-                }`}
+                } dark:text-content`}
               >
                 {item.label}
               </motion.span>

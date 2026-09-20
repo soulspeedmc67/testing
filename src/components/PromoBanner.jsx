@@ -89,7 +89,7 @@ export default function PromoBanner({ onSelectPromo }) {
           magazine split rather than a floating thumbnail on a glowing panel.
           No ambient blur blob, no hover transforms: on a touch device a hover
           state never fires, it only reads as generic decoration. */}
-      <div className="relative w-full rounded-2xl overflow-hidden bg-[#090D15] border border-white/10">
+      <div className="relative w-full rounded-2xl overflow-hidden bg-[#090D15] border border-white/10 dark:bg-surface-overlay dark:border-line-strong">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide.id || slideIdx}
@@ -192,7 +192,7 @@ export default function PromoBanner({ onSelectPromo }) {
 
       {/* 2. CURATED EVERYDAY RAILS — image leads, two lines of text, one uniform card style */}
       <div>
-        <h4 className="text-[15px] md:text-lg font-bold text-[#061838] tracking-tight px-1 mb-3">
+        <h4 className="text-[15px] md:text-lg font-bold text-[#061838] tracking-tight px-1 mb-3 dark:text-content">
           Everyday essentials
         </h4>
 
@@ -211,9 +211,9 @@ export default function PromoBanner({ onSelectPromo }) {
                 hapticLight();
                 if (onSelectPromo) onSelectPromo(item.category);
               }}
-              className="w-[148px] md:w-full shrink-0 rounded-2xl bg-white border border-slate-200/80 p-2.5 shadow-[0_1px_3px_rgba(15,23,42,0.04)] cursor-pointer select-none"
+              className="w-[148px] md:w-full shrink-0 rounded-2xl bg-white border border-slate-200/80 p-2.5 shadow-[0_1px_3px_rgba(15,23,42,0.04)] cursor-pointer select-none dark:bg-surface-raised dark:border-line/80"
             >
-              <div className="w-full h-[88px] md:h-32 rounded-xl overflow-hidden bg-slate-100">
+              <div className="w-full h-[88px] md:h-32 rounded-xl overflow-hidden bg-slate-100 dark:bg-surface-muted">
                 <img
                   src={item.img}
                   alt={item.title}
@@ -221,10 +221,10 @@ export default function PromoBanner({ onSelectPromo }) {
                 />
               </div>
 
-              <h5 className="mt-2.5 min-h-[34px] text-[12.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight">
+              <h5 className="mt-2.5 min-h-[34px] text-[12.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight dark:text-content">
                 {item.title}
               </h5>
-              <p className="text-[10.5px] font-medium text-slate-500 mt-0.5">
+              <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 dark:text-content-muted">
                 {item.priceText}
               </p>
             </motion.div>

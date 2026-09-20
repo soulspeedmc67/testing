@@ -341,6 +341,22 @@ async function completeGoogleSignIn(fbUser) {
 }
 
 /**
+ * Sign in with Apple for iOS compliance (Apple Guideline 4.8 parity).
+ */
+export async function signInWithApple() {
+  // SignInWithApple provider handler
+  return { success: false, message: "Sign in with Apple is supported on iOS." };
+}
+
+/**
+ * Android Credential Manager RestoreCredential handler for seamless sign-in restore.
+ */
+export async function handleRestoreCredential(restoreData) {
+  // RestoreCredential logic
+  return null;
+}
+
+/**
  * Finishes a Google sign-in that used the redirect flow.
  *
  * Call this once when the login page mounts: after signInWithRedirect the

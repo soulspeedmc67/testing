@@ -233,7 +233,7 @@ export default function MapTracking({
   };
 
   return (
-    <div className="w-full bg-white border border-slate-200/90 rounded-3xl p-3.5 shadow-sm space-y-3">
+    <div className="w-full bg-white border border-slate-200/90 rounded-3xl p-3.5 shadow-sm space-y-3 dark:bg-surface-raised dark:border-line/90">
       {/* Multi-Drop Queue Status Notice if customer is not stop #1 */}
       {queuePosition > 0 && (
         <div className="px-3.5 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2.5 text-xs text-amber-800">
@@ -247,15 +247,15 @@ export default function MapTracking({
       )}
 
       {/* Minimalist Map View Area */}
-      <div className="relative w-full h-60 rounded-2xl overflow-hidden border border-slate-100 shadow-inner">
+      <div className="relative w-full h-60 rounded-2xl overflow-hidden border border-slate-100 shadow-inner dark:border-line-soft">
         <div ref={mapContainerRef} className="w-full h-full z-0" />
 
         {/* Google Maps Style Navigation ETA Pill */}
         <div className="absolute top-3 left-3 z-10 pointer-events-none">
-          <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 flex items-center space-x-2">
+          <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 flex items-center space-x-2 dark:bg-surface-raised/95 dark:border-line/80">
             <span className="w-2.5 h-2.5 rounded-full bg-[#1A73E8] animate-pulse" />
             <div>
-              <span className="text-[11px] font-black text-slate-900 tracking-tight block leading-tight">
+              <span className="text-[11px] font-black text-slate-900 tracking-tight block leading-tight dark:text-content">
                 {etaMinutes} min ({distanceKm} km)
               </span>
               <span className="text-[9px] font-semibold text-emerald-700">
@@ -269,7 +269,7 @@ export default function MapTracking({
         <div className="absolute top-3 right-3 z-10">
           <button
             onClick={recenterMap}
-            className="w-9 h-9 bg-white/95 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 text-[#1A73E8] hover:text-[#174ea6] active:scale-90 transition-transform flex items-center justify-center"
+            className="w-9 h-9 bg-white/95 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 text-[#1A73E8] hover:text-[#174ea6] active:scale-90 transition-transform flex items-center justify-center dark:bg-surface-raised/95 dark:border-line/80"
             title="Recenter Map"
             aria-label="Recenter Map"
           >
@@ -279,24 +279,24 @@ export default function MapTracking({
       </div>
 
       {/* Clean Courier Details Row */}
-      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100">
+      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
         <div className="flex items-center space-x-2.5">
           <div className="w-10 h-10 bg-orange-100 text-[#FF5B00] rounded-2xl flex items-center justify-center font-black text-base shadow-sm">
             <Bike className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5">
-              <h4 className="font-extrabold text-xs text-slate-900">{riderName}</h4>
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-content">{riderName}</h4>
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             </div>
-            <p className="text-[10px] font-medium text-slate-500">{riderStatus}</p>
+            <p className="text-[10px] font-medium text-slate-500 dark:text-content-muted">{riderStatus}</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={() => alert("Calling delivery partner...")}
-          className="p-2.5 bg-white hover:bg-orange-50 text-[#FF5B00] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold cursor-pointer"
+          className="p-2.5 bg-white hover:bg-orange-50 text-[#FF5B00] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold cursor-pointer dark:bg-surface-raised dark:border-line"
         >
           <Phone className="w-3.5 h-3.5" />
           <span className="text-[11px]">Call</span>

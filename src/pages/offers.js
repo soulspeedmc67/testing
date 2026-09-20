@@ -88,7 +88,7 @@ export default function OffersPage() {
 
   const handleAddToCart = (product) => {
     if (!isStoreOpen) {
-      alert(`Store will be available: ${closeReason || "We will reopen shortly!"}`);
+      alert(`Store Reopening Schedule: ${closeReason || "We will reopen shortly!"}`);
       return;
     }
     hapticCartAdd();
@@ -188,7 +188,7 @@ export default function OffersPage() {
           <button
             type="button"
             onClick={() => goBack(router, "/shop")}
-            className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md border border-white/60 flex items-center justify-center text-[#061838] active:scale-95 transition-transform shadow-2xs"
+            className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md border border-white/60 flex items-center justify-center text-[#061838] active:scale-95 transition-transform shadow-2xs dark:bg-surface-raised/70 dark:text-content"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </button>
@@ -202,7 +202,7 @@ export default function OffersPage() {
 
         <Link
           href="/search"
-          className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md border border-white/60 flex items-center justify-center text-[#061838] active:scale-95 transition-transform shadow-2xs"
+          className="w-10 h-10 rounded-full bg-white/70 backdrop-blur-md border border-white/60 flex items-center justify-center text-[#061838] active:scale-95 transition-transform shadow-2xs dark:bg-surface-raised/70 dark:text-content"
         >
           <Search className="w-4 h-4 stroke-[2.5]" />
         </Link>
@@ -240,7 +240,7 @@ export default function OffersPage() {
         {/* Promo codes */}
         {offers.length > 0 && (
           <section className="mt-6">
-            <h2 className="text-[15px] font-bold text-[#061838] tracking-tight px-1 mb-3">
+            <h2 className="text-[15px] font-bold text-[#061838] tracking-tight px-1 mb-3 dark:text-content">
               Coupons for you
             </h2>
             <motion.div
@@ -299,7 +299,7 @@ export default function OffersPage() {
         {/* Discounted products */}
         <section className="mt-7">
           <div className="flex items-center justify-between px-1 mb-3">
-            <h2 className="text-[15px] font-bold text-[#061838] tracking-tight flex items-center space-x-1.5">
+            <h2 className="text-[15px] font-bold text-[#061838] tracking-tight flex items-center space-x-1.5 dark:text-content">
               <Flame className="w-4 h-4 text-[#FF5B00]" />
               <span>Biggest savings</span>
             </h2>
@@ -309,10 +309,10 @@ export default function OffersPage() {
           </div>
 
           {dealProducts.length === 0 ? (
-            <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/60 p-8 text-center">
-              <Tag className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-bold text-[#061838]">No offers running right now</p>
-              <p className="text-xs text-slate-500 mt-1">
+            <div className="rounded-2xl bg-white/70 backdrop-blur-md border border-white/60 p-8 text-center dark:bg-surface-raised/70">
+              <Tag className="w-6 h-6 text-slate-300 mx-auto mb-2 dark:text-content-faint" />
+              <p className="text-sm font-bold text-[#061838] dark:text-content">No offers running right now</p>
+              <p className="text-xs text-slate-500 mt-1 dark:text-content-muted">
                 New deals go live every morning — check back soon.
               </p>
             </div>

@@ -44,7 +44,7 @@ export default function DraggableSheet({ isOpen, onClose, title, subtitle, child
               }
             }}
             style={{ maxHeight }}
-            className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl border border-slate-100 flex flex-col z-10 overflow-hidden"
+            className="relative w-full max-w-md bg-white rounded-t-[32px] sm:rounded-3xl shadow-2xl border border-slate-100 flex flex-col z-10 overflow-hidden dark:bg-surface-overlay dark:border-line-soft"
           >
             {/* Top Drag Handle Bar */}
             <div className="w-full flex flex-col items-center pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none select-none">
@@ -53,14 +53,14 @@ export default function DraggableSheet({ isOpen, onClose, title, subtitle, child
 
             {/* Optional Header */}
             {(title || subtitle) && (
-              <div className="px-5 py-2.5 flex items-center justify-between border-b border-slate-100 shrink-0">
+              <div className="px-5 py-2.5 flex items-center justify-between border-b border-slate-100 shrink-0 dark:border-line-soft">
                 <div>
-                  {title && <h3 className="font-black text-sm text-slate-900 tracking-tight">{title}</h3>}
-                  {subtitle && <p className="text-[11px] text-slate-400 font-medium">{subtitle}</p>}
+                  {title && <h3 className="font-black text-sm text-slate-900 tracking-tight dark:text-content">{title}</h3>}
+                  {subtitle && <p className="text-[11px] text-slate-400 font-medium dark:text-content-faint">{subtitle}</p>}
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors dark:hover:bg-surface-muted dark:text-content-faint dark:hover:text-content-secondary"
                 >
                   <X className="w-4 h-4" />
                 </button>

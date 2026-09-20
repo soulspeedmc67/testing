@@ -24,15 +24,15 @@ import { hapticLight, hapticHeavy } from "../lib/haptics";
 function renderAliasIcon(alias) {
   switch (alias) {
     case "Home":
-      return <Home className="w-5 h-5 text-[#061838]" />;
+      return <Home className="w-5 h-5 text-[#061838] dark:text-content" />;
     case "Work":
-      return <Briefcase className="w-5 h-5 text-[#061838]" />;
+      return <Briefcase className="w-5 h-5 text-[#061838] dark:text-content" />;
     case "Parents":
-      return <Users className="w-5 h-5 text-[#061838]" />;
+      return <Users className="w-5 h-5 text-[#061838] dark:text-content" />;
     case "Shop":
-      return <Building2 className="w-5 h-5 text-[#061838]" />;
+      return <Building2 className="w-5 h-5 text-[#061838] dark:text-content" />;
     default:
-      return <MapPin className="w-5 h-5 text-[#061838]" />;
+      return <MapPin className="w-5 h-5 text-[#061838] dark:text-content" />;
   }
 }
 
@@ -156,12 +156,12 @@ export default function LocationPickerModal({
       >
         <div className="space-y-4 pt-1 pb-6">
           {/* Action List Items: Add Address + Share */}
-          <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden">
+          <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden dark:bg-surface-raised dark:border-line/90 dark:divide-line-soft">
             {/* 1. Add New Address (Opens Pin-Drop Interactive Map) */}
             <button
               type="button"
               onClick={handleOpenMap}
-              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group active:bg-orange-50/50"
+              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group active:bg-orange-50/50 dark:hover:bg-surface-muted"
             >
               <div className="flex items-center space-x-3">
                 <Plus className="w-5 h-5 text-[#FF5B00] stroke-[2.8]" />
@@ -169,7 +169,7 @@ export default function LocationPickerModal({
                   Add new address
                 </span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </button>
 
             {/* 2. Request address from someone else */}
@@ -185,24 +185,24 @@ export default function LocationPickerModal({
                   alert("Address request link copied!");
                 }
               }}
-              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group"
+              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group dark:hover:bg-surface-muted"
             >
               <div className="flex items-center space-x-3">
                 <div className="w-7 h-7 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
                   <MessageCircle className="w-4 h-4 fill-white stroke-none" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">
+                <span className="text-xs font-bold text-slate-800 dark:text-content">
                   Request address from someone else
                 </span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </button>
           </div>
 
           {/* Multiple Saved Addresses Section */}
           <div className="space-y-2 pt-1">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-xs font-bold text-slate-500 tracking-tight">
+              <h3 className="text-xs font-bold text-slate-500 tracking-tight dark:text-content-muted">
                 Your saved addresses ({savedAddresses.length})
               </h3>
               <span className="text-[10px] font-bold text-[#FF5B00]">Max 5 km radius</span>
@@ -224,13 +224,13 @@ export default function LocationPickerModal({
                       className={`bg-white border rounded-3xl p-3.5 space-y-2.5 relative transition-all ${
                         isActive
                           ? "border-[#061838] ring-2 ring-[#061838]/10 shadow-sm"
-                          : "border-slate-200/90 hover:border-slate-300"
-                      } ${!isWithin5km ? "opacity-75 bg-slate-50/50 cursor-not-allowed" : "cursor-pointer"}`}
+                          : "border-slate-200/90 hover:border-slate-300 dark:border-line/90 dark:hover:border-line-strong"
+                      } ${!isWithin5km ? "opacity-75 bg-slate-50/50 cursor-not-allowed" : "cursor-pointer"} dark:bg-surface-raised`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
                         <div className="flex items-start space-x-3 min-w-0 flex-1">
                           <div className="relative shrink-0 mt-0.5">
-                            <div className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200 text-base shadow-2xs">
+                            <div className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center border border-slate-200 text-base shadow-2xs dark:bg-surface-muted dark:border-line">
                               {renderAliasIcon(alias)}
                             </div>
                             {isActive && (
@@ -242,7 +242,7 @@ export default function LocationPickerModal({
 
                           <div className="min-w-0 flex-1 space-y-0.5">
                             <div className="flex items-center space-x-2">
-                              <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight">
+                              <h4 className="font-black text-xs text-slate-900 uppercase tracking-tight dark:text-content">
                                 {alias}
                               </h4>
                               {isActive && (
@@ -252,7 +252,7 @@ export default function LocationPickerModal({
                               )}
                             </div>
 
-                            <p className="text-[11px] text-slate-600 font-medium line-clamp-2 leading-snug">
+                            <p className="text-[11px] text-slate-600 font-medium line-clamp-2 leading-snug dark:text-content-secondary">
                               {addr.address}
                             </p>
 
@@ -285,14 +285,14 @@ export default function LocationPickerModal({
                       </div>
 
                       {/* Deliver Here Action Button */}
-                      <div className="flex items-center justify-end pt-1.5 border-t border-slate-100">
+                      <div className="flex items-center justify-end pt-1.5 border-t border-slate-100 dark:border-line-soft">
                         <button
                           type="button"
                           disabled={!isWithin5km}
                           onClick={() => handleSelectAddress(addr)}
                           className={`font-black text-xs px-4 py-2 rounded-xl transition-all shadow-2xs active:scale-95 ${
                             !isWithin5km
-                              ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                              ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-surface-muted dark:text-content-faint"
                               : isActive
                               ? "bg-emerald-600 text-white"
                               : "bg-[#061838] text-white hover:bg-slate-900"
@@ -306,9 +306,9 @@ export default function LocationPickerModal({
                 })}
               </div>
             ) : (
-              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center">
-                <p className="text-xs text-slate-500 font-bold">No saved delivery addresses yet.</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">
+              <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center dark:bg-surface-raised dark:border-line/80">
+                <p className="text-xs text-slate-500 font-bold dark:text-content-muted">No saved delivery addresses yet.</p>
+                <p className="text-[11px] text-slate-400 mt-0.5 dark:text-content-faint">
                   Tap "+ Add new address" above to pinpoint your location on the map.
                 </p>
               </div>

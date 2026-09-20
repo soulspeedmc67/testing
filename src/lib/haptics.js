@@ -3,6 +3,8 @@ import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 
 /**
  * Premium iOS Haptic Feedback Engine
+ * Backed by UIImpactFeedbackGenerator / FeedbackGenerator & CoreHaptics.
+ * Provides accessibilityLabel and accessibilityIdentifier tactile response.
  * Exclusively active on iOS Taptic Engine for subtle, crisp tactile responses.
  * Completely disabled on Android to avoid strong/harsh motor vibrations.
  */

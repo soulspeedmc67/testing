@@ -34,7 +34,7 @@ export default function Custom404() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white flex flex-col justify-between overflow-x-hidden">
+    <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white flex flex-col justify-between overflow-x-hidden dark:bg-surface">
       <SEO
         title="404 — Page Not Found | DASHIT Anantnag"
         description="The grocery item or page you requested could not be located on DASHIT. Browse fresh groceries and Kashmiri essentials with fastest delivery in Anantnag."
@@ -62,14 +62,14 @@ export default function Custom404() {
             </div>
           </Link>
 
-          <nav className="hidden sm:flex items-center space-x-6 text-xs font-bold text-slate-300">
+          <nav className="hidden sm:flex items-center space-x-6 text-xs font-bold text-slate-300 dark:text-content-faint">
             <Link href="/shop" className="hover:text-white transition-colors">
               Storefront
             </Link>
             <Link href="/categories" className="hover:text-white transition-colors">
               Categories
             </Link>
-            <div className="flex items-center space-x-1.5 text-slate-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+            <div className="flex items-center space-x-1.5 text-slate-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full dark:text-content-faint">
               <MapPin className="w-3 h-3 text-[#FF5B00]" />
               <span className="text-[11px] font-semibold">192101 Hub</span>
             </div>
@@ -95,7 +95,7 @@ export default function Custom404() {
         <div className="relative mb-6 sm:mb-8 flex items-center justify-center">
           {/* Subtle concentric rings */}
           <div className="w-64 h-64 sm:w-80 sm:h-80 rounded-full border border-orange-200/60 absolute pointer-events-none" />
-          <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-slate-200/50 absolute pointer-events-none" />
+          <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-slate-200/50 absolute pointer-events-none dark:border-line/50" />
 
           {/* Warm Sun Halo */}
           <div className="w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-gradient-to-tr from-[#F59E0B]/20 via-[#FBBF24]/30 to-[#FDE68A]/40 shadow-inner flex items-center justify-center relative">
@@ -120,10 +120,10 @@ export default function Custom404() {
 
         {/* HEADINGS & EXPLANATION */}
         <div className="max-w-xl mx-auto space-y-3">
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-[#061838] leading-tight">
+          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-[#061838] leading-tight dark:text-content">
             Oops! This page took a <span className="text-[#FF5B00]">wrong turn</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-md mx-auto dark:text-content-secondary">
             We searched from KP Road to Khanabal, but couldn&apos;t find this address. Don&apos;t worry — our delivery carts are stocked with fresh daily essentials.
           </p>
         </div>
@@ -131,9 +131,9 @@ export default function Custom404() {
         {/* IN-PAGE SEARCH FORM */}
         <form
           onSubmit={handleSearch}
-          className="mt-6 w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-1.5 shadow-lg shadow-slate-200/40 flex items-center space-x-2 transition-all focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-[#FF5B00]/20"
+          className="mt-6 w-full max-w-md bg-white border border-slate-200/80 rounded-2xl p-1.5 shadow-lg shadow-slate-200/40 flex items-center space-x-2 transition-all focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-[#FF5B00]/20 dark:bg-surface-raised dark:border-line/80"
         >
-          <div className="pl-3 text-slate-400">
+          <div className="pl-3 text-slate-400 dark:text-content-faint">
             <Search className="w-4 h-4" />
           </div>
           <input
@@ -141,7 +141,7 @@ export default function Custom404() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search milk, fresh lavas, snacks..."
-            className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none py-2"
+            className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none py-2 dark:text-content dark:placeholder:text-content-faint"
           />
           <button
             type="submit"
@@ -153,14 +153,14 @@ export default function Custom404() {
 
         {/* POPULAR AISLES CHIPS */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-2 max-w-lg">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mr-1">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mr-1 dark:text-content-faint">
             Popular:
           </span>
           {QUICK_CATEGORIES.map((item) => (
             <Link
               key={item.name}
               href={`/shop?cat=${encodeURIComponent(item.cat)}`}
-              className="inline-flex items-center space-x-1.5 bg-white hover:bg-orange-50/70 border border-slate-200/80 hover:border-[#FF5B00]/40 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-[#FF5B00] transition-all shadow-xs"
+              className="inline-flex items-center space-x-1.5 bg-white hover:bg-orange-50/70 border border-slate-200/80 hover:border-[#FF5B00]/40 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:text-[#FF5B00] transition-all shadow-xs dark:bg-surface-raised dark:border-line/80"
             >
               <span>{item.emoji}</span>
               <span>{item.name}</span>
@@ -179,16 +179,16 @@ export default function Custom404() {
           </Link>
           <Link
             href="/"
-            className="w-full sm:w-auto bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 hover:text-[#061838] font-bold text-xs sm:text-sm px-6 py-3.5 rounded-full shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2 active:scale-95"
+            className="w-full sm:w-auto bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 hover:text-[#061838] font-bold text-xs sm:text-sm px-6 py-3.5 rounded-full shadow-sm hover:shadow transition-all flex items-center justify-center space-x-2 active:scale-95 dark:bg-surface-raised dark:hover:bg-surface-muted dark:border-line dark:text-content"
           >
-            <Home className="w-4 h-4 text-slate-500" />
+            <Home className="w-4 h-4 text-slate-500 dark:text-content-muted" />
             <span>Back to Home</span>
           </Link>
         </div>
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200/70 bg-white/60 backdrop-blur-sm py-6 mt-12 text-center text-xs text-slate-500 relative z-10">
+      <footer className="border-t border-slate-200/70 bg-white/60 backdrop-blur-sm py-6 mt-12 text-center text-xs text-slate-500 relative z-10 dark:border-line/70 dark:bg-surface-raised/60 dark:text-content-muted">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p>© {new Date().getFullYear()} DASHIT Technologies. Anantnag, Kashmir (192101) · Helpline: +91 6006990032</p>
           <p className="flex items-center space-x-1.5">
