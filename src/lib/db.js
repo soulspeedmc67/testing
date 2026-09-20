@@ -1068,12 +1068,52 @@ export async function fetchDrivers() {
         name: d.name || d.displayName || d.email?.split("@")[0] || "Rider",
         phone: d.phone || "",
         vehicle: d.vehicle || "Scooter",
+        email: d.email || "",
       }));
   } catch (e) {
     console.warn("fetchDrivers warning:", e?.message);
     return [];
   }
 }
+
+/**
+ * Realtime listener for all drivers registered in Firestore staff.
+ * Subscribes to collection(db, "staff") where role == "driver" and active == true.
+ */
+export function watchDrivers(callback) {
+  const db = getDb();
+  if (!db) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    return onSnapshot(
+      query(collection(db, "staff"), where("role", "==", "driver")),
+      (snap) => {
+        const staffDrivers = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((d) => d.active !== false)
+          .map((d) => ({
+            id: d.id,
+            name: d.name || d.displayName || d.email?.split("@")[0] || "Rider",
+            phone: d.phone || "",
+            vehicle: d.vehicle || "Scooter",
+            email: d.email || "",
+          }));
+        callback(staffDrivers);
+      },
+      (err) => {
+        console.warn("watchDrivers onSnapshot warning:", err?.message);
+        callback([]);
+      }
+    );
+  } catch (e) {
+    console.warn("watchDrivers exception:", e?.message);
+    callback([]);
+    return () => {};
+  }
+}
+
 
 /* ------------------------------------------------------------ live tracking */
 

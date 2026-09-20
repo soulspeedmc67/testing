@@ -1,239 +1,149 @@
-import { useRef, useEffect, useState } from "react";
-import InteractivePhoneScreen from "./InteractivePhoneScreen";
+import { useRef, useEffect } from "react";
+import AppHomeScreenMock from "./AppHomeScreenMock";
 
 /**
- * Premium 3D Smartphone Mockup for DASHIT Hero
+ * The device the landing hero puts the app inside.
  *
- * Implements a high-end, realistic 3D smartphone showcase:
- * - Precision titanium chassis with chamfered metallic edges and physical side buttons
- * - Dynamic Island with front-facing camera lens reflection
- * - Moving glass reflection sheen that shifts with cursor movement
- * - Interactive live DASHIT mini-app running directly on the screen
- * - Smooth physics-based floating animation
- * - Gentle mouse-based 3D tilt with damped inertia (lerp)
- * - Breathing soft contact shadow and subtle DASHIT brand aura
+ * The phone holds one fixed, considered angle — it is a product photograph, not
+ * a toy. There is no cursor tracking and no rotation: the only motion is a slow
+ * vertical drift of a few pixels with the contact shadow breathing against it,
+ * which reads as a held object rather than an interactive widget. Motion is
+ * skipped entirely when the visitor asks for reduced motion.
  */
+
+const RESTING_ROT_X = 2.4;
+const RESTING_ROT_Y = -9;
+const RESTING_ROT_Z = 0.8;
+
 export default function Hero3DPhone() {
-  const containerRef = useRef(null);
-  const cardRef = useRef(null);
-  const sheenRef = useRef(null);
+  const bodyRef = useRef(null);
   const shadowRef = useRef(null);
 
-  // Track target and current rotation for butter-smooth damping (lerp)
-  const rotRef = useRef({
-    currentX: 6,
-    currentY: -14,
-    targetX: 6,
-    targetY: -14,
-  });
-
-  const [isHovered, setIsHovered] = useState(false);
-
   useEffect(() => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) return;
+
     let animId;
-    let startTime = performance.now();
+    const start = performance.now();
 
-    const updateParallax = () => {
-      const now = performance.now();
-      const elapsed = (now - startTime) / 1000;
+    const tick = (now) => {
+      const elapsed = (now - start) / 1000;
 
-      // Subtle float animation
-      const floatY = Math.sin(elapsed * 1.6) * 7;
-      const floatRoll = Math.cos(elapsed * 1.2) * 0.8;
+      // One slow cycle, a couple of degrees of roll at most.
+      const floatY = Math.sin(elapsed * 0.55) * 6;
+      const roll = Math.sin(elapsed * 0.4) * 0.35;
 
-      // Lerp toward target
-      const lerpFactor = 0.08;
-      rotRef.current.currentX +=
-        (rotRef.current.targetX - rotRef.current.currentX) * lerpFactor;
-      rotRef.current.currentY +=
-        (rotRef.current.targetY - rotRef.current.currentY) * lerpFactor;
-
-      const finalRotX = rotRef.current.currentX + Math.sin(elapsed * 1.4) * 0.5;
-      const finalRotY = rotRef.current.currentY;
-      const finalRotZ = floatRoll + 1.2;
-
-      if (cardRef.current) {
-        cardRef.current.style.transform = `
-          translateY(${floatY}px)
-          rotateX(${finalRotX}deg)
-          rotateY(${finalRotY}deg)
-          rotateZ(${finalRotZ}deg)
-        `;
+      if (bodyRef.current) {
+        bodyRef.current.style.transform = `translate3d(0, ${floatY.toFixed(2)}px, 0) rotateX(${RESTING_ROT_X}deg) rotateY(${RESTING_ROT_Y}deg) rotateZ(${(RESTING_ROT_Z + roll).toFixed(2)}deg)`;
       }
 
-      // Dynamic sheen angle based on Y rotation
-      if (sheenRef.current) {
-        const sheenOffset = (finalRotY + 14) * 4;
-        sheenRef.current.style.transform = `translateX(${sheenOffset}%) rotate(25deg)`;
-      }
-
-      // Dynamic ground shadow scaling with float
+      // The shadow tightens as the phone lifts and spreads as it settles.
       if (shadowRef.current) {
-        const shadowScale = 1 - floatY * 0.015;
-        const shadowOpacity = 0.5 - floatY * 0.01;
-        shadowRef.current.style.transform = `scale(${shadowScale})`;
-        shadowRef.current.style.opacity = Math.max(0.25, Math.min(0.65, shadowOpacity));
+        const lift = (floatY + 6) / 12; // 0 at the lowest point, 1 at the highest
+        shadowRef.current.style.transform = `scaleX(${(1.04 - lift * 0.12).toFixed(3)})`;
+        shadowRef.current.style.opacity = (0.55 - lift * 0.18).toFixed(3);
       }
 
-      animId = requestAnimationFrame(updateParallax);
+      animId = requestAnimationFrame(tick);
     };
 
-    animId = requestAnimationFrame(updateParallax);
-
-    const handleMouseMove = (e) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width; // 0 to 1
-      const y = (e.clientY - rect.top) / rect.height; // 0 to 1
-
-      // Gentle tilt: clamp angles to maintain clean, premium perspective
-      const maxTiltY = 16;
-      const maxTiltX = 10;
-      rotRef.current.targetY = -14 + (x - 0.5) * maxTiltY * 2;
-      rotRef.current.targetX = 6 - (y - 0.5) * maxTiltX * 2;
-    };
-
-    const handleMouseLeave = () => {
-      rotRef.current.targetX = 6;
-      rotRef.current.targetY = -14;
-      setIsHovered(false);
-    };
-
-    const handleMouseEnter = () => {
-      setIsHovered(true);
-    };
-
-    const container = containerRef.current;
-    if (container) {
-      window.addEventListener("mousemove", handleMouseMove, { passive: true });
-      container.addEventListener("mouseleave", handleMouseLeave);
-      container.addEventListener("mouseenter", handleMouseEnter);
-    }
-
-    return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("mousemove", handleMouseMove);
-      if (container) {
-        container.removeEventListener("mouseleave", handleMouseLeave);
-        container.removeEventListener("mouseenter", handleMouseEnter);
-      }
-    };
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
   }, []);
 
   return (
     <div
-      ref={containerRef}
-      className="relative w-full max-w-[360px] sm:max-w-[380px] xl:max-w-[400px] mx-auto py-8 sm:py-10 flex items-center justify-center select-none"
-      style={{
-        perspective: "1400px",
-        perspectiveOrigin: "50% 45%",
-      }}
+      className="relative w-full max-w-[340px] sm:max-w-[360px] mx-auto flex items-center justify-center select-none"
+      style={{ perspective: "1600px", perspectiveOrigin: "50% 42%" }}
     >
-      {/* SUBTLE BRAND BACKDROP AURAS */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-96 bg-gradient-to-tr from-[#FF5B00]/15 via-orange-500/10 to-blue-600/10 blur-3xl rounded-full pointer-events-none -z-10" />
-      <div className="absolute top-1/3 left-1/3 w-64 h-64 bg-orange-500/10 dark:bg-orange-500/15 blur-2xl rounded-full pointer-events-none -z-10" />
+      {/* A single soft halo behind the device, not a colour wash */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[330px] h-[440px] rounded-full bg-[#FF5B00]/[0.07] dark:bg-[#FF5B00]/[0.10] blur-[90px] pointer-events-none -z-10" />
 
-      {/* 3D SMARTPHONE ASSEMBLY */}
       <div
-        ref={cardRef}
-        className="relative w-[300px] xs:w-[320px] sm:w-[340px] h-[650px] xs:h-[675px] sm:h-[700px] transition-shadow duration-300"
+        ref={bodyRef}
+        className="relative w-[286px] sm:w-[306px] h-[600px] sm:h-[642px]"
         style={{
           transformStyle: "preserve-3d",
           willChange: "transform",
+          transform: `rotateX(${RESTING_ROT_X}deg) rotateY(${RESTING_ROT_Y}deg) rotateZ(${RESTING_ROT_Z}deg)`,
         }}
       >
-        {/* PHYSICAL HARDWARE: SIDE BUTTONS (LEFT SIDE) */}
-        {/* Action Button */}
+        {/* Side hardware */}
         <div
-          className="absolute -left-[5px] top-[108px] w-[5px] h-[22px] rounded-l-sm bg-gradient-to-r from-[#1E232F] to-[#2E3545] border-l border-y border-white/20 shadow-xs pointer-events-none"
-          style={{ transform: "translateZ(6px)" }}
+          className="absolute -left-[4px] top-[96px] w-[4px] h-[20px] rounded-l-[2px] bg-[#2A303C] pointer-events-none"
+          style={{ transform: "translateZ(5px)" }}
         />
-        {/* Volume Up */}
         <div
-          className="absolute -left-[5px] top-[146px] w-[5px] h-[46px] rounded-l-sm bg-gradient-to-r from-[#1E232F] to-[#2E3545] border-l border-y border-white/20 shadow-xs pointer-events-none"
-          style={{ transform: "translateZ(6px)" }}
+          className="absolute -left-[4px] top-[130px] w-[4px] h-[42px] rounded-l-[2px] bg-[#2A303C] pointer-events-none"
+          style={{ transform: "translateZ(5px)" }}
         />
-        {/* Volume Down */}
         <div
-          className="absolute -left-[5px] top-[204px] w-[5px] h-[46px] rounded-l-sm bg-gradient-to-r from-[#1E232F] to-[#2E3545] border-l border-y border-white/20 shadow-xs pointer-events-none"
-          style={{ transform: "translateZ(6px)" }}
+          className="absolute -left-[4px] top-[182px] w-[4px] h-[42px] rounded-l-[2px] bg-[#2A303C] pointer-events-none"
+          style={{ transform: "translateZ(5px)" }}
         />
-
-        {/* PHYSICAL HARDWARE: SIDE BUTTON (RIGHT SIDE - POWER) */}
         <div
-          className="absolute -right-[5px] top-[160px] w-[5px] h-[68px] rounded-r-sm bg-gradient-to-l from-[#1E232F] to-[#2E3545] border-r border-y border-white/20 shadow-xs pointer-events-none"
-          style={{ transform: "translateZ(6px)" }}
+          className="absolute -right-[4px] top-[146px] w-[4px] h-[62px] rounded-r-[2px] bg-[#2A303C] pointer-events-none"
+          style={{ transform: "translateZ(5px)" }}
         />
 
-        {/* TITANIUM OUTER CHASSIS / BEVEL FRAME */}
+        {/* Chassis */}
         <div
-          className="absolute inset-0 rounded-[50px] p-[3px] shadow-[0_30px_70px_-15px_rgba(0,0,0,0.55),0_15px_30px_-10px_rgba(0,0,0,0.4)] pointer-events-none"
+          className="absolute inset-0 rounded-[46px] p-[3px]"
           style={{
             background:
-              "linear-gradient(145deg, #4A5568 0%, #1A202C 25%, #0F131A 50%, #2D3748 75%, #1A202C 100%)",
-            border: "1px solid rgba(255,255,255,0.18)",
+              "linear-gradient(150deg, #5A6474 0%, #232A36 30%, #12161E 55%, #39414F 80%, #1B212B 100%)",
             boxShadow:
-              "inset 0 1px 1px rgba(255,255,255,0.35), inset 0 -1px 2px rgba(0,0,0,0.8), 0 25px 60px -12px rgba(6,24,56,0.5)",
+              "inset 0 1px 1px rgba(255,255,255,0.30), inset 0 -1px 2px rgba(0,0,0,0.75), 0 34px 60px -24px rgba(6,24,56,0.55), 0 12px 26px -14px rgba(0,0,0,0.45)",
           }}
         >
-          {/* Inner Matte Bezel */}
-          <div className="w-full h-full rounded-[47px] bg-[#07090E] p-[9px] relative overflow-hidden border border-black/80">
-            
-            {/* EARPIECE MICRO-SPEAKER SLIT */}
-            <div className="absolute top-[8px] left-1/2 -translate-x-1/2 w-12 h-1 bg-[#1A1F2B] rounded-full z-40 border border-white/10" />
+          {/* Bezel */}
+          <div className="w-full h-full rounded-[43px] bg-[#05070B] p-[8px] relative">
+            {/* Screen */}
+            <div className="w-full h-full rounded-[36px] overflow-hidden relative bg-white">
+              <AppHomeScreenMock />
 
-            {/* SCREEN DISPLAY CONTAINER */}
-            <div className="w-full h-full rounded-[40px] overflow-hidden relative bg-[#0E121A] pointer-events-auto">
-              {/* LIVE INTERACTIVE DASHIT SCREEN */}
-              <InteractivePhoneScreen />
+              {/* Dynamic Island sits over the app, as it does on device */}
+              <div className="absolute top-[9px] left-1/2 -translate-x-1/2 w-[86px] h-[24px] bg-black rounded-full z-30 flex items-center justify-end pr-2.5">
+                <div className="w-[9px] h-[9px] rounded-full bg-[#0B1220] ring-1 ring-white/10 flex items-center justify-center">
+                  <div className="w-[3.5px] h-[3.5px] rounded-full bg-[#1B3A6B]" />
+                </div>
+              </div>
 
-              {/* DYNAMIC MOVING GLASS SHEEN REFLECTION OVERLAY */}
+              {/* A fixed, gentle glass highlight — no sweeping sheen */}
               <div
-                ref={sheenRef}
-                className="absolute -inset-full w-[300%] h-[300%] pointer-events-none z-30 opacity-25 mix-blend-overlay transition-transform duration-75 ease-out"
+                className="absolute inset-0 z-20 pointer-events-none opacity-[0.16]"
                 style={{
                   background:
-                    "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.5) 48%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0.4) 52%, transparent 60%)",
+                    "linear-gradient(118deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 68%, rgba(255,255,255,0.35) 100%)",
                 }}
               />
 
-              {/* ULTRA SUBTLE PERIMETER GLASS INSET SHADOW */}
-              <div className="absolute inset-0 rounded-[40px] shadow-[inset_0_0_12px_rgba(0,0,0,0.65)] pointer-events-none z-25 border border-white/10" />
+              {/* Inner glass seam */}
+              <div className="absolute inset-0 rounded-[36px] shadow-[inset_0_0_10px_rgba(0,0,0,0.35)] z-20 pointer-events-none" />
             </div>
           </div>
         </div>
 
-        {/* 3D DEPTH EXTENSION (SIMULATING 12MM SMARTPHONE THICKNESS) */}
+        {/* Body depth */}
         <div
-          className="absolute inset-0 rounded-[50px] bg-[#0A0D14] -z-10 pointer-events-none"
+          className="absolute inset-0 rounded-[46px] bg-[#0A0D14] -z-10 pointer-events-none"
           style={{
-            transform: "translateZ(-14px)",
-            boxShadow:
-              "0 0 0 2px #1A202C, 0 10px 30px rgba(0,0,0,0.7), -10px 15px 35px rgba(0,0,0,0.5)",
+            transform: "translateZ(-13px)",
+            boxShadow: "0 0 0 2px #1A202C, -8px 12px 30px rgba(0,0,0,0.45)",
           }}
         />
-
-        {/* FLOATING INTERACTION HINT PILL */}
-        <div
-          className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-[#061838]/90 dark:bg-black/90 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full border border-white/15 shadow-xl flex items-center space-x-1.5 whitespace-nowrap pointer-events-none z-40 transition-opacity duration-300"
-          style={{
-            opacity: isHovered ? 0.95 : 0.85,
-            transform: "translateZ(20px)",
-          }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#FF5B00] animate-pulse" />
-          <span>Interactive 3D Demo • Tap &quot;ADD&quot; to test cart</span>
-        </div>
       </div>
 
-      {/* SOFT REALISTIC GROUND CONTACT SHADOW */}
+      {/* Contact shadow */}
       <div
         ref={shadowRef}
-        className="absolute -bottom-6 w-64 sm:w-72 h-8 rounded-full blur-xl pointer-events-none -z-20 transition-all duration-150"
+        className="absolute -bottom-2 w-56 h-6 rounded-[50%] blur-2xl pointer-events-none -z-10"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.65) 0%, rgba(6,24,56,0.3) 45%, transparent 75%)",
-          transform: "scale(1)",
+            "radial-gradient(ellipse at 50% 50%, rgba(6,24,56,0.55) 0%, rgba(6,24,56,0.22) 50%, transparent 78%)",
+          opacity: 0.5,
         }}
       />
     </div>

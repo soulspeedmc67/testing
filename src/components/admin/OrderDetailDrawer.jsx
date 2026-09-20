@@ -22,8 +22,7 @@ import {
 } from "lucide-react";
 import PrintPackingSlip from "./PrintPackingSlip";
 import { ORDER_STATUS } from "../../lib/db";
-import { getDriverRoster, addDriverToRoster, removeDriverFromRoster } from "../../lib/drivers";
-import { fetchDrivers } from "../../lib/db";
+import { getDriverRoster, watchAllDrivers, addDriverToRoster, removeDriverFromRoster } from "../../lib/drivers";
 import { orderAddress } from "../../lib/orderReceipt";
 
 export default function OrderDetailDrawer({
@@ -43,30 +42,16 @@ export default function OrderDetailDrawer({
 
   /* Real rider accounts first. Every entry's `id` is the rider's Firebase uid,
      which is what an assigned order must carry for it to show up on that
-     rider's phone. The local roster stays only as an offline stand-in. */
+     rider's phone. Real-time sync with watchAllDrivers. */
   const [driverRoster, setDriverRoster] = useState(getDriverRoster);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchDrivers().then((staffDrivers) => {
-      if (!cancelled && staffDrivers.length > 0) setDriverRoster(staffDrivers);
+    const unsub = watchAllDrivers((updatedDrivers) => {
+      setDriverRoster(updatedDrivers);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => unsub();
   }, []);
 
-  useEffect(() => {
-    const handleRosterUpdate = () => {
-      setDriverRoster(getDriverRoster());
-    };
-    window.addEventListener("dashit_driver_roster_updated", handleRosterUpdate);
-    window.addEventListener("storage", handleRosterUpdate);
-    return () => {
-      window.removeEventListener("dashit_driver_roster_updated", handleRosterUpdate);
-      window.removeEventListener("storage", handleRosterUpdate);
-    };
-  }, []);
 
   // Reset checklist on order change — must stay before early return (Rules of Hooks)
   useEffect(() => {

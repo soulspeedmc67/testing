@@ -29,7 +29,7 @@ import {
   X
 } from "lucide-react";
 import { ORDER_STATUS } from "../../lib/db";
-import { getDriverRoster, addDriverToRoster, getDriverActiveOrderCounts } from "../../lib/drivers";
+import { getDriverRoster, watchAllDrivers, addDriverToRoster, getDriverActiveOrderCounts } from "../../lib/drivers";
 import OrderDetailDrawer from "./OrderDetailDrawer";
 import PrintPackingSlip from "./PrintPackingSlip";
 import { whatsappReceiptLink, orderAddress } from "../../lib/orderReceipt";
@@ -95,16 +95,12 @@ export default function OrderProcessingView({
   const [skipDriverAssignment, setSkipDriverAssignment] = useState(false);
 
   useEffect(() => {
-    const handleRosterUpdate = () => {
-      setDriverRoster(getDriverRoster());
-    };
-    window.addEventListener("dashit_driver_roster_updated", handleRosterUpdate);
-    window.addEventListener("storage", handleRosterUpdate);
-    return () => {
-      window.removeEventListener("dashit_driver_roster_updated", handleRosterUpdate);
-      window.removeEventListener("storage", handleRosterUpdate);
-    };
+    const unsub = watchAllDrivers((updatedDrivers) => {
+      setDriverRoster(updatedDrivers);
+    });
+    return () => unsub();
   }, []);
+
 
   const markRecentlyUpdated = React.useCallback((id, from) => {
     if (!id) return;

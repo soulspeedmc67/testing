@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   getDriverRoster,
+  watchAllDrivers,
   addDriverToRoster,
   updateDriverInRoster,
   removeDriverFromRoster,
@@ -42,18 +43,14 @@ export default function DriversView({
   const [formVehicle, setFormVehicle] = useState("Scooter");
   const [driverToDelete, setDriverToDelete] = useState(null);
 
-  // Sync with global driver roster updates
+  // Real-time sync with Firebase staff drivers & local roster
   useEffect(() => {
-    const handleRosterUpdate = () => {
-      setDrivers(getDriverRoster());
-    };
-    window.addEventListener("dashit_driver_roster_updated", handleRosterUpdate);
-    window.addEventListener("storage", handleRosterUpdate);
-    return () => {
-      window.removeEventListener("dashit_driver_roster_updated", handleRosterUpdate);
-      window.removeEventListener("storage", handleRosterUpdate);
-    };
+    const unsub = watchAllDrivers((updatedDrivers) => {
+      setDrivers(updatedDrivers);
+    });
+    return () => unsub();
   }, []);
+
 
   // Compute active deliveries per driver
   const driverLoads = useMemo(() => getDriverActiveOrderCounts(orders), [orders]);
