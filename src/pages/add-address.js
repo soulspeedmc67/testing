@@ -63,10 +63,10 @@ export default function AddAddressPage() {
           <h2 className="text-sm font-extrabold text-slate-900 dark:text-content">Address details</h2>
 
           {/* Select a City */}
-          <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl dark:border-line/70">
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl dark:bg-surface-muted/60 dark:border-line/70">
             <div>
-              <span className="text-xs font-bold text-slate-800 block">Select a city</span>
-              <span className="text-[11px] font-semibold text-orange-700">{city}</span>
+              <span className="text-xs font-bold text-slate-800 block dark:text-content">Select a city</span>
+              <span className="text-[11px] font-semibold text-orange-700 dark:text-orange-400">{city}</span>
             </div>
             <button
               type="button"
@@ -74,17 +74,17 @@ export default function AddAddressPage() {
                 const c = prompt("Enter your city:", city);
                 if (c) setCity(c);
               }}
-              className="bg-white border border-slate-200 text-orange-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95 dark:bg-surface-raised dark:border-line"
+              className="bg-white border border-slate-200 text-orange-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95 dark:bg-surface-raised dark:border-line dark:text-orange-400 cursor-pointer"
             >
               Select
             </button>
           </div>
 
           {/* Select Area / Street */}
-          <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl dark:border-line/70">
+          <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/70 rounded-2xl dark:bg-surface-muted/60 dark:border-line/70">
             <div>
-              <span className="text-xs font-bold text-slate-800 block">Select an area, street</span>
-              <span className="text-[11px] font-semibold text-orange-700">{area}</span>
+              <span className="text-xs font-bold text-slate-800 block dark:text-content">Select an area, street</span>
+              <span className="text-[11px] font-semibold text-orange-700 dark:text-orange-400">{area}</span>
             </div>
             <button
               type="button"
@@ -92,7 +92,7 @@ export default function AddAddressPage() {
                 const a = prompt("Enter your area/street:", area);
                 if (a) setArea(a);
               }}
-              className="bg-white border border-slate-200 text-orange-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95 dark:bg-surface-raised dark:border-line"
+              className="bg-white border border-slate-200 text-orange-700 font-extrabold text-xs px-3 py-1.5 rounded-xl shadow-xs active:scale-95 dark:bg-surface-raised dark:border-line dark:text-orange-400 cursor-pointer"
             >
               Select
             </button>
@@ -100,7 +100,7 @@ export default function AddAddressPage() {
 
           {/* Enter Complete Address */}
           <div>
-            <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:border-line/90 dark:focus-within:bg-surface-raised">
+            <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
               <input
                 type="text"
                 placeholder="Enter complete address*"
@@ -115,7 +115,7 @@ export default function AddAddressPage() {
           </div>
 
           {/* Google Maps Link (optional) */}
-          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:border-line/90 dark:focus-within:bg-surface-raised">
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
             <input
               type="text"
               placeholder="Add google maps link (optional)"
@@ -156,7 +156,7 @@ export default function AddAddressPage() {
           </div>
 
           {/* Receiver Name */}
-          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:border-line/90 dark:focus-within:bg-surface-raised">
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
             <input
               type="text"
               placeholder="Receiver's name*"
@@ -167,8 +167,8 @@ export default function AddAddressPage() {
           </div>
 
           {/* Receiver Phone Number with +91 prefix and contact book icon */}
-          <div className="flex items-center bg-slate-50/70 border border-slate-200/90 rounded-2xl px-3 py-2.5 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:border-line/90 dark:focus-within:bg-surface-raised">
-            <span className="text-xs font-black text-slate-700 mr-2">+91</span>
+          <div className="flex items-center bg-slate-50/70 border border-slate-200/90 rounded-2xl px-3 py-2.5 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
+            <span className="text-xs font-black text-slate-700 mr-2 dark:text-content">+91</span>
             <input
               type="tel"
               inputMode="numeric"
@@ -178,7 +178,7 @@ export default function AddAddressPage() {
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
               className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none font-mono dark:text-content dark:placeholder-content-faint"
             />
-            <Contact className="w-5 h-5 text-slate-500 shrink-0 ml-2" />
+            <Contact className="w-5 h-5 text-slate-500 shrink-0 ml-2 dark:text-content-muted" />
           </div>
           <div className="flex items-start space-x-2 px-0.5">
             <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5 dark:text-content-faint" />
@@ -188,7 +188,7 @@ export default function AddAddressPage() {
           </div>
 
           {/* Save as Address (optional) */}
-          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:border-line/90 dark:focus-within:bg-surface-raised">
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
             <input
               type="text"
               placeholder="Save as address (optional, e.g. Home, Work)"

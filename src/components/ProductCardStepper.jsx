@@ -145,8 +145,9 @@ export default function ProductCardStepper({
             whileHover={{ scale: 1.02 }}
             transition={{ duration: 0.15 }}
             onClick={handleAdd}
-            className="absolute inset-0 w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5 dark:bg-surface-raised dark:hover:bg-surface-muted dark:text-content"
+            className="absolute inset-0 w-full h-full bg-white hover:bg-slate-50 text-[#061838] border-[1.5px] border-[#061838] font-black text-[11px] rounded-xl flex flex-col items-center justify-center shadow-xs uppercase tracking-wider transition-colors py-0.5 dark:bg-surface-raised dark:hover:bg-surface-muted dark:text-content dark:border-line-strong"
           >
+
             <span className="leading-tight">ADD</span>
             {subtext && (
               <span className="text-[7.5px] font-semibold text-slate-500 -mt-0.5 normal-case dark:text-content-muted">
@@ -162,7 +163,7 @@ export default function ProductCardStepper({
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.15 }}
             onClick={(e) => e.stopPropagation()}
-            className="absolute inset-0 w-full h-full bg-[#061838] text-white rounded-xl flex items-center justify-between px-1.5 shadow-sm"
+            className="absolute inset-0 w-full h-full bg-[#061838] text-white rounded-xl flex items-center justify-between px-1.5 shadow-sm dark:bg-[#FF5B00]"
           >
             <motion.button
               type="button"
@@ -175,7 +176,7 @@ export default function ProductCardStepper({
                  control the whole catalogue is operated with is not a 24px
                  target. It stops short of the quantity label, so a stray tap
                  cannot hit the opposite button. */
-              className="relative w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900 before:absolute before:-inset-2 before:content-['']"
+              className="relative w-6 h-6 rounded-lg hover:bg-slate-800 dark:hover:bg-black/20 transition-colors flex items-center justify-center active:bg-slate-900 dark:active:bg-black/30 before:absolute before:-inset-2 before:content-['']"
             >
               <Minus className="w-3.5 h-3.5 stroke-[3]" />
             </motion.button>
@@ -198,7 +199,7 @@ export default function ProductCardStepper({
               transition={{ type: "spring", stiffness: 500, damping: 20 }}
               onClick={handlePlus}
               aria-label={`Add one more ${product?.name || "item"}`}
-              className="relative w-6 h-6 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center active:bg-slate-900 before:absolute before:-inset-2 before:content-['']"
+              className="relative w-6 h-6 rounded-lg hover:bg-slate-800 dark:hover:bg-black/20 transition-colors flex items-center justify-center active:bg-slate-900 dark:active:bg-black/30 before:absolute before:-inset-2 before:content-['']"
             >
               <Plus className="w-3.5 h-3.5 stroke-[3]" />
             </motion.button>

@@ -22,10 +22,10 @@ export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
               className={`relative flex items-center space-x-1.5 pb-2.5 text-xs font-extrabold transition-colors active:scale-95 ${
-                isActive ? "text-[#061838] font-black" : "text-slate-500 hover:text-slate-800"
-              } dark:text-content`}
+                isActive ? "text-[#061838] font-black dark:text-white" : "text-slate-500 hover:text-slate-800 dark:text-content-secondary dark:hover:text-white"
+              }`}
             >
-              {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#FF5B00]" : "text-slate-400 dark:text-content-faint"}`} />}
+              {Icon && <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#FF5B00]" : "text-slate-400 dark:text-content-secondary"}`} />}
               <span>{tab.label}</span>
               {tab.isNew && (
                 <span className="bg-[#FF5B00] text-white font-black text-[8px] px-1.5 py-0.2 rounded-full uppercase tracking-wider ml-0.5 shadow-sm animate-pulse">
@@ -35,7 +35,7 @@ export default function CategoryNavigationTabs({ activeTab, onSelectTab }) {
 
               {/* Sliding Dark Active Underline */}
               {isActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#061838] rounded-full transition-all duration-300" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#061838] rounded-full transition-all duration-300 dark:bg-[#FF5B00]" />
               )}
             </button>
           );

@@ -105,6 +105,8 @@ export default function PromoBanner({ onSelectPromo }) {
               <img
                 src={currentSlide.img}
                 alt={currentSlide.title}
+                fetchpriority="high"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
             </div>
@@ -217,6 +219,8 @@ export default function PromoBanner({ onSelectPromo }) {
                 <img
                   src={item.img}
                   alt={item.title}
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>

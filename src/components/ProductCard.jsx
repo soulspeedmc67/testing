@@ -56,11 +56,13 @@ function ProductCard({
   };
 
   const handleCardClick = () => {
+    if (onOpenQuickView || onQuickView) {
+      (onOpenQuickView || onQuickView)(product);
+      return;
+    }
     const pId = product?.id || product?.barcode;
     if (pId) {
       router.push(`/product/${pId}`);
-    } else if (onOpenQuickView || onQuickView) {
-      (onOpenQuickView || onQuickView)(product);
     }
   };
 
@@ -85,9 +87,10 @@ function ProductCard({
         compact ? "rounded-xl" : "rounded-2xl"
       } ${
         isOutOfStock
-          ? "border-slate-200 opacity-80 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
-          : "border-slate-200/80 shadow-[0_1px_3px_rgba(15,23,42,0.04)] hover:border-slate-300 hover:shadow-[0_6px_18px_-8px_rgba(15,23,42,0.18)]"
-      } dark:bg-surface-raised dark:hover:border-line-strong`}
+          ? "border-slate-200 dark:border-line/60 opacity-80 shadow-xs"
+          : "border-slate-200/80 dark:border-line shadow-xs hover:border-slate-300 dark:hover:border-line-strong hover:shadow-[0_6px_18px_-8px_rgba(15,23,42,0.18)]"
+      } dark:bg-surface-raised`}
+
     >
       {/* Photo well.
           Every product photo fills this square edge to edge via object-cover, so
@@ -172,18 +175,11 @@ function ProductCard({
             compact ? "text-[11px] min-h-[28px]" : "text-[12.5px] min-h-[34px]"
           } font-semibold text-[#061838] line-clamp-2 leading-snug tracking-tight dark:text-content`}
         >
-          {pId ? (
-            <Link
-              href={`/product/${pId}/`}
-              onClick={(e) => e.stopPropagation()}
-              className="hover:text-[#FF5B00] transition-colors"
-            >
-              {product.name}
-            </Link>
-          ) : (
-            product.name
-          )}
+          <span className="hover:text-[#FF5B00] transition-colors">
+            {product.name}
+          </span>
         </h3>
+
 
         {/* Single quiet metadata line — stock warning replaces the unit only when it matters */}
         <p

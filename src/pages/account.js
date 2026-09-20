@@ -141,7 +141,7 @@ export default function AccountPage() {
                   <p className="text-[11px] text-slate-400 font-medium mt-0.5 dark:text-content-faint">{user.email}</p>
                 )}
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-orange-100 border border-orange-200 flex items-center justify-center text-[#FF5B00] font-black text-lg shadow-2xs">
+              <div className="w-12 h-12 rounded-2xl bg-orange-100 border border-orange-200 flex items-center justify-center text-[#FF5B00] font-black text-lg shadow-2xs dark:bg-orange-950/40 dark:border-orange-900/40">
                 {(user.name || "U")[0].toUpperCase()}
               </div>
             </div>
@@ -163,7 +163,7 @@ export default function AccountPage() {
             <button
               type="button"
               onClick={() => router.push("/login")}
-              className="w-full bg-white text-[#FF5B00] hover:bg-orange-50 font-black text-xs py-3 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+              className="w-full bg-white text-[#FF5B00] hover:bg-orange-50 font-black text-xs py-3 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer dark:bg-surface-raised dark:text-[#FF5B00] dark:hover:bg-surface-muted"
             >
               <span>Log In / Sign Up</span>
               <ChevronRight className="w-4 h-4 stroke-[3]" />
@@ -202,8 +202,8 @@ export default function AccountPage() {
               className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
-                  <ShoppingBag className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted dark:text-white">
+                  <ShoppingBag className="w-4 h-4 text-slate-700 dark:text-white" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 dark:text-content">Your orders</span>
               </div>
@@ -216,13 +216,13 @@ export default function AccountPage() {
               className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
-                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
+                <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 dark:bg-rose-950/40">
+                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500 dark:text-rose-400 dark:fill-rose-400" />
                 </div>
                 <div>
                   <span className="text-xs font-bold text-slate-800 dark:text-content">Your wishlist</span>
                   {wishlistCount > 0 && (
-                    <span className="text-[10px] font-bold text-rose-600 block">
+                    <span className="text-[10px] font-bold text-rose-600 block dark:text-rose-400">
                       {wishlistCount} {wishlistCount === 1 ? "item" : "items"} saved
                     </span>
                   )}
@@ -230,7 +230,7 @@ export default function AccountPage() {
               </div>
               <div className="flex items-center space-x-1.5">
                 {wishlistCount > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black flex items-center justify-center">
+                  <span className="w-5 h-5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-black flex items-center justify-center dark:bg-rose-950/60 dark:text-rose-300">
                     {wishlistCount}
                   </span>
                 )}
@@ -244,24 +244,23 @@ export default function AccountPage() {
               className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 dark:hover:bg-surface-muted dark:border-line-soft"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
-                  <MapPin className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted dark:text-white">
+                  <MapPin className="w-4 h-4 text-slate-700 dark:text-white" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 dark:text-content">Address book</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </Link>
 
-            {/* Legal. Both stores require these to be reachable from inside the
-                app, and Apple rejects a build where they are unclickable text. */}
+            {/* Legal */}
             <button
               type="button"
               onClick={() => router.push("/privacy")}
               className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer dark:hover:bg-surface-muted dark:border-line-soft"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
-                  <FileText className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted dark:text-white">
+                  <FileText className="w-4 h-4 text-slate-700 dark:text-white" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 dark:text-content">Privacy Policy</span>
               </div>
@@ -274,8 +273,8 @@ export default function AccountPage() {
               className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer dark:hover:bg-surface-muted dark:border-line-soft"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
-                  <BookOpen className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted dark:text-white">
+                  <BookOpen className="w-4 h-4 text-slate-700 dark:text-white" />
                 </div>
                 <span className="text-xs font-bold text-slate-800 dark:text-content">Terms of Service</span>
               </div>
@@ -291,10 +290,10 @@ export default function AccountPage() {
                   setUser(null);
                   router.push("/login");
                 }}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 dark:border-line-soft"
+                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 dark:hover:bg-rose-950/20 dark:border-line-soft"
               >
                 <div className="flex items-center space-x-3.5">
-                  <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                  <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 dark:bg-rose-950/40">
                     <LogOut className="w-4 h-4" />
                   </div>
                   <div>
@@ -306,9 +305,7 @@ export default function AccountPage() {
               </button>
             ) : null}
 
-            {/* Account deletion — required by Google Play and the App Store.
-                The privacy policy previously promised this control and pointed
-                at an API route that static export disables, so nothing existed. */}
+            {/* Account deletion */}
             {user && user.isLoggedIn ? (
               <button
                 type="button"
@@ -327,10 +324,10 @@ export default function AccountPage() {
                   setUser(null);
                   router.push("/login");
                 }}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 disabled:opacity-50 dark:border-line-soft"
+                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 disabled:opacity-50 dark:hover:bg-rose-950/20 dark:border-line-soft"
               >
                 <div className="flex items-center space-x-3.5">
-                  <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                  <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 dark:bg-rose-950/40">
                     <Trash2 className="w-4 h-4" />
                   </div>
                   <div>
@@ -348,11 +345,11 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => router.push("/login")}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-orange-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-[#FF5B00] dark:border-line-soft"
+                className="w-full flex items-center justify-between p-3.5 hover:bg-orange-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-[#FF5B00] dark:hover:bg-orange-950/20 dark:border-line-soft"
               >
                 <div className="flex items-center space-x-3.5">
-                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-[#FF5B00]">
-                    <User className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-[#FF5B00] dark:bg-orange-950/40 dark:text-white">
+                    <User className="w-4 h-4 text-[#FF5B00] dark:text-white" />
                   </div>
                   <div>
                     <span className="text-xs font-black text-[#FF5B00] block">Log In / Sign Up</span>

@@ -242,7 +242,7 @@ export default function CategoriesPage() {
 
         <Link
           href="/search"
-          className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 active:scale-95 transition-transform dark:bg-surface-muted"
+          className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 active:scale-95 transition-transform dark:bg-surface-muted dark:text-content-secondary dark:border dark:border-line"
         >
           <Search className="w-4 h-4 stroke-[2.5]" />
         </Link>

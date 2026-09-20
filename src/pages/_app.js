@@ -21,6 +21,7 @@ import { initNotificationPermissions } from '../lib/notifications';
 import { setDeviceSystemBars } from '../lib/systemBars';
 import { isNative } from '../lib/platform';
 import CookieConsentBanner from '../components/CookieConsentBanner';
+import { forceUnlockBodyScroll } from '../lib/useBodyScrollLock';
 
 /* Loaded on demand rather than with the app shell. This component is the only
    thing in _app that reaches Firestore and Firebase Auth, and a static import
@@ -121,38 +122,56 @@ function SystemChromeSync({ showSplash, pathname }) {
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
-  const [showSplash, setShowSplash] = useState(false);
-  // Holds the first screen slightly forward while the splash covers it
-  const [splashHolding, setSplashHolding] = useState(false);
+  const [showSplash, setShowSplash] = useState(() => {
+    if (typeof window !== "undefined") {
+      const isInternal = ['/admin', '/driver'].includes(window.location.pathname);
+      let seen = false;
+      try { seen = !!sessionStorage.getItem("dashit_splash_seen"); } catch (e) {}
+      if (isInternal || seen) return false;
+      return true;
+    }
+    return true;
+  });
+
+  // Holds the first screen invisible/forward while the splash covers it
+  const [splashHolding, setSplashHolding] = useState(() => {
+    if (typeof window !== "undefined") {
+      const isInternal = ['/admin', '/driver'].includes(window.location.pathname);
+      let seen = false;
+      try { seen = !!sessionStorage.getItem("dashit_splash_seen"); } catch (e) {}
+      if (isInternal || seen) return false;
+      return true;
+    }
+    return true;
+  });
+
   // Slow ease applies only for the duration of the splash handoff
   const [isRevealing, setIsRevealing] = useState(false);
 
-  // 1. Hide native Capacitor splash screen smoothly once web app mounts
+  // 1. Hide native Capacitor splash screen once web splash is actively rendered
   useEffect(() => {
     const hideNativeSplash = async () => {
       try {
-        await SplashScreen.hide({ fadeOutDuration: 300 });
+        await SplashScreen.hide({ fadeOutDuration: 180 });
       } catch (e) {}
     };
-    const timer = setTimeout(hideNativeSplash, 120);
-    return () => clearTimeout(timer);
+    hideNativeSplash();
   }, []);
 
-  // 2. Control in-app splash choreography on initial cold launch
+  // 2. Fallback check for splash in case route changes or internal role
   useEffect(() => {
     if (typeof window !== "undefined") {
       const isInternalRole = ['/admin', '/driver'].includes(router.pathname);
-      let seen = false;
-      try { seen = !!sessionStorage.getItem("dashit_splash_seen"); } catch (e) {}
-      if (!isInternalRole && !seen) {
-        setShowSplash(true);
-        setSplashHolding(true);
+      if (isInternalRole) {
+        setShowSplash(false);
+        setSplashHolding(false);
       }
     }
-  }, []);
+  }, [router.pathname]);
 
   useEffect(() => {
     currentPathRef.current = router.pathname;
+    forceUnlockBodyScroll();
   }, [router.pathname]);
 
 
@@ -404,7 +423,7 @@ export default function App({ Component, pageProps }) {
           // back from 104% to meet the handoff as one continuous push. Ordinary
           // route changes keep the plain quick fade.
           initial={splashHolding ? { opacity: 0, scale: 1.04 } : false}
-          animate={{ opacity: 1, scale: splashHolding ? 1.04 : 1 }}
+          animate={{ opacity: splashHolding ? 0 : 1, scale: splashHolding ? 1.04 : 1 }}
           transition={
             splashHolding || isRevealing
               ? { duration: 0.55, ease: [0.16, 1, 0.3, 1] }
@@ -423,7 +442,7 @@ export default function App({ Component, pageProps }) {
         >
           <Component {...pageProps} />
         </motion.div>
-        {router.pathname === '/shop' && <LiveOrderFloatingTracker />}
+        {!['/admin', '/driver', '/login'].includes(router.pathname) && <LiveOrderFloatingTracker />}
         <FloatingCartBar />
         {!['/login', '/driver', '/admin', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />

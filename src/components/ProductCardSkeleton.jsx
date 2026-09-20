@@ -26,8 +26,9 @@ export default function ProductCardSkeleton() {
         {/* Price + ADD row, pinned to the bottom like the real card */}
         <div className="flex items-end justify-between mt-auto pt-2">
           <div className="w-14 h-[18px] rounded-md animate-shimmer" />
-          <div className="w-[70px] h-8 rounded-xl bg-orange-50/70 border border-orange-100/60" />
+          <div className="w-[70px] h-8 rounded-xl bg-orange-50/70 border border-orange-100/60 dark:bg-surface-muted dark:border-line" />
         </div>
+
       </div>
     </div>
   );

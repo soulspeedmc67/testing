@@ -104,55 +104,55 @@
 .dark {
   color-scheme: dark;
 
-  --surface: #0A0A0C;
-  --surface-sunken: #060608;
-  --surface-raised: #141417;
-  --surface-overlay: #1A1A1E;
-  --surface-muted: #212126;
+  --surface: #14171F;
+  --surface-sunken: #0E1117;
+  --surface-raised: #1E222D;
+  --surface-overlay: #252A37;
+  --surface-muted: #2D3342;
 
-  --content: #FAFAFA;
-  --content-secondary: #A6A6AD;
-  --content-muted: #7A7A83;
-  --content-faint: #6B6B75;
-  --content-inverse: #0A0A0C;
+  --content: #F8FAFC;
+  --content-secondary: #CBD5E1;
+  --content-muted: #A0ABC0;
+  --content-faint: #8290A4;
+  --content-inverse: #14171F;
 
-  --line: #26262C;
-  --line-soft: #1C1C21;
-  --line-strong: #35353D;
+  --line: #2A303F;
+  --line-soft: #212633;
+  --line-strong: #384054;
 
   /* The fill stays the brand orange, but orange *text* at body size only
      clears 4.5:1 against the dark ground once it is lightened, so the two
      tokens part company here. */
   --accent: #FF6A1A;
-  --accent-contrast: #16060A;
+  --accent-contrast: #14171F;
 
   /* Heavier than the light scrim: against a dark page a 45% veil does not
      read as a layer at all, and the sheet appears to float with nothing
      behind it. */
   --scrim: rgb(0 0 0 / 0.66);
 
-  --shimmer-base: #17171B;
-  --shimmer-highlight: #232329;
+  --shimmer-base: #1E222D;
+  --shimmer-highlight: #2D3342;
 
   /* Channel mirrors — see the note in :root. Edit in pairs. */
-  --surface-rgb: 10 10 12;
-  --surface-sunken-rgb: 6 6 8;
-  --surface-raised-rgb: 20 20 23;
-  --surface-overlay-rgb: 26 26 30;
-  --surface-muted-rgb: 33 33 38;
+  --surface-rgb: 20 23 31;
+  --surface-sunken-rgb: 14 17 23;
+  --surface-raised-rgb: 30 34 45;
+  --surface-overlay-rgb: 37 42 55;
+  --surface-muted-rgb: 45 51 66;
 
-  --content-rgb: 250 250 250;
-  --content-secondary-rgb: 166 166 173;
-  --content-muted-rgb: 122 122 131;
-  --content-faint-rgb: 107 107 117;
-  --content-inverse-rgb: 10 10 12;
+  --content-rgb: 248 250 252;
+  --content-secondary-rgb: 203 213 225;
+  --content-muted-rgb: 160 171 192;
+  --content-faint-rgb: 130 144 164;
+  --content-inverse-rgb: 20 23 31;
 
-  --line-rgb: 38 38 44;
-  --line-soft-rgb: 28 28 33;
-  --line-strong-rgb: 53 53 61;
+  --line-rgb: 42 48 63;
+  --line-soft-rgb: 33 38 51;
+  --line-strong-rgb: 56 64 84;
 
   --accent-rgb: 255 106 26;
-  --accent-contrast-rgb: 22 6 10;
+  --accent-contrast-rgb: 20 23 31;
 }
 
 .safe-top-padding {

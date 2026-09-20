@@ -3,9 +3,9 @@
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
-        <item name="colorPrimary">#0c831f</item>
-        <item name="colorPrimaryDark">#0c831f</item>
-        <item name="colorAccent">#0c831f</item>
+        <item name="colorPrimary">#FF5B00</item>
+        <item name="colorPrimaryDark">#E04E00</item>
+        <item name="colorAccent">#FF5B00</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
@@ -14,7 +14,7 @@
         <item name="android:windowOptOutEdgeToEdgeEnforcement" tools:targetApi="35">true</item>
         <item name="android:statusBarColor">#FFE8D6</item>
         <item name="android:windowLightStatusBar">true</item>
-        <item name="android:navigationBarColor">#FFFDF5</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
         <item name="android:windowLightNavigationBar">true</item>
         <item name="android:windowBackground">#FFFFFF</item>
         <item name="android:colorBackground">#FFFFFF</item>

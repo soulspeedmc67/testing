@@ -1,96 +1,69 @@
 import { motion } from "framer-motion";
-import { Package, Bike } from "lucide-react";
+import { Package, Bike, Check, Clock } from "lucide-react";
 
 /**
- * Animated live-delivery status mark.
- *
- * Replaces the old blinking dot with a contained circle that actually says what
- * is happening to the order:
- *   - "packing"  → the parcel is being tamped and sealed at the hub
- *   - "riding"   → the rider is on the way
- *
- * Both loops animate transform/opacity only (GPU-composited, WebView-safe) and
- * are inherited-motion aware: the app wraps everything in
- * <MotionConfig reducedMotion="user">, so these stop for users who ask the OS
- * to reduce motion.
+ * Animated live-delivery status mark supporting 3 distinct live modes:
+ *   - "processing" → order placed, payment verified, sent to hub (animated spinner + pulsing clock)
+ *   - "packing"    → items being picked and sealed in the bag at the hub (animated tamping parcel + tape sweep)
+ *   - "riding"     → courier on the scooter heading to doorstep (animated bobbing bike + speed streak lines)
+ *   - "delivered"  → order delivered at doorstep (emerald check)
  */
 
 /** Maps an order status string to the mark it should show. */
 export const statusToMark = (status = "") => {
   const s = String(status).toLowerCase();
-  if (s.includes("way") || s.includes("delivery") || s.includes("scooter") || s.includes("rider")) {
+  if (s.includes("delivered")) {
+    return "delivered";
+  }
+  if (s.includes("way") || s.includes("delivery") || s.includes("scooter") || s.includes("rider") || s.includes("dispatched")) {
     return "riding";
   }
-  return "packing";
+  if (s.includes("pack") || s.includes("bag")) {
+    return "packing";
+  }
+  // Placed / Confirmed / Processing / Created
+  return "processing";
 };
 
 const SIZES = {
   sm: { box: "w-7 h-7", icon: "w-3.5 h-3.5" },
-  md: { box: "w-9 h-9", icon: "w-[18px] h-[18px]" },
+  md: { box: "w-10 h-10", icon: "w-[22px] h-[22px]" },
+  lg: { box: "w-11 h-11", icon: "w-6 h-6" },
 };
 
-export default function DeliveryStatusIcon({ status = "packing", size = "sm", className = "" }) {
-  const mark = status === "riding" || status === "packing" ? status : statusToMark(status);
+export default function DeliveryStatusIcon({
+  status = "packing",
+  size = "sm",
+  className = "",
+  iconColor,
+  bgColor,
+}) {
+  const mark = ["riding", "packing", "processing", "delivered"].includes(status)
+    ? status
+    : statusToMark(status);
   const s = SIZES[size] || SIZES.sm;
+  const isDelivered = mark === "delivered";
+
+  const resolvedIconColor = isDelivered
+    ? "text-emerald-500"
+    : iconColor || "text-[#FF5B00]";
+
+  const resolvedBgColor = bgColor || "bg-white dark:bg-surface-raised";
 
   return (
-    <span className={`relative inline-flex ${s.box} shrink-0 ${className}`}>
-      {/* Soft breathing halo — replaces the hard ping of the old dot */}
-      <motion.span
-        className="absolute inset-0 rounded-full bg-[#FF5B00]/30"
-        animate={{ scale: [1, 1.35, 1], opacity: [0.55, 0, 0.55] }}
-        transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
-      />
-
-      {/* Contained circle — white face, orange mark */}
-      <span className="relative inline-flex items-center justify-center w-full h-full rounded-full bg-white text-[#FF5B00] overflow-hidden ring-1 ring-black/5 shadow-[0_2px_10px_rgba(0,0,0,0.28)]">
-        {mark === "riding" ? (
-          <>
-            {/* Speed lines streaking past the rider */}
-            {[0, 1].map((i) => (
-              <motion.span
-                key={i}
-                className="absolute h-[1.5px] rounded-full bg-[#FF5B00]/55"
-                style={{ width: 6, top: `${38 + i * 22}%` }}
-                animate={{ x: [8, -10], opacity: [0, 0.9, 0] }}
-                transition={{
-                  duration: 0.75,
-                  repeat: Infinity,
-                  ease: "linear",
-                  delay: i * 0.28,
-                }}
-              />
-            ))}
-
-            {/* Rider bobbing over the road */}
-            <motion.span
-              className="relative"
-              animate={{ x: [-0.8, 0.8, -0.8], y: [0, -1.1, 0], rotate: [-2, 1.5, -2] }}
-              transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Bike className={`${s.icon} stroke-[2.6]`} />
-            </motion.span>
-          </>
-        ) : (
-          <>
-            {/* Seal sweep across the parcel */}
-            <motion.span
-              className="absolute inset-x-0 h-[2px] bg-[#FF5B00]/30"
-              animate={{ y: [-10, 10], opacity: [0, 0.8, 0] }}
-              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-            />
-
-            {/* Parcel being tamped down and sealed */}
-            <motion.span
-              className="relative"
-              animate={{ y: [0, -1.6, 0], scale: [1, 0.94, 1], rotate: [0, -3, 0, 3, 0] }}
-              transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Package className={`${s.icon} stroke-[2.6]`} />
-            </motion.span>
-          </>
-        )}
-      </span>
+    <span
+      className={`relative inline-flex items-center justify-center ${s.box} rounded-full ${resolvedBgColor} ${resolvedIconColor} ${className}`}
+    >
+      {mark === "riding" ? (
+        <Bike className={`${s.icon} stroke-[2.6]`} />
+      ) : mark === "packing" ? (
+        <Package className={`${s.icon} stroke-[2.6]`} />
+      ) : mark === "processing" ? (
+        <Clock className={`${s.icon} stroke-[2.6]`} />
+      ) : (
+        <Check className={`${s.icon} stroke-[2.8] text-emerald-500`} />
+      )}
     </span>
   );
 }
+

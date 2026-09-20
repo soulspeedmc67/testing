@@ -21,11 +21,16 @@ export default function DashitAnimatedLogo({ size = "md", className = "", showGl
       className={`relative inline-flex items-center justify-center select-none ${className}`}
       style={{ width: dim.w, height: dim.h }}
     >
-      {/* 1. Static Signature Navy D Curves */}
+      {/* 1. Static Signature D Curves (Navy in light, White in dark mode) */}
       <img
         src="/dashit-mark-navy.png"
         alt="Dashit"
-        className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none dark:hidden"
+      />
+      <img
+        src="/dashit-mark-curve-white.png"
+        alt="Dashit"
+        className="absolute inset-0 w-full h-full object-contain pointer-events-none hidden dark:block"
       />
 
       {/* 2. Animated Pulsing Orange Speed Dash */}

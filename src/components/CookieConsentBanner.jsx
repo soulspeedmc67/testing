@@ -1,50 +1,77 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ShieldCheck, Cookie } from "lucide-react";
+import { isNative } from "../lib/platform";
 
 /**
  * CookieConsentBanner
  *
  * Implements compliant cookieBanner and cookiePreferences controls
- * complying with ePrivacy Directive, GDPR, and India DPDP 2025/2026.
+ * for web users. Never shown in the native mobile app.
+ *
+ * Fixed: previously the banner used tailwindcss-animate utility classes
+ * (animate-in, fade-in, slide-in-from-bottom-5) that were never installed,
+ * causing the banner to appear for one paint frame then vanish. Now uses
+ * inline CSS transitions so it works everywhere. The show delay was also
+ * increased to 2400ms so the banner appears after the splash screen finishes.
  */
 export default function CookieConsentBanner() {
-  const [visible, setVisible] = useState(false);
+  const [shouldShow, setShouldShow] = useState(false);
+  const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
+    // Never show cookie banner on the mobile app
+    if (isNative()) return;
+
     try {
       const consent = localStorage.getItem("dashit_cookie_consent");
       if (!consent) {
-        // Delay showing banner slightly for smooth UX
-        const timer = setTimeout(() => setVisible(true), 1200);
-        return () => clearTimeout(timer);
+        // Wait for splash screen to finish (~1950ms) + 500ms breathing room
+        const showTimer = setTimeout(() => {
+          setShouldShow(true);
+          // Trigger entrance animation on next frame
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => setAnimate(true));
+          });
+        }, 2400);
+        return () => clearTimeout(showTimer);
       }
     } catch {
       // Storage access disabled or private browsing
     }
   }, []);
 
-  const acceptCookies = () => {
-    try {
-      localStorage.setItem("dashit_cookie_consent", "accepted");
-    } catch {}
-    setVisible(false);
+  const dismiss = (consentType) => {
+    // Animate out first, then hide
+    setAnimate(false);
+    setTimeout(() => {
+      try {
+        localStorage.setItem("dashit_cookie_consent", consentType);
+      } catch {}
+      setShouldShow(false);
+    }, 300);
   };
 
-  const cookiePreferences = () => {
-    try {
-      localStorage.setItem("dashit_cookie_consent", "essential_only");
-    } catch {}
-    setVisible(false);
-  };
+  const acceptCookies = () => dismiss("accepted");
+  const cookiePreferences = () => dismiss("essential_only");
 
-  if (!visible) return null;
+  if (!shouldShow || isNative()) return null;
 
   return (
     <aside
       id="cookieBanner"
       aria-label="Cookie consent banner"
-      className="cookieConsentBanner fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-50 bg-[#061838]/95 backdrop-blur-md text-white border border-white/10 rounded-2xl p-4 shadow-2xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-5"
+      className="fixed left-4 right-4 md:left-auto md:right-6 md:max-w-md bg-[#061838]/95 backdrop-blur-md text-white border border-white/10 rounded-2xl p-4 shadow-2xl"
+      style={{
+        /* Sits above BottomNav (z-50 = 50) */
+        zIndex: 60,
+        /* Position above the BottomNav bar on mobile */
+        bottom: "max(80px, calc(76px + env(safe-area-inset-bottom, 8px)))",
+        /* Entrance animation via CSS transitions */
+        opacity: animate ? 1 : 0,
+        transform: animate ? "translateY(0)" : "translateY(20px)",
+        transition: "opacity 0.35s cubic-bezier(0.16,1,0.3,1), transform 0.35s cubic-bezier(0.16,1,0.3,1)",
+      }}
     >
       <div className="flex items-start space-x-3">
         <div className="w-9 h-9 rounded-xl bg-[#FF5B00]/20 flex items-center justify-center shrink-0 mt-0.5">

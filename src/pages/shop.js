@@ -23,6 +23,7 @@ import { isFirebaseConfigured } from "../lib/firebase";
 import { useStoreDetails } from "../lib/storeStatus";
 import { hapticMedium } from "../lib/haptics";
 import { stagger, fadeUp, fadeUpTight, inViewOnce, EASE_OUT, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
+import { forceUnlockBodyScroll } from "../lib/useBodyScrollLock";
 
 const SEARCH_SUGGESTIONS = [
   '"milk, curd & paneer"',
@@ -75,6 +76,7 @@ export default function ShopPage() {
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isHighDemand, setIsHighDemand] = useState(false);
   const [activeDealPromo, setActiveDealPromo] = useState(null);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const [location, setLocation] = useState({
     nickname: "LOCATION",
@@ -139,6 +141,15 @@ export default function ShopPage() {
     };
     window.addEventListener("dashit_address_updated", handleAddressUpdate);
     return () => window.removeEventListener("dashit_address_updated", handleAddressUpdate);
+  }, []);
+
+  useEffect(() => {
+    forceUnlockBodyScroll();
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const [productsList, setProductsList] = useState(ALL_PRODUCTS);
@@ -319,7 +330,15 @@ export default function ShopPage() {
       )}
 
       {/* 2. STICKY SEARCH BAR & CATEGORIES SCROLLER */}
-      <div className="sticky top-0 md:top-[74px] z-40 bg-[#FFFDF5]/95 dark:bg-surface/95 backdrop-blur-md border-b border-amber-100/80 dark:border-line shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all">
+      <div className={`sticky top-0 md:top-[74px] z-40 bg-[#FFFDF5]/95 dark:bg-surface/95 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-300 ${
+        isScrolled ? "pt-[env(safe-area-inset-top,0px)]" : ""
+      }`}
+        style={{
+          /* Subtle border that fades out when scrolled */
+          borderBottom: isScrolled ? "1px solid transparent" : "1px solid rgba(245,158,11,0.15)",
+          transition: "border-color 0.4s ease, padding 0.15s ease",
+        }}
+      >
         <div className="max-w-md mx-auto px-4 pt-1.5 pb-2 md:hidden">
           <div
             onClick={() => router.push("/search")}

@@ -25,7 +25,7 @@ export const THEME_CHROME = {
   light: {
     // Home keeps its warm peach header; every other screen is plain white.
     homeTop: '#FFE8D6',
-    homeBottom: '#FFFDF5',
+    homeBottom: '#FFFFFF',
     top: '#FFFFFF',
     bottom: '#FFFFFF',
     inverted: '#061838',
@@ -36,11 +36,11 @@ export const THEME_CHROME = {
        so in dark mode every screen shares the app ground. The status bar
        blending into the page is the point — it is what makes the top of the
        screen read as one surface instead of a band. */
-    homeTop: '#0A0A0C',
-    homeBottom: '#0A0A0C',
-    top: '#0A0A0C',
-    bottom: '#0A0A0C',
-    inverted: '#0A0A0C',
+    homeTop: '#14171F',
+    homeBottom: '#14171F',
+    top: '#14171F',
+    bottom: '#14171F',
+    inverted: '#14171F',
     darkIcons: false,
   },
 };

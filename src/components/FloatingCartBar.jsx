@@ -115,9 +115,9 @@ export default function FloatingCartBar() {
       key="global-floating-cart-bar"
       initial={isFirstAppearance ? { y: 60, opacity: 0, scale: 0.8 } : false}
       animate={{
-        // When navbar is visible on pages with navbar on mobile: docked above navbar with a clean 12px breathing gap (-70px).
+        // When navbar is visible on pages with navbar on mobile: docked above navbar with a clean breathing gap (-72px).
         // On desktop or pages without navbar: glides down smoothly to screen bottom (0px).
-        y: (!isDesktop && NAVBAR_ROUTES.includes(router.pathname) && isNavVisible) ? -70 : 0,
+        y: (!isDesktop && NAVBAR_ROUTES.includes(router.pathname) && isNavVisible) ? -72 : 0,
         opacity: 1,
         scale: isBouncing ? [1, 1.15, 0.94, 1.05, 1] : 1,
       }}
@@ -142,7 +142,7 @@ export default function FloatingCartBar() {
         }}
         role="button"
         tabIndex={0}
-        className="pointer-events-auto relative overflow-hidden bg-[#061838] text-white rounded-full py-2 px-3.5 shadow-[0_8px_24px_rgba(6,24,56,0.3)] border border-slate-700/60 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
+        className="pointer-events-auto relative overflow-hidden bg-[#061838] text-white rounded-full py-2 px-3.5 shadow-[0_6px_20px_rgba(6,24,56,0.3)] border border-slate-700/60 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
       >
         {/* Left: Last 3 items added to cart in overlapping circular shapes */}
         <div className="flex items-center -space-x-2.5 shrink-0 py-0.5 pl-0.5">
@@ -175,7 +175,7 @@ export default function FloatingCartBar() {
 
         {/* Middle: View cart & Item count with Trust Navy & Orange Badge */}
         <div className="text-left pr-1 pl-0.5">
-          <span className="font-black text-xs md:text-sm text-white block leading-tight tracking-tight drop-shadow-xs">
+          <span className="font-extrabold text-xs md:text-sm text-white block leading-tight tracking-tight drop-shadow-xs">
             View cart
           </span>
           <div className="flex items-center space-x-1 mt-0.5">
