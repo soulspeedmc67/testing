@@ -2,6 +2,14 @@
 const nextConfig = {
   output: 'export',
   trailingSlash: true,
+  /* `next dev` and `next build` used to share `.next`. Running a build while the
+     dev server was up let the build wipe and rewrite the directory underneath it,
+     after which dev kept asking for chunks that no longer existed —
+     "Cannot find module './chunks/vendor-chunks/lucide-react.js'" — and every
+     page 500'd until `.next` was deleted by hand. Giving dev its own directory
+     means the two can run side by side. `next build`, `next start` and the
+     Hostinger export all still use `.next`. */
+  distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',
   poweredByHeader: false,
   compress: true,
   images: {
