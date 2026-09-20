@@ -16,7 +16,7 @@ export function explainPermission(permissionType) {
     location: {
       title: "Location Access",
       message:
-        "DASHit needs your delivery location to accurately pinpoint your doorstep and verify 10-minute delivery coverage across Anantnag.",
+        "DASHit needs your delivery location to accurately pinpoint your doorstep and verify delivery coverage across Anantnag.",
     },
     camera: {
       title: "Camera Access",

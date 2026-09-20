@@ -638,7 +638,7 @@ export default function LoginPage() {
                   <img
                     ref={heroImgRef}
                     src="/art/rider-scooter-hero-transparent.png"
-                    alt="DASHIT 8-minute delivery"
+                    alt="DASHIT fastest grocery delivery"
                     width={1142}
                     height={1377}
                     decoding="async"

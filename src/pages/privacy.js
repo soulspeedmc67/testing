@@ -74,7 +74,7 @@ export default function PrivacyPolicyPage() {
           <section className="space-y-3">
             <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">1. Introduction</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
-              DASHIT Technologies (&quot;DASHIT&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) operates the DASHIT hyperlocal quick-commerce application and delivery services based in Anantnag, Jammu &amp; Kashmir (PIN: 192101). We are committed to protecting your personal information and your right to privacy under applicable laws, including the Information Technology Act, 2000, and the Digital Personal Data Protection (DPDP) Act.
+              DASHIT Technologies (&quot;DASHIT&quot;, &quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) operates the DASHIT quick-commerce grocery application and delivery services based in Anantnag, Jammu &amp; Kashmir (PIN: 192101). We are committed to protecting your personal information and your right to privacy under applicable laws, including the Information Technology Act, 2000, and the Digital Personal Data Protection (DPDP) Act.
             </p>
           </section>
 

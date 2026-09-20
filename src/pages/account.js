@@ -154,7 +154,7 @@ export default function AccountPage() {
               </div>
               <div>
                 <h2 className="text-lg font-black tracking-tight text-white leading-tight">Welcome to DASHIT</h2>
-                <p className="text-xs text-white/90 font-medium mt-0.5">8-minute groceries in Anantnag</p>
+                <p className="text-xs text-white/90 font-medium mt-0.5">#1 grocery delivery app in Anantnag</p>
               </div>
             </div>
             <p className="text-xs text-white/85 leading-relaxed font-medium">

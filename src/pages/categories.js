@@ -207,10 +207,10 @@ export default function CategoriesPage() {
     <div className="flex flex-col h-screen bg-[#F7F8FA] text-slate-900 font-sans overflow-hidden dark:bg-surface dark:text-content">
       <SEO
         title={`${activeCategoryObj.label} — Grocery Categories`}
-        description={`Explore ${activeCategoryObj.label} on DASHIT. Fresh items delivered directly from our Anantnag fulfillment store in 8 minutes.`}
+        description={`Explore ${activeCategoryObj.label} on DASHIT. Fresh items delivered directly from our Anantnag fulfillment store with fastest delivery.`}
         canonical="/categories/"
         ogType="website"
-        keywords={`${activeCategoryObj.label}, groceries Anantnag, buy ${activeCategoryObj.shortName} Kashmir, DASHIT categories 192101`}
+        keywords={`${activeCategoryObj.label}, groceries Anantnag, fastest delivery Anantnag, buy ${activeCategoryObj.shortName} Kashmir, DASHIT categories 192101`}
       />
       <BreadcrumbJsonLd
         items={[

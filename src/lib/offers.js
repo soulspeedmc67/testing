@@ -3,7 +3,7 @@ export const DEFAULT_OFFERS = [
     id: "offer-snacks-01",
     badge: "DASHIT EXCLUSIVE",
     title: "Gourmet Snacks & Chilled Sips",
-    subtitle: "Artisanal crisps, premium chocolates & chilled sodas at 8-min dispatch.",
+    subtitle: "Artisanal crisps, premium chocolates & chilled sodas with fastest delivery.",
     priceTag: "Starting ₹20",
     category: "Snacks",
     promoCode: "CRISP20",

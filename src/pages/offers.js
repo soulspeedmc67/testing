@@ -135,7 +135,7 @@ export default function OffersPage() {
     <div className="relative min-h-screen bg-[#FFF1E4]">
       <SEO
         title="Offers & Deals — Save on Daily Essentials"
-        description="Today's best grocery offers in Anantnag. Discounts on fresh vegetables, fruits, dairy and daily essentials, delivered in 8 minutes."
+        description="Today's best grocery offers in Anantnag. Discounts on fresh vegetables, fruits, dairy and daily essentials with fastest delivery across Anantnag."
         canonical="/offers/"
         ogType="website"
         keywords="grocery offers Anantnag, DASHIT deals, discount groceries Kashmir"
@@ -232,7 +232,7 @@ export default function OffersPage() {
             </p>
             <p className="mt-2 text-[13px] font-medium text-white/85 max-w-[16rem] leading-snug">
               Save ₹{totalSavings} across everything on offer — fresh produce, dairy and
-              daily essentials, still in 8 minutes.
+              daily essentials, with fastest delivery across Anantnag.
             </p>
           </div>
         </motion.section>

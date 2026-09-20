@@ -293,11 +293,11 @@ export default function ShopPage() {
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-slate-900 font-sans pb-dock dark:bg-surface dark:text-content">
       <SEO
-        title="Online Grocery Store Anantnag — Fresh Essentials in 8 Mins"
-        description="Shop farm milk, curd, Kashmiri lavas bread, snacks, beverages, and pantry staples online with DASHIT. 8-minute delivery across Anantnag (PIN: 192101)."
+        title="Online Grocery Store Anantnag — #1 Fastest Grocery Delivery"
+        description="Shop farm milk, curd, Kashmiri lavas bread, snacks, beverages, and pantry staples online with DASHIT. Fastest delivery across Anantnag (PIN: 192101)."
         canonical="/shop/"
         ogType="website"
-        keywords="DASHIT storefront, buy groceries Anantnag, online supermarket Kashmir, milk delivery 192101, bread, snacks"
+        keywords="DASHIT storefront, buy groceries Anantnag, fastest delivery Anantnag, online supermarket Kashmir, milk delivery 192101, bread, snacks"
       />
       <BreadcrumbJsonLd
         items={[

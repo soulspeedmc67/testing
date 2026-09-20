@@ -1,12 +1,12 @@
 import Head from "next/head";
 
 const SITE_URL = "https://dashit.co.in";
-const DEFAULT_TITLE = "DASHIT — Hyperlocal Grocery Delivery in Anantnag | 8-Minute Delivery";
+const DEFAULT_TITLE = "DASHIT — #1 Grocery Delivery App in Anantnag | Fastest Delivery";
 const DEFAULT_DESCRIPTION =
-  "Anantnag's leading quick-commerce platform. Fresh Kashmiri bakery, milk, dairy, snacks, cold drinks, and daily household essentials delivered to your doorstep in 8 minutes.";
+  "Anantnag's #1 grocery delivery app. Fresh Kashmiri morning bakery, milk, dairy, snacks, cold drinks, and daily essentials with fastest delivery across Anantnag.";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
 const DEFAULT_KEYWORDS =
-  "DASHIT, grocery delivery Anantnag, 8 minute delivery, Kashmir quick commerce, buy milk online Anantnag, Kashmiri lavas bread, instant grocery Kashmir, online supermarket Anantnag 192101";
+  "DASHIT, grocery delivery app Anantnag, fastest grocery delivery Anantnag, Kashmir quick commerce, buy milk online Anantnag, Kashmiri lavas bread, online supermarket Anantnag 192101";
 
 export default function SEO({
   title,
@@ -22,7 +22,7 @@ export default function SEO({
   const pageTitle = title
     ? title.includes("DASHIT") || title.includes("DASHit")
       ? title
-      : `${title} | DASHIT — 8-Minute Delivery Anantnag`
+      : `${title} | DASHIT — #1 Fastest Grocery App in Anantnag`
     : DEFAULT_TITLE;
 
   // Format canonical: Ensure absolute URL and trailing slash for export consistency
