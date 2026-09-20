@@ -415,7 +415,7 @@ export default function LandingPage() {
             <motion.div
               variants={fadeUp}
               {...inViewOnce}
-              className="flex items-end justify-between gap-4 mb-7"
+              className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-7"
             >
               <div>
                 <Eyebrow>Everyday aisles</Eyebrow>
@@ -438,7 +438,7 @@ export default function LandingPage() {
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4"
             >
               {POPULAR_CATEGORIES.map((cat) => (
-                <motion.div key={cat.cat} variants={fadeUp}>
+                <motion.div key={cat.cat} variants={fadeUp} className="h-full">
                   <Link
                     href={`/shop?cat=${encodeURIComponent(cat.cat)}`}
                     className="group block rounded-2xl bg-white dark:bg-[#12161F] border border-slate-200/90 dark:border-slate-800 p-2.5 h-full transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-[0_12px_28px_-18px_rgba(6,24,56,0.5)]"

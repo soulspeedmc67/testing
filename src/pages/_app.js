@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import Head from 'next/head';
@@ -119,31 +119,52 @@ function SystemChromeSync({ showSplash, pathname }) {
   );
 }
 
+/* useLayoutEffect warns when React renders on the server, where it can never run.
+   Swapping in useEffect there keeps the export build quiet; the body of the hook
+   is client-only anyway. */
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/**
+ * Whether this load should skip the splash: the internal consoles never show it,
+ * and neither does a tab that has already seen it this session.
+ *
+ * Only ever called on the client — the server has no way to know either fact.
+ */
+function shouldSkipSplash() {
+  if (typeof window === "undefined") return false;
+  if (['/admin', '/driver'].includes(window.location.pathname)) return true;
+  try {
+    return !!sessionStorage.getItem("dashit_splash_seen");
+  } catch (e) {
+    return false;
+  }
+}
+
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window !== "undefined") {
-      const isInternal = ['/admin', '/driver'].includes(window.location.pathname);
-      let seen = false;
-      try { seen = !!sessionStorage.getItem("dashit_splash_seen"); } catch (e) {}
-      if (isInternal || seen) return false;
-      return true;
-    }
-    return true;
-  });
+
+  /* Both of these start `true` on the client as well as the server, even when we
+     already know the splash should be skipped.
+
+     Reading sessionStorage in the initialiser used to make the first client
+     render disagree with the server HTML — the server always rendered the splash,
+     a returning tab never did — and React threw out the whole server tree and
+     re-rendered the page from scratch on every load. The decision now happens in
+     a layout effect below, which runs after hydration but before the browser
+     paints, so a returning visitor still never sees the splash. */
+  const [showSplash, setShowSplash] = useState(true);
 
   // Holds the first screen invisible/forward while the splash covers it
-  const [splashHolding, setSplashHolding] = useState(() => {
-    if (typeof window !== "undefined") {
-      const isInternal = ['/admin', '/driver'].includes(window.location.pathname);
-      let seen = false;
-      try { seen = !!sessionStorage.getItem("dashit_splash_seen"); } catch (e) {}
-      if (isInternal || seen) return false;
-      return true;
+  const [splashHolding, setSplashHolding] = useState(true);
+
+  useIsomorphicLayoutEffect(() => {
+    if (shouldSkipSplash()) {
+      setShowSplash(false);
+      setSplashHolding(false);
     }
-    return true;
-  });
+  }, []);
 
   // Slow ease applies only for the duration of the splash handoff
   const [isRevealing, setIsRevealing] = useState(false);
