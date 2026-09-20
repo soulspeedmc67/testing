@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import SEO from "../components/SEO";
 import { WebSiteJsonLd, OrganizationJsonLd, GroceryStoreJsonLd } from "../components/JsonLd";
+
+const Hero3DPhone = dynamic(() => import("../components/Hero3DPhone"), {
+  ssr: false,
+  loading: () => (
+    <div className="w-[320px] sm:w-[340px] h-[670px] sm:h-[700px] rounded-[50px] bg-slate-900/60 animate-pulse mx-auto" />
+  ),
+});
 import { isNative } from "../lib/platform";
 import { useTheme } from "../context/ThemeContext";
 import { hapticLight } from "../lib/haptics";
@@ -331,10 +339,11 @@ export default function LandingPage() {
 
             {/* PRIMARY DOWNLOAD APP BADGES (ABOVE THE FOLD) */}
             <div id="download-section" className="mt-8 w-full">
-              <p className="text-xs font-black uppercase tracking-widest text-[#FF5B00] mb-3 flex items-center space-x-1.5">
-                <Smartphone className="w-4 h-4" />
-                <span>Step 1: Download Free on Your Device</span>
-              </p>
+              {/* Soon on Store Badge */}
+              <div className="inline-flex items-center space-x-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-full px-3.5 py-1 mb-3 text-amber-700 dark:text-amber-300 text-xs font-bold shadow-xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#FF5B00]" />
+                <span>Store Launches Coming Soon • Direct Early Access Packages Available</span>
+              </div>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 max-w-lg">
                 {/* Google Play Button */}
@@ -352,12 +361,11 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <div className="text-left">
-                    <span className="text-[10px] font-bold text-slate-400 block tracking-wider uppercase">Android APK / Play</span>
+                    <span className="text-[10px] font-bold text-slate-400 block tracking-wider uppercase">Direct Android APK</span>
                     <span className="text-sm font-black text-white block leading-tight">Google Play</span>
                   </div>
-                  <div className="ml-auto text-amber-400 text-xs font-bold flex items-center">
-                    <Star className="w-3 h-3 fill-amber-400 mr-1" />
-                    <span>4.9</span>
+                  <div className="ml-auto bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Soon
                   </div>
                 </a>
 
@@ -373,16 +381,16 @@ export default function LandingPage() {
                     </svg>
                   </div>
                   <div className="text-left">
-                    <span className="text-[10px] font-bold text-slate-400 block tracking-wider uppercase">iOS / TestFlight</span>
+                    <span className="text-[10px] font-bold text-slate-400 block tracking-wider uppercase">Direct iOS Package</span>
                     <span className="text-sm font-black text-white block leading-tight">App Store</span>
                   </div>
-                  <div className="ml-auto bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    iOS
+                  <div className="ml-auto bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Soon
                   </div>
                 </a>
               </div>
 
-              {/* Direct APK Download + QR Code Pill */}
+              {/* Direct APK Download + Verified Safe */}
               <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-500 dark:text-slate-400">
                 <a
                   href="/Dashit-User.apk"
@@ -390,12 +398,12 @@ export default function LandingPage() {
                   className="inline-flex items-center space-x-1.5 text-[#FF5B00] hover:underline font-bold"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Direct Android APK Download (v1.0.0)</span>
+                  <span>Download Direct APK (Android v1.0.0)</span>
                 </a>
                 <span className="text-slate-300 dark:text-slate-600">•</span>
-                <span className="flex items-center space-x-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>Verified 100% Safe &amp; Clean</span>
+                <span className="flex items-center space-x-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>100% Virus-Free &amp; Verified</span>
                 </span>
               </div>
             </div>
@@ -429,124 +437,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* COLUMN 2: SLEEK 3D SMARTPHONE MOCKUP (Col span 5) */}
-          <div className="lg:col-span-5 flex justify-center items-center relative">
-            {/* Outer Ambient Glow Ring */}
-            <div className="w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-gradient-to-tr from-orange-500/20 via-amber-400/10 to-blue-500/20 blur-2xl absolute pointer-events-none" />
-
-            {/* Realistic iPhone Bezel Container */}
-            <div className="relative w-68 sm:w-76 xl:w-80 bg-slate-950 dark:bg-black rounded-[48px] p-3 shadow-2xl shadow-black/40 border-[4px] border-slate-800 dark:border-slate-700/60 transition-transform duration-500 hover:scale-[1.02]">
-              {/* Dynamic Island Notch */}
-              <div className="w-24 h-4 bg-black rounded-full mx-auto mb-2 flex items-center justify-center">
-                <div className="w-2.5 h-2.5 rounded-full bg-slate-900 mr-1.5" />
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-900/60" />
-              </div>
-
-              {/* In-app Screen Canvas */}
-              <div className="bg-[#14171F] rounded-[38px] overflow-hidden text-white shadow-inner p-4 space-y-3.5 border border-white/5">
-                {/* Header in Mockup */}
-                <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                  <div>
-                    <span className="text-[9.5px] font-black uppercase tracking-widest text-[#FF5B00] block">
-                      FASTEST DELIVERY
-                    </span>
-                    <h3 className="text-xs font-black text-white flex items-center space-x-1">
-                      <MapPin className="w-3 h-3 text-[#FF5B00]" />
-                      <span>KP Road, Anantnag</span>
-                    </h3>
-                  </div>
-                  <div className="w-7 h-7 rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-[10px] font-black text-[#FF5B00]">
-                    D
-                  </div>
-                </div>
-
-                {/* Mock Search Input */}
-                <div className="bg-white/10 rounded-xl px-3 py-2 flex items-center space-x-2 border border-white/10 text-slate-300">
-                  <Search className="w-3.5 h-3.5 text-[#FF5B00]" />
-                  <span className="text-[11px] font-medium">Search &quot;fresh lavas, amul milk&quot;</span>
-                </div>
-
-                {/* Categories Strip Mock */}
-                <div className="flex space-x-1.5 overflow-hidden">
-                  <span className="bg-[#FF5B00] text-white text-[9px] font-extrabold px-2.5 py-1 rounded-full">
-                    Bakery
-                  </span>
-                  <span className="bg-white/10 text-slate-200 text-[9px] font-semibold px-2.5 py-1 rounded-full border border-white/10">
-                    Dairy
-                  </span>
-                  <span className="bg-white/10 text-slate-200 text-[9px] font-semibold px-2.5 py-1 rounded-full border border-white/10">
-                    Vegetables
-                  </span>
-                  <span className="bg-white/10 text-slate-200 text-[9px] font-semibold px-2.5 py-1 rounded-full border border-white/10">
-                    Fruits
-                  </span>
-                </div>
-
-                {/* Mock Product Items in App */}
-                <div className="space-y-2">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-2 flex items-center space-x-2.5">
-                    <img
-                      src="https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=120&auto=format&fit=crop&q=80"
-                      alt="Kashmiri Lavas"
-                      className="w-10 h-10 rounded-lg object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-extrabold text-white truncate">
-                        Fresh Kashmiri Lavas
-                      </p>
-                      <p className="text-[9px] text-slate-400">Pack of 4 • Fresh Morning</p>
-                      <span className="text-[10px] font-black text-[#FF5B00]">₹20</span>
-                    </div>
-                    <span className="bg-[#FF5B00] text-white font-black text-[9px] px-2.5 py-1 rounded-lg">
-                      ADDED
-                    </span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-2 flex items-center space-x-2.5">
-                    <img
-                      src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=120&auto=format&fit=crop&q=80"
-                      alt="Amul Milk"
-                      className="w-10 h-10 rounded-lg object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-extrabold text-white truncate">
-                        Amul Gold Milk 500ml
-                      </p>
-                      <p className="text-[9px] text-slate-400">Chilled • Direct Store</p>
-                      <span className="text-[10px] font-black text-[#FF5B00]">₹36</span>
-                    </div>
-                    <span className="bg-white/10 text-white font-bold text-[9px] px-2.5 py-1 rounded-lg border border-white/15">
-                      ADD
-                    </span>
-                  </div>
-                </div>
-
-                {/* Floating Mockup Live Delivery Tracker */}
-                <div className="bg-[#061838] border border-[#FF5B00]/40 rounded-2xl p-2.5 shadow-lg flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-7 h-7 rounded-xl bg-[#FF5B00] flex items-center justify-center text-white">
-                      <Bike className="w-3.5 h-3.5" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-white leading-tight">Order Arriving</p>
-                      <p className="text-[9px] text-emerald-400 font-bold">Rider on KP Road • On The Way</p>
-                    </div>
-                  </div>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1" />
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Trust Pills */}
-            <div className="absolute -top-3 -right-2 sm:-right-4 bg-white dark:bg-[#1A202C] text-slate-900 dark:text-white px-3.5 py-2 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-700 flex items-center space-x-2 text-xs font-black z-20">
-              <Zap className="w-4 h-4 text-[#FF5B00] fill-[#FF5B00]" />
-              <span>Fastest Delivery Promise</span>
-            </div>
-
-            <div className="absolute -bottom-4 -left-2 sm:-left-4 bg-white dark:bg-[#1A202C] text-slate-900 dark:text-white px-3.5 py-2 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-700 flex items-center space-x-2 text-xs font-black z-20">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>100% Guaranteed Fresh</span>
-            </div>
+          {/* COLUMN 2: PREMIUM 3D SMARTPHONE SHOWCASE (Col span 5) */}
+          <div className="lg:col-span-5 flex justify-center items-center relative min-h-[700px] w-full">
+            <Hero3DPhone />
           </div>
         </div>
 
