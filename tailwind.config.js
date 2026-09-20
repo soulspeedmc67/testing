@@ -32,6 +32,45 @@ module.exports = {
        * Pointing the utility at the brand stack fixes it everywhere at once and
        * keeps `font-sans` meaning what the markup already assumes it means.
        */
+      /**
+       * Semantic colour aliases over the CSS variables in globals.css.
+       *
+       * These are what new and re-themed markup should use — `bg-surface-raised`
+       * instead of `bg-white`, `text-content-muted` instead of `text-slate-500`
+       * — because a token resolves per theme while a literal shade does not.
+       * The literal Tailwind palette is still available and still correct for
+       * anything that is genuinely one fixed colour in both themes: the brand
+       * orange, a white glyph on an orange button, a semantic red.
+       *
+       * `<alpha-value>` is what lets the opacity modifiers keep working, so
+       * `bg-surface-raised/80` and `border-line/50` behave as they would on a
+       * normal Tailwind colour.
+       */
+      colors: {
+        surface: {
+          DEFAULT: 'rgb(var(--surface-rgb) / <alpha-value>)',
+          sunken: 'rgb(var(--surface-sunken-rgb) / <alpha-value>)',
+          raised: 'rgb(var(--surface-raised-rgb) / <alpha-value>)',
+          overlay: 'rgb(var(--surface-overlay-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--surface-muted-rgb) / <alpha-value>)',
+        },
+        content: {
+          DEFAULT: 'rgb(var(--content-rgb) / <alpha-value>)',
+          secondary: 'rgb(var(--content-secondary-rgb) / <alpha-value>)',
+          muted: 'rgb(var(--content-muted-rgb) / <alpha-value>)',
+          faint: 'rgb(var(--content-faint-rgb) / <alpha-value>)',
+          inverse: 'rgb(var(--content-inverse-rgb) / <alpha-value>)',
+        },
+        line: {
+          DEFAULT: 'rgb(var(--line-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--line-soft-rgb) / <alpha-value>)',
+          strong: 'rgb(var(--line-strong-rgb) / <alpha-value>)',
+        },
+        accent: {
+          DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
+          contrast: 'rgb(var(--accent-contrast-rgb) / <alpha-value>)',
+        },
+      },
       fontFamily: {
         sans: [
           'Plus Jakarta Sans',

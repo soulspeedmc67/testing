@@ -54,7 +54,7 @@ export default function LandingPage() {
   }, []);
 
   if (isAppClient) {
-    return <div className="min-h-screen bg-white" />;
+    return <div className="min-h-screen bg-white dark:bg-surface" />;
   }
 
   const POPULAR_CATEGORIES = [
@@ -98,7 +98,7 @@ export default function LandingPage() {
 
 
   return (
-    <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white">
+    <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white dark:bg-surface">
       <SEO
         title="DASHIT — Hyperlocal Grocery Delivery in Anantnag | 8-Minute Delivery"
         description="Anantnag's #1 quick-commerce service. Fresh Kashmiri morning bakery, milk, dairy, pantry essentials, and daily groceries delivered to your door in 8 minutes."
@@ -142,7 +142,7 @@ export default function LandingPage() {
             </Link>
 
             {/* Desktop Nav Links (Fully Functional) */}
-            <nav className="hidden lg:flex items-center space-x-7 text-sm font-semibold text-slate-300">
+            <nav className="hidden lg:flex items-center space-x-7 text-sm font-semibold text-slate-300 dark:text-content-faint">
               <Link href="/shop" className="hover:text-white transition-colors">
                 Menu / Shop
               </Link>
@@ -152,7 +152,7 @@ export default function LandingPage() {
               <Link href="/shop#offers" className="hover:text-white transition-colors">
                 Offers
               </Link>
-              <div className="flex items-center space-x-1.5 text-slate-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
+              <div className="flex items-center space-x-1.5 text-slate-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full dark:text-content-faint">
                 <MapPin className="w-3.5 h-3.5 text-[#FF5B00]" />
                 <span className="text-xs font-semibold">Anantnag Hub (192101)</span>
               </div>
@@ -175,7 +175,7 @@ export default function LandingPage() {
                 aria-expanded={mobileMenuOpen}
                 /* The only route into navigation on a phone: padded out to the
                    44px minimum without changing how the icon looks. */
-                className="lg:hidden inline-flex items-center justify-center min-w-[44px] min-h-[44px] -mr-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                className="lg:hidden inline-flex items-center justify-center min-w-[44px] min-h-[44px] -mr-2 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors dark:text-content-faint"
                 aria-label="Toggle menu"
               >
                 <Menu className="w-5 h-5" />
@@ -217,14 +217,14 @@ export default function LandingPage() {
               <Link
                 href="/privacy"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 px-3 rounded-lg hover:bg-white/10 font-semibold text-sm text-slate-400"
+                className="block py-2 px-3 rounded-lg hover:bg-white/10 font-semibold text-sm text-slate-400 dark:text-content-faint"
               >
                 Privacy Policy
               </Link>
               <Link
                 href="/terms"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 px-3 rounded-lg hover:bg-white/10 font-semibold text-sm text-slate-400"
+                className="block py-2 px-3 rounded-lg hover:bg-white/10 font-semibold text-sm text-slate-400 dark:text-content-faint"
               >
                 Terms &amp; Conditions
               </Link>
@@ -251,14 +251,14 @@ export default function LandingPage() {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black tracking-tight leading-[1.08] text-[#061838]">
+            <h1 className="text-4xl sm:text-5xl xl:text-6xl font-black tracking-tight leading-[1.08] text-[#061838] dark:text-content">
               Fastest <br />
               <span className="text-[#FF5B00]">Delivery &amp;</span> <br />
               Easy Pickup
             </h1>
 
             {/* Confident Slogan (No people photos / No user count) */}
-            <p className="mt-4 text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-sm">
+            <p className="mt-4 text-xs sm:text-sm text-slate-600 font-medium leading-relaxed max-w-sm dark:text-content-secondary">
               Anantnag&apos;s pioneering hyperlocal quick-commerce platform. Fresh Kashmiri morning bakery, dairy, staples, and daily essentials at your doorstep with fastest delivery in Anantnag.
             </p>
 
@@ -282,13 +282,13 @@ export default function LandingPage() {
               >
                 {/* Orbital Ring with Play Button */}
                 <div className="relative w-11 h-11 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-2 border-slate-200" />
+                  <div className="absolute inset-0 rounded-full border-2 border-slate-200 dark:border-line" />
                   <div className="absolute inset-0 rounded-full border-2 border-[#FF5B00] border-b-transparent border-l-transparent -rotate-45 group-hover:rotate-90 transition-transform duration-500" />
-                  <div className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <div className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center group-hover:scale-110 transition-transform dark:bg-surface-raised">
                     <Play className="w-3.5 h-3.5 fill-[#FF5B00] text-[#FF5B00] ml-0.5" />
                   </div>
                 </div>
-                <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#FF5B00] transition-colors">
+                <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-[#FF5B00] transition-colors dark:text-content">
                   How to order
                 </span>
               </button>
@@ -302,8 +302,8 @@ export default function LandingPage() {
               and the drifting is what read as generated. Everything sits still. */}
           <div className="lg:col-span-5 flex justify-center items-center relative py-6 sm:py-10">
             {/* Concentric Orbital Outline Rings */}
-            <div className="w-72 h-72 sm:w-88 sm:h-88 md:w-[410px] md:h-[410px] xl:w-[440px] xl:h-[440px] rounded-full border border-slate-200/70 absolute pointer-events-none flex items-center justify-center" />
-            <div className="w-80 h-80 sm:w-96 sm:h-96 md:w-[460px] md:h-[460px] xl:w-[490px] xl:h-[490px] rounded-full border border-slate-100 absolute pointer-events-none" />
+            <div className="w-72 h-72 sm:w-88 sm:h-88 md:w-[410px] md:h-[410px] xl:w-[440px] xl:h-[440px] rounded-full border border-slate-200/70 absolute pointer-events-none flex items-center justify-center dark:border-line/70" />
+            <div className="w-80 h-80 sm:w-96 sm:h-96 md:w-[460px] md:h-[460px] xl:w-[490px] xl:h-[490px] rounded-full border border-slate-100 absolute pointer-events-none dark:border-line-soft" />
 
             {/* Orbit Accent Arcs */}
             <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-t-4 border-l-4 border-emerald-500 absolute -top-2 left-6 sm:left-12 pointer-events-none -rotate-12" />
@@ -339,17 +339,17 @@ export default function LandingPage() {
               </div>
 
               {/* Badge Top Right — pinned to the disc, static */}
-              <div className="absolute top-2 -right-4 sm:-right-6 bg-white px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 flex items-center space-x-1.5 z-20">
+              <div className="absolute top-2 -right-4 sm:-right-6 bg-white px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 flex items-center space-x-1.5 z-20 dark:bg-surface-raised dark:border-line-soft">
                 <Clock className="w-3.5 h-3.5 text-[#FF5B00] shrink-0" />
-                <span className="text-[11px] font-black text-slate-800 tracking-tight whitespace-nowrap">
+                <span className="text-[11px] font-black text-slate-800 tracking-tight whitespace-nowrap dark:text-content">
                   Fastest Delivery Promise
                 </span>
               </div>
 
               {/* Badge Bottom Left — pinned to the disc, static */}
-              <div className="absolute -bottom-3 -left-3 sm:-left-6 bg-white px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 flex items-center space-x-1.5 z-20">
+              <div className="absolute -bottom-3 -left-3 sm:-left-6 bg-white px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 flex items-center space-x-1.5 z-20 dark:bg-surface-raised dark:border-line-soft">
                 <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-black text-slate-800 tracking-tight whitespace-nowrap">
+                <span className="text-[11px] font-black text-slate-800 tracking-tight whitespace-nowrap dark:text-content">
                   100% Fresh Produce
                 </span>
               </div>
@@ -361,14 +361,14 @@ export default function LandingPage() {
             
             {/* Feature Card 1: Fast Delivery */}
             <div className="flex items-start space-x-4 group cursor-pointer">
-              <div className="w-12 h-12 rounded-2xl bg-white shadow-md shadow-slate-200/70 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#FF5B00]/40 transition-all">
-                <Bike className="w-6 h-6 text-[#061838] group-hover:text-[#FF5B00] transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-white shadow-md shadow-slate-200/70 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#FF5B00]/40 transition-all dark:bg-surface-raised dark:border-line-soft">
+                <Bike className="w-6 h-6 text-[#061838] group-hover:text-[#FF5B00] transition-colors dark:text-content" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#061838] group-hover:text-[#FF5B00] transition-colors leading-tight">
+                <h3 className="text-base font-bold text-[#061838] group-hover:text-[#FF5B00] transition-colors leading-tight dark:text-content">
                   Fastest Delivery in Anantnag
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed dark:text-content-muted">
                   Dedicated delivery fleet delivering fresh groceries across Anantnag faster than anyone else
                 </p>
               </div>
@@ -376,14 +376,14 @@ export default function LandingPage() {
 
             {/* Feature Card 2: Express Pickup */}
             <div className="flex items-start space-x-4 group cursor-pointer">
-              <div className="w-12 h-12 rounded-2xl bg-white shadow-md shadow-slate-200/70 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#FF5B00]/40 transition-all">
-                <Store className="w-6 h-6 text-[#061838] group-hover:text-[#FF5B00] transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-white shadow-md shadow-slate-200/70 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#FF5B00]/40 transition-all dark:bg-surface-raised dark:border-line-soft">
+                <Store className="w-6 h-6 text-[#061838] group-hover:text-[#FF5B00] transition-colors dark:text-content" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#061838] group-hover:text-[#FF5B00] transition-colors leading-tight">
+                <h3 className="text-base font-bold text-[#061838] group-hover:text-[#FF5B00] transition-colors leading-tight dark:text-content">
                   Store Pick up
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed dark:text-content-muted">
                   Instant click &amp; collect from your nearest DASHit store
                 </p>
               </div>
@@ -391,14 +391,14 @@ export default function LandingPage() {
 
             {/* Feature Card 3: Kashmiri Staples */}
             <div className="flex items-start space-x-4 group cursor-pointer">
-              <div className="w-12 h-12 rounded-2xl bg-white shadow-md shadow-slate-200/70 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#FF5B00]/40 transition-all">
-                <Sparkles className="w-6 h-6 text-[#061838] group-hover:text-[#FF5B00] transition-colors" />
+              <div className="w-12 h-12 rounded-2xl bg-white shadow-md shadow-slate-200/70 border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#FF5B00]/40 transition-all dark:bg-surface-raised dark:border-line-soft">
+                <Sparkles className="w-6 h-6 text-[#061838] group-hover:text-[#FF5B00] transition-colors dark:text-content" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#061838] group-hover:text-[#FF5B00] transition-colors leading-tight">
+                <h3 className="text-base font-bold text-[#061838] group-hover:text-[#FF5B00] transition-colors leading-tight dark:text-content">
                   Kashmiri Staples
                 </h3>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed dark:text-content-muted">
                   Daily hot bakery lavas, dairy, spices and kitchen essentials
                 </p>
               </div>
@@ -408,7 +408,7 @@ export default function LandingPage() {
             <div className="hidden xl:flex items-center justify-end pt-2">
               <Link
                 href="/shop"
-                className="w-10 h-10 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center text-slate-400 hover:text-[#FF5B00] hover:scale-105 transition-all"
+                className="w-10 h-10 rounded-full bg-white shadow-md border border-slate-100 flex items-center justify-center text-slate-400 hover:text-[#FF5B00] hover:scale-105 transition-all dark:bg-surface-raised dark:border-line-soft dark:text-content-faint"
                 title="Browse Full Store"
               >
                 <ChevronRight className="w-5 h-5" />
@@ -417,7 +417,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* BOTTOM CURVED ORANGE APP BANNER (No junk food, No user photos, Coming Soon on App Store & Play Store) */}
+        {/* BOTTOM CURVED ORANGE APP BANNER (Official App Store & Play Store Download Badges) */}
         <div className="mt-20 sm:mt-28 relative">
           
           {/* Main Curved Orange Fluid Container */}
@@ -441,7 +441,7 @@ export default function LandingPage() {
 
                   {/* Screen Content */}
                   <div className="bg-[#FAF9F5] rounded-[36px] overflow-hidden p-3.5 text-slate-800 shadow-inner">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/60 dark:border-line/60">
                       <div>
                         <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
                           Delivery in 10 mins
@@ -455,9 +455,9 @@ export default function LandingPage() {
                       </div>
                     </div>
 
-                    <div className="mt-2.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 flex items-center space-x-1.5 shadow-xs">
-                      <Search className="w-3 h-3 text-slate-400" />
-                      <span className="text-[10px] text-slate-400 font-medium">
+                    <div className="mt-2.5 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 flex items-center space-x-1.5 shadow-xs dark:border-line">
+                      <Search className="w-3 h-3 text-slate-400 dark:text-content-faint" />
+                      <span className="text-[10px] text-slate-400 font-medium dark:text-content-faint">
                         Search milk, lavas, staples...
                       </span>
                     </div>
@@ -466,26 +466,26 @@ export default function LandingPage() {
                       <span className="bg-[#FF5B00] text-white text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0">
                         Dairy
                       </span>
-                      <span className="bg-white border border-slate-200 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0">
+                      <span className="bg-white border border-slate-200 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0 dark:border-line dark:text-content-secondary">
                         Bakery
                       </span>
-                      <span className="bg-white border border-slate-200 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0">
+                      <span className="bg-white border border-slate-200 text-slate-600 text-[9px] font-bold px-2 py-0.5 rounded-md shrink-0 dark:border-line dark:text-content-secondary">
                         Staples
                       </span>
                     </div>
 
                     {/* Product 1 */}
-                    <div className="mt-3 bg-white rounded-xl p-2 border border-slate-100 shadow-sm flex items-center space-x-2.5">
+                    <div className="mt-3 bg-white rounded-xl p-2 border border-slate-100 shadow-sm flex items-center space-x-2.5 dark:border-line-soft">
                       <img
                         src="https://images.unsplash.com/photo-1550583724-b2692b85b150?w=120&auto=format&fit=crop&q=80"
                         alt="Amul Milk"
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black text-slate-800 truncate">
+                        <p className="text-[10px] font-black text-slate-800 truncate dark:text-content">
                           Amul Gold Milk
                         </p>
-                        <p className="text-[9px] text-slate-400">
+                        <p className="text-[9px] text-slate-400 dark:text-content-faint">
                           500 ml • 10 mins
                         </p>
                         <span className="text-[10px] font-black text-[#FF5B00]">
@@ -501,17 +501,17 @@ export default function LandingPage() {
                     </div>
 
                     {/* Product 2 */}
-                    <div className="mt-2 bg-white rounded-xl p-2 border border-slate-100 shadow-sm flex items-center space-x-2.5">
+                    <div className="mt-2 bg-white rounded-xl p-2 border border-slate-100 shadow-sm flex items-center space-x-2.5 dark:border-line-soft">
                       <img
                         src="https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=120&auto=format&fit=crop&q=80"
                         alt="Kashmiri Lavas"
                         className="w-10 h-10 rounded-lg object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black text-slate-800 truncate">
+                        <p className="text-[10px] font-black text-slate-800 truncate dark:text-content">
                           Fresh Kashmiri Lavas
                         </p>
-                        <p className="text-[9px] text-slate-400">
+                        <p className="text-[9px] text-slate-400 dark:text-content-faint">
                           Pack of 4 • Morning
                         </p>
                         <span className="text-[10px] font-black text-[#FF5B00]">
@@ -559,12 +559,12 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* BANNER RIGHT: OFFICIAL APP STORE & PLAY STORE BADGES (COMING SOON) */}
+              {/* BANNER RIGHT: OFFICIAL APP STORE & PLAY STORE BADGES */}
               <div className="lg:col-span-3 flex sm:flex-row lg:flex-row gap-4 items-center justify-center lg:justify-end">
                 
-                {/* Google Play Store Badge (Coming Soon) */}
+                {/* Google Play Store Badge */}
                 <div
-                  className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col items-center justify-center w-36 sm:w-40 select-none text-center border border-white/30 hover:scale-105 transition-transform"
+                  className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col items-center justify-center w-36 sm:w-40 select-none text-center border border-white/30 hover:scale-105 transition-transform dark:bg-surface-raised dark:text-content"
                 >
                   <div className="w-9 h-9 mb-2 flex items-center justify-center">
                     {/* Official Google Play Vector Icon */}
@@ -593,17 +593,17 @@ export default function LandingPage() {
                     ))}
                   </div>
                   <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#FF5B00] bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-full mt-1">
-                    Coming Soon
+                    Free Download
                   </span>
                   <div className="mt-1.5 leading-none">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Get it on</span>
-                    <span className="text-xs font-black text-slate-900 block mt-0.5">Google Play</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block dark:text-content-faint">Get it on</span>
+                    <span className="text-xs font-black text-slate-900 block mt-0.5 dark:text-content">Google Play</span>
                   </div>
                 </div>
 
-                {/* Apple App Store Badge (Coming Soon) */}
+                {/* Apple App Store Badge */}
                 <div
-                  className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col items-center justify-center w-36 sm:w-40 select-none text-center border border-white/30 hover:scale-105 transition-transform"
+                  className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col items-center justify-center w-36 sm:w-40 select-none text-center border border-white/30 hover:scale-105 transition-transform dark:bg-surface-raised dark:text-content"
                 >
                   <div className="w-9 h-9 mb-2 flex items-center justify-center">
                     {/* Official Apple App Store Icon */}
@@ -618,12 +618,12 @@ export default function LandingPage() {
                       <Star key={i} className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
                     ))}
                   </div>
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#061838] bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-full mt-1">
-                    Coming Soon
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-[#061838] bg-slate-100 border border-slate-200/60 px-2 py-0.5 rounded-full mt-1 dark:bg-surface-muted dark:border-line/60">
+                    Free Download
                   </span>
                   <div className="mt-1.5 leading-none">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Download on</span>
-                    <span className="text-xs font-black text-slate-900 block mt-0.5">App Store</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block dark:text-content-faint">Download on</span>
+                    <span className="text-xs font-black text-slate-900 block mt-0.5 dark:text-content">App Store</span>
                   </div>
                 </div>
               </div>
@@ -638,7 +638,7 @@ export default function LandingPage() {
               <span className="text-xs font-black uppercase tracking-widest text-[#FF5B00] block mb-1">
                 Explore The Aisle
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-[#061838] tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-black text-[#061838] tracking-tight dark:text-content">
                 Popular Categories
               </h2>
             </div>
@@ -656,9 +656,9 @@ export default function LandingPage() {
               <Link
                 key={idx}
                 href={`/shop?cat=${encodeURIComponent(cat.cat)}`}
-                className="bg-white rounded-3xl p-3 border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#FF5B00]/50 transition-all group flex flex-col items-center text-center"
+                className="bg-white rounded-3xl p-3 border border-slate-200/80 shadow-sm hover:shadow-md hover:border-[#FF5B00]/50 transition-all group flex flex-col items-center text-center dark:bg-surface-raised dark:border-line/80"
               >
-                <div className="w-full h-24 sm:h-28 rounded-2xl overflow-hidden mb-3 bg-slate-100 relative">
+                <div className="w-full h-24 sm:h-28 rounded-2xl overflow-hidden mb-3 bg-slate-100 relative dark:bg-surface-muted">
                   <img
                     src={cat.img}
                     alt={cat.name}
@@ -666,10 +666,10 @@ export default function LandingPage() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <h3 className="text-xs sm:text-sm font-black text-[#061838] group-hover:text-[#FF5B00] transition-colors line-clamp-1">
+                <h3 className="text-xs sm:text-sm font-black text-[#061838] group-hover:text-[#FF5B00] transition-colors line-clamp-1 dark:text-content">
                   {cat.name}
                 </h3>
-                <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 font-medium">
+                <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1 font-medium dark:text-content-faint">
                   {cat.desc}
                 </p>
               </Link>
@@ -686,11 +686,11 @@ export default function LandingPage() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative"
+              className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative dark:bg-surface-raised"
             >
               <button
                 onClick={() => setShowHowItWorks(false)}
-                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors dark:bg-surface-muted dark:hover:text-content"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -701,7 +701,7 @@ export default function LandingPage() {
                   Fastest Delivery Promise
                 </span>
               </div>
-              <h3 className="text-2xl font-black text-[#061838]">
+              <h3 className="text-2xl font-black text-[#061838] dark:text-content">
                 How DASHIT Works
               </h3>
 
@@ -711,8 +711,8 @@ export default function LandingPage() {
                     1
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-[#061838]">Select Your Daily Essentials</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <h4 className="text-sm font-bold text-[#061838] dark:text-content">Select Your Daily Essentials</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 dark:text-content-muted">
                       Choose fresh milk, hot Kashmiri bakery lavas, snacks, or staples in a few taps.
                     </p>
                   </div>
@@ -723,8 +723,8 @@ export default function LandingPage() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-[#061838]">Packed in 2 Minutes</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <h4 className="text-sm font-bold text-[#061838] dark:text-content">Packed in 2 Minutes</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 dark:text-content-muted">
                       Our Anantnag team scans and packs your bag with precision.
                     </p>
                   </div>
@@ -735,16 +735,16 @@ export default function LandingPage() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-[#061838]">Fastest Delivery Across Anantnag</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <h4 className="text-sm font-bold text-[#061838] dark:text-content">Fastest Delivery Across Anantnag</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 dark:text-content-muted">
                       Our dedicated delivery fleet brings your order directly to your address with live GPS updates.
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Zero Delivery Fee on First Order</span>
+              <div className="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between dark:border-line-soft">
+                <span className="text-xs font-bold text-slate-400 dark:text-content-faint">Zero Delivery Fee on First Order</span>
                 <Link
                   href="/shop"
                   onClick={() => setShowHowItWorks(false)}
@@ -774,7 +774,7 @@ export default function LandingPage() {
                 <span className="text-xl font-black tracking-tight text-white block leading-none">
                   DASH<span className="text-[#FF5B00]">IT</span>
                 </span>
-                <span className="text-[10px] font-bold text-slate-400 block mt-0.5">
+                <span className="text-[10px] font-bold text-slate-400 block mt-0.5 dark:text-content-faint">
                   Fastest Delivery in Anantnag
                 </span>
               </div>
@@ -782,23 +782,23 @@ export default function LandingPage() {
 
             {/* Footer links were 16px tall. The gap absorbs the added padding,
                 so the row looks the same but each link is now thumb-sized. */}
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-slate-400 font-semibold">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-slate-400 font-semibold dark:text-content-faint">
               <Link href="/shop" className="inline-flex items-center min-h-[44px] hover:text-white transition-colors">
                 Shop Groceries
               </Link>
               <Link href="/categories" className="inline-flex items-center min-h-[44px] hover:text-white transition-colors">
                 Categories
               </Link>
-              <Link href="/privacy" className="inline-flex items-center min-h-[44px] hover:text-[#FF5B00] transition-colors font-bold text-slate-300">
+              <Link href="/privacy" className="inline-flex items-center min-h-[44px] hover:text-[#FF5B00] transition-colors font-bold text-slate-300 dark:text-content-faint">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="inline-flex items-center min-h-[44px] hover:text-[#FF5B00] transition-colors font-bold text-slate-300">
+              <Link href="/terms" className="inline-flex items-center min-h-[44px] hover:text-[#FF5B00] transition-colors font-bold text-slate-300 dark:text-content-faint">
                 Terms &amp; Conditions
               </Link>
             </div>
           </div>
 
-          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2 dark:text-content-muted">
             <p>© {new Date().getFullYear()} DASHIT Technologies. Anantnag, Jammu &amp; Kashmir (192101). Customer Helpline: +91 6006990032</p>
             <p className="flex items-center space-x-1.5">
               <span>Made with</span>

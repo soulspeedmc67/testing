@@ -9,7 +9,7 @@ import React from "react";
  */
 export default function ProductCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/80 flex flex-col overflow-hidden shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative">
+    <div className="bg-white rounded-2xl border border-slate-200/80 flex flex-col overflow-hidden shadow-[0_1px_3px_rgba(15,23,42,0.04)] relative dark:bg-surface-raised dark:border-line/80">
       {/* Photo well — full-bleed square, matching ProductCard */}
       <div className="relative w-full aspect-square animate-shimmer" />
 

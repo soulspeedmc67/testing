@@ -22,7 +22,7 @@ export default function VaulDrawer({
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 bg-slate-950/50 z-[60] backdrop-blur-xs transition-opacity duration-300 ease-out" />
         <Drawer.Content
-          className={`bg-white flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-[60] max-w-md mx-auto border-t border-slate-100 outline-none shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${maxHeight}`}
+          className={`bg-white flex flex-col rounded-t-[32px] fixed bottom-0 left-0 right-0 z-[60] max-w-md mx-auto border-t border-slate-100 outline-none shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${maxHeight} dark:bg-surface-overlay dark:border-line-soft`}
         >
           {/* Top handle pill */}
           <div className="w-full pt-3 pb-1 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none">
@@ -33,12 +33,12 @@ export default function VaulDrawer({
             <div className="flex items-start justify-between">
               <div>
                 {title && (
-                  <Drawer.Title className="font-black text-base text-slate-900 tracking-tight">
+                  <Drawer.Title className="font-black text-base text-slate-900 tracking-tight dark:text-content">
                     {title}
                   </Drawer.Title>
                 )}
                 {description && (
-                  <Drawer.Description className="text-xs text-slate-400 font-medium mb-3">
+                  <Drawer.Description className="text-xs text-slate-400 font-medium mb-3 dark:text-content-faint">
                     {description}
                   </Drawer.Description>
                 )}
@@ -47,7 +47,7 @@ export default function VaulDrawer({
                 <Drawer.Close asChild>
                   <button
                     type="button"
-                    className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors -mr-1 -mt-1 active:scale-95"
+                    className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors -mr-1 -mt-1 active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-muted"
                     aria-label="Close"
                   >
                     <X className="w-4 h-4 stroke-[2.5]" />

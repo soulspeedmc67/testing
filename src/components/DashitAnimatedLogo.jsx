@@ -95,7 +95,7 @@ export function DashitProgressBadge({ size = "md", className = "" }) {
 
       {/* Pristine Glass/White Disc */}
       <div
-        className={`${badgeSizes[size] || badgeSizes.md} rounded-full bg-white shadow-[0_6px_18px_rgba(6,24,56,0.35)] ring-2 ring-[#FF5B00] flex items-center justify-center p-1 relative z-10`}
+        className={`${badgeSizes[size] || badgeSizes.md} rounded-full bg-white shadow-[0_6px_18px_rgba(6,24,56,0.35)] ring-2 ring-[#FF5B00] flex items-center justify-center p-1 relative z-10 dark:bg-surface-raised`}
       >
         <DashitAnimatedLogo size={logoSizes[size] || "sm"} showGlow={true} />
       </div>

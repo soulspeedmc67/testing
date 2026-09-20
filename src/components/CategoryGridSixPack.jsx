@@ -95,10 +95,10 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
           whileTap={TAP_SOFT}
           transition={SPRING_SNAPPY}
           onClick={() => handleCategoryClick(item)}
-          className="bg-white border border-slate-200/80 rounded-2xl p-2.5 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)]"
+          className="bg-white border border-slate-200/80 rounded-2xl p-2.5 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] dark:bg-surface-raised dark:border-line/80"
         >
           {/* Imagery leads, a single label reads underneath — nothing else competes */}
-          <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white rounded-xl overflow-hidden flex items-center justify-center border border-slate-100">
+          <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 dark:border-line-soft">
             <img
               src={item.img}
               alt={item.name}
@@ -106,7 +106,7 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
             />
           </div>
 
-          <h4 className="mt-2 text-[11.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight">
+          <h4 className="mt-2 text-[11.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight dark:text-content">
             {item.name}
           </h4>
         </motion.div>

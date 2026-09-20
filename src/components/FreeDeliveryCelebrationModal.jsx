@@ -32,7 +32,7 @@ export default function FreeDeliveryCelebrationModal({ isOpen, onClose }) {
           className="relative max-w-xs w-full text-center text-white flex flex-col items-center"
         >
           {/* Star burst percentage badge */}
-          <div className="w-16 h-16 rounded-full bg-white text-zinc-900 flex items-center justify-center mb-5 shadow-2xl ring-4 ring-white/20">
+          <div className="w-16 h-16 rounded-full bg-white text-zinc-900 flex items-center justify-center mb-5 shadow-2xl ring-4 ring-white/20 dark:bg-surface-raised dark:text-content">
             <Percent className="w-8 h-8 stroke-[3]" />
           </div>
 
@@ -43,7 +43,7 @@ export default function FreeDeliveryCelebrationModal({ isOpen, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="bg-white text-zinc-900 hover:bg-zinc-100 px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-wider shadow-xl active:scale-95 transition-transform"
+            className="bg-white text-zinc-900 hover:bg-zinc-100 px-8 py-3.5 rounded-full font-black text-xs uppercase tracking-wider shadow-xl active:scale-95 transition-transform dark:bg-surface-raised dark:text-content dark:hover:bg-surface-muted"
           >
             Yay! Thanks
           </button>

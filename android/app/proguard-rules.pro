@@ -12,10 +12,17 @@
 #   public *;
 #}
 
+# Keep Capacitor bridge and JavaScript interfaces for WebView
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+-keep class com.getcapacitor.** { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+-keep class com.dashit.app.** { *; }
+-dontwarn com.getcapacitor.**
+
 # Uncomment this to preserve the line number information for
 # debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
-
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+-keepattributes SourceFile,LineNumberTable

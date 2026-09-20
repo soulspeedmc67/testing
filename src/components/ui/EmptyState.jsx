@@ -8,7 +8,7 @@ export function EmptyCartState() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-4 shadow-sm"
+      className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-4 shadow-sm dark:bg-surface-raised dark:border-line/90"
     >
       {/* Brand illustration carries the empty state — warmer than a bare icon,
           and the asset is composited on white so it sits flush on this card. */}
@@ -21,8 +21,8 @@ export function EmptyCartState() {
         className="w-36 h-36 object-contain mx-auto"
       />
       <div>
-        <h3 className="font-black text-base text-slate-900 tracking-tight">Your cart is empty</h3>
-        <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto">
+        <h3 className="font-black text-base text-slate-900 tracking-tight dark:text-content">Your cart is empty</h3>
+        <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto dark:text-content-faint">
           Explore fresh groceries, Kashmiri bakery, and snacks delivered fast.
         </p>
       </div>
@@ -45,7 +45,7 @@ export function EmptySearchState({ query = "", onSelectChip }) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 22 }}
-      className="bg-white border border-slate-200/90 rounded-3xl p-6 text-center space-y-4 shadow-sm"
+      className="bg-white border border-slate-200/90 rounded-3xl p-6 text-center space-y-4 shadow-sm dark:bg-surface-raised dark:border-line/90"
     >
       {/* The winged-parcel art suits "nothing found here" better than a
           magnifier, and keeps empty states on the same illustrated footing. */}
@@ -58,14 +58,14 @@ export function EmptySearchState({ query = "", onSelectChip }) {
         className="w-32 h-32 object-contain mx-auto"
       />
       <div>
-        <h3 className="font-black text-sm text-slate-900 tracking-tight">No products found</h3>
-        <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto">
-          We couldn&apos;t find anything matching &quot;<b className="text-slate-700">{query}</b>&quot;.
+        <h3 className="font-black text-sm text-slate-900 tracking-tight dark:text-content">No products found</h3>
+        <p className="text-xs text-slate-400 mt-1 font-medium max-w-xs mx-auto dark:text-content-faint">
+          We couldn&apos;t find anything matching &quot;<b className="text-slate-700 dark:text-content-secondary">{query}</b>&quot;.
         </p>
       </div>
 
       <div className="pt-2">
-        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">
+        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2 dark:text-content-faint">
           Try Searching For
         </span>
         <div className="flex flex-wrap justify-center gap-1.5">
@@ -74,7 +74,7 @@ export function EmptySearchState({ query = "", onSelectChip }) {
               key={idx}
               whileTap={{ scale: 0.94 }}
               onClick={() => onSelectChip && onSelectChip(chip)}
-              className="bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-[#FF5B00] border border-slate-200 text-xs font-bold px-3 py-1.5 rounded-full transition-colors"
+              className="bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-[#FF5B00] border border-slate-200 text-xs font-bold px-3 py-1.5 rounded-full transition-colors dark:bg-surface-raised dark:border-line"
             >
               {chip}
             </motion.button>

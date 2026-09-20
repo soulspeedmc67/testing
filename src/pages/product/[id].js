@@ -169,7 +169,7 @@ export default function ProductDetailPage({ initialProduct }) {
 
   const handleAddToCart = () => {
     if (!isStoreOpen) {
-      alert(`Store will be available: ${closeReason || "We will reopen shortly!"}`);
+      alert(`Store Reopening Schedule: ${closeReason || "We will reopen shortly!"}`);
       return;
     }
     hapticCartAdd();
@@ -273,7 +273,7 @@ export default function ProductDetailPage({ initialProduct }) {
   }, [product]);
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-36">
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-36 dark:bg-surface dark:text-content">
       <SEO
         title={`${product.name} — Buy Online in Anantnag`}
         description={`Order fresh ${product.name} (${product.unit}) online in Anantnag, Kashmir. Fastest 8-minute delivery from DASHIT. 100% genuine quality assured.`}
@@ -299,20 +299,20 @@ export default function ProductDetailPage({ initialProduct }) {
       />
 
       {/* Top Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-2.5 flex items-center justify-between shadow-2xs">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-2.5 flex items-center justify-between shadow-2xs dark:bg-surface/95 dark:border-line/80">
         <button
           type="button"
           onClick={() => goBack(router, "/shop")}
-          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform cursor-pointer"
+          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-90 transition-transform cursor-pointer dark:border-line dark:text-content-secondary"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
         </button>
 
         <div className="text-center px-2">
-          <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-400 block">
+          <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-400 block dark:text-content-faint">
             {product.cat || "Grocery"}
           </span>
-          <h1 className="text-xs font-black text-slate-800 truncate max-w-[180px]">
+          <h1 className="text-xs font-black text-slate-800 truncate max-w-[180px] dark:text-content">
             {product.name}
           </h1>
         </div>
@@ -321,7 +321,7 @@ export default function ProductDetailPage({ initialProduct }) {
           <button
             type="button"
             onClick={handleShare}
-            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-all cursor-pointer relative"
+            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-all cursor-pointer relative dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
           >
             <Share2 className="w-4 h-4 stroke-[2.3]" />
             {copiedLink && (
@@ -334,13 +334,13 @@ export default function ProductDetailPage({ initialProduct }) {
           <button
             type="button"
             onClick={handleToggleFav}
-            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-all cursor-pointer"
+            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-all cursor-pointer dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
           >
             <Heart
               className={`w-4 h-4 ${
                 isFav
                   ? "fill-rose-500 text-rose-500"
-                  : "stroke-[2.3] text-slate-600"
+                  : "stroke-[2.3] text-slate-600 dark:text-content-secondary"
               }`}
             />
           </button>
@@ -349,7 +349,7 @@ export default function ProductDetailPage({ initialProduct }) {
 
       <main className="max-w-md md:max-w-3xl mx-auto px-4 mt-3 space-y-3.5">
         {/* Product Image Stage */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs relative">
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs relative dark:bg-surface-raised dark:border-line/90">
           <div className="relative w-full aspect-square max-h-72 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-slate-50/70 to-white">
             <motion.img
               key={activeVariant.id || product.id}
@@ -373,7 +373,7 @@ export default function ProductDetailPage({ initialProduct }) {
             {/* Low stock alert */}
             {product.stock !== undefined && Number(product.stock) > 0 && Number(product.stock) <= 5 && (
               <span className="absolute bottom-3 left-3 bg-amber-500 text-slate-950 font-black text-[10.5px] px-2.5 py-1 rounded-xl shadow-sm flex items-center space-x-1">
-                <Zap className="w-3 h-3 fill-slate-950 text-slate-950 shrink-0" />
+                <Zap className="w-3 h-3 fill-slate-950 text-slate-950 shrink-0 dark:text-content" />
                 <span>Only {product.stock} left in stock!</span>
               </span>
             )}
@@ -394,16 +394,16 @@ export default function ProductDetailPage({ initialProduct }) {
           </div>
 
           {/* Delivery Promise Strip */}
-          <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-[#061838]">
+          <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between dark:border-line-soft">
+            <div className="flex items-center space-x-2 text-[#061838] dark:text-content">
               <div className="w-7 h-7 rounded-full bg-orange-100/70 flex items-center justify-center text-[#FF5B00]">
                 <Clock className="w-3.5 h-3.5 stroke-[2.8]" />
               </div>
               <div>
-                <span className="text-xs font-black text-slate-900 block leading-tight">
+                <span className="text-xs font-black text-slate-900 block leading-tight dark:text-content">
                   Fast Delivery
                 </span>
-                <span className="text-[10px] font-semibold text-slate-400">
+                <span className="text-[10px] font-semibold text-slate-400 dark:text-content-faint">
                   Delivered from Anantnag Central Hub
                 </span>
               </div>
@@ -422,23 +422,23 @@ export default function ProductDetailPage({ initialProduct }) {
         </div>
 
         {/* Product Title & Active Price Card */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-2">
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-2 dark:bg-surface-raised dark:border-line/90">
           <div className="space-y-1">
             <span className="text-[10.5px] font-extrabold text-[#FF5B00] uppercase tracking-wider">
               {product.cat}
             </span>
-            <h2 className="text-lg font-black text-slate-900 leading-snug tracking-tight">
+            <h2 className="text-lg font-black text-slate-900 leading-snug tracking-tight dark:text-content">
               {product.name}
             </h2>
           </div>
 
           {/* Active Price Display */}
           <div className="pt-1 flex items-baseline space-x-2.5">
-            <span className="text-2xl font-black text-slate-900 font-mono tracking-tight">
+            <span className="text-2xl font-black text-slate-900 font-mono tracking-tight dark:text-content">
               ₹{activeVariant.price}
             </span>
             {activeVariant.originalPrice > activeVariant.price && (
-              <span className="text-sm font-semibold text-slate-400 line-through font-mono">
+              <span className="text-sm font-semibold text-slate-400 line-through font-mono dark:text-content-faint">
                 MRP ₹{activeVariant.originalPrice}
               </span>
             )}
@@ -448,15 +448,15 @@ export default function ProductDetailPage({ initialProduct }) {
               </span>
             )}
           </div>
-          <p className="text-[10.5px] text-slate-400 font-medium">
+          <p className="text-[10.5px] text-slate-400 font-medium dark:text-content-faint">
             (Inclusive of all taxes)
           </p>
         </div>
 
         {/* VARIANT / TYPE SELECTOR (Price Variations) */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3">
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3 dark:bg-surface-raised dark:border-line/90">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider dark:text-content">
               Select Size &amp; Pack
             </h3>
             <span className="text-[11px] font-bold text-[#FF5B00]">
@@ -484,11 +484,11 @@ export default function ProductDetailPage({ initialProduct }) {
                   className={`p-3 rounded-2xl border text-left transition-all relative flex flex-col justify-between cursor-pointer ${
                     isSelected
                       ? "bg-orange-50/50 border-[#FF5B00] ring-2 ring-[#FF5B00]/30 shadow-xs"
-                      : "bg-slate-50/60 border-slate-200 hover:border-slate-300 hover:bg-white"
-                  }`}
+                      : "bg-slate-50/60 border-slate-200 hover:border-slate-300 hover:bg-white dark:hover:bg-surface-raised"
+                  } dark:border-line dark:hover:border-line-strong`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-900">
+                    <span className="text-xs font-black text-slate-900 dark:text-content">
                       {v.unit}
                     </span>
                     {isSelected ? (
@@ -496,22 +496,22 @@ export default function ProductDetailPage({ initialProduct }) {
                         <Check className="w-3 h-3 stroke-[3]" />
                       </div>
                     ) : (
-                      <div className="w-5 h-5 rounded-full border border-slate-300 shrink-0" />
+                      <div className="w-5 h-5 rounded-full border border-slate-300 shrink-0 dark:border-line-strong" />
                     )}
                   </div>
 
                   {v.type && (
-                    <span className="text-[10px] font-semibold text-slate-500 mt-0.5">
+                    <span className="text-[10px] font-semibold text-slate-500 mt-0.5 dark:text-content-muted">
                       {v.type}
                     </span>
                   )}
 
                   <div className="mt-2 flex items-baseline space-x-1.5">
-                    <span className="text-sm font-black text-slate-900 font-mono">
+                    <span className="text-sm font-black text-slate-900 font-mono dark:text-content">
                       ₹{v.price}
                     </span>
                     {v.originalPrice > v.price && (
-                      <span className="text-[11px] text-slate-400 line-through font-mono">
+                      <span className="text-[11px] text-slate-400 line-through font-mono dark:text-content-faint">
                         ₹{v.originalPrice}
                       </span>
                     )}
@@ -528,42 +528,42 @@ export default function ProductDetailPage({ initialProduct }) {
         </div>
 
         {/* Product Details & Specifications */}
-        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
-          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-4 dark:bg-surface-raised dark:border-line/90">
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider dark:text-content">
             Product Information
           </h3>
 
           <div className="space-y-2">
-            <h4 className="text-xs font-bold text-slate-800">Description</h4>
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-content">Description</h4>
+            <p className="text-xs text-slate-600 leading-relaxed dark:text-content-secondary">
               {productDescription}
             </p>
           </div>
 
           {/* Specifications Table */}
-          <div className="pt-2 border-t border-slate-100 divide-y divide-slate-100 text-xs">
+          <div className="pt-2 border-t border-slate-100 divide-y divide-slate-100 text-xs dark:border-line-soft dark:divide-line-soft">
             <div className="py-2 flex justify-between">
-              <span className="text-slate-400 font-semibold">Category</span>
-              <span className="text-slate-900 font-bold">{product.cat}</span>
+              <span className="text-slate-400 font-semibold dark:text-content-faint">Category</span>
+              <span className="text-slate-900 font-bold dark:text-content">{product.cat}</span>
             </div>
             <div className="py-2 flex justify-between">
-              <span className="text-slate-400 font-semibold">Selected Pack</span>
-              <span className="text-slate-900 font-bold">{activeVariant.unit}</span>
+              <span className="text-slate-400 font-semibold dark:text-content-faint">Selected Pack</span>
+              <span className="text-slate-900 font-bold dark:text-content">{activeVariant.unit}</span>
             </div>
             <div className="py-2 flex justify-between">
-              <span className="text-slate-400 font-semibold">Origin</span>
-              <span className="text-slate-900 font-bold">Kashmir, India</span>
+              <span className="text-slate-400 font-semibold dark:text-content-faint">Origin</span>
+              <span className="text-slate-900 font-bold dark:text-content">Kashmir, India</span>
             </div>
             <div className="py-2 flex justify-between">
-              <span className="text-slate-400 font-semibold">Shelf Life</span>
-              <span className="text-slate-900 font-bold">
+              <span className="text-slate-400 font-semibold dark:text-content-faint">Shelf Life</span>
+              <span className="text-slate-900 font-bold dark:text-content">
                 {product.cat === "Dairy" || product.cat === "Bakery"
                   ? "Fresh (Best within 3-5 days)"
                   : "6 Months from packaging"}
               </span>
             </div>
             <div className="py-2 flex justify-between">
-              <span className="text-slate-400 font-semibold">FSSAI Certified</span>
+              <span className="text-slate-400 font-semibold dark:text-content-faint">FSSAI Certified</span>
               <span className="text-emerald-700 font-bold flex items-center space-x-1">
                 <ShieldCheck className="w-3.5 h-3.5 inline" />
                 <span>100% Quality Assured</span>
@@ -573,7 +573,7 @@ export default function ProductDetailPage({ initialProduct }) {
         </div>
 
         {/* Why Buy From DASHIT Assurance */}
-        <div className="bg-white rounded-3xl p-4.5 border border-orange-200/80 shadow-2xs space-y-3">
+        <div className="bg-white rounded-3xl p-4.5 border border-orange-200/80 shadow-2xs space-y-3 dark:bg-surface-raised">
           <div className="flex items-center space-x-2 text-[#FF5B00]">
             <Sparkles className="w-4 h-4" />
             <span className="text-xs font-black uppercase tracking-wider text-orange-950">
@@ -582,22 +582,22 @@ export default function ProductDetailPage({ initialProduct }) {
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2 bg-white/80 rounded-2xl border border-orange-100">
+            <div className="p-2 bg-white/80 rounded-2xl border border-orange-100 dark:bg-surface-raised/80">
               <Truck className="w-5 h-5 text-[#FF5B00] mx-auto mb-1" />
-              <span className="text-[10px] font-black text-slate-800 block">Fast Delivery</span>
-              <span className="text-[9px] text-slate-500 block">Express dispatch</span>
+              <span className="text-[10px] font-black text-slate-800 block dark:text-content">Fast Delivery</span>
+              <span className="text-[9px] text-slate-500 block dark:text-content-muted">Express dispatch</span>
             </div>
 
-            <div className="p-2 bg-white/80 rounded-2xl border border-orange-100">
+            <div className="p-2 bg-white/80 rounded-2xl border border-orange-100 dark:bg-surface-raised/80">
               <ShieldCheck className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
-              <span className="text-[10px] font-black text-slate-800 block">100% Original</span>
-              <span className="text-[9px] text-slate-500 block">Verified stocks</span>
+              <span className="text-[10px] font-black text-slate-800 block dark:text-content">100% Original</span>
+              <span className="text-[9px] text-slate-500 block dark:text-content-muted">Verified stocks</span>
             </div>
 
-            <div className="p-2 bg-white/80 rounded-2xl border border-orange-100">
+            <div className="p-2 bg-white/80 rounded-2xl border border-orange-100 dark:bg-surface-raised/80">
               <RotateCcw className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-              <span className="text-[10px] font-black text-slate-800 block">Instant Return</span>
-              <span className="text-[9px] text-slate-500 block">Doorstep pickup</span>
+              <span className="text-[10px] font-black text-slate-800 block dark:text-content">Instant Return</span>
+              <span className="text-[9px] text-slate-500 block dark:text-content-muted">Doorstep pickup</span>
             </div>
           </div>
         </div>
@@ -605,7 +605,7 @@ export default function ProductDetailPage({ initialProduct }) {
         {/* Similar Products */}
         {similarProducts.length > 0 && (
           <div className="pt-2 space-y-3">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-1">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider px-1 dark:text-content">
               You Might Also Need
             </h3>
             <div className="grid grid-cols-2 gap-2.5">
@@ -647,18 +647,18 @@ export default function ProductDetailPage({ initialProduct }) {
       </main>
 
       {/* Sticky Bottom Purchase Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 p-4 pb-[max(16px,calc(env(safe-area-inset-bottom,0px)+12px))] shadow-[0_-8px_24px_rgba(0,0,0,0.06)] z-40">
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200/90 p-4 pb-[max(16px,calc(env(safe-area-inset-bottom,0px)+12px))] shadow-[0_-8px_24px_rgba(0,0,0,0.06)] z-40 dark:bg-surface-overlay/95 dark:border-line/90">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="min-w-0 pr-3">
-            <span className="text-[10px] font-bold text-slate-400 block truncate">
+            <span className="text-[10px] font-bold text-slate-400 block truncate dark:text-content-faint">
               {activeVariant.unit}
             </span>
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-lg font-black text-slate-900 font-mono">
+              <span className="text-lg font-black text-slate-900 font-mono dark:text-content">
                 ₹{activeVariant.price}
               </span>
               {activeVariant.originalPrice > activeVariant.price && (
-                <span className="text-xs text-slate-400 line-through font-mono">
+                <span className="text-xs text-slate-400 line-through font-mono dark:text-content-faint">
                   ₹{activeVariant.originalPrice}
                 </span>
               )}

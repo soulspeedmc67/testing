@@ -13,11 +13,14 @@ import BottomNav from '../components/BottomNav';
 import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
 import PremiumSplashScreen from '../components/PremiumSplashScreen';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
+import { ThemeProvider, useTheme } from '../context/ThemeContext';
+import { THEME_CHROME, applyTheme } from '../lib/theme';
 import { AgeGateProvider } from '../context/AgeGateContext';
 import { initNotificationPermissions } from '../lib/notifications';
 
 import { setDeviceSystemBars } from '../lib/systemBars';
 import { isNative } from '../lib/platform';
+import CookieConsentBanner from '../components/CookieConsentBanner';
 
 /* Loaded on demand rather than with the app shell. This component is the only
    thing in _app that reaches Firestore and Firebase Auth, and a static import
@@ -29,6 +32,91 @@ const LiveOrderFloatingTracker = dynamic(
   { ssr: false }
 );
 import { EASE_OUT } from '../lib/motion';
+
+/**
+ * Keeps the native system bars and the `color-scheme` meta in step with the
+ * active theme and route.
+ *
+ * This lives in its own component purely so it can call `useTheme()` — App
+ * itself renders the provider, so it sits above the context and cannot read
+ * it. It renders only a <Head> fragment.
+ */
+function SystemChromeSync({ showSplash, pathname }) {
+  const { theme } = useTheme();
+
+  /* Re-assert the theme on every route change.
+
+     The admin console owns the `dark` class while it is mounted — it has its
+     own toggle and its own stored preference — and its effect strips the class
+     again when it unmounts. On the web build, where a single document survives
+     the trip, navigating out of /admin would otherwise leave the storefront
+     rendering light while this provider still believed it was dark.
+
+     Rather than reach into the console and change how it works, the storefront
+     simply reclaims the class on arrival. /admin is skipped so the console
+     keeps full control of its own appearance while it is the active route. */
+  useEffect(() => {
+    if (pathname === '/admin') return;
+    applyTheme(theme);
+  }, [theme, pathname]);
+
+  useEffect(() => {
+    const chrome = THEME_CHROME[theme] || THEME_CHROME.light;
+
+    const sync = async () => {
+      try {
+        if (showSplash) {
+          /* The splash paints the app ground edge to edge, so the bars match
+             it rather than the route underneath. */
+          await setDeviceSystemBars({
+            topColor: theme === 'dark' ? chrome.top : '#FFFFFF',
+            topDarkIcons: chrome.darkIcons,
+            bottomColor: theme === 'dark' ? chrome.bottom : '#FFFFFF',
+            bottomDarkIcons: chrome.darkIcons,
+          });
+          return;
+        }
+
+        const isHome = pathname === '/' || pathname === '/shop' || pathname === '';
+        const isSearch = pathname === '/search';
+        const isDriver = pathname === '/driver';
+
+        /* In light mode Search and Driver invert to the midnight brand colour,
+           which needs light icons. In dark mode every surface is already dark,
+           so the inversion is a no-op and the icon polarity is uniform. */
+        const isInverted = isSearch || isDriver;
+        const topColor = isHome
+          ? chrome.homeTop
+          : isInverted
+            ? chrome.inverted
+            : chrome.top;
+        const bottomColor = isHome ? chrome.homeBottom : chrome.bottom;
+        const topDarkIcons = theme === 'dark' ? false : !isInverted;
+
+        await setDeviceSystemBars({
+          topColor,
+          topDarkIcons,
+          bottomColor,
+          bottomDarkIcons: chrome.darkIcons,
+        });
+      } catch (e) {}
+    };
+
+    sync();
+  }, [theme, pathname, showSplash]);
+
+  return (
+    <Head>
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+      />
+      {/* Declares to the engine which palette native widgets should adopt.
+          Pinned to "light" before dark mode existed. */}
+      <meta name="color-scheme" content={theme} />
+    </Head>
+  );
+}
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
@@ -65,38 +153,7 @@ export default function App({ Component, pageProps }) {
 
   useEffect(() => {
     currentPathRef.current = router.pathname;
-
-    const syncThemeAndStatusBar = async () => {
-      try {
-        // Keep customer storefront in light mode while allowing admin dark theme
-        if (router.pathname !== '/admin') {
-          document.documentElement.classList.remove("dark");
-        }
-        if (showSplash) {
-          await setDeviceSystemBars({
-            topColor: '#FFFFFF',
-            topDarkIcons: true,
-            bottomColor: '#FFFFFF',
-            bottomDarkIcons: true,
-          });
-          return;
-        }
-        const isHome = router.pathname === '/' || router.pathname === '/shop' || router.pathname === '';
-        const isSearch = router.pathname === '/search';
-        const isDriver = router.pathname === '/driver';
-        const topColor = isHome ? '#FFE8D6' : isSearch || isDriver ? '#061838' : '#FFFFFF';
-        const isTopDarkIcons = !isSearch && !isDriver;
-        const bottomColor = isHome ? '#FFFDF5' : '#FFFFFF';
-        await setDeviceSystemBars({
-          topColor,
-          topDarkIcons: isTopDarkIcons,
-          bottomColor,
-          bottomDarkIcons: true,
-        });
-      } catch (e) {}
-    };
-    syncThemeAndStatusBar();
-  }, [router.pathname, showSplash]);
+  }, [router.pathname]);
 
 
 
@@ -323,15 +380,10 @@ export default function App({ Component, pageProps }) {
   return (
     // reducedMotion="user" honours the OS accessibility setting app-wide
     <MotionConfig reducedMotion="user">
+      <ThemeProvider>
       <ScrollChromeProvider>
         <AgeGateProvider>
-        <Head>
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
-          />
-          <meta name="color-scheme" content="light" />
-        </Head>
+        <SystemChromeSync showSplash={showSplash} pathname={router.pathname} />
         {showSplash && (
           <PremiumSplashScreen
             // Fires as the splash starts clearing, so the screen behind settles
@@ -375,8 +427,10 @@ export default function App({ Component, pageProps }) {
         <FloatingCartBar />
         {!['/login', '/driver', '/admin', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />
+        <CookieConsentBanner />
         </AgeGateProvider>
       </ScrollChromeProvider>
+      </ThemeProvider>
     </MotionConfig>
   );
 }

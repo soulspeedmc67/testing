@@ -223,7 +223,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-white overflow-hidden">
+    <div className="fixed inset-0 z-[9999] bg-white overflow-hidden dark:bg-surface-raised">
       {/* 1. FULLSCREEN MAP UNDERNEATH (Zero gray corner gaps!) */}
       <div className="absolute inset-0 z-0">
         <MapWithPin
@@ -266,7 +266,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
         <button
           type="button"
           onClick={handleRecenterGPS}
-          className="w-12 h-12 rounded-full bg-white/95 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.18)] border border-slate-200/80 text-[#1A73E8] flex items-center justify-center active:scale-95 transition-transform"
+          className="w-12 h-12 rounded-full bg-white/95 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.18)] border border-slate-200/80 text-[#1A73E8] flex items-center justify-center active:scale-95 transition-transform dark:bg-surface-raised/95 dark:border-line/80"
           title="Current Location"
           aria-label="Current Location"
         >
@@ -280,7 +280,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
           <button
             type="button"
             onClick={onClose}
-            className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0 cursor-pointer"
+            className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0 cursor-pointer dark:bg-surface-raised dark:border-line/80 dark:text-content-secondary"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </button>
@@ -291,7 +291,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
               placeholder="Search area or address in Anantnag..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
+              className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00] dark:bg-surface-raised dark:text-content dark:border-line/80"
             />
             {searchQuery ? (
               <button
@@ -299,30 +299,30 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
                   setSearchQuery("");
                   setSearchResults([]);
                 }}
-                className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 cursor-pointer dark:text-content-faint dark:hover:text-content-secondary"
               >
                 <X className="w-4 h-4" />
               </button>
             ) : isSearching ? (
-              <Loader2 className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 animate-spin pointer-events-none" />
+              <Loader2 className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 animate-spin pointer-events-none dark:text-content-faint" />
             ) : (
-              <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none" />
+              <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none dark:text-content-faint" />
             )}
 
             {/* Autocomplete Results Dropdown (Top Z-Index 2500) */}
             {searchResults.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[2500] divide-y divide-slate-100 max-h-64 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[2500] divide-y divide-slate-100 max-h-64 overflow-y-auto dark:bg-surface-raised dark:border-line dark:divide-line-soft">
                 {searchResults.map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => handleSelectSearchResult(item)}
-                    className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-orange-50/50 transition-colors cursor-pointer"
+                    className="w-full p-3 text-left hover:bg-slate-50 flex items-start space-x-2.5 active:bg-orange-50/50 transition-colors cursor-pointer dark:hover:bg-surface-muted"
                   >
                     <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
                     <div className="overflow-hidden">
-                      <span className="font-bold text-xs text-slate-900 block truncate">{item.title}</span>
-                      <span className="text-[11px] text-slate-500 truncate block">{item.subtitle}</span>
+                      <span className="font-bold text-xs text-slate-900 block truncate dark:text-content">{item.title}</span>
+                      <span className="text-[11px] text-slate-500 truncate block dark:text-content-muted">{item.subtitle}</span>
                     </div>
                   </button>
                 ))}
@@ -338,7 +338,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
               key={item.name}
               type="button"
               onClick={() => handleSelectQuickArea(item)}
-              className="shrink-0 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-700 shadow-sm border border-slate-200/80 active:scale-95 hover:bg-orange-50 hover:text-[#FF5B00] hover:border-orange-200 transition-all cursor-pointer flex items-center space-x-1"
+              className="shrink-0 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-bold text-slate-700 shadow-sm border border-slate-200/80 active:scale-95 hover:bg-orange-50 hover:text-[#FF5B00] hover:border-orange-200 transition-all cursor-pointer flex items-center space-x-1 dark:bg-surface-raised/95 dark:border-line/80"
             >
               <MapPin className="w-3 h-3 text-[#FF5B00] shrink-0" />
               <span>{item.name}</span>
@@ -348,15 +348,15 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
       </div>
 
       {/* 5. BOTTOM CONFIRMATION SHEET */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-[28px] p-5 pt-4 space-y-3 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] border-t border-slate-100 pb-[max(18px,env(safe-area-inset-bottom,18px))]">
+      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-[28px] p-5 pt-4 space-y-3 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] border-t border-slate-100 pb-[max(18px,env(safe-area-inset-bottom,18px))] dark:bg-surface-overlay dark:border-line-soft">
         {/* Selected Area Title & Address */}
         <div className="flex items-start space-x-2.5 pt-0.5">
           <MapPin className="w-4 h-4 text-[#FF5B00] shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate dark:text-content">
               {areaTitle}
             </h3>
-            <p className="text-[11px] font-medium text-slate-500 line-clamp-2 mt-0.5 leading-snug">
+            <p className="text-[11px] font-medium text-slate-500 line-clamp-2 mt-0.5 leading-snug dark:text-content-muted">
               {addressSubtitle}
             </p>
           </div>
@@ -367,13 +367,13 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
           const deliveryData = calculateDeliveryEta(selectedPos, HUB_POS);
           if (!deliveryData.isDeliverable) {
             return (
-              <div className="border border-slate-200 rounded-xl p-3 flex items-start space-x-2.5">
+              <div className="border border-slate-200 rounded-xl p-3 flex items-start space-x-2.5 dark:border-line">
                 <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                 <div className="min-w-0 text-left">
-                  <p className="text-[12px] font-semibold leading-snug text-slate-900">
+                  <p className="text-[12px] font-semibold leading-snug text-slate-900 dark:text-content">
                     Not available in your area yet
                   </p>
-                  <p className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                  <p className="text-[11px] text-slate-500 leading-snug mt-0.5 dark:text-content-muted">
                     We are expanding across Anantnag and will reach you soon.
                   </p>
                 </div>
@@ -382,12 +382,12 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
           }
 
           return (
-            <div className="border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between text-[11px] font-semibold text-slate-600">
+            <div className="border border-slate-200 rounded-xl px-3 py-2 flex items-center justify-between text-[11px] font-semibold text-slate-600 dark:border-line dark:text-content-secondary">
               <span className="flex items-center space-x-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Within delivery area</span>
               </span>
-              <span className="font-mono text-xs font-semibold text-slate-900">
+              <span className="font-mono text-xs font-semibold text-slate-900 dark:text-content">
                 ~{deliveryData.etaMinutes} mins ({deliveryData.distanceFormatted})
               </span>
             </div>
@@ -396,7 +396,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
 
         {/* ALIAS PICKER CHIPS */}
         <div className="space-y-1.5 pt-0.5">
-          <label className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 block">
+          <label className="text-[10.5px] font-black uppercase tracking-wider text-slate-400 block dark:text-content-faint">
             Save Address As (Alias)
           </label>
           <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
@@ -413,8 +413,8 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
                   className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 active:scale-95 ${
                     isSelected
                       ? "bg-[#061838] text-white shadow-xs"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/60"
-                  }`}
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/60 dark:text-content-secondary dark:border-line/60"
+                  } dark:hover:bg-surface-muted`}
                 >
                   {preset.icon && <preset.icon className="w-3.5 h-3.5 shrink-0" />}
                   <span>{preset.label}</span>
@@ -430,7 +430,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
               onChange={(e) => setCustomAlias(e.target.value)}
               placeholder="e.g. Grandma's, Hostel, Studio..."
               maxLength={25}
-              className="w-full mt-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors"
+              className="w-full mt-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
             />
           )}
         </div>
@@ -450,7 +450,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
               disabled={isOutside}
               className={`w-full py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all ${
                 isOutside
-                  ? "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300"
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300 dark:text-content-muted dark:border-line-strong"
                   : "bg-[#061838] hover:bg-slate-900 text-white"
               }`}
             >

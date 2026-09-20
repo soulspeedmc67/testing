@@ -112,16 +112,16 @@ export default function BklitAreaChart({ className = "" }) {
 
   return (
     <div
-      className={`bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4 ${className}`}
+      className={`bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4 ${className} dark:bg-surface-raised dark:border-line`}
     >
       {/* Top Header & Range Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-line-soft">
         <div className="space-y-0.5">
           <div className="flex items-center space-x-2">
             <span className="p-1.5 rounded-xl bg-orange-50 text-[#FF5B00] border border-orange-200">
               <TrendingUp className="w-4 h-4" />
             </span>
-            <h3 className="font-black text-sm text-slate-900 tracking-tight">
+            <h3 className="font-black text-sm text-slate-900 tracking-tight dark:text-content">
               Fulfilment & Revenue Trajectory
             </h3>
             <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-100 text-[#FF5B00] flex items-center space-x-0.5">
@@ -129,7 +129,7 @@ export default function BklitAreaChart({ className = "" }) {
               <ArrowUpRight className="w-2.5 h-2.5 stroke-[3]" />
             </span>
           </div>
-          <p className="text-xs text-slate-500 font-medium">
+          <p className="text-xs text-slate-500 font-medium dark:text-content-muted">
             Real-time live dispatch volume for Anantnag Store #01
           </p>
         </div>
@@ -137,13 +137,13 @@ export default function BklitAreaChart({ className = "" }) {
         {/* Filters */}
         <div className="flex items-center space-x-1.5 self-start sm:self-center flex-wrap gap-1">
           {/* Metric Selector */}
-          <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+          <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold dark:bg-surface-muted dark:border-line">
             <button
               onClick={() => setMetric("revenue")}
               className={`px-2.5 py-1 rounded-lg transition-all ${
                 metric === "revenue"
-                  ? "bg-white text-[#FF5B00] shadow-xs font-black"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#FF5B00] shadow-xs font-black dark:bg-surface-raised"
+                  : "text-slate-600 hover:text-slate-900 dark:text-content-secondary dark:hover:text-content"
               }`}
             >
               Revenue
@@ -152,8 +152,8 @@ export default function BklitAreaChart({ className = "" }) {
               onClick={() => setMetric("orders")}
               className={`px-2.5 py-1 rounded-lg transition-all ${
                 metric === "orders"
-                  ? "bg-white text-[#FF5B00] shadow-xs font-black"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#FF5B00] shadow-xs font-black dark:bg-surface-raised"
+                  : "text-slate-600 hover:text-slate-900 dark:text-content-secondary dark:hover:text-content"
               }`}
             >
               Orders
@@ -161,7 +161,7 @@ export default function BklitAreaChart({ className = "" }) {
           </div>
 
           {/* Horizon Selector */}
-          <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold">
+          <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs font-bold dark:bg-surface-muted dark:border-line">
             {["today", "week", "month"].map((r) => (
               <button
                 key={r}
@@ -169,7 +169,7 @@ export default function BklitAreaChart({ className = "" }) {
                 className={`px-2.5 py-1 rounded-lg uppercase text-[10px] tracking-wider transition-all ${
                   range === r
                     ? "bg-[#FF5B00] text-white shadow-xs font-black"
-                    : "text-slate-600 hover:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 dark:text-content-secondary dark:hover:text-content"
                 }`}
               >
                 {r}
@@ -181,7 +181,7 @@ export default function BklitAreaChart({ className = "" }) {
 
       {/* Metric Highlight Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5">
+        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5 dark:border-line-soft">
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
             {metric === "revenue" ? "Period Revenue" : "Total Orders"}
           </span>
@@ -190,7 +190,7 @@ export default function BklitAreaChart({ className = "" }) {
           </div>
         </div>
 
-        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5">
+        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5 dark:border-line-soft">
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
             Peak Velocity
           </span>
@@ -199,14 +199,14 @@ export default function BklitAreaChart({ className = "" }) {
           </div>
         </div>
 
-        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5">
+        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5 dark:border-line-soft">
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
             Avg Order Value
           </span>
           <div className="text-xl font-black text-amber-700 font-mono">₹218</div>
         </div>
 
-        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5">
+        <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100 space-y-0.5 dark:border-line-soft">
           <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
             Dispatch SLA
           </span>
@@ -331,11 +331,11 @@ export default function BklitAreaChart({ className = "" }) {
               transform: "translate(-50%, -100%)",
             }}
           >
-            <span className="font-bold text-slate-300">{activePoint.data.label}:</span>
+            <span className="font-bold text-slate-300 dark:text-content-faint">{activePoint.data.label}:</span>
             <span className="font-mono font-black text-orange-400">
               ₹{activePoint.data.value.toLocaleString()}
             </span>
-            <span className="text-[10px] text-slate-400 font-medium">
+            <span className="text-[10px] text-slate-400 font-medium dark:text-content-faint">
               ({activePoint.data.orders} orders)
             </span>
           </div>

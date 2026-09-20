@@ -3,12 +3,12 @@ import { cn } from "../../lib/utils";
 
 const buttonVariants = {
   default: "bg-[#FF5B00] text-white hover:bg-[#E04E00] shadow-sm active:scale-[0.97]",
-  secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200 active:scale-[0.97]",
-  outline: "border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 active:scale-[0.97]",
-  ghost: "hover:bg-slate-100 text-slate-700 active:scale-[0.97]",
+  secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200 active:scale-[0.97] dark:bg-surface-muted dark:text-content dark:hover:bg-surface-muted",
+  outline: "border border-slate-200 bg-white hover:bg-slate-50 text-slate-800 active:scale-[0.97] dark:border-line dark:bg-surface-raised dark:hover:bg-surface-muted dark:text-content",
+  ghost: "hover:bg-slate-100 text-slate-700 active:scale-[0.97] dark:hover:bg-surface-muted dark:text-content-secondary",
   destructive: "bg-rose-500 text-white hover:bg-rose-600 active:scale-[0.97]",
   subtleEmerald: "bg-orange-50 text-[#FF5B00] border border-orange-200/80 hover:bg-orange-100 active:scale-[0.97]",
-  frosted: "bg-white/90 backdrop-blur-xl border border-slate-200/90 text-slate-900 shadow-sm hover:bg-white active:scale-[0.97]"
+  frosted: "bg-white/90 backdrop-blur-xl border border-slate-200/90 text-slate-900 shadow-sm hover:bg-white active:scale-[0.97] dark:bg-surface-raised/90 dark:border-line/90 dark:text-content dark:hover:bg-surface-muted"
 };
 
 const buttonSizes = {

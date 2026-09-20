@@ -165,7 +165,7 @@ export default function CategoriesPage() {
 
   const handleAddToCart = (product) => {
     if (!isStoreOpen) {
-      alert(`Store will be available: ${closeReason || "We will reopen shortly!"}`);
+      alert(`Store Reopening Schedule: ${closeReason || "We will reopen shortly!"}`);
       return;
     }
     hapticCartAdd();
@@ -204,7 +204,7 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#F7F8FA] text-slate-900 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#F7F8FA] text-slate-900 font-sans overflow-hidden dark:bg-surface dark:text-content">
       <SEO
         title={`${activeCategoryObj.label} — Grocery Categories`}
         description={`Explore ${activeCategoryObj.label} on DASHIT. Fresh items delivered directly from our Anantnag fulfillment store in 8 minutes.`}
@@ -221,20 +221,20 @@ export default function CategoriesPage() {
       />
 
       {/* 1. TOP HEADER */}
-      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-2.5 flex items-center justify-between border-b border-slate-200/90 shadow-2xs z-30 shrink-0">
+      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-2.5 flex items-center justify-between border-b border-slate-200/90 shadow-2xs z-30 shrink-0 dark:bg-surface-raised dark:border-line/90">
         <div className="flex items-center space-x-3">
           <button
             type="button"
             onClick={() => goBack(router, "/shop")}
-            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+            className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform dark:border-line dark:text-content-secondary"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </button>
           <div>
-            <h1 className="text-base font-black text-slate-900 leading-tight">
+            <h1 className="text-base font-black text-slate-900 leading-tight dark:text-content">
               Categories
             </h1>
-            <span className="text-[11px] font-semibold text-slate-500">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-content-muted">
               Instant delivery in 8 mins
             </span>
           </div>
@@ -242,7 +242,7 @@ export default function CategoriesPage() {
 
         <Link
           href="/search"
-          className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 active:scale-95 transition-transform"
+          className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 active:scale-95 transition-transform dark:bg-surface-muted"
         >
           <Search className="w-4 h-4 stroke-[2.5]" />
         </Link>
@@ -251,8 +251,8 @@ export default function CategoriesPage() {
       {/* 2. SPLIT SCREEN BODY: Left Menu Bar + Right Items List */}
       <div className="flex grow overflow-hidden relative">
         {/* LEFT SIDEBAR: Categories Menu Bar */}
-        <aside className="w-[88px] sm:w-24 shrink-0 bg-[#F0F2F5] border-r border-slate-200/90 overflow-y-auto scrollbar-none pb-dock">
-          <div className="flex flex-col py-1.5 divide-y divide-slate-200/50">
+        <aside className="w-[88px] sm:w-24 shrink-0 bg-[#F0F2F5] border-r border-slate-200/90 overflow-y-auto scrollbar-none pb-dock dark:bg-surface dark:border-line/90">
+          <div className="flex flex-col py-1.5 divide-y divide-slate-200/50 dark:divide-line/50">
             {CATEGORIES_CATALOG.map((cat) => {
               const isSelected = selectedCatId === cat.id;
               const Icon = cat.icon;
@@ -265,8 +265,8 @@ export default function CategoriesPage() {
                   onClick={() => handleSelectCategory(cat.id)}
                   className={`flex flex-col items-center text-center p-2.5 relative transition-colors duration-300 select-none ${
                     isSelected
-                      ? "bg-white text-slate-950 font-black shadow-xs"
-                      : "text-slate-600 hover:bg-slate-200/60 font-semibold"
+                      ? "bg-white text-slate-950 font-black shadow-xs dark:bg-surface-raised dark:text-content"
+                      : "text-slate-600 hover:bg-slate-200/60 font-semibold dark:text-content-secondary"
                   }`}
                 >
                   {/* Active Indicator Bar — slides between categories */}
@@ -284,7 +284,7 @@ export default function CategoriesPage() {
                       isSelected
                         ? "scale-105 ring-2 ring-[#FF5B00] shadow-xs"
                         : "border border-slate-200/90 shadow-2xs"
-                    }`}
+                    } dark:border-line/90`}
                   >
                     <img
                       src={cat.img}
@@ -297,7 +297,7 @@ export default function CategoriesPage() {
                   {/* Short Name Label */}
                   <span
                     className={`text-[10px] leading-tight tracking-tight max-w-[70px] ${
-                      isSelected ? "text-slate-950 font-black" : "text-slate-600"
+                      isSelected ? "text-slate-950 font-black dark:text-content" : "text-slate-600 dark:text-content-secondary"
                     }`}
                   >
                     {cat.shortName}
@@ -309,7 +309,7 @@ export default function CategoriesPage() {
         </aside>
 
         {/* RIGHT CONTENT: Products List for Selected Category */}
-        <main className="grow bg-white overflow-y-auto px-3 pt-3 pb-dock">
+        <main className="grow bg-white overflow-y-auto px-3 pt-3 pb-dock dark:bg-surface-raised">
           <AnimatePresence mode="wait">
           <motion.div
             key={selectedCatId}
@@ -319,12 +319,12 @@ export default function CategoriesPage() {
             transition={{ duration: 0.26, ease: EASE_OUT }}
           >
           {/* Header of Active Category */}
-          <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-100 dark:border-line-soft">
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">
+              <h2 className="text-base font-extrabold text-slate-900 dark:text-content">
                 {activeCategoryObj.label}
               </h2>
-              <span className="text-[11px] font-semibold text-slate-400">
+              <span className="text-[11px] font-semibold text-slate-400 dark:text-content-faint">
                 {filteredProducts.length} items available
               </span>
             </div>
@@ -339,10 +339,10 @@ export default function CategoriesPage() {
               <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto text-amber-600">
                 <Package className="w-8 h-8" />
               </div>
-              <h3 className="font-extrabold text-sm text-slate-800">
+              <h3 className="font-extrabold text-sm text-slate-800 dark:text-content">
                 Restocking fresh items
               </h3>
-              <p className="text-xs text-slate-500 max-w-xs mx-auto">
+              <p className="text-xs text-slate-500 max-w-xs mx-auto dark:text-content-muted">
                 We are restocking items for {activeCategoryObj.label}. Check back shortly!
               </p>
             </div>

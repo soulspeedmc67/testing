@@ -16,7 +16,7 @@ function TabsList({ className, children, activeValue, onSelectValue }) {
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto scrollbar-none",
+        "inline-flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl overflow-x-auto scrollbar-none dark:bg-surface-muted",
         className
       )}
     >
@@ -38,8 +38,8 @@ function TabsTrigger({ className, children, isActive, onClick, value, ...props }
       className={cn(
         "inline-flex items-center justify-center whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-black transition-all duration-200 active:scale-95",
         isActive
-          ? "bg-white text-slate-900 shadow-sm"
-          : "text-slate-500 hover:text-slate-900",
+          ? "bg-white text-slate-900 shadow-sm dark:bg-surface-raised dark:text-content"
+          : "text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-content",
         className
       )}
       {...props}

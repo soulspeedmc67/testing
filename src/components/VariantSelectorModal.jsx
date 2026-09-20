@@ -83,12 +83,12 @@ export default function VariantSelectorModal({
           /* max-h + overflow-y-auto give the sheet its OWN scroll area, and
              overscroll-contain stops a scroll that reaches the end of this list
              from chaining out to the page behind it. */
-          className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 pb-[max(20px,env(safe-area-inset-bottom,20px))] max-h-[85vh] overflow-y-auto overscroll-contain"
+          className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-slate-100 z-10 space-y-4 pb-[max(20px,env(safe-area-inset-bottom,20px))] max-h-[85vh] overflow-y-auto overscroll-contain dark:bg-surface-overlay dark:border-line-soft"
         >
           {/* Header Row — sticks while the variant list scrolls under it */}
-          <div className="flex items-start justify-between sticky -top-5 -mx-5 px-5 -mt-5 pt-5 pb-3 bg-white z-10">
+          <div className="flex items-start justify-between sticky -top-5 -mx-5 px-5 -mt-5 pt-5 pb-3 bg-white z-10 dark:bg-surface">
             <div className="flex items-center space-x-3">
-              <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0 dark:bg-surface-raised dark:border-line-soft">
                 <img
                   src={product.img}
                   alt={product.name}
@@ -99,10 +99,10 @@ export default function VariantSelectorModal({
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#FF5B00]">
                   Select Option
                 </span>
-                <h3 className="text-sm font-black text-[#061838] leading-tight line-clamp-1">
+                <h3 className="text-sm font-black text-[#061838] leading-tight line-clamp-1 dark:text-content">
                   {product.name}
                 </h3>
-                <p className="text-[11px] font-semibold text-slate-400">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-content-faint">
                   {variants.length} sizes available
                 </p>
               </div>
@@ -113,7 +113,7 @@ export default function VariantSelectorModal({
                 hapticLight();
                 onClose();
               }}
-              className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors"
+              className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors dark:bg-surface-muted dark:hover:bg-surface-muted"
             >
               <X className="w-4 h-4 stroke-[2.5]" />
             </button>
@@ -131,7 +131,7 @@ export default function VariantSelectorModal({
               return (
                 <div
                   key={variant.id || variant.unit}
-                  className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-[#061838]/40 transition-all shadow-2xs"
+                  className="flex items-center justify-between p-3 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:border-[#061838]/40 transition-all shadow-2xs dark:border-line/90 dark:hover:bg-surface-muted"
                 >
                   <div className="space-y-0.5">
                     <span className="text-xs font-black text-slate-800">

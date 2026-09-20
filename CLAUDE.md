@@ -74,3 +74,8 @@ Skills are located in `.claude/skills/`. **Never load all skills.** Use only the
 2. **Be an active technical partner**: If a requested idea is inefficient, bad for UX, or violates architecture, point it out briefly and propose the better alternative.
 3. **Keep answers terse**: Do not repeat the prompt. Provide verified results, diffs, and exact commands.
 4. **State uncertainty clearly**: Distinguish `VERIFIED` (seen in code or tested on device) from `INFERRED` or `ASSUMED`. Never state an assumption as a fact.
+
+---
+
+## 8. App Store & Google Play Compliance (Mandatory Gate)
+For any iOS or Android work, always adhere to the Apple App Store Review Guidelines and Google Play Developer Program Policies. Run the pre-submission compliance audit (`bash ~/.claude/hooks/app-store-compliance-guard.sh .`) before any release or store submission. Never report an app clear to submit while a critical rejection risk stands.

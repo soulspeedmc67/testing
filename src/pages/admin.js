@@ -1627,7 +1627,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-zinc-300">
-              Customers in Anantnag will see: <span className="font-bold text-slate-900 dark:text-white">&quot;Store will be available: (Reason)&quot;</span> on the app banner. Select a reason or enter a custom one:
+              Customers in Anantnag will see: <span className="font-bold text-slate-900 dark:text-white">&quot;Store Reopening Schedule: (Reason)&quot;</span> on the app banner. Select a reason or enter a custom one:
             </p>
 
             <div className="space-y-2">

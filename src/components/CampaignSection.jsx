@@ -55,13 +55,13 @@ export default function CampaignSection({ onAddToCart, onUpdateQty, cart }) {
           return (
             <div
               key={p.id}
-              className="w-[145px] shrink-0 bg-white rounded-3xl p-2.5 flex flex-col justify-between border border-slate-200 shadow-sm hover:shadow-md transition-all relative"
+              className="w-[145px] shrink-0 bg-white rounded-3xl p-2.5 flex flex-col justify-between border border-slate-200 shadow-sm hover:shadow-md transition-all relative dark:bg-surface-raised dark:border-line"
             >
               {/* Product Image Box */}
-              <div className="relative bg-slate-50 rounded-2xl p-2 flex items-center justify-center h-28 overflow-hidden mb-1">
+              <div className="relative bg-slate-50 rounded-2xl p-2 flex items-center justify-center h-28 overflow-hidden mb-1 dark:bg-surface-raised">
                 <button
                   onClick={() => toggleFav(p.id)}
-                  className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full shadow-sm text-slate-400 hover:text-rose-500 transition-colors"
+                  className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full shadow-sm text-slate-400 hover:text-rose-500 transition-colors dark:bg-surface-raised/90 dark:text-content-faint"
                 >
                   <Heart className={`w-3.5 h-3.5 ${isFav ? "fill-rose-500 text-rose-500" : ""}`} />
                 </button>
@@ -78,15 +78,15 @@ export default function CampaignSection({ onAddToCart, onUpdateQty, cart }) {
 
               {/* Unit & Title */}
               <div className="space-y-0.5">
-                <span className="text-[10px] font-bold text-slate-400">{p.unit}</span>
-                <h4 className="font-bold text-[11px] text-slate-900 leading-snug line-clamp-2">{p.name}</h4>
+                <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{p.unit}</span>
+                <h4 className="font-bold text-[11px] text-slate-900 leading-snug line-clamp-2 dark:text-content">{p.name}</h4>
               </div>
 
               {/* Price & Morphing Stepper */}
-              <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100">
+              <div className="mt-2 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-line-soft">
                 <div>
-                  <span className="text-xs font-black text-slate-900">₹{p.price}</span>
-                  <span className="text-[9px] text-slate-400 line-through block">₹{p.originalPrice}</span>
+                  <span className="text-xs font-black text-slate-900 dark:text-content">₹{p.price}</span>
+                  <span className="text-[9px] text-slate-400 line-through block dark:text-content-faint">₹{p.originalPrice}</span>
                 </div>
 
                 <div className="w-16">

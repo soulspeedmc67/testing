@@ -174,3 +174,12 @@ all layz types - options dena
 
 
 
+google play 
+
+apple developer
+
+sim
+
+razorpay
+
+driver location update 

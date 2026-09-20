@@ -16,7 +16,7 @@ export default function TermsAndConditionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white">
+    <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white dark:bg-surface">
       <SEO
         title="Terms & Conditions — DASHIT Quick Commerce"
         description="Terms and conditions of service for DASHIT hyperlocal grocery delivery in Anantnag, Jammu & Kashmir (PIN: 192101)."
@@ -36,7 +36,7 @@ export default function TermsAndConditionsPage() {
           <button
             type="button"
             onClick={handleBack}
-            className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors group text-sm font-semibold cursor-pointer"
+            className="flex items-center space-x-2 text-slate-300 hover:text-white transition-colors group text-sm font-semibold cursor-pointer dark:text-content-faint"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span>Back</span>
@@ -54,37 +54,37 @@ export default function TermsAndConditionsPage() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-8 py-10 sm:py-16">
-        <div className="bg-white rounded-3xl p-6 sm:p-12 border border-slate-200/80 shadow-sm space-y-8">
+        <div className="bg-white rounded-3xl p-6 sm:p-12 border border-slate-200/80 shadow-sm space-y-8 dark:bg-surface-raised dark:border-line/80">
           
           {/* Title Header */}
-          <div className="border-b border-slate-100 pb-6">
+          <div className="border-b border-slate-100 pb-6 dark:border-line-soft">
             <div className="inline-flex items-center space-x-2 bg-orange-50 text-[#FF5B00] px-3 py-1 rounded-full text-xs font-bold mb-3">
               <FileText className="w-3.5 h-3.5" />
               <span>User Agreement &amp; Service Terms</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-[#061838] tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-black text-[#061838] tracking-tight dark:text-content">
               Terms &amp; Conditions
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-2">
+            <p className="text-xs sm:text-sm text-slate-500 mt-2 dark:text-content-muted">
               Last updated: September 2026 • Governing delivery and ordering services across Anantnag (PIN: 192101).
             </p>
           </div>
 
           {/* Section 1 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838]">1. Acceptance of Terms</h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">1. Acceptance of Terms</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
               By accessing or using the DASHIT mobile application, website, or ordering services, you agree to be bound by these Terms and Conditions and our Privacy Policy. If you do not agree to these terms, please do not use our platform.
             </p>
           </section>
 
           {/* Section 2 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838]">2. Delivery Area &amp; Service Promise</h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">2. Delivery Area &amp; Service Promise</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
               DASHIT operates a hyperlocal quick-commerce delivery service in Anantnag, Jammu &amp; Kashmir.
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600">
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-content-secondary">
               <li>
                 <strong>Delivery Estimates:</strong> Delivery times shown in the app are estimates based on your distance from our store and current conditions. They are indicative only and are not a guarantee. Active service zones include KP Road, Civil Lines, Ashajipora, Khanabal, Main Market, and surrounding areas in PIN 192101.
               </li>
@@ -96,8 +96,8 @@ export default function TermsAndConditionsPage() {
 
           {/* Section 3 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838]">3. Orders, Pricing &amp; Payments</h2>
-            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">3. Orders, Pricing &amp; Payments</h2>
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-content-secondary">
               <li>All product prices displayed are in Indian Rupees (₹) and include applicable taxes unless specified otherwise.</li>
               <li>We accept payments via UPI, Credit/Debit Cards, Net Banking, and Cash on Delivery (COD) subject to availability.</li>
               <li>In the rare event of an out-of-stock item after order placement, our team will promptly notify you and process an instant refund for the affected item.</li>
@@ -106,11 +106,11 @@ export default function TermsAndConditionsPage() {
 
           {/* Section 4 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838]">4. Cancellation &amp; Returns</h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">4. Cancellation &amp; Returns</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
               Because orders move quickly through the store, they enter the automated packing queue shortly after being placed.
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600">
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-content-secondary">
               <li><strong>Cancellation:</strong> You may cancel an order before it has been dispatched to a rider. Once marked &quot;Out for Delivery&quot;, cancellation is not permitted.</li>
               <li><strong>Fresh Produce &amp; Perishables:</strong> For dairy, bakery, and fresh fruits/vegetables, please inspect items upon delivery. Damaged, spoiled, or incorrect items reported within 2 hours of delivery will be replaced or refunded.</li>
             </ul>
@@ -118,30 +118,30 @@ export default function TermsAndConditionsPage() {
 
           {/* Section 5 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838]">5. User Conduct &amp; Account Responsibility</h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">5. User Conduct &amp; Account Responsibility</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
               Users must provide accurate phone numbers and delivery addresses. Providing fictitious addresses or harassing delivery personnel will result in immediate suspension of account privileges.
             </p>
           </section>
 
           {/* Section 6 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838]">6. Customer Support</h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">6. Customer Support</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
               For any issues regarding orders, delivery delays, or payment refunds, reach out to our Anantnag customer helpline:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
-              <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
                 <Phone className="w-4 h-4 text-[#FF5B00] shrink-0" />
-                <span className="text-xs font-semibold text-slate-800">+91 6006990032</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-content">+91 6006990032</span>
               </div>
-              <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
                 <Mail className="w-4 h-4 text-[#FF5B00] shrink-0" />
-                <span className="text-xs font-semibold text-slate-800">support@dashit.co.in</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-content">support@dashit.co.in</span>
               </div>
-              <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
+              <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
                 <MapPin className="w-4 h-4 text-[#FF5B00] shrink-0" />
-                <span className="text-xs font-semibold text-slate-800">Anantnag, J&amp;K 192101</span>
+                <span className="text-xs font-semibold text-slate-800 dark:text-content">Anantnag, J&amp;K 192101</span>
               </div>
             </div>
           </section>

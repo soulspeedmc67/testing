@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import AppearanceSetting from "../components/AppearanceSetting";
 import { signOut } from "../lib/api";
 import { deleteAccount } from "../lib/auth";
 import { getWishlist } from "../lib/wishlist";
@@ -84,7 +85,7 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32 relative">
+    <div className="min-h-screen bg-[#F7F8FA] text-slate-900 font-sans pb-32 relative dark:bg-surface dark:text-content">
       <SEO title="My Account" noindex={true} />
       {/*
         iOS edge-swipe back. Scoped to a 24px strip at the left edge instead of
@@ -108,15 +109,15 @@ export default function AccountPage() {
       )}
 
       {/* 1. TOP PROFILE HEADER matching Screenshot 1 */}
-      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100">
+      <header className="bg-white px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center sticky top-0 z-30 border-b border-slate-100 dark:bg-surface dark:border-line-soft">
         <button
           type="button"
           onClick={handleBack}
-          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform cursor-pointer"
+          className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center text-slate-700 active:scale-95 transition-transform cursor-pointer dark:border-line dark:text-content-secondary"
         >
           <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
         </button>
-        <h1 className="text-base font-extrabold text-slate-900 mx-auto -translate-x-5">
+        <h1 className="text-base font-extrabold text-slate-900 mx-auto -translate-x-5 dark:text-content">
           Profile
         </h1>
       </header>
@@ -127,17 +128,17 @@ export default function AccountPage() {
           <div className="pt-1">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">{user.name || "Your account"}</h2>
-                <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-semibold mt-1">
-                  <Phone className="w-3.5 h-3.5 text-slate-500" />
+                <h2 className="text-xl font-black text-slate-900 tracking-tight dark:text-content">{user.name || "Your account"}</h2>
+                <div className="flex items-center space-x-1.5 text-xs text-slate-600 font-semibold mt-1 dark:text-content-secondary">
+                  <Phone className="w-3.5 h-3.5 text-slate-500 dark:text-content-muted" />
                   {user.mobile ? (
                     <span className="font-mono font-bold">+91-{user.mobile.replace(/^\+91/, '')}</span>
                   ) : (
-                    <span className="text-slate-400">Not provided</span>
+                    <span className="text-slate-400 dark:text-content-faint">Not provided</span>
                   )}
                 </div>
                 {user.email && (
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">{user.email}</p>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5 dark:text-content-faint">{user.email}</p>
                 )}
               </div>
               <div className="w-12 h-12 rounded-2xl bg-orange-100 border border-orange-200 flex items-center justify-center text-[#FF5B00] font-black text-lg shadow-2xs">
@@ -176,48 +177,50 @@ export default function AccountPage() {
         <div className="grid grid-cols-1 gap-3">
           <a
             href="tel:6006990032"
-            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-all"
+            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-all dark:bg-surface-raised dark:border-line/90"
           >
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 mb-2">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 mb-2 dark:text-content-secondary">
               <Headphones className="w-6 h-6 stroke-[1.8]" />
             </div>
-            <span className="text-xs font-bold text-slate-800">Support</span>
+            <span className="text-xs font-bold text-slate-800 dark:text-content">Support</span>
           </a>
 
         </div>
 
+        <AppearanceSetting />
+
         {/* 6. YOUR INFORMATION GROUP matching Screenshot 1 */}
         <div className="pt-2">
-          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block mb-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block mb-2 dark:text-content-faint">
             Your Information
           </span>
 
-          <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden">
+          <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden dark:bg-surface-raised dark:border-line/90 dark:divide-line-soft">
             {/* Your orders */}
             <Link
               href="/orders"
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
                   <ShoppingBag className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Your orders</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-content">Your orders</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </Link>
 
             {/* Your wishlist */}
             <Link
               href="/wishlist"
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted"
             >
               <div className="flex items-center space-x-3.5">
                 <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
                   <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-slate-800">Your wishlist</span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-content">Your wishlist</span>
                   {wishlistCount > 0 && (
                     <span className="text-[10px] font-bold text-rose-600 block">
                       {wishlistCount} {wishlistCount === 1 ? "item" : "items"} saved
@@ -231,22 +234,22 @@ export default function AccountPage() {
                     {wishlistCount}
                   </span>
                 )}
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
               </div>
             </Link>
 
             {/* Address book */}
             <Link
               href="/add-address"
-              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100"
+              className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 dark:hover:bg-surface-muted dark:border-line-soft"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
                   <MapPin className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Address book</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-content">Address book</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </Link>
 
             {/* Legal. Both stores require these to be reachable from inside the
@@ -254,29 +257,29 @@ export default function AccountPage() {
             <button
               type="button"
               onClick={() => router.push("/privacy")}
-              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer dark:hover:bg-surface-muted dark:border-line-soft"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
                   <FileText className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Privacy Policy</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-content">Privacy Policy</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </button>
 
             <button
               type="button"
               onClick={() => router.push("/terms")}
-              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer"
+              className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group border-t border-slate-100 text-left cursor-pointer dark:hover:bg-surface-muted dark:border-line-soft"
             >
               <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700">
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted">
                   <BookOpen className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Terms of Service</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-content">Terms of Service</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </button>
 
             {/* Auth Action: Log Out (if logged in) or Log In (if guest) */}
@@ -288,7 +291,7 @@ export default function AccountPage() {
                   setUser(null);
                   router.push("/login");
                 }}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600"
+                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 dark:border-line-soft"
               >
                 <div className="flex items-center space-x-3.5">
                   <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
@@ -296,7 +299,7 @@ export default function AccountPage() {
                   </div>
                   <div>
                     <span className="text-xs font-bold text-rose-600 block">Log out</span>
-                    <span className="text-[10px] font-medium text-slate-400">Sign in with another account</span>
+                    <span className="text-[10px] font-medium text-slate-400 dark:text-content-faint">Sign in with another account</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-rose-400 group-hover:translate-x-0.5 transition-transform" />
@@ -324,7 +327,7 @@ export default function AccountPage() {
                   setUser(null);
                   router.push("/login");
                 }}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 disabled:opacity-50"
+                className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 disabled:opacity-50 dark:border-line-soft"
               >
                 <div className="flex items-center space-x-3.5">
                   <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
@@ -334,7 +337,7 @@ export default function AccountPage() {
                     <span className="text-xs font-bold text-rose-600 block">
                       {isDeletingAccount ? "Deleting account…" : "Delete account"}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-400">
+                    <span className="text-[10px] font-medium text-slate-400 dark:text-content-faint">
                       Permanently erase your profile and personal data
                     </span>
                   </div>
@@ -345,7 +348,7 @@ export default function AccountPage() {
               <button
                 type="button"
                 onClick={() => router.push("/login")}
-                className="w-full flex items-center justify-between p-3.5 hover:bg-orange-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-[#FF5B00]"
+                className="w-full flex items-center justify-between p-3.5 hover:bg-orange-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-[#FF5B00] dark:border-line-soft"
               >
                 <div className="flex items-center space-x-3.5">
                   <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-[#FF5B00]">
@@ -353,7 +356,7 @@ export default function AccountPage() {
                   </div>
                   <div>
                     <span className="text-xs font-black text-[#FF5B00] block">Log In / Sign Up</span>
-                    <span className="text-[10px] font-medium text-slate-400">Sign in to sync your orders & addresses</span>
+                    <span className="text-[10px] font-medium text-slate-400 dark:text-content-faint">Sign in to sync your orders & addresses</span>
                   </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-[#FF5B00] group-hover:translate-x-0.5 transition-transform" />
@@ -364,8 +367,8 @@ export default function AccountPage() {
 
         {/* App Version & Branding Footer (above bottom navbar with pb-36 main clearance) */}
         <div className="text-center pt-2 pb-6 space-y-1">
-          <p className="text-[11px] font-bold text-slate-400">DASHIT Quick Commerce • Anantnag</p>
-          <p className="text-[10px] font-medium text-slate-400">App version 1.0.0</p>
+          <p className="text-[11px] font-bold text-slate-400 dark:text-content-faint">DASHIT Quick Commerce • Anantnag</p>
+          <p className="text-[10px] font-medium text-slate-400 dark:text-content-faint">App version 1.0.0</p>
         </div>
       </main>
     </div>

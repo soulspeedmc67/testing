@@ -144,7 +144,7 @@ export default function ConfirmLocationPage() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-white overflow-hidden dark:bg-surface-raised">
       <SEO title="Select Delivery Location" noindex={true} />
 
       {/* 1. FULLSCREEN MAP (Underneath everything, eliminating any gray bottom corner gaps) */}
@@ -172,7 +172,7 @@ export default function ConfirmLocationPage() {
           }`}
         >
           <div className="w-11 h-11 rounded-full bg-[#f9532d] p-1.5 shadow-xl flex items-center justify-center border-2 border-white">
-            <div className="w-3.5 h-3.5 rounded-full bg-white" />
+            <div className="w-3.5 h-3.5 rounded-full bg-white dark:bg-surface-raised" />
           </div>
           <div className="w-2 h-3.5 bg-[#f9532d] -mt-1 rounded-b-full shadow-sm" />
           <div className="w-3.5 h-1.5 bg-black/30 rounded-full blur-[1px] mt-1" />
@@ -184,7 +184,7 @@ export default function ConfirmLocationPage() {
         <button
           type="button"
           onClick={handleRecenterGPS}
-          className="flex items-center space-x-2 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-lg border border-slate-200 text-slate-800 active:scale-95 transition-transform"
+          className="flex items-center space-x-2 bg-white/95 backdrop-blur-md px-4 py-2.5 rounded-full shadow-lg border border-slate-200 text-slate-800 active:scale-95 transition-transform dark:bg-surface-raised/95 dark:border-line dark:text-content"
         >
           <Crosshair className={`w-4 h-4 text-[#f9532d] ${isLocating ? "animate-spin" : ""}`} />
           <span className="text-xs font-black">Current Location</span>
@@ -196,7 +196,7 @@ export default function ConfirmLocationPage() {
         <button
           type="button"
           onClick={() => goBack(router)}
-          className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0"
+          className="pointer-events-auto w-11 h-11 rounded-full bg-white shadow-md border border-slate-200/80 flex items-center justify-center text-slate-700 active:scale-90 transition-transform shrink-0 dark:bg-surface-raised dark:border-line/80 dark:text-content-secondary"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
         </button>
@@ -207,7 +207,7 @@ export default function ConfirmLocationPage() {
             placeholder="Search an area or address"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00]"
+            className="w-full bg-white text-slate-900 text-xs font-semibold pl-4 pr-10 py-3 rounded-2xl shadow-md border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-[#FF5B00] dark:bg-surface-raised dark:text-content dark:border-line/80"
           />
           {searchQuery ? (
             <button
@@ -215,28 +215,28 @@ export default function ConfirmLocationPage() {
                 setSearchQuery("");
                 setSearchResults([]);
               }}
-              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
+              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 dark:text-content-faint dark:hover:text-content-secondary"
             >
               <X className="w-4 h-4" />
             </button>
           ) : (
-            <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none" />
+            <Search className="absolute right-3.5 top-3.5 w-4 h-4 stroke-[2.5] text-slate-400 pointer-events-none dark:text-content-faint" />
           )}
 
           {/* Autocomplete Dropdown with Highest Z-Index */}
           {searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[2500] divide-y divide-slate-100 max-h-64 overflow-y-auto">
+            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-[2500] divide-y divide-slate-100 max-h-64 overflow-y-auto dark:bg-surface-raised dark:border-line dark:divide-line-soft">
               {searchResults.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => handleSelectSearchResult(item)}
-                  className="w-full text-left p-3 hover:bg-slate-50 flex items-start space-x-2.5 transition-colors"
+                  className="w-full text-left p-3 hover:bg-slate-50 flex items-start space-x-2.5 transition-colors dark:hover:bg-surface-muted"
                 >
                   <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">{item.title}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{item.subtitle}</p>
+                    <p className="text-xs font-bold text-slate-900 truncate dark:text-content">{item.title}</p>
+                    <p className="text-[10px] text-slate-400 truncate dark:text-content-faint">{item.subtitle}</p>
                   </div>
                 </button>
               ))}
@@ -246,8 +246,8 @@ export default function ConfirmLocationPage() {
       </div>
 
       {/* 5. BOTTOM CONFIRMATION SHEET */}
-      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-[28px] p-5 pt-4 space-y-3 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] border-t border-slate-100 pb-[max(18px,env(safe-area-inset-bottom,18px))]">
-        <p className="text-[11px] font-bold text-slate-400">
+      <div className="absolute bottom-0 left-0 right-0 z-30 bg-white rounded-t-[28px] p-5 pt-4 space-y-3 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] border-t border-slate-100 pb-[max(18px,env(safe-area-inset-bottom,18px))] dark:bg-surface-overlay dark:border-line-soft">
+        <p className="text-[11px] font-bold text-slate-400 dark:text-content-faint">
           Place the pin at exact delivery location
         </p>
 
@@ -255,21 +255,21 @@ export default function ConfirmLocationPage() {
         <div className="flex items-start space-x-2.5 pt-0.5">
           <MapPin className="w-4 h-4 text-[#f9532d] shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <h3 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate">
+            <h3 className="text-sm font-black text-slate-900 tracking-tight leading-tight truncate dark:text-content">
               {areaTitle}
             </h3>
-            <p className="text-[11px] font-medium text-slate-500 line-clamp-2 mt-0.5 leading-snug">
+            <p className="text-[11px] font-medium text-slate-500 line-clamp-2 mt-0.5 leading-snug dark:text-content-muted">
               {addressSubtitle}
             </p>
           </div>
         </div>
 
         {/* Zoom In Notice Pill matching media_1788424288259.png */}
-        <div className="border border-slate-200 rounded-xl p-3 flex items-center justify-between">
-          <p className="text-xs font-medium text-slate-600">
+        <div className="border border-slate-200 rounded-xl p-3 flex items-center justify-between dark:border-line">
+          <p className="text-xs font-medium text-slate-600 dark:text-content-secondary">
             Zoom in to place the pin at exact delivery location
           </p>
-          <div className="w-8 h-8 rounded-full bg-white shadow-xs flex items-center justify-center shrink-0 ml-2">
+          <div className="w-8 h-8 rounded-full bg-white shadow-xs flex items-center justify-center shrink-0 ml-2 dark:bg-surface-raised">
             <MapPin className="w-4 h-4 text-[#f9532d]" />
           </div>
         </div>

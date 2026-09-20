@@ -18,6 +18,16 @@
             "command": "/home/aleemkanyu/.local/bin/graphify hook-guard read"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/aleemkanyu/.claude/hooks/app-store-compliance-guard.sh",
+            "timeout": 120
+          }
+        ]
       }
     ]
   }

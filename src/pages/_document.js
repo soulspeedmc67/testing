@@ -1,10 +1,21 @@
 import { Html, Head, Main, NextScript } from 'next/document';
+import { THEME_BOOT_SCRIPT } from '../lib/theme';
 
 export default function Document() {
   return (
     <Html lang="en">
       <Head>
         <meta charSet="utf-8" />
+
+        {/* Theme, applied before first paint.
+
+            This has to be a blocking inline script rather than anything React
+            does, because React's first commit happens well after the browser
+            has already painted the document background. Resolving the theme in
+            an effect means a dark-mode user sees a full white frame on every
+            cold start — the flash is not subtle on a phone. Running here, the
+            `dark` class is on <html> before the first pixel. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
 
         {/* Brand typefaces.
 
@@ -50,7 +61,11 @@ export default function Document() {
         <link rel="preload" as="image" href="/dashit-splash-dash.png" />
         <link rel="preload" as="image" href="/dashit-wordmark.png" />
       </Head>
-      <body className="bg-slate-50 antialiased selection:bg-orange-100 selection:text-orange-900" style={{ backgroundColor: '#FFFFFF' }}>
+      {/* The ground colour comes from the `--surface` token (globals.css) so
+          it follows the theme. It used to be pinned to #FFFFFF with an inline
+          style, which outranks every stylesheet and would have kept a white
+          page behind a dark app. */}
+      <body className="bg-surface antialiased selection:bg-orange-100 selection:text-orange-900 dark:selection:bg-orange-500/30 dark:selection:text-orange-100">
         <Main />
         <NextScript />
       </body>

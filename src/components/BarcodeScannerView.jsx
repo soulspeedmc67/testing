@@ -219,11 +219,11 @@ export default function BarcodeScannerView({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div
         className={`w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl border transition-colors ${
-          darkMode ? "bg-[#12141A] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
-        }`}
+          darkMode ? "bg-[#12141A] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900 dark:bg-surface-raised dark:text-content"
+        } dark:border-line`}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/40">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/40 dark:border-line/40">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#FF5B00]/15 text-[#FF5B00] flex items-center justify-center font-black">
               <Camera className="w-4 h-4" />
@@ -238,7 +238,7 @@ export default function BarcodeScannerView({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors dark:text-content-faint"
           >
             <X className="w-5 h-5" />
           </button>
@@ -300,7 +300,7 @@ export default function BarcodeScannerView({
               </div>
             </>
           ) : (
-            <div className="text-center p-6 space-y-2 text-slate-300">
+            <div className="text-center p-6 space-y-2 text-slate-300 dark:text-content-faint">
               <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
               <p className="text-xs font-semibold">{cameraError || "Camera not active"}</p>
               <button
@@ -318,7 +318,7 @@ export default function BarcodeScannerView({
         <div className="p-4 sm:p-5 space-y-3">
           <form onSubmit={handleManualSubmit} className="flex items-center space-x-2">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 dark:text-content-faint" />
               <input
                 type="text"
                 value={manualCode}
@@ -327,8 +327,8 @@ export default function BarcodeScannerView({
                 className={`w-full text-xs font-mono pl-9 pr-3 py-2.5 rounded-xl border transition-all outline-none ${
                   darkMode
                     ? "bg-[#1A1D26] border-zinc-700 text-white placeholder:text-zinc-500 focus:border-[#FF5B00]"
-                    : "bg-slate-50 border-slate-200 text-slate-900 focus:border-[#FF5B00]"
-                }`}
+                    : "bg-slate-50 border-slate-200 text-slate-900 focus:border-[#FF5B00] dark:bg-surface-raised dark:text-content"
+                } dark:border-line`}
               />
             </div>
             <button
@@ -359,8 +359,8 @@ export default function BarcodeScannerView({
                   className={`text-[10.5px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                     darkMode
                       ? "bg-[#1A1D26] border-zinc-700 text-zinc-300 hover:border-[#FF5B00] hover:text-white"
-                      : "bg-slate-100 border-slate-200 text-slate-700 hover:border-[#FF5B00] hover:text-[#FF5B00]"
-                  }`}
+                      : "bg-slate-100 border-slate-200 text-slate-700 hover:border-[#FF5B00] hover:text-[#FF5B00] dark:bg-surface-muted dark:text-content-secondary"
+                  } dark:border-line`}
                 >
                   {item.label}
                 </button>
