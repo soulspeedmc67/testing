@@ -1,6 +1,7 @@
 import { ORDER_STATUS } from "./db";
 
 export const DEFAULT_DRIVERS = [
+  { id: "DOf5enic8SXBZTupGJbxDrNdrOt2", name: "Rider M4K (m4k3ditz)", phone: "9876543210", email: "m4k3ditz@gmail.com" },
   { id: "driver_tariq", name: "Tariq", phone: "9876543210" },
   { id: "driver_bilal", name: "Bilal", phone: "9876543211" },
   { id: "driver_aamir", name: "Aamir", phone: "9876543212" },
