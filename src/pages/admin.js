@@ -317,7 +317,7 @@ export default function AdminAccessGate() {
   }
 
   return (
-    <div className="h-screen h-[100dvh] max-h-screen overflow-y-auto admin-scroll bg-[#090A0F] p-4 selection:bg-[#FF5B00] selection:text-white">
+    <div className="min-h-screen min-h-[100dvh] w-full overflow-y-auto admin-scroll bg-[#090A0F] p-4 selection:bg-[#FF5B00] selection:text-white">
       <Head>
         <title>DASHIT — Partner Sign In</title>
         {/* Staff console: never indexed, never surfaced in search results. */}

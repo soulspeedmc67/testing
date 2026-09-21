@@ -198,42 +198,44 @@ export default function PromoBanner({ onSelectPromo }) {
           Everyday essentials
         </h4>
 
-        <motion.div
-          variants={stagger(0.07)}
-          {...inViewOnce}
+        <div
           className="flex space-x-3 overflow-x-auto scrollbar-none pb-1.5 -mx-4 px-4 md:mx-0 md:px-0 md:grid md:grid-cols-4 md:space-x-0 md:gap-4"
+          style={{
+            overscrollBehaviorX: "contain",
+            overscrollBehaviorY: "auto",
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y pan-x",
+          }}
         >
           {CURATED_RAILS.map((item) => (
-            <motion.div
+            <div
               key={item.id}
-              variants={scaleIn}
-              whileTap={TAP_SOFT}
-              transition={SPRING_SNAPPY}
               onClick={() => {
                 hapticLight();
                 if (onSelectPromo) onSelectPromo(item.category);
               }}
-              className="w-[148px] md:w-full shrink-0 rounded-2xl bg-white border border-slate-200/80 p-2.5 shadow-[0_1px_3px_rgba(15,23,42,0.04)] cursor-pointer select-none dark:bg-surface-raised dark:border-line/80"
+              className="w-[148px] md:w-full shrink-0 rounded-2xl bg-white border border-slate-200/80 p-2.5 shadow-[0_1px_3px_rgba(15,23,42,0.04)] cursor-pointer select-none active:scale-[0.97] transition-transform dark:bg-surface-raised dark:border-line/80"
+              style={{ touchAction: "pan-y pan-x" }}
             >
-              <div className="w-full h-[88px] md:h-32 rounded-xl overflow-hidden bg-slate-100 dark:bg-surface-muted">
+              <div className="w-full h-[88px] md:h-32 rounded-xl overflow-hidden bg-slate-100 dark:bg-surface-muted pointer-events-none">
                 <img
                   src={item.img}
                   alt={item.title}
                   loading="lazy"
                   decoding="async"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover pointer-events-none select-none"
                 />
               </div>
 
-              <h5 className="mt-2.5 min-h-[34px] text-[12.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight dark:text-content">
+              <h5 className="mt-2.5 min-h-[34px] text-[12.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight dark:text-content pointer-events-none select-none">
                 {item.title}
               </h5>
-              <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 dark:text-content-muted">
+              <p className="text-[10.5px] font-medium text-slate-500 mt-0.5 dark:text-content-muted pointer-events-none select-none">
                 {item.priceText}
               </p>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

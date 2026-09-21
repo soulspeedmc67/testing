@@ -178,9 +178,6 @@ html, body {
   -ms-user-select: none !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent !important;
-  overscroll-behavior-y: none !important;
-  overscroll-behavior-x: none !important;
-  overflow-x: clip;
   min-height: 100%;
   /* Follows the theme. This was pinned to #FFFFFF, which is the colour the
      browser paints in the overscroll gutter above and below the page — so on
@@ -188,6 +185,14 @@ html, body {
   background-color: var(--surface);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent horizontal overflow on page wrapper rather than html/body,
+   preserving native compositor vertical touch scrolling on mobile devices */
+#__next {
+  min-height: 100%;
+  width: 100%;
+  position: relative;
 }
 
 /* Scrollbar cosmetics only. This used to force `overflow-y: auto !important`,
@@ -265,9 +270,18 @@ button, a, [role="button"], input[type="submit"], input[type="button"] {
 }
 
 /* 60 FPS Smooth Momentum Scrolling & Composited Scrolling Layers */
-.overflow-y-auto, .overflow-x-auto, .overflow-auto, [data-scrollable="true"] {
+.overflow-y-auto, .overflow-auto, [data-scrollable="true"] {
   -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain;
+}
+
+/* Horizontal rails must NOT contain vertical scrolling, otherwise swiping vertically
+   over a horizontal rail kills page scrolling and traps the user into scrolling sideways only. */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y pan-x !important;
 }
 
 /* 60 FPS GPU Promotion & Hardware Acceleration for high-frequency animations & fixed chrome */
