@@ -21,6 +21,7 @@ import {
   User,
   LogOut,
   ChevronRight,
+  ChevronUp,
   Package,
   Layers,
   Compass,
@@ -31,6 +32,12 @@ import {
   ArrowDown,
   ListOrdered,
   Navigation2,
+  X,
+  Star,
+  TrendingUp,
+  WifiOff,
+  ChevronsRight,
+  Truck,
 } from "lucide-react";
 import {
   watchDriverOrders,
@@ -98,8 +105,15 @@ export default function DashItDriverApp() {
   const [isSandbox, setIsSandbox] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Tabs: 'active' | 'available'
+  // Tabs: 'active' | 'available' | 'profile'
   const [activeTab, setActiveTab] = useState("active");
+  // OTP verification overlay (shown when driver taps "I've Arrived")
+  const [showOtpOverlay, setShowOtpOverlay] = useState(false);
+  // Slide-to-accept state per order id
+  const [slideAcceptId, setSlideAcceptId] = useState(null);
+  const [slideProgress, setSlideProgress] = useState(0);
+  const slideTrackRef = useRef(null);
+  const slidingRef = useRef(false);
 
   // Orders
   const [activeOrders, setActiveOrders] = useState([]);
@@ -1013,265 +1027,205 @@ export default function DashItDriverApp() {
   }
 
   return (
-    <div className="min-h-screen bg-[#061838] text-slate-100 font-sans antialiased pb-24">
+    <div className="min-h-screen bg-[#07111F] text-slate-100 font-sans antialiased" style={{ paddingBottom: "calc(68px + env(safe-area-inset-bottom, 0px))" }}>
       <Head>
         <title>DASHIT Fleet — Rider Dispatch Console</title>
         <meta name="robots" content="noindex, nofollow, noarchive" />
       </Head>
-      {/* Top Sticky Header */}
-      <header className="sticky top-0 z-40 bg-[#040E22]/95 backdrop-blur-md border-b border-white/10 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 space-y-2.5">
-        {/* Navigation Portal Pills */}
-        <div className="flex items-center justify-between text-[11px] bg-white/[0.04] px-3 py-1.5 rounded-xl border border-white/10">
-          <span className="text-slate-400 font-medium flex items-center gap-1.5">
-            <Radio className="w-3.5 h-3.5 text-[#FF5B00] animate-pulse" />
-            <span>DASHIT Central Hub: Lal Chowk</span>
-          </span>
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/shop"
-              className="text-[#FF5B00] font-bold hover:underline flex items-center space-x-1"
-            >
-              <Home className="w-3 h-3" />
-              <span>Storefront</span>
-            </Link>
+
+      {/* ── Compact sticky header ── */}
+      <header className="sticky top-0 z-40 bg-[#07111F]/95 backdrop-blur-md border-b border-white/8 px-4 flex items-center justify-between"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)", paddingBottom: "10px" }}>
+        {/* Left: hub name */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-[#FF5B00]/15 border border-[#FF5B00]/25 flex items-center justify-center shrink-0">
+            <Radio className="w-3.5 h-3.5 text-[#FF5B00]" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-widest text-[#FF5B00] leading-none">Central Hub</p>
+            <p className="text-xs font-bold text-white truncate leading-tight">Lal Chowk, Anantnag</p>
           </div>
         </div>
 
-        {/* Brand & Rider Status Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <img
-              src="/dashit-app-icon.png"
-              alt="DASHIT"
-              className="w-9 h-9 rounded-xl shadow-md border border-white/15 shrink-0"
-            />
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-black text-sm text-white tracking-tight">
-                  Rider Partner
-                </h1>
-                <span className="bg-orange-500/20 text-[#FF5B00] border border-[#FF5B00]/30 text-[9px] font-black px-1.5 py-0.5 rounded-md">
-                  PRO
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-medium">
-                {driverDisplayName}
-              </p>
-            </div>
+        {/* Right: duty toggle + driver initial */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Today's stats mini ribbon */}
+          <div className="hidden xs:flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+            <span className="text-emerald-400 font-black">{completedOrdersCount}</span>
+            <span>done</span>
+            {activeOrders.length > 0 && <>
+              <span className="text-white/20">·</span>
+              <span className="text-sky-400 font-black">{activeOrders.length}</span>
+              <span>active</span>
+            </>}
           </div>
-
-          {/* Duty Toggle Button */}
+          {/* Duty toggle */}
           <button
             onClick={() => setIsOnline(!isOnline)}
-            className={`px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 border transition-all active:scale-95 ${
+            className={`px-3 py-1.5 rounded-full text-[11px] font-black flex items-center gap-1.5 border transition-all active:scale-95 ${
               isOnline
-                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400"
                 : "bg-white/5 border-white/10 text-slate-400"
             }`}
           >
-            <span
-              className={`w-2 h-2 rounded-full ${
-                isOnline ? "bg-emerald-400 animate-ping" : "bg-slate-500"
-              }`}
-            />
-            <span>{isOnline ? "ON DUTY" : "OFFLINE"}</span>
+            <span className={`w-2 h-2 rounded-full ${isOnline ? "bg-emerald-400 animate-ping" : "bg-slate-500"}`} />
+            {isOnline ? "ON DUTY" : "OFFLINE"}
           </button>
+          {/* Avatar */}
+          <div className="w-8 h-8 rounded-full bg-[#FF5B00] flex items-center justify-center text-white font-black text-sm shrink-0">
+            {(driverDisplayName[0] || "R").toUpperCase()}
+          </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="max-w-md mx-auto p-4 space-y-4">
-        {/* Sandbox Notice Banner if not registered staff */}
-        {isSandbox && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-start gap-2.5 text-xs text-amber-200">
-            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-            <div className="leading-relaxed">
-              <span className="font-bold text-white">Rider Sandbox Mode:</span>{" "}
-              Live testing enabled with simulated and device GPS broadcasting. To
-              elevate to verified staff, assign{" "}
-              <code className="bg-black/40 px-1 py-0.5 rounded text-[10px] font-mono text-amber-300">
-                role: &apos;driver&apos;
-              </code>{" "}
-              in Firestore.
-            </div>
-          </div>
-        )}
-
-        {/* Shift Stats Bar (Fixed Salary Fleet) */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-3 text-center">
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Completed Today
-            </p>
-            <p className="text-lg font-black text-emerald-400 mt-0.5">
-              {completedOrdersCount} drops
-            </p>
-          </div>
-          <div className="bg-white/[0.05] border border-white/10 rounded-2xl p-3 text-center">
-            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
-              Assigned Active
-            </p>
-            <p className="text-lg font-black text-sky-400 mt-0.5">
-              {activeOrders.length} orders
-            </p>
-          </div>
+      {/* ── Sandbox banner ── */}
+      {isSandbox && (
+        <div className="mx-4 mt-3 bg-amber-500/10 border border-amber-500/30 rounded-xl p-2.5 flex items-center gap-2 text-[11px] text-amber-200">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span><span className="font-bold text-white">Sandbox Mode</span> — Assign <code className="text-amber-300 font-mono">role:&apos;driver&apos;</code> in Firestore to go live.</span>
         </div>
+      )}
 
-        {/* Delivery Tabs: Active vs Available */}
-        <div className="bg-white/[0.06] p-1 rounded-2xl border border-white/10 flex gap-1">
-          <button
-            onClick={() => setActiveTab("active")}
-            className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === "active"
-                ? "bg-[#FF5B00] text-white shadow-md"
-                : "text-slate-300 hover:text-white"
-            }`}
-          >
-            <Bike className="w-3.5 h-3.5" />
-            <span>Active Deliveries</span>
-            {activeOrders.length > 0 && (
-              <span className="bg-white text-[#FF5B00] text-[10px] px-1.5 py-0.2 rounded-full font-black">
-                {activeOrders.length}
-              </span>
-            )}
-          </button>
+      {/* ── Main scrollable content ── */}
+      <main className="max-w-md mx-auto px-4 pt-3 pb-4 space-y-3">
 
-          <button
-            onClick={() => setActiveTab("available")}
-            className={`flex-1 py-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === "available"
-                ? "bg-[#FF5B00] text-white shadow-md"
-                : "text-slate-300 hover:text-white"
-            }`}
-          >
-            <Package className="w-3.5 h-3.5" />
-            <span>Available Pool</span>
-            {availableOrders.length > 0 && (
-              <span className="bg-emerald-400 text-slate-900 text-[10px] px-1.5 py-0.2 rounded-full font-black">
-                {availableOrders.length}
-              </span>
-            )}
-          </button>
-        </div>
-
-        {/* TAB 1: ACTIVE DELIVERIES */}
+        {/* ════════════════ TAB: ACTIVE DELIVERIES ════════════════ */}
         {activeTab === "active" && (
-          <div className="space-y-4">
-            {/* Multi-Drop Batch Queue Stepper */}
-            {activeQueue.length > 1 && (
-              <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-3 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-black text-slate-300 flex items-center gap-1.5 uppercase tracking-wider text-[10.5px]">
-                    <ListOrdered className="w-3.5 h-3.5 text-[#FF5B00]" />
-                    <span>Multi-Drop Delivery Queue ({activeQueue.length} Drops)</span>
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    Drop 1 En Route
-                  </span>
-                </div>
-
-                <div className="flex items-center space-x-2 overflow-x-auto scrollbar-none pb-0.5">
-                  {activeQueue.map((ord, idx) => {
-                    const isSelected = (ord.orderId || ord.id) === (currentOrder?.orderId || currentOrder?.id);
-                    return (
-                      <button
-                        key={ord.orderId || ord.id}
-                        type="button"
-                        onClick={() => setSelectedOrderId(ord.orderId || ord.id)}
-                        className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
-                          isSelected
-                            ? "bg-[#FF5B00] border-[#FF5B00] text-white shadow-md shadow-[#FF5B00]/30 scale-105"
-                            : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
-                        }`}
-                      >
-                        <span
-                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
-                            isSelected ? "bg-white text-[#FF5B00]" : "bg-white/10 text-slate-300"
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                        <span className="truncate max-w-[85px]">{ord.customerName || `Drop #${idx + 1}`}</span>
-                        {idx === 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
+          <div className="space-y-3">
             {currentOrder ? (
-              <div className="bg-white/[0.04] border border-white/10 rounded-3xl p-4.5 space-y-4 shadow-xl">
-                {/* Order Header & Payment Instruction */}
-                <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-[#FF5B00]/20 text-[#FF5B00] border border-[#FF5B00]/30 px-2 py-0.5 rounded-md">
-                        {activeQueue.findIndex((o) => (o.orderId || o.id) === (currentOrder.orderId || currentOrder.id)) === 0
-                          ? "Stop #1 · Current Drop"
-                          : `Stop #${activeQueue.findIndex((o) => (o.orderId || o.id) === (currentOrder.orderId || currentOrder.id)) + 1}`}
-                      </span>
-                      {activeQueue.length > 1 && (
-                        <span className="text-[10px] text-slate-400 font-bold">
-                          ({activeQueue.length} drops in batch)
-                        </span>
-                      )}
+              <>
+                {/* Delivery step indicator */}
+                {(() => {
+                  const status = currentOrder.status || "";
+                  const isPickedUp = status === ORDER_STATUS.OUT_FOR_DELIVERY || status === "Out for Delivery";
+                  const steps = [
+                    { label: "Pick Up", done: isPickedUp },
+                    { label: "En Route", active: isPickedUp },
+                    { label: "Deliver", done: false },
+                  ];
+                  return (
+                    <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3">
+                      <div className="flex items-center justify-between">
+                        {steps.map((s, i) => (
+                          <div key={i} className="flex items-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-[11px] border-2 transition-all ${
+                                s.done
+                                  ? "bg-emerald-500 border-emerald-500 text-white"
+                                  : s.active
+                                  ? "bg-[#FF5B00] border-[#FF5B00] text-white"
+                                  : "bg-white/5 border-white/15 text-slate-400"
+                              }`}>
+                                {s.done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+                              </div>
+                              <span className={`text-[10px] font-bold ${s.done ? "text-emerald-400" : s.active ? "text-[#FF5B00]" : "text-slate-500"}`}>
+                                {s.label}
+                              </span>
+                            </div>
+                            {i < steps.length - 1 && (
+                              <div className={`flex-1 h-0.5 mx-2 mb-4 rounded-full transition-all ${s.done ? "bg-emerald-500" : "bg-white/10"}`} style={{ width: 32 }} />
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <h2 className="text-base font-black text-white">
-                      Order #{currentOrder.orderId || currentOrder.id}
-                    </h2>
+                  );
+                })()}
+
+                {/* COD / Payment badge + order ID */}
+                <div className="flex items-center justify-between px-1">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Current Drop</p>
+                    <p className="text-sm font-black text-white">#{currentOrder.orderId || currentOrder.id}</p>
                   </div>
                   {(() => {
                     const isCOD = !/online|upi|card|prepaid/i.test(currentOrder.paymentMethod || "COD");
                     return isCOD ? (
-                      <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200">
-                        <Banknote className="w-5 h-5 text-amber-400 shrink-0" />
-                        <span className="text-[11px] uppercase tracking-wider">Collect cash</span>
-                        <span className="text-xl font-bold text-white">
-                          ₹{currentOrder.totalAmount || currentOrder.total || 0}
-                        </span>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200">
+                        <Banknote className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="text-[10px] uppercase tracking-wide font-bold">Collect</span>
+                        <span className="text-lg font-black text-white tabular-nums">₹{currentOrder.totalAmount || currentOrder.total || 0}</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                        <span className="text-base font-semibold text-white">Already paid</span>
-                        <span className="text-[11px] uppercase tracking-wider">take no cash</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-200">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span className="text-[11px] font-bold">Paid Online</span>
                       </div>
                     );
                   })()}
                 </div>
 
-                {/* Customer Details & Call / WhatsApp Actions */}
+                {/* Map */}
+                <div className="relative w-full rounded-2xl overflow-hidden border border-white/8 shadow-xl" style={{ height: 210 }}>
+                  <div ref={mapContainerRef} className="w-full h-full z-0" />
+                  {/* ETA badge */}
+                  <div className="absolute top-2.5 left-2.5 z-10 bg-[#07111F]/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center gap-1.5 text-[11px] font-bold text-white shadow pointer-events-none">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    {routeStats.distanceKm} km · {routeStats.durationMins} min
+                  </div>
+                  {/* GPS status */}
+                  <div className="absolute bottom-2 left-2 right-2 z-10 bg-[#07111F]/90 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                    <span className="truncate">{gpsStatusMsg}</span>
+                    <span className={`font-bold shrink-0 ml-2 ${isTracking ? "text-emerald-400" : "text-slate-500"}`}>
+                      {isTracking ? "● LIVE" : "○ PAUSED"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Address + Navigation */}
+                <div className="bg-white/[0.04] border border-white/8 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-[#FF5B00]/15 border border-[#FF5B00]/25 flex items-center justify-center shrink-0 mt-0.5">
+                      <MapPin className="w-4.5 h-4.5 text-[#FF5B00]" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Deliver to</p>
+                      <p className="text-[15px] text-white font-semibold leading-snug mt-0.5">
+                        {orderAddress(currentOrder, "No address")}
+                      </p>
+                      <p className="text-sm text-emerald-400 font-medium mt-1">
+                        {routeStats.distanceKm} km · about {routeStats.durationMins} min
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={multiStopNavUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-white text-slate-900 font-black text-[15px] py-4 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg"
+                  >
+                    <Navigation className="w-5 h-5 fill-slate-900" />
+                    {activeQueue.length > 1 ? `Navigate (${activeQueue.length} stops)` : "Start Navigation"}
+                  </a>
+                </div>
+
+                {/* Customer card */}
                 {(() => {
-                  const customerPhone = currentOrder.mobile || currentOrder.customerMobile || currentOrder.phone || "";
-                  const cleanPhone = customerPhone.replace(/[^0-9]/g, "").slice(-10);
+                  const phone = currentOrder.mobile || currentOrder.customerMobile || currentOrder.phone || "";
+                  const clean = phone.replace(/[^0-9]/g, "").slice(-10);
                   return (
-                    <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 space-y-3">
-                      <div className="min-w-0">
-                        <p className="text-base font-bold text-white truncate">
-                          {currentOrder.customerName || "Customer"}
-                        </p>
-                        <p className="text-lg font-mono text-slate-200 tracking-wide truncate">
-                          {customerPhone || "No number"}
-                        </p>
+                    <div className="bg-white/[0.04] border border-white/8 rounded-2xl p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-black text-base shrink-0">
+                          {(currentOrder.customerName?.[0] || "C").toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-base font-bold text-white truncate">{currentOrder.customerName || "Customer"}</p>
+                          <p className="text-sm font-mono text-slate-300">{phone || "No number"}</p>
+                        </div>
                       </div>
-                      {cleanPhone ? (
+                      {clean ? (
                         <div className="grid grid-cols-2 gap-2.5">
-                          <a
-                            href={`tel:${cleanPhone}`}
-                            className="bg-[#FF5B00] hover:bg-orange-600 text-white rounded-xl py-3.5 flex items-center justify-center gap-2 text-base font-bold transition-transform active:scale-95"
-                          >
+                          <a href={`tel:${clean}`}
+                            className="bg-[#FF5B00] text-white rounded-xl py-3.5 flex items-center justify-center gap-2 text-[15px] font-bold active:scale-95 transition-transform">
                             <Phone className="w-5 h-5" />
-                            <span>Call</span>
+                            Call
                           </a>
-                          <a
-                            href={`https://wa.me/91${cleanPhone}?text=Hello%2C%20I%20am%20your%20DashIt%20delivery%20partner%20with%20order%20%23${currentOrder.orderId || currentOrder.id}.`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-3.5 flex items-center justify-center gap-2 text-base font-bold transition-transform active:scale-95"
-                          >
+                          <a href={`https://wa.me/91${clean}?text=Hello%2C%20I%20am%20your%20DashIt%20delivery%20partner%20with%20order%20%23${currentOrder.orderId || currentOrder.id}.`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="bg-emerald-600 text-white rounded-xl py-3.5 flex items-center justify-center gap-2 text-[15px] font-bold active:scale-95 transition-transform">
                             <MessageCircle className="w-5 h-5" />
-                            <span>WhatsApp</span>
+                            WhatsApp
                           </a>
                         </div>
                       ) : null}
@@ -1279,94 +1233,20 @@ export default function DashItDriverApp() {
                   );
                 })()}
 
-                {/* Delivery Address & Navigation */}
-                <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <MapPin className="w-5 h-5 text-[#FF5B00] shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <p className="text-[11px] uppercase tracking-widest text-slate-400">
-                        Go to
-                      </p>
-                      <p className="text-base text-white mt-0.5 leading-snug font-medium">
-                        {orderAddress(currentOrder, "No address on this order")}
-                      </p>
-                      <p className="text-sm text-emerald-400 mt-1.5 font-medium">
-                        {routeStats.distanceKm} km &middot; about {routeStats.durationMins} min
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Multi-Stop Google Maps Navigation Button */}
-                  <a
-                    href={multiStopNavUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-white text-slate-900 font-bold text-base py-3.5 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform cursor-pointer shadow-md"
-                  >
-                    <Navigation className="w-5 h-5 fill-slate-900" />
-                    <span>
-                      {activeQueue.length > 1
-                        ? `Start Multi-Stop Navigation (${activeQueue.length} Drops)`
-                        : "Start Navigation"}
-                    </span>
-                  </a>
-                </div>
-
-                {/* Clean Live Road Map (Multiple Numbered Drop Pins) */}
-                <div className="relative w-full h-56 rounded-2xl overflow-hidden border border-white/10 shadow-inner">
-                  <div ref={mapContainerRef} className="w-full h-full z-0" />
-
-                  {/* Route ETA Floating Badge */}
-                  <div className="absolute top-2.5 left-2.5 z-10 bg-[#061838]/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center space-x-1.5 text-[10px] font-bold text-white shadow-sm pointer-events-none">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{routeStats.distanceKm} km · {routeStats.durationMins} mins to drop</span>
-                  </div>
-
-                  {/* Status Indicator */}
-                  <div className="absolute bottom-2 left-2 right-2 z-10 bg-[#061838]/90 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/15 flex items-center justify-between text-[10px] font-mono text-slate-300">
-                    <span className="truncate">{gpsStatusMsg}</span>
-                    <span className="text-[#FF5B00] font-bold shrink-0 ml-2">
-                      {isTracking ? "Broadcasting Live" : "Tracking Paused"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* GPS Broadcast Control Button */}
-                <button
-                  onClick={toggleTracking}
-                  className={`w-full py-3 rounded-2xl font-black text-xs flex items-center justify-center space-x-2 transition-all shadow-md active:scale-[0.98] ${
-                    isTracking
-                      ? "bg-rose-600 hover:bg-rose-700 text-white"
-                      : "bg-[#FF5B00] hover:bg-orange-600 text-white"
-                  }`}
-                >
-                  {isTracking ? (
-                    <>
-                      <Square className="w-3.5 h-3.5 fill-white" />
-                      <span>PAUSE LIVE GPS BROADCAST</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>BROADCAST LIVE LOCATION TO CUSTOMER</span>
-                    </>
-                  )}
-                </button>
-
-                {/* Bag / Items Overview (if available) */}
+                {/* Items checklist */}
                 {currentOrder.items && currentOrder.items.length > 0 && (
-                  <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-3 space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-300">
-                      <span className="flex items-center gap-1.5 text-slate-200">
+                  <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-3.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                         <Package className="w-3.5 h-3.5 text-[#FF5B00]" />
-                        <span>Delivery Items ({currentOrder.items.length})</span>
+                        Bag Check · {currentOrder.items.length} items
                       </span>
-                      <span className="text-[11px] text-slate-400">Order Total: ₹{currentOrder.totalAmount || currentOrder.total || 0}</span>
+                      <span className="text-[11px] font-bold text-slate-400">₹{currentOrder.totalAmount || currentOrder.total || 0}</span>
                     </div>
-                    <div className="divide-y divide-white/5 max-h-32 overflow-y-auto text-[11px] text-slate-300 pt-1">
+                    <div className="divide-y divide-white/5 max-h-28 overflow-y-auto">
                       {currentOrder.items.map((it, idx) => (
-                        <div key={idx} className="py-1 flex items-center justify-between">
-                          <span className="truncate pr-2">{it.quantity || 1}x {it.name || it.title}</span>
+                        <div key={idx} className="py-1.5 flex items-center justify-between text-[12px]">
+                          <span className="text-slate-300 truncate pr-2">{it.quantity || 1}× {it.name || it.title}</span>
                           <span className="text-slate-400 font-mono shrink-0">₹{(it.price || 0) * (it.quantity || 1)}</span>
                         </div>
                       ))}
@@ -1374,350 +1254,433 @@ export default function DashItDriverApp() {
                   </div>
                 )}
 
-                {/* Status Progression if still packing */}
-                {currentOrder.status !== ORDER_STATUS.OUT_FOR_DELIVERY && (
+                {/* Mark Picked Up (if not yet en route) */}
+                {currentOrder.status !== ORDER_STATUS.OUT_FOR_DELIVERY && currentOrder.status !== "Out for Delivery" && (
                   <button
                     onClick={handleMarkPickedUp}
-                    className="w-full py-3 rounded-2xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#FF5B00] to-orange-500 text-white font-black text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg"
                   >
-                    <Bike className="w-4 h-4 text-[#FF5B00]" />
-                    <span>Mark Picked Up from Hub &amp; En Route</span>
+                    <Truck className="w-5 h-5" />
+                    Picked Up from Hub · Start Delivery
                   </button>
                 )}
 
-                {/* Delivery Completion & OTP Verification */}
-                <div className="bg-white/[0.04] border border-sky-500/30 rounded-2xl p-4 space-y-3 shadow-md">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-sky-300 flex items-center gap-1.5">
-                      <KeyRound className="w-4 h-4 text-[#FF5B00]" />
-                      <span>Customer Delivery OTP:</span>
-                    </label>
-                    <span className="text-[10px] text-slate-400 font-medium">4 digits</span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      maxLength={4}
-                      placeholder="••••"
-                      value={enteredOtp}
-                      onChange={(e) => setEnteredOtp(e.target.value.replace(/[^0-9]/g, ""))}
-                      className="bg-black/50 border border-white/20 text-center font-mono text-xl font-black tracking-widest text-[#FF5B00] py-2.5 rounded-xl grow focus:outline-hidden focus:border-[#FF5B00]"
-                    />
-                    <button
-                      onClick={handleVerifyDelivery}
-                      className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs px-6 rounded-xl shadow-md transition-transform active:scale-95"
-                    >
-                      DELIVER
-                    </button>
-                  </div>
-
-                  <p className="text-[10px] text-slate-400 text-center">
-                    Ask customer for the 4-digit code shown in their app to complete delivery.
-                  </p>
-
-                  {/* Manual Delivered Override if OTP Issue */}
+                {/* I've Arrived → opens OTP overlay */}
+                {(currentOrder.status === ORDER_STATUS.OUT_FOR_DELIVERY || currentOrder.status === "Out for Delivery") && (
                   <button
-                    type="button"
-                    onClick={handleDirectDelivered}
-                    className="w-full text-center text-[11px] font-bold text-amber-400/90 hover:text-amber-300 py-1.5 border border-amber-500/20 hover:border-amber-500/40 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer flex items-center justify-center space-x-1.5"
+                    onClick={() => setShowOtpOverlay(true)}
+                    className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Customer phone unavailable? Complete Directly</span>
+                    <CheckCircle2 className="w-5 h-5" />
+                    I&apos;ve Arrived · Complete Delivery
                   </button>
-                </div>
+                )}
 
-                {/* Upcoming Drops in This Queue (if more than 1 order) */}
+                {/* GPS broadcast toggle */}
+                <button
+                  onClick={toggleTracking}
+                  className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.98] border ${
+                    isTracking
+                      ? "bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
+                      : "bg-white/[0.05] border-white/10 text-slate-300 hover:bg-white/[0.08]"
+                  }`}
+                >
+                  {isTracking ? (
+                    <><Square className="w-3.5 h-3.5 fill-rose-400" /><span>Pause GPS Broadcast</span></>
+                  ) : (
+                    <><Play className="w-3.5 h-3.5 fill-slate-300" /><span>Broadcast Live Location</span></>
+                  )}
+                </button>
+
+                {/* Multi-drop queue (if more than 1 order) */}
                 {activeQueue.length > 1 && (
-                  <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                        <ListOrdered className="w-4 h-4 text-[#FF5B00]" />
-                        <span>Upcoming Drops in Batch ({activeQueue.length - 1})</span>
-                      </h3>
-                      <span className="text-[10px] text-slate-400 font-medium">Sequential stops</span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {activeQueue.slice(1).map((ord, qIdx) => {
-                        const actualIdx = qIdx + 1;
-                        const oId = ord.orderId || ord.id;
-                        const isCOD = !/online|upi|card|prepaid/i.test(ord.paymentMethod || "COD");
+                  <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-4 space-y-2.5">
+                    <h3 className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <ListOrdered className="w-3.5 h-3.5 text-[#FF5B00]" />
+                      Multi-Drop Queue ({activeQueue.length} stops)
+                    </h3>
+                    <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+                      {activeQueue.map((ord, idx) => {
+                        const isSelected = (ord.orderId || ord.id) === (currentOrder?.orderId || currentOrder?.id);
                         return (
-                          <div
-                            key={oId}
-                            className="bg-white/[0.04] border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2.5"
+                          <button
+                            key={ord.orderId || ord.id}
+                            onClick={() => setSelectedOrderId(ord.orderId || ord.id)}
+                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold shrink-0 border transition-all ${
+                              isSelected
+                                ? "bg-[#FF5B00] border-[#FF5B00] text-white scale-105"
+                                : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                            }`}
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-black text-xs shrink-0">
-                                {actualIdx + 1}
-                              </span>
-                              <div className="truncate">
-                                <p className="text-xs font-bold text-white truncate">
-                                  {ord.customerName || "Customer"} · #{oId}
-                                </p>
-                                <p className="text-[10px] text-slate-400 truncate">
-                                  {orderAddress(ord, "Anantnag")}
-                                </p>
-                                <p className="text-[10px] font-mono text-emerald-400 mt-0.5">
-                                  ₹{ord.totalAmount || ord.total || 0} · {isCOD ? "COD Cash" : "Paid Online"}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center space-x-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedOrderId(oId)}
-                                className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold transition-colors cursor-pointer"
-                                title="Make this the current stop"
-                              >
-                                Select
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMoveDrop(actualIdx, -1)}
-                                className="p-1 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                                title="Move up in queue"
-                              >
-                                <ArrowUp className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
+                            <span className={`w-4.5 h-4.5 rounded-full flex items-center justify-center text-[10px] font-black ${isSelected ? "bg-white text-[#FF5B00]" : "bg-white/10"}`}>
+                              {idx + 1}
+                            </span>
+                            <span className="truncate max-w-[70px]">{ord.customerName || `Drop ${idx + 1}`}</span>
+                          </button>
                         );
                       })}
                     </div>
                   </div>
                 )}
-              </div>
+              </>
             ) : (
-              /* No Active Delivery Empty State */
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 text-center space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mx-auto text-[#FF5B00]">
-                  <Bike className="w-7 h-7" />
+              /* Empty active state */
+              <div className="bg-white/[0.03] border border-white/8 rounded-3xl p-10 text-center space-y-4 mt-2">
+                <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mx-auto">
+                  <Bike className="w-8 h-8 text-[#FF5B00]" />
                 </div>
-                <h3 className="font-black text-sm text-white">No Active Delivery Assigned</h3>
-                <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                  You are currently idle at Central Hub. Check the Available Pool to claim pending deliveries in Anantnag.
-                </p>
+                <div>
+                  <h3 className="font-black text-base text-white">No Active Delivery</h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto leading-relaxed">
+                    You&apos;re idle at Central Hub. Pick up an order from the pool to start your next delivery.
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveTab("available")}
-                  className="mt-2 px-4 py-2 rounded-xl bg-[#FF5B00] hover:bg-orange-600 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-transform active:scale-95 shadow-md"
+                  className="px-5 py-3 rounded-xl bg-[#FF5B00] text-white font-black text-sm inline-flex items-center gap-2 shadow-lg shadow-[#FF5B00]/25 active:scale-95 transition-transform"
                 >
-                  <span>View Available Orders ({availableOrders.length})</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <Package className="w-4 h-4" />
+                  View Available Orders
+                  <span className="bg-white text-[#FF5B00] text-[10px] px-1.5 py-0.5 rounded-full font-black">{availableOrders.length}</span>
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 2: AVAILABLE POOL */}
+        {/* ════════════════ TAB: AVAILABLE POOL ════════════════ */}
         {activeTab === "available" && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-400">
-                Orders Waiting for Pickup ({availableOrders.length})
+            <div className="flex items-center justify-between px-0.5">
+              <h2 className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                {availableOrders.length} orders ready to claim
               </h2>
-              <span className="text-[10px] font-bold text-[#FF5B00]">Store Hub</span>
+              <span className="text-[10px] font-bold text-[#FF5B00] bg-[#FF5B00]/10 border border-[#FF5B00]/20 px-2 py-0.5 rounded-full">
+                Hub · Lal Chowk
+              </span>
             </div>
 
             {availableOrders.length > 0 ? (
               availableOrders.map((ord) => {
                 const oId = ord.orderId || ord.id;
+                const isCOD = !/online|upi|card|prepaid/i.test(ord.paymentMethod || "COD");
+                const amount = ord.totalAmount || ord.total || 0;
+                const itemCount = ord.items?.length || 0;
+                const address = ord.location?.address || "Main Market, Anantnag";
+                const isSliding = slideAcceptId === oId;
+
                 return (
-                  <div
-                    key={oId}
-                    className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 space-y-3 hover:border-white/20 transition-all"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold text-sky-400 uppercase">
-                          {ord.status || "Packing"}
-                        </span>
-                        <h3 className="font-black text-sm text-white">Order #{oId}</h3>
+                  <div key={oId} className="bg-white/[0.04] border border-white/8 rounded-2xl overflow-hidden hover:border-white/15 transition-all">
+                    {/* Card top */}
+                    <div className="p-4 space-y-2">
+                      {/* Amount + payment */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-3xl font-black text-white tabular-nums">₹{amount}</span>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${isCOD ? "bg-amber-500/15 text-amber-300 border-amber-500/30" : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"}`}>
+                              {isCOD ? "💵 COD" : "✅ Paid"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                            {itemCount > 0 ? `${itemCount} items` : "Order"} · {ord.status || "Placed"}
+                          </p>
+                        </div>
+                        {/* Distance placeholder (OSRM not called here for perf) */}
+                        <div className="bg-white/[0.06] border border-white/10 rounded-xl px-3 py-2 text-center shrink-0">
+                          <p className="text-[10px] text-slate-400 font-medium">Est.</p>
+                          <p className="text-sm font-black text-white">~2 km</p>
+                        </div>
                       </div>
-                      {(() => {
-                        const isCOD = !/online|upi|card|prepaid/i.test(ord.paymentMethod || "COD");
-                        return (
-                          <span
-                            className={`text-xs font-black px-2.5 py-0.5 rounded-full border ${
-                              isCOD
-                                ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                                : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-                            }`}
-                          >
-                            ₹{ord.totalAmount || ord.total || 0} · {isCOD ? "Cash on Delivery" : "Paid Online"}
-                          </span>
-                        );
-                      })()}
-                    </div>
 
-                    <div className="text-xs text-slate-300 space-y-1">
-                      <p className="flex items-center gap-1.5">
+                      {/* Address */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-300">
                         <MapPin className="w-3.5 h-3.5 text-[#FF5B00] shrink-0" />
-                        <span className="truncate">
-                          {ord.location?.address || "Main Market, Anantnag"}
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-slate-400 pl-5">
-                        {ord.items?.length || 2} items · ₹{ord.totalAmount || ord.total || 180} · {ord.paymentMethod || "COD"}
-                      </p>
+                        <span className="truncate">{address}</span>
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => handleClaimOrder(ord)}
-                      className="w-full py-2.5 rounded-xl bg-[#FF5B00] hover:bg-orange-600 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md transition-transform active:scale-95"
+                    {/* Slide-to-Accept strip */}
+                    <div
+                      className="relative mx-3 mb-3 h-14 bg-white/[0.06] border border-white/10 rounded-xl overflow-hidden select-none touch-none"
+                      ref={isSliding ? slideTrackRef : null}
+                      onPointerDown={(e) => {
+                        setSlideAcceptId(oId);
+                        setSlideProgress(0);
+                        slidingRef.current = true;
+                        e.currentTarget.setPointerCapture(e.pointerId);
+                      }}
+                      onPointerMove={(e) => {
+                        if (!slidingRef.current || slideAcceptId !== oId) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const pct = Math.max(0, Math.min(1, (x - 28) / (rect.width - 56)));
+                        setSlideProgress(pct);
+                        if (pct >= 0.92) {
+                          slidingRef.current = false;
+                          setSlideProgress(1);
+                          setSlideAcceptId(null);
+                          handleClaimOrder(ord);
+                        }
+                      }}
+                      onPointerUp={() => {
+                        slidingRef.current = false;
+                        if (slideAcceptId === oId) {
+                          setSlideProgress(0);
+                          setSlideAcceptId(null);
+                        }
+                      }}
+                      onPointerCancel={() => {
+                        slidingRef.current = false;
+                        setSlideProgress(0);
+                        setSlideAcceptId(null);
+                      }}
                     >
-                      <Bike className="w-3.5 h-3.5" />
-                      <span>Accept &amp; Start Delivery</span>
-                    </button>
+                      {/* Fill */}
+                      <div
+                        className="absolute inset-y-0 left-0 bg-[#FF5B00]/20 rounded-xl transition-none"
+                        style={{ width: `${(isSliding ? slideProgress : 0) * 100}%` }}
+                      />
+                      {/* Label */}
+                      <div className="absolute inset-0 flex items-center justify-center gap-2 text-[13px] font-black text-slate-300 pointer-events-none select-none">
+                        <ChevronsRight className="w-4 h-4 text-[#FF5B00]" />
+                        Slide to Accept
+                        <ChevronsRight className="w-4 h-4 text-[#FF5B00]" />
+                      </div>
+                      {/* Thumb */}
+                      <div
+                        className="absolute top-1.5 bottom-1.5 w-11 bg-[#FF5B00] rounded-lg flex items-center justify-center shadow-lg shadow-[#FF5B00]/30 pointer-events-none transition-none"
+                        style={{ left: `calc(${(isSliding ? slideProgress : 0) * (100 - 16)}% + 4px)`, willChange: "left" }}
+                      >
+                        <Bike className="w-5 h-5 text-white" />
+                      </div>
+                    </div>
                   </div>
                 );
               })
             ) : (
-              <div className="bg-white/[0.03] border border-white/10 rounded-3xl p-8 text-center space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mx-auto text-emerald-400">
-                  <CheckCircle2 className="w-7 h-7" />
+              <div className="bg-white/[0.03] border border-white/8 rounded-3xl p-10 text-center space-y-3 mt-2">
+                <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 </div>
-                <h3 className="font-black text-sm text-white">All Orders Claimed</h3>
+                <h3 className="font-black text-base text-white">Queue Empty</h3>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                  No orders are currently waiting in the Anantnag queue. As soon as a customer places an order, it will appear here in real time.
+                  No unassigned orders right now. New orders appear here the moment a customer places one.
                 </p>
               </div>
             )}
           </div>
         )}
 
-        {/* Delivery Success Celebration Modal */}
-        {showDeliverySuccess && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-            <div className="bg-[#061838] border border-emerald-500/40 rounded-3xl p-6 text-center space-y-3 max-w-xs w-full shadow-2xl animate-in zoom-in-95">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center mx-auto text-emerald-400">
-                <CheckCircle2 className="w-8 h-8" />
+        {/* ════════════════ TAB: PROFILE ════════════════ */}
+        {activeTab === "profile" && (
+          <div className="space-y-4 py-2">
+            {/* Driver card */}
+            <div className="bg-white/[0.04] border border-white/8 rounded-2xl p-5 flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-[#FF5B00] flex items-center justify-center text-white font-black text-2xl shrink-0">
+                {(driverDisplayName[0] || "R").toUpperCase()}
               </div>
-              <h3 className="text-lg font-black text-white">Delivery Completed!</h3>
-              <p className="text-xs text-slate-300">
-                Customer received the order and 4-digit OTP was verified. Order successfully marked as delivered.
-              </p>
-              <button
-                onClick={() => setShowDeliverySuccess(false)}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-xs hover:bg-emerald-400 transition-colors"
-              >
-                GREAT! NEXT DELIVERY
-              </button>
+              <div className="min-w-0">
+                <p className="text-lg font-black text-white truncate">{driverDisplayName}</p>
+                <p className="text-xs text-slate-400 font-medium">{user?.email || ""}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[10px] bg-[#FF5B00]/20 text-[#FF5B00] border border-[#FF5B00]/30 px-1.5 py-0.5 rounded-md font-black">PRO RIDER</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-black ${isOnline ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-white/5 text-slate-400 border border-white/10"}`}>
+                    {isOnline ? "ON DUTY" : "OFFLINE"}
+                  </span>
+                </div>
+              </div>
             </div>
+
+            {/* Today's stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-center">
+                <p className="text-3xl font-black text-emerald-400 tabular-nums">{completedOrdersCount}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Drops Today</p>
+              </div>
+              <div className="bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-center">
+                <p className="text-3xl font-black text-sky-400 tabular-nums">{activeOrders.length}</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-1">Active Now</p>
+              </div>
+            </div>
+
+            {/* Duty toggle */}
+            <button
+              onClick={() => setIsOnline(!isOnline)}
+              className={`w-full py-4 rounded-2xl font-black text-[15px] flex items-center justify-center gap-2.5 border transition-all active:scale-[0.98] ${
+                isOnline
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15"
+                  : "bg-[#FF5B00]/10 border-[#FF5B00]/30 text-[#FF5B00] hover:bg-[#FF5B00]/15"
+              }`}
+            >
+              <span className={`w-3 h-3 rounded-full ${isOnline ? "bg-emerald-400" : "bg-[#FF5B00]"}`} />
+              {isOnline ? "Go Offline" : "Go Online"}
+            </button>
+
+            {/* Sign out */}
+            <button
+              onClick={() => signOut()}
+              className="w-full py-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all hover:bg-rose-500/20"
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </button>
           </div>
         )}
 
-        {/* Auth Section if user is not signed in */}
+        {/* Auth section (when no Firebase user) */}
         {!user && (
-          <div className="bg-white/[0.04] border border-white/10 rounded-3xl p-5 space-y-3.5 mt-6">
+          <div className="bg-white/[0.04] border border-white/8 rounded-3xl p-5 space-y-3.5 mt-4">
             <div className="flex items-center gap-2 text-white">
               <User className="w-4 h-4 text-[#FF5B00]" />
               <h3 className="font-black text-sm">Rider Sign In</h3>
             </div>
-            <p className="text-xs text-slate-400">
-              Sign in with your registered rider account to sync your deliveries with the central dispatcher.
-            </p>
-
             {authError && (
-              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs">
-                {authError}
-              </div>
+              <div className="p-2.5 rounded-xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs">{authError}</div>
             )}
-
-            {loginMethod === "otp" ? (
-              authStep === 1 ? (
-                <form onSubmit={handleSendOtp} className="space-y-2.5">
-                  <input
-                    type="tel"
-                    placeholder="Enter Rider Mobile (+91...)"
-                    value={authMobile}
-                    onChange={(e) => setAuthMobile(e.target.value)}
-                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isAuthSubmitting}
-                    className="w-full py-2.5 rounded-xl bg-[#FF5B00] font-black text-xs text-white"
-                  >
-                    {isAuthSubmitting ? "Sending code..." : "Send OTP"}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyOtp} className="space-y-2.5">
-                  <input
-                    type="text"
-                    maxLength={4}
-                    placeholder="Enter 4-Digit Code"
-                    value={authOtp || devCode}
-                    onChange={(e) => setAuthOtp(e.target.value)}
-                    className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-center font-mono text-sm text-[#FF5B00]"
-                  />
-                  {devCode && (
-                    <p className="text-[10px] text-amber-400 text-center">
-                      Auto-detected test code: {devCode}
-                    </p>
-                  )}
-                  <button
-                    type="submit"
-                    disabled={isAuthSubmitting}
-                    className="w-full py-2.5 rounded-xl bg-emerald-500 font-black text-xs text-slate-950"
-                  >
-                    {isAuthSubmitting ? "Verifying..." : "Verify & Sign In"}
-                  </button>
-                </form>
-              )
-            ) : (
-              <form onSubmit={handleEmailSignIn} className="space-y-2.5">
-                <input
-                  type="email"
-                  placeholder="Rider Email"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
-                />
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-2 text-xs text-white"
-                />
-                <button
-                  type="submit"
-                  disabled={isAuthSubmitting}
-                  className="w-full py-2.5 rounded-xl bg-[#FF5B00] font-black text-xs text-white"
-                >
-                  {isAuthSubmitting ? "Signing in..." : "Sign In with Email"}
-                </button>
-              </form>
-            )}
-
-            <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginMethod(loginMethod === "otp" ? "email" : "otp");
-                  setAuthStep(1);
-                  setAuthError("");
-                }}
-                className="hover:text-white underline"
-              >
-                Switch to {loginMethod === "otp" ? "Email & Password" : "Phone OTP"}
+            <form onSubmit={handleEmailSignIn} className="space-y-2.5">
+              <input type="email" placeholder="Rider Email" value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-[#FF5B00]" />
+              <input type="password" placeholder="Password" value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full bg-black/40 border border-white/15 rounded-xl px-3 py-3 text-sm text-white focus:outline-none focus:border-[#FF5B00]" />
+              <button type="submit" disabled={isAuthSubmitting}
+                className="w-full py-3.5 rounded-xl bg-[#FF5B00] font-black text-sm text-white disabled:opacity-50 active:scale-[0.98] transition-transform">
+                {isAuthSubmitting ? "Signing in…" : "Sign In"}
               </button>
-              <button
-                type="button"
-                onClick={() => setIsSandbox(true)}
-                className="text-[#FF5B00] font-bold hover:underline"
-              >
-                Skip &amp; Test as Guest
-              </button>
-            </div>
+            </form>
           </div>
         )}
       </main>
+
+      {/* ── OTP Verification Overlay ── */}
+      {showOtpOverlay && (
+        <div className="fixed inset-0 z-50 bg-[#07111F]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 gap-5">
+          <div className="w-full max-w-sm space-y-5">
+            {/* Header */}
+            <div className="text-center space-y-1">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3">
+                <KeyRound className="w-8 h-8 text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-black text-white">Delivery Code</h2>
+              <p className="text-sm text-slate-400">Ask the customer for the 4-digit code shown in their app</p>
+            </div>
+
+            {/* OTP input – big and easy to tap */}
+            <input
+              type="tel"
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="• • • •"
+              value={enteredOtp}
+              onChange={(e) => setEnteredOtp(e.target.value.replace(/[^0-9]/g, ""))}
+              autoFocus
+              className="w-full bg-black/50 border-2 border-white/20 text-center font-mono text-5xl font-black tracking-[0.3em] text-[#FF5B00] py-5 rounded-2xl focus:outline-none focus:border-[#FF5B00] transition-colors"
+            />
+
+            {/* Confirm */}
+            <button
+              onClick={handleVerifyDelivery}
+              disabled={enteredOtp.length < 4}
+              className="w-full py-5 rounded-2xl bg-emerald-500 disabled:opacity-40 text-slate-950 font-black text-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-xl shadow-emerald-500/20"
+            >
+              <CheckCircle2 className="w-6 h-6" />
+              Confirm Delivery
+            </button>
+
+            {/* Bypass */}
+            <button
+              type="button"
+              onClick={() => { setShowOtpOverlay(false); handleDirectDelivered(); }}
+              className="w-full text-center text-sm font-bold text-amber-400/80 hover:text-amber-300 py-2 border border-amber-500/20 rounded-xl bg-amber-500/5 transition-colors"
+            >
+              Customer unreachable · Skip OTP &amp; Complete
+            </button>
+
+            {/* Close */}
+            <button
+              onClick={() => { setShowOtpOverlay(false); setEnteredOtp(""); }}
+              className="w-full text-center text-sm text-slate-500 hover:text-slate-300 transition-colors py-2 flex items-center justify-center gap-1.5"
+            >
+              <X className="w-4 h-4" /> Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delivery success modal ── */}
+      {showDeliverySuccess && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="bg-[#07111F] border border-emerald-500/40 rounded-3xl p-7 text-center space-y-4 max-w-xs w-full shadow-2xl">
+            <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-white">Delivered! 🎉</h3>
+              <p className="text-sm text-slate-400 mt-1">Order verified and marked complete.</p>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+              <p className="text-emerald-400 font-black text-3xl tabular-nums">{completedOrdersCount}</p>
+              <p className="text-[11px] text-emerald-300 font-bold uppercase tracking-wider">Drops Today</p>
+            </div>
+            <button
+              onClick={() => setShowDeliverySuccess(false)}
+              className="w-full py-3.5 rounded-xl bg-emerald-500 text-slate-950 font-black text-sm hover:bg-emerald-400 transition-colors active:scale-[0.98]"
+            >
+              Next Delivery →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Persistent Bottom Navigation Bar ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#07111F]/98 backdrop-blur-md border-t border-white/10"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+        <div className="flex items-stretch max-w-md mx-auto">
+          {/* Active Deliveries */}
+          <button
+            onClick={() => setActiveTab("active")}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 relative transition-colors ${activeTab === "active" ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-300"}`}
+          >
+            {activeTab === "active" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#FF5B00] rounded-full" />}
+            <Bike className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Active</span>
+            {activeOrders.length > 0 && (
+              <span className="absolute top-2 right-1/4 w-4 h-4 bg-[#FF5B00] rounded-full text-white text-[9px] font-black flex items-center justify-center">
+                {activeOrders.length}
+              </span>
+            )}
+          </button>
+
+          {/* Available Pool */}
+          <button
+            onClick={() => setActiveTab("available")}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 relative transition-colors ${activeTab === "available" ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-300"}`}
+          >
+            {activeTab === "available" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#FF5B00] rounded-full" />}
+            <Package className="w-5 h-5" />
+            <span className="text-[10px] font-bold">Pool</span>
+            {availableOrders.length > 0 && (
+              <span className="absolute top-2 right-1/4 w-4 h-4 bg-emerald-500 rounded-full text-white text-[9px] font-black flex items-center justify-center">
+                {availableOrders.length > 99 ? "99+" : availableOrders.length}
+              </span>
+            )}
+          </button>
+
+          {/* Profile */}
+          <button
+            onClick={() => setActiveTab("profile")}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 relative transition-colors ${activeTab === "profile" ? "text-[#FF5B00]" : "text-slate-500 hover:text-slate-300"}`}
+          >
+            {activeTab === "profile" && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#FF5B00] rounded-full" />}
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-black ${activeTab === "profile" ? "bg-[#FF5B00] text-white" : "bg-white/10 text-slate-400"}`}>
+              {(driverDisplayName[0] || "R").toUpperCase()}
+            </div>
+            <span className="text-[10px] font-bold">Profile</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

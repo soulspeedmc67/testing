@@ -229,6 +229,15 @@ export default function AdminAccessGate() {
      flag: a flag is writable from devtools, so trusting it would let anyone
      open the console shell by typing one line in the browser. */
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isCustomerApp =
+        (window.AndroidFlavor && window.AndroidFlavor.getFlavor && window.AndroidFlavor.getFlavor() === "customer") ||
+        (window.__DASHIT_ROLE__ === "customer");
+      if (isCustomerApp) {
+        window.location.replace("/shop");
+        return;
+      }
+    }
     if (!isFirebaseConfigured) return;
     const unsub = watchAuth(async (user) => {
       if (!user) {
@@ -249,6 +258,7 @@ export default function AdminAccessGate() {
     });
     return unsub;
   }, []);
+
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
