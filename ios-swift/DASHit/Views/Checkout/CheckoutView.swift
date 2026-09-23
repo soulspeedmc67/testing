@@ -7,12 +7,12 @@ struct CheckoutView: View {
     @ObservedObject private var auth = AuthService.shared
     @State private var isAddressSheetOpen = false
     @State private var isAuthModalOpen = false
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.surface.ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 16) {
                         // 1. Delivery Address Card
@@ -30,7 +30,7 @@ struct CheckoutView: View {
                                 .font(.dashitCaptionBold)
                                 .foregroundColor(.brandAccent)
                             }
-                            
+
                             Text(vm.selectedAddress.formattedSummary)
                                 .font(.dashitCaption)
                                 .foregroundColor(.textMuted)
@@ -42,7 +42,7 @@ struct CheckoutView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.hairline, lineWidth: 1)
                         )
-                        
+
                         // 2. Delivery Time Guarantee
                         HStack(spacing: 12) {
                             Image(systemName: "bolt.badge.clock.fill")
@@ -67,13 +67,13 @@ struct CheckoutView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.hairline, lineWidth: 1)
                         )
-                        
+
                         // 3. Payment Method Selection
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Payment Method")
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.textPrimary)
-                            
+
                             // Cash On Delivery
                             Button(action: {
                                 vm.paymentMethod = "cod"
@@ -93,7 +93,7 @@ struct CheckoutView: View {
                                 .background(vm.paymentMethod == "cod" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
                                 .cornerRadius(10)
                             }
-                            
+
                             // Apple Pay
                             Button(action: {
                                 vm.paymentMethod = "apple_pay"
@@ -121,7 +121,7 @@ struct CheckoutView: View {
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.hairline, lineWidth: 1)
                         )
-                        
+
                         // 4. Order Bill Summary
                         VStack(spacing: 8) {
                             HStack {
@@ -144,7 +144,7 @@ struct CheckoutView: View {
                     }
                     .padding(16)
                 }
-                
+
                 // Bottom Fixed CTA
                 VStack(spacing: 10) {
                     Spacer()
@@ -166,7 +166,7 @@ struct CheckoutView: View {
                     }
                     Button(action: {
                         Task {
-                            if !auth.isAuthenticated {
+                            if !auth.isAuthenticated || auth.needsPhoneNumber {
                                 isAuthModalOpen = true
                                 return
                             }
@@ -217,8 +217,10 @@ struct CheckoutView: View {
                 ProfileView()
                     .dashitSheet([.large])
             }
-            .onChange(of: auth.isAuthenticated) { _, isAuthenticated in
-                if isAuthenticated {
+            // Close once signed in with a delivery number (Apple and email
+            // accounts add theirs in the same sheet first).
+            .onChange(of: auth.isAuthenticated && !auth.needsPhoneNumber) { _, isReady in
+                if isReady {
                     isAuthModalOpen = false
                 }
             }

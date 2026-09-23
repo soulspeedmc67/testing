@@ -80,3 +80,43 @@ struct CategoryCollageTile: View {
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }
+
+/// Compact department card: one product photo on a soft tile, name below.
+struct CategoryCard: View {
+    let tile: CategoryTile
+    var onTap: () -> Void
+
+    private var tileShape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 6) {
+                Color.surfaceMuted
+                    .aspectRatio(1, contentMode: .fit)
+                    .overlay {
+                        AsyncImage(url: tile.previewImages.first.flatMap { URL(string: $0) }, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                            if let image = phase.image {
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                            } else {
+                                Image(systemName: CategorySymbol.name(for: Category(id: tile.id, name: tile.name)))
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.textFaint)
+                            }
+                        }
+                    }
+                    .clipShape(tileShape)
+                    .overlay(tileShape.strokeBorder(Color.hairline, lineWidth: 1))
+                Text(tile.name)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2, reservesSpace: true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.94))
+        .accessibilityLabel(tile.name)
+    }
+}

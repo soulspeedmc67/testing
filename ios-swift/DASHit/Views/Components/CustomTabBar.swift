@@ -9,7 +9,7 @@ enum TabItem: String, CaseIterable {
         switch self {
         case .home: return "house.fill"
         case .orderAgain: return "bag.fill"
-        case .categories: return "square.grid.2x2.fill"
+        case .categories: return "circle.grid.2x2.fill"
         }
     }
 
@@ -17,27 +17,23 @@ enum TabItem: String, CaseIterable {
         switch self {
         case .home: return "house"
         case .orderAgain: return "bag"
-        case .categories: return "square.grid.2x2"
+        case .categories: return "circle.grid.2x2"
         }
     }
 }
 
-/// Floating bottom navigation: a rounded bar inset from the screen edges,
-/// on a material so content shows softly through as it scrolls beneath.
-/// The active tab gets a filled orange symbol that bounces on selection.
+/// Bottom navigation, after the Blinkit reference: a full-width translucent
+/// bar the feed scrolls beneath, large symbols over short labels, and the
+/// active tab picked out in brand orange with a filled, bouncing symbol.
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
 
-    /// Height of the floating bar itself.
-    static let barHeight: CGFloat = 62
-    /// Gap between the bar and the bottom safe area (home indicator).
-    static let bottomGap: CGFloat = 6
+    /// Height of the bar above the bottom safe area.
+    static let barHeight: CGFloat = 64
     /// Everything the bar occupies above the bottom safe area.
-    static let dockHeight: CGFloat = barHeight + bottomGap
+    static let dockHeight: CGFloat = barHeight
 
     @State private var bounceCounts: [TabItem: Int] = [:]
-
-    private var barShape: RoundedRectangle { RoundedRectangle(cornerRadius: 26, style: .continuous) }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -45,13 +41,22 @@ struct CustomTabBar: View {
                 tabButton(tab)
             }
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 12)
         .frame(height: Self.barHeight)
-        .background(.regularMaterial, in: barShape)
-        .overlay(barShape.strokeBorder(Color.hairline, lineWidth: 1))
-        .shadow(color: .floatingShadow, radius: 20, x: 0, y: 8)
-        .padding(.horizontal, 20)
-        .padding(.bottom, Self.bottomGap)
+        .background {
+            // Frosted, and tinted towards the page so it reads as one surface
+            // while cards stay faintly visible as they pass underneath.
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                Color.surface.opacity(0.72)
+            }
+            .ignoresSafeArea(edges: .bottom)
+        }
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.hairline.opacity(0.7))
+                .frame(height: 0.5)
+        }
         .animation(.dashitSpring, value: selectedTab)
     }
 
@@ -64,15 +69,16 @@ struct CustomTabBar: View {
             bounceCounts[tab, default: 0] += 1
             selectedTab = tab
         } label: {
-            VStack(spacing: 3) {
+            VStack(spacing: 5) {
                 Image(systemName: isSelected ? tab.iconName : tab.outlineIconName)
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .brandAccent : .textMuted)
+                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: 24, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .brandAccent : .textSecondary)
                     .symbolEffect(.bounce, value: bounceCounts[tab, default: 0])
-                    .frame(height: 24)
+                    .frame(height: 28)
                 Text(tab.rawValue)
-                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .textPrimary : .textMuted)
+                    .font(.system(size: 12.5, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(isSelected ? .textPrimary : .textSecondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)

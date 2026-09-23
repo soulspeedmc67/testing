@@ -10,6 +10,13 @@ struct CategoryTile: Identifiable {
     let productCount: Int
 }
 
+/// A department on the home feed ("Grocery & Kitchen"), grouping categories.
+struct Department: Identifiable {
+    let id: String
+    let title: String
+    let tiles: [CategoryTile]
+}
+
 /// One "everyday" rail on the home feed: a category and its first few products.
 struct ProductRail: Identifiable {
     let id: String
@@ -119,6 +126,37 @@ final class StorefrontViewModel: ObservableObject {
                 productCount: entry.products.count
             )
         }
+    }
+
+    /// The busiest categories, shown as collage tiles at the top of the feed.
+    var topCategoryTiles: [CategoryTile] {
+        Array(categoryTiles.sorted { $0.productCount > $1.productCount }.prefix(6))
+    }
+
+    /// Categories grouped into store departments, Blinkit-style; anything that
+    /// fits none of them lands in "More to explore".
+    var departments: [Department] {
+        let groups: [(title: String, keys: [String])] = [
+            ("Fresh & Daily", ["dairy", "fruit", "vegetable", "egg", "chicken", "meat", "fish", "bread"]),
+            ("Grocery & Kitchen", ["staple", "grocery", "atta", "rice", "dal", "oil", "spice", "masala", "instant", "kitchen"]),
+            ("Snacks & Drinks", ["snack", "chip", "namkeen", "biscuit", "cookie", "bakery", "beverage", "drink", "juice", "sweet", "chocolate"]),
+            ("Home & Household", ["home", "clean", "household", "care"])
+        ]
+        var remaining = categoryTiles
+        var result: [Department] = []
+        for group in groups {
+            let matched = remaining.filter { tile in
+                let name = tile.name.lowercased()
+                return group.keys.contains { name.contains($0) }
+            }
+            guard !matched.isEmpty else { continue }
+            remaining.removeAll { tile in matched.contains { $0.id == tile.id } }
+            result.append(Department(id: group.title, title: group.title, tiles: matched))
+        }
+        if !remaining.isEmpty {
+            result.append(Department(id: "more", title: "More to explore", tiles: remaining))
+        }
+        return result
     }
 
     var rails: [ProductRail] {

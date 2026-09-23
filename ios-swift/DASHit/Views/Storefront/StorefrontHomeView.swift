@@ -41,6 +41,11 @@ struct StorefrontHomeView: View {
                                 .id("categories")
                                 .padding(.top, 26)
 
+                            ForEach(vm.departments) { department in
+                                departmentSection(department)
+                                    .padding(.top, 28)
+                            }
+
                             ForEach(vm.rails) { rail in
                                 ProductRailView(
                                     title: rail.title,
@@ -223,14 +228,36 @@ struct StorefrontHomeView: View {
 
     private var categorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Shop by category")
+            Text("Top categories")
                 .font(.system(size: 19, weight: .bold))
                 .foregroundColor(.textPrimary)
                 .padding(.horizontal, 16)
 
             LazyVGrid(columns: tileColumns, spacing: 12) {
-                ForEach(vm.categoryTiles) { tile in
+                ForEach(vm.topCategoryTiles) { tile in
                     CategoryCollageTile(tile: tile) {
+                        vm.selectCategory(tile.name)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    /// A department grid: four compact category cards per row.
+    private func departmentSection(_ department: Department) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(department.title)
+                .font(.system(size: 19, weight: .bold))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 16)
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 4),
+                spacing: 14
+            ) {
+                ForEach(department.tiles) { tile in
+                    CategoryCard(tile: tile) {
                         vm.selectCategory(tile.name)
                     }
                 }
