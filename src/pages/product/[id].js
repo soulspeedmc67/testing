@@ -29,6 +29,8 @@ import { hapticLight, hapticMedium, hapticCartAdd } from "../../lib/haptics";
 import { goBack } from "../../lib/navigation";
 import { useStoreDetails } from "../../lib/storeStatus";
 import { watchProducts } from "../../lib/db";
+import { useAgeGate } from "../../context/AgeGateContext";
+import { isAgeRestricted, hasConfirmedAge } from "../../lib/ageGate";
 
 export default function ProductDetailPage({ initialProduct }) {
   const router = useRouter();
@@ -159,6 +161,18 @@ export default function ProductDetailPage({ initialProduct }) {
 
   const currentQty = cartItem ? cartItem.qty : 0;
 
+  const { requireAgeConfirmation } = useAgeGate();
+
+  // 18+ Statutory Age Warning check when viewing an age-restricted item
+  useEffect(() => {
+    if (product && isAgeRestricted(product) && !hasConfirmedAge()) {
+      const timer = setTimeout(() => {
+        requireAgeConfirmation(product);
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [product, requireAgeConfirmation]);
+
   const saveCart = (newCart) => {
     setCart(newCart);
     try {
@@ -172,30 +186,35 @@ export default function ProductDetailPage({ initialProduct }) {
       alert(`Store Reopening Schedule: ${closeReason || "We will reopen shortly!"}`);
       return;
     }
-    hapticCartAdd();
-    const itemToAdd = {
-      ...product,
-      unit: activeVariant.unit,
-      price: activeVariant.price,
-      originalPrice: activeVariant.originalPrice,
-      variantId: activeVariant.id,
-      qty: 1,
+
+    const commitAdd = () => {
+      hapticCartAdd();
+      const itemToAdd = {
+        ...product,
+        unit: activeVariant.unit,
+        price: activeVariant.price,
+        originalPrice: activeVariant.originalPrice,
+        variantId: activeVariant.id,
+        qty: 1,
+      };
+
+      const existingIdx = cart.findIndex(
+        (i) =>
+          String(i.id) === String(product.id) &&
+          (i.variantId === activeVariant.id || i.unit === activeVariant.unit)
+      );
+
+      let updated;
+      if (existingIdx > -1) {
+        updated = [...cart];
+        updated[existingIdx].qty += 1;
+      } else {
+        updated = [...cart, itemToAdd];
+      }
+      saveCart(updated);
     };
 
-    const existingIdx = cart.findIndex(
-      (i) =>
-        String(i.id) === String(product.id) &&
-        (i.variantId === activeVariant.id || i.unit === activeVariant.unit)
-    );
-
-    let updated;
-    if (existingIdx > -1) {
-      updated = [...cart];
-      updated[existingIdx].qty += 1;
-    } else {
-      updated = [...cart, itemToAdd];
-    }
-    saveCart(updated);
+    requireAgeConfirmation(product, commitAdd);
   };
 
   const handleUpdateQty = (pId, delta) => {
@@ -207,6 +226,16 @@ export default function ProductDetailPage({ initialProduct }) {
 
     if (existingIdx === -1) {
       if (delta > 0) handleAddToCart();
+      return;
+    }
+
+    if (delta > 0) {
+      requireAgeConfirmation(product, () => {
+        const newQty = cart[existingIdx].qty + delta;
+        const updated = [...cart];
+        updated[existingIdx].qty = newQty;
+        saveCart(updated);
+      });
       return;
     }
 
@@ -452,6 +481,28 @@ export default function ProductDetailPage({ initialProduct }) {
             (Inclusive of all taxes)
           </p>
         </div>
+
+        {/* 18+ Statutory Warning Callout */}
+        {isAgeRestricted(product) && (
+          <div className="bg-red-50/90 dark:bg-red-950/30 border border-red-200/80 dark:border-red-900/50 rounded-3xl p-4 flex items-start space-x-3.5 shadow-2xs">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-600 to-rose-700 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+              18+
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-red-950 dark:text-red-200">
+                  Statutory Age-Restricted Product
+                </h4>
+                <span className="text-[9px] font-bold uppercase tracking-wider text-red-700 bg-red-100 dark:bg-red-900/50 px-1.5 py-0.5 rounded">
+                  Govt Laws
+                </span>
+              </div>
+              <p className="text-[11.5px] text-red-800 dark:text-red-300/80 font-medium mt-1 leading-relaxed">
+                This item cannot be purchased by persons under 18 years of age. A valid government photo ID must be shown to the delivery partner.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* VARIANT / TYPE SELECTOR (Price Variations) */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs space-y-3 dark:bg-surface-raised dark:border-line/90">

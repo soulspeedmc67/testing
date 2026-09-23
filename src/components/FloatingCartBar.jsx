@@ -96,6 +96,10 @@ export default function FloatingCartBar() {
   /* Storage can hold anything a previous build wrote; never trust its shape. */
   const items = Array.isArray(cart) ? cart : EMPTY_CART;
   const itemCount = items.reduce((sum, item) => sum + (item.qty || 0), 0);
+  const subtotal = items.reduce(
+    (sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 0),
+    0
+  );
   const isStorefront = STOREFRONT_ROUTES.includes(router.pathname);
 
   // Determine if this is a "first appearance" (from 0 items or from non-storefront page)
@@ -173,15 +177,29 @@ export default function FloatingCartBar() {
           )}
         </div>
 
-        {/* Middle: View cart & Item count with Trust Navy & Orange Badge */}
+        {/* Middle: View cart, Total & Min Order Reminder */}
         <div className="text-left pr-1 pl-0.5">
-          <span className="font-extrabold text-xs md:text-sm text-white block leading-tight tracking-tight drop-shadow-xs">
-            View cart
-          </span>
-          <div className="flex items-center space-x-1 mt-0.5">
+          <div className="flex items-center space-x-2">
+            <span className="font-extrabold text-xs md:text-sm text-white block leading-tight tracking-tight drop-shadow-xs">
+              View cart
+            </span>
+            <span className="font-mono font-black text-xs text-white/95">
+              ₹{subtotal}
+            </span>
+          </div>
+          <div className="flex items-center space-x-1.5 mt-0.5">
             <span className="text-[10px] font-black text-white bg-[#FF5B00] px-1.5 py-0.5 rounded-md leading-none">
               <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "Item" : "Items"}
             </span>
+            {subtotal < 299 ? (
+              <span className="text-[9.5px] font-extrabold text-amber-300">
+                Add ₹{299 - subtotal} for min
+              </span>
+            ) : (
+              <span className="text-[9.5px] font-extrabold text-emerald-400">
+                Min met ✓
+              </span>
+            )}
           </div>
         </div>
 

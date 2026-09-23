@@ -149,9 +149,10 @@ function ProductCard({
         {ageRestricted && !isOutOfStock && (
           <span
             aria-label="Age restricted, 18 plus"
-            className={`absolute ${compact ? "bottom-1.5 left-1.5 text-[8px] px-1.5 py-0.5" : "bottom-2 left-2 text-[9px] px-2 py-[3px]"} font-black text-white bg-[#061838] rounded-full shadow-sm tracking-wide`}
+            className={`absolute ${compact ? "bottom-1.5 left-1.5 text-[8px] px-1.5 py-0.5" : "bottom-2 left-2 text-[9px] px-2 py-[3px]"} font-black text-white bg-red-600 rounded-full shadow-sm tracking-wide flex items-center gap-1 border border-white/30`}
           >
-            18+
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            18+ Only
           </span>
         )}
 
