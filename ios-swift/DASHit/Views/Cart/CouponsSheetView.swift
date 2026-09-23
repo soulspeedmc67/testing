@@ -43,7 +43,7 @@ struct CouponsSheetView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.obsidianBlack.ignoresSafeArea()
+                Color.surface.ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 12) {
@@ -55,7 +55,7 @@ struct CouponsSheetView: View {
                                 HStack {
                                     HStack(spacing: 6) {
                                         Image(systemName: "ticket.fill")
-                                            .foregroundColor(.dashitAmber)
+                                            .foregroundColor(.caution)
                                         Text(coupon.code)
                                             .font(.dashitHeadline)
                                             .foregroundColor(.white)
@@ -66,10 +66,10 @@ struct CouponsSheetView: View {
                                     if isCurrentlyApplied {
                                         Text("APPLIED")
                                             .font(.dashitCaptionBold)
-                                            .foregroundColor(.dashitEmerald)
+                                            .foregroundColor(.brandAccent)
                                             .padding(.horizontal, 10)
                                             .padding(.vertical, 5)
-                                            .background(Color.dashitEmerald.opacity(0.15))
+                                            .background(Color.brandOrange.opacity(0.15))
                                             .cornerRadius(6)
                                     } else {
                                         Button(action: {
@@ -82,10 +82,10 @@ struct CouponsSheetView: View {
                                         }) {
                                             Text("APPLY")
                                                 .font(.dashitCaptionBold)
-                                                .foregroundColor(isEligible ? .dashitEmerald : .gray)
+                                                .foregroundColor(isEligible ? .brandOrange : .gray)
                                                 .padding(.horizontal, 14)
                                                 .padding(.vertical, 6)
-                                                .background(isEligible ? Color.dashitEmerald.opacity(0.15) : Color.gray.opacity(0.1))
+                                                .background(isEligible ? Color.brandOrange.opacity(0.15) : Color.gray.opacity(0.1))
                                                 .cornerRadius(6)
                                         }
                                         .disabled(!isEligible)
@@ -94,20 +94,20 @@ struct CouponsSheetView: View {
                                 
                                 Text(coupon.description)
                                     .font(.dashitBody)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.textMuted)
                                 
                                 if !isEligible {
                                     Text("Add \(CurrencyFormatter.format(coupon.minOrder - cart.bill.subtotal)) more to unlock")
                                         .font(.dashitMicro)
-                                        .foregroundColor(.dashitAmber)
+                                        .foregroundColor(.caution)
                                 }
                             }
                             .padding(14)
-                            .background(Color.obsidianCard)
+                            .background(Color.surfaceRaised)
                             .cornerRadius(12)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(isCurrentlyApplied ? Color.dashitEmerald : Color.obsidianBorder, lineWidth: 1)
+                                    .stroke(isCurrentlyApplied ? Color.brandOrange : Color.hairline, lineWidth: 1)
                             )
                         }
                     }
@@ -119,7 +119,7 @@ struct CouponsSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
-                        .foregroundColor(.dashitEmerald)
+                        .foregroundColor(.brandAccent)
                 }
             }
         }

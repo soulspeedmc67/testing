@@ -58,6 +58,7 @@ final class CheckoutViewModel: ObservableObject {
         do {
             _ = try await FirestoreService.shared.placeOrder(newOrder)
             LocalStorage.shared.saveActiveOrderId(orderId)
+            ActiveOrderStore.shared.track(orderId: orderId)
             self.completedOrder = newOrder
             
             // Start iOS 17+ Lock Screen & Dynamic Island Live Activity

@@ -4,49 +4,42 @@ struct CategoryRailView: View {
     let categories: [Category]
     let selectedCategory: String?
     let onSelect: (String?) -> Void
-    
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                // "All" Pill
-                Button(action: { onSelect(nil) }) {
-                    Text("All Items")
-                        .font(.dashitCaptionBold)
-                        .foregroundColor(selectedCategory == nil ? .black : .white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(selectedCategory == nil ? Color.dashitEmerald : Color.obsidianCard)
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.obsidianBorder, lineWidth: selectedCategory == nil ? 0 : 1)
-                        )
+            HStack(spacing: 8) {
+                chip(title: "All", icon: "square.grid.2x2.fill", isSelected: selectedCategory == nil) {
+                    onSelect(nil)
                 }
-                
-                ForEach(categories) { cat in
-                    Button(action: { onSelect(cat.name) }) {
-                        HStack(spacing: 6) {
-                            if let icon = cat.icon {
-                                Image(systemName: icon)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(selectedCategory == cat.name ? .black : .dashitEmerald)
-                            }
-                            Text(cat.name)
-                                .font(.dashitCaptionBold)
-                                .foregroundColor(selectedCategory == cat.name ? .black : .white)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(selectedCategory == cat.name ? Color.dashitEmerald : Color.obsidianCard)
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.obsidianBorder, lineWidth: selectedCategory == cat.name ? 0 : 1)
-                        )
+                ForEach(categories) { category in
+                    chip(title: category.name, icon: category.icon, isSelected: selectedCategory == category.name) {
+                        onSelect(category.name)
                     }
                 }
             }
-            .padding(.horizontal, 16)
         }
+        .contentMargins(.horizontal, 16, for: .scrollContent)
+        .animation(.dashitSpring, value: selectedCategory)
+    }
+
+    private func chip(title: String, icon: String?, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(isSelected ? .white : .textSecondary)
+            .padding(.horizontal, 14)
+            .frame(height: 36)
+            .background(isSelected ? Color.brandOrange : Color.surfaceRaised, in: Capsule())
+            .overlay(Capsule().strokeBorder(isSelected ? Color.clear : Color.hairline, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.pressable)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

@@ -12,7 +12,7 @@ struct CheckoutView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.obsidianBlack.ignoresSafeArea()
+                Color.surface.ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 16) {
@@ -20,7 +20,7 @@ struct CheckoutView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack {
                                 Image(systemName: "mappin.and.ellipse")
-                                    .foregroundColor(.dashitEmerald)
+                                    .foregroundColor(.brandAccent)
                                 Text("Delivering to \(vm.selectedAddress.nickname)")
                                     .font(.dashitBodyBold)
                                     .foregroundColor(.white)
@@ -29,42 +29,42 @@ struct CheckoutView: View {
                                     isAddressSheetOpen = true
                                 }
                                 .font(.dashitCaptionBold)
-                                .foregroundColor(.dashitEmerald)
+                                .foregroundColor(.brandAccent)
                             }
                             
                             Text(vm.selectedAddress.formattedSummary)
                                 .font(.dashitCaption)
-                                .foregroundColor(.gray)
+                                .foregroundColor(.textMuted)
                         }
                         .padding(14)
-                        .background(Color.obsidianCard)
+                        .background(Color.surfaceRaised)
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.obsidianBorder, lineWidth: 1)
+                                .stroke(Color.hairline, lineWidth: 1)
                         )
                         
                         // 2. Delivery Time Guarantee
                         HStack(spacing: 12) {
                             Image(systemName: "bolt.badge.clock.fill")
                                 .font(.system(size: 24))
-                                .foregroundColor(.dashitAmber)
+                                .foregroundColor(.caution)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Delivery in 8 Minutes")
                                     .font(.dashitBodyBold)
                                     .foregroundColor(.white)
                                 Text("Fulfilled from DASHit Anantnag Dark Store")
                                     .font(.dashitMicro)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.textMuted)
                             }
                             Spacer()
                         }
                         .padding(14)
-                        .background(Color.obsidianCard)
+                        .background(Color.surfaceRaised)
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.obsidianBorder, lineWidth: 1)
+                                .stroke(Color.hairline, lineWidth: 1)
                         )
                         
                         // 3. Payment Method Selection
@@ -80,16 +80,16 @@ struct CheckoutView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "banknote.fill")
-                                        .foregroundColor(.dashitEmerald)
+                                        .foregroundColor(.brandAccent)
                                     Text("Cash on Delivery (Pay at Doorstep)")
                                         .font(.dashitBody)
                                         .foregroundColor(.white)
                                     Spacer()
                                     Image(systemName: vm.paymentMethod == "cod" ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(vm.paymentMethod == "cod" ? .dashitEmerald : .gray)
+                                        .foregroundColor(vm.paymentMethod == "cod" ? .brandOrange : .gray)
                                 }
                                 .padding(12)
-                                .background(vm.paymentMethod == "cod" ? Color.dashitEmerald.opacity(0.1) : Color.obsidianElevated)
+                                .background(vm.paymentMethod == "cod" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
                                 .cornerRadius(10)
                             }
                             
@@ -106,19 +106,19 @@ struct CheckoutView: View {
                                         .foregroundColor(.white)
                                     Spacer()
                                     Image(systemName: vm.paymentMethod == "apple_pay" ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(vm.paymentMethod == "apple_pay" ? .dashitEmerald : .gray)
+                                        .foregroundColor(vm.paymentMethod == "apple_pay" ? .brandOrange : .gray)
                                 }
                                 .padding(12)
-                                .background(vm.paymentMethod == "apple_pay" ? Color.dashitEmerald.opacity(0.1) : Color.obsidianElevated)
+                                .background(vm.paymentMethod == "apple_pay" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
                                 .cornerRadius(10)
                             }
                         }
                         .padding(14)
-                        .background(Color.obsidianCard)
+                        .background(Color.surfaceRaised)
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.obsidianBorder, lineWidth: 1)
+                                .stroke(Color.hairline, lineWidth: 1)
                         )
                         
                         // 4. Order Bill Summary
@@ -134,11 +134,11 @@ struct CheckoutView: View {
                             }
                         }
                         .padding(14)
-                        .background(Color.obsidianCard)
+                        .background(Color.surfaceRaised)
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.obsidianBorder, lineWidth: 1)
+                                .stroke(Color.hairline, lineWidth: 1)
                         )
                     }
                     .padding(16)
@@ -171,7 +171,7 @@ struct CheckoutView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(16)
-                        .background(vm.isSubmitting ? Color.gray : Color.dashitEmerald)
+                        .background(vm.isSubmitting ? Color.gray : Color.brandOrange)
                         .cornerRadius(14)
                     }
                     .disabled(vm.isSubmitting)
@@ -184,11 +184,21 @@ struct CheckoutView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Back") { dismiss() }
-                        .foregroundColor(.dashitEmerald)
+                        .foregroundColor(.brandAccent)
                 }
             }
             .sheet(isPresented: $isAddressSheetOpen) {
                 AddressPickerMapView()
+            }
+            // Signed-out shoppers get the phone sign-in, then return here.
+            .sheet(isPresented: $isAuthModalOpen) {
+                ProfileView()
+                    .dashitSheet([.large])
+            }
+            .onChange(of: auth.isAuthenticated) { _, isAuthenticated in
+                if isAuthenticated {
+                    isAuthModalOpen = false
+                }
             }
             .fullScreenCover(isPresented: $isTrackingOpen) {
                 if let order = vm.completedOrder {

@@ -6,7 +6,7 @@ struct ShimmerView: View {
     
     var body: some View {
         GeometryReader { geo in
-            Color.obsidianElevated
+            Color.surfaceMuted
                 .overlay(
                     LinearGradient(
                         colors: [

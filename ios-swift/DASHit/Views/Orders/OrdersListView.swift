@@ -11,19 +11,19 @@ struct OrdersListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.obsidianBlack.ignoresSafeArea()
+                Color.surface.ignoresSafeArea()
                 
                 if !auth.isAuthenticated {
                     VStack(spacing: 12) {
                         Image(systemName: "bag")
                             .font(.system(size: 50))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.textMuted)
                         Text("Log In to View Orders")
                             .font(.dashitHeadline)
                             .foregroundColor(.white)
                         Text("Your order history and active delivery tracking will appear here.")
                             .font(.dashitCaption)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.textMuted)
                             .multilineTextAlignment(.center)
                     }
                     .padding(24)
@@ -31,13 +31,13 @@ struct OrdersListView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "shippingbox")
                             .font(.system(size: 50))
-                            .foregroundColor(.gray)
+                            .foregroundColor(.textMuted)
                         Text("No Orders Placed Yet")
                             .font(.dashitHeadline)
                             .foregroundColor(.white)
                         Text("When you order fresh groceries, you can track them in real time here.")
                             .font(.dashitCaption)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.textMuted)
                     }
                     .padding(24)
                 } else {
@@ -53,7 +53,7 @@ struct OrdersListView: View {
                                         HStack {
                                             HStack(spacing: 6) {
                                                 Image(systemName: order.status.iconName)
-                                                    .foregroundColor(.dashitEmerald)
+                                                    .foregroundColor(.brandAccent)
                                                 Text(order.status.title)
                                                     .font(.dashitBodyBold)
                                                     .foregroundColor(.white)
@@ -66,25 +66,25 @@ struct OrdersListView: View {
                                         
                                         Text("\(order.items.count) items • \(order.items.map { $0.name }.joined(separator: ", "))")
                                             .font(.dashitCaption)
-                                            .foregroundColor(.gray)
+                                            .foregroundColor(.textMuted)
                                             .lineLimit(1)
                                         
                                         HStack {
                                             Text("Order #\(order.id.suffix(6))")
                                                 .font(.dashitMicro)
-                                                .foregroundColor(.gray)
+                                                .foregroundColor(.textMuted)
                                             Spacer()
                                             Text(order.status == .delivered ? "Delivered" : "Track Live Arrival →")
                                                 .font(.dashitCaptionBold)
-                                                .foregroundColor(order.status == .delivered ? .gray : .dashitEmerald)
+                                                .foregroundColor(order.status == .delivered ? .gray : .brandOrange)
                                         }
                                     }
                                     .padding(14)
-                                    .background(Color.obsidianCard)
+                                    .background(Color.surfaceRaised)
                                     .cornerRadius(12)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.obsidianBorder, lineWidth: 1)
+                                            .stroke(Color.hairline, lineWidth: 1)
                                     )
                                 }
                             }

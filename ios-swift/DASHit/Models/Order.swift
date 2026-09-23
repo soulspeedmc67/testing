@@ -8,6 +8,26 @@ public enum OrderStatus: String, Codable, CaseIterable {
     case delivered = "delivered"
     case cancelled = "cancelled"
     
+    /// Orders are also written by the web admin and driver consoles, which use
+    /// free-form labels ("Packed", "On the way"). Map those instead of failing
+    /// to decode the whole order.
+    public init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = OrderStatus(rawValue: raw) ?? OrderStatus(stage: DeliveryStage(status: raw))
+    }
+    
+    public init(stage: DeliveryStage) {
+        switch stage {
+        case .placed: self = .placed
+        case .packing: self = .packing
+        case .onTheWay: self = .outForDelivery
+        case .delivered: self = .delivered
+        case .cancelled: self = .cancelled
+        }
+    }
+    
+    public var stage: DeliveryStage { DeliveryStage(status: rawValue) }
+    
     public var title: String {
         switch self {
         case .placed: return "Order Placed"
@@ -18,15 +38,7 @@ public enum OrderStatus: String, Codable, CaseIterable {
         }
     }
     
-    public var progress: Double {
-        switch self {
-        case .placed: return 0.25
-        case .packing: return 0.50
-        case .outForDelivery: return 0.80
-        case .delivered: return 1.0
-        case .cancelled: return 0.0
-        }
-    }
+    public var progress: Double { stage.progress }
     
     public var iconName: String {
         switch self {

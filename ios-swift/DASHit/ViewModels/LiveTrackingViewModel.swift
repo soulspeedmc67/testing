@@ -82,11 +82,8 @@ final class LiveTrackingViewModel: ObservableObject {
     }
     
     private func updateLiveActivity(for order: Order) {
-        if order.status == .delivered || order.status == .cancelled {
-            LiveActivityManager.shared.endActivity()
-        } else {
-            LiveActivityManager.shared.updateActivity(for: order)
-        }
+        // Updates while the order is live, ends with the final state once finished.
+        LiveActivityManager.shared.sync(with: order)
     }
     
     deinit {

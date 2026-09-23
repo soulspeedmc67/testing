@@ -2,6 +2,13 @@ import Foundation
 import SwiftUI
 import FirebaseFirestore
 
+/// One "everyday" rail on the home feed: a category and its first few products.
+struct ProductRail: Identifiable {
+    let id: String
+    let title: String
+    let products: [Product]
+}
+
 @MainActor
 final class StorefrontViewModel: ObservableObject {
     @Published var products: [Product] = []
@@ -27,7 +34,7 @@ final class StorefrontViewModel: ObservableObject {
     }
     
     func selectCategory(_ category: String?) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.dashitSpring) {
             if self.selectedCategory == category {
                 self.selectedCategory = nil
             } else {
@@ -35,6 +42,21 @@ final class StorefrontViewModel: ObservableObject {
             }
         }
         HapticsManager.shared.selection()
+    }
+    
+    /// No category picked and no search typed: show the spotlight and rails.
+    var isBrowsing: Bool {
+        selectedCategory == nil && searchQuery.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+    
+    var rails: [ProductRail] {
+        categories
+            .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+            .compactMap { (category: Category) -> ProductRail? in
+                let items = products.filter { $0.cat.caseInsensitiveCompare(category.name) == .orderedSame }
+                guard !items.isEmpty else { return nil }
+                return ProductRail(id: category.id, title: category.name, products: Array(items.prefix(12)))
+            }
     }
     
     var filteredProducts: [Product] {
