@@ -21,8 +21,6 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore
-      - package: Firebase
-        product: FirebaseCore
       - sdk: SwiftUI.framework
       - sdk: MapKit.framework
       - sdk: PassKit.framework
