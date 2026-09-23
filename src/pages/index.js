@@ -17,7 +17,7 @@ import { useTheme } from "../context/ThemeContext";
 import { hapticLight } from "../lib/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import { stagger, fadeUp, inViewOnce, EASE_OUT } from "../lib/motion";
-import { ChevronRight, X, ArrowRight, Menu, Sun, Moon, Download, Clock, Leaf, Sparkles } from "lucide-react";
+import { ChevronRight, X, ArrowRight, Menu, Sun, Moon, Download, Clock, Leaf } from "lucide-react";
 
 const POPULAR_CATEGORIES = [
   {
@@ -307,12 +307,6 @@ export default function LandingPage() {
 
             {/* Download */}
             <div id="get-the-app" className="mt-7 sm:mt-9 scroll-mt-24">
-              {/* Coming Soon Pill */}
-              <div className="inline-flex items-center gap-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-full px-3.5 py-1 mb-3 text-amber-700 dark:text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-[#FF5B00] shrink-0" />
-                <span>Play Store &amp; App Store Available Soon • Direct Download Ready</span>
-              </div>
-
               <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
                 <a
                   href="/Dashit-User.apk"

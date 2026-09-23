@@ -14,8 +14,18 @@ import { setDeviceSystemBars } from "../lib/systemBars";
  * - Subtle accent elements: tiny sky-blue and brand-orange dots, 4-point sparkle diamonds, hollow rings
  * - Dedicated focal breathing space around the center logo
  * - Center DASHit logo gently scales in (95% -> 100%) and fades in
- * - Elegant 1.8s total sequence fading seamlessly into the underlying app
  */
+
+// Dash slot measured off the master lockup, expressed as a share of the mark box
+const DASH_SLOT = {
+  left: "-0.682%",
+  top: "41.912%",
+  width: "47.727%",
+  height: "16.667%",
+};
+
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1];
+const EASE_IN_OUT = [0.65, 0, 0.35, 1];
 
 export default function PremiumSplashScreen({ onComplete, onExitStart }) {
   const [isVisible, setIsVisible] = useState(true);
@@ -84,8 +94,22 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
         }}
       >
         {/* Full-bleed Scattered Monoline Doodle Pattern */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          initial={{ opacity: 0, scale: 1.02 }}
+          animate={{
+            opacity: isExiting ? 0 : 1,
+            scale: isExiting ? 1.06 : 1,
+          }}
+          transition={
+            isExiting
+              ? { duration: 0.45, ease: EASE_IN_OUT }
+              : { duration: 0.8, ease: EASE_OUT_EXPO }
+          }
+          style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
+        >
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
           viewBox="0 0 420 900"
           preserveAspectRatio="xMidYMid slice"
           xmlns="http://www.w3.org/2000/svg"
@@ -291,33 +315,98 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
           <circle className="accent-dot-blue" cx="275" cy="850" r="2.5" />
           <circle className="accent-dot-orange" cx="385" cy="770" r="2.5" />
         </svg>
+        </motion.div>
 
-        {/* Center Logo: Clean, Focal, Breathing Space */}
+        {/* Center Logo: Signature Mark, Animated Streaking Orange Dash & Wordmark */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
           animate={{
-            opacity: 1,
-            scale: 1,
+            scale: isExiting ? 1.28 : 1,
+            opacity: isExiting ? 0 : 1,
           }}
-          transition={{
-            duration: 0.6,
-            delay: 0.1,
-            ease: [0.16, 1, 0.3, 1], // Smooth modern ease-out
-          }}
+          transition={
+            isExiting
+              ? { duration: 0.45, ease: EASE_IN_OUT }
+              : { duration: 0 }
+          }
           className="relative z-10 flex flex-col items-center justify-center pointer-events-none"
+          style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
         >
-          <div className="w-[96px] h-[96px] flex items-center justify-center drop-shadow-xs">
+          {/* Mark — navy shapes settle first, then the orange dash streaks into its slot */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.88, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.55, ease: EASE_OUT_EXPO }}
+            className="relative w-[108px]"
+            style={{
+              aspectRatio: "440 / 408",
+              willChange: "transform, opacity",
+              backfaceVisibility: "hidden",
+            }}
+          >
+            {/* Signature D mark: Navy in light mode, crisp pure white in dark mode */}
             <img
-              src="/dashit-logo-centered.png"
+              src="/dashit-splash-mark.png"
               alt="DASHit"
-              className="w-full h-full object-contain dark:hidden"
+              className="absolute inset-0 w-full h-full object-contain dark:hidden"
             />
             <img
-              src="/dashit-logo-centered-white.png"
+              src="/dashit-splash-mark-white.png"
               alt="DASHit"
-              className="w-full h-full object-contain hidden dark:block"
+              className="absolute inset-0 w-full h-full object-contain hidden dark:block"
             />
-          </div>
+
+            <motion.img
+              src="/dashit-splash-dash.png"
+              alt=""
+              aria-hidden="true"
+              initial={{ opacity: 0, x: "-620%", scaleX: 2.4 }}
+              animate={{
+                opacity: 1,
+                x: ["-620%", "16%", "-4%", "0%"],
+                scaleX: [2.4, 1.06, 0.98, 1],
+              }}
+              transition={{
+                delay: 0.28,
+                duration: 0.72,
+                times: [0, 0.52, 0.78, 1],
+                ease: [
+                  [0.05, 0.7, 0.25, 1], // hurtle in, decelerating into the overshoot
+                  [0.45, 0, 0.55, 1],   // swing back through the resting point
+                  [0.33, 0, 0.25, 1],   // final settle
+                ],
+                opacity: { delay: 0.28, duration: 0.12, ease: "linear" },
+              }}
+              className="absolute object-contain drop-shadow-[0_0_8px_rgba(255,91,0,0.45)]"
+              style={{
+                ...DASH_SLOT,
+                transformOrigin: "left center",
+                willChange: "transform, opacity",
+                backfaceVisibility: "hidden",
+              }}
+            />
+          </motion.div>
+
+          {/* Wordmark rises underneath once the mark has resolved */}
+          <motion.img
+            src="/dashit-wordmark.png"
+            alt="dashit"
+            aria-hidden="true"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.6, ease: EASE_OUT_EXPO }}
+            className="w-[96px] mt-3.5 object-contain dark:hidden"
+            style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
+          />
+          <motion.img
+            src="/dashit-wordmark-white.png"
+            alt="dashit"
+            aria-hidden="true"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.6, ease: EASE_OUT_EXPO }}
+            className="w-[96px] mt-3.5 object-contain hidden dark:block"
+            style={{ willChange: "transform, opacity", backfaceVisibility: "hidden" }}
+          />
         </motion.div>
       </motion.div>
     </AnimatePresence>
