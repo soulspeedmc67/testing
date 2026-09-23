@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
+import "leaflet/dist/leaflet.css";
 import Link from "next/link";
 import {
   Bike,

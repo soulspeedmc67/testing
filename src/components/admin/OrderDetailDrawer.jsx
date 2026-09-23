@@ -21,7 +21,7 @@ import {
   UserPlus
 } from "lucide-react";
 import PrintPackingSlip from "./PrintPackingSlip";
-import { ORDER_STATUS } from "../../lib/db";
+import { ORDER_STATUS, getOrderGracePeriodSeconds } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, addDriverToRoster, removeDriverFromRoster } from "../../lib/drivers";
 import { orderAddress } from "../../lib/orderReceipt";
 
@@ -39,6 +39,23 @@ export default function OrderDetailDrawer({
   const [isAddingDriver, setIsAddingDriver] = useState(false);
   const [customDriverName, setCustomDriverName] = useState("");
   const [customDriverPhone, setCustomDriverPhone] = useState("");
+
+  const [liveGraceSeconds, setLiveGraceSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!order) {
+      setLiveGraceSeconds(0);
+      return;
+    }
+    const update = () => {
+      setLiveGraceSeconds(getOrderGracePeriodSeconds(order));
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [order]);
+
+  const isGracePeriod = (order?.status === ORDER_STATUS.PLACED || !order?.status) && liveGraceSeconds > 0;
 
   /* Real rider accounts first. Every entry's `id` is the rider's Firebase uid,
      which is what an assigned order must carry for it to show up on that
@@ -311,6 +328,26 @@ export default function OrderDetailDrawer({
                 darkMode ? "bg-[#161822] border-zinc-800" : "bg-slate-50 border-slate-200"
               )}
             >
+              {/* 60-Second Grace Period Notice */}
+              {isGracePeriod && (
+                <div className="bg-amber-500/10 border border-amber-300 dark:border-amber-700/60 rounded-2xl p-3.5 space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-spin" style={{ animationDuration: "3s" }} />
+                      <span className="font-black text-amber-900 dark:text-amber-200">
+                        Customer Modifying Window Active
+                      </span>
+                    </div>
+                    <span className="font-mono font-black text-xs text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-800">
+                      {liveGraceSeconds}s left
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-amber-800 dark:text-amber-300/80 leading-snug">
+                    Customer has 60 seconds to add/remove items or cancel before packing. Stage progression buttons unlock automatically when this timer expires.
+                  </p>
+                </div>
+              )}
+
               <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider block">
                 Order Progress
               </span>
@@ -337,12 +374,20 @@ export default function OrderDetailDrawer({
                     <button
                       key={step.key}
                       type="button"
-                      onClick={() => onUpdateStatus(orderId, step.key, order)}
+                      onClick={() => {
+                        if (isGracePeriod && step.key !== ORDER_STATUS.CANCELLED) {
+                          alert(`Order #${orderId} is in customer 60-second modifying window (${liveGraceSeconds}s remaining). Packing will unlock automatically once this window closes.`);
+                          return;
+                        }
+                        onUpdateStatus(orderId, step.key, order);
+                      }}
                       className={"p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer flex flex-col items-center justify-center space-y-1 " + (
                         isCurrent
                           ? "bg-[#FF5B00] text-white border-[#FF5B00] shadow-sm ring-2 ring-[#FF5B00]/20"
                           : isCompleted
                           ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : isGracePeriod && step.key !== ORDER_STATUS.CANCELLED
+                          ? "bg-slate-100/60 dark:bg-white/5 border-slate-200/50 text-slate-400 opacity-60 cursor-not-allowed"
                           : darkMode
                           ? "bg-[#1A1D26] border-zinc-700 text-zinc-300 hover:bg-zinc-800"
                           : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
@@ -356,16 +401,27 @@ export default function OrderDetailDrawer({
               </div>
 
               {/* Primary Next Action */}
-              {nextStage && !isCancelled && (
+              {isGracePeriod ? (
                 <button
                   type="button"
-                  onClick={() => onUpdateStatus(orderId, nextStage.targetStatus, order)}
-                  className={"w-full py-3.5 px-4 rounded-xl font-black text-xs shadow-md transition-all cursor-pointer active:scale-98 flex items-center justify-center space-x-2 " + nextStage.color}
+                  disabled
+                  className="w-full py-3.5 px-4 rounded-xl font-bold text-xs bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-300 dark:border-amber-800 cursor-not-allowed flex items-center justify-center space-x-2"
                 >
-                  <nextStage.Icon className="w-4 h-4" />
-                  <span>{nextStage.title}</span>
-                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                  <Clock className="w-4 h-4 text-amber-600 animate-spin" style={{ animationDuration: "3s" }} />
+                  <span>Locked: Customer Modifying Window ({liveGraceSeconds}s)</span>
                 </button>
+              ) : (
+                nextStage && !isCancelled && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdateStatus(orderId, nextStage.targetStatus, order)}
+                    className={"w-full py-3.5 px-4 rounded-xl font-black text-xs shadow-md transition-all cursor-pointer active:scale-98 flex items-center justify-center space-x-2 " + nextStage.color}
+                  >
+                    <nextStage.Icon className="w-4 h-4" />
+                    <span>{nextStage.title}</span>
+                    <ArrowRight className="w-4 h-4 stroke-[3]" />
+                  </button>
+                )
               )}
             </div>
 
