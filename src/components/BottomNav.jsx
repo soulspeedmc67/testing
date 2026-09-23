@@ -41,10 +41,12 @@ export default function BottomNav({ forceHide = false }) {
     window.addEventListener("dashit_tracker_minimized_changed", handleTrackerChange);
     window.addEventListener("storage", updateTrackerState);
     window.addEventListener("dashit_order_updated", updateTrackerState);
+    window.addEventListener("dashit_orders_updated", updateTrackerState);
     return () => {
       window.removeEventListener("dashit_tracker_minimized_changed", handleTrackerChange);
       window.removeEventListener("storage", updateTrackerState);
       window.removeEventListener("dashit_order_updated", updateTrackerState);
+      window.removeEventListener("dashit_orders_updated", updateTrackerState);
     };
   }, []);
 

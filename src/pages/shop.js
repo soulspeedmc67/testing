@@ -145,9 +145,15 @@ export default function ShopPage() {
 
   useEffect(() => {
     forceUnlockBodyScroll();
+    let isScrolledRef = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      const nextScrolled = window.scrollY > 20;
+      if (nextScrolled !== isScrolledRef) {
+        isScrolledRef = nextScrolled;
+        setIsScrolled(nextScrolled);
+      }
     };
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);

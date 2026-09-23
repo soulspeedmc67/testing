@@ -224,27 +224,62 @@ export default function OrdersPage() {
     return calculateDeliveryEta(loc);
   }, [activeOrder, liveEta]);
 
-  useEffect(() => {
-    const active = localStorage.getItem("dashit_active_order");
-    const history = localStorage.getItem("dashit_orders_history");
+  const targetOrderId = activeOrder?.orderId || activeOrder?.id;
 
-    if (active) {
-      try { setActiveOrder(JSON.parse(active)); } catch (e) {}
-    }
-    if (history) {
-      try { setOrderHistory(JSON.parse(history)); } catch (e) {}
+  useEffect(() => {
+    const syncLocal = () => {
+      try {
+        const active = localStorage.getItem("dashit_active_order");
+        const history = localStorage.getItem("dashit_orders_history");
+
+        if (active) {
+          try { setActiveOrder(JSON.parse(active)); } catch (e) {}
+        } else {
+          setActiveOrder(null);
+        }
+        if (history) {
+          try { setOrderHistory(JSON.parse(history)); } catch (e) {}
+        }
+      } catch (e) {}
+    };
+
+    syncLocal();
+
+    window.addEventListener("dashit_orders_updated", syncLocal);
+    window.addEventListener("dashit_order_updated", syncLocal);
+    window.addEventListener("storage", syncLocal);
+
+    let bc = null;
+    if (typeof window !== "undefined" && window.BroadcastChannel) {
+      try {
+        bc = new BroadcastChannel("dashit_orders_channel");
+        bc.onmessage = (msg) => {
+          if (msg?.data?.type === "ORDER_STATUS_UPDATED" || msg?.data?.type === "NEW_ORDER") {
+            syncLocal();
+          }
+        };
+      } catch (e) {}
     }
 
     if (router.query.viewPast === "true") {
       setShowPastOrdersModal(true);
     }
+
+    return () => {
+      window.removeEventListener("dashit_orders_updated", syncLocal);
+      window.removeEventListener("dashit_order_updated", syncLocal);
+      window.removeEventListener("storage", syncLocal);
+      if (bc) {
+        try { bc.close(); } catch (e) {}
+      }
+    };
   }, [router.query]);
 
   /* Live rider telemetry: arrival time and remaining distance, rewritten on the
      rider's broadcast cadence while the order is assigned. */
   useEffect(() => {
-    if (!activeOrder?.orderId) return;
-    const unsub = watchOrderTracking(activeOrder.orderId, (data) => {
+    if (!targetOrderId) return;
+    const unsub = watchOrderTracking(targetOrderId, (data) => {
       if (!data) return;
       const mins = Number(data.etaMinutes);
       if (!Number.isFinite(mins)) return;
@@ -258,12 +293,12 @@ export default function OrdersPage() {
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [activeOrder?.orderId]);
+  }, [targetOrderId]);
 
   // Real-time status sync via Firestore watchOrder
   useEffect(() => {
-    if (!activeOrder?.orderId) return;
-    const unsub = watchOrder(activeOrder.orderId, (data) => {
+    if (!targetOrderId) return;
+    const unsub = watchOrder(targetOrderId, (data) => {
       if (!data) return;
       if (data.status) {
         setActiveOrder((prev) => {
@@ -274,13 +309,30 @@ export default function OrdersPage() {
           } catch (e) {}
           return updated;
         });
+
+        try {
+          const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+          const updatedHist = hist.map((o) =>
+            String(o.orderId || o.id) === String(targetOrderId)
+              ? { ...o, ...data }
+              : o
+          );
+          localStorage.setItem("dashit_orders_history", JSON.stringify(updatedHist));
+          setOrderHistory(updatedHist);
+        } catch (e) {}
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("dashit_orders_updated", { detail: data })
+          );
+        }
       }
     });
 
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [activeOrder?.orderId]);
+  }, [targetOrderId]);
 
   useEffect(() => {
     if (!activeOrder) {
@@ -306,7 +358,7 @@ export default function OrdersPage() {
      order reads Delivered, it is held on screen briefly and then moved into
      history, so the page stops presenting a completed order as in-flight. */
   useEffect(() => {
-    const orderId = activeOrder?.orderId;
+    const orderId = activeOrder?.orderId || activeOrder?.id;
     const status = activeOrder?.status;
     if (!orderId || (status !== "Delivered" && status !== "Cancelled")) return undefined;
 
@@ -321,7 +373,7 @@ export default function OrdersPage() {
       }
     }, 20000);
     return () => clearTimeout(timer);
-  }, [activeOrder?.orderId, activeOrder?.status]);
+  }, [targetOrderId, activeOrder?.status]);
 
   /* Cancelling has to reach the store. This used to only delete the order from
      the customer's own localStorage and then say "Order cancelled successfully"
@@ -449,6 +501,8 @@ export default function OrdersPage() {
                       ? "Rider Dispatched"
                       : activeOrder.status === "Delivered"
                       ? "Delivered to Doorstep"
+                      : activeOrder.status === "Packed"
+                      ? "Order Packed & Ready for Pickup"
                       : "Processing & Packing at Central Hub"}
                   </h2>
                   <span className="text-[10px] font-semibold text-slate-400 font-mono dark:text-content-faint">

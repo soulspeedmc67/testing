@@ -55,7 +55,11 @@ export default function DeliveryStatusIcon({
       className={`relative inline-flex items-center justify-center ${s.box} rounded-full ${resolvedBgColor} ${resolvedIconColor} ${className}`}
     >
       {mark === "riding" ? (
-        <Bike className={`${s.icon} stroke-[2.6]`} />
+        <img
+          src="/rider/rider_moving.png"
+          alt="On the way"
+          className="w-full h-full object-contain p-0.5 filter drop-shadow-sm"
+        />
       ) : mark === "packing" ? (
         <Package className={`${s.icon} stroke-[2.6]`} />
       ) : mark === "processing" ? (

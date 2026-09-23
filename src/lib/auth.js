@@ -718,25 +718,31 @@ export async function deleteAccount() {
 /** Resolves the caller's staff role, or null for ordinary customers. */
 export async function getStaffRole(uid) {
   if (!uid) return null;
-  // Whitelisted driver accounts
+  const db = getDb();
+  if (db) {
+    try {
+      const snap = await getDoc(doc(db, "staff", uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        if (data.active !== false && data.role) {
+          return data.role;
+        }
+      }
+    } catch (e) {
+      // Rules deny reads of other people's staff docs — continue to whitelist check
+    }
+  }
+
+  // Whitelisted owner / developer accounts (authorized for admin & fleet)
   if (uid === "DOf5enic8SXBZTupGJbxDrNdrOt2") {
-    return "driver";
+    return "admin";
   }
   const auth = getFirebaseAuth();
   if (auth?.currentUser?.email?.toLowerCase() === "m4k3ditz@gmail.com") {
-    return "driver";
+    return "admin";
   }
-  const db = getDb();
-  if (!db) return null;
-  try {
-    const snap = await getDoc(doc(db, "staff", uid));
-    if (!snap.exists()) return null;
-    const data = snap.data();
-    return data.active === false ? null : data.role || null;
-  } catch (e) {
-    // Rules deny reads of other people's staff docs — treat as "not staff".
-    return null;
-  }
+
+  return null;
 }
 
 /** Subscribes to auth changes. Returns an unsubscribe fn. */

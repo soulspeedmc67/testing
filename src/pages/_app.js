@@ -57,7 +57,7 @@ function SystemChromeSync({ showSplash, pathname }) {
      simply reclaims the class on arrival. /admin is skipped so the console
      keeps full control of its own appearance while it is the active route. */
   useEffect(() => {
-    if (pathname === '/admin') return;
+    if (pathname === '/xcyop') return;
     applyTheme(theme);
   }, [theme, pathname]);
 
@@ -133,7 +133,7 @@ const useIsomorphicLayoutEffect =
  */
 function shouldSkipSplash() {
   if (typeof window === "undefined") return false;
-  if (['/admin', '/driver'].includes(window.location.pathname)) return true;
+  if (['/xcyop', '/driver'].includes(window.location.pathname)) return true;
   try {
     return !!sessionStorage.getItem("dashit_splash_seen");
   } catch (e) {
@@ -182,7 +182,7 @@ export default function App({ Component, pageProps }) {
   // 2. Fallback check for splash in case route changes or internal role
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const isInternalRole = ['/admin', '/driver'].includes(router.pathname);
+      const isInternalRole = ['/xcyop', '/driver'].includes(router.pathname);
       if (isInternalRole) {
         setShowSplash(false);
         setSplashHolding(false);
@@ -233,8 +233,8 @@ export default function App({ Component, pageProps }) {
         // 3. Execute role-based routing
         if (role === "admin") {
           setShowSplash(false);
-          if (router.pathname !== "/admin") {
-            router.replace("/admin");
+          if (router.pathname !== "/xcyop") {
+            router.replace("/xcyop");
           }
         } else if (role === "driver") {
           setShowSplash(false);
@@ -310,34 +310,33 @@ export default function App({ Component, pageProps }) {
     let isEdgeSwipe = false;
     let startTime = 0;
 
-    const handleTouchStart = (e) => {
-      if (e.touches.length !== 1) return;
-      const touch = e.touches[0];
-      // Only initiate if touch started within 30px of the left edge
-      if (touch.clientX <= 30) {
-        startX = touch.clientX;
-        startY = touch.clientY;
-        startTime = Date.now();
-        isEdgeSwipe = true;
-      } else {
-        isEdgeSwipe = false;
-      }
+    const cleanupSwipe = () => {
+      isEdgeSwipe = false;
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', cleanupSwipe);
     };
 
     const handleTouchMove = (e) => {
-      if (!isEdgeSwipe || e.touches.length !== 1) return;
+      if (!isEdgeSwipe || e.touches.length !== 1) {
+        cleanupSwipe();
+        return;
+      }
       const touch = e.touches[0];
       const deltaY = Math.abs(touch.clientY - startY);
       const deltaX = touch.clientX - startX;
       // Abort if user is primarily scrolling vertically
       if (deltaY > 40 && deltaY > deltaX) {
-        isEdgeSwipe = false;
+        cleanupSwipe();
       }
     };
 
     const handleTouchEnd = (e) => {
-      if (!isEdgeSwipe) return;
-      isEdgeSwipe = false;
+      if (!isEdgeSwipe) {
+        cleanupSwipe();
+        return;
+      }
+      cleanupSwipe();
       const touch = e.changedTouches[0];
       if (!touch) return;
       const deltaX = touch.clientX - startX;
@@ -353,7 +352,7 @@ export default function App({ Component, pageProps }) {
           return;
         }
 
-        const rootPages = ['/', '/shop', '', '/driver', '/admin', '/login'];
+        const rootPages = ['/', '/shop', '', '/driver', '/xcyop', '/login'];
         if (!rootPages.includes(path)) {
           if (window.history.length > 1) {
             router.back();
@@ -364,14 +363,26 @@ export default function App({ Component, pageProps }) {
       }
     };
 
+    const handleTouchStart = (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      // Only initiate and bind listeners if touch started within 30px of the left edge
+      if (touch.clientX <= 30) {
+        startX = touch.clientX;
+        startY = touch.clientY;
+        startTime = Date.now();
+        isEdgeSwipe = true;
+        window.addEventListener('touchmove', handleTouchMove, { passive: true });
+        window.addEventListener('touchend', handleTouchEnd, { passive: true });
+        window.addEventListener('touchcancel', cleanupSwipe, { passive: true });
+      }
+    };
+
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
+      cleanupSwipe();
     };
   }, [router]);
 
@@ -439,22 +450,19 @@ export default function App({ Component, pageProps }) {
           />
         )}
         <motion.div
-          key={router.asPath}
-          // The splash zooms toward the viewer, so the screen behind it settles
-          // back from 104% to meet the handoff as one continuous push. Ordinary
-          // route changes keep the plain quick fade.
-          initial={splashHolding ? { opacity: 0, scale: 1.04 } : false}
-          animate={{ opacity: splashHolding ? 0 : 1, scale: splashHolding ? 1.04 : 1 }}
+          key={router.pathname}
+          initial={splashHolding ? { opacity: 0 } : false}
+          animate={{ opacity: splashHolding ? 0 : 1 }}
           transition={
             splashHolding || isRevealing
-              ? { duration: 0.55, ease: [0.16, 1, 0.3, 1] }
-              : { duration: 0.18, ease: EASE_OUT }
+              ? { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
+              : { duration: 0.15, ease: EASE_OUT }
           }
           onAnimationComplete={() => {
             if (isRevealing) setIsRevealing(false);
           }}
           className={
-            router.pathname === '/admin'
+            router.pathname === '/xcyop'
               /* Only the desktop console is viewport-locked; on a phone the
                  admin page scrolls like any other page. */
               ? "w-full min-h-screen relative lg:h-screen lg:h-[100dvh] lg:overflow-hidden"
@@ -463,9 +471,9 @@ export default function App({ Component, pageProps }) {
         >
           <Component {...pageProps} />
         </motion.div>
-        {!['/admin', '/driver', '/login', '/orders'].includes(router.pathname) && <LiveOrderFloatingTracker />}
+        {!['/xcyop', '/driver', '/login', '/orders'].includes(router.pathname) && <LiveOrderFloatingTracker />}
         <FloatingCartBar />
-        {!['/login', '/driver', '/admin', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
+        {!['/login', '/driver', '/xcyop', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />
         <CookieConsentBanner />
         </AgeGateProvider>

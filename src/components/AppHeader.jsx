@@ -11,6 +11,7 @@ export default function AppHeader({
   location = { nickname: "LOCATION", address: "Select delivery address" },
   onOpenLocation,
   onOpenLocationPicker,
+  onOpenVoiceSearch,
   searchQuery = "",
   onSearchChange,
   isSearchClickable = true,
@@ -26,9 +27,15 @@ export default function AppHeader({
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
+    let isScrolledRef = false;
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      const nextScrolled = window.scrollY > 20;
+      if (nextScrolled !== isScrolledRef) {
+        isScrolledRef = nextScrolled;
+        setIsScrolled(nextScrolled);
+      }
     };
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -196,9 +203,23 @@ export default function AppHeader({
               className="w-full relative flex items-center bg-slate-100 hover:bg-slate-50/80 text-slate-900 rounded-2xl px-4 py-2.5 shadow-2xs border border-slate-200 hover:border-[#FF5B00]/60 cursor-pointer transition-all group dark:bg-surface-muted dark:border-line"
             >
               <Search className="w-4 h-4 stroke-[2.5] text-slate-400 group-hover:text-[#FF5B00] mr-2.5 shrink-0 transition-colors" />
-              <span className="text-xs font-semibold text-slate-500 select-none truncate">
+              <span className="text-xs font-semibold text-slate-500 select-none truncate flex-1">
                 {SEARCH_SUGGESTIONS[searchPlaceholderIdx]}
               </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  hapticLight();
+                  if (onOpenVoiceSearch) onOpenVoiceSearch();
+                  else router.push("/search?voice=true");
+                }}
+                className="p-1 rounded-full text-slate-400 hover:text-[#FF5B00] transition-colors cursor-pointer"
+                title="Search with voice"
+                aria-label="Voice Search"
+              >
+                <Mic className="w-4 h-4 stroke-[2.5]" />
+              </button>
             </div>
           </div>
 
@@ -384,7 +405,20 @@ export default function AppHeader({
                 readOnly={isSearchClickable}
                 className="w-full bg-transparent text-xs font-semibold text-slate-900 focus:outline-none placeholder-slate-400 cursor-pointer dark:text-content dark:placeholder-content-faint"
               />
-              <Mic className="w-4 h-4 stroke-[2.5] text-slate-500 ml-2 shrink-0 hover:text-[#FF5B00] transition-colors dark:text-content-muted" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  hapticLight();
+                  if (onOpenVoiceSearch) onOpenVoiceSearch();
+                  else router.push("/search?voice=true");
+                }}
+                className="p-1 text-slate-500 hover:text-[#FF5B00] transition-colors dark:text-content-muted cursor-pointer"
+                title="Search with voice"
+                aria-label="Voice Search"
+              >
+                <Mic className="w-4 h-4 stroke-[2.5]" />
+              </button>
             </div>
           </div>
 

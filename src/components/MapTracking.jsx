@@ -3,6 +3,36 @@ import { ShieldCheck, Phone, Navigation, Clock, CheckCircle2, Bike, Layers } fro
 import { fetchRoadRoute } from "../lib/maps";
 import { calculateLiveOrderEta } from "../lib/deliveryEta";
 import { watchOrder, watchOrderTracking } from "../lib/db";
+import { calculateBearing, getRiderAssetForHeading, RIDER_ASSETS } from "../lib/riderAssets";
+
+// 3D Rider & Marker builders for Leaflet
+function create3DRiderIcon(L, assetUrl = RIDER_ASSETS.states.liveMap) {
+  return L.divIcon({
+    className: "rider-marker-3d",
+    html: `
+      <div style="position:relative; width:58px; height:58px; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+        <img src="${RIDER_ASSETS.effects.ripple}" style="position:absolute; width:56px; height:56px; object-fit:contain; opacity:0.9; animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;" alt="" />
+        <img src="${RIDER_ASSETS.effects.shadow}" style="position:absolute; bottom:2px; width:44px; height:18px; object-fit:contain; opacity:0.6;" alt="" />
+        <img src="${assetUrl}" style="width:48px; height:48px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.35)); z-index:2; transition:transform 0.3s ease-out;" alt="Delivery Partner" />
+      </div>
+    `,
+    iconSize: [58, 58],
+    iconAnchor: [29, 29]
+  });
+}
+
+function create3DDestinationIcon(L) {
+  return L.divIcon({
+    className: "destination-marker-3d",
+    html: `
+      <div style="position:relative; width:44px; height:52px; display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 6px 14px rgba(255,91,0,0.45));">
+        <img src="${RIDER_ASSETS.pins.front}" style="width:44px; height:52px; object-fit:contain;" alt="Delivery Location" />
+      </div>
+    `,
+    iconSize: [44, 52],
+    iconAnchor: [22, 50]
+  });
+}
 
 export default function MapTracking({
   orderId = "DASH-98214",
@@ -66,17 +96,17 @@ export default function MapTracking({
           attribution: "© Google Maps"
         }).addTo(map);
 
-        // Google Maps Turn-by-Turn Road Route: crisp white casing + iconic navigation blue core
+        // DASHit Turn-by-Turn Road Route: crisp white casing + vibrant orange navigation core
         const casingLine = L.polyline(roadRoute.points, {
           color: "#ffffff",
           weight: 8,
-          opacity: 0.9,
+          opacity: 0.95,
           lineCap: "round",
           lineJoin: "round"
         }).addTo(map);
 
         const coreLine = L.polyline(roadRoute.points, {
-          color: "#1A73E8",
+          color: "#FF5B00",
           weight: 5,
           opacity: 1,
           lineCap: "round",
@@ -87,38 +117,12 @@ export default function MapTracking({
           map.fitBounds(coreLine.getBounds(), { padding: [45, 45], maxZoom: 16 });
         } catch (e) {}
 
-        // Google Maps style Rider / Scooter Marker
-        const riderIcon = L.divIcon({
-          className: "rider-marker",
-          html: `
-            <div style="position:relative; width:42px; height:42px; display:flex; align-items:center; justify-content:center;">
-              <div style="position:absolute; width:40px; height:40px; border-radius:50%; background:rgba(26,115,232,0.25); animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
-              <div style="width:34px; height:34px; background:#ffffff; border:2.5px solid #1A73E8; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(26,115,232,0.45); z-index:2; padding:4px;">
-                <img src="/dashit-mark.png" style="width:100%; height:100%; object-fit:contain;" alt="DASHIT" />
-              </div>
-            </div>
-          `,
-          iconSize: [42, 42],
-          iconAnchor: [21, 21]
-        });
-
+        // 3D Delivery Rider Scooter Marker
+        const riderIcon = create3DRiderIcon(L, RIDER_ASSETS.states.liveMap);
         const riderMarker = L.marker(startPoint, { icon: riderIcon }).addTo(map);
 
-        // Google Maps Iconic Destination Red Pin
-        const customerIcon = L.divIcon({
-          className: "destination-marker",
-          html: `
-            <div style="position:relative; width:32px; height:40px; display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));">
-              <svg width="32" height="40" viewBox="0 0 24 30" fill="none">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 8.5 12 18 12 18s12-9.5 12-18c0-6.63-5.37-12-12-12z" fill="#EA4335"/>
-                <circle cx="12" cy="11" r="4.5" fill="#ffffff"/>
-              </svg>
-            </div>
-          `,
-          iconSize: [32, 40],
-          iconAnchor: [16, 40]
-        });
-
+        // 3D Destination Location Pin
+        const customerIcon = create3DDestinationIcon(L);
         const destMarker = L.marker(endPoint, { icon: customerIcon }).addTo(map);
 
         // Fit map bounds neatly to encompass route with padding
@@ -189,6 +193,20 @@ export default function MapTracking({
         const duration = 3000;
         const startTime = performance.now();
 
+        // Calculate heading bearing and update 3D directional rider sprite
+        const hasMoved = Math.hypot(newLat - startLat, newLng - startLng) > 0.00002;
+        const bearing = hasMoved ? calculateBearing(startLat, startLng, newLat, newLng) : null;
+        const isBraking = Number(data.distanceKm || 1) <= 0.05 || String(data.status || "").toLowerCase().includes("arrived");
+        const nextAsset = getRiderAssetForHeading(bearing, hasMoved, isBraking);
+
+        if (mapInstanceRef.current) {
+          import("leaflet").then((L) => {
+            if (riderMarkerRef.current) {
+              riderMarkerRef.current.setIcon(create3DRiderIcon(L, nextAsset));
+            }
+          });
+        }
+
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
 
         const animateStep = (currentTime) => {
@@ -253,7 +271,7 @@ export default function MapTracking({
         {/* Google Maps Style Navigation ETA Pill */}
         <div className="absolute top-3 left-3 z-10 pointer-events-none">
           <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 flex items-center space-x-2 dark:bg-surface-raised/95 dark:border-line/80">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#1A73E8] animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#FF5B00] animate-pulse" />
             <div>
               <span className="text-[11px] font-black text-slate-900 tracking-tight block leading-tight dark:text-content">
                 {etaMinutes} min ({distanceKm} km)
@@ -269,20 +287,20 @@ export default function MapTracking({
         <div className="absolute top-3 right-3 z-10">
           <button
             onClick={recenterMap}
-            className="w-9 h-9 bg-white/95 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 text-[#1A73E8] hover:text-[#174ea6] active:scale-90 transition-transform flex items-center justify-center dark:bg-surface-raised/95 dark:border-line/80"
+            className="w-9 h-9 bg-white/95 backdrop-blur-md rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.15)] border border-slate-200/80 text-[#FF5B00] hover:text-[#e04f00] active:scale-90 transition-transform flex items-center justify-center dark:bg-surface-raised/95 dark:border-line/80"
             title="Recenter Map"
             aria-label="Recenter Map"
           >
-            <Navigation className="w-4 h-4 fill-[#1A73E8]/20 stroke-[2.5]" />
+            <Navigation className="w-4 h-4 fill-[#FF5B00]/20 stroke-[2.5]" />
           </button>
         </div>
       </div>
 
-      {/* Clean Courier Details Row */}
+      {/* Clean Courier Details Row with 3D Rider Avatar */}
       <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
         <div className="flex items-center space-x-2.5">
-          <div className="w-10 h-10 bg-orange-100 text-[#FF5B00] rounded-2xl flex items-center justify-center font-black text-base shadow-sm">
-            <Bike className="w-5 h-5 stroke-[2.5]" />
+          <div className="w-11 h-11 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center p-1 shadow-sm overflow-hidden dark:bg-orange-500/15">
+            <img src={RIDER_ASSETS.directions.south} alt={riderName} className="w-full h-full object-contain filter drop-shadow-sm" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5">

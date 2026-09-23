@@ -37,10 +37,8 @@ const STAGES = [
 ];
 
 const advanceStatus = (prev, next) => {
-  if (!next) return prev;
-  if (next === "Delivered" || next === "Cancelled") return next;
-  if (prev === "Delivered" || prev === "Cancelled") return prev;
-  return stageIndexFor(next) > stageIndexFor(prev) ? next : prev;
+  if (!next) return prev || "Placed";
+  return next;
 };
 
 const stageIndexFor = (status) => {
@@ -132,14 +130,15 @@ export default function LiveOrderFloatingTracker() {
   }, []);
 
   const activeOrder = useStoredJson("dashit_active_order", {
-    events: ["dashit_orders_updated"],
+    events: ["dashit_orders_updated", "dashit_order_updated"],
   });
 
   const initializedOrderRef = useRef(null);
 
   // Read minimized state from sessionStorage on mount or when order changes
   useEffect(() => {
-    if (!activeOrder?.orderId) {
+    const orderId = activeOrder?.orderId || activeOrder?.id;
+    if (!orderId) {
       clearOrderLiveNotification();
       return;
     }
@@ -252,7 +251,7 @@ export default function LiveOrderFloatingTracker() {
   }, [activeOrder?.orderId, orderStatus]);
 
   // Customer pages where tracking should be alive — hide completely on /orders page
-  const isCustomerPage = !["/admin", "/driver", "/login", "/orders"].includes(router.pathname);
+  const isCustomerPage = !["/xcyop", "/driver", "/login", "/orders"].includes(router.pathname);
 
   // Auto-collapse order popup after 10 seconds into the circular widget
   useEffect(() => {
@@ -264,10 +263,12 @@ export default function LiveOrderFloatingTracker() {
     }
   }, [isMinimized, isCustomerPage, activeOrder?.orderId]);
 
-  useEffect(() => {
-    if (!activeOrder?.orderId || !isCustomerPage) return;
+  const targetOrderId = activeOrder?.orderId || activeOrder?.id;
 
-    const unsubOrder = watchOrder(activeOrder.orderId, (data) => {
+  useEffect(() => {
+    if (!targetOrderId || !isCustomerPage) return;
+
+    const unsubOrder = watchOrder(targetOrderId, (data) => {
       if (!data) return;
       if (data.status) {
         setOrderStatus((prev) => advanceStatus(prev, data.status));
@@ -280,16 +281,34 @@ export default function LiveOrderFloatingTracker() {
         }
         if (data.status === "Out for Delivery") {
           showOutForDeliveryNotification({
-            orderId: activeOrder.orderId,
+            orderId: targetOrderId,
             riderName: data.driverName || liveRef.current.riderName,
             etaMinutes: liveRef.current.etaMinutes,
           });
         }
+
+        // Persist incoming status update back to localStorage and notify UI listeners
+        try {
+          const stored = localStorage.getItem("dashit_active_order");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (String(parsed.orderId || parsed.id) === String(targetOrderId)) {
+              const merged = { ...parsed, ...data };
+              localStorage.setItem("dashit_active_order", JSON.stringify(merged));
+              window.dispatchEvent(
+                new CustomEvent("dashit_orders_updated", { detail: merged })
+              );
+              window.dispatchEvent(
+                new CustomEvent("dashit_order_updated", { detail: merged })
+              );
+            }
+          }
+        } catch (e) {}
       }
       if (data.driverName) setRiderName(data.driverName);
     });
 
-    const unsubTracking = watchOrderTracking(activeOrder.orderId, (data) => {
+    const unsubTracking = watchOrderTracking(targetOrderId, (data) => {
       if (!data) return;
       if (Number(data.etaMinutes) >= 0 && data.etaMinutes !== null && data.etaMinutes !== undefined) {
         setEtaMinutes(Number(data.etaMinutes));
@@ -307,7 +326,7 @@ export default function LiveOrderFloatingTracker() {
       if (typeof unsubOrder === "function") unsubOrder();
       if (typeof unsubTracking === "function") unsubTracking();
     };
-  }, [activeOrder?.orderId, isCustomerPage]);
+  }, [targetOrderId, isCustomerPage]);
 
   if (!activeOrder || !isCustomerPage) return null;
 
@@ -455,7 +474,7 @@ export default function LiveOrderFloatingTracker() {
                   {!isDelivered && (
                     <div className="w-7 h-7 rounded-full bg-white text-[#061838] shadow-md flex items-center justify-center shrink-0 -mx-1 z-10">
                       {orderStatus === "Out for Delivery" ? (
-                        <Bike className="w-3.5 h-3.5 stroke-[2.4]" />
+                        <img src="/rider/rider_moving.png" alt="Rider" className="w-4 h-4 object-contain" />
                       ) : orderStatus === "Packed" || orderStatus === "Packing" ? (
                         <Package className="w-3.5 h-3.5 stroke-[2.4]" />
                       ) : (

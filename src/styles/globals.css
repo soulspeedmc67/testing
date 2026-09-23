@@ -284,12 +284,16 @@ button, a, [role="button"], input[type="submit"], input[type="button"] {
   touch-action: pan-y pan-x !important;
 }
 
-/* 60 FPS GPU Promotion & Hardware Acceleration for high-frequency animations & fixed chrome */
+/* 60–120 FPS GPU Promotion & Hardware Acceleration for high-frequency animations & fixed chrome */
 .gpu-accelerated,
 .floating-pill-nav,
 .animate-bottom-sheet,
 .animate-modal-pop,
 .ios-press,
+#global-cart-bar-target,
+.live-order-capsule,
+nav.fixed,
+header.fixed,
 header.sticky {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -297,6 +301,7 @@ header.sticky {
   -webkit-backface-visibility: hidden;
   perspective: 1000px;
   -webkit-perspective: 1000px;
+  will-change: transform;
 }
 
 input, textarea, [contenteditable="true"] {

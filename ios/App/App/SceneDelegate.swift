@@ -1,6 +1,19 @@
 import UIKit
 import Capacitor
 
+class MainViewController: CAPBridgeViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // Native iOS momentum scroll deceleration matching native UITableView/UICollectionView
+        webView?.scrollView.decelerationRate = .fast
+        webView?.scrollView.showsVerticalScrollIndicator = false
+        webView?.scrollView.keyboardDismissMode = .onDrag
+        webView?.isOpaque = false
+        webView?.backgroundColor = .clear
+        webView?.scrollView.backgroundColor = .clear
+    }
+}
+
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
@@ -9,7 +22,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         window?.backgroundColor = UIColor.white
-        window?.rootViewController = CAPBridgeViewController()
+        window?.rootViewController = MainViewController()
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)

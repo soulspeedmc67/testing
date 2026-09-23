@@ -837,8 +837,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   // Order Status Update
   const handleUpdateOrderStatus = async (orderId, newStatus, order = null) => {
     try {
+      let syncResult = null;
       if (isFirebaseConfigured) {
-        await fsUpdateOrderStatus(orderId, newStatus);
+        syncResult = await fsUpdateOrderStatus(orderId, newStatus);
       }
       setOrders((prev) =>
         prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus } : o))
@@ -854,7 +855,11 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         }
       }
 
-      showToast(`Order #${orderId} updated to "${newStatus}".`);
+      if (syncResult && syncResult.firestoreSynced === false) {
+        showToast(`Order #${orderId} updated locally only (Firestore sync failed: ${syncResult.error || "Permission denied"})`);
+      } else {
+        showToast(`Order #${orderId} updated to "${newStatus}".`);
+      }
     } catch (err) {
       setOrders((prev) =>
         prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus } : o))
