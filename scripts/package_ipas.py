@@ -3,6 +3,7 @@ import shutil
 import plistlib
 import subprocess
 import json
+import sys
 
 BASE_DIR = "/home/aleemkanyu/Projects/Blinkit"
 SRC_IPA = "/tmp/gh_ios_dl/Dashit.ipa"
@@ -234,9 +235,21 @@ def main():
         else:
             raise FileNotFoundError(f"Source IPA not found at {SRC_IPA} or {local_src}")
     print(f"Using base IPA: {src}")
-    for flavor in FLAVORS:
+
+    target_role = None
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].lower().strip()
+        if arg in ["user", "customer"]:
+            target_role = "customer"
+        elif arg in ["driver", "rider"]:
+            target_role = "driver"
+        elif arg == "admin":
+            target_role = "admin"
+
+    flavors_to_build = [f for f in FLAVORS if f["role"] == target_role] if target_role else FLAVORS
+    for flavor in flavors_to_build:
         build_flavor(flavor, src)
-    print("\nAll 3 IPAs successfully generated!")
+    print(f"\nSuccessfully generated {len(flavors_to_build)} IPA(s): {', '.join(f['display_name'] for f in flavors_to_build)}!")
 
 if __name__ == "__main__":
     main()

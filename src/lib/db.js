@@ -18,6 +18,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 /**
  * Firestore data layer.
@@ -585,22 +586,74 @@ export async function fetchUserOrders(uid) {
 
 /** Replaces the `join_order_room` + `order_status_changed` socket pair. */
 export function watchOrder(orderId, callback) {
-  const db = getDb();
-  if (!db || !orderId) return () => {};
-  try {
-    return onSnapshot(
-      doc(db, "orders", String(orderId)),
-      (snap) => {
-        callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
-      },
-      (err) => {
-        console.warn("watchOrder snapshot error:", err?.message);
-      }
-    );
-  } catch (e) {
-    console.warn("watchOrder exception:", e?.message);
-    return () => {};
+  if (!orderId) return () => {};
+  let unsubSnapshot = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
+
+  const bind = () => {
+    if (isClosed) return;
+    try { unsubSnapshot(); } catch (e) {}
+    const db = getDb();
+    if (!db) return;
+
+    try {
+      unsubSnapshot = onSnapshot(
+        doc(db, "orders", String(orderId)),
+        (snap) => {
+          if (snap.exists()) {
+            callback({ id: snap.id, ...snap.data() });
+          } else {
+            callback(null);
+          }
+        },
+        (err) => {
+          console.warn("watchOrder snapshot error:", err?.message);
+          // If auth was initializing or network dropped, retry after short backoff
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2000);
+          }
+        }
+      );
+    } catch (e) {
+      console.warn("watchOrder exception:", e?.message);
+    }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
+  } else {
+    bind();
   }
+
+  // Re-bind when auth state resolves or changes (e.g. user signs in or restores)
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) {
+          bind();
+        }
+      });
+    } catch (e) {}
+  }
+
+  return () => {
+    isClosed = true;
+    clearTimeout(retryTimer);
+    try { unsubSnapshot(); } catch (e) {}
+    try { unsubAuth(); } catch (e) {}
+  };
 }
 
 /** Admin console: every live order, newest first, with resilient cross-tab local fallback. */
@@ -623,16 +676,10 @@ export function watchAllOrders(callback, max = 100) {
     return [];
   };
 
-  const db = getDb();
   let unsubFirestore = () => {};
-
-  /* True once Firestore has delivered a snapshot.
-     Without this, marking an order packed produced a visible reload: the write
-     dispatches "dashit_orders_updated" and a "storage" event, the handlers below
-     replaced the whole Firestore-backed list with this device's localStorage
-     copy (on a fresh admin machine, nearly empty), and a moment later the
-     Firestore snapshot put everything back. The local stream is a fallback for
-     when Firestore is unavailable — never a live overwrite of it. */
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
   let firestoreLive = false;
 
   const emitLocal = () => {
@@ -640,7 +687,15 @@ export function watchAllOrders(callback, max = 100) {
     callback(getLocalOrders());
   };
 
-  if (db) {
+  const bind = () => {
+    if (isClosed) return;
+    try { unsubFirestore(); } catch (e) {}
+    const db = getDb();
+    if (!db) {
+      emitLocal();
+      return;
+    }
+
     try {
       unsubFirestore = onSnapshot(
         query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(max)),
@@ -652,15 +707,40 @@ export function watchAllOrders(callback, max = 100) {
         (err) => {
           console.warn("watchAllOrders snapshot permission notice (using local orders stream):", err?.message);
           firestoreLive = false;
-          callback(getLocalOrders());
+          emitLocal();
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2500);
+          }
         }
       );
     } catch (e) {
       console.warn("watchAllOrders init warning:", e?.message);
-      callback(getLocalOrders());
+      emitLocal();
     }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
   } else {
-    callback(getLocalOrders());
+    bind();
+  }
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) bind();
+      });
+    } catch (e) {}
   }
 
   // Cross-tab and storage sync (only while Firestore is not the source).
@@ -682,7 +762,10 @@ export function watchAllOrders(callback, max = 100) {
   }
 
   return () => {
-    if (typeof unsubFirestore === "function") unsubFirestore();
+    isClosed = true;
+    clearTimeout(retryTimer);
+    try { unsubFirestore(); } catch (e) {}
+    try { unsubAuth(); } catch (e) {}
     if (typeof window !== "undefined" && localHandler) {
       window.removeEventListener("dashit_orders_updated", localHandler);
       window.removeEventListener("storage", localHandler);
@@ -722,14 +805,26 @@ export function watchDriverOrders(driverId, callback) {
     callback([]);
     return () => {};
   }
+  let unsub = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
   let firestoreLive = false;
+
   const emitLocal = () => {
     if (firestoreLive) return;
     callback(getLocalDriverOrders());
   };
 
-  let unsub = () => {};
-  if (db) {
+  const bind = () => {
+    if (isClosed) return;
+    try { unsub(); } catch (e) {}
+    const db = getDb();
+    if (!db) {
+      emitLocal();
+      return;
+    }
+
     try {
       unsub = onSnapshot(
         query(
@@ -749,14 +844,39 @@ export function watchDriverOrders(driverId, callback) {
         (err) => {
           console.warn("watchDriverOrders snapshot warning:", err?.message);
           firestoreLive = false;
-          callback(getLocalDriverOrders());
+          emitLocal();
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2500);
+          }
         }
       );
     } catch (e) {
       callback(getLocalDriverOrders());
     }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
   } else {
-    callback(getLocalDriverOrders());
+    bind();
+  }
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) bind();
+      });
+    } catch (e) {}
   }
 
   let localHandler = null;
@@ -768,7 +888,10 @@ export function watchDriverOrders(driverId, callback) {
   }
 
   return () => {
+    isClosed = true;
+    clearTimeout(retryTimer);
     if (typeof unsub === "function") unsub();
+    try { unsubAuth(); } catch (e) {}
     if (typeof window !== "undefined" && localHandler) {
       window.removeEventListener("dashit_orders_updated", localHandler);
       window.removeEventListener("storage", localHandler);
@@ -801,8 +924,10 @@ export function watchAvailableOrders(callback) {
     return [];
   };
 
-  const db = getDb();
   let unsub = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
   // Same rule as watchAllOrders: local events must not overwrite a live snapshot.
   let firestoreLive = false;
   const emitLocal = () => {
@@ -810,7 +935,15 @@ export function watchAvailableOrders(callback) {
     callback(getLocalUnassigned());
   };
 
-  if (db) {
+  const bind = () => {
+    if (isClosed) return;
+    try { unsub(); } catch (e) {}
+    const db = getDb();
+    if (!db) {
+      emitLocal();
+      return;
+    }
+
     try {
       unsub = onSnapshot(
         query(
@@ -833,14 +966,39 @@ export function watchAvailableOrders(callback) {
         (err) => {
           console.warn("watchAvailableOrders snapshot warning (using local):", err?.message);
           firestoreLive = false;
-          callback(getLocalUnassigned());
+          emitLocal();
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2500);
+          }
         }
       );
     } catch (e) {
-      callback(getLocalUnassigned());
+      emitLocal();
     }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
   } else {
-    callback(getLocalUnassigned());
+    bind();
+  }
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) bind();
+      });
+    } catch (e) {}
   }
 
   let localHandler = null;
@@ -852,7 +1010,10 @@ export function watchAvailableOrders(callback) {
   }
 
   return () => {
+    isClosed = true;
+    clearTimeout(retryTimer);
     if (typeof unsub === "function") unsub();
+    try { unsubAuth(); } catch (e) {}
     if (typeof window !== "undefined" && localHandler) {
       window.removeEventListener("dashit_orders_updated", localHandler);
       window.removeEventListener("storage", localHandler);
@@ -941,7 +1102,17 @@ export async function updateOrderStatus(orderId, status) {
       window.dispatchEvent(
         new CustomEvent("dashit_orders_updated", { detail: { orderId, status } })
       );
+      window.dispatchEvent(
+        new CustomEvent("dashit_order_updated", { detail: { orderId, status } })
+      );
       window.dispatchEvent(new Event("storage"));
+
+      if (window.BroadcastChannel) {
+        try {
+          const bc = new BroadcastChannel("dashit_orders_channel");
+          bc.postMessage({ type: "ORDER_STATUS_UPDATED", orderId, status });
+        } catch (e) {}
+      }
     } catch (e) {}
   }
 
@@ -957,8 +1128,8 @@ export async function updateOrderStatus(orderId, status) {
     return { success: true, firestoreSynced: true };
   } catch (err) {
     console.warn("Firestore updateOrderStatus sync note:", err?.message || err);
-    // Local storage & events already succeeded; prevent UI exceptions
-    return { success: true, localUpdated: true, firestoreSynced: false, permissionWarning: true };
+    // Local storage & events already succeeded; report firestore failure
+    return { success: false, localUpdated: true, firestoreSynced: false, permissionWarning: true, error: err?.message };
   }
 }
 
@@ -1120,37 +1291,79 @@ export async function fetchDrivers() {
  * Subscribes to collection(db, "staff") where role == "driver" and active == true.
  */
 export function watchDrivers(callback) {
-  const db = getDb();
-  if (!db) {
-    callback([]);
-    return () => {};
+  let unsubFirestore = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
+
+  const bind = () => {
+    if (isClosed) return;
+    try { unsubFirestore(); } catch (e) {}
+    const db = getDb();
+    if (!db) {
+      callback([]);
+      return;
+    }
+
+    try {
+      unsubFirestore = onSnapshot(
+        query(collection(db, "staff"), where("role", "==", "driver")),
+        (snap) => {
+          const staffDrivers = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((d) => d.active !== false)
+            .map((d) => ({
+              id: d.id,
+              name: d.name || d.displayName || d.email?.split("@")[0] || "Rider",
+              phone: d.phone || "",
+              vehicle: d.vehicle || "Scooter",
+              email: d.email || "",
+            }));
+          callback(staffDrivers);
+        },
+        (err) => {
+          console.warn("watchDrivers onSnapshot warning:", err?.message);
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 3000);
+          }
+        }
+      );
+    } catch (e) {
+      console.warn("watchDrivers exception:", e?.message);
+      callback([]);
+    }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
+  } else {
+    bind();
   }
-  try {
-    return onSnapshot(
-      query(collection(db, "staff"), where("role", "==", "driver")),
-      (snap) => {
-        const staffDrivers = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((d) => d.active !== false)
-          .map((d) => ({
-            id: d.id,
-            name: d.name || d.displayName || d.email?.split("@")[0] || "Rider",
-            phone: d.phone || "",
-            vehicle: d.vehicle || "Scooter",
-            email: d.email || "",
-          }));
-        callback(staffDrivers);
-      },
-      (err) => {
-        console.warn("watchDrivers onSnapshot warning:", err?.message);
-        callback([]);
-      }
-    );
-  } catch (e) {
-    console.warn("watchDrivers exception:", e?.message);
-    callback([]);
-    return () => {};
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) bind();
+      });
+    } catch (e) {}
   }
+
+  return () => {
+    isClosed = true;
+    clearTimeout(retryTimer);
+    try { unsubFirestore(); } catch (e) {}
+    try { unsubAuth(); } catch (e) {}
+  };
 }
 
 
@@ -1267,17 +1480,62 @@ export async function pushDriverTelemetryToQueue(driverId, activeOrderIds = [], 
 
 /** Replaces `driver_location_changed`. */
 export function watchOrderTracking(orderId, callback) {
-  const db = getDb();
+  if (!orderId) return () => {};
   let unsubFirestore = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
 
-  if (db && orderId) {
-    unsubFirestore = onSnapshot(
-      doc(db, "orders", String(orderId), "tracking", "live"),
-      (snap) => {
-        if (snap.exists()) callback(snap.data());
-      },
-      (err) => console.warn("watchOrderTracking Firestore snapshot error:", err)
-    );
+  const bind = () => {
+    if (isClosed) return;
+    try { unsubFirestore(); } catch (e) {}
+    const db = getDb();
+    if (!db) return;
+
+    try {
+      unsubFirestore = onSnapshot(
+        doc(db, "orders", String(orderId), "tracking", "live"),
+        (snap) => {
+          if (snap.exists()) {
+            callback(snap.data());
+          }
+        },
+        (err) => {
+          console.warn("watchOrderTracking Firestore snapshot error:", err?.message);
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2000);
+          }
+        }
+      );
+    } catch (e) {
+      console.warn("watchOrderTracking exception:", e?.message);
+    }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
+  } else {
+    bind();
+  }
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) {
+          bind();
+        }
+      });
+    } catch (e) {}
   }
 
   // Also listen for local updates (useful in dev/sandbox or low-connectivity fallback)
@@ -1296,7 +1554,10 @@ export function watchOrderTracking(orderId, callback) {
   }
 
   return () => {
-    unsubFirestore();
+    isClosed = true;
+    clearTimeout(retryTimer);
+    try { unsubFirestore(); } catch (e) {}
+    try { unsubAuth(); } catch (e) {}
     if (typeof window !== "undefined") {
       window.removeEventListener("dashit_tracking_updated", localHandler);
     }

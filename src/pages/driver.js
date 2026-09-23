@@ -372,36 +372,35 @@ export default function DashItDriverApp() {
           attribution: "© Google Maps"
         }).addTo(map);
 
-        // Google Maps Dual Polyline: White casing + Blue navigation line
+        // DASHit Turn-by-Turn Road Route: crisp white casing + vibrant orange navigation core
         const casing = L.polyline(roadRoute?.points || [], {
           color: "#ffffff",
           weight: 7,
-          opacity: 0.9,
-          lineCap: "round",
-          lineJoin: "round"
-        }).addTo(map);
-
-        const routeLine = L.polyline(roadRoute?.points || [], {
-          color: "#1A73E8",
-          weight: 4.5,
           opacity: 0.95,
           lineCap: "round",
           lineJoin: "round"
         }).addTo(map);
 
-        // Google Maps Navigation Vehicle Puck
+        const routeLine = L.polyline(roadRoute?.points || [], {
+          color: "#FF5B00",
+          weight: 4.5,
+          opacity: 1,
+          lineCap: "round",
+          lineJoin: "round"
+        }).addTo(map);
+
+        // 3D Delivery Rider Vehicle Puck
         const riderIcon = L.divIcon({
-          className: "driver-rider-pin",
+          className: "driver-rider-pin-3d",
           html: `
-            <div style="position:relative; width:40px; height:40px; display:flex; align-items:center; justify-content:center;">
-              <div style="position:absolute; width:38px; height:38px; border-radius:50%; background:rgba(26,115,232,0.25); animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
-              <div style="width:32px; height:32px; background:#1A73E8; border:2.5px solid #ffffff; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(26,115,232,0.5); z-index:2;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
-              </div>
+            <div style="position:relative; width:52px; height:52px; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+              <img src="/rider/ripple.png" style="position:absolute; width:52px; height:52px; object-fit:contain; opacity:0.85; animation:pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;" alt="" />
+              <img src="/rider/shadow.png" style="position:absolute; bottom:2px; width:38px; height:16px; object-fit:contain; opacity:0.55;" alt="" />
+              <img src="/rider/rider_map_live.png" style="width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.4)); z-index:2;" alt="Vehicle" />
             </div>
           `,
-          iconSize: [40, 40],
-          iconAnchor: [20, 20],
+          iconSize: [52, 52],
+          iconAnchor: [26, 26],
         });
 
         const rMarker = L.marker([coords.latitude, coords.longitude], { icon: riderIcon }).addTo(map);
@@ -958,8 +957,8 @@ export default function DashItDriverApp() {
           <meta name="robots" content="noindex, nofollow, noarchive" />
         </Head>
         <div className="bg-[#061838] border border-white/10 rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center space-y-5">
-          <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-[#FF5B00]/20 flex items-center justify-center mx-auto text-[#FF5B00]">
-            <Bike className="w-7 h-7" />
+          <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-[#FF5B00]/20 flex items-center justify-center mx-auto p-1.5 shadow-inner">
+            <img src="/rider/rider_front.png" alt="Rider" className="w-full h-full object-contain filter drop-shadow-md" />
           </div>
           
           <div>
@@ -1326,8 +1325,8 @@ export default function DashItDriverApp() {
             ) : (
               /* Empty active state */
               <div className="bg-white/[0.03] border border-white/8 rounded-3xl p-10 text-center space-y-4 mt-2">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mx-auto">
-                  <Bike className="w-8 h-8 text-[#FF5B00]" />
+                <div className="w-20 h-20 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center mx-auto p-2">
+                  <img src="/rider/rider_idle.png" alt="Idle Rider" className="w-full h-full object-contain filter drop-shadow-md" />
                 </div>
                 <div>
                   <h3 className="font-black text-base text-white">No Active Delivery</h3>

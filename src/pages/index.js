@@ -5,13 +5,6 @@ import { useRouter } from "next/router";
 import SEO from "../components/SEO";
 import { WebSiteJsonLd, OrganizationJsonLd, GroceryStoreJsonLd } from "../components/JsonLd";
 
-const Hero3DPhone = dynamic(() => import("../components/Hero3DPhone"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-[286px] sm:w-[306px] h-[600px] sm:h-[642px] rounded-[46px] bg-slate-200/60 dark:bg-slate-800/50 mx-auto" />
-  ),
-});
-
 const AppFeatureShowcase = dynamic(() => import("../components/ArtisticBentoFeatures"), {
   ssr: true,
   loading: () => (
@@ -24,7 +17,7 @@ import { useTheme } from "../context/ThemeContext";
 import { hapticLight } from "../lib/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import { stagger, fadeUp, inViewOnce, EASE_OUT } from "../lib/motion";
-import { ChevronRight, X, ArrowRight, Menu, Sun, Moon, Download } from "lucide-react";
+import { ChevronRight, X, ArrowRight, Menu, Sun, Moon, Download, Clock, Leaf, Sparkles } from "lucide-react";
 
 const POPULAR_CATEGORIES = [
   {
@@ -113,7 +106,14 @@ export default function LandingPage() {
   }, [router]);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 16);
+    let isScrolledRef = false;
+    const handleScroll = () => {
+      const nextScrolled = window.scrollY > 16;
+      if (nextScrolled !== isScrolledRef) {
+        isScrolledRef = nextScrolled;
+        setIsScrolled(nextScrolled);
+      }
+    };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -298,7 +298,13 @@ export default function LandingPage() {
 
             {/* Download */}
             <motion.div variants={fadeUp} id="get-the-app" className="mt-9 scroll-mt-24">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-md">
+              {/* Coming Soon Pill */}
+              <div className="inline-flex items-center gap-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-full px-3.5 py-1 mb-3 text-amber-700 dark:text-amber-300 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-[#FF5B00]" />
+                <span>Play Store &amp; App Store Available Soon • Direct Download Ready</span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 max-w-lg">
                 <a
                   href="/Dashit-User.apk"
                   download="Dashit-User.apk"
@@ -312,11 +318,13 @@ export default function LandingPage() {
                   </svg>
                   <span className="text-left leading-tight">
                     <span className="block text-[10px] font-medium text-slate-400">
-                      Android · direct download
+                      Google Play
                     </span>
-                    <span className="block text-[14px] font-bold">Get the APK</span>
+                    <span className="block text-[14px] font-bold">Get Android APK</span>
                   </span>
-                  <Download className="w-4 h-4 ml-auto text-slate-400 group-hover:text-white transition-colors" />
+                  <span className="ml-auto bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                    Soon
+                  </span>
                 </a>
 
                 <a
@@ -329,17 +337,18 @@ export default function LandingPage() {
                   </svg>
                   <span className="text-left leading-tight">
                     <span className="block text-[10px] font-medium text-slate-400">
-                      iOS · direct download
+                      Apple App Store
                     </span>
-                    <span className="block text-[14px] font-bold">Get the IPA</span>
+                    <span className="block text-[14px] font-bold">Get iOS IPA</span>
                   </span>
-                  <Download className="w-4 h-4 ml-auto text-slate-400 group-hover:text-white transition-colors" />
+                  <span className="ml-auto bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                    Soon
+                  </span>
                 </a>
               </div>
 
               <p className="mt-3.5 max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                App Store and Play Store listings are on the way. Until then, install
-                directly — version 1.0.0, signed and virus-free.
+                Official Google Play and Apple App Store listings are coming soon. Direct packages are available to install now — version 1.0.0, signed and verified.
               </p>
             </motion.div>
 
@@ -365,14 +374,59 @@ export default function LandingPage() {
             </motion.dl>
           </motion.div>
 
-          {/* Device */}
+          {/* Artwork: Radiant Sun Portal + Flying Grocery Box */}
           <motion.div
-            initial={{ opacity: 0, y: 28 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.15, ease: EASE_OUT }}
-            className="lg:col-span-6 xl:col-span-5 flex justify-center"
+            initial={{ opacity: 0, scale: 0.92, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.15, ease: EASE_OUT }}
+            className="lg:col-span-6 xl:col-span-5 flex justify-center items-center relative py-6 sm:py-10"
           >
-            <Hero3DPhone />
+            {/* Concentric Orbital Outline Rings */}
+            <div className="w-72 h-72 sm:w-[350px] sm:h-[350px] md:w-[410px] md:h-[410px] xl:w-[440px] xl:h-[440px] rounded-full border border-slate-200/70 dark:border-slate-800/70 absolute pointer-events-none flex items-center justify-center" />
+            <div className="w-80 h-80 sm:w-[390px] sm:h-[390px] md:w-[460px] md:h-[460px] xl:w-[490px] xl:h-[490px] rounded-full border border-slate-100 dark:border-slate-800/40 absolute pointer-events-none" />
+
+            {/* Orbit Accent Arcs */}
+            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-t-4 border-l-4 border-emerald-500 absolute -top-2 left-6 sm:left-12 pointer-events-none -rotate-12" />
+            <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border-b-4 border-r-4 border-[#FF5B00] absolute -bottom-2 right-4 sm:right-10 pointer-events-none -rotate-12" />
+
+            {/* Radiant Sun Disc */}
+            <div className="w-64 h-64 sm:w-80 sm:h-80 md:w-[360px] md:h-[360px] xl:w-[390px] xl:h-[390px] rounded-full bg-gradient-to-tr from-[#F59E0B] via-[#FBBF24] to-[#FDE68A] shadow-xl shadow-amber-500/15 relative flex items-center justify-center overflow-visible">
+
+              {/* Inner ambient glow */}
+              <div className="absolute inset-4 rounded-full bg-gradient-to-b from-amber-200/50 to-transparent blur-sm pointer-events-none" />
+
+              {/* FLYING GROCERY BOX */}
+              <div className="relative z-10 w-[112%] sm:w-[120%] xl:w-[124%] -mt-4">
+                <picture>
+                  <source srcSet="/art/flying-grocery-box-transparent.webp" type="image/webp" />
+                  <img
+                    src="/art/flying-grocery-box-transparent.png"
+                    alt="DASHIT Flying Grocery Delivery Box"
+                    width={1536}
+                    height={1024}
+                    fetchpriority="high"
+                    decoding="async"
+                    className="w-full h-auto drop-shadow-2xl"
+                  />
+                </picture>
+              </div>
+
+              {/* Badge Top Right */}
+              <div className="absolute top-2 -right-4 sm:-right-6 bg-white dark:bg-[#141824] px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-800 flex items-center space-x-1.5 z-20">
+                <Clock className="w-3.5 h-3.5 text-[#FF5B00] shrink-0" />
+                <span className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
+                  Fastest Delivery Promise
+                </span>
+              </div>
+
+              {/* Badge Bottom Left */}
+              <div className="absolute -bottom-3 -left-3 sm:-left-6 bg-white dark:bg-[#141824] px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-800 flex items-center space-x-1.5 z-20">
+                <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
+                  100% Fresh Produce
+                </span>
+              </div>
+            </div>
           </motion.div>
         </section>
 

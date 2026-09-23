@@ -5,7 +5,9 @@ Allow: /
 Sitemap: https://dashit.co.in/sitemap.xml
 
 # Staff consoles & internal tools (served securely with Firebase Auth role guards)
+Disallow: /xcyop/
 Disallow: /admin/
+Disallow: /dashboard/
 Disallow: /driver/
 Disallow: /hero-3d-demo/
 

@@ -11,7 +11,7 @@ export default function HomeScreenLiveOrderCard() {
   /* Read through the shared store hook: it publishes a new value only when the
      stored order actually changes, and stops polling while the app is hidden. */
   const activeOrder = useStoredJson("dashit_active_order", {
-    events: ["dashit_orders_updated"],
+    events: ["dashit_orders_updated", "dashit_order_updated"],
   });
   const [isDismissed, setIsDismissed] = useState(false);
 
@@ -58,11 +58,17 @@ export default function HomeScreenLiveOrderCard() {
             <div className="flex items-center space-x-2">
               <h3 className="font-extrabold text-xs text-slate-900 dark:text-content">Live Order Tracking</h3>
               <Badge variant="success">
-                ON THE WAY
+                {activeOrder?.status === "Out for Delivery"
+                  ? "ON THE WAY"
+                  : activeOrder?.status === "Packed"
+                  ? "PACKED"
+                  : activeOrder?.status === "Delivered"
+                  ? "DELIVERED"
+                  : "CONFIRMED"}
               </Badge>
             </div>
             <p className="text-[10px] font-mono text-slate-400 font-semibold dark:text-content-faint">
-              #{activeOrder.orderId}
+              #{activeOrder.orderId || activeOrder.id}
             </p>
           </div>
         </div>
@@ -120,23 +126,45 @@ export default function HomeScreenLiveOrderCard() {
       <div className="pt-0.5">
         <div className="grid grid-cols-3 gap-1.5">
           <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#061838] rounded-full" />
+            <div className="h-1 w-full bg-[#061838] dark:bg-[#FF5B00] rounded-full" />
             <span className="text-[9px] font-bold text-[#061838] block dark:text-content">Placed</span>
-          </div>
-          <div className="space-y-1 text-center">
-            <div className="h-1 w-full bg-[#FF5B00] animate-pulse rounded-full" />
-            <span className="text-[9px] font-bold text-[#FF5B00] block">Processing</span>
           </div>
           <div className="space-y-1 text-center">
             <div
               className={`h-1 w-full ${
-                activeOrder?.status === "Out for Delivery" ? "bg-[#FF5B00]" : "bg-slate-200 dark:bg-surface-muted"
+                activeOrder?.status === "Packed" ||
+                activeOrder?.status === "Out for Delivery" ||
+                activeOrder?.status === "Delivered"
+                  ? "bg-[#061838] dark:bg-[#FF5B00]"
+                  : "bg-[#FF5B00] animate-pulse"
               } rounded-full`}
             />
             <span
               className={`text-[9px] font-bold ${
-                activeOrder?.status === "Out for Delivery" ? "text-[#061838]" : "text-slate-400"
-              } block dark:text-content`}
+                activeOrder?.status === "Packed" ||
+                activeOrder?.status === "Out for Delivery" ||
+                activeOrder?.status === "Delivered"
+                  ? "text-[#061838] dark:text-content"
+                  : "text-[#FF5B00]"
+              } block`}
+            >
+              {activeOrder?.status === "Packed" ? "Packed" : "Processing"}
+            </span>
+          </div>
+          <div className="space-y-1 text-center">
+            <div
+              className={`h-1 w-full ${
+                activeOrder?.status === "Out for Delivery" || activeOrder?.status === "Delivered"
+                  ? "bg-[#FF5B00]"
+                  : "bg-slate-200 dark:bg-surface-muted"
+              } rounded-full`}
+            />
+            <span
+              className={`text-[9px] font-bold ${
+                activeOrder?.status === "Out for Delivery" || activeOrder?.status === "Delivered"
+                  ? "text-[#061838] dark:text-content"
+                  : "text-slate-400 dark:text-content-faint"
+              } block`}
             >
               On Way
             </span>
