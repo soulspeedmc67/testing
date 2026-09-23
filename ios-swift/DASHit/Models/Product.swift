@@ -14,6 +14,18 @@ public struct ProductVariant: Codable, Identifiable, Hashable {
     }
 }
 
+/// One line of the pack's nutrition panel, e.g. ("Protein", "3.2 g"). Optional in
+/// Firestore; the product sheet only shows callouts for products that carry them.
+public struct NutritionFact: Codable, Hashable {
+    public let label: String
+    public let value: String
+    
+    public init(label: String, value: String) {
+        self.label = label
+        self.value = value
+    }
+}
+
 public struct Product: Codable, Identifiable, Hashable {
     public let id: String
     public let name: String
@@ -31,6 +43,7 @@ public struct Product: Codable, Identifiable, Hashable {
     public let ageRestricted: Bool?
     public let minAge: Int?
     public let inStock: Bool?
+    public let nutrition: [NutritionFact]?
     
     public init(
         id: String,
@@ -48,7 +61,8 @@ public struct Product: Codable, Identifiable, Hashable {
         variants: [ProductVariant]? = nil,
         ageRestricted: Bool? = false,
         minAge: Int? = nil,
-        inStock: Bool? = true
+        inStock: Bool? = true,
+        nutrition: [NutritionFact]? = nil
     ) {
         self.id = id
         self.name = name
@@ -66,7 +80,10 @@ public struct Product: Codable, Identifiable, Hashable {
         self.ageRestricted = ageRestricted
         self.minAge = minAge
         self.inStock = inStock
+        self.nutrition = nutrition
     }
+    
+    public var isAvailable: Bool { inStock != false }
     
     public var discountPercent: Int? {
         guard let original = originalPrice, original > price else { return nil }

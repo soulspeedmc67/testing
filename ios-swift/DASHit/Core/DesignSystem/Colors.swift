@@ -1,26 +1,50 @@
 import SwiftUI
 
-/// DASHit Native Design System Colors
-/// Matches the high-contrast Obsidian dark theme and vibrant quick-commerce accents.
+/// DASHit design tokens, matching the web app's dark theme (`.dark` in
+/// `src/styles/globals.css`) so iOS reads as the same product as web and Android.
 extension Color {
-    // Primary DASHit Brand Colors
-    static let dashitEmerald = Color(red: 16/255, green: 185/255, blue: 129/255) // #10B981
-    static let dashitEmeraldDark = Color(red: 5/255, green: 150/255, blue: 105/255)
-    static let dashitAmber = Color(red: 245/255, green: 158/255, blue: 11/255) // #F59E0B
-    static let dashitRose = Color(red: 244/255, green: 63/255, blue: 94/255) // #F43F5E
-    
-    // Obsidian Dark Surface & Backgrounds
-    static let obsidianBlack = Color(red: 9/255, green: 9/255, blue: 11/255) // #09090B
-    static let obsidianCard = Color(red: 18/255, green: 18/255, blue: 22/255) // #121216
-    static let obsidianElevated = Color(red: 26/255, green: 26/255, blue: 32/255) // #1A1A20
-    static let obsidianBorder = Color(red: 39/255, green: 39/255, blue: 46/255) // #27272E
-    
-    // Light Mode Alternates
-    static let dashitBackgroundLight = Color(red: 248/255, green: 249/255, blue: 250/255)
-    static let dashitCardLight = Color.white
-    static let dashitBorderLight = Color(red: 229/255, green: 231/255, blue: 235/255)
-    
-    // Semantic Contextual Colors
-    static let dashitBackground = Color("DashitBackground", bundle: nil)
-    static let dashitCard = Color("DashitCard", bundle: nil)
+    // MARK: Brand
+    /// Brand orange fill for primary actions.
+    static let brandOrange = Color(hex: 0xFF5B00)
+    /// Orange for text and icons on the dark ground; lightened so it clears 4.5:1.
+    static let brandAccent = Color(hex: 0xFF6A1A)
+    /// Secondary brand colour (floating cart pill, marker glyphs).
+    static let midnight = Color(hex: 0x061838)
+
+    // MARK: Surfaces, loudest last
+    static let surfaceSunken = Color(hex: 0x0E1117)
+    /// The page ground.
+    static let surface = Color(hex: 0x14171F)
+    /// Cards and rows on the page.
+    static let surfaceRaised = Color(hex: 0x1E222D)
+    /// Bottom sheets, overlays and the tab bar.
+    static let surfaceOverlay = Color(hex: 0x252A37)
+    /// Chips, steppers, image wells and quiet fills.
+    static let surfaceMuted = Color(hex: 0x2D3342)
+    /// The live order card, matching the web tracker.
+    static let trackerCard = Color(hex: 0x16171B)
+
+    // MARK: Text, loudest to quietest
+    static let textPrimary = Color(hex: 0xF8FAFC)
+    static let textSecondary = Color(hex: 0xCBD5E1)
+    static let textMuted = Color(hex: 0xA0ABC0)
+    static let textFaint = Color(hex: 0x8290A4)
+
+    // MARK: Hairlines
+    static let hairlineSoft = Color(hex: 0x212633)
+    static let hairline = Color(hex: 0x2A303F)
+    static let hairlineStrong = Color(hex: 0x384054)
+
+    // MARK: Semantic
+    static let positive = Color(hex: 0x22C55E)
+    static let caution = Color(hex: 0xF59E0B)
+    static let danger = Color(hex: 0xF43F5E)
+
+    init(hex: UInt32) {
+        self.init(
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255
+        )
+    }
 }

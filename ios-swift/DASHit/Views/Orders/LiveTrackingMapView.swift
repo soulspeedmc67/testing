@@ -16,11 +16,11 @@ struct LiveTrackingMapView: View {
                     Annotation("Delivery Address", coordinate: dest) {
                         ZStack {
                             Circle()
-                                .fill(Color.dashitEmerald.opacity(0.3))
+                                .fill(Color.brandOrange.opacity(0.3))
                                 .frame(width: 48, height: 48)
                             Image(systemName: "mappin.circle.fill")
                                 .font(.system(size: 32))
-                                .foregroundColor(.dashitEmerald)
+                                .foregroundColor(.brandAccent)
                         }
                     }
                 }
@@ -35,7 +35,7 @@ struct LiveTrackingMapView: View {
                                 .shadow(radius: 6)
                             Image(systemName: "scooter")
                                 .font(.system(size: 20))
-                                .foregroundColor(.dashitEmerald)
+                                .foregroundColor(.brandAccent)
                         }
                     }
                 }
@@ -60,7 +60,7 @@ struct LiveTrackingMapView: View {
                     if vm.isModificationWindowActive {
                         HStack(spacing: 6) {
                             Image(systemName: "timer")
-                                .foregroundColor(.dashitAmber)
+                                .foregroundColor(.caution)
                             Text("\(vm.secondsRemainingForModification)s to modify")
                                 .font(.dashitCaptionBold)
                                 .foregroundColor(.white)
@@ -72,7 +72,7 @@ struct LiveTrackingMapView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 44)
+                .padding(.top, 8)
                 
                 Spacer()
             }
@@ -84,55 +84,49 @@ struct LiveTrackingMapView: View {
                     HStack {
                         HStack(spacing: 8) {
                             Image(systemName: order.status.iconName)
-                                .foregroundColor(.dashitEmerald)
-                            Text(order.status.title)
+                                .foregroundColor(.brandAccent)
+                            Text(order.status.stage.headline(riderName: order.driverName))
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.white)
+                                .lineLimit(1)
                         }
                         
                         Spacer()
                         
-                        Text("ETA \(order.etaMinutes ?? 8) MINS")
-                            .font(.dashitHeadline)
-                            .foregroundColor(.dashitAmber)
-                    }
-                    
-                    // Progress Bar
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule()
-                                .fill(Color.obsidianElevated)
-                                .frame(height: 6)
-                            Capsule()
-                                .fill(Color.dashitEmerald)
-                                .frame(width: geo.size.width * CGFloat(order.status.progress), height: 6)
+                        if !order.status.stage.isFinished {
+                            Text("ETA \(order.etaMinutes ?? 8) MINS")
+                                .font(.dashitHeadline)
+                                .foregroundColor(.brandAccent)
                         }
                     }
-                    .frame(height: 6)
                     
-                    Divider().background(Color.obsidianBorder)
+                    OrderProgressRail(stage: order.status.stage)
+
+                    Rectangle()
+                        .fill(Color.hairline)
+                        .frame(height: 1)
                     
                     // Items Summary
                     HStack {
                         Text("\(order.items.count) items • \(CurrencyFormatter.format(order.grandTotal))")
                             .font(.dashitCaption)
-                            .foregroundColor(.gray)
+                            .foregroundColor(.textMuted)
                         Spacer()
                         if vm.isModificationWindowActive {
                             Button("Cancel Order") {
                                 showCancelConfirmation = true
                             }
                             .font(.dashitCaptionBold)
-                            .foregroundColor(.dashitRose)
+                            .foregroundColor(.danger)
                         }
                     }
                 }
                 .padding(16)
-                .background(Color.obsidianCard)
+                .background(Color.surfaceRaised)
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.obsidianBorder, lineWidth: 1)
+                        .stroke(Color.hairline, lineWidth: 1)
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 20)
@@ -141,14 +135,15 @@ struct LiveTrackingMapView: View {
         .onAppear {
             vm.startTracking(orderId: orderId)
         }
-        .alert("Cancel Order?", isPresented: $showCancelConfirmation) {
-            Button("Yes, Cancel", role: .destructive) {
+        .animation(.dashitSpring, value: vm.activeOrder?.status)
+        .confirmationDialog("Cancel this order?", isPresented: $showCancelConfirmation, titleVisibility: .visible) {
+            Button("Yes, cancel order", role: .destructive) {
                 Task {
                     _ = await vm.cancelOrder()
                     dismiss()
                 }
             }
-            Button("Keep Order", role: .cancel) {}
+            Button("Keep order", role: .cancel) {}
         } message: {
             Text("Are you sure you want to cancel this order? Instant refund applies.")
         }

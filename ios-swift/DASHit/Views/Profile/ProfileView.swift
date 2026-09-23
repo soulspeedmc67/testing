@@ -12,7 +12,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.obsidianBlack.ignoresSafeArea()
+                Color.surface.ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 20) {
@@ -21,7 +21,7 @@ struct ProfileView: View {
                             VStack(spacing: 12) {
                                 Image(systemName: "person.crop.circle.fill")
                                     .font(.system(size: 64))
-                                    .foregroundColor(.dashitEmerald)
+                                    .foregroundColor(.brandAccent)
                                 
                                 Text(user.name ?? "DASHit Shopper")
                                     .font(.dashitHeadline)
@@ -29,7 +29,7 @@ struct ProfileView: View {
                                 
                                 Text("+91 \(user.mobile)")
                                     .font(.dashitCaption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.textMuted)
                             }
                             .padding(.top, 20)
                             
@@ -45,11 +45,11 @@ struct ProfileView: View {
                                     ProfileRow(icon: "questionmark.circle.fill", title: "24/7 Support in Anantnag")
                                 }
                             }
-                            .background(Color.obsidianCard)
+                            .background(Color.surfaceRaised)
                             .cornerRadius(12)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.obsidianBorder, lineWidth: 1)
+                                    .stroke(Color.hairline, lineWidth: 1)
                             )
                             
                             // Sign Out & Delete Account
@@ -60,18 +60,18 @@ struct ProfileView: View {
                                         .foregroundColor(.white)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 14)
-                                        .background(Color.obsidianCard)
+                                        .background(Color.surfaceRaised)
                                         .cornerRadius(12)
                                         .overlay(
                                             RoundedRectangle(cornerRadius: 12)
-                                                .stroke(Color.obsidianBorder, lineWidth: 1)
+                                                .stroke(Color.hairline, lineWidth: 1)
                                         )
                                 }
                                 
                                 Button(action: { isDeleteAccountOpen = true }) {
                                     Text("Delete Account")
                                         .font(.dashitCaptionBold)
-                                        .foregroundColor(.dashitRose)
+                                        .foregroundColor(.danger)
                                 }
                             }
                             .padding(.top, 16)
@@ -81,7 +81,7 @@ struct ProfileView: View {
                             VStack(spacing: 16) {
                                 Image(systemName: "bolt.shield.fill")
                                     .font(.system(size: 48))
-                                    .foregroundColor(.dashitEmerald)
+                                    .foregroundColor(.brandAccent)
                                 
                                 Text("Sign In to DASHit")
                                     .font(.dashitHeadline)
@@ -89,7 +89,7 @@ struct ProfileView: View {
                                 
                                 Text("Get fresh groceries and Kashmiri essentials delivered to your door in 8 minutes.")
                                     .font(.dashitCaption)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(.textMuted)
                                     .multilineTextAlignment(.center)
                                 
                                 if !isOtpStep {
@@ -101,7 +101,7 @@ struct ProfileView: View {
                                         
                                         HStack {
                                             Text("+91")
-                                                .foregroundColor(.gray)
+                                                .foregroundColor(.textMuted)
                                                 .font(.dashitBodyBold)
                                             TextField("10-digit mobile number", text: $phoneInput)
                                                 .keyboardType(.numberPad)
@@ -109,7 +109,7 @@ struct ProfileView: View {
                                                 .foregroundColor(.white)
                                         }
                                         .padding(12)
-                                        .background(Color.obsidianElevated)
+                                        .background(Color.surfaceMuted)
                                         .cornerRadius(10)
                                     }
                                     
@@ -125,7 +125,7 @@ struct ProfileView: View {
                                             .foregroundColor(.white)
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 14)
-                                            .background(Color.dashitEmerald)
+                                            .background(Color.brandOrange)
                                             .cornerRadius(10)
                                     }
                                 } else {
@@ -140,14 +140,14 @@ struct ProfileView: View {
                                             .font(.system(size: 24, weight: .bold, design: .rounded))
                                             .multilineTextAlignment(.center)
                                             .padding(12)
-                                            .background(Color.obsidianElevated)
+                                            .background(Color.surfaceMuted)
                                             .cornerRadius(10)
                                             .foregroundColor(.white)
                                         
                                         if let devCode = generatedDevCode {
                                             Text("Verification Code: \(devCode)")
                                                 .font(.dashitMicro)
-                                                .foregroundColor(.dashitAmber)
+                                                .foregroundColor(.caution)
                                         }
                                     }
                                     
@@ -166,7 +166,7 @@ struct ProfileView: View {
                                             .foregroundColor(.white)
                                             .frame(maxWidth: .infinity)
                                             .padding(.vertical, 14)
-                                            .background(Color.dashitEmerald)
+                                            .background(Color.brandOrange)
                                             .cornerRadius(10)
                                     }
                                 }
@@ -174,15 +174,15 @@ struct ProfileView: View {
                                 if let err = authErrorMessage {
                                     Text(err)
                                         .font(.dashitCaption)
-                                        .foregroundColor(.dashitRose)
+                                        .foregroundColor(.danger)
                                 }
                             }
                             .padding(20)
-                            .background(Color.obsidianCard)
+                            .background(Color.surfaceRaised)
                             .cornerRadius(16)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.obsidianBorder, lineWidth: 1)
+                                    .stroke(Color.hairline, lineWidth: 1)
                             )
                             .padding(.top, 20)
                         }
@@ -207,14 +207,14 @@ struct ProfileRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18))
-                .foregroundColor(.dashitEmerald)
+                .foregroundColor(.brandAccent)
             Text(title)
                 .font(.dashitBody)
                 .foregroundColor(.white)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12))
-                .foregroundColor(.gray)
+                .foregroundColor(.textMuted)
         }
         .padding(14)
     }

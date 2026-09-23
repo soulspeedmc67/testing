@@ -22,11 +22,11 @@ struct AddressPickerMapView: View {
                     Annotation("Delivery Pin", coordinate: CLLocationCoordinate2D(latitude: 33.7311, longitude: 75.1487)) {
                         ZStack {
                             Circle()
-                                .fill(Color.dashitEmerald.opacity(0.25))
+                                .fill(Color.brandOrange.opacity(0.25))
                                 .frame(width: 44, height: 44)
                             Image(systemName: "mappin.circle.fill")
                                 .font(.system(size: 32))
-                                .foregroundColor(.dashitEmerald)
+                                .foregroundColor(.brandAccent)
                         }
                     }
                 }
@@ -41,7 +41,7 @@ struct AddressPickerMapView: View {
                                 .foregroundColor(.white)
                             Text(reverseGeocodedAddress)
                                 .font(.dashitCaption)
-                                .foregroundColor(.gray)
+                                .foregroundColor(.textMuted)
                         }
                         Spacer()
                     }
@@ -50,14 +50,14 @@ struct AddressPickerMapView: View {
                     TextField("House / Flat / Floor No.", text: $houseNumber)
                         .font(.dashitBody)
                         .padding(12)
-                        .background(Color.obsidianElevated)
+                        .background(Color.surfaceMuted)
                         .cornerRadius(10)
                         .foregroundColor(.white)
                     
                     TextField("Landmark (e.g. Near Degree College)", text: $landmark)
                         .font(.dashitBody)
                         .padding(12)
-                        .background(Color.obsidianElevated)
+                        .background(Color.surfaceMuted)
                         .cornerRadius(10)
                         .foregroundColor(.white)
                     
@@ -70,10 +70,10 @@ struct AddressPickerMapView: View {
                             }) {
                                 Text(tag)
                                     .font(.dashitCaptionBold)
-                                    .foregroundColor(selectedNickname == tag ? .black : .white)
+                                    .foregroundColor(selectedNickname == tag ? .white : .textSecondary)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 8)
-                                    .background(selectedNickname == tag ? Color.dashitEmerald : Color.obsidianElevated)
+                                    .background(selectedNickname == tag ? Color.brandOrange : Color.surfaceMuted)
                                     .cornerRadius(8)
                             }
                         }
@@ -101,16 +101,16 @@ struct AddressPickerMapView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.dashitEmerald)
+                            .background(Color.brandOrange)
                             .cornerRadius(12)
                     }
                 }
                 .padding(16)
-                .background(Color.obsidianCard)
+                .background(Color.surfaceRaised)
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.obsidianBorder, lineWidth: 1)
+                        .stroke(Color.hairline, lineWidth: 1)
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
@@ -120,7 +120,7 @@ struct AddressPickerMapView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundColor(.gray)
+                        .foregroundColor(.textMuted)
                 }
             }
         }

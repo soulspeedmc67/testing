@@ -5,291 +5,27 @@ struct CartSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isCheckoutOpen = false
     @State private var isCouponsOpen = false
-    
+
+    private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 14, style: .continuous) }
+
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.obsidianBlack.ignoresSafeArea()
-                
+            Group {
                 if cart.items.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "cart")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray)
-                        Text("Your Cart is Empty")
-                            .font(.dashitHeadline)
-                            .foregroundColor(.white)
-                        Text("Explore fresh groceries delivered in 8 mins.")
-                            .font(.dashitBody)
-                            .foregroundColor(.gray)
-                        Button(action: { dismiss() }) {
-                            Text("Start Shopping")
-                                .font(.dashitBodyBold)
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(Color.dashitEmerald)
-                                .cornerRadius(10)
-                        }
-                    }
+                    emptyState
                 } else {
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            // ₹299 Min Order Progress Alert
-                            if !cart.bill.isMinOrderSatisfied {
-                                HStack(spacing: 10) {
-                                    Image(systemName: "exclamationmark.circle.fill")
-                                        .foregroundColor(.dashitAmber)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Minimum Order ₹299 Required")
-                                            .font(.dashitCaptionBold)
-                                            .foregroundColor(.white)
-                                        Text("Add items worth \(CurrencyFormatter.format(cart.bill.amountNeededForMinOrder)) more to checkout.")
-                                            .font(.dashitMicro)
-                                            .foregroundColor(.gray)
-                                    }
-                                    Spacer()
-                                }
-                                .padding(12)
-                                .background(Color.dashitAmber.opacity(0.12))
-                                .cornerRadius(10)
-                            }
-                            
-                            // Free Delivery Progress
-                            if cart.bill.deliveryFee > 0 {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "moped.fill")
-                                        .foregroundColor(.dashitEmerald)
-                                    Text("Add \(CurrencyFormatter.format(cart.bill.amountNeededForFreeDelivery)) more for FREE delivery")
-                                        .font(.dashitCaption)
-                                        .foregroundColor(.dashitEmerald)
-                                    Spacer()
-                                }
-                                .padding(10)
-                                .background(Color.dashitEmerald.opacity(0.1))
-                                .cornerRadius(8)
-                            }
-                            
-                            // Cart Items Section
-                            VStack(spacing: 12) {
-                                ForEach(cart.items) { item in
-                                    HStack(spacing: 12) {
-                                        AsyncImage(url: URL(string: item.img)) { phase in
-                                            if let image = phase.image {
-                                                image.resizable().scaledToFill().frame(width: 50, height: 50).clipped().cornerRadius(8)
-                                            } else {
-                                                Color.obsidianElevated.frame(width: 50, height: 50).cornerRadius(8)
-                                            }
-                                        }
-                                        
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(item.name)
-                                                .font(.dashitBodyBold)
-                                                .foregroundColor(.white)
-                                                .lineLimit(1)
-                                            Text(item.unit)
-                                                .font(.dashitCaption)
-                                                .foregroundColor(.gray)
-                                            Text(CurrencyFormatter.format(item.price))
-                                                .font(.dashitPrice)
-                                                .foregroundColor(.white)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        // Inline Stepper
-                                        HStack(spacing: 10) {
-                                            Button(action: {
-                                                cart.remove(productId: item.productId, variantId: item.id)
-                                            }) {
-                                                Image(systemName: "minus")
-                                                    .font(.system(size: 10, weight: .bold))
-                                                    .foregroundColor(.white)
-                                            }
-                                            
-                                            Text("\(item.qty)")
-                                                .font(.dashitCaptionBold)
-                                                .foregroundColor(.white)
-                                            
-                                            Button(action: {
-                                                // Create lightweight dummy product for increment
-                                                let p = Product(id: item.productId, name: item.name, unit: item.unit, price: item.price, img: item.img, cat: item.cat)
-                                                cart.add(product: p)
-                                            }) {
-                                                Image(systemName: "plus")
-                                                    .font(.system(size: 10, weight: .bold))
-                                                    .foregroundColor(.white)
-                                            }
-                                        }
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.dashitEmerald)
-                                        .cornerRadius(6)
-                                    }
-                                    .padding(12)
-                                    .background(Color.obsidianCard)
-                                    .cornerRadius(12)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.obsidianBorder, lineWidth: 1)
-                                    )
-                                }
-                            }
-                            
-                            // Coupon Section Button
-                            Button(action: { isCouponsOpen = true }) {
-                                HStack {
-                                    Image(systemName: "tag.fill")
-                                        .foregroundColor(.dashitAmber)
-                                    if let coupon = cart.appliedCoupon {
-                                        Text("Applied '\(coupon.code)': Saved \(CurrencyFormatter.format(cart.bill.couponDiscount))")
-                                            .font(.dashitCaptionBold)
-                                            .foregroundColor(.white)
-                                        Spacer()
-                                        Button(action: { cart.removeCoupon() }) {
-                                            Text("Remove")
-                                                .font(.dashitMicro)
-                                                .foregroundColor(.dashitRose)
-                                        }
-                                    } else {
-                                        Text("Apply Coupon Code")
-                                            .font(.dashitCaptionBold)
-                                            .foregroundColor(.white)
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                                .padding(12)
-                                .background(Color.obsidianCard)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.obsidianBorder, lineWidth: 1)
-                                )
-                            }
-                            
-                            // Bill Details Card
-                            VStack(spacing: 8) {
-                                HStack {
-                                    Text("Bill Details")
-                                        .font(.dashitBodyBold)
-                                        .foregroundColor(.white)
-                                    Spacer()
-                                }
-                                
-                                Divider().background(Color.obsidianBorder)
-                                
-                                HStack {
-                                    Text("Item Total")
-                                        .font(.dashitCaption)
-                                        .foregroundColor(.gray)
-                                    Spacer()
-                                    Text(CurrencyFormatter.format(cart.bill.subtotal))
-                                        .font(.dashitCaption)
-                                        .foregroundColor(.white)
-                                }
-                                
-                                HStack {
-                                    Text("Delivery Partner Fee")
-                                        .font(.dashitCaption)
-                                        .foregroundColor(.gray)
-                                    Spacer()
-                                    if cart.bill.deliveryFee == 0 {
-                                        Text("FREE")
-                                            .font(.dashitCaptionBold)
-                                            .foregroundColor(.dashitEmerald)
-                                    } else {
-                                        Text(CurrencyFormatter.format(cart.bill.deliveryFee))
-                                            .font(.dashitCaption)
-                                            .foregroundColor(.white)
-                                    }
-                                }
-                                
-                                if cart.bill.couponDiscount > 0 {
-                                    HStack {
-                                        Text("Coupon Discount")
-                                            .font(.dashitCaption)
-                                            .foregroundColor(.dashitEmerald)
-                                        Spacer()
-                                        Text("-\(CurrencyFormatter.format(cart.bill.couponDiscount))")
-                                            .font(.dashitCaptionBold)
-                                            .foregroundColor(.dashitEmerald)
-                                    }
-                                }
-                                
-                                Divider().background(Color.obsidianBorder)
-                                
-                                HStack {
-                                    Text("To Pay")
-                                        .font(.dashitTitle)
-                                        .foregroundColor(.white)
-                                    Spacer()
-                                    Text(CurrencyFormatter.format(cart.bill.grandTotal))
-                                        .font(.dashitHeadline)
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .padding(14)
-                            .background(Color.obsidianCard)
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.obsidianBorder, lineWidth: 1)
-                                )
-                            
-                            // Safe area spacing
-                            Color.clear.frame(height: 60)
-                        }
-                        .padding(16)
-                    }
-                    
-                    // Fixed Bottom Proceed Bar
-                    VStack {
-                        Spacer()
-                        Button(action: {
-                            if !cart.bill.isMinOrderSatisfied {
-                                cart.showMinOrderModal = true
-                                HapticsManager.shared.warning()
-                            } else {
-                                isCheckoutOpen = true
-                                HapticsManager.shared.medium()
-                            }
-                        }) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(CurrencyFormatter.format(cart.bill.grandTotal))
-                                        .font(.dashitTitle)
-                                        .foregroundColor(.white)
-                                    Text("TOTAL")
-                                        .font(.dashitMicro)
-                                        .foregroundColor(Color.white.opacity(0.8))
-                                }
-                                Spacer()
-                                Text(cart.bill.isMinOrderSatisfied ? "Proceed to Checkout" : "Min Order ₹299 Required")
-                                    .font(.dashitBodyBold)
-                                    .foregroundColor(.white)
-                                Image(systemName: "arrow.right")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundColor(.white)
-                            }
-                            .padding(16)
-                            .background(cart.bill.isMinOrderSatisfied ? Color.dashitEmerald : Color.gray.opacity(0.4))
-                            .cornerRadius(14)
-                        }
-                        .disabled(!cart.bill.isMinOrderSatisfied)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 12)
-                    }
+                    cartContent
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.surface.ignoresSafeArea())
             .navigationTitle("Your Cart")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.surface, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") { dismiss() }
-                        .foregroundColor(.dashitEmerald)
+                        .foregroundColor(.brandAccent)
                 }
             }
             .sheet(isPresented: $isCheckoutOpen) {
@@ -297,8 +33,320 @@ struct CartSheetView: View {
             }
             .sheet(isPresented: $isCouponsOpen) {
                 CouponsSheetView()
-                    .presentationDetents([.medium, .large])
+                    .dashitSheet([.medium, .fraction(0.85)])
             }
         }
+    }
+
+    // MARK: - Empty
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "bag")
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(.textFaint)
+            Text("Your cart is empty")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundColor(.textPrimary)
+                .padding(.top, 6)
+            Text("Explore fresh groceries delivered in 8 mins.")
+                .font(.system(size: 14))
+                .foregroundColor(.textMuted)
+            Button {
+                dismiss()
+            } label: {
+                Text("Start shopping")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 24)
+                    .frame(height: 46)
+                    .background(Color.brandOrange, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.pressable)
+            .padding(.top, 10)
+        }
+        .padding(24)
+    }
+
+    // MARK: - Cart
+
+    private var cartContent: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                minimumOrderCard
+                itemsCard
+                couponRow
+                billCard
+            }
+            .padding(16)
+            .animation(.dashitSpring, value: cart.items)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            proceedBar
+        }
+    }
+
+    /// ₹299 minimum order: a neutral card with one coloured icon and a thin
+    /// progress bar, rather than a tinted warning slab.
+    private var minimumOrderCard: some View {
+        let bill = cart.bill
+        let progress = min(bill.subtotal / CartBillBreakdown.minOrderValue, 1)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: bill.isMinOrderSatisfied ? "checkmark.circle.fill" : "cart.badge.plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(bill.isMinOrderSatisfied ? .positive : .caution)
+                Text(minimumOrderMessage)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .contentTransition(.numericText())
+                Spacer(minLength: 0)
+            }
+            if !bill.isMinOrderSatisfied {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.surfaceMuted)
+                        Capsule()
+                            .fill(Color.caution)
+                            .frame(width: geo.size.width * CGFloat(progress))
+                    }
+                }
+                .frame(height: 5)
+                Text("Minimum order value is \(CurrencyFormatter.format(CartBillBreakdown.minOrderValue))")
+                    .font(.system(size: 11.5))
+                    .foregroundColor(.textMuted)
+            }
+        }
+        .padding(14)
+        .background(Color.surfaceRaised, in: cardShape)
+        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .animation(.dashitSpring, value: bill.subtotal)
+    }
+
+    private var minimumOrderMessage: String {
+        let bill = cart.bill
+        guard bill.isMinOrderSatisfied else {
+            return "Add \(CurrencyFormatter.format(bill.amountNeededForMinOrder)) more to place your order"
+        }
+        return bill.deliveryFee == 0 ? "You're all set · free delivery unlocked" : "You're all set"
+    }
+
+    private var itemsCard: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(cart.items.enumerated()), id: \.element.id) { index, item in
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color.hairline)
+                        .frame(height: 1)
+                        .padding(.leading, 76)
+                }
+                CartLineRow(item: item)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            }
+        }
+        .background(Color.surfaceRaised, in: cardShape)
+        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+    }
+
+    private var couponRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "ticket.fill")
+                .font(.system(size: 15))
+                .foregroundColor(.brandAccent)
+            if let coupon = cart.appliedCoupon {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("‘\(coupon.code)’ applied")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                    Text("You save \(CurrencyFormatter.format(cart.bill.couponDiscount))")
+                        .font(.system(size: 12))
+                        .foregroundColor(.positive)
+                }
+                Spacer()
+                Button("Remove") {
+                    cart.removeCoupon()
+                }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.danger)
+                .buttonStyle(.pressable)
+            } else {
+                Button {
+                    HapticsManager.shared.light()
+                    isCouponsOpen = true
+                } label: {
+                    HStack {
+                        Text("Apply coupon")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.textMuted)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .background(Color.surfaceRaised, in: cardShape)
+        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+    }
+
+    private var billCard: some View {
+        let bill = cart.bill
+
+        return VStack(spacing: 10) {
+            HStack {
+                Text("Bill details")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                Spacer()
+            }
+            billRow("Item total", value: CurrencyFormatter.format(bill.subtotal))
+            billRow(
+                "Delivery partner fee",
+                value: bill.deliveryFee == 0 ? "FREE" : CurrencyFormatter.format(bill.deliveryFee),
+                valueColor: bill.deliveryFee == 0 ? .positive : .textPrimary
+            )
+            if bill.couponDiscount > 0 {
+                billRow("Coupon discount", value: "-\(CurrencyFormatter.format(bill.couponDiscount))", valueColor: .positive)
+            }
+            Rectangle()
+                .fill(Color.hairline)
+                .frame(height: 1)
+            HStack {
+                Text("To pay")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                Spacer()
+                Text(CurrencyFormatter.format(bill.grandTotal))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundColor(.textPrimary)
+                    .contentTransition(.numericText(value: bill.grandTotal))
+            }
+        }
+        .padding(14)
+        .background(Color.surfaceRaised, in: cardShape)
+        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .animation(.dashitSpring, value: bill.grandTotal)
+    }
+
+    private func billRow(_ label: String, value: String, valueColor: Color = .textPrimary) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.textMuted)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(valueColor)
+                .contentTransition(.numericText())
+        }
+    }
+
+    private var proceedBar: some View {
+        let bill = cart.bill
+
+        return VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.hairline)
+                .frame(height: 1)
+            Button {
+                if bill.isMinOrderSatisfied {
+                    HapticsManager.shared.medium()
+                    isCheckoutOpen = true
+                } else {
+                    HapticsManager.shared.warning()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(CurrencyFormatter.format(bill.grandTotal))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .contentTransition(.numericText(value: bill.grandTotal))
+                        Text("TOTAL")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(0.6)
+                            .foregroundColor(Color.white.opacity(0.75))
+                    }
+                    Spacer()
+                    Text(bill.isMinOrderSatisfied ? "Proceed to checkout" : "Add \(CurrencyFormatter.format(bill.amountNeededForMinOrder)) more")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(.white)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 18)
+                .frame(height: 58)
+                .background(
+                    bill.isMinOrderSatisfied ? Color.brandOrange : Color.surfaceMuted,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.98))
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+        }
+        .background(Color.surface.ignoresSafeArea(edges: .bottom))
+        .animation(.dashitSpring, value: bill.grandTotal)
+    }
+}
+
+/// One cart line with its own stepper.
+private struct CartLineRow: View {
+    let item: CartItem
+    @ObservedObject private var cart = CartViewModel.shared
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AsyncImage(url: URL(string: item.img)) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.surfaceMuted
+                }
+            }
+            .frame(width: 52, height: 52)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(item.name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .lineLimit(2)
+                Text(item.unit)
+                    .font(.system(size: 12))
+                    .foregroundColor(.textMuted)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(CurrencyFormatter.format(item.price * Double(item.qty)))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.textPrimary)
+                        .contentTransition(.numericText(value: item.price * Double(item.qty)))
+                    if let original = item.originalPrice, original > item.price {
+                        Text(CurrencyFormatter.format(original * Double(item.qty)))
+                            .font(.system(size: 12))
+                            .foregroundColor(.textFaint)
+                            .strikethrough(true, color: .textFaint)
+                    }
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            QuantityStepper(
+                quantity: item.qty,
+                onAdd: { cart.increment(itemId: item.id) },
+                onIncrement: { cart.increment(itemId: item.id) },
+                onDecrement: { cart.decrement(itemId: item.id) }
+            )
+        }
+        .padding(12)
     }
 }

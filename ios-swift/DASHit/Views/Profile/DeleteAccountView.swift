@@ -11,27 +11,27 @@ struct DeleteAccountView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color.obsidianBlack.ignoresSafeArea()
+                Color.surface.ignoresSafeArea()
                 
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 12) {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 28))
-                            .foregroundColor(.dashitRose)
+                            .foregroundColor(.danger)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Delete Account & Data")
                                 .font(.dashitTitle)
                                 .foregroundColor(.white)
                             Text("Permanent and irreversible action")
                                 .font(.dashitCaption)
-                                .foregroundColor(.gray)
+                                .foregroundColor(.textMuted)
                         }
                     }
                     .padding(.top, 16)
                     
                     Text("In compliance with Apple Privacy Guidelines, deleting your account will permanently purge your profile, address records, order receipts, and authentication identifiers from our servers.")
                         .font(.dashitBody)
-                        .foregroundColor(.gray)
+                        .foregroundColor(.textMuted)
                     
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Type 'DELETE' to confirm:")
@@ -42,11 +42,11 @@ struct DeleteAccountView: View {
                             .font(.dashitBody)
                             .foregroundColor(.white)
                             .padding(12)
-                            .background(Color.obsidianElevated)
+                            .background(Color.surfaceMuted)
                             .cornerRadius(10)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.obsidianBorder, lineWidth: 1)
+                                    .stroke(Color.hairline, lineWidth: 1)
                             )
                     }
                     .padding(.top, 8)
@@ -54,7 +54,7 @@ struct DeleteAccountView: View {
                     if let err = errorMessage {
                         Text(err)
                             .font(.dashitCaption)
-                            .foregroundColor(.dashitRose)
+                            .foregroundColor(.danger)
                     }
                     
                     Spacer()
@@ -81,7 +81,7 @@ struct DeleteAccountView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(confirmationText == "DELETE" ? Color.dashitRose : Color.gray.opacity(0.3))
+                        .background(confirmationText == "DELETE" ? Color.danger : Color.gray.opacity(0.3))
                         .cornerRadius(12)
                     }
                     .disabled(confirmationText != "DELETE" || isDeleting)
@@ -94,7 +94,7 @@ struct DeleteAccountView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
-                        .foregroundColor(.dashitEmerald)
+                        .foregroundColor(.brandAccent)
                 }
             }
         }
