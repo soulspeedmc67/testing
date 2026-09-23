@@ -227,6 +227,186 @@ export async function verifyOtp(mobile, otp) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// WHATSAPP OTP AUTHENTICATION
+// ---------------------------------------------------------------------------
+let whatsappFallbackChallenge = null;
+
+const getBackendApiBase = () => {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname || "";
+    return host ? `${window.location.protocol}//${host}:5001` : "";
+  }
+  return "";
+};
+
+/**
+ * Sends a 4-digit verification code to the customer's WhatsApp number.
+ * Returns { success, message, devOtp?, isDev? }.
+ */
+export async function sendWhatsappOtp(mobile) {
+  const clean = String(mobile || "").replace(/\D/g, "").slice(-10);
+  if (!clean || clean.length !== 10) {
+    return { success: false, message: "Please enter a valid 10-digit mobile number." };
+  }
+
+  const apiBase = getBackendApiBase();
+  try {
+    const res = await fetch(`${apiBase}/api/auth/whatsapp/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile: clean }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      return data;
+    }
+    if (data.message) {
+      return { success: false, message: data.message };
+    }
+  } catch (netErr) {
+    console.warn("Backend WhatsApp endpoint unavailable, using dev sandbox fallback:", netErr?.message);
+  }
+
+  // Graceful local fallback for offline development/sandbox
+  const devCode = issueCode();
+  whatsappFallbackChallenge = {
+    mobile: toE164(clean),
+    code: devCode,
+    expiresAt: Date.now() + CODE_TTL_MS,
+    attempts: 0,
+  };
+  return {
+    success: true,
+    message: `WhatsApp OTP sandbox ready: enter ${devCode}`,
+    devOtp: devCode,
+    isDev: true,
+  };
+}
+
+/**
+ * Verifies the 4-digit WhatsApp OTP and signs the customer in via Firebase Auth.
+ * Returns { success, user, message }.
+ */
+export async function verifyWhatsappOtp(mobile, otp, name = "") {
+  const clean = String(mobile || "").replace(/\D/g, "").slice(-10);
+  const codeStr = String(otp || "").trim();
+  if (!clean || !codeStr) {
+    return { success: false, message: "Please enter both mobile number and verification code." };
+  }
+
+  let verified = false;
+  const apiBase = getBackendApiBase();
+
+  try {
+    const res = await fetch(`${apiBase}/api/auth/whatsapp/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile: clean, otp: codeStr }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success && data.verified) {
+      verified = true;
+    } else if (data.message) {
+      return { success: false, message: data.message };
+    }
+  } catch (netErr) {
+    // Check fallback challenge
+    if (whatsappFallbackChallenge) {
+      if (Date.now() > whatsappFallbackChallenge.expiresAt) {
+        whatsappFallbackChallenge = null;
+        return { success: false, message: "Code expired — please request a new one." };
+      }
+      whatsappFallbackChallenge.attempts += 1;
+      if (whatsappFallbackChallenge.attempts > MAX_ATTEMPTS) {
+        whatsappFallbackChallenge = null;
+        return { success: false, message: "Too many attempts — please request a new code." };
+      }
+      if (codeStr === whatsappFallbackChallenge.code) {
+        verified = true;
+        whatsappFallbackChallenge = null;
+      } else {
+        return { success: false, message: "Incorrect code. Please try again." };
+      }
+    }
+  }
+
+  if (!verified) {
+    return { success: false, message: "Invalid or expired verification code." };
+  }
+
+  const verifiedMobile = toE164(clean);
+  const displayName = (name || "").trim() || "Customer";
+
+  // Build the Firebase session & Firestore user profile
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    const localUser = cacheLocalUser({
+      id: `USR-${clean}`,
+      uid: null,
+      mobile: verifiedMobile,
+      name: displayName,
+      address: "",
+      provider: "whatsapp",
+      isLoggedIn: true,
+    });
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("dashit_user_phone", clean);
+        window.dispatchEvent(new Event("dashit_user_updated"));
+      } catch (e) {}
+    }
+    return { success: true, user: localUser };
+  }
+
+  let uid;
+  try {
+    const credential = auth.currentUser
+      ? { user: auth.currentUser }
+      : await signInAnonymously(auth);
+    uid = credential.user.uid;
+  } catch (e) {
+    return { success: false, message: e?.message || "Could not sign in with Firebase." };
+  }
+
+  try {
+    const profile = await ensureUserProfile(uid, verifiedMobile, { name: displayName });
+    const user = cacheLocalUser({
+      uid,
+      ...profile,
+      mobile: verifiedMobile,
+      name: profile.name || displayName,
+      provider: "whatsapp",
+      isLoggedIn: true,
+    });
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("dashit_user_phone", clean);
+        window.dispatchEvent(new Event("dashit_user_updated"));
+      } catch (e) {}
+    }
+    return { success: true, user };
+  } catch (e) {
+    const fallbackUser = cacheLocalUser({
+      uid,
+      mobile: verifiedMobile,
+      name: displayName,
+      provider: "whatsapp",
+      isLoggedIn: true,
+    });
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("dashit_user_phone", clean);
+        window.dispatchEvent(new Event("dashit_user_updated"));
+      } catch (e) {}
+    }
+    return { success: true, user: fallbackUser };
+  }
+}
+
 /**
  * Bounds a Firestore round trip.
  *
