@@ -359,11 +359,12 @@ export default function OrdersPage() {
      history, so the page stops presenting a completed order as in-flight. */
   useEffect(() => {
     const orderId = activeOrder?.orderId || activeOrder?.id;
-    const status = activeOrder?.status;
-    if (!orderId || (status !== "Delivered" && status !== "Cancelled")) return undefined;
+    const status = String(activeOrder?.status || "").toLowerCase();
+    const isFinished = status.includes("deliver") || status.includes("cancel");
+    if (!orderId || !isFinished) return undefined;
 
     const timer = setTimeout(() => {
-      if (retireFinishedOrder(orderId, status)) {
+      if (retireFinishedOrder(orderId, activeOrder.status)) {
         setActiveOrder(null);
         setLiveEta(null);
         try {
@@ -371,7 +372,7 @@ export default function OrdersPage() {
           setOrderHistory(hist);
         } catch (e) {}
       }
-    }, 20000);
+    }, 6000);
     return () => clearTimeout(timer);
   }, [targetOrderId, activeOrder?.status]);
 

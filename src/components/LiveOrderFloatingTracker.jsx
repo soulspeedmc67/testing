@@ -27,7 +27,7 @@ import { useStoredJson } from "../lib/useStoredJson";
  *   and will NEVER automatically pop open when switching between screens.
  */
 
-const FINISHED_HOLD_MS = 20000;
+const FINISHED_HOLD_MS = 6000;
 
 const STAGES = [
   { key: "Placed", short: "Processing", caption: "Order confirmed at the hub" },
@@ -54,10 +54,10 @@ export const resolveOrderStatusDetails = (status, etaMinutes, riderName, activeO
   if (norm.includes("deliver")) {
     return {
       headline: "Order delivered",
-      subtitle: "Delivered at your doorstep",
+      subtitle: "Handed over safely",
       stage: "Delivered",
       progressWidth: "100%",
-      badgeText: "Delivered",
+      badgeText: "Arrived",
     };
   }
   if (norm.includes("cancel")) {
@@ -121,7 +121,17 @@ export default function LiveOrderFloatingTracker() {
   }, [etaMinutes, progressPct, orderStatus, riderName]);
 
   const stageIndex = stageIndexFor(orderStatus);
-  const isDelivered = orderStatus === "Delivered";
+  const orderStatusNorm = String(orderStatus || activeOrder?.status || "").trim().toLowerCase();
+  const isDelivered = orderStatusNorm.includes("deliver");
+  const isCancelled = orderStatusNorm.includes("cancel");
+  const isFinished = isDelivered || isCancelled;
+
+  // If order is delivered/cancelled, don't keep it minimized in the bottom circle
+  useEffect(() => {
+    if (isFinished && isMinimized) {
+      setIsMinimized(false);
+    }
+  }, [isFinished, isMinimized]);
 
   const seedFromOrder = useCallback((parsed) => {
     const loc = parsed?.location || parsed?.userAddress || null;
@@ -146,10 +156,10 @@ export default function LiveOrderFloatingTracker() {
     setOrderStatus((prev) => advanceStatus(prev, activeOrder.status));
     seedFromOrder(activeOrder);
 
-    if (initializedOrderRef.current !== activeOrder.orderId) {
-      initializedOrderRef.current = activeOrder.orderId;
+    if (initializedOrderRef.current !== orderId) {
+      initializedOrderRef.current = orderId;
       try {
-        const stored = sessionStorage.getItem(`dashit_tracker_minimized_${activeOrder.orderId}`);
+        const stored = sessionStorage.getItem(`dashit_tracker_minimized_${orderId}`);
         if (stored !== null) {
           setIsMinimized(stored === "true");
         } else {
@@ -167,14 +177,15 @@ export default function LiveOrderFloatingTracker() {
     if (typeof window !== "undefined") {
       try {
         sessionStorage.setItem("dashit_tracker_closed", "true");
-        if (activeOrder?.orderId) {
-          sessionStorage.setItem(`dashit_tracker_minimized_${activeOrder.orderId}`, "true");
+        const id = activeOrder?.orderId || activeOrder?.id;
+        if (id) {
+          sessionStorage.setItem(`dashit_tracker_minimized_${id}`, "true");
         }
       } catch (e) {}
       window.__dashit_tracker_minimized = true;
       window.dispatchEvent(
         new CustomEvent("dashit_tracker_minimized_changed", {
-          detail: { isMinimized: true, hasOrder: true },
+          detail: { isMinimized: true, hasOrder: Boolean((activeOrder?.orderId || activeOrder?.id) && !isFinished) },
         })
       );
     }
@@ -187,14 +198,15 @@ export default function LiveOrderFloatingTracker() {
     if (typeof window !== "undefined") {
       try {
         sessionStorage.setItem("dashit_tracker_closed", "false");
-        if (activeOrder?.orderId) {
-          sessionStorage.setItem(`dashit_tracker_minimized_${activeOrder.orderId}`, "false");
+        const id = activeOrder?.orderId || activeOrder?.id;
+        if (id) {
+          sessionStorage.setItem(`dashit_tracker_minimized_${id}`, "false");
         }
       } catch (e) {}
       window.__dashit_tracker_minimized = false;
       window.dispatchEvent(
         new CustomEvent("dashit_tracker_minimized_changed", {
-          detail: { isMinimized: false, hasOrder: true },
+          detail: { isMinimized: false, hasOrder: Boolean((activeOrder?.orderId || activeOrder?.id) && !isFinished) },
         })
       );
     }
@@ -202,21 +214,23 @@ export default function LiveOrderFloatingTracker() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const hasOrder = Boolean((activeOrder?.orderId || activeOrder?.id) && !isFinished);
       window.__dashit_tracker_minimized = isMinimized;
       window.dispatchEvent(
         new CustomEvent("dashit_tracker_minimized_changed", {
-          detail: { isMinimized, hasOrder: Boolean(activeOrder?.orderId) },
+          detail: { isMinimized, hasOrder },
         })
       );
     }
-  }, [isMinimized, activeOrder?.orderId]);
+  }, [isMinimized, activeOrder?.orderId, activeOrder?.id, isFinished]);
 
   const statusDetails = resolveOrderStatusDetails(orderStatus, etaMinutes, riderName, activeOrder);
 
   useEffect(() => {
-    if (!activeOrder?.orderId) return;
+    const targetId = activeOrder?.orderId || activeOrder?.id;
+    if (!targetId) return;
     showOrderLiveNotification({
-      orderId: activeOrder.orderId,
+      orderId: targetId,
       storeName: activeOrder.storeName || "DASHit Express Hub · Anantnag",
       headline: statusDetails.headline,
       subtitle: statusDetails.subtitle,
@@ -228,6 +242,7 @@ export default function LiveOrderFloatingTracker() {
     });
   }, [
     activeOrder?.orderId,
+    activeOrder?.id,
     activeOrder?.storeName,
     statusDetails.headline,
     statusDetails.subtitle,
@@ -238,30 +253,47 @@ export default function LiveOrderFloatingTracker() {
   ]);
 
   useEffect(() => {
-    const orderId = activeOrder?.orderId;
-    if (!orderId) return undefined;
-    if (orderStatus !== "Delivered" && orderStatus !== "Cancelled") return undefined;
+    const orderId = activeOrder?.orderId || activeOrder?.id;
+    if (!orderId || !isFinished) return undefined;
+
+    let delay = FINISHED_HOLD_MS;
+    try {
+      const seenKey = `dashit_finished_seen_${orderId}`;
+      const firstSeen = sessionStorage.getItem(seenKey);
+      if (!firstSeen) {
+        sessionStorage.setItem(seenKey, String(Date.now()));
+      } else {
+        const elapsed = Date.now() - Number(firstSeen);
+        if (Number.isFinite(elapsed) && elapsed >= FINISHED_HOLD_MS) {
+          retireFinishedOrder(orderId, orderStatus);
+          clearOrderLiveNotification();
+          return undefined;
+        } else if (Number.isFinite(elapsed) && elapsed > 0) {
+          delay = FINISHED_HOLD_MS - elapsed;
+        }
+      }
+    } catch (e) {}
 
     const timer = setTimeout(() => {
       if (retireFinishedOrder(orderId, orderStatus)) {
         clearOrderLiveNotification();
       }
-    }, FINISHED_HOLD_MS);
+    }, delay);
     return () => clearTimeout(timer);
-  }, [activeOrder?.orderId, orderStatus]);
+  }, [activeOrder?.orderId, activeOrder?.id, isFinished, orderStatus]);
 
   // Customer pages where tracking should be alive — hide completely on /orders page
   const isCustomerPage = !["/xcyop", "/driver", "/login", "/orders"].includes(router.pathname);
 
-  // Auto-collapse order popup after 10 seconds into the circular widget
+  // Auto-collapse order popup after 10 seconds into the circular widget (in-flight orders only)
   useEffect(() => {
-    if (!isMinimized && isCustomerPage && activeOrder?.orderId) {
+    if (!isMinimized && isCustomerPage && (activeOrder?.orderId || activeOrder?.id) && !isFinished) {
       const autoCollapseTimer = setTimeout(() => {
         minimizeTracker();
       }, 10000);
       return () => clearTimeout(autoCollapseTimer);
     }
-  }, [isMinimized, isCustomerPage, activeOrder?.orderId]);
+  }, [isMinimized, isCustomerPage, activeOrder?.orderId, activeOrder?.id, isFinished]);
 
   const targetOrderId = activeOrder?.orderId || activeOrder?.id;
 
@@ -275,7 +307,8 @@ export default function LiveOrderFloatingTracker() {
         setProgressPct((prev) =>
           Math.max(prev, computeOrderProgress({ status: data.status }))
         );
-        if (data.status === "Delivered") {
+        const stNorm = String(data.status || "").toLowerCase();
+        if (stNorm.includes("deliver")) {
           setProgressPct(100);
           setEtaMinutes(0);
         }
@@ -361,14 +394,22 @@ export default function LiveOrderFloatingTracker() {
   const DISMISS_PX = 36;
   const handleDragEnd = (_, info) => {
     if (info.offset.y < -DISMISS_PX || info.velocity.y < -500) {
-      minimizeTracker();
+      if (isFinished) {
+        const orderId = activeOrder?.orderId || activeOrder?.id;
+        if (orderId) {
+          retireFinishedOrder(orderId, orderStatus);
+        }
+        clearOrderLiveNotification();
+      } else {
+        minimizeTracker();
+      }
     }
   };
 
   return (
     <>
       <AnimatePresence initial={false} mode="wait">
-        {isMinimized ? (
+        {isMinimized && !isFinished ? (
           /* MINIMIZED FLOATING CIRCLE WIDGET — docked beside bottom navbar */
           <motion.div
             key="dashit-bottom-docked-circle"
@@ -432,10 +473,18 @@ export default function LiveOrderFloatingTracker() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      minimizeTracker();
+                      if (isFinished) {
+                        const orderId = activeOrder?.orderId || activeOrder?.id;
+                        if (orderId) {
+                          retireFinishedOrder(orderId, orderStatus);
+                        }
+                        clearOrderLiveNotification();
+                      } else {
+                        minimizeTracker();
+                      }
                     }}
-                    title="Collapse to circle"
-                    aria-label="Collapse to circle"
+                    title={isFinished ? "Dismiss" : "Collapse to circle"}
+                    aria-label={isFinished ? "Dismiss" : "Collapse to circle"}
                     className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-neutral-300 hover:text-white transition-all ml-1 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -459,50 +508,70 @@ export default function LiveOrderFloatingTracker() {
 
               {/* ZOMATO-STYLE PROGRESS TIMELINE */}
               <div className="mt-4 mb-0.5 relative flex items-center w-full">
-                <div className="relative w-full flex items-center">
-                  {/* Completed path (solid white bar) */}
-                  <motion.div
-                    className="h-[3.5px] bg-white rounded-l-full shrink-0"
-                    initial={{ width: "25%" }}
-                    animate={{
-                      width: statusDetails.progressWidth,
-                    }}
-                    transition={{ duration: 0.6, ease: EASE_OUT }}
-                  />
-
-                  {/* Current Status Avatar Marker */}
-                  {!isDelivered && (
-                    <div className="w-7 h-7 rounded-full bg-white text-[#061838] shadow-md flex items-center justify-center shrink-0 -mx-1 z-10">
-                      {orderStatus === "Out for Delivery" ? (
-                        <img src="/rider/rider_moving.png" alt="Rider" className="w-4 h-4 object-contain" />
-                      ) : orderStatus === "Packed" || orderStatus === "Packing" ? (
-                        <Package className="w-3.5 h-3.5 stroke-[2.4]" />
-                      ) : (
-                        <Clock className="w-3.5 h-3.5 stroke-[2.4]" />
-                      )}
+                {isDelivered ? (
+                  /* Clean, contained delivered state with full green bar and checkmark */
+                  <div className="relative w-full flex items-center gap-3">
+                    <div className="flex-1 h-[4px] bg-[#22C55E]/30 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-[#22C55E] rounded-full"
+                        initial={{ width: "30%" }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 0.6, ease: EASE_OUT }}
+                      />
                     </div>
-                  )}
-
-                  {/* Remaining path (dashed gray line) */}
-                  {!isDelivered && (
-                    <div className="flex-1 border-t-[2.5px] border-dashed border-neutral-600 my-auto" />
-                  )}
-
-                  {/* Destination Home Marker at the far right end */}
-                  <div
-                    className={`w-7 h-7 rounded-full shadow-md flex items-center justify-center shrink-0 z-10 ${
-                      isDelivered
-                        ? "bg-[#22C55E] text-white"
-                        : "bg-white text-[#061838]"
-                    }`}
-                  >
-                    {isDelivered ? (
+                    <div className="w-7 h-7 rounded-full bg-[#22C55E] text-white shadow-md flex items-center justify-center shrink-0 z-10">
                       <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <Home className="w-3.5 h-3.5 stroke-[2.5]" />
-                    )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  /* In-transit stage rail with rider / packing / clock marker */
+                  <div className="relative w-full flex items-center">
+                    <div className="relative flex-1 flex items-center mr-2 h-7">
+                      {/* Background dashed track */}
+                      <div className="absolute inset-x-0 h-[2.5px] border-t-[2.5px] border-dashed border-neutral-600 top-1/2 -translate-y-1/2" />
+
+                      {/* Completed solid white bar */}
+                      <motion.div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-[3.5px] bg-white rounded-full"
+                        initial={{ width: "20%" }}
+                        animate={{
+                          width: statusDetails.progressWidth,
+                        }}
+                        transition={{ duration: 0.6, ease: EASE_OUT }}
+                      />
+
+                      {/* Current Status Avatar Marker centered on the progress bar */}
+                      <motion.div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white text-[#061838] shadow-md flex items-center justify-center z-10"
+                        initial={{ left: "20%" }}
+                        animate={{
+                          left: statusDetails.progressWidth,
+                        }}
+                        transition={{ duration: 0.6, ease: EASE_OUT }}
+                      >
+                        {orderStatusNorm.includes("way") ||
+                        orderStatusNorm.includes("out") ||
+                        orderStatusNorm.includes("rider") ||
+                        orderStatusNorm.includes("dispatched") ? (
+                          <img
+                            src="/rider/rider_moving.png"
+                            alt="Rider"
+                            className="w-4 h-4 object-contain"
+                          />
+                        ) : orderStatusNorm.includes("pack") || orderStatusNorm.includes("bag") ? (
+                          <Package className="w-3.5 h-3.5 stroke-[2.4]" />
+                        ) : (
+                          <Clock className="w-3.5 h-3.5 stroke-[2.4]" />
+                        )}
+                      </motion.div>
+                    </div>
+
+                    {/* Destination Home Marker at the far right end */}
+                    <div className="w-7 h-7 rounded-full bg-white text-[#061838] shadow-md flex items-center justify-center shrink-0 z-10">
+                      <Home className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

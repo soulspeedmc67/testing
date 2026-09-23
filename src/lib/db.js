@@ -1040,22 +1040,31 @@ export const FINISHED_STATUSES = ["Delivered", "Cancelled"];
  */
 export function retireFinishedOrder(orderId, status) {
   if (typeof window === "undefined") return false;
-  if (!FINISHED_STATUSES.includes(status)) return false;
+  const norm = String(status || "").trim().toLowerCase();
+  const isFinished = norm.includes("deliver") || norm.includes("cancel");
+  if (!isFinished && !FINISHED_STATUSES.includes(status)) return false;
 
   try {
     const activeRaw = localStorage.getItem("dashit_active_order");
     if (!activeRaw) return false;
     const active = JSON.parse(activeRaw);
+    const targetId = String(orderId || active.orderId || active.id || "");
     const matches =
-      String(active.orderId) === String(orderId) || String(active.id) === String(orderId);
+      !orderId ||
+      String(active.orderId) === targetId ||
+      String(active.id) === targetId;
     if (!matches) return false;
 
-    const finished = { ...active, status, completedAt: new Date().toISOString() };
+    const finished = {
+      ...active,
+      status: norm.includes("deliver") ? "Delivered" : "Cancelled",
+      completedAt: active.completedAt || new Date().toISOString(),
+    };
 
     // Keep the receipt: history is what /orders reads for past purchases.
     const history = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
     const withoutThis = history.filter(
-      (o) => String(o.orderId) !== String(orderId) && String(o.id) !== String(orderId)
+      (o) => String(o.orderId) !== targetId && String(o.id) !== targetId
     );
     localStorage.setItem(
       "dashit_orders_history",
@@ -1063,13 +1072,29 @@ export function retireFinishedOrder(orderId, status) {
     );
 
     localStorage.removeItem("dashit_active_order");
-    localStorage.removeItem(`dashit_tracking_${orderId}`);
+    if (targetId) {
+      localStorage.removeItem(`dashit_tracking_${targetId}`);
+      sessionStorage.removeItem(`dashit_tracker_minimized_${targetId}`);
+    }
+    sessionStorage.removeItem("dashit_tracker_closed");
 
     /* Tell the docked chrome immediately rather than letting it find out on its
        next poll, so the capsule and the home card disappear together. */
+    if (typeof window !== "undefined") {
+      window.__dashit_tracker_minimized = false;
+      window.dispatchEvent(
+        new CustomEvent("dashit_tracker_minimized_changed", {
+          detail: { isMinimized: false, hasOrder: false },
+        })
+      );
+    }
     window.dispatchEvent(
       new CustomEvent("dashit_orders_updated", { detail: finished })
     );
+    window.dispatchEvent(
+      new CustomEvent("dashit_order_updated", { detail: finished })
+    );
+    window.dispatchEvent(new Event("storage"));
     return true;
   } catch (e) {
     return false;

@@ -12,7 +12,7 @@ import { Package, Bike, Check, Clock } from "lucide-react";
 /** Maps an order status string to the mark it should show. */
 export const statusToMark = (status = "") => {
   const s = String(status).toLowerCase();
-  if (s.includes("delivered")) {
+  if (s.includes("deliver")) {
     return "delivered";
   }
   if (s.includes("way") || s.includes("delivery") || s.includes("scooter") || s.includes("rider") || s.includes("dispatched")) {
