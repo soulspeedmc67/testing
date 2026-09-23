@@ -37,6 +37,7 @@ import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
 import FreeDeliveryCelebrationModal from "../components/FreeDeliveryCelebrationModal";
+import MinOrderValueModal from "../components/MinOrderValueModal";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
@@ -46,6 +47,8 @@ import { useStoreDetails } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { ALL_PRODUCTS } from "../data/products";
 
+const MIN_ORDER_VALUE = 299;
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
@@ -54,6 +57,7 @@ export default function CheckoutPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isMinOrderModalOpen, setIsMinOrderModalOpen] = useState(false);
   const [isOrderingForSomeoneElseOpen, setIsOrderingForSomeoneElseOpen] = useState(false);
   const [receiverDetails, setReceiverDetails] = useState(null);
   const [isCouponsOpen, setIsCouponsOpen] = useState(false);
@@ -295,6 +299,13 @@ export default function CheckoutPage() {
     
     if (cartItems.length === 0 || isProcessing) return;
 
+    // Minimum Order Value check (₹299)
+    if (subtotal < MIN_ORDER_VALUE) {
+      hapticLight();
+      setIsMinOrderModalOpen(true);
+      return;
+    }
+
     // Login is strictly mandatory before placing an order
     let userObj = null;
     try {
@@ -327,6 +338,12 @@ export default function CheckoutPage() {
 
   const executeOrderPlacement = async (authenticatedUser) => {
     if (placingRef.current) return;
+
+    if (subtotal < MIN_ORDER_VALUE) {
+      setIsMinOrderModalOpen(true);
+      return;
+    }
+
     placingRef.current = true;
     setIsProcessing(true);
     hapticOrderPlaced();
@@ -560,6 +577,61 @@ export default function CheckoutPage() {
               <span className="text-blue-600 font-bold underline cursor-pointer dark:text-blue-400">Know more</span>
             </div>
           </div>
+
+          {/* Minimum Order Value Alert & Progress Card */}
+          {subtotal < MIN_ORDER_VALUE ? (
+            <div className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 border border-orange-200 dark:border-orange-500/30 rounded-2xl p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#FF5B00] text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-slate-900 dark:text-content">
+                      Minimum order is ₹{MIN_ORDER_VALUE}
+                    </h4>
+                    <p className="text-[11px] font-bold text-[#FF5B00] dark:text-orange-400">
+                      Add items worth ₹{MIN_ORDER_VALUE - subtotal} more to place order
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMinOrderModalOpen(true)}
+                  className="px-3 py-1.5 text-xs font-black bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
+                >
+                  Add Items
+                </button>
+              </div>
+
+              {/* Animated Progress bar */}
+              <div className="space-y-1">
+                <div className="w-full bg-slate-200/80 dark:bg-surface-muted h-2 rounded-full overflow-hidden p-0.5">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 to-[#FF5B00] transition-all duration-500 rounded-full"
+                    style={{ width: `${Math.min(100, Math.round((subtotal / MIN_ORDER_VALUE) * 100))}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-content-faint">
+                  <span>Current: ₹{subtotal}</span>
+                  <span className="text-[#FF5B00] dark:text-orange-400 font-extrabold">₹{MIN_ORDER_VALUE - subtotal} to unlock order</span>
+                  <span>Target: ₹{MIN_ORDER_VALUE}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 rounded-2xl p-2.5 px-3 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 stroke-[2.5]" />
+                <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  Minimum order criteria met (₹{subtotal} / ₹{MIN_ORDER_VALUE})
+                </span>
+              </div>
+              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
+                UNLOCKED
+              </span>
+            </div>
+          )}
 
           {/* Product Items List matching screenshot */}
           <div className="divide-y divide-slate-100 pt-1 dark:divide-line-soft">
@@ -1033,6 +1105,8 @@ export default function CheckoutPage() {
                 className={`grow rounded-2xl py-3 px-4 border transition-all flex items-center justify-between ${
                   !isStoreOpen || !checkoutEta.isDeliverable
                     ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:bg-surface-muted dark:border-line dark:text-content-faint"
+                    : subtotal < MIN_ORDER_VALUE
+                    ? "bg-gradient-to-r from-[#FF6F1E] to-[#FF5B00] text-white shadow-md border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : !isUserLoggedIn
                     ? "bg-[#FF5B00] hover:bg-[#E04E00] text-white shadow-sm border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : "bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white shadow-sm border-slate-700/60 dark:border-orange-500/40 active:scale-[0.98] cursor-pointer"
@@ -1058,12 +1132,16 @@ export default function CheckoutPage() {
                       ? "Beyond 5km Service Area"
                       : !isStoreOpen
                       ? "Store Closed"
+                      : subtotal < MIN_ORDER_VALUE
+                      ? `Add ₹${MIN_ORDER_VALUE - subtotal} more (Min ₹${MIN_ORDER_VALUE})`
                       : !isUserLoggedIn
                       ? "Sign In to Place Order"
                       : "Place Order (COD)"}
                   </span>
                   {!isProcessing && isStoreOpen && checkoutEta.isDeliverable && (
-                    !isUserLoggedIn ? (
+                    subtotal < MIN_ORDER_VALUE ? (
+                      <ArrowRight className="w-4 h-4 stroke-[3]" />
+                    ) : !isUserLoggedIn ? (
                       <ArrowRight className="w-4 h-4 stroke-[3]" />
                     ) : (
                       <ChevronRight className="w-4 h-4 stroke-[3]" />
@@ -1143,6 +1221,13 @@ export default function CheckoutPage() {
           setIsProcessing(false);
           router.push("/orders");
         }}
+      />
+
+      {/* Minimum Order Value Modal */}
+      <MinOrderValueModal
+        isOpen={isMinOrderModalOpen}
+        onClose={() => setIsMinOrderModalOpen(false)}
+        subtotal={subtotal}
       />
     </div>
   );
