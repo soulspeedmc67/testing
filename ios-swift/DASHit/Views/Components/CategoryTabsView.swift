@@ -90,6 +90,9 @@ enum CategorySymbol {
             (["kitchen"], "frying.pan"),
             (["home", "clean"], "house"),
             (["grocery", "atta", "rice", "staple"], "basket"),
+            (["biscuit", "cookie"], "birthday.cake"),
+            (["instant", "noodle", "ready"], "takeoutbag.and.cup.and.straw"),
+            (["spice", "masala"], "flame"),
             (["sweet", "chocolate"], "gift")
         ]
         for candidate in candidates where candidate.keys.contains(where: { name.contains($0) }) {

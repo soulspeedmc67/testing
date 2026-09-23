@@ -20,27 +20,70 @@ struct ProductRail: Identifiable {
 @MainActor
 final class StorefrontViewModel: ObservableObject {
     @Published var products: [Product] = []
-    @Published var categories: [Category] = []
+    /// The `categories` collection, when the rules let it be read.
+    @Published private var remoteCategories: [Category] = []
+
+    /// Categories to show. The live catalogue files products under whatever
+    /// names the admin uses ("Staples", "Beverages", "Instant Food"…), and the
+    /// `categories` collection is not readable by customers, so the list is
+    /// built from the products themselves unless that collection is available.
+    var categories: [Category] {
+        remoteCategories.isEmpty ? Self.categories(from: products) : remoteCategories
+    }
+
+    /// Familiar aisles first, in store order; anything new follows, busiest first.
+    private static let preferredOrder = [
+        "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
+        "Snacks", "Chips", "Biscuits", "Bakery", "Beverages", "Drinks",
+        "Instant Food", "Spices", "Chicken", "Home Care", "Kitchen Care"
+    ]
+
+    static func categories(from products: [Product]) -> [Category] {
+        var counts: [String: Int] = [:]
+        var names: [String] = []
+        for product in products {
+            let name = product.cat.trimmingCharacters(in: .whitespaces)
+            guard !name.isEmpty else { continue }
+            if counts[name] == nil { names.append(name) }
+            counts[name, default: 0] += 1
+        }
+        func rank(_ name: String) -> Int {
+            preferredOrder.firstIndex { $0.caseInsensitiveCompare(name) == .orderedSame } ?? Int.max
+        }
+        let ordered = names.sorted { a, b in
+            let (ra, rb) = (rank(a), rank(b))
+            if ra != rb { return ra < rb }
+            return counts[a, default: 0] > counts[b, default: 0]
+        }
+        return ordered.enumerated().map { index, name in
+            Category(
+                id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
+                name: name,
+                icon: nil,
+                sortOrder: index
+            )
+        }
+    }
     @Published var offers: [Offer] = []
     @Published var selectedCategory: String? = nil
     @Published var searchQuery: String = ""
     @Published var isLoading: Bool = true
-    
+
     private var productListener: ListenerRegistration?
     private var categoryListener: ListenerRegistration?
     private var offerListener: ListenerRegistration?
-    
+
     init() {
         loadInitialData()
         startRealtimeListeners()
     }
-    
+
     deinit {
         productListener?.remove()
         categoryListener?.remove()
         offerListener?.remove()
     }
-    
+
     func selectCategory(_ category: String?) {
         withAnimation(.dashitSpring) {
             if self.selectedCategory == category {
@@ -51,12 +94,12 @@ final class StorefrontViewModel: ObservableObject {
         }
         HapticsManager.shared.selection()
     }
-    
+
     /// No category picked and no search typed: show the spotlight and rails.
     var isBrowsing: Bool {
         selectedCategory == nil && searchQuery.trimmingCharacters(in: .whitespaces).isEmpty
     }
-    
+
     /// Categories in display order, each with the products filed under it.
     private var productsByCategory: [(category: Category, products: [Product])] {
         categories
@@ -66,7 +109,7 @@ final class StorefrontViewModel: ObservableObject {
             }
             .filter { !$0.products.isEmpty }
     }
-    
+
     var categoryTiles: [CategoryTile] {
         productsByCategory.map { entry in
             CategoryTile(
@@ -77,20 +120,20 @@ final class StorefrontViewModel: ObservableObject {
             )
         }
     }
-    
+
     var rails: [ProductRail] {
         productsByCategory.map { entry in
             ProductRail(id: entry.category.id, title: entry.category.name, products: Array(entry.products.prefix(12)))
         }
     }
-    
+
     var filteredProducts: [Product] {
         var list = products
-        
+
         if let cat = selectedCategory, !cat.isEmpty {
             list = list.filter { $0.cat.lowercased() == cat.lowercased() }
         }
-        
+
         if !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
             let q = searchQuery.lowercased()
             list = list.filter {
@@ -99,28 +142,16 @@ final class StorefrontViewModel: ObservableObject {
                 ($0.badge?.lowercased().contains(q) ?? false)
             }
         }
-        
+
         return list
     }
-    
+
     private func loadInitialData() {
         // Instant offline catalog seed
         self.products = CatalogSeed.products
-        
-        // Fallback default categories matching DASHit inventory
-        self.categories = [
-            Category(id: "dairy", name: "Dairy", icon: "cup.and.saucer.fill", sortOrder: 1),
-            Category(id: "snacks", name: "Snacks", icon: "popcorn", sortOrder: 2),
-            Category(id: "grocery", name: "Grocery", icon: "basket", sortOrder: 3),
-            Category(id: "bakery", name: "Bakery", icon: "birthday.cake.fill", sortOrder: 4),
-            Category(id: "drinks", name: "Drinks", icon: "waterbottle.fill", sortOrder: 5),
-            Category(id: "fruits", name: "Fresh Fruits", icon: "leaf.fill", sortOrder: 6),
-            Category(id: "vegetables", name: "Vegetables", icon: "carrot.fill", sortOrder: 7),
-            Category(id: "chicken", name: "Chicken", icon: "fork.knife", sortOrder: 8),
-            Category(id: "home", name: "Home Care", icon: "house.fill", sortOrder: 9),
-            Category(id: "kitchen", name: "Kitchen Care", icon: "frying.pan", sortOrder: 10)
-        ]
-        
+
+        // Categories are derived from the products (see `categories`).
+
         // Fallback featured offer
         self.offers = [
             Offer(
@@ -137,7 +168,7 @@ final class StorefrontViewModel: ObservableObject {
             )
         ]
     }
-    
+
     private func startRealtimeListeners() {
         // Real-time products
         productListener = FirestoreService.shared.listenProducts { [weak self] fetched in
@@ -147,15 +178,15 @@ final class StorefrontViewModel: ObservableObject {
             }
             self.isLoading = false
         }
-        
+
         // Real-time categories
         categoryListener = FirestoreService.shared.listenCategories { [weak self] fetched in
             guard let self = self else { return }
             if !fetched.isEmpty {
-                self.categories = fetched
+                self.remoteCategories = fetched
             }
         }
-        
+
         // Real-time offers
         offerListener = FirestoreService.shared.listenOffers { [weak self] fetched in
             guard let self = self else { return }
