@@ -1,0 +1,36 @@
+name: Build Native Swift iOS (Xcode 16)
+
+on:
+  push:
+    branches: [ native-swift-ios ]
+  workflow_dispatch:
+
+jobs:
+  build-swift:
+    name: Build Native Swift iOS App
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        run: |
+          for xcode in /Applications/Xcode_16*.app /Applications/Xcode_16.app; do
+            if [ -d "$xcode" ]; then
+              echo "Selecting $xcode"
+              sudo xcode-select -s "$xcode/Contents/Developer"
+              break
+            fi
+          done
+          xcodebuild -version
+
+      - name: Resolve Swift Package Dependencies
+        run: |
+          cd ios-swift
+          swift package resolve
+
+      - name: Build Swift Core Module
+        run: |
+          cd ios-swift
+          swift build -v
