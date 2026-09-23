@@ -57,6 +57,9 @@ final class StorefrontViewModel: ObservableObject {
     }
     
     private func loadInitialData() {
+        // Instant offline catalog seed
+        self.products = CatalogSeed.products
+        
         // Fallback default categories matching DASHit inventory
         self.categories = [
             Category(id: "dairy", name: "Dairy", icon: "cup.and.saucer.fill", sortOrder: 1),

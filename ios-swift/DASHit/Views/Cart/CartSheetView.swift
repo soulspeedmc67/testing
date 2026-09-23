@@ -295,6 +295,10 @@ struct CartSheetView: View {
             .sheet(isPresented: $isCheckoutOpen) {
                 CheckoutView()
             }
+            .sheet(isPresented: $isCouponsOpen) {
+                CouponsSheetView()
+                    .presentationDetents([.medium, .large])
+            }
         }
     }
 }

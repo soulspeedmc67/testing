@@ -82,7 +82,11 @@ final class LiveTrackingViewModel: ObservableObject {
     }
     
     private func updateLiveActivity(for order: Order) {
-        // ActivityKit dynamic update handled in Widget extension
+        if order.status == .delivered || order.status == .cancelled {
+            LiveActivityManager.shared.endActivity()
+        } else {
+            LiveActivityManager.shared.updateActivity(for: order)
+        }
     }
     
     deinit {
