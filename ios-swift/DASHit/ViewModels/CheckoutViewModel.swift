@@ -23,6 +23,16 @@ final class CheckoutViewModel: ObservableObject {
     }
     
     func placeOrder(cart: CartViewModel, auth: AuthService) async -> Bool {
+        orderError = nil
+        
+        // An empty cart satisfies the minimum-order check (subtotal 0), so it
+        // has to be refused explicitly or a ₹0 order goes through.
+        guard !cart.items.isEmpty else {
+            orderError = "Your cart is empty."
+            HapticsManager.shared.warning()
+            return false
+        }
+        
         // Enforce ₹299 minimum order value
         guard cart.bill.isMinOrderSatisfied else {
             cart.showMinOrderModal = true
@@ -30,20 +40,18 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
         
-        guard let user = auth.currentUser else {
+        guard let user = auth.currentUser, let uid = auth.firebaseUID else {
             HapticsManager.shared.warning()
-            orderError = "Please log in to complete your order."
+            orderError = "Please sign in to complete your order."
             return false
         }
         
         isSubmitting = true
         defer { isSubmitting = false }
         
-        let orderId = "DASH-\(Int(Date().timeIntervalSince1970))-\(Int.random(in: 100...999))"
-        
-        let newOrder = Order(
-            id: orderId,
-            userId: user.id,
+        let order = Order(
+            id: Self.newOrderCode(),
+            userId: uid,
             items: cart.items,
             subtotal: cart.bill.subtotal,
             deliveryFee: cart.bill.deliveryFee,
@@ -51,31 +59,39 @@ final class CheckoutViewModel: ObservableObject {
             grandTotal: cart.bill.grandTotal,
             status: .placed,
             deliveryAddress: selectedAddress,
-            paymentMethod: paymentMethod,
-            paymentStatus: paymentMethod == "apple_pay" ? "completed" : "pending"
+            paymentMethod: paymentMethod == "apple_pay" ? "Apple Pay" : "Cash on Delivery",
+            // Nothing is charged in-app yet, so no order is ever marked paid here.
+            paymentStatus: "pending",
+            etaMinutes: 8
         )
         
         do {
-            _ = try await FirestoreService.shared.placeOrder(newOrder)
-            LocalStorage.shared.saveActiveOrderId(orderId)
-            ActiveOrderStore.shared.track(orderId: orderId)
-            self.completedOrder = newOrder
+            try await FirestoreService.shared.createOrder(order, customer: user, couponCode: cart.appliedCoupon?.code)
+            
+            LocalStorage.shared.saveActiveOrderId(order.id)
+            completedOrder = order
+            ActiveOrderStore.shared.orderPlaced(order)
             
             // Start iOS 17+ Lock Screen & Dynamic Island Live Activity
-            LiveActivityManager.shared.startActivity(for: newOrder)
+            LiveActivityManager.shared.startActivity(for: order)
             
-            // Clear cart
             cart.clearCart()
-            
-            // Trigger feedback
             HapticsManager.shared.success()
             SoundManager.shared.playOrderSuccess()
-            
             return true
         } catch {
-            self.orderError = error.localizedDescription
+            #if DEBUG
+            print("❌ [Checkout] Order write failed: \(error)")
+            #endif
+            orderError = "We couldn't reach the store to place your order. Check your connection and try again."
             HapticsManager.shared.error()
             return false
         }
+    }
+    
+    /// Short, readable order code, e.g. DSH-48213907.
+    private static func newOrderCode() -> String {
+        let clock = Int(Date().timeIntervalSince1970) % 10_000
+        return "DSH-\(String(format: "%04d", clock))\(Int.random(in: 1000...9999))"
     }
 }

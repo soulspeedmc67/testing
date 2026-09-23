@@ -63,7 +63,7 @@ public struct DriverLiveTracking: Codable, Hashable {
     }
 }
 
-public struct Order: Codable, Identifiable, Hashable {
+public struct Order: Identifiable, Hashable {
     public let id: String
     public let userId: String
     public let items: [CartItem]
@@ -118,5 +118,105 @@ public struct Order: Codable, Identifiable, Hashable {
         self.driverPhone = driverPhone
         self.etaMinutes = etaMinutes
         self.tracking = tracking
+    }
+}
+
+// MARK: - Reading orders written by any client
+
+/// Orders are stored in the web app's shape (`src/lib/db.js` createOrder):
+/// `orderId`, `total`, `location`, a server `createdAt` Timestamp and title-case
+/// statuses. Older iOS builds wrote `id`, `grandTotal` and `deliveryAddress`.
+/// Both decode here, so the tracker works whichever app placed the order.
+extension Order: Decodable {
+    private enum Keys: String, CodingKey {
+        case id, orderId, userId, items
+        case subtotal, deliveryFee, discount, grandTotal, total, totalAmount, finalTotal
+        case status, createdAt, deliveryAddress, location
+        case paymentMethod, paymentStatus
+        case driverId, driverName, driverPhone, etaMinutes, tracking
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        guard let orderId = c.flexibleString(.orderId) ?? c.flexibleString(.id) else {
+            throw DecodingError.keyNotFound(
+                Keys.orderId,
+                DecodingError.Context(codingPath: c.codingPath, debugDescription: "Order has no orderId or id")
+            )
+        }
+        
+        let items = (try? c.decode([CartItem].self, forKey: .items)) ?? []
+        let itemTotal = items.reduce(0.0) { $0 + $1.price * Double($1.qty) }
+        let subtotal = c.flexibleDouble(.subtotal) ?? itemTotal
+        
+        let address: DeliveryAddress
+        if let saved = try? c.decode(DeliveryAddress.self, forKey: .deliveryAddress) {
+            address = saved
+        } else if let location = try? c.decode(OrderLocation.self, forKey: .location) {
+            address = location.deliveryAddress
+        } else {
+            address = DeliveryAddress()
+        }
+        
+        let driverName = c.flexibleString(.driverName)
+        
+        self.init(
+            id: orderId,
+            userId: c.flexibleString(.userId) ?? "",
+            items: items,
+            subtotal: subtotal,
+            deliveryFee: c.flexibleDouble(.deliveryFee) ?? 0,
+            discount: c.flexibleDouble(.discount) ?? 0,
+            grandTotal: c.flexibleDouble(.grandTotal)
+                ?? c.flexibleDouble(.total)
+                ?? c.flexibleDouble(.totalAmount)
+                ?? c.flexibleDouble(.finalTotal)
+                ?? subtotal,
+            status: (try? c.decode(OrderStatus.self, forKey: .status)) ?? .placed,
+            createdAt: c.flexibleTimestamp(.createdAt) ?? Date().timeIntervalSince1970,
+            deliveryAddress: address,
+            paymentMethod: c.flexibleString(.paymentMethod) ?? "Cash on Delivery",
+            paymentStatus: c.flexibleString(.paymentStatus) ?? "pending",
+            driverId: c.flexibleString(.driverId),
+            driverName: (driverName?.isEmpty ?? true) ? nil : driverName,
+            driverPhone: c.flexibleString(.driverPhone),
+            etaMinutes: c.flexibleInt(.etaMinutes),
+            tracking: try? c.decode(DriverLiveTracking.self, forKey: .tracking)
+        )
+    }
+}
+
+/// The web's `location` map on an order: `address`, `lat`, `lng`, plus an alias.
+private struct OrderLocation: Decodable {
+    let address: String?
+    let lat: Double?
+    let lng: Double?
+    let alias: String?
+    let houseNumber: String?
+    let landmark: String?
+    
+    private enum Keys: String, CodingKey {
+        case address, lat, lng, latitude, longitude, alias, label, nickname, houseNumber, houseNo, landmark
+    }
+    
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        address = c.flexibleString(.address)
+        lat = c.flexibleDouble(.lat) ?? c.flexibleDouble(.latitude)
+        lng = c.flexibleDouble(.lng) ?? c.flexibleDouble(.longitude)
+        alias = c.flexibleString(.alias) ?? c.flexibleString(.label) ?? c.flexibleString(.nickname)
+        houseNumber = c.flexibleString(.houseNumber) ?? c.flexibleString(.houseNo)
+        landmark = c.flexibleString(.landmark)
+    }
+    
+    var deliveryAddress: DeliveryAddress {
+        DeliveryAddress(
+            nickname: alias ?? "Home",
+            street: address ?? "",
+            houseNumber: houseNumber,
+            landmark: landmark,
+            latitude: lat ?? 33.7311,
+            longitude: lng ?? 75.1487
+        )
     }
 }

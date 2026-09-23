@@ -18,6 +18,11 @@ final class AuthService: ObservableObject {
         checkCurrentSession()
     }
     
+    /// The signed-in Firebase uid. Orders must carry exactly this as userId.
+    var firebaseUID: String? {
+        Auth.auth().currentUser?.uid
+    }
+    
     func checkCurrentSession() {
         if let user = Auth.auth().currentUser,
            let cachedProfile = LocalStorage.shared.loadUserProfile() {

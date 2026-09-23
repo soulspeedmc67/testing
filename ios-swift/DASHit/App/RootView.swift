@@ -60,13 +60,20 @@ struct RootView: View {
         }
         // Presented here rather than from a storefront so the home and
         // categories tabs, which are both storefronts, never race to show it.
-        .sheet(isPresented: $cart.isCartSheetPresented) {
+        .sheet(isPresented: $cart.isCartSheetPresented, onDismiss: {
+            // Presenting while the sheets are still animating away is dropped
+            // by UIKit, so tracking opens from here, after the dismissal.
+            if activeOrder.pendingTrackingPresentation {
+                activeOrder.pendingTrackingPresentation = false
+                isLiveTrackingOpen = true
+            }
+        }) {
             CartSheetView()
                 .dashitSheet([.fraction(0.85), .large])
         }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
             if let order = activeOrder.order {
-                LiveTrackingMapView(orderId: order.id)
+                LiveTrackingMapView(orderId: order.id, initialOrder: order)
             }
         }
     }
