@@ -42,6 +42,26 @@ final class ActiveOrderStore: ObservableObject {
         }
     }
 
+    #if DEBUG
+    /// A fixed in-flight order for the simulator screenshot job; no Firestore.
+    func showDemoOrder() {
+        let items = Array(CartViewModel.shared.items.prefix(3))
+        order = Order(
+            id: "DEMO-ORDER",
+            userId: "demo",
+            items: items,
+            subtotal: 420,
+            deliveryFee: 0,
+            discount: 0,
+            grandTotal: 420,
+            status: .outForDelivery,
+            deliveryAddress: DeliveryAddress(street: "Court Road, Lal Chowk"),
+            driverName: "Aamir",
+            etaMinutes: 6
+        )
+    }
+    #endif
+    
     /// Dismisses a delivered or cancelled order from the tracker.
     func retireFinishedOrder() {
         guard order?.status.stage.isFinished == true else { return }
