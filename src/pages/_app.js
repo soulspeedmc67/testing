@@ -125,13 +125,11 @@ const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
- * Whether this load should skip the splash: public web visitors, internal consoles,
- * or returning sessions never show it.
+ * Whether this load should skip the splash: internal consoles or returning
+ * sessions that already saw the launch animation never show it.
  */
 function shouldSkipSplash() {
-  if (typeof window === "undefined") return true;
-  // Web visitors on browsers should load directly with 0ms splash delay for best CWV
-  if (!isNative()) return true;
+  if (typeof window === "undefined") return false;
   if (['/xcyop', '/driver'].includes(window.location.pathname)) return true;
   try {
     return !!sessionStorage.getItem("dashit_splash_seen");
@@ -144,16 +142,17 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
 
-  /* Web visitors and static HTML prerendering render immediately without splash holding.
-     Native Capacitor app starts cleanly with native launch screen, skipping redundant web splash delay. */
-  const [showSplash, setShowSplash] = useState(false);
-  const [splashHolding, setSplashHolding] = useState(false);
+  /* Both start true on client and server to preserve hydration parity.
+     useIsomorphicLayoutEffect checks shouldSkipSplash() immediately before
+     browser paint, cleanly skipping the splash for returning visits or internal
+     consoles without flash or layout shift. */
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashHolding, setSplashHolding] = useState(true);
 
   useIsomorphicLayoutEffect(() => {
-    // Only engage animated web splash if inside native shell and not seen this session
-    if (isNative() && !shouldSkipSplash()) {
-      setShowSplash(true);
-      setSplashHolding(true);
+    if (shouldSkipSplash()) {
+      setShowSplash(false);
+      setSplashHolding(false);
     }
   }, []);
 
