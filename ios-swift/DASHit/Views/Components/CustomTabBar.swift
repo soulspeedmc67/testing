@@ -25,15 +25,14 @@ enum TabItem: String, CaseIterable {
     }
 }
 
-/// Bottom navigation. The indicator glides between tabs, the new tab's symbol
-/// bounces, and the bar's surface runs under the home indicator.
+/// Bottom navigation. The active tab gets a filled orange symbol that bounces
+/// on selection; the bar's surface runs under the home indicator.
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
 
     /// Height of the bar above the bottom safe area.
-    static let barHeight: CGFloat = 56
+    static let barHeight: CGFloat = 58
 
-    @Namespace private var indicatorNamespace
     @State private var bounceCounts: [TabItem: Int] = [:]
 
     var body: some View {
@@ -62,23 +61,16 @@ struct CustomTabBar: View {
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: isSelected ? tab.iconName : tab.outlineIconName)
-                    .font(.system(size: 19, weight: .semibold))
+                    .font(.system(size: 21, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? .brandAccent : .textMuted)
                     .symbolEffect(.bounce, value: bounceCounts[tab, default: 0])
-                    .frame(height: 22)
+                    .frame(height: 24)
                 Text(tab.rawValue)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(isSelected ? .textPrimary : .textMuted)
             }
-            .foregroundColor(isSelected ? .brandAccent : .textMuted)
             .frame(maxWidth: .infinity)
             .frame(height: Self.barHeight)
-            .overlay(alignment: .top) {
-                if isSelected {
-                    Capsule()
-                        .fill(Color.brandOrange)
-                        .frame(width: 24, height: 3)
-                        .matchedGeometryEffect(id: "tab-indicator", in: indicatorNamespace)
-                }
-            }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableButtonStyle(scale: 0.9))

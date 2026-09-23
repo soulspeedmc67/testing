@@ -43,6 +43,11 @@ struct RootView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             activeOrder.refresh()
+            #if DEBUG
+            if ScreenshotHooks.demoOrder {
+                activeOrder.showDemoOrder()
+            }
+            #endif
         }
         .onChange(of: activeOrder.order?.id) { _, _ in
             isTrackerCollapsed = false
@@ -80,7 +85,7 @@ struct RootView: View {
     private func screen(for tab: TabItem) -> some View {
         switch tab {
         case .home, .categories:
-            StorefrontHomeView()
+            StorefrontHomeView(onOpenProfile: { tabSelection.wrappedValue = .profile })
         case .orders:
             OrdersListView()
         case .profile:
@@ -124,6 +129,6 @@ struct RootView: View {
     /// Room for the storefront's floating cart pill, so the two never overlap.
     private var cartDockHeight: CGFloat {
         let storefrontVisible = selectedTab == .home || selectedTab == .categories
-        return storefrontVisible && !cart.items.isEmpty ? 56 : 0
+        return storefrontVisible && !cart.items.isEmpty ? 66 : 0
     }
 }

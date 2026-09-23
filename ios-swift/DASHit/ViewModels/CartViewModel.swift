@@ -28,6 +28,14 @@ final class CartViewModel: ObservableObject {
 
     private init() {
         self.items = LocalStorage.shared.loadCartItems()
+        #if DEBUG
+        if ScreenshotHooks.demoCart {
+            self.items = CatalogSeed.products
+                .filter { $0.ageRestricted != true }
+                .prefix(6)
+                .map { CartItem(id: $0.id, productId: $0.id, name: $0.name, unit: $0.unit, price: $0.price, originalPrice: $0.originalPrice, img: $0.img, cat: $0.cat, qty: 2) }
+        }
+        #endif
         recalculate()
     }
 

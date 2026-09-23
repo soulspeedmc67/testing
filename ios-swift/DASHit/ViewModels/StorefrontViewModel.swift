@@ -2,6 +2,14 @@ import Foundation
 import SwiftUI
 import FirebaseFirestore
 
+/// A "shop by category" tile: up to four product photos and the category size.
+struct CategoryTile: Identifiable {
+    let id: String
+    let name: String
+    let previewImages: [String]
+    let productCount: Int
+}
+
 /// One "everyday" rail on the home feed: a category and its first few products.
 struct ProductRail: Identifiable {
     let id: String
@@ -49,14 +57,31 @@ final class StorefrontViewModel: ObservableObject {
         selectedCategory == nil && searchQuery.trimmingCharacters(in: .whitespaces).isEmpty
     }
     
-    var rails: [ProductRail] {
+    /// Categories in display order, each with the products filed under it.
+    private var productsByCategory: [(category: Category, products: [Product])] {
         categories
             .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
-            .compactMap { (category: Category) -> ProductRail? in
-                let items = products.filter { $0.cat.caseInsensitiveCompare(category.name) == .orderedSame }
-                guard !items.isEmpty else { return nil }
-                return ProductRail(id: category.id, title: category.name, products: Array(items.prefix(12)))
+            .map { (category: Category) -> (category: Category, products: [Product]) in
+                (category: category, products: products.filter { $0.cat.caseInsensitiveCompare(category.name) == .orderedSame })
             }
+            .filter { !$0.products.isEmpty }
+    }
+    
+    var categoryTiles: [CategoryTile] {
+        productsByCategory.map { entry in
+            CategoryTile(
+                id: entry.category.id,
+                name: entry.category.name,
+                previewImages: entry.products.prefix(4).map(\.img),
+                productCount: entry.products.count
+            )
+        }
+    }
+    
+    var rails: [ProductRail] {
+        productsByCategory.map { entry in
+            ProductRail(id: entry.category.id, title: entry.category.name, products: Array(entry.products.prefix(12)))
+        }
     }
     
     var filteredProducts: [Product] {
@@ -85,15 +110,15 @@ final class StorefrontViewModel: ObservableObject {
         // Fallback default categories matching DASHit inventory
         self.categories = [
             Category(id: "dairy", name: "Dairy", icon: "cup.and.saucer.fill", sortOrder: 1),
-            Category(id: "snacks", name: "Snacks", icon: "bag.fill", sortOrder: 2),
-            Category(id: "grocery", name: "Grocery", icon: "cart.fill", sortOrder: 3),
+            Category(id: "snacks", name: "Snacks", icon: "popcorn", sortOrder: 2),
+            Category(id: "grocery", name: "Grocery", icon: "basket", sortOrder: 3),
             Category(id: "bakery", name: "Bakery", icon: "birthday.cake.fill", sortOrder: 4),
             Category(id: "drinks", name: "Drinks", icon: "waterbottle.fill", sortOrder: 5),
             Category(id: "fruits", name: "Fresh Fruits", icon: "leaf.fill", sortOrder: 6),
             Category(id: "vegetables", name: "Vegetables", icon: "carrot.fill", sortOrder: 7),
             Category(id: "chicken", name: "Chicken", icon: "fork.knife", sortOrder: 8),
             Category(id: "home", name: "Home Care", icon: "house.fill", sortOrder: 9),
-            Category(id: "kitchen", name: "Kitchen Care", icon: "wrench.and.screwdriver.fill", sortOrder: 10)
+            Category(id: "kitchen", name: "Kitchen Care", icon: "frying.pan", sortOrder: 10)
         ]
         
         // Fallback featured offer

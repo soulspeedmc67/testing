@@ -1,52 +1,75 @@
 import SwiftUI
 
+/// Home feed. The ETA header scrolls away; search and the category tabs pin
+/// under the status bar, as in the web shop page.
 struct StorefrontHomeView: View {
+    var onOpenProfile: () -> Void
+
     @StateObject private var vm = StorefrontViewModel()
     @ObservedObject private var cart = CartViewModel.shared
     @State private var detailProduct: Product? = nil
     @State private var ageGateProduct: Product? = nil
     @State private var isAddressPickerOpen = false
+    @State private var address: DeliveryAddress? = LocalStorage.shared.loadAddress()
     @FocusState private var isSearchFocused: Bool
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
+    private let tileColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
+
+    init(onOpenProfile: @escaping () -> Void = {}) {
+        self.onOpenProfile = onOpenProfile
+    }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            searchBar
-
+        ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 22) {
-                    if vm.isBrowsing && !vm.offers.isEmpty {
-                        HeroCarouselView(offers: vm.offers) { offer in
-                            vm.selectCategory(offer.category)
-                        }
-                    }
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                    header
+                        .id("top")
 
-                    CategoryRailView(
-                        categories: vm.categories,
-                        selectedCategory: vm.selectedCategory,
-                        onSelect: { vm.selectCategory($0) }
-                    )
+                    Section {
+                        if vm.isBrowsing {
+                            if !vm.offers.isEmpty {
+                                HeroCarouselView(offers: vm.offers) { offer in
+                                    vm.selectCategory(offer.category)
+                                }
+                                .padding(.top, 16)
+                            }
 
-                    if vm.isBrowsing {
-                        ForEach(vm.rails) { rail in
-                            ProductRailView(
-                                title: rail.title,
-                                products: rail.products,
-                                onSeeAll: { vm.selectCategory(rail.title) },
-                                onOpen: { detailProduct = $0 },
-                                onRequestAgeConfirmation: { ageGateProduct = $0 }
-                            )
+                            categorySection
+                                .id("categories")
+                                .padding(.top, 26)
+
+                            ForEach(vm.rails) { rail in
+                                ProductRailView(
+                                    title: rail.title,
+                                    products: rail.products,
+                                    onSeeAll: { vm.selectCategory(rail.title) },
+                                    onOpen: { detailProduct = $0 },
+                                    onRequestAgeConfirmation: { ageGateProduct = $0 }
+                                )
+                                .padding(.top, 26)
+                            }
+                        } else {
+                            resultsGrid
+                                .padding(.top, 16)
                         }
-                    } else {
-                        resultsGrid
+
+                        Color.clear
+                            .frame(height: 24)
+                    } header: {
+                        pinnedSearch
                     }
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.immediately)
+            // Covers the status bar so content scrolling up under the pinned
+            // search is hidden rather than showing through behind the clock.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Color.clear
+                    .frame(height: 0)
+                    .background(Color.surface)
+            }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !isSearchFocused {
                     FloatingCartBarView {
@@ -54,6 +77,11 @@ struct StorefrontHomeView: View {
                     }
                     .padding(.bottom, 10)
                 }
+            }
+            .task {
+                #if DEBUG
+                await applyScreenshotHooks(proxy)
+                #endif
             }
         }
         .background(Color.surface.ignoresSafeArea())
@@ -66,88 +94,116 @@ struct StorefrontHomeView: View {
                 cart.add(product: product)
             }
         }
-        .sheet(isPresented: $isAddressPickerOpen) {
+        .sheet(isPresented: $isAddressPickerOpen, onDismiss: {
+            address = LocalStorage.shared.loadAddress()
+        }) {
             AddressPickerMapView()
         }
     }
 
-    // MARK: - Header (layout unchanged; colours only)
+    // MARK: - Header (mirrors the web mobile AppHeader)
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.caution)
-                    Text("DASHIT IN 8 MINS")
-                        .font(.dashitCaptionBold)
-                        .foregroundColor(.white)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("DASHIT IN")
+                        .font(.system(size: 11, weight: .heavy))
+                        .tracking(1.2)
+                        .foregroundColor(.textMuted)
+                    Text("8 minutes")
+                        .font(.system(size: 32, weight: .black))
+                        .foregroundColor(.textPrimary)
                 }
 
-                Button(action: {
-                    isAddressPickerOpen = true
+                Spacer(minLength: 12)
+
+                Button {
                     HapticsManager.shared.light()
-                }) {
-                    HStack(spacing: 4) {
-                        Text("Lal Chowk, Anantnag")
-                            .font(.dashitBodyBold)
-                            .foregroundColor(.white)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.textMuted)
+                    onOpenProfile()
+                } label: {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .frame(width: 42, height: 42)
+                        .background(Color.surfaceRaised, in: Circle())
+                        .overlay(Circle().strokeBorder(Color.hairline, lineWidth: 1))
+                }
+                .buttonStyle(PressableButtonStyle(scale: 0.92))
+                .accessibilityLabel("Account")
+            }
+
+            Button {
+                HapticsManager.shared.light()
+                isAddressPickerOpen = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.brandAccent)
+                    Text((address?.nickname ?? "Home").uppercased())
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundColor(.textPrimary)
+                    Text("·")
+                        .foregroundColor(.textFaint)
+                    Text(addressLine)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.textMuted)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.pressable)
+            .padding(.top, 6)
+            .accessibilityLabel("Delivery address. Change")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
+    }
+
+    private var addressLine: String {
+        guard let street = address?.street, !street.isEmpty else { return "Lal Chowk, Anantnag" }
+        return street
+    }
+
+    // MARK: - Pinned search + category tabs
+
+    private var pinnedSearch: some View {
+        VStack(spacing: 6) {
+            StorefrontSearchField(text: $vm.searchQuery, isFocused: $isSearchFocused)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+            CategoryTabsView(
+                categories: vm.categories,
+                selectedCategory: vm.selectedCategory,
+                onSelect: { vm.selectCategory($0) }
+            )
+        }
+        .background(Color.surface)
+    }
+
+    // MARK: - Shop by category
+
+    private var categorySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Shop by category")
+                .font(.system(size: 19, weight: .bold))
+                .foregroundColor(.textPrimary)
+                .padding(.horizontal, 16)
+
+            LazyVGrid(columns: tileColumns, spacing: 12) {
+                ForEach(vm.categoryTiles) { tile in
+                    CategoryCollageTile(tile: tile) {
+                        vm.selectCategory(tile.name)
                     }
                 }
             }
-
-            Spacer()
-
-            // Profile Button
-            Button(action: {}) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(.brandAccent)
-            }
+            .padding(.horizontal, 16)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
-    }
-
-    // MARK: - Search
-
-    private var searchBar: some View {
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-
-        return HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.textMuted)
-            TextField("", text: $vm.searchQuery, prompt: Text("Search 'milk', 'bread', 'chips'...").foregroundColor(.textFaint))
-                .font(.dashitBody)
-                .foregroundColor(.textPrimary)
-                .focused($isSearchFocused)
-                .submitLabel(.search)
-                .autocorrectionDisabled()
-            if !vm.searchQuery.isEmpty {
-                Button {
-                    vm.searchQuery = ""
-                    HapticsManager.shared.tick()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.textMuted)
-                        .frame(width: 30, height: 30)
-                        .contentShape(Rectangle())
-                }
-                .accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 46)
-        .background(Color.surfaceRaised, in: shape)
-        .overlay(shape.strokeBorder(isSearchFocused ? Color.brandOrange.opacity(0.7) : Color.hairline, lineWidth: 1))
-        .animation(.dashitSnappy, value: isSearchFocused)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 12)
     }
 
     // MARK: - Filtered results
@@ -158,7 +214,7 @@ struct StorefrontHomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(vm.selectedCategory ?? "Results")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 19, weight: .bold))
                     .foregroundColor(.textPrimary)
                 Spacer()
                 Text("\(products.count) item\(products.count == 1 ? "" : "s")")
@@ -176,7 +232,7 @@ struct StorefrontHomeView: View {
                          : "Nothing matches “\(vm.searchQuery)”")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.textSecondary)
-                    Text("Try another word, or browse the categories above.")
+                    Text("Try another word, or pick a category above.")
                         .font(.system(size: 13))
                         .foregroundColor(.textMuted)
                 }
@@ -197,4 +253,25 @@ struct StorefrontHomeView: View {
         }
         .padding(.horizontal, 16)
     }
+
+    // MARK: - Debug
+
+    #if DEBUG
+    /// Drives the screen into the state the CI screenshot job asked for.
+    private func applyScreenshotHooks(_ proxy: ScrollViewProxy) async {
+        guard ScreenshotHooks.scrollTarget != nil
+                || ScreenshotHooks.openProductId != nil
+                || ScreenshotHooks.openCart else { return }
+        try? await Task.sleep(for: .seconds(1.5))
+        if let target = ScreenshotHooks.scrollTarget {
+            proxy.scrollTo(target, anchor: .top)
+        }
+        if let id = ScreenshotHooks.openProductId {
+            detailProduct = vm.products.first(where: { $0.id == id })
+        }
+        if ScreenshotHooks.openCart {
+            cart.isCartSheetPresented = true
+        }
+    }
+    #endif
 }
