@@ -1158,6 +1158,106 @@ export async function updateOrderStatus(orderId, status) {
   }
 }
 
+/**
+ * Extract timestamp in milliseconds from an order object reliably,
+ * handling Firestore Timestamp, Date, string ISO, or epoch ms.
+ */
+export function getOrderTimestampMs(order) {
+  if (!order) return 0;
+  const ts = order?.createdAt ?? order?.timestamp;
+  if (!ts) return 0;
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "string") {
+    const parsed = Date.parse(ts);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof ts.toMillis === "function") return ts.toMillis();
+  if (typeof ts.seconds === "number") return ts.seconds * 1000;
+  if (ts instanceof Date) return ts.getTime();
+  return 0;
+}
+
+/**
+ * Returns remaining seconds (0 to 60) for a newly placed order's grace period.
+ */
+export function getOrderGracePeriodSeconds(order) {
+  if (!order) return 0;
+  const status = String(order.status || "").toLowerCase();
+  if (status && status !== "placed") return 0;
+
+  const orderTime = getOrderTimestampMs(order);
+  if (!orderTime) return 0;
+
+  const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
+  return Math.max(0, 60 - elapsedSec);
+}
+
+/**
+ * Modifies an existing order's content (items, total, savings) during the grace period.
+ */
+export async function updateOrderContent(orderId, updatedFields = {}) {
+  const targetId = String(orderId);
+  const nowIso = new Date().toISOString();
+
+  // 1. Update local storage & broadcast immediately
+  if (typeof window !== "undefined") {
+    try {
+      const activeStr = localStorage.getItem("dashit_active_order");
+      if (activeStr) {
+        const ord = JSON.parse(activeStr);
+        if (String(ord.orderId) === targetId || String(ord.id) === targetId) {
+          const merged = { ...ord, ...updatedFields, updatedAt: nowIso };
+          localStorage.setItem("dashit_active_order", JSON.stringify(merged));
+        }
+      }
+
+      const histStr = localStorage.getItem("dashit_orders_history");
+      if (histStr) {
+        const list = JSON.parse(histStr);
+        const updatedList = list.map((o) =>
+          String(o.orderId) === targetId || String(o.id) === targetId
+            ? { ...o, ...updatedFields, updatedAt: nowIso }
+            : o
+        );
+        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
+      }
+
+      window.dispatchEvent(
+        new CustomEvent("dashit_orders_updated", { detail: { orderId: targetId, ...updatedFields } })
+      );
+      window.dispatchEvent(
+        new CustomEvent("dashit_order_updated", { detail: { orderId: targetId, ...updatedFields } })
+      );
+      window.dispatchEvent(new Event("storage"));
+
+      if (window.BroadcastChannel) {
+        try {
+          const bc = new BroadcastChannel("dashit_orders_channel");
+          bc.postMessage({ type: "ORDER_UPDATED", orderId: targetId, ...updatedFields });
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.warn("updateOrderContent localStorage error:", e);
+    }
+  }
+
+  // 2. Sync to Firestore
+  const db = getDb();
+  if (!db) return { success: true, localUpdated: true };
+
+  try {
+    const payload = {
+      ...updatedFields,
+      updatedAt: serverTimestamp(),
+    };
+    await updateDoc(doc(db, "orders", targetId), payload);
+    return { success: true, firestoreSynced: true };
+  } catch (err) {
+    console.warn("Firestore updateOrderContent sync note:", err?.message || err);
+    return { success: false, localUpdated: true, firestoreSynced: false, error: err?.message };
+  }
+}
+
 /** Driver claims an unassigned order. */
 export async function claimOrder(orderId, driverId, driverName) {
   if (typeof window !== "undefined") {

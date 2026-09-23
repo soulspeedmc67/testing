@@ -141,7 +141,17 @@ export default function LandingPage() {
         canonical="/"
         ogType="website"
         keywords="DASHIT, grocery delivery app Anantnag, fastest grocery delivery Anantnag, quick commerce Kashmir, download DASHIT app, buy milk online Anantnag 192101"
-      />
+      >
+        <link
+          rel="preload"
+          as="image"
+          href="/art/flying-grocery-box-transparent-680.webp"
+          type="image/webp"
+          fetchpriority="high"
+          imageSrcSet="/art/flying-grocery-box-transparent-480.webp 480w, /art/flying-grocery-box-transparent-680.webp 680w, /art/flying-grocery-box-transparent.webp 1000w"
+          imageSizes="(max-width: 640px) 320px, (max-width: 1024px) 460px, 500px"
+        />
+      </SEO>
       <WebSiteJsonLd />
       <OrganizationJsonLd />
       <GroceryStoreJsonLd />
@@ -196,6 +206,13 @@ export default function LandingPage() {
               >
                 {theme === "dark" ? <Sun className="w-[17px] h-[17px]" /> : <Moon className="w-[17px] h-[17px]" />}
               </button>
+
+              <Link
+                href="/shop"
+                className="sm:hidden inline-flex items-center justify-center bg-[#FF5B00] hover:bg-[#E04E00] text-white text-[12.5px] font-bold px-3.5 h-9 rounded-xl shadow-xs transition-colors active:scale-95"
+              >
+                Shop
+              </Link>
 
               <a
                 href="#get-the-app"
@@ -268,39 +285,31 @@ export default function LandingPage() {
         {/* =============================================================== */}
         {/* HERO                                                            */}
         {/* =============================================================== */}
-        <section className="pt-10 sm:pt-16 lg:pt-20 pb-16 sm:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-10 items-center">
-          <motion.div
-            variants={stagger(0.08, 0.05)}
-            initial="hidden"
-            animate="show"
-            className="lg:col-span-6 xl:col-span-7"
-          >
-            <motion.div variants={fadeUp}>
+        {/* =============================================================== */}
+        {/* HERO                                                            */}
+        {/* =============================================================== */}
+        <section className="pt-8 sm:pt-16 lg:pt-20 pb-12 sm:pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center overflow-x-hidden">
+          <div className="lg:col-span-6 xl:col-span-7">
+            <div>
               <Eyebrow>Anantnag · 192101</Eyebrow>
-            </motion.div>
+            </div>
 
-            <motion.h1
-              variants={fadeUp}
-              className="mt-5 text-[38px] leading-[1.06] sm:text-[52px] xl:text-[60px] font-black tracking-[-0.03em] text-[#061838] dark:text-white"
-            >
+            <h1 className="mt-4 sm:mt-5 text-[34px] sm:text-[50px] xl:text-[60px] leading-[1.08] sm:leading-[1.06] font-black tracking-[-0.03em] text-[#061838] dark:text-white">
               Groceries at your door,{" "}
               <span className="text-[#FF5B00]">in minutes.</span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              variants={fadeUp}
-              className="mt-6 max-w-lg text-[15px] sm:text-base leading-relaxed text-slate-600 dark:text-slate-300"
-            >
+            <p className="mt-4 sm:mt-6 max-w-lg text-[14.5px] sm:text-base leading-relaxed text-slate-600 dark:text-slate-300">
               DASHIT is the fastest grocery delivery app in Anantnag. Fresh Kashmiri bakery,
               milk and dairy, vegetables and daily essentials — tracked live from our store
               to your doorstep.
-            </motion.p>
+            </p>
 
             {/* Download */}
-            <motion.div variants={fadeUp} id="get-the-app" className="mt-9 scroll-mt-24">
+            <div id="get-the-app" className="mt-7 sm:mt-9 scroll-mt-24">
               {/* Coming Soon Pill */}
               <div className="inline-flex items-center gap-2 bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/30 rounded-full px-3.5 py-1 mb-3 text-amber-700 dark:text-amber-300 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-[#FF5B00]" />
+                <Sparkles className="w-3.5 h-3.5 text-[#FF5B00] shrink-0" />
                 <span>Play Store &amp; App Store Available Soon • Direct Download Ready</span>
               </div>
 
@@ -308,7 +317,7 @@ export default function LandingPage() {
                 <a
                   href="/Dashit-User.apk"
                   download="Dashit-User.apk"
-                  className="flex-1 group bg-[#061838] hover:bg-[#0A2449] dark:bg-[#12161F] dark:hover:bg-[#1A1F2B] border border-[#061838] dark:border-slate-700/80 text-white rounded-2xl px-4 py-3 flex items-center gap-3 transition-colors"
+                  className="flex-1 group bg-[#061838] hover:bg-[#0A2449] dark:bg-[#12161F] dark:hover:bg-[#1A1F2B] border border-[#061838] dark:border-slate-700/80 text-white rounded-2xl px-4 py-3 flex items-center gap-3 transition-colors active:scale-[0.98]"
                 >
                   <svg viewBox="0 0 256 283" className="w-5 h-5 shrink-0">
                     <path d="M119.553141,134.916362 L1.0599006,259.060547 C3.75619448,268.616998 10.7182836,276.3906 19.9208658,280.119977 C29.1234481,283.849353 39.5331235,283.115716 48.121672,278.132484 L181.448642,202.197919 L119.553141,134.916362 Z" fill="#EA4335" />
@@ -320,7 +329,7 @@ export default function LandingPage() {
                     <span className="block text-[10px] font-medium text-slate-400">
                       Google Play
                     </span>
-                    <span className="block text-[14px] font-bold">Get Android APK</span>
+                    <span className="block text-[14px] font-bold">Download for Android</span>
                   </span>
                   <span className="ml-auto bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                     Soon
@@ -330,7 +339,7 @@ export default function LandingPage() {
                 <a
                   href="/Dashit-User.ipa"
                   download="Dashit-User.ipa"
-                  className="flex-1 group bg-[#061838] hover:bg-[#0A2449] dark:bg-[#12161F] dark:hover:bg-[#1A1F2B] border border-[#061838] dark:border-slate-700/80 text-white rounded-2xl px-4 py-3 flex items-center gap-3 transition-colors"
+                  className="flex-1 group bg-[#061838] hover:bg-[#0A2449] dark:bg-[#12161F] dark:hover:bg-[#1A1F2B] border border-[#061838] dark:border-slate-700/80 text-white rounded-2xl px-4 py-3 flex items-center gap-3 transition-colors active:scale-[0.98]"
                 >
                   <svg viewBox="0 0 24 24" className="w-5 h-5 shrink-0 fill-white">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.38c.62-.75 1.04-1.8.92-2.85-.9.04-1.99.6-2.63 1.35-.56.65-1.05 1.72-.92 2.74 1 .08 2.01-.49 2.63-1.24z" />
@@ -339,7 +348,7 @@ export default function LandingPage() {
                     <span className="block text-[10px] font-medium text-slate-400">
                       Apple App Store
                     </span>
-                    <span className="block text-[14px] font-bold">Get iOS IPA</span>
+                    <span className="block text-[14px] font-bold">Download for iPhone</span>
                   </span>
                   <span className="ml-auto bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
                     Soon
@@ -348,39 +357,31 @@ export default function LandingPage() {
               </div>
 
               <p className="mt-3.5 max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Official Google Play and Apple App Store listings are coming soon. Direct packages are available to install now — version 1.0.0, signed and verified.
+                Official Google Play and Apple App Store listings are coming soon. Direct install available now for Android and iPhone — verified safe &amp; fast.
               </p>
-            </motion.div>
+            </div>
 
             {/* Facts */}
-            <motion.dl
-              variants={fadeUp}
-              className="mt-10 pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-6 max-w-lg"
-            >
+            <dl className="mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-3 gap-3 sm:gap-6 max-w-lg">
               {[
                 ["Fastest", "delivery in Anantnag"],
                 ["Daily", "fresh Kashmiri bakes"],
                 ["192101", "full town coverage"],
               ].map(([value, label]) => (
                 <div key={label}>
-                  <dt className="text-xl sm:text-2xl font-black tracking-tight text-[#061838] dark:text-white">
+                  <dt className="text-lg sm:text-2xl font-black tracking-tight text-[#061838] dark:text-white">
                     {value}
                   </dt>
-                  <dd className="mt-1 text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+                  <dd className="mt-0.5 sm:mt-1 text-[10.5px] sm:text-[11px] leading-snug text-slate-500 dark:text-slate-400">
                     {label}
                   </dd>
                 </div>
               ))}
-            </motion.dl>
-          </motion.div>
+            </dl>
+          </div>
 
           {/* Artwork: Radiant Sun Portal + Flying Grocery Box */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.15, ease: EASE_OUT }}
-            className="lg:col-span-6 xl:col-span-5 flex justify-center items-center relative py-6 sm:py-10"
-          >
+          <div className="lg:col-span-6 xl:col-span-5 flex justify-center items-center relative py-6 sm:py-10 max-w-full overflow-hidden">
             {/* Concentric Orbital Outline Rings */}
             <div className="w-72 h-72 sm:w-[350px] sm:h-[350px] md:w-[410px] md:h-[410px] xl:w-[440px] xl:h-[440px] rounded-full border border-slate-200/70 dark:border-slate-800/70 absolute pointer-events-none flex items-center justify-center" />
             <div className="w-80 h-80 sm:w-[390px] sm:h-[390px] md:w-[460px] md:h-[460px] xl:w-[490px] xl:h-[490px] rounded-full border border-slate-100 dark:border-slate-800/40 absolute pointer-events-none" />
@@ -398,12 +399,16 @@ export default function LandingPage() {
               {/* FLYING GROCERY BOX */}
               <div className="relative z-10 w-[112%] sm:w-[120%] xl:w-[124%] -mt-4">
                 <picture>
-                  <source srcSet="/art/flying-grocery-box-transparent.webp" type="image/webp" />
+                  <source
+                    type="image/webp"
+                    srcSet="/art/flying-grocery-box-transparent-480.webp 480w, /art/flying-grocery-box-transparent-680.webp 680w, /art/flying-grocery-box-transparent.webp 1000w"
+                    sizes="(max-width: 640px) 320px, (max-width: 1024px) 460px, 500px"
+                  />
                   <img
                     src="/art/flying-grocery-box-transparent.png"
                     alt="DASHIT Flying Grocery Delivery Box"
-                    width={1536}
-                    height={1024}
+                    width={680}
+                    height={453}
                     fetchpriority="high"
                     decoding="async"
                     className="w-full h-auto drop-shadow-2xl"
@@ -412,22 +417,22 @@ export default function LandingPage() {
               </div>
 
               {/* Badge Top Right */}
-              <div className="absolute top-2 -right-4 sm:-right-6 bg-white dark:bg-[#141824] px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-800 flex items-center space-x-1.5 z-20">
+              <div className="absolute top-2 right-0 sm:-right-4 bg-white dark:bg-[#141824] px-3 sm:px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-800 flex items-center space-x-1.5 z-20">
                 <Clock className="w-3.5 h-3.5 text-[#FF5B00] shrink-0" />
-                <span className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
+                <span className="text-[10.5px] sm:text-[11px] font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
                   Fastest Delivery Promise
                 </span>
               </div>
 
               {/* Badge Bottom Left */}
-              <div className="absolute -bottom-3 -left-3 sm:-left-6 bg-white dark:bg-[#141824] px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-800 flex items-center space-x-1.5 z-20">
+              <div className="absolute -bottom-3 left-0 sm:-left-4 bg-white dark:bg-[#141824] px-3 sm:px-3.5 py-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-800 flex items-center space-x-1.5 z-20">
                 <Leaf className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
+                <span className="text-[10.5px] sm:text-[11px] font-black text-slate-800 dark:text-white tracking-tight whitespace-nowrap">
                   100% Fresh Produce
                 </span>
               </div>
             </div>
-          </motion.div>
+          </div>
         </section>
 
         {/* =============================================================== */}
@@ -501,6 +506,8 @@ export default function LandingPage() {
                       <img
                         src={cat.img}
                         alt={cat.name}
+                        width={300}
+                        height={156}
                         loading="lazy"
                         decoding="async"
                         className="w-full h-full object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.07]"

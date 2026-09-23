@@ -33,10 +33,12 @@ import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
-import { watchOrder, watchOrderTracking, updateOrderStatus, retireFinishedOrder, watchProducts, ORDER_STATUS } from "../lib/db";
+import { watchOrder, watchOrderTracking, updateOrderStatus, updateOrderContent, getOrderGracePeriodSeconds, retireFinishedOrder, watchProducts, ORDER_STATUS } from "../lib/db";
 import { ALL_PRODUCTS } from "../data/products";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
+import ModifyOrderModal from "../components/ModifyOrderModal";
+import CancelOrderModal from "../components/CancelOrderModal";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -82,6 +84,9 @@ export default function OrdersPage() {
   const [orderHistory, setOrderHistory] = useState([]);
   const [showPastOrdersModal, setShowPastOrdersModal] = useState(false);
   const [isItemsExpanded, setIsItemsExpanded] = useState(false);
+  const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [modifyToast, setModifyToast] = useState(null);
   const [cart, setCart] = useState([]);
   const [selectedCat, setSelectedCat] = useState("All");
   const [productsList, setProductsList] = useState(ALL_PRODUCTS);
@@ -382,15 +387,25 @@ export default function OrdersPage() {
      and delivered, and the customer had no record of it to complain about. */
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const handleCancelOrder = async () => {
-    if (!activeOrder || isCancelling) return;
-    if (!confirm("Are you sure you want to cancel this order? The 1-minute packing window is active.")) {
-      return;
-    }
+  const handleSaveModifiedOrder = async (updatedFields) => {
+    if (!activeOrder) return;
+    const orderId = activeOrder.orderId || activeOrder.id;
+    const res = await updateOrderContent(orderId, updatedFields);
+    setActiveOrder((prev) => ({ ...prev, ...updatedFields }));
+    setModifyToast("Order items updated successfully!");
+    setTimeout(() => setModifyToast(null), 3500);
+    return res;
+  };
 
+  const handleConfirmCancellation = async ({ restoreCart }) => {
+    if (!activeOrder || isCancelling) return;
     const orderId = activeOrder.orderId || activeOrder.id;
     setIsCancelling(true);
     try {
+      if (restoreCart && activeOrder.items && activeOrder.items.length > 0) {
+        localStorage.setItem("dashit_cart", JSON.stringify(activeOrder.items));
+        window.dispatchEvent(new Event("dashit_cart_updated"));
+      }
       const res = await updateOrderStatus(orderId, ORDER_STATUS.CANCELLED);
       if (res?.firestoreSynced === false) {
         alert(
@@ -401,11 +416,11 @@ export default function OrdersPage() {
       localStorage.removeItem("dashit_active_order");
       setActiveOrder(null);
       clearOrderLiveNotification();
-      alert("Order cancelled successfully.");
+      setIsCancelModalOpen(false);
+      setModifyToast("Order cancelled successfully.");
+      setTimeout(() => setModifyToast(null), 3500);
     } catch (e) {
-      alert(
-        "We could not sync the cancellation automatically. Support has been notified at 6006990032 to assist with your cancellation."
-      );
+      alert("Error cancelling order: " + (e?.message || "Please call store support"));
     } finally {
       setIsCancelling(false);
     }
@@ -658,40 +673,68 @@ export default function OrdersPage() {
               </div>
             )}
 
-            {/* Clean, Human-Crafted Packing Window Card */}
+            {/* 60-Second Order Modification & Grace Period Card */}
             {cancellationSeconds > 0 && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-xs dark:bg-surface-raised dark:border-line">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-100/90 text-amber-700 flex items-center justify-center shrink-0 dark:bg-amber-950/40 dark:text-amber-400">
-                      <Clock className="w-4 h-4 stroke-[2.5]" />
+              <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-200/90 dark:border-amber-500/30 rounded-3xl p-4 space-y-3.5 shadow-sm dark:bg-surface-raised">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-3">
+                    <div className="relative">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-[#FF5B00] text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <Clock className="w-5 h-5 stroke-[2.5]" />
+                      </div>
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-ping" />
                     </div>
                     <div>
-                      <span className="text-xs font-black text-slate-900 block leading-tight dark:text-content">
-                        Packing window active
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-content-muted">
-                        Starts in <span className="font-mono font-bold text-amber-800 dark:text-amber-400">{cancellationSeconds}s</span>
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-xs font-black text-slate-900 dark:text-content">
+                          Order Modification Window
+                        </h4>
+                        <span className="font-mono text-[10px] font-black uppercase text-[#FF5B00] bg-orange-100 dark:bg-orange-950/60 px-2 py-0.5 rounded-full">
+                          00:{cancellationSeconds < 10 ? `0${cancellationSeconds}` : cancellationSeconds}s
+                        </span>
+                      </div>
+                      <p className="text-[11.5px] font-medium text-slate-600 dark:text-content-secondary mt-0.5 leading-snug">
+                        Forgot an item or changed your mind? You can add items or cancel before packing starts.
+                      </p>
                     </div>
                   </div>
-
-                  <button
-                    onClick={handleCancelOrder}
-                    disabled={isCancelling}
-                    className="text-[11px] font-black text-rose-600 bg-white hover:bg-rose-50 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all shadow-2xs active:scale-95 disabled:opacity-50 dark:bg-surface-muted dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30 cursor-pointer"
-                  >
-                    {isCancelling ? "Cancelling…" : "Cancel Order"}
-                  </button>
                 </div>
 
-                {/* Sleek Gradient Countdown Track */}
-                <div className="h-1.5 w-full bg-amber-100/80 rounded-full overflow-hidden dark:bg-amber-950/40">
-                  <motion.div
-                    animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / 60) * 100))}%` }}
-                    transition={{ ease: "linear", duration: 0.9 }}
-                    className="h-full bg-[#FF5B00] rounded-full"
-                  />
+                {/* Animated Countdown Progress Track */}
+                <div className="space-y-1">
+                  <div className="h-2 w-full bg-amber-200/60 dark:bg-surface-muted rounded-full overflow-hidden p-0.5">
+                    <motion.div
+                      animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / 60) * 100))}%` }}
+                      transition={{ ease: "linear", duration: 0.9 }}
+                      className="h-full bg-gradient-to-r from-amber-500 via-[#FF6F1E] to-[#FF5B00] rounded-full"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-content-faint px-0.5">
+                    <span>Packing locked</span>
+                    <span>Packing starts in {cancellationSeconds}s</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons: Modify Items & Cancel Order */}
+                <div className="flex items-center space-x-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsModifyModalOpen(true)}
+                    className="grow h-10 px-3.5 rounded-xl bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white font-extrabold text-xs shadow-xs active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add / Modify Items</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsCancelModalOpen(true)}
+                    disabled={isCancelling}
+                    className="h-10 px-3.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-black shadow-xs active:scale-95 transition-all flex items-center justify-center space-x-1.5 dark:bg-surface-muted dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30 cursor-pointer disabled:opacity-50"
+                  >
+                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Cancel</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -1057,6 +1100,40 @@ export default function OrdersPage() {
           </div>
         )}
       </DraggableSheet>
+
+      {/* 60s Order Content Modifier Modal */}
+      <ModifyOrderModal
+        isOpen={isModifyModalOpen}
+        onClose={() => setIsModifyModalOpen(false)}
+        order={activeOrder}
+        productsList={productsList}
+        onSaveOrder={handleSaveModifiedOrder}
+        remainingSeconds={cancellationSeconds}
+      />
+
+      {/* 60s Frictionless Cancellation Modal */}
+      <CancelOrderModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onConfirmCancel={handleConfirmCancellation}
+        order={activeOrder}
+        isCancelling={isCancelling}
+      />
+
+      {/* Grace Period Toast Notification */}
+      <AnimatePresence>
+        {modifyToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[150] bg-[#061838] dark:bg-white text-white dark:text-[#061838] px-4 py-2.5 rounded-2xl shadow-xl text-xs font-black flex items-center space-x-2 border border-slate-700/50"
+          >
+            <Sparkles className="w-4 h-4 text-[#FF5B00] shrink-0" />
+            <span>{modifyToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

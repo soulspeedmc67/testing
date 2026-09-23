@@ -68,6 +68,23 @@ export default function OrderProcessingView({
   /* Each entry is { at, from } so the previous status can be restored. */
   const [recentlyUpdated, setRecentlyUpdated] = useState({});
 
+  // 1-second ticker for live order grace period countdowns
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getGraceSeconds = React.useCallback((o) => {
+    if (!o) return 0;
+    const status = String(o.status || "").toLowerCase();
+    if (status && status !== "placed") return 0;
+    const t = orderTimeMs(o);
+    if (!t) return 0;
+    const elapsed = Math.floor((now - t) / 1000);
+    return Math.max(0, 60 - elapsed);
+  }, [now]);
+
   // Auto-open drawer for the latest PLACED order on first load
   useEffect(() => {
     if (selectedOrderId) return; // don't override if operator already picked one
@@ -199,6 +216,20 @@ export default function OrderProcessingView({
 
   const handleStatusChange = React.useCallback(
     async (id, nextStatus, order) => {
+      const ord = order || orders.find((o) => (o.orderId || o.id) === id);
+      const graceRem = getGraceSeconds(ord);
+      if (
+        ord &&
+        (!ord.status || ord.status === ORDER_STATUS.PLACED) &&
+        nextStatus !== ORDER_STATUS.CANCELLED &&
+        graceRem > 0
+      ) {
+        alert(
+          `Cannot process order #${id} yet. Customer has a 60-second grace window to modify items or cancel (${graceRem}s remaining).`
+        );
+        return;
+      }
+
       if (nextStatus === ORDER_STATUS.OUT_FOR_DELIVERY) {
         const ord = order || orders.find((o) => (o.orderId || o.id) === id);
         const currentDrivers = getDriverRoster();
@@ -908,15 +939,35 @@ export default function OrderProcessingView({
 
                           {/* Row 5: PRIMARY ACTION BUTTON (Big, Tactile, High-Contrast) */}
                           {col.actionText && (
-                            <button
-                              type="button"
-                              onClick={() => handleStatusChange(orderId, col.nextStatus, ord)}
-                              className={"w-full py-3 px-4 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center space-x-2 transition-all active:scale-[0.98] " + col.actionButtonClass}
-                            >
-                              {col.ActionIcon && <col.ActionIcon className="w-4 h-4 stroke-[2.5]" />}
-                              <span>{col.actionText}</span>
-                              <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
-                            </button>
+                            ord.status === ORDER_STATUS.PLACED && getGraceSeconds(ord) > 0 ? (
+                              <div className="w-full space-y-1.5">
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 cursor-not-allowed flex items-center justify-center space-x-2"
+                                  title="Customer has a 60-second grace window to modify items or cancel before packing starts"
+                                >
+                                  <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" style={{ animationDuration: "3s" }} />
+                                  <span>Customer Editing ({getGraceSeconds(ord)}s)</span>
+                                </button>
+                                <div className="h-1 w-full bg-amber-100 dark:bg-amber-950/50 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full bg-amber-500 transition-all duration-1000 rounded-full"
+                                    style={{ width: `${Math.round(((60 - getGraceSeconds(ord)) / 60) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleStatusChange(orderId, col.nextStatus, ord)}
+                                className={"w-full py-3 px-4 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center space-x-2 transition-all active:scale-[0.98] " + col.actionButtonClass}
+                              >
+                                {col.ActionIcon && <col.ActionIcon className="w-4 h-4 stroke-[2.5]" />}
+                                <span>{col.actionText}</span>
+                                <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                            )
                           )}
 
                           {/* Row 6: Card Utilities (Print Slip & View Details) */}
@@ -1219,19 +1270,30 @@ export default function OrderProcessingView({
                           </span>
                         </td>
                         <td className="py-3.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <select
-                            value={normaliseStatus(status)}
-                            onChange={(e) => handleStatusChange(orderId, e.target.value, ord)}
-                            aria-label={"Status for order " + orderId}
-                            style={{ WebkitTextFillColor: "currentColor", colorScheme: darkMode ? "dark" : "light" }}
-                            className={"appearance-none cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11.5px] font-bold focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/40 " + statusPillClass(status)}
-                          >
-                            {STATUS_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt} className="bg-white text-slate-900 dark:bg-[#1A1D26] dark:text-zinc-100 font-semibold">
-                                {opt}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center space-x-1.5">
+                            <select
+                              value={normaliseStatus(status)}
+                              onChange={(e) => handleStatusChange(orderId, e.target.value, ord)}
+                              aria-label={"Status for order " + orderId}
+                              style={{ WebkitTextFillColor: "currentColor", colorScheme: darkMode ? "dark" : "light" }}
+                              className={"appearance-none cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11.5px] font-bold focus:outline-none focus:ring-2 focus:ring-[#FF5B00]/40 " + statusPillClass(status)}
+                            >
+                              {STATUS_OPTIONS.map((opt) => (
+                                <option key={opt} value={opt} className="bg-white text-slate-900 dark:bg-[#1A1D26] dark:text-zinc-100 font-semibold">
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                            {status === ORDER_STATUS.PLACED && getGraceSeconds(ord) > 0 && (
+                              <span
+                                title="Customer editing window active: 60s to add/remove items or cancel"
+                                className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase text-amber-700 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-1 rounded-md border border-amber-300 dark:border-amber-700/60"
+                              >
+                                <Clock className="w-2.5 h-2.5 animate-spin" style={{ animationDuration: "3s" }} />
+                                <span>{getGraceSeconds(ord)}s</span>
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3.5 px-3 whitespace-nowrap">
                           <span
@@ -1265,27 +1327,41 @@ export default function OrderProcessingView({
                               </a>
                             )}
 
-                            {nextStep(status) && (
+                            {status === ORDER_STATUS.PLACED && getGraceSeconds(ord) > 0 ? (
                               <button
                                 type="button"
-                                onClick={() => handleStatusChange(orderId, nextStep(status).to, ord)}
-                                title={"Move this order to: " + nextStep(status).label}
-                                className="px-3 py-1.5 rounded-lg bg-[#061838] hover:bg-[#0A2450] text-white dark:bg-blue-600 dark:hover:bg-blue-500 font-semibold text-[11px] cursor-pointer whitespace-nowrap shadow-xs transition-colors"
+                                disabled
+                                title={`Order is in customer 60-second grace window (${getGraceSeconds(ord)}s remaining). Packing unlocked once window closes.`}
+                                className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 font-bold text-[11px] cursor-not-allowed whitespace-nowrap shadow-xs flex items-center space-x-1"
                               >
-                                {nextStep(status).label}
+                                <Clock className="w-3 h-3 text-amber-600 animate-spin" style={{ animationDuration: "3s" }} />
+                                <span>Locked ({getGraceSeconds(ord)}s)</span>
                               </button>
-                            )}
+                            ) : (
+                              <>
+                                {nextStep(status) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStatusChange(orderId, nextStep(status).to, ord)}
+                                    title={"Move this order to: " + nextStep(status).label}
+                                    className="px-3 py-1.5 rounded-lg bg-[#061838] hover:bg-[#0A2450] text-white dark:bg-blue-600 dark:hover:bg-blue-500 font-semibold text-[11px] cursor-pointer whitespace-nowrap shadow-xs transition-colors"
+                                  >
+                                    {nextStep(status).label}
+                                  </button>
+                                )}
 
-                            {/* Quick tick: instantly marks order as Packed */}
-                            {status !== ORDER_STATUS.DELIVERED && status !== ORDER_STATUS.CANCELLED && (
-                              <button
-                                type="button"
-                                title="Mark all items packed and move order to Packing stage"
-                                onClick={() => handleStatusChange(orderId, ORDER_STATUS.PACKED, ord)}
-                                className="p-1.5 rounded-lg border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white cursor-pointer transition-colors shadow-2xs"
-                              >
-                                <CheckCircle2 className="w-4 h-4" />
-                              </button>
+                                {/* Quick tick: instantly marks order as Packed */}
+                                {status !== ORDER_STATUS.DELIVERED && status !== ORDER_STATUS.CANCELLED && (
+                                  <button
+                                    type="button"
+                                    title="Mark all items packed and move order to Packing stage"
+                                    onClick={() => handleStatusChange(orderId, ORDER_STATUS.PACKED, ord)}
+                                    className="p-1.5 rounded-lg border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white cursor-pointer transition-colors shadow-2xs"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </>
                             )}
 
                             <button

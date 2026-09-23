@@ -35,9 +35,9 @@
   # HTTPS only, once the certificate is confirmed working.
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
-  # Session-bearing pages must not be cached by shared proxies.
+  # Static exported HTML: allow CDN & Hostinger LiteSpeed caching with quick revalidation
   <FilesMatch "\.html$">
-    Header always set Cache-Control "no-store, must-revalidate"
+    Header always set Cache-Control "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400"
   </FilesMatch>
 </IfModule>
 

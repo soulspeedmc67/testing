@@ -6,7 +6,6 @@ import { motion, MotionConfig } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import '../styles/globals.css';
-import 'leaflet/dist/leaflet.css';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import FloatingCartBar from '../components/FloatingCartBar';
 import BottomNav from '../components/BottomNav';
@@ -126,13 +125,13 @@ const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
- * Whether this load should skip the splash: the internal consoles never show it,
- * and neither does a tab that has already seen it this session.
- *
- * Only ever called on the client — the server has no way to know either fact.
+ * Whether this load should skip the splash: public web visitors, internal consoles,
+ * or returning sessions never show it.
  */
 function shouldSkipSplash() {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined") return true;
+  // Web visitors on browsers should load directly with 0ms splash delay for best CWV
+  if (!isNative()) return true;
   if (['/xcyop', '/driver'].includes(window.location.pathname)) return true;
   try {
     return !!sessionStorage.getItem("dashit_splash_seen");
@@ -145,24 +144,16 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
 
-  /* Both of these start `true` on the client as well as the server, even when we
-     already know the splash should be skipped.
-
-     Reading sessionStorage in the initialiser used to make the first client
-     render disagree with the server HTML — the server always rendered the splash,
-     a returning tab never did — and React threw out the whole server tree and
-     re-rendered the page from scratch on every load. The decision now happens in
-     a layout effect below, which runs after hydration but before the browser
-     paints, so a returning visitor still never sees the splash. */
-  const [showSplash, setShowSplash] = useState(true);
-
-  // Holds the first screen invisible/forward while the splash covers it
-  const [splashHolding, setSplashHolding] = useState(true);
+  /* Web visitors and static HTML prerendering render immediately without splash holding.
+     Native Capacitor app starts cleanly with native launch screen, skipping redundant web splash delay. */
+  const [showSplash, setShowSplash] = useState(false);
+  const [splashHolding, setSplashHolding] = useState(false);
 
   useIsomorphicLayoutEffect(() => {
-    if (shouldSkipSplash()) {
-      setShowSplash(false);
-      setSplashHolding(false);
+    // Only engage animated web splash if inside native shell and not seen this session
+    if (isNative() && !shouldSkipSplash()) {
+      setShowSplash(true);
+      setSplashHolding(true);
     }
   }, []);
 

@@ -836,6 +836,24 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
   // Order Status Update
   const handleUpdateOrderStatus = async (orderId, newStatus, order = null) => {
+    // 60-second grace window guard: admin cannot process Placed orders until 60s have elapsed
+    const ordObj = order || orders.find((o) => (o.orderId || o.id) === orderId);
+    const orderTime = getOrderTimestampMs(ordObj);
+    const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
+    const graceRemaining = Math.max(0, 60 - elapsedSec);
+
+    if (
+      ordObj &&
+      (!ordObj.status || ordObj.status === ORDER_STATUS.PLACED) &&
+      newStatus !== ORDER_STATUS.CANCELLED &&
+      graceRemaining > 0
+    ) {
+      showToast(
+        `Order #${orderId} is in customer 60s modifying window (${graceRemaining}s remaining). Packing unlocked once window closes.`
+      );
+      return;
+    }
+
     try {
       let syncResult = null;
       if (isFirebaseConfigured) {
