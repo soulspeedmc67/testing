@@ -110,6 +110,16 @@ struct RootView: View {
                 }
             )
             .padding(.top, 6)
+            .background(alignment: .top) {
+                LinearGradient(
+                    colors: [Color.surface, Color.surface.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .padding(.bottom, -24)
+                .ignoresSafeArea(edges: .top)
+                .allowsHitTesting(false)
+            }
             .transition(.move(edge: .top).combined(with: .opacity))
         }
     }

@@ -34,9 +34,9 @@ struct ProductDetailSheet: View {
             VStack(alignment: .leading, spacing: 0) {
                 heroImage
                 titleBlock
-                    .padding(.top, 18)
+                    .padding(.top, 14)
                 priceBlock
-                    .padding(.top, 12)
+                    .padding(.top, 10)
                 if !variants.isEmpty {
                     variantPicker
                         .padding(.top, 22)
@@ -53,7 +53,7 @@ struct ProductDetailSheet: View {
                     .padding(.top, 22)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 20)
+            .padding(.top, 14)
             .padding(.bottom, 24)
             .animation(.dashitSpring, value: selectedVariantID)
         }
@@ -74,7 +74,7 @@ struct ProductDetailSheet: View {
 
     private var heroImage: some View {
         Color.surfaceRaised
-            .frame(height: 220)
+            .frame(height: 168)
             .overlay {
                 AsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
                     switch phase {

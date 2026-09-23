@@ -32,7 +32,7 @@ struct CategoryCollageTile: View {
                     .foregroundColor(.textPrimary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2, reservesSpace: true)
-                    .padding(.top, extraCount > 0 ? 16 : 9)
+                    .padding(.top, 16)
                     .padding(.horizontal, 2)
             }
             .padding(6)
