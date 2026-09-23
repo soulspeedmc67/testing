@@ -34,6 +34,7 @@ targets:
       - sdk: AVFoundation.framework
       - sdk: CoreLocation.framework
       - sdk: CoreHaptics.framework
+      - sdk: AuthenticationServices.framework
     info:
       path: DASHit/Info.plist
       properties:
@@ -60,6 +61,9 @@ targets:
         CODE_SIGN_IDENTITY: ""
         SWIFT_VERSION: "5.9"
         INFOPLIST_FILE: DASHit/Info.plist
+        # Sign in with Apple. Takes effect once the app is signed with a paid
+        # Apple Developer team that has the capability enabled.
+        CODE_SIGN_ENTITLEMENTS: DASHit/DASHit.entitlements
 
   # Lock Screen + Dynamic Island Live Activity. ActivityKit only renders an
   # activity when an embedded widget extension declares its ActivityConfiguration.

@@ -13,6 +13,7 @@ enum ScreenshotHooks {
     static var openProductId: String? { UserDefaults.standard.string(forKey: "DASHitOpenProduct") }
     static var openAddressPicker: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenAddress") }
     static var openTracking: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenTracking") }
+    static var openProfile: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenProfile") }
     /// A TabItem raw value, e.g. "Categories" or "Order Again".
     static var initialTab: String? { UserDefaults.standard.string(forKey: "DASHitTab") }
 }

@@ -35,33 +35,18 @@ struct LiveTrackingMapView: View {
 
                 // Customer destination
                 if let dest = vm.activeOrder?.deliveryAddress.coordinate {
-                    Annotation("Delivery address", coordinate: dest) {
-                        Image(systemName: "house.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(width: 34, height: 34)
-                            .background(Circle().fill(Color.brandOrange))
-                            .overlay(Circle().strokeBorder(Color.white, lineWidth: 2.5))
-                            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+                    Annotation("Delivery address", coordinate: dest, anchor: .bottom) {
+                        DestinationMapMarker()
                     }
                 }
 
-                // Live rider
-                if let rider = vm.riderLocation?.coordinate {
-                    Annotation("Delivery partner", coordinate: rider, anchor: .center) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.brandOrange.opacity(0.22))
-                                .frame(width: 56, height: 56)
-                            Circle()
-                                .fill(Color.trackerCard)
-                                .frame(width: 40, height: 40)
-                                .overlay(Circle().strokeBorder(Color.brandOrange, lineWidth: 2.5))
-                            Image(systemName: "scooter")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
-                        }
-                        .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 3)
+                // Live rider, drawn with the branded rider artwork
+                if let rider = vm.riderLocation {
+                    Annotation("Delivery partner", coordinate: rider.coordinate, anchor: .center) {
+                        RiderMapMarker(
+                            tracking: rider,
+                            destination: vm.activeOrder?.deliveryAddress.coordinate
+                        )
                     }
                 }
             }
