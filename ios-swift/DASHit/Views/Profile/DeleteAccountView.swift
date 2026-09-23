@@ -21,7 +21,7 @@ struct DeleteAccountView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Delete Account & Data")
                                 .font(.dashitTitle)
-                                .foregroundColor(.white)
+                                .foregroundColor(.textPrimary)
                             Text("Permanent and irreversible action")
                                 .font(.dashitCaption)
                                 .foregroundColor(.textMuted)
@@ -36,11 +36,11 @@ struct DeleteAccountView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Type 'DELETE' to confirm:")
                             .font(.dashitCaptionBold)
-                            .foregroundColor(.white)
+                            .foregroundColor(.textPrimary)
                         
                         TextField("DELETE", text: $confirmationText)
                             .font(.dashitBody)
-                            .foregroundColor(.white)
+                            .foregroundColor(.textPrimary)
                             .padding(12)
                             .background(Color.surfaceMuted)
                             .cornerRadius(10)

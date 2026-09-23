@@ -43,7 +43,7 @@ struct DASHitLiveActivityWidget: Widget {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    OrderProgressRail(stage: context.state.stage, markerSize: 22)
+                    OrderProgressRail(stage: context.state.stage, progress: context.state.progress, markerSize: 22)
                         .padding(.top, 8)
                         .padding(.horizontal, 4)
                 }
@@ -52,7 +52,7 @@ struct DASHitLiveActivityWidget: Widget {
             } compactTrailing: {
                 CompactETAView(context: context)
             } minimal: {
-                StageRing(stage: context.state.stage)
+                StageRing(stage: context.state.stage, progress: context.state.progress)
             }
             .keylineTint(Palette.brand)
         }
@@ -98,7 +98,7 @@ private struct LockScreenLiveActivityView: View {
             StatusLine(context: context, size: 12)
                 .padding(.top, 3)
 
-            OrderProgressRail(stage: stage, markerSize: 24)
+            OrderProgressRail(stage: stage, progress: state.progress, markerSize: 24)
                 .padding(.top, 12)
 
             HStack(spacing: 8) {
@@ -255,13 +255,14 @@ private struct StageGlyph: View {
 /// Minimal presentation: stage glyph inside a progress ring.
 private struct StageRing: View {
     let stage: DeliveryStage
+    let progress: Double
 
     var body: some View {
         ZStack {
             Circle()
                 .stroke(Color.white.opacity(0.2), lineWidth: 2.5)
             Circle()
-                .trim(from: 0, to: CGFloat(stage.progress))
+                .trim(from: 0, to: CGFloat(progress))
                 .stroke(stage == .delivered ? Palette.success : Palette.brand, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                 .rotationEffect(.degrees(-90))
             Image(systemName: stage.symbol)

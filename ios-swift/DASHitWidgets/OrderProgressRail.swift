@@ -6,10 +6,13 @@ import SwiftUI
 /// Live Activity all draw the same thing. Designed for a dark surface.
 public struct OrderProgressRail: View {
     public let stage: DeliveryStage
+    /// 0–1; defaults to the stage's floor. Pass the live value while riding.
+    public let progress: Double?
     public let markerSize: CGFloat
 
-    public init(stage: DeliveryStage, markerSize: CGFloat = 26) {
+    public init(stage: DeliveryStage, progress: Double? = nil, markerSize: CGFloat = 26) {
         self.stage = stage
+        self.progress = progress
         self.markerSize = markerSize
     }
 
@@ -20,7 +23,7 @@ public struct OrderProgressRail: View {
         HStack(spacing: 8) {
             GeometryReader { geo in
                 let width = geo.size.width
-                let fill = width * CGFloat(stage.progress)
+                let fill = width * CGFloat(progress ?? stage.progress)
                 let midY = geo.size.height / 2
 
                 ZStack(alignment: .leading) {

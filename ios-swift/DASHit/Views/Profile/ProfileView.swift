@@ -25,7 +25,7 @@ struct ProfileView: View {
                                 
                                 Text(user.name ?? "DASHit Shopper")
                                     .font(.dashitHeadline)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.textPrimary)
                                 
                                 Text("+91 \(user.mobile)")
                                     .font(.dashitCaption)
@@ -35,13 +35,13 @@ struct ProfileView: View {
                             
                             // Account Options
                             VStack(spacing: 1) {
-                                NavigationLink(destination: Text("Address Book").foregroundColor(.white)) {
+                                NavigationLink(destination: Text("Address Book").foregroundColor(.textPrimary)) {
                                     ProfileRow(icon: "mappin.circle.fill", title: "Saved Addresses")
                                 }
-                                NavigationLink(destination: Text("Payment Settings").foregroundColor(.white)) {
+                                NavigationLink(destination: Text("Payment Settings").foregroundColor(.textPrimary)) {
                                     ProfileRow(icon: "creditcard.fill", title: "Payment Methods")
                                 }
-                                NavigationLink(destination: Text("Help & Support").foregroundColor(.white)) {
+                                NavigationLink(destination: Text("Help & Support").foregroundColor(.textPrimary)) {
                                     ProfileRow(icon: "questionmark.circle.fill", title: "24/7 Support in Anantnag")
                                 }
                             }
@@ -57,7 +57,7 @@ struct ProfileView: View {
                                 Button(action: { auth.signOut() }) {
                                     Text("Sign Out")
                                         .font(.dashitBodyBold)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(.textPrimary)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 14)
                                         .background(Color.surfaceRaised)
@@ -85,7 +85,7 @@ struct ProfileView: View {
                                 
                                 Text("Sign In to DASHit")
                                     .font(.dashitHeadline)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.textPrimary)
                                 
                                 Text("Get fresh groceries and Kashmiri essentials delivered to your door in 8 minutes.")
                                     .font(.dashitCaption)
@@ -97,7 +97,7 @@ struct ProfileView: View {
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text("Phone Number")
                                             .font(.dashitCaptionBold)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.textPrimary)
                                         
                                         HStack {
                                             Text("+91")
@@ -106,7 +106,7 @@ struct ProfileView: View {
                                             TextField("10-digit mobile number", text: $phoneInput)
                                                 .keyboardType(.numberPad)
                                                 .font(.dashitBody)
-                                                .foregroundColor(.white)
+                                                .foregroundColor(.textPrimary)
                                         }
                                         .padding(12)
                                         .background(Color.surfaceMuted)
@@ -133,7 +133,7 @@ struct ProfileView: View {
                                     VStack(alignment: .leading, spacing: 8) {
                                         Text("Enter 4-Digit Code")
                                             .font(.dashitCaptionBold)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.textPrimary)
                                         
                                         TextField("0000", text: $otpInput)
                                             .keyboardType(.numberPad)
@@ -142,7 +142,7 @@ struct ProfileView: View {
                                             .padding(12)
                                             .background(Color.surfaceMuted)
                                             .cornerRadius(10)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.textPrimary)
                                         
                                         if let devCode = generatedDevCode {
                                             Text("Verification Code: \(devCode)")
@@ -186,6 +186,8 @@ struct ProfileView: View {
                             )
                             .padding(.top, 20)
                         }
+                        
+                        AppearanceSetting()
                     }
                     .padding(16)
                 }
@@ -210,12 +212,38 @@ struct ProfileRow: View {
                 .foregroundColor(.brandAccent)
             Text(title)
                 .font(.dashitBody)
-                .foregroundColor(.white)
+                .foregroundColor(.textPrimary)
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.system(size: 12))
                 .foregroundColor(.textMuted)
         }
         .padding(14)
+    }
+}
+
+/// Light / Dark / Automatic, stored under the same `dashit_theme` key and
+/// values the web app uses (`src/components/AppearanceSetting.jsx`).
+struct AppearanceSetting: View {
+    @AppStorage("dashit_theme") private var theme = "system"
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Appearance")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.textPrimary)
+            Picker("Appearance", selection: $theme) {
+                Text("Light").tag("light")
+                Text("Dark").tag("dark")
+                Text("Automatic").tag("system")
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(14)
+        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+        .onChange(of: theme) { _, _ in
+            HapticsManager.shared.selection()
+        }
     }
 }

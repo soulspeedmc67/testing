@@ -58,7 +58,7 @@ struct CouponsSheetView: View {
                                             .foregroundColor(.caution)
                                         Text(coupon.code)
                                             .font(.dashitHeadline)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.textPrimary)
                                     }
                                     
                                     Spacer()

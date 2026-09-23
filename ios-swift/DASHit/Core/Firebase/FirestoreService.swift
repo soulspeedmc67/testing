@@ -10,6 +10,8 @@ final class FirestoreService {
     
     // MARK: - Products & Categories
     
+    /// Live catalogue, as the web reads it: active products only, with the
+    /// document id standing in when a product has no id field.
     func listenProducts(completion: @escaping ([Product]) -> Void) -> ListenerRegistration {
         return db.collection("products").addSnapshotListener { snapshot, error in
             guard let documents = snapshot?.documents, error == nil else {
@@ -17,10 +19,27 @@ final class FirestoreService {
                 return
             }
             
+            let decoder = Firestore.Decoder()
             let products: [Product] = documents.compactMap { doc in
-                try? doc.data(as: Product.self)
+                var data = doc.data()
+                if (data["active"] as? Bool) == false { return nil }
+                if data["id"] == nil { data["id"] = doc.documentID }
+                return try? decoder.decode(Product.self, from: data)
             }
             completion(products)
+        }
+    }
+    
+    /// `config/store`, which the admin console writes: open/closed, the reason
+    /// shown while closed, and the high-demand flag.
+    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool) -> Void) -> ListenerRegistration {
+        return db.collection("config").document("store").addSnapshotListener { snapshot, _ in
+            let data = snapshot?.data() ?? [:]
+            completion(
+                (data["isOpen"] as? Bool) ?? true,
+                (data["closeReason"] as? String) ?? "",
+                (data["highDemand"] as? Bool) ?? false
+            )
         }
     }
     
@@ -33,8 +52,11 @@ final class FirestoreService {
                     return
                 }
                 
+                let decoder = Firestore.Decoder()
                 let categories: [Category] = documents.compactMap { doc in
-                    try? doc.data(as: Category.self)
+                    var data = doc.data()
+                    if data["id"] == nil { data["id"] = doc.documentID }
+                    return try? decoder.decode(Category.self, from: data)
                 }
                 completion(categories)
             }
@@ -63,7 +85,7 @@ final class FirestoreService {
     /// order whose status is "Placed", whose createdAt is the server clock and
     /// whose driverId is null; anything else is rejected, so this mirrors
     /// `createOrder` in `src/lib/db.js` field for field.
-    func createOrder(_ order: Order, customer: UserProfile, couponCode: String?) async throws {
+    func createOrder(_ order: Order, customer: UserProfile, couponCode: String?, distanceKm: Double) async throws {
         let placedAt = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: order.createdAt))
         let dateLabel = Date(timeIntervalSince1970: order.createdAt)
             .formatted(.dateTime.day().month(.abbreviated).hour().minute())
@@ -116,6 +138,7 @@ final class FirestoreService {
             "paymentStatus": order.paymentStatus,
             "location": location,
             "etaMinutes": order.etaMinutes ?? 8,
+            "distanceKm": distanceKm,
             "otp": Int.random(in: 1000...9999),
             "customerName": customer.name ?? "Customer",
             "mobile": customer.mobile,
@@ -154,16 +177,22 @@ final class FirestoreService {
         }
     }
     
+    /// The shopper's orders, newest first. Filtered on userId only (what the
+    /// rules require) and sorted here, so no composite index is needed.
     func listenUserOrders(userId: String, completion: @escaping ([Order]) -> Void) -> ListenerRegistration {
         return db.collection("orders")
             .whereField("userId", isEqualTo: userId)
-            .order(by: "createdAt", descending: true)
             .addSnapshotListener { snapshot, error in
                 guard let documents = snapshot?.documents, error == nil else {
+                    #if DEBUG
+                    if let error { print("❌ [Orders] History listener: \(error.localizedDescription)") }
+                    #endif
                     completion([])
                     return
                 }
-                let orders: [Order] = documents.compactMap { try? $0.data(as: Order.self, with: .estimate) }
+                let orders: [Order] = documents
+                    .compactMap { try? $0.data(as: Order.self, with: .estimate) }
+                    .sorted { $0.createdAt > $1.createdAt }
                 completion(orders)
             }
     }

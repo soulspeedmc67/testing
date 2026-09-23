@@ -22,6 +22,17 @@ final class CheckoutViewModel: ObservableObject {
         )
     }
     
+    /// ETA and serviceability for the selected address (web deliveryEta.js).
+    var deliveryQuote: DeliveryEta.Quote {
+        DeliveryEta.quote(for: selectedAddress.coordinate)
+    }
+    
+    func reloadSavedAddress() {
+        if let saved = LocalStorage.shared.loadAddress() {
+            selectedAddress = saved
+        }
+    }
+    
     func placeOrder(cart: CartViewModel, auth: AuthService) async -> Bool {
         orderError = nil
         
@@ -46,6 +57,21 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
         
+        // Same gates as the web checkout: the admin can close the store, and
+        // only addresses within 5 km of the hub are served.
+        let store = StoreStatusStore.shared
+        guard store.isOpen else {
+            orderError = "The store is closed right now. \(store.closeReason)"
+            HapticsManager.shared.warning()
+            return false
+        }
+        let quote = deliveryQuote
+        guard quote.isDeliverable else {
+            orderError = "Delivery isn't available at this address yet. It's \(quote.distanceText) from our Anantnag hub, and we deliver within 5 km."
+            HapticsManager.shared.warning()
+            return false
+        }
+        
         isSubmitting = true
         defer { isSubmitting = false }
         
@@ -62,11 +88,16 @@ final class CheckoutViewModel: ObservableObject {
             paymentMethod: paymentMethod == "apple_pay" ? "Apple Pay" : "Cash on Delivery",
             // Nothing is charged in-app yet, so no order is ever marked paid here.
             paymentStatus: "pending",
-            etaMinutes: 8
+            etaMinutes: store.etaMinutes(for: quote) ?? 8
         )
         
         do {
-            try await FirestoreService.shared.createOrder(order, customer: user, couponCode: cart.appliedCoupon?.code)
+            try await FirestoreService.shared.createOrder(
+                order,
+                customer: user,
+                couponCode: cart.appliedCoupon?.code,
+                distanceKm: quote.distanceKm
+            )
             
             LocalStorage.shared.saveActiveOrderId(order.id)
             completedOrder = order
