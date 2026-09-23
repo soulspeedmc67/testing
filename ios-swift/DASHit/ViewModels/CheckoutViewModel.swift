@@ -60,6 +60,9 @@ final class CheckoutViewModel: ObservableObject {
             LocalStorage.shared.saveActiveOrderId(orderId)
             self.completedOrder = newOrder
             
+            // Start iOS 17+ Lock Screen & Dynamic Island Live Activity
+            LiveActivityManager.shared.startActivity(for: newOrder)
+            
             // Clear cart
             cart.clearCart()
             
