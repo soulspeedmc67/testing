@@ -138,7 +138,7 @@ struct StorefrontHomeView: View {
                 isAddressPickerOpen = true
             } label: {
                 HStack(spacing: 5) {
-                    Image(systemName: "mappin.and.ellipse")
+                    Image(systemName: "mappin")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.brandAccent)
                     Text((address?.nickname ?? "Home").uppercased())
