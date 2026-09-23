@@ -25,7 +25,13 @@ export default function BottomNav({ forceHide = false }) {
     const updateTrackerState = () => {
       try {
         const order = localStorage.getItem("dashit_active_order");
-        const hasOrder = Boolean(order && JSON.parse(order));
+        let hasOrder = false;
+        if (order) {
+          const parsed = JSON.parse(order);
+          const st = String(parsed?.status || "").toLowerCase();
+          const isCompleted = st.includes("deliver") || st.includes("cancel");
+          hasOrder = Boolean(parsed && (parsed.orderId || parsed.id) && !isCompleted);
+        }
         const isMin = typeof window !== "undefined" && window.__dashit_tracker_minimized !== false;
         setIsTrackerActive(hasOrder && isMin);
         setHasActiveOrder(hasOrder);
@@ -36,7 +42,11 @@ export default function BottomNav({ forceHide = false }) {
     };
     updateTrackerState();
     const handleTrackerChange = (e) => {
-      setIsTrackerActive(Boolean(e.detail?.isMinimized && e.detail?.hasOrder));
+      const active = Boolean(e.detail?.isMinimized && e.detail?.hasOrder);
+      setIsTrackerActive(active);
+      if (!e.detail?.hasOrder) {
+        setHasActiveOrder(false);
+      }
     };
     window.addEventListener("dashit_tracker_minimized_changed", handleTrackerChange);
     window.addEventListener("storage", updateTrackerState);

@@ -39,7 +39,10 @@ export default function HomeScreenLiveOrderCard() {
     }
   };
 
-  if (!activeOrder || isDismissed) {
+  const orderStatusNorm = String(activeOrder?.status || "").toLowerCase();
+  const isFinished = orderStatusNorm.includes("deliver") || orderStatusNorm.includes("cancel");
+
+  if (!activeOrder || isDismissed || isFinished) {
     return null;
   }
 
