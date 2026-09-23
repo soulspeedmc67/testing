@@ -67,7 +67,7 @@ jobs:
       # shell without the pages that matter.
       - name: Verify the export looks complete
         run: |
-          for page in index.html shop/index.html admin/index.html driver/index.html orders/index.html checkout/index.html; do
+          for page in index.html shop/index.html xcyop/index.html driver/index.html orders/index.html checkout/index.html; do
             if [ ! -f "out/$page" ]; then
               echo "::error::Missing $page in the static export — refusing to deploy"
               exit 1
