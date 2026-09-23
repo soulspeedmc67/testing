@@ -1,4 +1,4 @@
-name: Build Native Swift iOS (Xcode 16)
+name: Build Native Swift iOS IPA (Xcode 16)
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-swift:
-    name: Build Native Swift iOS App
+  build-native-swift-ios:
+    name: Build Native Swift IPA (macos-14 + Xcode 16)
     runs-on: macos-14
 
     steps:
@@ -25,12 +25,72 @@ jobs:
           done
           xcodebuild -version
 
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Native Xcode Project
+        run: |
+          cd ios-swift
+          xcodegen generate
+
       - name: Resolve Swift Package Dependencies
         run: |
           cd ios-swift
-          swift package resolve
+          xcodebuild -resolvePackageDependencies -project DASHit.xcodeproj
 
-      - name: Build Swift Core Module
+      - name: Patch Swift Interfaces & Re-sign Frameworks
+        run: |
+          python3 -c '
+          import os
+          derived = os.path.expanduser("~/Library/Developer/Xcode/DerivedData")
+          if os.path.exists(derived):
+              for root, dirs, files in os.walk(derived):
+                  for f in files:
+                      if f.endswith(".swiftinterface"):
+                          p = os.path.join(root, f)
+                          try:
+                              with open(p, "r", encoding="utf-8") as fl:
+                                  content = fl.read()
+                              if "$NonescapableTypes" in content:
+                                  count = content.count("#if compiler(>=5.3) && $NonescapableTypes")
+                                  content = content.replace("#if compiler(>=5.3) && $NonescapableTypes", "#if true")
+                                  with open(p, "w", encoding="utf-8") as fl:
+                                      fl.write(content)
+                                  print(f"Patched {count} APIs in {f}")
+                          except Exception as e:
+                              print("Error:", e)
+          '
+          for fw in $(find "$HOME/Library/Developer/Xcode/DerivedData" -name "*.xcframework" 2>/dev/null || true); do
+            echo "Re-signing $fw"
+            codesign --force --deep --sign - "$fw" || true
+          done
+
+      - name: Build Xcode Archive
         run: |
           cd ios-swift
-          swift build -v
+          xcodebuild archive \
+            -project DASHit.xcodeproj \
+            -scheme DASHit \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/DASHit.xcarchive \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package Native IPA
+        run: |
+          cd ios-swift/build
+          mkdir -p Payload
+          cp -r DASHit.xcarchive/Products/Applications/DASHit.app Payload/
+          zip -r -q DASHit-Native.ipa Payload
+          ls -lh DASHit-Native.ipa
+
+      - name: Upload Native iOS IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DASHit-Native-Swift-IPA
+          path: ios-swift/build/DASHit-Native.ipa
+          if-no-files-found: error

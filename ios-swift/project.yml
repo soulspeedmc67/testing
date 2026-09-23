@@ -1,0 +1,51 @@
+name: DASHit
+options:
+  bundleIdPrefix: com.dashit
+  deploymentTarget:
+    iOS: "17.0"
+
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk.git
+    from: 10.28.0
+
+targets:
+  DASHit:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: DASHit
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseCore
+      - sdk: SwiftUI.framework
+      - sdk: MapKit.framework
+      - sdk: PassKit.framework
+      - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: AVFoundation.framework
+      - sdk: CoreLocation.framework
+    info:
+      path: DASHit/Info.plist
+      properties:
+        CFBundleDisplayName: DASHit
+        CFBundleIdentifier: com.dashit.app
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: true
+        NSLocationWhenInUseUsageDescription: "DASHit requires your delivery address location to deliver groceries in Anantnag and show live courier arrival on the map."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dashit.app
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+        SWIFT_VERSION: "5.9"
+        INFOPLIST_FILE: DASHit/Info.plist
