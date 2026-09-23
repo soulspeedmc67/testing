@@ -7,42 +7,66 @@ struct LiveTrackingMapView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm = LiveTrackingViewModel()
     @State private var showCancelConfirmation = false
-    
+
     var body: some View {
         ZStack(alignment: .bottom) {
             // Full-screen Native Apple Map
             Map(position: $vm.cameraPosition) {
-                // Customer Destination
+                // The way the rider comes: the road route, or a dashed line
+                // straight to the door when Apple Maps has none.
+                if let route = vm.route {
+                    MapPolyline(route.polyline)
+                        .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                } else if vm.fallbackPath.count == 2 {
+                    MapPolyline(coordinates: vm.fallbackPath)
+                        .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [6, 8]))
+                }
+
+                // Dark store the order is packed at.
+                Annotation("DASHit hub", coordinate: DeliveryEta.hub) {
+                    Image(systemName: "storefront.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(Color.midnight))
+                        .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+                        .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+                }
+
+                // Customer destination
                 if let dest = vm.activeOrder?.deliveryAddress.coordinate {
-                    Annotation("Delivery Address", coordinate: dest) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.brandOrange.opacity(0.3))
-                                .frame(width: 48, height: 48)
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.brandAccent)
-                        }
+                    Annotation("Delivery address", coordinate: dest) {
+                        Image(systemName: "house.fill")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 34, height: 34)
+                            .background(Circle().fill(Color.brandOrange))
+                            .overlay(Circle().strokeBorder(Color.white, lineWidth: 2.5))
+                            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
                     }
                 }
-                
-                // Live Rider Scooter
+
+                // Live rider
                 if let rider = vm.riderLocation?.coordinate {
-                    Annotation("Delivery Partner", coordinate: rider) {
+                    Annotation("Delivery partner", coordinate: rider, anchor: .center) {
                         ZStack {
                             Circle()
-                                .fill(Color.black)
+                                .fill(Color.brandOrange.opacity(0.22))
+                                .frame(width: 56, height: 56)
+                            Circle()
+                                .fill(Color.trackerCard)
                                 .frame(width: 40, height: 40)
-                                .shadow(radius: 6)
+                                .overlay(Circle().strokeBorder(Color.brandOrange, lineWidth: 2.5))
                             Image(systemName: "scooter")
-                                .font(.system(size: 20))
-                                .foregroundColor(.brandAccent)
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
                         }
+                        .shadow(color: .black.opacity(0.3), radius: 6, x: 0, y: 3)
                     }
                 }
             }
             .ignoresSafeArea()
-            
+
             // Top Nav & 60s Modify Window Badge
             VStack {
                 HStack {
@@ -54,9 +78,9 @@ struct LiveTrackingMapView: View {
                             .background(Color.black.opacity(0.7))
                             .clipShape(Circle())
                     }
-                    
+
                     Spacer()
-                    
+
                     // 60-Second Order Modification / Cancellation Pill
                     if vm.isModificationWindowActive {
                         HStack(spacing: 6) {
@@ -74,10 +98,10 @@ struct LiveTrackingMapView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                
+
                 Spacer()
             }
-            
+
             // Bottom Order Tracking Card
             if let order = vm.activeOrder {
                 VStack(spacing: 14) {
@@ -91,28 +115,36 @@ struct LiveTrackingMapView: View {
                                 .foregroundColor(.white)
                                 .lineLimit(1)
                         }
-                        
+
                         Spacer()
-                        
+
                         if !order.status.stage.isFinished {
-                            Text("ETA \(order.etaMinutes ?? 8) MINS")
+                            Text("ETA \(vm.riderLocation?.etaMinutes ?? order.etaMinutes ?? 8) MINS")
                                 .font(.dashitHeadline)
                                 .foregroundColor(.brandAccent)
+                                .contentTransition(.numericText())
                         }
                     }
-                    
-                    OrderProgressRail(stage: order.status.stage)
+
+                    if order.status.stage == .onTheWay, let line = vm.riderLocation?.statusText ?? vm.riderLocation?.distanceFormatted {
+                        Text(line)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Color.white.opacity(0.75))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    OrderProgressRail(stage: order.status.stage, progress: order.status.stage.progress(live: vm.riderLocation?.progress))
 
                     Rectangle()
-                        .fill(Color.hairline)
+                        .fill(Color.white.opacity(0.1))
                         .frame(height: 1)
-                    
+
                     // Items Summary
                     HStack {
                         let units = order.items.reduce(0) { $0 + $1.qty }
                         Text("\(units) item\(units == 1 ? "" : "s") • \(CurrencyFormatter.format(order.grandTotal))")
                             .font(.dashitCaption)
-                            .foregroundColor(.textMuted)
+                            .foregroundColor(Color.white.opacity(0.6))
                         Spacer()
                         if vm.isModificationWindowActive {
                             Button("Cancel Order") {
@@ -124,22 +156,22 @@ struct LiveTrackingMapView: View {
                     }
                 }
                 .padding(16)
-                .background(Color.surfaceRaised)
-                .cornerRadius(20)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.hairline, lineWidth: 1)
-                )
+                // The web tracker's plain black panel in both themes; the
+                // progress rail is drawn for a dark surface.
+                .background(Color.trackerCard, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.white.opacity(0.1), lineWidth: 1))
+                .environment(\.colorScheme, .dark)
+                .shadow(color: .floatingShadow, radius: 18, x: 0, y: 8)
                 .padding(.horizontal, 12)
                 .padding(.bottom, 20)
             } else {
                 // Never leave a bare map: say what is happening until the order loads.
                 HStack(spacing: 12) {
                     ProgressView()
-                        .tint(.white)
+                        .tint(.brandOrange)
                     Text("Loading your order…")
                         .font(.dashitBodyBold)
-                        .foregroundColor(.white)
+                        .foregroundColor(.textPrimary)
                     Spacer()
                 }
                 .padding(16)

@@ -10,6 +10,8 @@ public struct CartItem: Codable, Identifiable, Hashable {
     public let img: String
     public let cat: String
     public var qty: Int
+    /// Stock on hand when the line was added; the stepper stops here.
+    public var maxQuantity: Int?
     
     public init(
         id: String,
@@ -20,7 +22,8 @@ public struct CartItem: Codable, Identifiable, Hashable {
         originalPrice: Double? = nil,
         img: String,
         cat: String,
-        qty: Int = 1
+        qty: Int = 1,
+        maxQuantity: Int? = nil
     ) {
         self.id = id
         self.productId = productId
@@ -31,6 +34,7 @@ public struct CartItem: Codable, Identifiable, Hashable {
         self.img = img
         self.cat = cat
         self.qty = qty
+        self.maxQuantity = maxQuantity
     }
 }
 
@@ -38,7 +42,7 @@ public struct CartItem: Codable, Identifiable, Hashable {
 /// web wrote, where ids can be numbers and quantity may be `quantity`.
 extension CartItem {
     private enum DecodingKeys: String, CodingKey {
-        case id, productId, barcode, name, unit, price, originalPrice, mrp, img, image, cat, category, qty, quantity
+        case id, productId, barcode, name, unit, price, originalPrice, mrp, img, image, cat, category, qty, quantity, maxQuantity
     }
     
     public init(from decoder: Decoder) throws {
@@ -53,7 +57,8 @@ extension CartItem {
             originalPrice: c.flexibleDouble(.originalPrice) ?? c.flexibleDouble(.mrp),
             img: c.flexibleString(.img) ?? c.flexibleString(.image) ?? "",
             cat: c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "",
-            qty: c.flexibleInt(.qty) ?? c.flexibleInt(.quantity) ?? 1
+            qty: c.flexibleInt(.qty) ?? c.flexibleInt(.quantity) ?? 1,
+            maxQuantity: c.flexibleInt(.maxQuantity)
         )
     }
 }

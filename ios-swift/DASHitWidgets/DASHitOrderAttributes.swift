@@ -69,14 +69,24 @@ public enum DeliveryStage: String, Codable, Hashable {
         }
     }
 
+    /// Where the rail sits for each stage — the web's ORDER_PROGRESS_FLOOR
+    /// (12 / 34 / 58 / 100). While riding, the driver app's distance-based
+    /// progress takes over (see `progress(live:)`).
     public var progress: Double {
         switch self {
-        case .placed: return 0.25
-        case .packing: return 0.5
-        case .onTheWay: return 0.75
+        case .placed: return 0.12
+        case .packing: return 0.34
+        case .onTheWay: return 0.58
         case .delivered: return 1.0
         case .cancelled: return 0.0
         }
+    }
+    
+    /// Stage floor, raised by the rider's live 0–100 progress when on the way;
+    /// never runs backwards below the floor.
+    public func progress(live: Double?) -> Double {
+        guard self == .onTheWay, let live, live > 0 else { return progress }
+        return min(0.97, max(progress, live / 100))
     }
 
     public var isFinished: Bool { self == .delivered || self == .cancelled }

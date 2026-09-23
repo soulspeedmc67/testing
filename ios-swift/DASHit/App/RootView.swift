@@ -10,6 +10,9 @@ struct RootView: View {
     @State private var isLiveTrackingOpen = false
     @State private var isTrackerCollapsed = false
     @State private var isKeyboardVisible = false
+    @State private var isProfileOpen = false
+    /// "light", "dark" or "system", same values as the web's `dashit_theme`.
+    @AppStorage("dashit_theme") private var themePreference = "system"
 
     @ObservedObject private var activeOrder = ActiveOrderStore.shared
     @ObservedObject private var cart = CartViewModel.shared
@@ -25,8 +28,8 @@ struct RootView: View {
                 }
             }
         }
-        // The tab bar insets every screen's safe area, so scroll views and the
-        // floating cart pill stack above it and above the home indicator.
+        // The floating tab bar insets every screen's safe area: content scrolls
+        // beneath it and comes to rest above it, and the cart pill stacks on top.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !isKeyboardVisible {
                 CustomTabBar(selectedTab: tabSelection)
@@ -40,12 +43,20 @@ struct RootView: View {
             collapsedTracker
         }
         .background(Color.surface.ignoresSafeArea())
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(colorScheme)
         .onAppear {
             activeOrder.refresh()
             #if DEBUG
+            if let raw = ScreenshotHooks.initialTab, let tab = TabItem(rawValue: raw) {
+                tabSelection.wrappedValue = tab
+            }
             if ScreenshotHooks.demoOrder {
                 activeOrder.showDemoOrder()
+                if ScreenshotHooks.openTracking {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        isLiveTrackingOpen = true
+                    }
+                }
             }
             #endif
         }
@@ -58,8 +69,8 @@ struct RootView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             withAnimation(.dashitSnappy) { isKeyboardVisible = false }
         }
-        // Presented here rather than from a storefront so the home and
-        // categories tabs, which are both storefronts, never race to show it.
+        // Presented here rather than from a tab so the home and categories
+        // screens, which both show the cart pill, never race to open it.
         .sheet(isPresented: $cart.isCartSheetPresented, onDismiss: {
             // Presenting while the sheets are still animating away is dropped
             // by UIKit, so tracking opens from here, after the dismissal.
@@ -70,6 +81,10 @@ struct RootView: View {
         }) {
             CartSheetView()
                 .dashitSheet([.fraction(0.85), .large])
+        }
+        .sheet(isPresented: $isProfileOpen) {
+            ProfileView()
+                .dashitSheet([.large])
         }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
             if let order = activeOrder.order {
@@ -91,12 +106,12 @@ struct RootView: View {
     @ViewBuilder
     private func screen(for tab: TabItem) -> some View {
         switch tab {
-        case .home, .categories:
-            StorefrontHomeView(onOpenProfile: { tabSelection.wrappedValue = .profile })
-        case .orders:
-            OrdersListView()
-        case .profile:
-            ProfileView()
+        case .home:
+            StorefrontHomeView(onOpenProfile: { isProfileOpen = true })
+        case .orderAgain:
+            OrdersListView(onOpenProfile: { isProfileOpen = true })
+        case .categories:
+            CategoriesView()
         }
     }
 
@@ -107,6 +122,7 @@ struct RootView: View {
         if let order = activeOrder.order, !isTrackerCollapsed, !isKeyboardVisible {
             LiveOrderFloatingTrackerView(
                 order: order,
+                tracking: activeOrder.liveTracking,
                 onOpen: { isLiveTrackingOpen = true },
                 onClose: {
                     if order.status.stage.isFinished {
@@ -118,11 +134,16 @@ struct RootView: View {
             )
             .padding(.top, 6)
             .background(alignment: .top) {
-                LinearGradient(
-                    colors: [Color.surface, Color.surface.opacity(0)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                // Solid behind the card (it covers the header anyway), fading out just below it.
+                VStack(spacing: 0) {
+                    Color.surface
+                    LinearGradient(
+                        colors: [Color.surface, Color.surface.opacity(0)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 24)
+                }
                 .padding(.bottom, -24)
                 .ignoresSafeArea(edges: .top)
                 .allowsHitTesting(false)
@@ -138,14 +159,22 @@ struct RootView: View {
                 withAnimation(.dashitSpring) { isTrackerCollapsed = false }
             }
             .padding(.trailing, 16)
-            .padding(.bottom, CustomTabBar.barHeight + 12 + cartDockHeight)
+            .padding(.bottom, CustomTabBar.dockHeight + 12 + cartDockHeight)
             .transition(.scale(scale: 0.6).combined(with: .opacity))
         }
     }
 
-    /// Room for the storefront's floating cart pill, so the two never overlap.
+    /// Room for the floating cart pill, so the two never overlap.
     private var cartDockHeight: CGFloat {
-        let storefrontVisible = selectedTab == .home || selectedTab == .categories
-        return storefrontVisible && !cart.items.isEmpty ? 66 : 0
+        let showsCartPill = selectedTab == .home || selectedTab == .categories
+        return showsCartPill && !cart.items.isEmpty ? 66 : 0
+    }
+
+    private var colorScheme: ColorScheme? {
+        switch themePreference {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
     }
 }

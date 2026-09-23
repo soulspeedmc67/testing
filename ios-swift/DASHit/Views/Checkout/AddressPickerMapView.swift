@@ -1,128 +1,285 @@
 import SwiftUI
 import MapKit
+import Combine
 
+/// Drop-a-pin address picker. The pin stays fixed in the middle of the map and
+/// the map moves under it; when the map settles, the spot is reverse-geocoded
+/// and checked against the 5 km delivery radius, so the saved address carries
+/// the real coordinates the rider navigates to.
 struct AddressPickerMapView: View {
     @Environment(\.dismiss) private var dismiss
-    @State private var cameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 33.7311, longitude: 75.1487), // Anantnag center
-            span: MKCoordinateSpan(latitudeDelta: 0.008, longitudeDelta: 0.008)
-        )
-    )
-    @State private var houseNumber = ""
-    @State private var landmark = ""
-    @State private var selectedNickname = "Home"
-    @State private var reverseGeocodedAddress = "Court Road, Lal Chowk, Anantnag"
-    
+    @StateObject private var locator = LocationProvider()
+
+    @State private var cameraPosition: MapCameraPosition
+    @State private var pinCoordinate: CLLocationCoordinate2D
+    @State private var isMoving = false
+    @State private var addressLine = ""
+    @State private var isResolving = false
+    @State private var geocodeTask: Task<Void, Never>?
+
+    @State private var houseNumber: String
+    @State private var landmark: String
+    @State private var selectedNickname: String
+
+    init() {
+        let saved = LocalStorage.shared.loadAddress()
+        let start = saved?.coordinate ?? DeliveryEta.hub
+        _pinCoordinate = State(initialValue: start)
+        _cameraPosition = State(initialValue: .region(
+            MKCoordinateRegion(center: start, span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006))
+        ))
+        _addressLine = State(initialValue: saved?.street ?? "")
+        _houseNumber = State(initialValue: saved?.houseNumber ?? "")
+        _landmark = State(initialValue: saved?.landmark ?? "")
+        _selectedNickname = State(initialValue: saved?.nickname ?? "Home")
+    }
+
+    private var quote: DeliveryEta.Quote { DeliveryEta.quote(for: pinCoordinate) }
+
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                // Native Apple Map
-                Map(position: $cameraPosition) {
-                    Annotation("Delivery Pin", coordinate: CLLocationCoordinate2D(latitude: 33.7311, longitude: 75.1487)) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.brandOrange.opacity(0.25))
-                                .frame(width: 44, height: 44)
-                            Image(systemName: "mappin.circle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.brandAccent)
-                        }
-                    }
-                }
-                .ignoresSafeArea()
-                
-                // Bottom Form Card
-                VStack(spacing: 12) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Select Delivery Location")
-                                .font(.dashitTitle)
-                                .foregroundColor(.white)
-                            Text(reverseGeocodedAddress)
-                                .font(.dashitCaption)
-                                .foregroundColor(.textMuted)
-                        }
-                        Spacer()
-                    }
-                    
-                    // Address Details
-                    TextField("House / Flat / Floor No.", text: $houseNumber)
-                        .font(.dashitBody)
-                        .padding(12)
-                        .background(Color.surfaceMuted)
-                        .cornerRadius(10)
-                        .foregroundColor(.white)
-                    
-                    TextField("Landmark (e.g. Near Degree College)", text: $landmark)
-                        .font(.dashitBody)
-                        .padding(12)
-                        .background(Color.surfaceMuted)
-                        .cornerRadius(10)
-                        .foregroundColor(.white)
-                    
-                    // Tag selector (Home, Work, Other)
-                    HStack(spacing: 10) {
-                        ForEach(["Home", "Work", "Other"], id: \.self) { tag in
-                            Button(action: {
-                                selectedNickname = tag
-                                HapticsManager.shared.selection()
-                            }) {
-                                Text(tag)
-                                    .font(.dashitCaptionBold)
-                                    .foregroundColor(selectedNickname == tag ? .white : .textSecondary)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(selectedNickname == tag ? Color.brandOrange : Color.surfaceMuted)
-                                    .cornerRadius(8)
-                            }
-                        }
-                        Spacer()
-                    }
-                    
-                    // Save CTA
-                    Button(action: {
-                        let newAddress = DeliveryAddress(
-                            nickname: selectedNickname,
-                            street: reverseGeocodedAddress,
-                            houseNumber: houseNumber,
-                            landmark: landmark,
-                            city: "Anantnag",
-                            pincode: "192101",
-                            latitude: 33.7311,
-                            longitude: 75.1487
-                        )
-                        LocalStorage.shared.saveAddress(newAddress)
-                        HapticsManager.shared.success()
-                        dismiss()
-                    }) {
-                        Text("Confirm Delivery Location")
-                            .font(.dashitBodyBold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.brandOrange)
-                            .cornerRadius(12)
-                    }
-                }
-                .padding(16)
-                .background(Color.surfaceRaised)
-                .cornerRadius(20)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(Color.hairline, lineWidth: 1)
-                )
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+            VStack(spacing: 0) {
+                map
+                form
             }
-            .navigationTitle("Pin Your Address")
+            .background(Color.surface.ignoresSafeArea())
+            .navigationTitle("Pin your address")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.surface, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(.textMuted)
                 }
             }
+            .onAppear {
+                if addressLine.isEmpty {
+                    resolveAddress(for: pinCoordinate)
+                }
+            }
+            .onReceive(locator.$lastFix.compactMap { $0 }) { coordinate in
+                withAnimation(.dashitSpring) {
+                    cameraPosition = .region(
+                        MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004))
+                    )
+                }
+            }
         }
+    }
+
+    // MARK: - Map with the fixed centre pin
+
+    private var map: some View {
+        Map(position: $cameraPosition) {
+            UserAnnotation()
+            Annotation("DASHit hub", coordinate: DeliveryEta.hub) {
+                Image(systemName: "storefront.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Color.midnight))
+                    .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+            }
+        }
+        .mapControls {
+            MapCompass()
+        }
+        .onMapCameraChange(frequency: .continuous) { _ in
+            if !isMoving {
+                withAnimation(.dashitSnappy) { isMoving = true }
+            }
+        }
+        .onMapCameraChange(frequency: .onEnd) { context in
+            withAnimation(.dashitSpring) { isMoving = false }
+            pinCoordinate = context.region.center
+            resolveAddress(for: context.region.center)
+        }
+        .overlay {
+            centrePin
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                HapticsManager.shared.light()
+                locator.requestCurrentLocation()
+            } label: {
+                Group {
+                    if locator.isLocating {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.brandAccent)
+                    }
+                }
+                .frame(width: 44, height: 44)
+                .background(Color.surfaceRaised, in: Circle())
+                .overlay(Circle().strokeBorder(Color.hairline, lineWidth: 1))
+                .shadow(color: .floatingShadow, radius: 10, x: 0, y: 4)
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.9))
+            .padding(14)
+            .accessibilityLabel("Use my current location")
+        }
+    }
+
+    /// Lifts while the map moves and drops back when it settles.
+    private var centrePin: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                Circle()
+                    .fill(Color.brandOrange)
+                    .frame(width: 34, height: 34)
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 12, height: 12)
+            }
+            Rectangle()
+                .fill(Color.brandOrange)
+                .frame(width: 3, height: 16)
+        }
+        .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+        .offset(y: isMoving ? -14 : 0)
+        // Tip of the needle on the map centre.
+        .padding(.bottom, 50)
+        .overlay(alignment: .bottom) {
+            Ellipse()
+                .fill(Color.black.opacity(isMoving ? 0.12 : 0.28))
+                .frame(width: isMoving ? 10 : 14, height: 5)
+                .padding(.bottom, 48)
+        }
+    }
+
+    // MARK: - Form
+
+    private var form: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "mappin.and.ellipse")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.brandAccent)
+                    .padding(.top, 2)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(isMoving || isResolving ? "Locating…" : (addressLine.isEmpty ? "Move the map to your door" : addressLine))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(2)
+                    serviceability
+                }
+                Spacer(minLength: 0)
+            }
+
+            if locator.isDenied {
+                Text("Location access is off. Allow it in Settings, or move the map to your door.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.textMuted)
+            }
+
+            field("House / flat / floor", text: $houseNumber)
+            field("Landmark (e.g. near Degree College)", text: $landmark)
+
+            HStack(spacing: 8) {
+                ForEach(["Home", "Work", "Other"], id: \.self) { tag in
+                    let isSelected = selectedNickname == tag
+                    Button {
+                        selectedNickname = tag
+                        HapticsManager.shared.selection()
+                    } label: {
+                        Text(tag)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(isSelected ? .white : .textSecondary)
+                            .padding(.horizontal, 16)
+                            .frame(height: 34)
+                            .background(isSelected ? Color.brandOrange : Color.surfaceMuted, in: Capsule())
+                    }
+                    .buttonStyle(.pressable)
+                }
+                Spacer()
+            }
+
+            Button(action: save) {
+                Text(quote.isDeliverable ? "Confirm location" : "Outside our delivery area")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(canSave ? .white : .textFaint)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(canSave ? Color.brandOrange : Color.surfaceMuted, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.pressable)
+            .disabled(!canSave)
+        }
+        .padding(16)
+        .background(Color.surface)
+        .animation(.dashitSpring, value: quote)
+    }
+
+    @ViewBuilder
+    private var serviceability: some View {
+        if isMoving {
+            Text(" ")
+                .font(.system(size: 12))
+        } else if quote.isDeliverable, let eta = quote.etaMinutes {
+            Text("Delivery in \(eta) minutes · \(quote.distanceText)")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.positive)
+        } else {
+            Text("\(quote.distanceText) from our hub — we deliver within 5 km")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.danger)
+        }
+    }
+
+    private func field(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField("", text: text, prompt: Text(placeholder).foregroundColor(.textFaint))
+            .font(.system(size: 15))
+            .foregroundColor(.textPrimary)
+            .tint(.brandOrange)
+            .padding(.horizontal, 12)
+            .frame(height: 46)
+            .background(Color.surfaceMuted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var canSave: Bool {
+        quote.isDeliverable && !isMoving && !isResolving
+    }
+
+    // MARK: - Actions
+
+    private func resolveAddress(for coordinate: CLLocationCoordinate2D) {
+        geocodeTask?.cancel()
+        isResolving = true
+        geocodeTask = Task {
+            // Settle first so a flick across town geocodes once, not per frame.
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let placemark = try? await CLGeocoder().reverseGeocodeLocation(location).first
+            guard !Task.isCancelled else { return }
+            let parts = [
+                [placemark?.subThoroughfare, placemark?.thoroughfare].compactMap { $0 }.joined(separator: " "),
+                placemark?.subLocality ?? "",
+                placemark?.locality ?? ""
+            ]
+            let line = parts.filter { !$0.isEmpty }.joined(separator: ", ")
+            addressLine = line.isEmpty ? placemark?.name ?? "Pinned location" : line
+            isResolving = false
+        }
+    }
+
+    private func save() {
+        guard canSave else { return }
+        let address = DeliveryAddress(
+            nickname: selectedNickname,
+            street: addressLine,
+            houseNumber: houseNumber.isEmpty ? nil : houseNumber,
+            landmark: landmark.isEmpty ? nil : landmark,
+            city: "Anantnag",
+            pincode: "192101",
+            latitude: pinCoordinate.latitude,
+            longitude: pinCoordinate.longitude
+        )
+        LocalStorage.shared.saveAddress(address)
+        HapticsManager.shared.success()
+        dismiss()
     }
 }

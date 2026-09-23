@@ -55,9 +55,9 @@ final class LiveActivityManager {
 
     /// Pushes the latest order state, and ends the activity once the order is
     /// delivered or cancelled (leaving the final state up for 15 seconds).
-    func sync(with order: Order) {
+    func sync(with order: Order, tracking: DriverLiveTracking? = nil) {
         guard let activity = activity(for: order.id) else { return }
-        let state = contentState(for: order)
+        let state = contentState(for: order, tracking: tracking)
 
         if order.status.stage.isFinished {
             currentActivity = nil
@@ -107,8 +107,9 @@ final class LiveActivityManager {
         return running
     }
 
-    private func contentState(for order: Order) -> DASHitOrderAttributes.ContentState {
-        let minutes = max(order.etaMinutes ?? 8, 0)
+    private func contentState(for order: Order, tracking: DriverLiveTracking? = nil) -> DASHitOrderAttributes.ContentState {
+        // The rider's live ETA (from the driver app) wins over the checkout estimate.
+        let minutes = max(tracking?.etaMinutes ?? order.etaMinutes ?? 8, 0)
         let arrival: Date
         if let last = lastEta, last.orderId == order.id {
             arrival = last.minutes == minutes
@@ -123,7 +124,7 @@ final class LiveActivityManager {
             status: order.status.rawValue,
             etaMinutes: minutes,
             driverName: order.driverName,
-            progress: order.status.progress,
+            progress: order.status.stage.progress(live: tracking?.progress),
             estimatedArrival: arrival
         )
     }

@@ -22,7 +22,7 @@ struct CheckoutView: View {
                                     .foregroundColor(.brandAccent)
                                 Text("Delivering to \(vm.selectedAddress.nickname)")
                                     .font(.dashitBodyBold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.textPrimary)
                                 Spacer()
                                 Button("Change") {
                                     isAddressSheetOpen = true
@@ -49,10 +49,12 @@ struct CheckoutView: View {
                                 .font(.system(size: 24))
                                 .foregroundColor(.caution)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Delivery in 8 Minutes")
+                                Text(deliveryHeadline)
                                     .font(.dashitBodyBold)
-                                    .foregroundColor(.white)
-                                Text("Fulfilled from DASHit Anantnag Dark Store")
+                                    .foregroundColor(vm.deliveryQuote.isDeliverable ? .textPrimary : .danger)
+                                Text(vm.deliveryQuote.isDeliverable
+                                     ? "\(vm.deliveryQuote.distanceText) · Fulfilled from DASHit Anantnag Dark Store"
+                                     : "\(vm.deliveryQuote.distanceText) · We deliver within 5 km of our Anantnag hub")
                                     .font(.dashitMicro)
                                     .foregroundColor(.textMuted)
                             }
@@ -70,7 +72,7 @@ struct CheckoutView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Payment Method")
                                 .font(.dashitBodyBold)
-                                .foregroundColor(.white)
+                                .foregroundColor(.textPrimary)
                             
                             // Cash On Delivery
                             Button(action: {
@@ -82,7 +84,7 @@ struct CheckoutView: View {
                                         .foregroundColor(.brandAccent)
                                     Text("Cash on Delivery (Pay at Doorstep)")
                                         .font(.dashitBody)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(.textPrimary)
                                     Spacer()
                                     Image(systemName: vm.paymentMethod == "cod" ? "checkmark.circle.fill" : "circle")
                                         .foregroundColor(vm.paymentMethod == "cod" ? .brandOrange : .gray)
@@ -99,10 +101,10 @@ struct CheckoutView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "apple.logo")
-                                        .foregroundColor(.white)
+                                        .foregroundColor(.textPrimary)
                                     Text("Apple Pay")
                                         .font(.dashitBody)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(.textPrimary)
                                     Spacer()
                                     Image(systemName: vm.paymentMethod == "apple_pay" ? "checkmark.circle.fill" : "circle")
                                         .foregroundColor(vm.paymentMethod == "apple_pay" ? .brandOrange : .gray)
@@ -125,11 +127,11 @@ struct CheckoutView: View {
                             HStack {
                                 Text("Order Total")
                                     .font(.dashitBodyBold)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.textPrimary)
                                 Spacer()
                                 Text(CurrencyFormatter.format(cart.bill.grandTotal))
                                     .font(.dashitHeadline)
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.textPrimary)
                             }
                         }
                         .padding(14)
@@ -205,7 +207,9 @@ struct CheckoutView: View {
                         .foregroundColor(.brandAccent)
                 }
             }
-            .sheet(isPresented: $isAddressSheetOpen) {
+            .sheet(isPresented: $isAddressSheetOpen, onDismiss: {
+                vm.reloadSavedAddress()
+            }) {
                 AddressPickerMapView()
             }
             // Signed-out shoppers get the phone sign-in, then return here.
@@ -219,5 +223,12 @@ struct CheckoutView: View {
                 }
             }
         }
+    }
+
+    private var deliveryHeadline: String {
+        guard let eta = StoreStatusStore.shared.etaMinutes(for: vm.deliveryQuote) else {
+            return "Outside our delivery area"
+        }
+        return "Delivery in \(eta) minutes"
     }
 }

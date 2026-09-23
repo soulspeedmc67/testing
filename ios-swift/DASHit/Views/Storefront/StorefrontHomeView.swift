@@ -7,6 +7,7 @@ struct StorefrontHomeView: View {
 
     @StateObject private var vm = StorefrontViewModel()
     @ObservedObject private var cart = CartViewModel.shared
+    @ObservedObject private var storeStatus = StoreStatusStore.shared
     @State private var detailProduct: Product? = nil
     @State private var ageGateProduct: Product? = nil
     @State private var isAddressPickerOpen = false
@@ -111,9 +112,10 @@ struct StorefrontHomeView: View {
                         .font(.system(size: 11, weight: .heavy))
                         .tracking(1.2)
                         .foregroundColor(.textMuted)
-                    Text("8 minutes")
+                    Text(headerEta)
                         .font(.system(size: 32, weight: .black))
                         .foregroundColor(.textPrimary)
+                        .contentTransition(.numericText())
                 }
 
                 Spacer(minLength: 12)
@@ -159,10 +161,41 @@ struct StorefrontHomeView: View {
             .buttonStyle(.pressable)
             .padding(.top, 6)
             .accessibilityLabel("Delivery address. Change")
+
+            if !storeStatus.isOpen {
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "moon.zzz.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.caution)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Store closed")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                        Text(storeStatus.closeReason)
+                            .font(.system(size: 12))
+                            .foregroundColor(.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                .padding(.top, 12)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)
         .padding(.bottom, 14)
+    }
+
+    /// "12 minutes" from the web ETA model for the saved address; the web's
+    /// fixed 18 under high demand; a plain notice outside the 5 km area.
+    private var headerEta: String {
+        let quote = DeliveryEta.quote(for: address?.coordinate ?? DeliveryEta.hub)
+        guard let eta = storeStatus.etaMinutes(for: quote) else { return "Not here yet" }
+        return "\(eta) minutes"
     }
 
     private var addressLine: String {
@@ -261,7 +294,8 @@ struct StorefrontHomeView: View {
     private func applyScreenshotHooks(_ proxy: ScrollViewProxy) async {
         guard ScreenshotHooks.scrollTarget != nil
                 || ScreenshotHooks.openProductId != nil
-                || ScreenshotHooks.openCart else { return }
+                || ScreenshotHooks.openCart
+                || ScreenshotHooks.openAddressPicker else { return }
         try? await Task.sleep(for: .seconds(1.5))
         if let target = ScreenshotHooks.scrollTarget {
             proxy.scrollTo(target, anchor: .top)
@@ -271,6 +305,9 @@ struct StorefrontHomeView: View {
         }
         if ScreenshotHooks.openCart {
             cart.isCartSheetPresented = true
+        }
+        if ScreenshotHooks.openAddressPicker {
+            isAddressPickerOpen = true
         }
     }
     #endif

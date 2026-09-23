@@ -9,11 +9,14 @@ final class ActiveOrderStore: ObservableObject {
     static let shared = ActiveOrderStore()
 
     @Published private(set) var order: Order?
+    /// The rider's live position, ETA and progress for the active order.
+    @Published private(set) var liveTracking: DriverLiveTracking?
     /// Set when checkout succeeds; RootView opens live tracking once the cart
     /// and checkout sheets have finished dismissing.
     @Published var pendingTrackingPresentation = false
 
     private var listener: ListenerRegistration?
+    private var trackingListener: ListenerRegistration?
     private var listeningOrderId: String?
 
     private init() {}
@@ -26,7 +29,7 @@ final class ActiveOrderStore: ObservableObject {
         pendingTrackingPresentation = true
         track(orderId: placed.id)
     }
-    
+
     /// Picks up the active order saved by checkout (also after a relaunch).
     func refresh() {
         track(orderId: LocalStorage.shared.loadActiveOrderId())
@@ -36,11 +39,24 @@ final class ActiveOrderStore: ObservableObject {
         guard orderId != listeningOrderId else { return }
         listener?.remove()
         listener = nil
+        trackingListener?.remove()
+        trackingListener = nil
+        liveTracking = nil
         listeningOrderId = orderId
 
         guard let orderId else {
             order = nil
             return
+        }
+
+        trackingListener = FirestoreService.shared.listenDriverTracking(orderId: orderId) { [weak self] tracking in
+            guard let self = self else { return }
+            withAnimation(.easeInOut(duration: 0.8)) {
+                self.liveTracking = tracking
+            }
+            if let order = self.order {
+                LiveActivityManager.shared.sync(with: order, tracking: tracking)
+            }
         }
 
         listener = FirestoreService.shared.listenOrder(orderId: orderId) { [weak self] order in
@@ -50,7 +66,7 @@ final class ActiveOrderStore: ObservableObject {
             withAnimation(.dashitSpring) {
                 self.order = order
             }
-            LiveActivityManager.shared.sync(with: order)
+            LiveActivityManager.shared.sync(with: order, tracking: self.liveTracking)
         }
     }
 
@@ -73,7 +89,7 @@ final class ActiveOrderStore: ObservableObject {
         )
     }
     #endif
-    
+
     /// Dismisses a delivered or cancelled order from the tracker.
     func retireFinishedOrder() {
         guard order?.status.stage.isFinished == true else { return }

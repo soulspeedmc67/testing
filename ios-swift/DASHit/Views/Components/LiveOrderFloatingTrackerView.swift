@@ -5,6 +5,7 @@ import SwiftUI
 /// tap × to tuck it into the corner button, or to dismiss a finished order.
 struct LiveOrderFloatingTrackerView: View {
     let order: Order
+    var tracking: DriverLiveTracking? = nil
     var onOpen: () -> Void
     var onClose: () -> Void
 
@@ -13,6 +14,15 @@ struct LiveOrderFloatingTrackerView: View {
     private var stage: DeliveryStage { order.status.stage }
     private var itemCount: Int { order.items.reduce(0) { $0 + $1.qty } }
     private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 26, style: .continuous) }
+
+    /// While riding, the driver app's own line ("Arriving in ~6 mins",
+    /// "Rider is dropping a nearby order first") beats the checkout estimate.
+    private var subtitle: String {
+        if stage == .onTheWay, let line = tracking?.statusText, !line.isEmpty {
+            return line
+        }
+        return stage.subtitle(etaMinutes: tracking?.etaMinutes ?? order.etaMinutes ?? 8, itemCount: itemCount)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -56,14 +66,14 @@ struct LiveOrderFloatingTrackerView: View {
                 Text("|")
                     .font(.system(size: 13, weight: .light))
                     .foregroundColor(.textFaint)
-                Text(stage.subtitle(etaMinutes: order.etaMinutes ?? 8, itemCount: itemCount))
+                Text(subtitle)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.textSecondary)
                     .lineLimit(1)
             }
             .padding(.top, 3)
 
-            OrderProgressRail(stage: stage)
+            OrderProgressRail(stage: stage, progress: stage.progress(live: tracking?.progress))
                 .padding(.top, 14)
         }
         .padding(.horizontal, 18)
@@ -71,6 +81,8 @@ struct LiveOrderFloatingTrackerView: View {
         .padding(.bottom, 18)
         .background(Color.trackerCard, in: cardShape)
         .overlay(cardShape.strokeBorder(Color.white.opacity(0.1), lineWidth: 1))
+        // Always the dark panel, so its text tokens resolve to their dark values.
+        .environment(\.colorScheme, .dark)
         .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 14)
         .contentShape(cardShape)
         .onTapGesture {
@@ -134,6 +146,7 @@ struct CollapsedOrderTrackerButton: View {
             }
             .frame(width: 56, height: 56)
             .overlay(Circle().strokeBorder(Color.white.opacity(0.1), lineWidth: 1))
+            .environment(\.colorScheme, .dark)
             .shadow(color: Color.black.opacity(0.45), radius: 14, x: 0, y: 8)
         }
         .buttonStyle(PressableButtonStyle(scale: 0.9))

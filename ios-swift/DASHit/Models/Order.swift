@@ -7,7 +7,7 @@ public enum OrderStatus: String, Codable, CaseIterable {
     case outForDelivery = "out_for_delivery"
     case delivered = "delivered"
     case cancelled = "cancelled"
-    
+
     /// Orders are also written by the web admin and driver consoles, which use
     /// free-form labels ("Packed", "On the way"). Map those instead of failing
     /// to decode the whole order.
@@ -15,7 +15,7 @@ public enum OrderStatus: String, Codable, CaseIterable {
         let raw = try decoder.singleValueContainer().decode(String.self)
         self = OrderStatus(rawValue: raw) ?? OrderStatus(stage: DeliveryStage(status: raw))
     }
-    
+
     public init(stage: DeliveryStage) {
         switch stage {
         case .placed: self = .placed
@@ -25,9 +25,9 @@ public enum OrderStatus: String, Codable, CaseIterable {
         case .cancelled: self = .cancelled
         }
     }
-    
+
     public var stage: DeliveryStage { DeliveryStage(status: rawValue) }
-    
+
     public var title: String {
         switch self {
         case .placed: return "Order Placed"
@@ -37,9 +37,9 @@ public enum OrderStatus: String, Codable, CaseIterable {
         case .cancelled: return "Order Cancelled"
         }
     }
-    
+
     public var progress: Double { stage.progress }
-    
+
     public var iconName: String {
         switch self {
         case .placed: return "checkmark.circle.fill"
@@ -51,15 +51,72 @@ public enum OrderStatus: String, Codable, CaseIterable {
     }
 }
 
-public struct DriverLiveTracking: Codable, Hashable {
+/// The rider's live position, fanned out by the driver app to
+/// `orders/{id}/tracking/live` (`pushDriverTelemetryToQueue` in `src/lib/db.js`):
+/// `latitude`, `longitude`, `heading`, `speed`, plus the live ETA, distance,
+/// status line and progress (0–100) the driver app computes for each drop.
+public struct DriverLiveTracking: Decodable, Hashable {
     public let lat: Double
     public let lng: Double
     public let heading: Double?
     public let speed: Double?
-    public let updatedAt: Double?
-    
+    public let etaMinutes: Int?
+    public let distanceFormatted: String?
+    public let statusText: String?
+    /// 0–100, driven by distance covered rather than time.
+    public let progress: Double?
+    public let stopsAhead: Int?
+
     public var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: lat, longitude: lng)
+    }
+
+    public init(
+        lat: Double,
+        lng: Double,
+        heading: Double? = nil,
+        speed: Double? = nil,
+        etaMinutes: Int? = nil,
+        distanceFormatted: String? = nil,
+        statusText: String? = nil,
+        progress: Double? = nil,
+        stopsAhead: Int? = nil
+    ) {
+        self.lat = lat
+        self.lng = lng
+        self.heading = heading
+        self.speed = speed
+        self.etaMinutes = etaMinutes
+        self.distanceFormatted = distanceFormatted
+        self.statusText = statusText
+        self.progress = progress
+        self.stopsAhead = stopsAhead
+    }
+
+    private enum Keys: String, CodingKey {
+        case lat, lng, latitude, longitude, heading, speed
+        case etaMinutes, distanceFormatted, statusText, progress, stopsAhead
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        guard let lat = c.flexibleDouble(.latitude) ?? c.flexibleDouble(.lat),
+              let lng = c.flexibleDouble(.longitude) ?? c.flexibleDouble(.lng),
+              lat != 0 || lng != 0 else {
+            throw DecodingError.keyNotFound(
+                Keys.latitude,
+                DecodingError.Context(codingPath: c.codingPath, debugDescription: "Tracking has no position")
+            )
+        }
+        self.lat = lat
+        self.lng = lng
+        heading = c.flexibleDouble(.heading)
+        speed = c.flexibleDouble(.speed)
+        etaMinutes = c.flexibleInt(.etaMinutes)
+        distanceFormatted = c.flexibleString(.distanceFormatted)
+        statusText = c.flexibleString(.statusText)
+        progress = c.flexibleDouble(.progress)
+        stopsAhead = c.flexibleInt(.stopsAhead)
     }
 }
 
@@ -81,7 +138,7 @@ public struct Order: Identifiable, Hashable {
     public var driverPhone: String?
     public var etaMinutes: Int?
     public var tracking: DriverLiveTracking?
-    
+
     public init(
         id: String,
         userId: String,
@@ -135,7 +192,7 @@ extension Order: Decodable {
         case paymentMethod, paymentStatus
         case driverId, driverName, driverPhone, etaMinutes, tracking
     }
-    
+
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         guard let orderId = c.flexibleString(.orderId) ?? c.flexibleString(.id) else {
@@ -144,11 +201,11 @@ extension Order: Decodable {
                 DecodingError.Context(codingPath: c.codingPath, debugDescription: "Order has no orderId or id")
             )
         }
-        
+
         let items = (try? c.decode([CartItem].self, forKey: .items)) ?? []
         let itemTotal = items.reduce(0.0) { $0 + $1.price * Double($1.qty) }
         let subtotal = c.flexibleDouble(.subtotal) ?? itemTotal
-        
+
         let address: DeliveryAddress
         if let saved = try? c.decode(DeliveryAddress.self, forKey: .deliveryAddress) {
             address = saved
@@ -157,9 +214,9 @@ extension Order: Decodable {
         } else {
             address = DeliveryAddress()
         }
-        
+
         let driverName = c.flexibleString(.driverName)
-        
+
         self.init(
             id: orderId,
             userId: c.flexibleString(.userId) ?? "",
@@ -194,11 +251,11 @@ private struct OrderLocation: Decodable {
     let alias: String?
     let houseNumber: String?
     let landmark: String?
-    
+
     private enum Keys: String, CodingKey {
         case address, lat, lng, latitude, longitude, alias, label, nickname, houseNumber, houseNo, landmark
     }
-    
+
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Keys.self)
         address = c.flexibleString(.address)
@@ -208,7 +265,7 @@ private struct OrderLocation: Decodable {
         houseNumber = c.flexibleString(.houseNumber) ?? c.flexibleString(.houseNo)
         landmark = c.flexibleString(.landmark)
     }
-    
+
     var deliveryAddress: DeliveryAddress {
         DeliveryAddress(
             nickname: alias ?? "Home",

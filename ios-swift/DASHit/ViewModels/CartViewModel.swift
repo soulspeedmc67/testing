@@ -69,9 +69,17 @@ final class CartViewModel: ObservableObject {
         let itemId = variant?.id ?? product.id
 
         if let index = items.firstIndex(where: { $0.id == itemId }) {
+            if let limit = product.stock ?? items[index].maxQuantity, items[index].qty >= limit {
+                HapticsManager.shared.warning()
+                return
+            }
             items[index].qty += 1
             HapticsManager.shared.tick()
         } else {
+            guard product.isAvailable else {
+                HapticsManager.shared.warning()
+                return
+            }
             let newItem = CartItem(
                 id: itemId,
                 productId: product.id,
@@ -81,7 +89,8 @@ final class CartViewModel: ObservableObject {
                 originalPrice: variant?.originalPrice ?? product.originalPrice,
                 img: product.img,
                 cat: product.cat,
-                qty: 1
+                qty: 1,
+                maxQuantity: product.stock
             )
             items.append(newItem)
             HapticsManager.shared.addToCart()
@@ -90,6 +99,10 @@ final class CartViewModel: ObservableObject {
 
     func increment(itemId: String) {
         guard let index = items.firstIndex(where: { $0.id == itemId }) else { return }
+        if let limit = items[index].maxQuantity, items[index].qty >= limit {
+            HapticsManager.shared.warning()
+            return
+        }
         items[index].qty += 1
         HapticsManager.shared.tick()
     }
@@ -120,6 +133,21 @@ final class CartViewModel: ObservableObject {
         }
     }
 
+    /// "Order again": puts a past order's lines back in the cart, merging with
+    /// anything already there.
+    func reorder(_ lines: [CartItem]) {
+        var updated = items
+        for line in lines where line.qty > 0 {
+            if let index = updated.firstIndex(where: { $0.id == line.id }) {
+                updated[index].qty += line.qty
+            } else {
+                updated.append(line)
+            }
+        }
+        items = updated
+        HapticsManager.shared.addToCart()
+    }
+    
     func applyCoupon(_ coupon: Coupon) {
         if bill.subtotal >= coupon.minOrder {
             self.appliedCoupon = coupon

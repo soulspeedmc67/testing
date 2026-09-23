@@ -44,6 +44,8 @@ public struct Product: Codable, Identifiable, Hashable {
     public let minAge: Int?
     public let inStock: Bool?
     public let nutrition: [NutritionFact]?
+    /// Units on hand, as the admin console maintains it; nil when not tracked.
+    public let stock: Int?
     
     public init(
         id: String,
@@ -62,7 +64,8 @@ public struct Product: Codable, Identifiable, Hashable {
         ageRestricted: Bool? = false,
         minAge: Int? = nil,
         inStock: Bool? = true,
-        nutrition: [NutritionFact]? = nil
+        nutrition: [NutritionFact]? = nil,
+        stock: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -81,12 +84,57 @@ public struct Product: Codable, Identifiable, Hashable {
         self.minAge = minAge
         self.inStock = inStock
         self.nutrition = nutrition
+        self.stock = stock
     }
     
-    public var isAvailable: Bool { inStock != false }
+    /// Out of stock when the admin marks it so or the stock count hits zero.
+    public var isAvailable: Bool { inStock != false && (stock ?? 1) > 0 }
     
     public var discountPercent: Int? {
         guard let original = originalPrice, original > price else { return nil }
         return Int(round(((original - price) / original) * 100))
+    }
+}
+
+// MARK: - Reading products the admin console wrote
+
+/// Web product documents use `image`/`category`/`mrp` as often as
+/// `img`/`cat`/`originalPrice`, store ids as numbers and track `stock`.
+extension Product {
+    private enum DecodingKeys: String, CodingKey {
+        case id, barcode, name, title, unit, weight, price, originalPrice, mrp
+        case rating, ratingCount, time, options, badge, img, image, imageUrl
+        case cat, category, variants, ageRestricted, minAge, inStock, nutrition, stock
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: DecodingKeys.self)
+        guard let id = c.flexibleString(.id) ?? c.flexibleString(.barcode),
+              let name = c.flexibleString(.name) ?? c.flexibleString(.title),
+              let price = c.flexibleDouble(.price) else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(codingPath: c.codingPath, debugDescription: "Product needs an id, a name and a price")
+            )
+        }
+        self.init(
+            id: id,
+            name: name,
+            unit: c.flexibleString(.unit) ?? c.flexibleString(.weight) ?? "",
+            price: price,
+            originalPrice: c.flexibleDouble(.originalPrice) ?? c.flexibleDouble(.mrp),
+            rating: c.flexibleString(.rating),
+            ratingCount: c.flexibleString(.ratingCount),
+            time: c.flexibleString(.time) ?? "8 mins",
+            options: c.flexibleString(.options),
+            badge: c.flexibleString(.badge),
+            img: c.flexibleString(.img) ?? c.flexibleString(.image) ?? c.flexibleString(.imageUrl) ?? "",
+            cat: c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "Other",
+            variants: try? c.decode([ProductVariant].self, forKey: .variants),
+            ageRestricted: (try? c.decode(Bool.self, forKey: .ageRestricted)) ?? false,
+            minAge: c.flexibleInt(.minAge),
+            inStock: try? c.decode(Bool.self, forKey: .inStock),
+            nutrition: try? c.decode([NutritionFact].self, forKey: .nutrition),
+            stock: c.flexibleInt(.stock)
+        )
     }
 }
