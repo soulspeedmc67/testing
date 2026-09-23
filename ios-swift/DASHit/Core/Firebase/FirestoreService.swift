@@ -58,10 +58,88 @@ final class FirestoreService {
     
     // MARK: - Orders & Live Tracking
     
-    func placeOrder(_ order: Order) async throws -> String {
-        let orderRef = db.collection("orders").document(order.id)
-        try orderRef.setData(from: order)
-        return order.id
+    /// Creates the order in the web app's document shape and waits for the
+    /// server to accept it. `firestore.rules` only lets a customer create an
+    /// order whose status is "Placed", whose createdAt is the server clock and
+    /// whose driverId is null; anything else is rejected, so this mirrors
+    /// `createOrder` in `src/lib/db.js` field for field.
+    func createOrder(_ order: Order, customer: UserProfile, couponCode: String?) async throws {
+        let placedAt = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: order.createdAt))
+        let dateLabel = Date(timeIntervalSince1970: order.createdAt)
+            .formatted(.dateTime.day().month(.abbreviated).hour().minute())
+        let savings = order.items.reduce(0.0) { sum, item in
+            sum + max(0, (item.originalPrice ?? item.price) - item.price) * Double(item.qty)
+        } + order.discount
+        let address = order.deliveryAddress
+        let location: [String: Any] = [
+            "address": address.formattedSummary,
+            "lat": address.latitude,
+            "lng": address.longitude,
+            "alias": address.nickname
+        ]
+        let items: [[String: Any]] = order.items.map { item in
+            var line: [String: Any] = [
+                "id": item.id,
+                "productId": item.productId,
+                "name": item.name,
+                "unit": item.unit,
+                "price": item.price,
+                "img": item.img,
+                "cat": item.cat,
+                "qty": item.qty
+            ]
+            if let original = item.originalPrice {
+                line["originalPrice"] = original
+            }
+            return line
+        }
+        
+        var payload: [String: Any] = [
+            "orderId": order.id,
+            "userId": order.userId,
+            "status": "Placed",
+            "driverId": NSNull(),
+            "driverName": "",
+            "statusHistory": [["status": "Placed", "at": placedAt]],
+            "createdAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp(),
+            "date": dateLabel,
+            "items": items,
+            "subtotal": order.subtotal,
+            "deliveryFee": order.deliveryFee,
+            "discount": order.discount,
+            "totalAmount": order.grandTotal,
+            "total": order.grandTotal,
+            "finalTotal": order.grandTotal,
+            "savings": savings,
+            "paymentMethod": order.paymentMethod,
+            "paymentStatus": order.paymentStatus,
+            "location": location,
+            "etaMinutes": order.etaMinutes ?? 8,
+            "otp": Int.random(in: 1000...9999),
+            "customerName": customer.name ?? "Customer",
+            "mobile": customer.mobile,
+            "email": customer.email ?? "",
+            "platform": "ios"
+        ]
+        if let couponCode {
+            payload["couponCode"] = couponCode
+        }
+        
+        let ref = db.collection("orders").document(order.id)
+        let document = payload
+        // Without a timeout an offline write would wait for the network forever.
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                try await ref.setData(document)
+            }
+            group.addTask {
+                try await Task.sleep(for: .seconds(15))
+                throw OrderWriteError.timedOut
+            }
+            _ = try await group.next()
+            group.cancelAll()
+        }
     }
     
     func listenOrder(orderId: String, completion: @escaping (Order?) -> Void) -> ListenerRegistration {
@@ -70,7 +148,8 @@ final class FirestoreService {
                 completion(nil)
                 return
             }
-            let order = try? snapshot.data(as: Order.self)
+            // .estimate fills the pending server createdAt while the write syncs.
+            let order = try? snapshot.data(as: Order.self, with: .estimate)
             completion(order)
         }
     }
@@ -84,7 +163,7 @@ final class FirestoreService {
                     completion([])
                     return
                 }
-                let orders: [Order] = documents.compactMap { try? $0.data(as: Order.self) }
+                let orders: [Order] = documents.compactMap { try? $0.data(as: Order.self, with: .estimate) }
                 completion(orders)
             }
     }
@@ -103,12 +182,17 @@ final class FirestoreService {
             }
     }
     
+    /// The rules let a customer cancel only a "Placed" order and change only
+    /// status, statusHistory, updatedAt and cancelReason.
     func cancelOrder(orderId: String, reason: String = "Customer cancelled") async throws {
         let orderRef = db.collection("orders").document(orderId)
         try await orderRef.updateData([
-            "status": OrderStatus.cancelled.rawValue,
-            "cancellationReason": reason,
-            "cancelledAt": Date().timeIntervalSince1970
+            "status": "Cancelled",
+            "cancelReason": reason,
+            "updatedAt": FieldValue.serverTimestamp(),
+            "statusHistory": FieldValue.arrayUnion([
+                ["status": "Cancelled", "at": ISO8601DateFormatter().string(from: Date())]
+            ])
         ])
     }
     
@@ -130,5 +214,13 @@ final class FirestoreService {
     func deleteUserData(uid: String) async throws {
         // App Store Guideline 5.1.1(v) compliance
         try await db.collection("users").document(uid).delete()
+    }
+}
+
+enum OrderWriteError: LocalizedError {
+    case timedOut
+    
+    var errorDescription: String? {
+        "The store did not confirm your order in time."
     }
 }

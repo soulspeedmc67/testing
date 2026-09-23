@@ -34,6 +34,30 @@ public struct CartItem: Codable, Identifiable, Hashable {
     }
 }
 
+/// Cart lines arrive from local storage (this app) and from order documents the
+/// web wrote, where ids can be numbers and quantity may be `quantity`.
+extension CartItem {
+    private enum DecodingKeys: String, CodingKey {
+        case id, productId, barcode, name, unit, price, originalPrice, mrp, img, image, cat, category, qty, quantity
+    }
+    
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: DecodingKeys.self)
+        let id = c.flexibleString(.id) ?? c.flexibleString(.barcode) ?? UUID().uuidString
+        self.init(
+            id: id,
+            productId: c.flexibleString(.productId) ?? id,
+            name: c.flexibleString(.name) ?? "Item",
+            unit: c.flexibleString(.unit) ?? "",
+            price: c.flexibleDouble(.price) ?? 0,
+            originalPrice: c.flexibleDouble(.originalPrice) ?? c.flexibleDouble(.mrp),
+            img: c.flexibleString(.img) ?? c.flexibleString(.image) ?? "",
+            cat: c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "",
+            qty: c.flexibleInt(.qty) ?? c.flexibleInt(.quantity) ?? 1
+        )
+    }
+}
+
 public struct Coupon: Codable, Identifiable, Hashable {
     public let id: String
     public let code: String

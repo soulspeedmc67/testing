@@ -9,12 +9,24 @@ final class ActiveOrderStore: ObservableObject {
     static let shared = ActiveOrderStore()
 
     @Published private(set) var order: Order?
+    /// Set when checkout succeeds; RootView opens live tracking once the cart
+    /// and checkout sheets have finished dismissing.
+    @Published var pendingTrackingPresentation = false
 
     private var listener: ListenerRegistration?
     private var listeningOrderId: String?
 
     private init() {}
 
+    /// Called by checkout once the server has accepted the order.
+    func orderPlaced(_ placed: Order) {
+        withAnimation(.dashitSpring) {
+            order = placed
+        }
+        pendingTrackingPresentation = true
+        track(orderId: placed.id)
+    }
+    
     /// Picks up the active order saved by checkout (also after a relaunch).
     func refresh() {
         track(orderId: LocalStorage.shared.loadActiveOrderId())
@@ -32,13 +44,13 @@ final class ActiveOrderStore: ObservableObject {
         }
 
         listener = FirestoreService.shared.listenOrder(orderId: orderId) { [weak self] order in
-            guard let self = self else { return }
+            // A nil snapshot (cache miss, brief permission gap) keeps the last
+            // known order on screen rather than blanking the tracker.
+            guard let self = self, let order = order else { return }
             withAnimation(.dashitSpring) {
                 self.order = order
             }
-            if let order = order {
-                LiveActivityManager.shared.sync(with: order)
-            }
+            LiveActivityManager.shared.sync(with: order)
         }
     }
 

@@ -6,7 +6,6 @@ struct CheckoutView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var auth = AuthService.shared
     @State private var isAddressSheetOpen = false
-    @State private var isTrackingOpen = false
     @State private var isAuthModalOpen = false
     
     var body: some View {
@@ -145,8 +144,24 @@ struct CheckoutView: View {
                 }
                 
                 // Bottom Fixed CTA
-                VStack {
+                VStack(spacing: 10) {
                     Spacer()
+                    if let error = vm.orderError {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.danger)
+                            Text(error)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.textPrimary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(12)
+                        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                        .padding(.horizontal, 16)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                     Button(action: {
                         Task {
                             if !auth.isAuthenticated {
@@ -155,7 +170,9 @@ struct CheckoutView: View {
                             }
                             let success = await vm.placeOrder(cart: cart, auth: auth)
                             if success {
-                                isTrackingOpen = true
+                                // Closing the cart sheet closes checkout with it; RootView
+                                // then opens live tracking for the new order.
+                                cart.isCartSheetPresented = false
                             }
                         }
                     }) {
@@ -174,10 +191,11 @@ struct CheckoutView: View {
                         .background(vm.isSubmitting ? Color.gray : Color.brandOrange)
                         .cornerRadius(14)
                     }
-                    .disabled(vm.isSubmitting)
+                    .disabled(vm.isSubmitting || cart.items.isEmpty)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                 }
+                .animation(.dashitSpring, value: vm.orderError)
             }
             .navigationTitle("Checkout")
             .navigationBarTitleDisplayMode(.inline)
@@ -198,11 +216,6 @@ struct CheckoutView: View {
             .onChange(of: auth.isAuthenticated) { _, isAuthenticated in
                 if isAuthenticated {
                     isAuthModalOpen = false
-                }
-            }
-            .fullScreenCover(isPresented: $isTrackingOpen) {
-                if let order = vm.completedOrder {
-                    LiveTrackingMapView(orderId: order.id)
                 }
             }
         }

@@ -10,15 +10,28 @@ final class LiveTrackingViewModel: ObservableObject {
     @Published var riderLocation: DriverLiveTracking?
     @Published var secondsRemainingForModification: Int = 60
     @Published var isModificationWindowActive: Bool = true
-    @Published var cameraPosition: MapCameraPosition = .automatic
+    /// Starts on Anantnag rather than `.automatic`, which with no pins yet
+    /// shows the whole subcontinent.
+    @Published var cameraPosition: MapCameraPosition = .region(
+        MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 33.7311, longitude: 75.1487),
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        )
+    )
     
     private var orderListener: ListenerRegistration?
     private var trackingListener: ListenerRegistration?
     private var countdownTimer: Timer?
+    private var hasCenteredOnAddress = false
     
-    func startTracking(orderId: String) {
+    func startTracking(orderId: String, initialOrder: Order? = nil) {
         orderListener?.remove()
         trackingListener?.remove()
+        
+        if let initialOrder, activeOrder == nil {
+            activeOrder = initialOrder
+            centerMap(on: initialOrder.deliveryAddress.coordinate)
+        }
         
         // Listen to main order document
         orderListener = FirestoreService.shared.listenOrder(orderId: orderId) { [weak self] order in
@@ -28,8 +41,10 @@ final class LiveTrackingViewModel: ObservableObject {
             // Update Dynamic Island Live Activity if active
             self.updateLiveActivity(for: order)
             
-            // Adjust camera position to include delivery pin
-            self.centerMap(on: order.deliveryAddress.coordinate)
+            // Centre on the delivery pin once; later updates leave the user's panning alone.
+            if !self.hasCenteredOnAddress {
+                self.centerMap(on: order.deliveryAddress.coordinate)
+            }
         }
         
         // Listen to live driver GPS
@@ -73,6 +88,7 @@ final class LiveTrackingViewModel: ObservableObject {
     }
     
     private func centerMap(on coordinate: CLLocationCoordinate2D) {
+        hasCenteredOnAddress = true
         self.cameraPosition = .region(
             MKCoordinateRegion(
                 center: coordinate,

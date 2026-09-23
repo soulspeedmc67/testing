@@ -3,6 +3,7 @@ import MapKit
 
 struct LiveTrackingMapView: View {
     let orderId: String
+    var initialOrder: Order? = nil
     @Environment(\.dismiss) private var dismiss
     @StateObject private var vm = LiveTrackingViewModel()
     @State private var showCancelConfirmation = false
@@ -108,7 +109,8 @@ struct LiveTrackingMapView: View {
                     
                     // Items Summary
                     HStack {
-                        Text("\(order.items.count) items • \(CurrencyFormatter.format(order.grandTotal))")
+                        let units = order.items.reduce(0) { $0 + $1.qty }
+                        Text("\(units) item\(units == 1 ? "" : "s") • \(CurrencyFormatter.format(order.grandTotal))")
                             .font(.dashitCaption)
                             .foregroundColor(.textMuted)
                         Spacer()
@@ -130,22 +132,40 @@ struct LiveTrackingMapView: View {
                 )
                 .padding(.horizontal, 12)
                 .padding(.bottom, 20)
+            } else {
+                // Never leave a bare map: say what is happening until the order loads.
+                HStack(spacing: 12) {
+                    ProgressView()
+                        .tint(.white)
+                    Text("Loading your order…")
+                        .font(.dashitBodyBold)
+                        .foregroundColor(.white)
+                    Spacer()
+                }
+                .padding(16)
+                .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 20)
             }
         }
         .onAppear {
-            vm.startTracking(orderId: orderId)
+            vm.startTracking(orderId: orderId, initialOrder: initialOrder)
         }
         .animation(.dashitSpring, value: vm.activeOrder?.status)
         .confirmationDialog("Cancel this order?", isPresented: $showCancelConfirmation, titleVisibility: .visible) {
             Button("Yes, cancel order", role: .destructive) {
                 Task {
-                    _ = await vm.cancelOrder()
-                    dismiss()
+                    if await vm.cancelOrder() {
+                        dismiss()
+                    } else {
+                        HapticsManager.shared.error()
+                    }
                 }
             }
             Button("Keep order", role: .cancel) {}
         } message: {
-            Text("Are you sure you want to cancel this order? Instant refund applies.")
+            Text("The store will stop preparing it straight away.")
         }
     }
 }
