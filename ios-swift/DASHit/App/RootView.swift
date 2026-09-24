@@ -8,8 +8,6 @@ struct RootView: View {
     /// bar, so scroll position and listeners survive switching back and forth.
     @State private var mountedTabs: Set<TabItem> = [.home]
     @State private var isLiveTrackingOpen = false
-    @State private var isTrackerCollapsed = false
-    @State private var trackerCollapseTask: Task<Void, Never>?
     /// The home address row's on-screen frame while the address menu is open.
     @State private var addressMenuAnchor: CGRect?
     @State private var isAddressSearchOpen = false
@@ -17,12 +15,12 @@ struct RootView: View {
     @State private var isKeyboardVisible = false
     @State private var isProfileOpen = false
     @State private var isAddItemsOpen = false
-    @State private var isCancelOrderConfirmOpen = false
     /// "light", "dark" or "system", same values as the web's `dashit_theme`.
     @AppStorage("dashit_theme") private var themePreference = "system"
 
     @ObservedObject private var activeOrder = ActiveOrderStore.shared
     @ObservedObject private var cart = CartViewModel.shared
+    @ObservedObject private var tabBar = TabBarVisibility.shared
 
     var body: some View {
         ZStack {
@@ -38,18 +36,20 @@ struct RootView: View {
         // The floating tab bar insets every screen's safe area: content scrolls
         // beneath it and comes to rest above it, and the cart pill stacks on top.
         // The order pill rides on top of the bar, so screens (and the cart
-        // pill) make room for it without knowing it exists.
+        // pill) make room for it without knowing it exists. Scrolling down a
+        // feed tucks the bar away; the pills drop down in its place.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !isKeyboardVisible {
                 VStack(spacing: 10) {
                     orderPill
-                    CustomTabBar(selectedTab: tabSelection)
+                    if !tabBar.isHidden {
+                        CustomTabBar(selectedTab: tabSelection)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
                 }
+                .padding(.bottom, tabBar.isHidden ? 6 : 0)
                 .transition(.move(edge: .bottom))
             }
-        }
-        .overlay(alignment: .top) {
-            expandedTracker
         }
         .overlay {
             addressMenu
@@ -82,13 +82,8 @@ struct RootView: View {
             }
             #endif
         }
-        .onChange(of: activeOrder.order?.id) { _, id in
-            if id != nil {
-                showTrackerCard()
-            } else {
-                trackerCollapseTask?.cancel()
-                isTrackerCollapsed = false
-            }
+        .onChange(of: selectedTab) { _, _ in
+            tabBar.show()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             withAnimation(.dashitSnappy) { isKeyboardVisible = true }
@@ -124,17 +119,6 @@ struct RootView: View {
                 AddItemsSheet(order: order)
             }
         }
-        .confirmationDialog("Cancel this order?", isPresented: $isCancelOrderConfirmOpen, titleVisibility: .visible) {
-            Button("Cancel and keep items in cart", role: .destructive) {
-                Task { _ = await activeOrder.cancelActiveOrder(restoreCart: true) }
-            }
-            Button("Cancel order", role: .destructive) {
-                Task { _ = await activeOrder.cancelActiveOrder(restoreCart: false) }
-            }
-            Button("Keep order", role: .cancel) {}
-        } message: {
-            Text("The store will stop preparing it straight away.")
-        }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
             if let order = activeOrder.order {
                 LiveTrackingMapView(orderId: order.id, initialOrder: order)
@@ -167,89 +151,22 @@ struct RootView: View {
         }
     }
 
-    // MARK: - Live order tracker
+    // MARK: - Live order status
 
-    @ViewBuilder
-    private var expandedTracker: some View {
-        if let order = activeOrder.order, !isTrackerCollapsed, !isKeyboardVisible {
-            LiveOrderFloatingTrackerView(
-                order: order,
-                tracking: activeOrder.liveTracking,
-                onOpen: { isLiveTrackingOpen = true },
-                onClose: {
-                    if order.status.stage.isFinished {
-                        activeOrder.retireFinishedOrder()
-                    } else {
-                        collapseTracker()
-                    }
-                },
-                onAddItems: { isAddItemsOpen = true },
-                onCancelOrder: { isCancelOrderConfirmOpen = true }
-            )
-            .padding(.top, 6)
-            .background(alignment: .top) {
-                // Solid behind the card (it covers the header anyway), fading out just below it.
-                VStack(spacing: 0) {
-                    Color.surface
-                    LinearGradient(
-                        colors: [Color.surface, Color.surface.opacity(0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 24)
-                }
-                .padding(.bottom, -24)
-                .ignoresSafeArea(edges: .top)
-                .allowsHitTesting(false)
-            }
-            .transition(.move(edge: .top).combined(with: .opacity))
-        }
-    }
-
-    /// The tracker tucked into a pill above the tab bar, where it keeps
-    /// showing the live status.
+    /// The live order lives in a pill above the tab bar, never as a banner
+    /// over the screen. Tap it for the live map.
     @ViewBuilder
     private var orderPill: some View {
-        if let order = activeOrder.order, isTrackerCollapsed {
+        if let order = activeOrder.order {
             OrderStatusPill(
                 order: order,
                 tracking: activeOrder.liveTracking,
-                onExpand: { showTrackerCard() },
+                onOpen: { isLiveTrackingOpen = true },
                 onDismiss: { activeOrder.retireFinishedOrder() }
             )
             .frame(maxWidth: CustomTabBar.maxWidth)
             .padding(.horizontal, CustomTabBar.sideInset)
-            .transition(
-                .asymmetric(
-                    // Rises once the card has lifted away, so the status reads
-                    // as moving from the top card into the pill.
-                    insertion: .scale(scale: 0.6, anchor: .bottom)
-                        .combined(with: .opacity)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.78).delay(0.12)),
-                    removal: .scale(scale: 0.8, anchor: .bottom).combined(with: .opacity)
-                )
-            )
-        }
-    }
-
-    /// Longest the full card stays at the top before it tucks into the pill.
-    private static let trackerCardSeconds = 10
-
-    /// Shows the full card at the top, for at most `trackerCardSeconds`.
-    private func showTrackerCard() {
-        withAnimation(.dashitSpring) { isTrackerCollapsed = false }
-        trackerCollapseTask?.cancel()
-        trackerCollapseTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(Self.trackerCardSeconds))
-            guard !Task.isCancelled else { return }
-            collapseTracker()
-        }
-    }
-
-    private func collapseTracker() {
-        trackerCollapseTask?.cancel()
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
-            isTrackerCollapsed = true
+            .transition(.scale(scale: 0.6, anchor: .bottom).combined(with: .opacity))
         }
     }
 
