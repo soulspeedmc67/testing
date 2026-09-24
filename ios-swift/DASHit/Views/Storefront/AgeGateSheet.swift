@@ -48,8 +48,7 @@ struct AgeGateSheet: View {
                 Spacer(minLength: 0)
             }
             .padding(14)
-            .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+            .dashitCard(cornerRadius: 16)
             .padding(.horizontal, 20)
             .padding(.top, 20)
 

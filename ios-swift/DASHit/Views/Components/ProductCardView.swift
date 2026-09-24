@@ -66,8 +66,7 @@ struct ProductCardView: View {
             .minimumScaleFactor(0.8)
         }
         .padding(8)
-        .background(Color.surfaceRaised, in: tileShape)
-        .overlay(tileShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(tileShape)
         .contentShape(tileShape)
         .onTapGesture(perform: onOpen)
         .accessibilityElement(children: .contain)

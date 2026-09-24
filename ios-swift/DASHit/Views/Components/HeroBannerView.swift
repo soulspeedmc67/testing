@@ -122,7 +122,7 @@ struct HeroBannerView: View {
                 .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
         .buttonStyle(PressableButtonStyle(scale: 0.98))
-        .accessibilityLabel("\(offer.title). \(offer.subtitle). Code \(offer.promoCode).")
+        .accessibilityLabel("\(offer.title). \(offer.subtitle).")
     }
 
     private var copy: some View {
@@ -156,10 +156,19 @@ struct HeroBannerView: View {
                     .padding(.horizontal, 14)
                     .frame(height: 30)
                     .background(Color.brandOrange, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                Text("Code \(offer.promoCode)")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color.white.opacity(0.8))
-                    .lineLimit(1)
+                // Only codes the checkout will honour; the web's banner codes
+                // (CRISP20, BAKE15…) are not valid coupons.
+                if Coupon.find(code: offer.promoCode) != nil {
+                    Text("Code \(offer.promoCode)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.white.opacity(0.8))
+                        .lineLimit(1)
+                } else {
+                    Text(offer.priceTag)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(Color.white.opacity(0.8))
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 4)
                 Text(offer.expiresIn)
                     .font(.system(size: 11, weight: .medium))

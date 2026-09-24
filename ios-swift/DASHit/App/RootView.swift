@@ -11,6 +11,8 @@ struct RootView: View {
     @State private var isTrackerCollapsed = false
     @State private var isKeyboardVisible = false
     @State private var isProfileOpen = false
+    @State private var isAddItemsOpen = false
+    @State private var isCancelOrderConfirmOpen = false
     /// "light", "dark" or "system", same values as the web's `dashit_theme`.
     @AppStorage("dashit_theme") private var themePreference = "system"
 
@@ -62,6 +64,11 @@ struct RootView: View {
                         isLiveTrackingOpen = true
                     }
                 }
+                if ScreenshotHooks.openAddItems {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        isAddItemsOpen = true
+                    }
+                }
             }
             #endif
         }
@@ -90,6 +97,22 @@ struct RootView: View {
         .sheet(isPresented: $isProfileOpen) {
             ProfileView()
                 .dashitSheet([.large])
+        }
+        .sheet(isPresented: $isAddItemsOpen) {
+            if let order = activeOrder.order {
+                AddItemsSheet(order: order)
+            }
+        }
+        .confirmationDialog("Cancel this order?", isPresented: $isCancelOrderConfirmOpen, titleVisibility: .visible) {
+            Button("Cancel and keep items in cart", role: .destructive) {
+                Task { _ = await activeOrder.cancelActiveOrder(restoreCart: true) }
+            }
+            Button("Cancel order", role: .destructive) {
+                Task { _ = await activeOrder.cancelActiveOrder(restoreCart: false) }
+            }
+            Button("Keep order", role: .cancel) {}
+        } message: {
+            Text("The store will stop preparing it straight away.")
         }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
             if let order = activeOrder.order {
@@ -135,7 +158,9 @@ struct RootView: View {
                     } else {
                         withAnimation(.dashitSpring) { isTrackerCollapsed = true }
                     }
-                }
+                },
+                onAddItems: { isAddItemsOpen = true },
+                onCancelOrder: { isCancelOrderConfirmOpen = true }
             )
             .padding(.top, 6)
             .background(alignment: .top) {

@@ -82,7 +82,7 @@ final class CheckoutViewModel: ObservableObject {
         defer { isSubmitting = false }
 
         let order = Order(
-            id: Self.newOrderCode(),
+            id: Order.newCode(),
             userId: uid,
             items: cart.items,
             subtotal: cart.bill.subtotal,
@@ -94,16 +94,13 @@ final class CheckoutViewModel: ObservableObject {
             paymentMethod: paymentMethod == "apple_pay" ? "Apple Pay" : "Cash on Delivery",
             // Nothing is charged in-app yet, so no order is ever marked paid here.
             paymentStatus: "pending",
-            etaMinutes: store.etaMinutes(for: quote) ?? 8
+            etaMinutes: store.etaMinutes(for: quote) ?? 8,
+            otp: Order.newDeliveryCode(),
+            couponCode: cart.appliedCoupon?.code
         )
 
         do {
-            try await FirestoreService.shared.createOrder(
-                order,
-                customer: user,
-                couponCode: cart.appliedCoupon?.code,
-                distanceKm: quote.distanceKm
-            )
+            try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm)
 
             LocalStorage.shared.saveActiveOrderId(order.id)
             completedOrder = order
@@ -126,9 +123,5 @@ final class CheckoutViewModel: ObservableObject {
         }
     }
 
-    /// Short, readable order code, e.g. DSH-48213907.
-    private static func newOrderCode() -> String {
-        let clock = Int(Date().timeIntervalSince1970) % 10_000
-        return "DSH-\(String(format: "%04d", clock))\(Int.random(in: 1000...9999))"
-    }
+
 }

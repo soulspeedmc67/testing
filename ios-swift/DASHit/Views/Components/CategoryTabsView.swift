@@ -41,7 +41,7 @@ struct CategoryTabsView: View {
             VStack(spacing: 5) {
                 Image(systemName: symbol)
                     .symbolVariant(isSelected ? .fill : .none)
-                    .font(.system(size: 20, weight: .medium))
+                    .font(.system(size: 21, weight: isSelected ? .regular : .light))
                     .foregroundColor(isSelected ? .brandAccent : .textMuted)
                     .frame(height: 24)
                 Text(title)

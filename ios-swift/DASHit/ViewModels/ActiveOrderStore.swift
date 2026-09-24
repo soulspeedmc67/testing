@@ -30,6 +30,34 @@ final class ActiveOrderStore: ObservableObject {
         track(orderId: placed.id)
     }
 
+    /// Switches the tracker, the saved active order and the Live Activity over
+    /// to the order that replaced this one when items were added.
+    func adoptReplacement(_ replacement: Order) {
+        LocalStorage.shared.saveActiveOrderId(replacement.id)
+        withAnimation(.dashitSpring) {
+            order = replacement
+        }
+        track(orderId: replacement.id)
+        LiveActivityManager.shared.startActivity(for: replacement)
+    }
+
+    /// Cancels the active order inside its change window. With `restoreCart`,
+    /// its items go back in the cart, as the web's cancel sheet offers.
+    func cancelActiveOrder(restoreCart: Bool) async -> Bool {
+        guard let current = order, current.modifySecondsRemaining() > 0 else { return false }
+        do {
+            try await FirestoreService.shared.cancelOrder(orderId: current.id, reason: "Customer cancelled")
+            if restoreCart {
+                CartViewModel.shared.reorder(current.items)
+            }
+            HapticsManager.shared.warning()
+            return true
+        } catch {
+            HapticsManager.shared.error()
+            return false
+        }
+    }
+
     /// Picks up the active order saved by checkout (also after a relaunch).
     func refresh() {
         track(orderId: LocalStorage.shared.loadActiveOrderId())
@@ -82,10 +110,11 @@ final class ActiveOrderStore: ObservableObject {
             deliveryFee: 0,
             discount: 0,
             grandTotal: 420,
-            status: .outForDelivery,
+            status: ScreenshotHooks.demoOrderPlaced ? .placed : .outForDelivery,
             deliveryAddress: DeliveryAddress(street: "Court Road, Lal Chowk"),
-            driverName: "Aamir",
-            etaMinutes: 6
+            driverName: ScreenshotHooks.demoOrderPlaced ? nil : "Aamir",
+            etaMinutes: 6,
+            otp: "4821"
         )
     }
     #endif

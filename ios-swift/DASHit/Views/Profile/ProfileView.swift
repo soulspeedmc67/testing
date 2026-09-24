@@ -70,8 +70,7 @@ struct ProfileView: View {
             Spacer()
         }
         .padding(16)
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
     }
 
     private func accountRows(_ user: UserProfile) -> some View {
@@ -84,8 +83,7 @@ struct ProfileView: View {
                 isAddressPickerOpen = true
             }
         }
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
     }
 
     private func row(icon: String, title: String, action: @escaping () -> Void) -> some View {
@@ -150,8 +148,7 @@ struct ProfileView: View {
                     .foregroundColor(.textPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
-                    .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                    .dashitCard(cornerRadius: 14)
             }
             .buttonStyle(.pressable)
 
@@ -196,8 +193,7 @@ struct AppearanceSetting: View {
             .pickerStyle(.segmented)
         }
         .padding(14)
-        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cornerRadius: 14)
         .onChange(of: theme) { _, _ in
             HapticsManager.shared.selection()
         }

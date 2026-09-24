@@ -128,6 +128,20 @@ final class StorefrontViewModel: ObservableObject {
         }
     }
 
+    /// Rotating search hints drawn from what the store actually sells.
+    var searchHints: [String] {
+        var seen = Set<String>()
+        return products
+            .filter { $0.isAvailable }
+            .map { product -> String in
+                let words = product.name.lowercased().split(separator: " ").prefix(3)
+                return words.joined(separator: " ")
+            }
+            .filter { seen.insert($0).inserted }
+            .prefix(8)
+            .map { $0 }
+    }
+
     /// The busiest categories, shown as collage tiles at the top of the feed.
     var topCategoryTiles: [CategoryTile] {
         Array(categoryTiles.sorted { $0.productCount > $1.productCount }.prefix(6))
@@ -190,7 +204,8 @@ final class StorefrontViewModel: ObservableObject {
 
         // Categories are derived from the products (see `categories`).
 
-        // Fallback featured offer
+        // The web's built-in deals (`DEFAULT_OFFERS` in src/lib/offers.js), shown
+        // until the admin publishes offers in Firestore.
         self.offers = [
             Offer(
                 id: "offer-snacks-01",
@@ -203,6 +218,30 @@ final class StorefrontViewModel: ObservableObject {
                 discountPercent: 20,
                 expiresIn: "Ends in 3 hours",
                 img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80"
+            ),
+            Offer(
+                id: "offer-bakery-02",
+                badge: "FRESH FROM OVEN",
+                title: "Artisan Breads & Morning Bakes",
+                subtitle: "Authentic Kashmiri lavas, soft croissants & golden rolls delivered warm.",
+                priceTag: "Starting ₹30",
+                category: "Bakery",
+                promoCode: "BAKE15",
+                discountPercent: 15,
+                expiresIn: "Ends at 12:00 PM",
+                img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80"
+            ),
+            Offer(
+                id: "offer-dairy-03",
+                badge: "FARM TO DOORSTEP",
+                title: "Fresh Milk, Butter & Kashmiri Apples",
+                subtitle: "Chilled Amul dairy, creamy butter & crisp valley apples in minutes.",
+                priceTag: "Save up to 25%",
+                category: "Dairy",
+                promoCode: "FRESH25",
+                discountPercent: 25,
+                expiresIn: "Active Today",
+                img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80"
             )
         ]
     }

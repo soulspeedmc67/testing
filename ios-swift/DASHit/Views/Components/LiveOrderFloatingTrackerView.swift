@@ -8,6 +8,9 @@ struct LiveOrderFloatingTrackerView: View {
     var tracking: DriverLiveTracking? = nil
     var onOpen: () -> Void
     var onClose: () -> Void
+    /// Offered during the 60-second change window.
+    var onAddItems: () -> Void = {}
+    var onCancelOrder: () -> Void = {}
 
     @State private var dragOffset: CGFloat = 0
 
@@ -70,11 +73,53 @@ struct LiveOrderFloatingTrackerView: View {
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.textSecondary)
                     .lineLimit(1)
+                if stage == .onTheWay, let code = order.otp, !code.isEmpty {
+                    Spacer(minLength: 6)
+                    (Text("Code ").foregroundColor(.textMuted) + Text(code).foregroundColor(.white).bold())
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .accessibilityLabel("Delivery code \(code)")
+                }
             }
             .padding(.top, 3)
 
             OrderProgressRail(stage: stage, progress: stage.progress(live: tracking?.progress))
                 .padding(.top, 14)
+
+            // Add items or cancel while the order can still change. The row
+            // disappears on its own when the 60 seconds run out.
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                if order.modifySecondsRemaining(at: context.date) > 0 {
+                    HStack(spacing: 8) {
+                        ModifyCountdownBadge(order: order)
+                        Text("to add items or cancel")
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                        Spacer(minLength: 4)
+                        Button(action: onCancelOrder) {
+                            Text("Cancel")
+                                .font(.system(size: 12.5, weight: .semibold))
+                                .foregroundColor(.danger)
+                                .padding(.horizontal, 10)
+                                .frame(height: 30)
+                                .background(Color.white.opacity(0.08), in: Capsule())
+                        }
+                        .buttonStyle(.pressable)
+                        Button(action: onAddItems) {
+                            Label("Add items", systemImage: "plus")
+                                .font(.system(size: 12.5, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .frame(height: 30)
+                                .background(Color.brandOrange, in: Capsule())
+                        }
+                        .buttonStyle(.pressable)
+                    }
+                    .padding(.top, 14)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
         }
         .padding(.horizontal, 18)
         .padding(.top, 12)

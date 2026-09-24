@@ -85,7 +85,7 @@ final class FirestoreService {
     /// order whose status is "Placed", whose createdAt is the server clock and
     /// whose driverId is null; anything else is rejected, so this mirrors
     /// `createOrder` in `src/lib/db.js` field for field.
-    func createOrder(_ order: Order, customer: UserProfile, couponCode: String?, distanceKm: Double) async throws {
+    func createOrder(_ order: Order, customer: UserProfile, distanceKm: Double?) async throws {
         let placedAt = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: order.createdAt))
         let dateLabel = Date(timeIntervalSince1970: order.createdAt)
             .formatted(.dateTime.day().month(.abbreviated).hour().minute())
@@ -138,15 +138,24 @@ final class FirestoreService {
             "paymentStatus": order.paymentStatus,
             "location": location,
             "etaMinutes": order.etaMinutes ?? 8,
-            "distanceKm": distanceKm,
-            "otp": Int.random(in: 1000...9999),
+            // A number, as the web writes it; the rider types it back at the door.
+            "otp": Int(order.otp ?? "") ?? Int.random(in: 1000...9999),
             "customerName": customer.name ?? "Customer",
             "mobile": customer.mobile,
             "email": customer.email ?? "",
             "platform": "ios"
         ]
-        if let couponCode {
+        if let distanceKm {
+            payload["distanceKm"] = distanceKm
+        }
+        if let couponCode = order.couponCode {
             payload["couponCode"] = couponCode
+        }
+        if let replaced = order.replacesOrderId {
+            payload["replacesOrderId"] = replaced
+        }
+        if let windowEnd = order.modifyWindowEndsAt {
+            payload["modifyWindowEndsAt"] = Timestamp(date: Date(timeIntervalSince1970: windowEnd))
         }
 
         let ref = db.collection("orders").document(order.id)
@@ -230,6 +239,14 @@ final class FirestoreService {
     /// Loads `users/{uid}`, creating it when missing. Always merges: a profile
     /// made on the web (with its own fields and Timestamps) is filled in, never
     /// replaced.
+    /// Cancels without waiting for the server. Firestore applies queued writes
+    /// in order, so this lands after any pending create of the same order.
+    func withdrawOrder(orderId: String, reason: String) {
+        Task {
+            try? await cancelOrder(orderId: orderId, reason: reason)
+        }
+    }
+
     func ensureUserProfile(uid: String, mobile: String, name: String? = nil, email: String? = nil) async throws -> UserProfile {
         let docRef = db.collection("users").document(uid)
         let snapshot = try await docRef.getDocument()

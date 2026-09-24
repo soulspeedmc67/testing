@@ -114,10 +114,17 @@ private struct LockScreenLiveActivityView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                Text("\(context.attributes.itemCount) item\(context.attributes.itemCount == 1 ? "" : "s") · ₹\(Int(context.attributes.totalAmount))")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(Palette.muted)
-                    .lineLimit(1)
+                if stage == .onTheWay, let code = context.attributes.deliveryCode, !code.isEmpty {
+                    // What the rider will ask for at the door.
+                    (Text("Code ").foregroundColor(Palette.muted) + Text(code).foregroundColor(.white).bold())
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .lineLimit(1)
+                } else {
+                    Text("\(context.attributes.itemCount) item\(context.attributes.itemCount == 1 ? "" : "s") · ₹\(Int(context.attributes.totalAmount))")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Palette.muted)
+                        .lineLimit(1)
+                }
             }
             .padding(.top, 10)
         }

@@ -14,6 +14,10 @@ enum ScreenshotHooks {
     static var openAddressPicker: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenAddress") }
     static var openTracking: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenTracking") }
     static var openProfile: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenProfile") }
+    /// The demo order is still "Placed", so its 60-second change window is open.
+    static var demoOrderPlaced: Bool { UserDefaults.standard.bool(forKey: "DASHitDemoOrderPlaced") }
+    static var openAddItems: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenAddItems") }
+    static var openCoupons: Bool { UserDefaults.standard.bool(forKey: "DASHitOpenCoupons") }
     /// A TabItem raw value, e.g. "Categories" or "Order Again".
     static var initialTab: String? { UserDefaults.standard.string(forKey: "DASHitTab") }
 }

@@ -1,7 +1,8 @@
 import SwiftUI
+import UIKit
 
-/// Home feed. The ETA header scrolls away; search and the category tabs pin
-/// under the status bar, as in the web shop page.
+/// Home feed. The ETA header sits on a warm glow and scrolls away; search and
+/// the category tabs pin under the status bar, as in the web shop page.
 struct StorefrontHomeView: View {
     var onOpenProfile: () -> Void
 
@@ -13,6 +14,10 @@ struct StorefrontHomeView: View {
     @State private var isAddressPickerOpen = false
     @State private var address: DeliveryAddress? = LocalStorage.shared.loadAddress()
     @FocusState private var isSearchFocused: Bool
+    @State private var isVoiceSearchOpen = false
+    /// Scroll-driven chrome, held by reference so scrolling redraws only the
+    /// backdrops that watch it, never this whole feed.
+    @State private var chrome = HomeChromeState()
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
     private let tileColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
@@ -27,23 +32,34 @@ struct StorefrontHomeView: View {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                     header
                         .id("top")
+                        .onGeometryChange(for: CGFloat.self) { geometry in
+                            geometry.frame(in: .named("homeScroll")).maxY
+                        } action: { maxY in
+                            chrome.headerBottomChanged(maxY)
+                        }
 
                     Section {
                         if vm.isBrowsing {
-                            if !vm.offers.isEmpty {
-                                HeroCarouselView(offers: vm.offers) { offer in
-                                    vm.selectCategory(offer.category)
-                                }
-                                .padding(.top, 16)
-                            }
+                            welcomeBanner
+                                .padding(.top, 14)
 
                             categorySection
                                 .id("categories")
-                                .padding(.top, 26)
+                                .padding(.top, 28)
+
+                            if !vm.offers.isEmpty {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    sectionTitle("Deals for you")
+                                    HeroCarouselView(offers: vm.offers) { offer in
+                                        vm.selectCategory(offer.category)
+                                    }
+                                }
+                                .padding(.top, 30)
+                            }
 
                             ForEach(vm.departments) { department in
                                 departmentSection(department)
-                                    .padding(.top, 28)
+                                    .padding(.top, 30)
                             }
 
                             ForEach(vm.rails) { rail in
@@ -54,7 +70,7 @@ struct StorefrontHomeView: View {
                                     onOpen: { detailProduct = $0 },
                                     onRequestAgeConfirmation: { ageGateProduct = $0 }
                                 )
-                                .padding(.top, 26)
+                                .padding(.top, 28)
                             }
                         } else {
                             resultsGrid
@@ -67,14 +83,18 @@ struct StorefrontHomeView: View {
                         pinnedSearch
                     }
                 }
+                .background(alignment: .top) {
+                    HeaderBackdrop()
+                        .frame(height: 320)
+                        .allowsHitTesting(false)
+                }
             }
+            .coordinateSpace(.named("homeScroll"))
             .scrollDismissesKeyboard(.immediately)
-            // Covers the status bar so content scrolling up under the pinned
-            // search is hidden rather than showing through behind the clock.
+            // Paints the status bar: the header's glow at rest, the page colour
+            // once search has pinned, so nothing shows through behind the clock.
             .safeAreaInset(edge: .top, spacing: 0) {
-                Color.clear
-                    .frame(height: 0)
-                    .background(Color.surface)
+                StatusBarBackdrop(chrome: chrome)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !isSearchFocused {
@@ -105,6 +125,11 @@ struct StorefrontHomeView: View {
         }) {
             AddressPickerMapView()
         }
+        .sheet(isPresented: $isVoiceSearchOpen) {
+            VoiceSearchSheet { phrase in
+                vm.searchQuery = phrase
+            }
+        }
     }
 
     // MARK: - Header (mirrors the web mobile AppHeader)
@@ -117,10 +142,13 @@ struct StorefrontHomeView: View {
                         .font(.system(size: 11, weight: .heavy))
                         .tracking(1.2)
                         .foregroundColor(.textMuted)
-                    Text(headerEta)
-                        .font(.system(size: 32, weight: .black))
-                        .foregroundColor(.textPrimary)
-                        .contentTransition(.numericText())
+                    HStack(alignment: .center, spacing: 8) {
+                        Text(headerEta)
+                            .font(.system(size: 32, weight: .black))
+                            .foregroundColor(.textPrimary)
+                            .contentTransition(.numericText())
+                        storeChip
+                    }
                 }
 
                 Spacer(minLength: 12)
@@ -184,8 +212,7 @@ struct StorefrontHomeView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(12)
-                .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                .dashitCard(cornerRadius: 14)
                 .padding(.top, 12)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -203,6 +230,31 @@ struct StorefrontHomeView: View {
         return "\(eta) minutes"
     }
 
+    private var deliveryQuote: DeliveryEta.Quote {
+        DeliveryEta.quote(for: address?.coordinate ?? DeliveryEta.hub)
+    }
+
+    /// Distance from the store (web header's store chip), or "Closed".
+    @ViewBuilder
+    private var storeChip: some View {
+        if !storeStatus.isOpen {
+            chip(text: "Closed", symbol: "moon.zzz.fill", tint: .caution)
+        } else if deliveryQuote.isDeliverable {
+            chip(text: deliveryQuote.shortDistanceText, symbol: "storefront", tint: .textSecondary)
+        }
+    }
+
+    private func chip(text: String, symbol: String, tint: Color) -> some View {
+        Label(text, systemImage: symbol)
+            .font(.system(size: 11.5, weight: .bold))
+            .foregroundColor(tint)
+            .labelStyle(.titleAndIcon)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(Color.surfaceRaised.opacity(0.75), in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.hairline, lineWidth: 1))
+    }
+
     private var addressLine: String {
         guard let street = address?.street, !street.isEmpty else { return "Lal Chowk, Anantnag" }
         return street
@@ -212,26 +264,77 @@ struct StorefrontHomeView: View {
 
     private var pinnedSearch: some View {
         VStack(spacing: 6) {
-            StorefrontSearchField(text: $vm.searchQuery, isFocused: $isSearchFocused)
-                .padding(.horizontal, 16)
-                .padding(.top, 6)
+            StorefrontSearchField(
+                text: $vm.searchQuery,
+                isFocused: $isSearchFocused,
+                hints: vm.searchHints,
+                onVoiceSearch: { isVoiceSearchOpen = true }
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
             CategoryTabsView(
                 categories: vm.categories,
                 selectedCategory: vm.selectedCategory,
                 onSelect: { vm.selectCategory($0) }
             )
         }
-        .background(Color.surface)
+        .background(PinnedSearchBackdrop(chrome: chrome))
     }
 
     // MARK: - Shop by category
 
+    private func sectionTitle(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 20, weight: .heavy))
+            .foregroundColor(.textPrimary)
+            .padding(.horizontal, 16)
+    }
+
+    /// Welcome banner with the brand's rider artwork. Every order qualifies:
+    /// the ₹299 minimum is above the ₹199 free-delivery threshold.
+    private var welcomeBanner: some View {
+        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Rectangle()
+                    .fill(Color.brandOrange)
+                    .frame(width: 14, height: 2)
+                Text("WELCOME TO DASHIT")
+                    .font(.system(size: 10.5, weight: .heavy))
+                    .tracking(1.6)
+                    .foregroundColor(Color.white.opacity(0.75))
+            }
+            Text("Free delivery\non every order")
+                .font(.system(size: 23, weight: .heavy))
+                .foregroundColor(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Groceries at your door in \(storeStatus.etaMinutes(for: deliveryQuote) ?? 10) minutes")
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundColor(Color.white.opacity(0.65))
+        }
+        .padding(18)
+        .padding(.trailing, 96)
+        .frame(maxWidth: .infinity, minHeight: 136, alignment: .leading)
+        .background(Color.midnight, in: shape)
+        .overlay(alignment: .bottomTrailing) {
+            if let rider = UIImage(named: "rider_front_right") {
+                Image(uiImage: rider)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 122)
+                    .offset(x: -10, y: 4)
+                    .accessibilityHidden(true)
+            }
+        }
+        .clipShape(shape)
+        .overlay(shape.strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
     private var categorySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Top categories")
-                .font(.system(size: 19, weight: .bold))
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, 16)
+            sectionTitle("Shop by category")
 
             LazyVGrid(columns: tileColumns, spacing: 12) {
                 ForEach(vm.topCategoryTiles) { tile in
@@ -247,10 +350,7 @@ struct StorefrontHomeView: View {
     /// A department grid: four compact category cards per row.
     private func departmentSection(_ department: Department) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(department.title)
-                .font(.system(size: 19, weight: .bold))
-                .foregroundColor(.textPrimary)
-                .padding(.horizontal, 16)
+            sectionTitle(department.title)
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 4),
@@ -338,4 +438,59 @@ struct StorefrontHomeView: View {
         }
     }
     #endif
+}
+
+// MARK: - Header chrome
+
+/// How far the search bar has pinned, driven by the header's position.
+@MainActor
+final class HomeChromeState: ObservableObject {
+    /// 0 while the header is in view, 1 once search has pinned under the clock.
+    @Published private(set) var pinProgress: CGFloat = 0
+
+    func headerBottomChanged(_ maxY: CGFloat) {
+        let raw = min(1, max(0, 1 - maxY / 44))
+        let stepped = (raw * 10).rounded() / 10
+        if stepped != pinProgress {
+            pinProgress = stepped
+        }
+    }
+}
+
+/// The warm glow behind the header, search and tabs: the web header's peach in
+/// light mode, a deep ember with a soft orange bloom in dark.
+private struct HeaderBackdrop: View {
+    var body: some View {
+        ZStack(alignment: .top) {
+            LinearGradient(colors: [Color.headerGlow, Color.surface], startPoint: .top, endPoint: .bottom)
+            RadialGradient(
+                colors: [Color.brandOrange.opacity(0.18), Color.brandOrange.opacity(0)],
+                center: UnitPoint(x: 0.9, y: 0),
+                startRadius: 0,
+                endRadius: 280
+            )
+        }
+    }
+}
+
+private struct StatusBarBackdrop: View {
+    @ObservedObject var chrome: HomeChromeState
+
+    var body: some View {
+        Color.clear
+            .frame(height: 0)
+            .background(Color.surface.opacity(chrome.pinProgress))
+            .background(Color.headerGlow)
+            .animation(.easeOut(duration: 0.15), value: chrome.pinProgress)
+    }
+}
+
+private struct PinnedSearchBackdrop: View {
+    @ObservedObject var chrome: HomeChromeState
+
+    var body: some View {
+        Color.surface
+            .opacity(chrome.pinProgress)
+            .animation(.easeOut(duration: 0.15), value: chrome.pinProgress)
+    }
 }
