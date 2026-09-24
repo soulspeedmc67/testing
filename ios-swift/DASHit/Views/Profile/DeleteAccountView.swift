@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 /// App Store Guideline 5.1.1(v) Compliant Account & Data Deletion
 struct DeleteAccountView: View {
@@ -7,6 +8,8 @@ struct DeleteAccountView: View {
     @State private var confirmationText = ""
     @State private var isDeleting = false
     @State private var errorMessage: String?
+    @State private var appleNonce: String?
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         NavigationStack {
@@ -59,33 +62,56 @@ struct DeleteAccountView: View {
                     
                     Spacer()
                     
-                    Button(action: {
-                        Task {
-                            isDeleting = true
-                            do {
-                                try await auth.deleteAccount()
-                                dismiss()
-                            } catch {
-                                isDeleting = false
-                                errorMessage = error.localizedDescription
+                    if auth.isAppleAccount {
+                        // Apple requires the app to revoke its Apple ID tokens when
+                        // the account goes, which needs one more Apple confirmation.
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Confirm with Apple to finish. This also removes DASHit's access to your Apple ID.")
+                                .font(.dashitCaption)
+                                .foregroundColor(.textMuted)
+                            SignInWithAppleButton(.continue) { request in
+                                let nonce = AppleNonce.random()
+                                appleNonce = nonce
+                                request.nonce = AppleNonce.sha256(nonce)
+                            } onCompletion: { result in
+                                handleAppleConfirmation(result)
                             }
+                            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+                            .frame(height: 50)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .disabled(confirmationText != "DELETE" || isDeleting)
+                            .opacity(confirmationText == "DELETE" && !isDeleting ? 1 : 0.4)
                         }
-                    }) {
-                        HStack {
-                            if isDeleting {
-                                ProgressView().tint(.white).padding(.trailing, 6)
+                        .padding(.bottom, 16)
+                    } else {
+                        Button(action: {
+                            Task {
+                                isDeleting = true
+                                do {
+                                    try await auth.deleteAccount()
+                                    dismiss()
+                                } catch {
+                                    isDeleting = false
+                                    errorMessage = error.localizedDescription
+                                }
                             }
-                            Text(isDeleting ? "Purging Account..." : "Permanently Delete My Account")
-                                .font(.dashitBodyBold)
-                                .foregroundColor(.white)
+                        }) {
+                            HStack {
+                                if isDeleting {
+                                    ProgressView().tint(.white).padding(.trailing, 6)
+                                }
+                                Text(isDeleting ? "Purging Account..." : "Permanently Delete My Account")
+                                    .font(.dashitBodyBold)
+                                    .foregroundColor(.white)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(confirmationText == "DELETE" ? Color.danger : Color.gray.opacity(0.3))
+                            .cornerRadius(12)
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(confirmationText == "DELETE" ? Color.danger : Color.gray.opacity(0.3))
-                        .cornerRadius(12)
+                        .disabled(confirmationText != "DELETE" || isDeleting)
+                        .padding(.bottom, 16)
                     }
-                    .disabled(confirmationText != "DELETE" || isDeleting)
-                    .padding(.bottom, 16)
                 }
                 .padding(.horizontal, 20)
             }
@@ -96,6 +122,35 @@ struct DeleteAccountView: View {
                     Button("Cancel") { dismiss() }
                         .foregroundColor(.brandAccent)
                 }
+            }
+        }
+    }
+
+    private func handleAppleConfirmation(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case .success(let authorization):
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let tokenData = credential.identityToken,
+                  let idToken = String(data: tokenData, encoding: .utf8),
+                  let codeData = credential.authorizationCode,
+                  let code = String(data: codeData, encoding: .utf8),
+                  let nonce = appleNonce else {
+                errorMessage = "Apple didn't confirm the request. Please try again."
+                return
+            }
+            Task {
+                isDeleting = true
+                do {
+                    try await auth.deleteAppleAccount(idToken: idToken, rawNonce: nonce, authorizationCode: code)
+                    dismiss()
+                } catch {
+                    isDeleting = false
+                    errorMessage = error.localizedDescription
+                }
+            }
+        case .failure(let error):
+            if (error as? ASAuthorizationError)?.code != .canceled {
+                errorMessage = "Apple didn't confirm the request. Please try again."
             }
         }
     }
