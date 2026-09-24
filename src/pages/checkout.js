@@ -36,7 +36,6 @@ import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
-import FreeDeliveryCelebrationModal from "../components/FreeDeliveryCelebrationModal";
 import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
@@ -68,8 +67,6 @@ export default function CheckoutPage() {
   const [receiverDetails, setReceiverDetails] = useState(null);
   const [isCouponsOpen, setIsCouponsOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [isFreeDeliveryModalOpen, setIsFreeDeliveryModalOpen] = useState(false);
-  const [hasShownFreeDelivery, setHasShownFreeDelivery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   /* `isProcessing` only disables the button on the next render, which leaves a
      frame in which a second tap — or the login modal's callback racing the
@@ -327,18 +324,6 @@ export default function CheckoutPage() {
 
   const checkoutEta = calculateDeliveryEta(checkoutData?.location);
 
-  // Trigger Free Delivery Celebration when cart reaches ₹299 (Shown only once until order placed)
-  useEffect(() => {
-    try {
-      const alreadyShown = localStorage.getItem("dashit_free_delivery_seen");
-      if (subtotal >= 299 && !alreadyShown && !hasShownFreeDelivery) {
-        setIsFreeDeliveryModalOpen(true);
-        localStorage.setItem("dashit_free_delivery_seen", "true");
-        setHasShownFreeDelivery(true);
-      }
-    } catch (e) {}
-  }, [subtotal, hasShownFreeDelivery]);
-
   const handleAddToCart = (prod) => {
     hapticLight();
     const prodId = String(prod.id || prod.barcode);
@@ -554,8 +539,6 @@ export default function CheckoutPage() {
 
         localStorage.removeItem("dashit_cart");
         localStorage.removeItem("dashit_checkout_data");
-        // Reset free delivery popup so future orders can see it again
-        localStorage.removeItem("dashit_free_delivery_seen");
         window.dispatchEvent(new Event("dashit_cart_updated"));
       } catch (err) {
         console.error("Order placement error:", err);
@@ -1232,12 +1215,6 @@ export default function CheckoutPage() {
         cartTotal={subtotal}
         appliedCoupon={appliedCoupon}
         onApplyCoupon={(coupon) => setAppliedCoupon(coupon)}
-      />
-
-      {/* Free Delivery Celebration Popup (Screenshot 5) */}
-      <FreeDeliveryCelebrationModal
-        isOpen={isFreeDeliveryModalOpen}
-        onClose={() => setIsFreeDeliveryModalOpen(false)}
       />
 
       {/* Animated Order Processing & Email Confirmation Modal */}
