@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -41,83 +42,87 @@ fun CategoryCollageTile(
     onTap: () -> Unit
 ) {
     val view = LocalView.current
-    val tileShape = RoundedCornerShape(18.dp)
+    val cardShape = RoundedCornerShape(16.dp)
     val extraCount = maxOf(0, tile.productCount - 4)
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(tileShape)
-            .background(DashitColors.SurfaceRaised)
-            .border(1.dp, DashitColors.Hairline, tileShape)
-            .pressable(scale = 0.96f) {
+            .pressable(scale = 0.95f) {
                 HapticsManager.selection(view)
                 onTap()
-            }
-            .padding(6.dp)
-            .padding(bottom = 6.dp),
+            },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 2x2 Collage Container with overlapping +X more badge
+        // Dark Card Housing 2x2 Grid + Badge
         Box(
             modifier = Modifier.fillMaxWidth(),
             contentAlignment = Alignment.BottomCenter
         ) {
-            if (tile.previewImages.size >= 4) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(cardShape)
+                    .background(Color(0xFF222631))
+                    .border(1.dp, Color(0xFF2F3544), cardShape)
+                    .padding(5.dp)
+            ) {
+                if (tile.previewImages.size >= 4) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        CollageCell(tile.previewImages[0], Modifier.weight(1f))
-                        CollageCell(tile.previewImages[1], Modifier.weight(1f))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CollageCell(tile.previewImages[0], Modifier.weight(1f))
+                            CollageCell(tile.previewImages[1], Modifier.weight(1f))
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            CollageCell(tile.previewImages[2], Modifier.weight(1f))
+                            CollageCell(tile.previewImages[3], Modifier.weight(1f))
+                        }
                     }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CollageCell(tile.previewImages[2], Modifier.weight(1f))
-                        CollageCell(tile.previewImages[3], Modifier.weight(1f))
-                    }
+                } else {
+                    CollageCell(
+                        url = tile.previewImages.firstOrNull(),
+                        modifier = Modifier.fillMaxWidth(),
+                        cornerRadius = 12
+                    )
                 }
-            } else {
-                CollageCell(
-                    url = tile.previewImages.firstOrNull(),
-                    modifier = Modifier.fillMaxWidth(),
-                    cornerRadius = 14
-                )
             }
 
             // Overlapping "+X more" chip
             if (extraCount > 0) {
                 Box(
                     modifier = Modifier
-                        .offset(y = 10.dp)
+                        .offset(y = 9.dp)
                         .clip(CircleShape)
-                        .background(DashitColors.SurfaceOverlay)
-                        .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                        .background(Color(0xFF141720))
+                        .border(1.dp, Color(0xFF384054), CircleShape)
+                        .padding(horizontal = 7.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "+$extraCount more",
-                        color = DashitColors.TextSecondary,
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.SemiBold
+                        color = Color(0xFFCBD5E1),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(13.dp))
 
-        // Category Name
+        // Category Name below card
         Text(
             text = tile.name,
             color = DashitColors.TextPrimary,
-            fontSize = 13.sp,
+            fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,

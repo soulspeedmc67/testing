@@ -14,11 +14,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
+import com.dashit.app.core.design.FlyToCartManager
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.Product
@@ -100,17 +108,31 @@ fun ProductCard(
             }
 
             // Quantity Stepper (Bottom-Right overlay)
+            var stepperCenter by remember { mutableStateOf(Offset.Zero) }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(5.dp)
+                    .onGloballyPositioned { coords ->
+                        val pos = coords.positionInRoot()
+                        stepperCenter = Offset(
+                            pos.x + coords.size.width / 2f,
+                            pos.y + coords.size.height / 2f
+                        )
+                    }
             ) {
                 QuantityStepper(
                     quantity = quantity,
                     size = StepperSize.COMPACT,
                     isEnabled = product.isAvailable,
-                    onAdd = onAdd,
-                    onIncrement = onIncrement,
+                    onAdd = {
+                        FlyToCartManager.trigger(product.img, stepperCenter)
+                        onAdd()
+                    },
+                    onIncrement = {
+                        FlyToCartManager.trigger(product.img, stepperCenter)
+                        onIncrement()
+                    },
                     onDecrement = onDecrement
                 )
             }

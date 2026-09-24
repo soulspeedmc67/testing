@@ -6,6 +6,7 @@ import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.CategoryTile
 import com.dashit.app.data.model.Offer
 import com.dashit.app.data.model.Product
+import com.dashit.app.data.repository.CatalogSeed
 import com.dashit.app.data.repository.FirestoreRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,7 +29,7 @@ class StorefrontViewModel(
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
-    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    private val _categories = MutableStateFlow<List<Category>>(CatalogSeed.topCategories)
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
 
     private val _offers = MutableStateFlow<List<Offer>>(emptyList())
@@ -44,19 +45,7 @@ class StorefrontViewModel(
         cat == null && query.trim().isEmpty()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    val categoryTiles: StateFlow<List<CategoryTile>> = _products.combine(_categories) { prods, cats ->
-        val effectiveCats = if (cats.isNotEmpty()) cats else deriveCategories(prods)
-        effectiveCats.mapNotNull { cat ->
-            val matching = prods.filter { it.cat.equals(cat.name, ignoreCase = true) }
-            if (matching.isEmpty()) null
-            else CategoryTile(
-                id = cat.id,
-                name = cat.name,
-                previewImages = matching.take(4).map { it.img },
-                productCount = matching.size
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val categoryTiles: StateFlow<List<CategoryTile>> = MutableStateFlow<List<CategoryTile>>(CatalogSeed.bestsellerTiles).asStateFlow()
 
     val rails: StateFlow<List<ProductRail>> = _products.combine(_categories) { prods, cats ->
         val effectiveCats = if (cats.isNotEmpty()) cats else deriveCategories(prods)
@@ -74,7 +63,16 @@ class StorefrontViewModel(
     val filteredProducts: StateFlow<List<Product>> = combine(_products, _selectedCategory, _searchQuery) { prods, cat, query ->
         var list = prods
         if (!cat.isNullOrBlank()) {
-            list = list.filter { it.cat.equals(cat, ignoreCase = true) }
+            val filter = cat.lowercase()
+            list = list.filter { p ->
+                p.cat.lowercase() == filter ||
+                (filter.contains("chips") && (p.cat.equals("Snacks", true) || p.name.contains("chips", true))) ||
+                (filter.contains("drinks") && (p.cat.equals("Drinks", true) || p.name.contains("drink", true) || p.name.contains("bull", true))) ||
+                (filter.contains("ice cream") && (p.cat.equals("Dairy", true) || p.name.contains("cream", true) || p.name.contains("amul", true))) ||
+                (filter.contains("vegetables") && (p.cat.equals("Vegetables", true) || p.cat.equals("Fresh Fruits", true))) ||
+                (filter.contains("dairy") && p.cat.equals("Dairy", true)) ||
+                (filter.contains("sweets") && (p.name.contains("chocolate", true) || p.name.contains("munch", true) || p.name.contains("silk", true)))
+            }
         }
         if (query.trim().isNotEmpty()) {
             val q = query.trim().lowercase()

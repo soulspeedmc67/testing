@@ -59,7 +59,8 @@ import java.util.Locale
 fun OrdersScreen(
     orderRepo: OrderRepository = OrderRepository.shared,
     cartVm: CartViewModel = CartViewModel.shared,
-    onOpenCart: () -> Unit
+    onOpenCart: () -> Unit,
+    onTrackOrder: (Order) -> Unit = {}
 ) {
     val view = LocalView.current
     val orders by orderRepo.orders.collectAsState()
@@ -139,6 +140,10 @@ fun OrdersScreen(
                             HapticsManager.medium(view)
                             cartVm.reorder(order.items)
                             onOpenCart()
+                        },
+                        onTrackOrder = {
+                            HapticsManager.medium(view)
+                            onTrackOrder(order)
                         }
                     )
                 }
@@ -150,7 +155,8 @@ fun OrdersScreen(
 @Composable
 private fun OrderCard(
     order: Order,
-    onReorder: () -> Unit
+    onReorder: () -> Unit,
+    onTrackOrder: () -> Unit
 ) {
     val cardShape = RoundedCornerShape(16.dp)
     val context = LocalContext.current
@@ -271,32 +277,77 @@ private fun OrderCard(
                 fontWeight = FontWeight.SemiBold
             )
 
-            // Reorder Button
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(DashitColors.BrandOrange.copy(alpha = 0.15f))
-                    .border(1.dp, DashitColors.BrandOrange.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
-                    .pressable(scale = 0.94f) { onReorder() }
-                    .padding(horizontal = 14.dp, vertical = 7.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Reorder",
-                        tint = DashitColors.BrandOrange,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Text(
-                        text = "Reorder",
-                        color = DashitColors.BrandOrange,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (order.status != OrderStatus.DELIVERED && order.status != OrderStatus.CANCELLED) {
+                    // Active order live tracking button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(DashitColors.BlinkitGreen)
+                            .pressable(scale = 0.94f) { onTrackOrder() }
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text(text = "🛵", fontSize = 13.sp)
+                            Text(
+                                text = "Track Live Delivery",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                } else {
+                    // View Route Button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF202636))
+                            .border(1.dp, DashitColors.Hairline, RoundedCornerShape(10.dp))
+                            .pressable(scale = 0.94f) { onTrackOrder() }
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "View Route",
+                            color = DashitColors.TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Reorder Button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(DashitColors.BrandOrange.copy(alpha = 0.15f))
+                            .border(1.dp, DashitColors.BrandOrange.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                            .pressable(scale = 0.94f) { onReorder() }
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reorder",
+                                tint = DashitColors.BrandOrange,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Text(
+                                text = "Reorder",
+                                color = DashitColors.BrandOrange,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
             }
         }

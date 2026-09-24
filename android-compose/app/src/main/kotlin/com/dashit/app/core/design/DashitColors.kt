@@ -7,6 +7,13 @@ object DashitColors {
     val BrandOrange = Color(0xFFFF5B00)
     val BrandAccent = Color(0xFFFF6A1A)
     val Midnight = Color(0xFF061838)
+    val BlinkitGreen = Color(0xFF0C831F)
+    val BlinkitGreenDark = Color(0xFF075E14)
+    val FestiveGold = Color(0xFFE5A11A)
+    val FestiveGoldLight = Color(0xFFFFD466)
+    val FestiveGoldDark = Color(0xFF6B4300)
+    val WalletGreen = Color(0xFF0E4A1C)
+    val WalletGreenBorder = Color(0xFF1B7030)
 
     // Dark surfaces (matching iOS dark palette)
     val Surface = Color(0xFF14171F)
