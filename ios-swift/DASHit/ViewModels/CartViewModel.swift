@@ -26,6 +26,11 @@ final class CartViewModel: ObservableObject {
     /// matching the web age gate (`src/context/AgeGateContext.jsx`).
     @Published private(set) var isAgeConfirmed: Bool = false
 
+    /// The toast plays once per cart; emptying it (or placing the order) re-arms it.
+    private var hasCelebratedFreeDelivery = false
+    /// True while `init` restores the saved cart, which is not the shopper adding items.
+    private var isRestoringCart = true
+
     private init() {
         self.items = LocalStorage.shared.loadCartItems()
         #if DEBUG
@@ -37,6 +42,8 @@ final class CartViewModel: ObservableObject {
         }
         #endif
         recalculate()
+        isRestoringCart = false
+        hasCelebratedFreeDelivery = bill.subtotal >= CartBillBreakdown.freeDeliveryThreshold
     }
 
     var totalQuantity: Int {
@@ -176,6 +183,17 @@ final class CartViewModel: ObservableObject {
             }
         }
 
+        let previousSubtotal = bill.subtotal
         self.bill = CartBillBreakdown.calculate(items: items, appliedCoupon: appliedCoupon)
+        noteFreeDeliveryCrossing(from: previousSubtotal)
+    }
+
+    private func noteFreeDeliveryCrossing(from previousSubtotal: Double) {
+        guard !isRestoringCart else { return }
+        if bill.subtotal == 0 { hasCelebratedFreeDelivery = false }
+        let threshold = CartBillBreakdown.freeDeliveryThreshold
+        guard previousSubtotal < threshold, bill.subtotal >= threshold, !hasCelebratedFreeDelivery else { return }
+        hasCelebratedFreeDelivery = true
+        FreeDeliveryCelebration.shared.celebrate()
     }
 }

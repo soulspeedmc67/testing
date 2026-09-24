@@ -53,6 +53,7 @@ struct CategoriesView: View {
                 cart.isCartSheetPresented = true
             }
             .padding(.bottom, 10)
+            .followsTabBar()
         }
         .background(Color.surface.ignoresSafeArea())
         .sheet(item: $detailProduct, onDismiss: {

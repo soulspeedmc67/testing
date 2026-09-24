@@ -111,6 +111,7 @@ struct StorefrontHomeView: View {
                         cart.isCartSheetPresented = true
                     }
                     .padding(.bottom, 10)
+                    .followsTabBar()
                 }
             }
             .task {

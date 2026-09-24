@@ -152,7 +152,29 @@ final class TabBarVisibility: ObservableObject {
     }
 }
 
+extension CustomTabBar {
+    /// How far the bar slides down, out of view, while tucked away.
+    static let hiddenOffset: CGFloat = barHeight + 48
+    /// How far the pills stacked above the bar drop, settling into its slot.
+    static let pillDrop: CGFloat = barHeight + 10
+}
+
+/// Drops a pill that floats above the tab bar into the bar's slot while the bar
+/// is tucked away. It only offsets, so no scroll view's insets change mid-drag.
+private struct FollowsTabBar: ViewModifier {
+    @ObservedObject private var tabBar = TabBarVisibility.shared
+
+    func body(content: Content) -> some View {
+        content.offset(y: tabBar.isHidden ? CustomTabBar.pillDrop : 0)
+    }
+}
+
 extension View {
+    /// For pills floating above the tab bar; see `FollowsTabBar`.
+    func followsTabBar() -> some View {
+        modifier(FollowsTabBar())
+    }
+
     /// Put on a scroll view's content, inside a ScrollView carrying
     /// `.coordinateSpace(.named(space))`: its scrolling hides and shows the tab bar.
     func drivesTabBarVisibility(in space: String) -> some View {
