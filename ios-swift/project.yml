@@ -35,6 +35,7 @@ targets:
       - sdk: CoreLocation.framework
       - sdk: CoreHaptics.framework
       - sdk: AuthenticationServices.framework
+      - sdk: Speech.framework
     info:
       path: DASHit/Info.plist
       properties:
@@ -53,6 +54,8 @@ targets:
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
         NSLocationWhenInUseUsageDescription: "DASHit requires your delivery address location to deliver groceries in Anantnag and show live courier arrival on the map."
+        NSMicrophoneUsageDescription: "DASHit uses the microphone only while you search for products by voice."
+        NSSpeechRecognitionUsageDescription: "DASHit turns what you say into search text so you can find products by voice."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dashit.app

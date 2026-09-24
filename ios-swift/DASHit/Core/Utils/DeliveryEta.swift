@@ -17,7 +17,11 @@ enum DeliveryEta {
         let isDeliverable: Bool
 
         var distanceText: String {
-            distanceKm < 1 ? "\(Int((distanceKm * 1000).rounded())) m away" : String(format: "%.1f km away", distanceKm)
+            "\(shortDistanceText) away"
+        }
+
+        var shortDistanceText: String {
+            distanceKm < 1 ? "\(Int((distanceKm * 1000).rounded())) m" : String(format: "%.1f km", distanceKm)
         }
     }
 

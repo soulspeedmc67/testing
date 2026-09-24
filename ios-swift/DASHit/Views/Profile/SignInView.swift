@@ -90,8 +90,7 @@ struct SignInView: View {
             }
         }
         .padding(20)
-        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cornerRadius: 20)
         .animation(.dashitSpring, value: auth.errorMessage)
     }
 

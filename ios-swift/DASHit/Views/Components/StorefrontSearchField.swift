@@ -5,23 +5,26 @@ import SwiftUI
 struct StorefrontSearchField: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
+    /// Real product names from the catalogue, so the hint is always something
+    /// the store actually sells.
+    var hints: [String]
+    var onVoiceSearch: (() -> Void)?
 
     @State private var hintIndex = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    static let hints = [
-        "amul butter",
-        "lavas bread",
-        "kashmiri cherries",
-        "basmati rice",
-        "cadbury silk",
-        "fresh paneer",
-        "green coconut"
-    ]
+    static let fallbackHints = ["milk", "bread", "butter", "eggs"]
 
-    init(text: Binding<String>, isFocused: FocusState<Bool>.Binding) {
+    init(
+        text: Binding<String>,
+        isFocused: FocusState<Bool>.Binding,
+        hints: [String] = [],
+        onVoiceSearch: (() -> Void)? = nil
+    ) {
         self._text = text
         self.isFocused = isFocused
+        self.hints = hints.isEmpty ? Self.fallbackHints : hints
+        self.onVoiceSearch = onVoiceSearch
     }
 
     private var fieldShape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
@@ -36,7 +39,7 @@ struct StorefrontSearchField: View {
                 if text.isEmpty {
                     HStack(spacing: 4) {
                         Text("Search")
-                        Text("“\(Self.hints[hintIndex])”")
+                        Text("“\(hints[hintIndex % hints.count])”")
                             .id(hintIndex)
                             .transition(
                                 .asymmetric(
@@ -75,6 +78,22 @@ struct StorefrontSearchField: View {
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Clear search")
+            } else if let onVoiceSearch {
+                Rectangle()
+                    .fill(Color.hairline)
+                    .frame(width: 1, height: 22)
+                Button {
+                    HapticsManager.shared.light()
+                    onVoiceSearch()
+                } label: {
+                    Image(systemName: "mic")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundColor(.textSecondary)
+                        .frame(width: 34, height: 34)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableButtonStyle(scale: 0.85))
+                .accessibilityLabel("Search by voice")
             }
         }
         .padding(.horizontal, 14)
@@ -98,7 +117,7 @@ struct StorefrontSearchField: View {
             try? await Task.sleep(for: .seconds(2.6))
             guard !Task.isCancelled else { return }
             withAnimation(.dashitSpring) {
-                hintIndex = (hintIndex + 1) % Self.hints.count
+                hintIndex = (hintIndex + 1) % max(hints.count, 1)
             }
         }
     }

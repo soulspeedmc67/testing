@@ -9,7 +9,7 @@ enum TabItem: String, CaseIterable {
         switch self {
         case .home: return "house.fill"
         case .orderAgain: return "bag.fill"
-        case .categories: return "circle.grid.2x2.fill"
+        case .categories: return "square.grid.2x2.fill"
         }
     }
 
@@ -17,46 +17,50 @@ enum TabItem: String, CaseIterable {
         switch self {
         case .home: return "house"
         case .orderAgain: return "bag"
-        case .categories: return "circle.grid.2x2"
+        case .categories: return "square.grid.2x2"
         }
     }
 }
 
-/// Bottom navigation, after the Blinkit reference: a full-width translucent
-/// bar the feed scrolls beneath, large symbols over short labels, and the
-/// active tab picked out in brand orange with a filled, bouncing symbol.
+/// Floating bottom navigation after the Blinkit reference: a frosted capsule
+/// lifted off the screen edge, thin-line symbols, and for the active tab a
+/// filled orange symbol that bounces while a soft highlight glides over to it.
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
 
-    /// Height of the bar above the bottom safe area.
-    static let barHeight: CGFloat = 64
+    /// Height of the floating capsule.
+    static let barHeight: CGFloat = 62
+    /// Gap between the capsule and the home indicator.
+    static let bottomGap: CGFloat = 4
     /// Everything the bar occupies above the bottom safe area.
-    static let dockHeight: CGFloat = barHeight
+    static let dockHeight: CGFloat = barHeight + bottomGap
 
+    @Namespace private var selectionNamespace
     @State private var bounceCounts: [TabItem: Int] = [:]
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 tabButton(tab)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(6)
         .frame(height: Self.barHeight)
         .background {
-            // Frosted, and tinted towards the page so it reads as one surface
-            // while cards stay faintly visible as they pass underneath.
             ZStack {
-                Rectangle().fill(.ultraThinMaterial)
-                Color.surface.opacity(0.72)
+                Capsule().fill(.ultraThinMaterial)
+                Capsule().fill(Color.surfaceOverlay.opacity(0.62))
             }
-            .ignoresSafeArea(edges: .bottom)
         }
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color.hairline.opacity(0.7))
-                .frame(height: 0.5)
-        }
+        .overlay(
+            Capsule().strokeBorder(
+                LinearGradient(colors: [Color.edgeHighlight, Color.hairline], startPoint: .top, endPoint: .bottom),
+                lineWidth: 1
+            )
+        )
+        .shadow(color: .floatingShadow, radius: 22, x: 0, y: 10)
+        .padding(.horizontal, 24)
+        .padding(.bottom, Self.bottomGap)
         .animation(.dashitSpring, value: selectedTab)
     }
 
@@ -69,21 +73,26 @@ struct CustomTabBar: View {
             bounceCounts[tab, default: 0] += 1
             selectedTab = tab
         } label: {
-            VStack(spacing: 5) {
+            VStack(spacing: 3) {
                 Image(systemName: isSelected ? tab.iconName : tab.outlineIconName)
-                    .symbolRenderingMode(.hierarchical)
-                    .font(.system(size: 24, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .brandAccent : .textSecondary)
-                    .symbolEffect(.bounce, value: bounceCounts[tab, default: 0])
-                    .frame(height: 28)
+                    .font(.system(size: 20, weight: isSelected ? .regular : .light))
+                    .symbolEffect(.bounce.up.byLayer, value: bounceCounts[tab, default: 0])
+                    .frame(height: 24)
                 Text(tab.rawValue)
-                    .font(.system(size: 12.5, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .textPrimary : .textSecondary)
+                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular))
                     .lineLimit(1)
             }
+            .foregroundColor(isSelected ? .brandAccent : .textSecondary)
             .frame(maxWidth: .infinity)
-            .frame(height: Self.barHeight)
-            .contentShape(Rectangle())
+            .frame(maxHeight: .infinity)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(Color.brandOrange.opacity(0.13))
+                        .matchedGeometryEffect(id: "tab-selection", in: selectionNamespace)
+                }
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(PressableButtonStyle(scale: 0.9))
         .accessibilityLabel(tab.rawValue)

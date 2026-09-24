@@ -159,8 +159,7 @@ struct CheckoutView: View {
                             Spacer(minLength: 0)
                         }
                         .padding(12)
-                        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                        .dashitCard(cornerRadius: 12)
                         .padding(.horizontal, 16)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
