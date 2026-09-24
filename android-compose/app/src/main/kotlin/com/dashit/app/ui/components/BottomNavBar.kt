@@ -39,8 +39,7 @@ import com.dashit.app.core.design.pressable
 enum class NavigationTab(val title: String) {
     HOME("Home"),
     ORDERS("Order Again"),
-    CATEGORIES("Categories"),
-    PROFILE("Profile")
+    CATEGORIES("Categories")
 }
 
 @Composable
@@ -50,18 +49,18 @@ fun BottomNavBar(
     onTabSelected: (NavigationTab) -> Unit
 ) {
     val view = LocalView.current
-    val barShape = RoundedCornerShape(26.dp)
+    val barShape = RoundedCornerShape(28.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .shadow(20.dp, barShape, ambientColor = Color.Black, spotColor = Color.Black)
+            .padding(horizontal = 44.dp)
+            .shadow(16.dp, barShape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(barShape)
             .background(Color(0xFF161820))
             .border(1.dp, DashitColors.Hairline, barShape)
-            .padding(horizontal = 6.dp, vertical = 6.dp)
-            .height(60.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .height(56.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -85,7 +84,7 @@ fun BottomNavBar(
                     imageVector = if (isSelected) filledIcon else outlinedIcon,
                     contentDescription = tab.title,
                     tint = if (isSelected) DashitColors.FestiveGold else DashitColors.TextMuted,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(21.dp)
                 )
 
                 Text(
@@ -104,6 +103,5 @@ private fun getTabIcons(tab: NavigationTab): Pair<ImageVector, ImageVector> {
         NavigationTab.HOME -> Icons.Filled.Home to Icons.Outlined.Home
         NavigationTab.CATEGORIES -> Icons.Filled.GridView to Icons.Outlined.GridView
         NavigationTab.ORDERS -> Icons.Filled.ShoppingBag to Icons.Outlined.ShoppingBag
-        NavigationTab.PROFILE -> Icons.Filled.Person to Icons.Outlined.Person
     }
 }

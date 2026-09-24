@@ -21,6 +21,15 @@ class MainActivity : ComponentActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onCreate(savedInstanceState)
 
+        // Initialize OpenStreetMap (osmdroid) configuration with compliant User-Agent & dedicated tile cache
+        val osmConfig = org.osmdroid.config.Configuration.getInstance()
+        osmConfig.load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
+        osmConfig.userAgentValue = "DASHit-App/1.0 (https://dashit.in; support@dashit.in)"
+        val basePath = java.io.File(cacheDir, "osmdroid").apply { mkdirs() }
+        val tileCache = java.io.File(basePath, "tiles").apply { mkdirs() }
+        osmConfig.osmdroidBasePath = basePath
+        osmConfig.osmdroidTileCache = tileCache
+
         setContent {
             DashitTheme {
                 StorefrontScreen(

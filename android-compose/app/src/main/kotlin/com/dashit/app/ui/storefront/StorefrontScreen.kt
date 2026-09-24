@@ -3,6 +3,8 @@ package com.dashit.app.ui.storefront
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +33,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Celebration
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Fastfood
@@ -53,6 +56,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,6 +87,7 @@ import com.dashit.app.data.model.Order
 import com.dashit.app.data.model.OrderStatus
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.repository.OrderRepository
+import com.dashit.app.ui.address.AddressSelectionSheet
 import com.dashit.app.ui.cart.CartSheet
 import com.dashit.app.ui.categories.CategoriesScreen
 import com.dashit.app.ui.checkout.CheckoutSheet
@@ -100,6 +105,10 @@ import com.dashit.app.ui.profile.ProfileScreen
 import com.dashit.app.ui.sheet.ProductDetailSheet
 import com.dashit.app.viewmodel.CartViewModel
 import com.dashit.app.viewmodel.StorefrontViewModel
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -130,14 +139,29 @@ fun StorefrontScreen(
     var activeTrackingOrder by remember { mutableStateOf<Order?>(null) }
     var isCartSheetOpen by remember { mutableStateOf(false) }
     var isCheckoutOpen by remember { mutableStateOf(false) }
+    var isProfileOpen by remember { mutableStateOf(false) }
+    var isAddressSheetOpen by remember { mutableStateOf(false) }
+    var currentAddress by remember { mutableStateOf(DeliveryAddress()) }
+    var recentOrderPlacedTime by remember { mutableStateOf<Long?>(null) }
+    var showTopOrderBanner by remember { mutableStateOf(false) }
+
+    LaunchedEffect(recentOrderPlacedTime) {
+        if (recentOrderPlacedTime != null) {
+            showTopOrderBanner = true
+            delay(10000)
+            showTopOrderBanner = false
+        }
+    }
 
     val productSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cartSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val address = remember { DeliveryAddress() }
+    val addressSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    BackHandler(enabled = activeTrackingOrder != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
+    BackHandler(enabled = isAddressSheetOpen || isProfileOpen || activeTrackingOrder != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
         when {
+            isAddressSheetOpen -> isAddressSheetOpen = false
+            isProfileOpen -> isProfileOpen = false
             activeTrackingOrder != null -> activeTrackingOrder = null
             detailProduct != null -> detailProduct = null
             isCheckoutOpen -> {
@@ -155,7 +179,11 @@ fun StorefrontScreen(
             .fillMaxSize()
             .background(DashitColors.Surface)
     ) {
-        if (activeTrackingOrder != null) {
+        if (isProfileOpen) {
+            ProfileScreen(
+                onSignOut = { isProfileOpen = false }
+            )
+        } else if (activeTrackingOrder != null) {
             LiveTrackingMapScreen(
                 initialOrder = activeTrackingOrder!!,
                 orderRepo = OrderRepository.shared,
@@ -165,28 +193,31 @@ fun StorefrontScreen(
             when (activeTab) {
                 NavigationTab.HOME -> {
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding(),
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 140.dp)
                     ) {
                     // 1. Top Header: ETA + Address + Profile
                     item(key = "header") {
                         StorefrontHeader(
-                            address = address,
+                            address = currentAddress,
+                            onOpenAddressPicker = {
+                                HapticsManager.light(view)
+                                isAddressSheetOpen = true
+                            },
                             onOpenProfile = {
                                 HapticsManager.selection(view)
-                                activeTab = NavigationTab.PROFILE
+                                isProfileOpen = true
                             }
                         )
                     }
 
-            // 2. Sticky Pinned Search Bar & Horizontal Category Tabs
+            // 2. Sticky Pinned Search Bar & Horizontal Category Tabs (Seamless status bar blend)
             stickyHeader(key = "search_and_tabs") {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(DashitColors.Surface)
+                        .statusBarsPadding()
                         .padding(top = 4.dp, bottom = 8.dp)
                 ) {
                     // Search Bar
@@ -373,69 +404,126 @@ fun StorefrontScreen(
         }
     }
     NavigationTab.CATEGORIES -> {
-                CategoriesScreen(
-                    storefrontVm = storefrontVm,
-                    cartVm = cartVm,
-                    onOpenProductDetail = { detailProduct = it }
-                )
-            }
-            NavigationTab.ORDERS -> {
-                OrdersScreen(
-                    orderRepo = OrderRepository.shared,
-                    cartVm = cartVm,
-                    onOpenCart = { isCartSheetOpen = true },
-                    onTrackOrder = { activeTrackingOrder = it }
-                )
-            }
-            NavigationTab.PROFILE -> {
-                ProfileScreen(
-                    onSignOut = { activeTab = NavigationTab.HOME }
-                )
-            }
+        CategoriesScreen(
+            storefrontVm = storefrontVm,
+            cartVm = cartVm,
+            onOpenProductDetail = { detailProduct = it }
+        )
+    }
+    NavigationTab.ORDERS -> {
+        OrdersScreen(
+            orderRepo = OrderRepository.shared,
+            cartVm = cartVm,
+            onOpenCart = { isCartSheetOpen = true },
+            onTrackOrder = { activeTrackingOrder = it }
+        )
+    }
+}
+
+        // Top Order Status Announcement (Visible for 10 seconds max after order placed)
+        AnimatedVisibility(
+            visible = showTopOrderBanner && activeDeliveryOrder != null,
+            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 10.dp, start = 16.dp, end = 16.dp)
+                .zIndex(10f)
+        ) {
+            TopOrderAnnouncementBanner(
+                order = activeDeliveryOrder!!,
+                onTrack = {
+                    showTopOrderBanner = false
+                    activeTrackingOrder = activeDeliveryOrder
+                },
+                onDismiss = { showTopOrderBanner = false }
+            )
         }
 
-        // Live Order Tracking Sticky Pill
-        if (activeDeliveryOrder != null && activeTab == NavigationTab.HOME) {
+        // Sleek Live Order Tracking Pill (Dynamic Island / Sleek Pill above navbar)
+        if (activeDeliveryOrder != null && activeTab == NavigationTab.HOME && !showTopOrderBanner) {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = if (cartItems.isNotEmpty()) 142.dp else 78.dp)
+                    .padding(bottom = if (cartItems.isNotEmpty()) 136.dp else 74.dp)
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color(0xFF142217))
-                    .border(1.dp, DashitColors.BlinkitGreen.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 24.dp)
+                    .shadow(12.dp, RoundedCornerShape(22.dp), spotColor = DashitColors.BlinkitGreen)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(Color(0xF0131F17))
+                    .border(1.dp, DashitColors.BlinkitGreen.copy(alpha = 0.55f), RoundedCornerShape(22.dp))
                     .pressable(scale = 0.96f) {
                         HapticsManager.medium(view)
                         activeTrackingOrder = activeDeliveryOrder
                     }
-                    .padding(horizontal = 14.dp, vertical = 9.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = "🛵", fontSize = 18.sp)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Live Order In Transit",
-                            color = Color.White,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = activeDeliveryOrder.tracking?.statusText ?: "Arriving in ${activeDeliveryOrder.etaMinutes ?: 8} mins",
-                            color = DashitColors.Positive,
-                            fontSize = 11.5.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(DashitColors.BlinkitGreen.copy(alpha = 0.22f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "🛵", fontSize = 14.sp)
                     }
-                    Text(
-                        text = "Track >",
-                        color = DashitColors.FestiveGold,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text(
+                                text = "Arriving in ${activeDeliveryOrder.etaMinutes ?: 8} mins",
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "•",
+                                color = DashitColors.BlinkitGreen,
+                                fontSize = 10.sp
+                            )
+                            Text(
+                                text = activeDeliveryOrder.driverName ?: "Tariq on route",
+                                color = DashitColors.Positive,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF233827))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = "Track",
+                                color = DashitColors.FestiveGold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = DashitColors.FestiveGold,
+                                modifier = Modifier.size(9.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -470,7 +558,7 @@ fun StorefrontScreen(
             onTabSelected = { activeTab = it }
         )
 
-        // Product Detail Bottom Sheet (Screenshots 4 & 5)
+        // Product Detail Bottom Sheet
         if (detailProduct != null) {
             val qty = cartItems.filter { it.productId == detailProduct!!.id }.sumOf { it.qty }
             ProductDetailSheet(
@@ -509,23 +597,143 @@ fun StorefrontScreen(
                     val placed = OrderRepository.shared.orders.value.firstOrNull { it.id == orderId }
                         ?: OrderRepository.shared.orders.value.firstOrNull()
                     if (placed != null) {
-                        activeTrackingOrder = placed
+                        recentOrderPlacedTime = System.currentTimeMillis()
+                        showTopOrderBanner = true
                     } else {
                         activeTab = NavigationTab.ORDERS
                     }
                 }
             )
         }
+
+        // Address Selection Sheet (Search, Map Pinpoint, Saved Addresses)
+        if (isAddressSheetOpen) {
+            AddressSelectionSheet(
+                currentAddress = currentAddress,
+                sheetState = addressSheetState,
+                onDismiss = { isAddressSheetOpen = false },
+                onSelectAddress = { newAddr ->
+                    currentAddress = newAddr
+                    isAddressSheetOpen = false
+                }
+            )
+        }
         }
 
-        // 5. Parabolic Fly-To-Cart Badge Overlay (Always active at root)
+        // Parabolic Fly-To-Cart Badge Overlay (Always active at root)
         FlyToCartOverlay()
+    }
+}
+
+@Composable
+private fun TopOrderAnnouncementBanner(
+    order: Order,
+    onTrack: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val bannerShape = RoundedCornerShape(20.dp)
+    var progress by remember { mutableStateOf(1f) }
+
+    LaunchedEffect(Unit) {
+        val startTime = System.currentTimeMillis()
+        val totalDuration = 10000L
+        while (progress > 0f) {
+            val elapsed = System.currentTimeMillis() - startTime
+            progress = ((totalDuration - elapsed).toFloat() / totalDuration).coerceIn(0f, 1f)
+            delay(50)
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(20.dp, bannerShape, spotColor = DashitColors.BlinkitGreen)
+            .clip(bannerShape)
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF0C1F13),
+                        Color(0xFF173622),
+                        Color(0xFF102818)
+                    )
+                )
+            )
+            .border(1.2.dp, DashitColors.BlinkitGreen.copy(alpha = 0.85f), bannerShape)
+            .clickable { onTrack() }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(DashitColors.BlinkitGreen.copy(alpha = 0.25f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "🛵", fontSize = 18.sp)
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Order Placed! Arriving in ${order.etaMinutes ?: 8} mins",
+                        color = Color.White,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = order.tracking?.statusText ?: "Store is packing your items • Tap to track",
+                        color = DashitColors.Positive,
+                        fontSize = 11.5.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DashitColors.BlinkitGreen)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Track",
+                        color = Color.Black,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Dismiss",
+                    tint = DashitColors.TextMuted,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clip(CircleShape)
+                        .clickable { onDismiss() }
+                )
+            }
+
+            // 10-second countdown indicator bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(2.5.dp)
+                    .background(DashitColors.BlinkitGreen)
+            )
+        }
     }
 }
 
 @Composable
 private fun StorefrontHeader(
     address: DeliveryAddress,
+    onOpenAddressPicker: () -> Unit,
     onOpenProfile: () -> Unit
 ) {
     val view = LocalView.current
@@ -541,7 +749,8 @@ private fun StorefrontHeader(
                     )
                 )
             )
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .statusBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -563,58 +772,27 @@ private fun StorefrontHeader(
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "8 minutes",
-                        color = Color.White,
-                        fontSize = 30.sp,
-                        fontWeight = FontWeight.Black,
-                        lineHeight = 34.sp
-                    )
-
-                    // 24/7 Pill Badge (matching reference screenshot)
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF48330B))
-                            .border(1.dp, Color(0xFF825D1D), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 7.dp, vertical = 3.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Timer,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "24/7",
-                                color = Color.White,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                    }
-                }
+                Text(
+                    text = "8 minutes",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Black,
+                    lineHeight = 34.sp
+                )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Location selector matching reference screenshot
+                // Location selector opening bottom sheet
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.pressable(scale = 0.96f) {
                         HapticsManager.light(view)
+                        onOpenAddressPicker()
                     }
                 ) {
                     Text(
-                        text = "HOME - ${address.displaySummary}",
+                        text = address.displaySummary,
                         color = Color(0xFFFFECC4),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
@@ -631,53 +809,24 @@ private fun StorefrontHeader(
                 }
             }
 
-            // Top Right Actions: Green Wallet Pill + Profile Avatar Button
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Top Right Profile Avatar Button (Wallet removed)
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF2C2214))
+                    .border(1.dp, Color(0xFF5A4420), CircleShape)
+                    .pressable(scale = 0.90f) {
+                        onOpenProfile()
+                    },
+                contentAlignment = Alignment.Center
             ) {
-                // Wallet Pill [ 💵 ₹0 ]
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DashitColors.WalletGreen)
-                        .border(1.dp, DashitColors.WalletGreenBorder, RoundedCornerShape(12.dp))
-                        .pressable(scale = 0.92f) {
-                            HapticsManager.light(view)
-                        }
-                        .padding(horizontal = 9.dp, vertical = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "💵", fontSize = 13.sp)
-                        Text(
-                            text = "₹0",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                }
-
-                // Profile Avatar Button
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF2C2214))
-                        .border(1.dp, Color(0xFF5A4420), CircleShape)
-                        .pressable(scale = 0.90f) {
-                            onOpenProfile()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
-                        tint = Color.White,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profile",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
     }
