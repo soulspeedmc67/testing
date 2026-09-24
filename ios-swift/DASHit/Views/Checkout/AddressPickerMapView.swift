@@ -4,11 +4,15 @@ import Combine
 
 /// The pin picker as its own sheet, with Cancel.
 struct AddressPickerMapView: View {
+    /// Adds another address (blank form, map on the current area) instead of
+    /// editing the current one.
+    var addsNewAddress = false
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            AddressPinPicker(onSaved: { dismiss() })
+            AddressPinPicker(start: newAddressStart, onSaved: { dismiss() })
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cancel") { dismiss() }
@@ -16,6 +20,11 @@ struct AddressPickerMapView: View {
                     }
                 }
         }
+    }
+
+    private var newAddressStart: CLLocationCoordinate2D? {
+        guard addsNewAddress else { return nil }
+        return LocalStorage.shared.loadAddress()?.coordinate ?? DeliveryEta.hub
     }
 }
 

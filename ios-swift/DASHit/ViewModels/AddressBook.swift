@@ -4,7 +4,8 @@ import CoreLocation
 
 /// The address deliveries go to now, and every address the shopper has used,
 /// most recent first. Kept on the device; addresses from past orders are
-/// folded in once per launch so the list is not empty for existing shoppers.
+/// folded in once per launch and account, so the list is not empty for
+/// existing shoppers.
 @MainActor
 final class AddressBook: ObservableObject {
     static let shared = AddressBook()
@@ -15,7 +16,8 @@ final class AddressBook: ObservableObject {
     private static let maxSaved = 12
     /// The placeholder coordinate orders fall back to when they carry none.
     private static let placeholder = DeliveryAddress().coordinate
-    private var hasImportedOrders = false
+    /// The account whose past orders were last folded in.
+    private var importedUid: String?
 
     private init() {
         let current = LocalStorage.shared.loadAddress()
@@ -54,8 +56,8 @@ final class AddressBook: ObservableObject {
     /// missing. Orders without real coordinates are skipped: the rider would be
     /// sent to the placeholder pin.
     func importPastOrders(uid: String?) async {
-        guard let uid, !hasImportedOrders else { return }
-        hasImportedOrders = true
+        guard let uid, uid != importedUid else { return }
+        importedUid = uid
         let orders = await FirestoreService.shared.fetchUserOrders(userId: uid)
         var merged = saved
         for address in orders.map(\.deliveryAddress) where merged.count < Self.maxSaved {
@@ -75,7 +77,7 @@ final class AddressBook: ObservableObject {
     func forgetAll() {
         current = nil
         saved = []
-        hasImportedOrders = false
+        importedUid = nil
     }
 
     /// Same door: the same saved entry, or within 25 m with the same house.
