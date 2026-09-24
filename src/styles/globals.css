@@ -747,3 +747,64 @@ textarea:focus-visible,
   height: 44px;
   transform: translate(-50%, -50%);
 }
+
+/* Splash Screen Monoline Doodles */
+.doodle-stroke {
+  stroke: #CBD5E1;
+  stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.dark .doodle-stroke {
+  stroke: #28303F;
+}
+.doodle-faint {
+  stroke: #CBD5E1;
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  opacity: 0.7;
+}
+.dark .doodle-faint {
+  stroke: #1E2430;
+}
+.accent-dot-blue {
+  fill: #38BDF8;
+  opacity: 0.65;
+}
+.dark .accent-dot-blue {
+  opacity: 0.45;
+}
+.accent-dot-orange {
+  fill: #FB923C;
+  opacity: 0.6;
+}
+.dark .accent-dot-orange {
+  opacity: 0.4;
+}
+.accent-ring {
+  stroke: #CBD5E1;
+  stroke-width: 1.2;
+  fill: none;
+}
+.dark .accent-ring {
+  stroke: #28303F;
+}
+.accent-sparkle {
+  stroke: #CBD5E1;
+  stroke-width: 1.2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dark .accent-sparkle {
+  stroke: #28303F;
+}
+
+/* Zero-API-Key Dark Mode Filter for Google Maps Road Tiles */
+.dark .map-tiles-filter {
+  filter: invert(90%) hue-rotate(180deg) contrast(110%) brightness(95%);
+}
+

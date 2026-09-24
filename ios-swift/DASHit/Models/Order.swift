@@ -138,6 +138,13 @@ public struct Order: Identifiable, Hashable {
     public var driverPhone: String?
     public var etaMinutes: Int?
     public var tracking: DriverLiveTracking?
+    /// The 4-digit code the rider asks for at the door (web: `otp`).
+    public var otp: String?
+    public var couponCode: String?
+    /// Set on an order that replaced another to add items: the original
+    /// order's window end (epoch seconds), so adding items never extends it.
+    public var modifyWindowEndsAt: Double?
+    public var replacesOrderId: String?
 
     public init(
         id: String,
@@ -156,7 +163,11 @@ public struct Order: Identifiable, Hashable {
         driverName: String? = nil,
         driverPhone: String? = nil,
         etaMinutes: Int? = 8,
-        tracking: DriverLiveTracking? = nil
+        tracking: DriverLiveTracking? = nil,
+        otp: String? = nil,
+        couponCode: String? = nil,
+        modifyWindowEndsAt: Double? = nil,
+        replacesOrderId: String? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -175,6 +186,45 @@ public struct Order: Identifiable, Hashable {
         self.driverPhone = driverPhone
         self.etaMinutes = etaMinutes
         self.tracking = tracking
+        self.otp = otp
+        self.couponCode = couponCode
+        self.modifyWindowEndsAt = modifyWindowEndsAt
+        self.replacesOrderId = replacesOrderId
+    }
+}
+
+// MARK: - Codes
+
+extension Order {
+    /// Short, readable order code, e.g. DSH-48213907.
+    static func newCode() -> String {
+        let clock = Int(Date().timeIntervalSince1970) % 10_000
+        return "DSH-\(String(format: "%04d", clock))\(Int.random(in: 1000...9999))"
+    }
+
+    /// The 4-digit code the customer reads out to the rider at handover.
+    static func newDeliveryCode() -> String {
+        String(Int.random(in: 1000...9999))
+    }
+}
+
+// MARK: - The 60-second change window
+
+extension Order {
+    static let modifyWindowSeconds: TimeInterval = 60
+
+    /// When the window to add items or cancel closes: 60 seconds after the
+    /// server stamped the order (web `getRemainingCancellationSeconds`), or the
+    /// original order's deadline for an order that replaced it.
+    var modifyWindowEnd: Date {
+        Date(timeIntervalSince1970: modifyWindowEndsAt ?? (createdAt + Self.modifyWindowSeconds))
+    }
+
+    /// Seconds left in the window; 0 once it has closed or the store has
+    /// moved the order past "Placed".
+    func modifySecondsRemaining(at now: Date = Date()) -> Int {
+        guard status.stage == .placed else { return 0 }
+        return max(0, Int(modifyWindowEnd.timeIntervalSince(now).rounded(.up)))
     }
 }
 
@@ -191,6 +241,7 @@ extension Order: Decodable {
         case status, createdAt, deliveryAddress, location
         case paymentMethod, paymentStatus
         case driverId, driverName, driverPhone, etaMinutes, tracking
+        case otp, couponCode, modifyWindowEndsAt, replacesOrderId
     }
 
     public init(from decoder: Decoder) throws {
@@ -238,7 +289,11 @@ extension Order: Decodable {
             driverName: (driverName?.isEmpty ?? true) ? nil : driverName,
             driverPhone: c.flexibleString(.driverPhone),
             etaMinutes: c.flexibleInt(.etaMinutes),
-            tracking: try? c.decode(DriverLiveTracking.self, forKey: .tracking)
+            tracking: try? c.decode(DriverLiveTracking.self, forKey: .tracking),
+            otp: c.flexibleString(.otp),
+            couponCode: c.flexibleString(.couponCode),
+            modifyWindowEndsAt: c.flexibleTimestamp(.modifyWindowEndsAt),
+            replacesOrderId: c.flexibleString(.replacesOrderId)
         )
     }
 }

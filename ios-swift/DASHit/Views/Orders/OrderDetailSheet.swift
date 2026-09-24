@@ -129,8 +129,7 @@ struct OrderDetailSheet: View {
             content()
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
-                .background(Color.surfaceRaised, in: cardShape)
-                .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+                .dashitCard(cardShape)
         }
     }
 

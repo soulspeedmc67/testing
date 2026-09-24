@@ -26,6 +26,10 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>DASHit uses the microphone only while you search for products by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>DASHit turns what you say into search text so you can find products by voice.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>DASHit requires your delivery address location to deliver groceries in Anantnag and show live courier arrival on the map.</string>
 	<key>NSSupportsLiveActivities</key>

@@ -22,6 +22,7 @@ import {
   Crosshair,
   Mail,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
@@ -30,11 +31,21 @@ import {
   signInWithTruecaller,
   signInWithEmail,
   signUpWithEmail,
+  sendWhatsappOtp,
+  verifyWhatsappOtp,
 } from "../lib/api";
 import { completeGoogleRedirect } from "../lib/auth";
 import { isNative, isIOS as isIOSPlatform } from "../lib/platform";
 import InteractiveMapModal from "../components/InteractiveMapModal";
 import { setDeviceSystemBars } from "../lib/systemBars";
+
+function WhatsAppIcon({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12.031 2C6.496 2 2 6.5 2 12.04c0 1.975.567 3.82 1.554 5.378L2.25 22l4.757-1.25a10.02 10.02 0 0 0 5.024 1.34h.005c5.534 0 10.03-4.5 10.03-10.04C22.066 6.5 17.565 2 12.031 2zm0 18.36a8.318 8.318 0 0 1-4.237-1.157l-.304-.18-3.14.823.838-3.058-.198-.315a8.32 8.32 0 0 1-1.282-4.438c0-4.606 3.743-8.353 8.337-8.353 4.59 0 8.331 3.747 8.331 8.353 0 4.606-3.74 8.35-8.347 8.35zm4.568-6.242c-.25-.125-1.48-.73-1.71-.813-.23-.083-.396-.125-.563.125-.166.25-.646.813-.791.979-.146.167-.292.188-.542.063-.25-.125-1.054-.388-2.008-1.238-.742-.662-1.242-1.48-1.388-1.73-.146-.25-.015-.385.11-.51.112-.112.25-.292.375-.438.125-.146.167-.25.25-.417.083-.167.042-.313-.02-.438-.063-.125-.563-1.354-.771-1.854-.203-.487-.41-.421-.563-.429l-.48-.008c-.166 0-.437.063-.666.313-.23.25-.875.854-.875 2.083 0 1.23.896 2.417 1.02 2.584.126.166 1.764 2.693 4.274 3.777.597.258 1.064.412 1.428.528.6.19 1.146.164 1.577.099.48-.072 1.48-.604 1.688-1.188.208-.583.208-1.083.146-1.188-.063-.104-.23-.166-.48-.291z" />
+    </svg>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -67,6 +78,25 @@ export default function LoginPage() {
   const [isTruecallerModalOpen, setIsTruecallerModalOpen] = useState(false);
   const [truecallerMobile, setTruecallerMobile] = useState("");
   const [isTruecallerSubmitting, setIsTruecallerSubmitting] = useState(false);
+
+  // WhatsApp OTP Authentication State
+  const [whatsappStep, setWhatsappStep] = useState("number"); // "number" | "otp"
+  const [whatsappMobile, setWhatsappMobile] = useState("");
+  const [whatsappOtp, setWhatsappOtp] = useState(["", "", "", ""]);
+  const [isWhatsappSending, setIsWhatsappSending] = useState(false);
+  const [isWhatsappVerifying, setIsWhatsappVerifying] = useState(false);
+  const [whatsappCountdown, setWhatsappCountdown] = useState(0);
+  const [whatsappDevHint, setWhatsappDevHint] = useState("");
+  const otpInputRefs = useRef([]);
+
+  // 30-second countdown timer for WhatsApp resend
+  useEffect(() => {
+    if (whatsappCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setWhatsappCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [whatsappCountdown]);
 
   // Email form state
   const [email, setEmail] = useState("");
@@ -155,6 +185,16 @@ export default function LoginPage() {
       if (clean) {
         setMobile(clean);
         setTruecallerMobile(clean);
+        setWhatsappMobile(clean);
+      }
+    } else if (typeof window !== "undefined") {
+      const savedPhone = localStorage.getItem("dashit_user_phone") || "";
+      if (savedPhone) {
+        const cleanSaved = savedPhone.replace(/\D/g, "").slice(-10);
+        if (cleanSaved) {
+          setWhatsappMobile(cleanSaved);
+          setTruecallerMobile(cleanSaved);
+        }
       }
     }
     if (redirect || phone) {
@@ -214,6 +254,135 @@ export default function LoginPage() {
         router.push(safeRedirect(router.query?.redirect));
       }
     }, 1300);
+  };
+
+  // --------------------------------------------------------------------------
+  // WHATSAPP OTP LOGIN HANDLERS
+  // --------------------------------------------------------------------------
+  const handleSendWhatsappOtp = async (e) => {
+    if (e) e.preventDefault();
+    const clean = String(whatsappMobile || "").replace(/\D/g, "").slice(-10);
+    if (clean.length < 10) {
+      setErrorMessage("Please enter a valid 10-digit mobile number");
+      return;
+    }
+    setIsWhatsappSending(true);
+    setErrorMessage("");
+    try {
+      const res = await sendWhatsappOtp(clean);
+      if (res && res.success) {
+        setWhatsappStep("otp");
+        setWhatsappCountdown(30);
+        setWhatsappOtp(["", "", "", ""]);
+        if (res.devOtp) {
+          setWhatsappDevHint(res.devOtp);
+        } else {
+          setWhatsappDevHint("");
+        }
+        setTimeout(() => {
+          if (otpInputRefs.current && otpInputRefs.current[0]) {
+            otpInputRefs.current[0].focus();
+          }
+        }, 200);
+      } else {
+        setErrorMessage(res?.message || "Could not send WhatsApp verification code");
+      }
+    } catch (err) {
+      setErrorMessage(err?.message || "Failed to send WhatsApp code");
+    } finally {
+      setIsWhatsappSending(false);
+    }
+  };
+
+  const handleVerifyWhatsappOtp = async (submittedOtp = null) => {
+    const code = submittedOtp || whatsappOtp.join("");
+    if (code.length < 4) {
+      setErrorMessage("Please enter the complete 4-digit code");
+      return;
+    }
+    setIsWhatsappVerifying(true);
+    setErrorMessage("");
+
+    try {
+      const clean = String(whatsappMobile || "").replace(/\D/g, "").slice(-10);
+      const res = await verifyWhatsappOtp(clean, code, fullName.trim() || "Customer");
+      if (res && res.success) {
+        setMobile(clean);
+        try {
+          const addressParts = [flatNo, area, city, pincode].map((p) => (p || "").trim());
+          const hasAddress = addressParts.some(Boolean);
+          const uData = {
+            name: res.user?.name || fullName.trim() || "Customer",
+            mobile: clean,
+            isLoggedIn: true,
+          };
+          if (hasAddress) uData.address = addressParts.filter(Boolean).join(", ");
+          localStorage.setItem("dashit_user", JSON.stringify(uData));
+          localStorage.setItem("dashit_user_phone", clean);
+        } catch (e) {}
+        triggerAuthSuccess(res.user?.name || fullName || "Customer", "whatsapp");
+      } else {
+        setErrorMessage(res?.message || "Invalid verification code");
+      }
+    } catch (err) {
+      setErrorMessage(err?.message || "Verification failed");
+    } finally {
+      setIsWhatsappVerifying(false);
+    }
+  };
+
+  const handleOtpBoxChange = (index, value) => {
+    const cleanVal = String(value || "").replace(/\D/g, "");
+    if (!cleanVal) {
+      const newOtp = [...whatsappOtp];
+      newOtp[index] = "";
+      setWhatsappOtp(newOtp);
+      return;
+    }
+
+    // Pasted multiple digits
+    if (cleanVal.length > 1) {
+      const digits = cleanVal.slice(0, 4).split("");
+      const newOtp = [...whatsappOtp];
+      digits.forEach((d, i) => {
+        if (i < 4) newOtp[i] = d;
+      });
+      setWhatsappOtp(newOtp);
+      const nextIndex = Math.min(digits.length, 3);
+      if (otpInputRefs.current[nextIndex]) {
+        otpInputRefs.current[nextIndex].focus();
+      }
+      if (newOtp.every((d) => d.length === 1)) {
+        handleVerifyWhatsappOtp(newOtp.join(""));
+      }
+      return;
+    }
+
+    const singleDigit = cleanVal.slice(-1);
+    const newOtp = [...whatsappOtp];
+    newOtp[index] = singleDigit;
+    setWhatsappOtp(newOtp);
+
+    // Auto-advance to next input
+    if (singleDigit && index < 3 && otpInputRefs.current[index + 1]) {
+      otpInputRefs.current[index + 1].focus();
+    }
+
+    // Auto-verify when 4th digit is filled
+    if (singleDigit && index === 3) {
+      const fullCode = newOtp.join("");
+      if (fullCode.length === 4) {
+        handleVerifyWhatsappOtp(fullCode);
+      }
+    }
+  };
+
+  const handleOtpBoxKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !whatsappOtp[index] && index > 0) {
+      if (otpInputRefs.current[index - 1]) {
+        otpInputRefs.current[index - 1].focus();
+      }
+    }
   };
 
   // --------------------------------------------------------------------------
@@ -745,7 +914,10 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (router.query?.redirect || (typeof window !== "undefined" && window.history.length > 1)) {
+                        if (authTab === "phone" && whatsappStep === "otp") {
+                          setWhatsappStep("number");
+                          setErrorMessage("");
+                        } else if (router.query?.redirect || (typeof window !== "undefined" && window.history.length > 1)) {
                           router.back();
                         } else {
                           goBack(router, "/shop");
@@ -757,7 +929,11 @@ export default function LoginPage() {
                       <span>Back</span>
                     </button>
                     <h2 className="text-[13px] font-black uppercase tracking-wider text-slate-900 dark:text-content">
-                      {authTab === "phone" ? "Sign In with Mobile" : emailMode === "signup" ? "Create Account" : "Email Sign In"}
+                      {authTab === "phone"
+                        ? (whatsappStep === "otp" ? "Verify WhatsApp Code" : "Sign In with WhatsApp")
+                        : emailMode === "signup"
+                        ? "Create Account"
+                        : "Email Sign In"}
                     </h2>
 
                     {/* Balanced spacer so title is centered without cross button */}
@@ -766,7 +942,7 @@ export default function LoginPage() {
 
                   {/* Scrollable Form Content */}
                   <div className="flex-1 overflow-y-auto overscroll-contain px-6 pt-3 pb-[max(32px,calc(20px+env(safe-area-inset-bottom,20px)))] space-y-3">
-                    {/* Primary Mode Tabs: Mobile Number (Fast) vs Email */}
+                    {/* Primary Mode Tabs: WhatsApp Mobile vs Email */}
                     <div className="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200/80 shrink-0 dark:border-line/80 dark:bg-surface-muted">
                       <button
                         type="button"
@@ -780,8 +956,8 @@ export default function LoginPage() {
                             : "text-slate-500 hover:text-slate-900 font-bold dark:text-content-muted dark:hover:text-white"
                         }`}
                       >
-                        <Phone className="w-3.5 h-3.5 text-[#FF5B00]" />
-                        <span>Mobile Number</span>
+                        <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366]" />
+                        <span>WhatsApp OTP</span>
                       </button>
 
                       <button
@@ -809,60 +985,181 @@ export default function LoginPage() {
                       </div>
                     )}
 
-                    {/* 1. INSTANT MOBILE PHONE AUTH FORM (DEFAULT) */}
+                    {/* 1. WHATSAPP OTP AUTHENTICATION */}
                     {authTab === "phone" && (
-                      <form onSubmit={handleInstantPhoneLogin} className="space-y-3 pt-1">
-                        <div className="space-y-0.5">
-                          <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider dark:text-content-secondary">
-                            Full Name (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={fullName}
-                            onChange={(e) => setFullName(e.target.value)}
-                            placeholder="Enter your name"
-                            className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
-                          />
-                        </div>
+                      <div className="space-y-3 pt-1">
+                        {whatsappStep === "number" ? (
+                          <form onSubmit={handleSendWhatsappOtp} className="space-y-3">
+                            <div className="space-y-0.5">
+                              <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider dark:text-content-secondary">
+                                Full Name (Optional)
+                              </label>
+                              <input
+                                type="text"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                placeholder="Enter your name"
+                                className="w-full bg-white border border-slate-300 text-slate-900 font-semibold rounded-xl py-2 px-3.5 text-[13px] placeholder:text-slate-400 focus:outline-none focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366]/40 transition-all dark:bg-surface-muted dark:border-line-strong dark:text-content dark:placeholder:text-content-faint"
+                              />
+                            </div>
 
-                        <div className="space-y-0.5">
-                          <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider dark:text-content-secondary">
-                            10-Digit Mobile Number
-                          </label>
-                          <div className="relative flex items-center">
-                            <span className="absolute left-3.5 text-xs font-black text-slate-700 select-none dark:text-content">
-                              +91
-                            </span>
-                            <input
-                              type="tel"
-                              inputMode="numeric"
-                              maxLength={10}
-                              required
-                              value={truecallerMobile}
-                              onChange={(e) => {
-                                setErrorMessage("");
-                                setTruecallerMobile(e.target.value.replace(/\D/g, "").slice(0, 10));
-                              }}
-                              placeholder="98765 43210"
-                              className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-[14px] rounded-xl pl-12 pr-4 py-2.5 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00]/40 transition-all tracking-wide dark:bg-surface-muted dark:border-line-strong dark:text-content"
-                            />
+                            <div className="space-y-0.5">
+                              <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider dark:text-content-secondary">
+                                WhatsApp Mobile Number
+                              </label>
+                              <div className="relative flex items-center">
+                                <span className="absolute left-3.5 text-xs font-black text-slate-700 select-none dark:text-content">
+                                  +91
+                                </span>
+                                <input
+                                  type="tel"
+                                  inputMode="numeric"
+                                  maxLength={10}
+                                  required
+                                  value={whatsappMobile}
+                                  onChange={(e) => {
+                                    setErrorMessage("");
+                                    setWhatsappMobile(e.target.value.replace(/\D/g, "").slice(0, 10));
+                                  }}
+                                  placeholder="98765 43210"
+                                  className="w-full bg-white border border-slate-300 text-slate-900 font-bold text-[14px] rounded-xl pl-12 pr-4 py-2.5 focus:outline-none focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366]/40 transition-all tracking-wide dark:bg-surface-muted dark:border-line-strong dark:text-content"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 pl-1 pt-0.5 dark:text-content-muted">
+                              <WhatsAppIcon className="w-3.5 h-3.5 text-[#25D366] shrink-0" />
+                              <span>We will send a 4-digit verification code to your WhatsApp</span>
+                            </div>
+
+                            <button
+                              type="submit"
+                              disabled={isWhatsappSending || whatsappMobile.length < 10}
+                              className="w-full bg-[#25D366] hover:bg-[#20ba5a] active:bg-[#128C7E] disabled:opacity-50 text-white font-black text-[13.5px] py-3.5 px-5 rounded-xl flex items-center justify-center space-x-2 active:scale-[0.98] shadow-[0_4px_14px_rgba(37,211,102,0.3)] transition-all mt-2 cursor-pointer"
+                            >
+                              {isWhatsappSending ? (
+                                <div className="flex items-center space-x-2">
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  <span>Sending code via WhatsApp…</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <WhatsAppIcon className="w-4 h-4 fill-white" />
+                                  <span>Continue with WhatsApp</span>
+                                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                                </div>
+                              )}
+                            </button>
+                          </form>
+                        ) : (
+                          /* STEP 2: ENTER 4-DIGIT WHATSAPP OTP */
+                          <div className="space-y-4">
+                            {/* Verification banner with number edit option */}
+                            <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center justify-between dark:bg-emerald-950/20 dark:border-emerald-800/40">
+                              <div className="flex items-center space-x-2.5">
+                                <div className="w-8 h-8 rounded-full bg-[#25D366] flex items-center justify-center text-white shadow-xs shrink-0">
+                                  <WhatsAppIcon className="w-4 h-4 fill-white" />
+                                </div>
+                                <div>
+                                  <p className="text-[11px] font-bold text-emerald-900 dark:text-emerald-300">
+                                    OTP sent to WhatsApp
+                                  </p>
+                                  <p className="text-[13px] font-black text-slate-900 dark:text-white">
+                                    +91 {whatsappMobile}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setWhatsappStep("number");
+                                  setErrorMessage("");
+                                }}
+                                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100/60 transition-all dark:text-emerald-400 dark:hover:bg-emerald-900/40 cursor-pointer"
+                              >
+                                <span>Change</span>
+                              </button>
+                            </div>
+
+                            {whatsappDevHint && (
+                              <div className="text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-3 py-1.5 flex items-center justify-between dark:bg-amber-950/30 dark:border-amber-800/50 dark:text-amber-300">
+                                <span>Dev Sandbox OTP:</span>
+                                <span className="font-mono font-black tracking-widest text-xs bg-amber-200/60 px-1.5 py-0.5 rounded dark:bg-amber-900/60">
+                                  {whatsappDevHint}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* 4 Digit Boxes */}
+                            <div className="space-y-1.5">
+                              <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider text-center dark:text-content-secondary">
+                                Enter 4-Digit Code
+                              </label>
+                              <div className="flex items-center justify-center gap-2.5">
+                                {[0, 1, 2, 3].map((idx) => (
+                                  <input
+                                    key={idx}
+                                    ref={(el) => (otpInputRefs.current[idx] = el)}
+                                    type="tel"
+                                    inputMode="numeric"
+                                    maxLength={idx === 0 ? 4 : 1}
+                                    value={whatsappOtp[idx]}
+                                    onChange={(e) => handleOtpBoxChange(idx, e.target.value)}
+                                    onKeyDown={(e) => handleOtpBoxKeyDown(idx, e)}
+                                    className={`w-12 h-13 text-center text-xl font-black rounded-xl border bg-white text-slate-900 focus:outline-none transition-all dark:bg-surface-muted dark:text-content ${
+                                      whatsappOtp[idx]
+                                        ? "border-[#25D366] ring-2 ring-[#25D366]/20 bg-emerald-50/20"
+                                        : "border-slate-300 dark:border-line-strong focus:border-[#25D366]"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleVerifyWhatsappOtp()}
+                              disabled={isWhatsappVerifying || whatsappOtp.some((d) => !d)}
+                              className="w-full bg-[#25D366] hover:bg-[#20ba5a] active:bg-[#128C7E] disabled:opacity-50 text-white font-black text-[13.5px] py-3.5 px-5 rounded-xl flex items-center justify-center space-x-2 active:scale-[0.98] shadow-[0_4px_14px_rgba(37,211,102,0.3)] transition-all cursor-pointer"
+                            >
+                              {isWhatsappVerifying ? (
+                                <div className="flex items-center space-x-2">
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  <span>Verifying code…</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <Check className="w-4 h-4 stroke-[3]" />
+                                  <span>Verify &amp; Continue</span>
+                                </div>
+                              )}
+                            </button>
+
+                            {/* Resend via WhatsApp link with countdown */}
+                            <div className="text-center pt-1">
+                              {whatsappCountdown > 0 ? (
+                                <p className="text-xs text-slate-500 font-semibold dark:text-content-muted">
+                                  Resend code in{" "}
+                                  <span className="font-bold text-slate-700 dark:text-content">
+                                    {whatsappCountdown}s
+                                  </span>
+                                </p>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={handleSendWhatsappOtp}
+                                  disabled={isWhatsappSending}
+                                  className="text-xs font-bold text-[#128C7E] hover:text-[#075E54] dark:text-[#25D366] cursor-pointer inline-flex items-center space-x-1"
+                                >
+                                  <RefreshCw className={`w-3 h-3 ${isWhatsappSending ? "animate-spin" : ""}`} />
+                                  <span>Resend OTP via WhatsApp</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-
-                        <div className="flex items-center space-x-1.5 text-[11px] text-slate-500 pl-1 pt-0.5 dark:text-content-muted">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span>We'll link your orders and delivery address to this number</span>
-                        </div>
-
-                        <button
-                          type="submit"
-                          disabled={isTruecallerSubmitting || truecallerMobile.length < 10}
-                          className="w-full bg-[#FF5B00] hover:bg-[#E04E00] disabled:opacity-50 text-white font-black text-[13.5px] py-3.5 px-5 rounded-xl flex items-center justify-center space-x-2 active:scale-[0.98] shadow-[0_4px_14px_rgba(255,91,0,0.25)] transition-all mt-2 cursor-pointer"
-                        >
-                          <span>{isTruecallerSubmitting ? "Verifying…" : "Sign In & Continue"}</span>
-                          {!isTruecallerSubmitting && <ArrowRight className="w-4 h-4 stroke-[3]" />}
-                        </button>
-                      </form>
+                        )}
+                      </div>
                     )}
 
                     {/* 2. EMAIL & PASSWORD FORM */}

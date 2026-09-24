@@ -30,12 +30,7 @@ const EASE_IN_OUT = [0.65, 0, 0.35, 1];
 export default function PremiumSplashScreen({ onComplete, onExitStart }) {
   const [isVisible, setIsVisible] = useState(true);
   const [isExiting, setIsExiting] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof document !== "undefined") {
-      return document.documentElement.classList.contains("dark");
-    }
-    return false;
-  });
+  const [isDark, setIsDark] = useState(false);
 
   // Callbacks arrive as inline arrows, so hold them in refs and let the
   // sequence below run exactly once instead of restarting on every re-render
@@ -115,43 +110,6 @@ export default function PremiumSplashScreen({ onComplete, onExitStart }) {
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <style>{`
-              .doodle-stroke {
-                stroke: ${isDark ? "#28303F" : "#CBD5E1"};
-                stroke-width: 1.35;
-                stroke-linecap: round;
-                stroke-linejoin: round;
-                fill: none;
-              }
-              .doodle-faint {
-                stroke: ${isDark ? "#1E2430" : "#CBD5E1"};
-                stroke-width: 1.1;
-                stroke-linecap: round;
-                stroke-linejoin: round;
-                fill: none;
-                opacity: 0.7;
-              }
-              .accent-dot-blue {
-                fill: #38BDF8;
-                opacity: ${isDark ? "0.45" : "0.65"};
-              }
-              .accent-dot-orange {
-                fill: #FB923C;
-                opacity: ${isDark ? "0.4" : "0.6"};
-              }
-              .accent-ring {
-                stroke: ${isDark ? "#28303F" : "#CBD5E1"};
-                stroke-width: 1.2;
-                fill: none;
-              }
-              .accent-sparkle {
-                stroke: ${isDark ? "#28303F" : "#CBD5E1"};
-                stroke-width: 1.2;
-                fill: none;
-                stroke-linecap: round;
-                stroke-linejoin: round;
-              }
-            `}</style>
 
             {/* 1. Kashmiri Apple / Fruit */}
             <g id="sp-apple">

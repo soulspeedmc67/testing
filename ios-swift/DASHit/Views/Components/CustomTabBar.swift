@@ -22,35 +22,44 @@ enum TabItem: String, CaseIterable {
     }
 }
 
-/// Floating bottom navigation: a rounded bar inset from the screen edges,
-/// on a material so content shows softly through as it scrolls beneath.
-/// The active tab gets a filled orange symbol that bounces on selection.
+/// Floating bottom navigation after the Blinkit reference: a frosted capsule
+/// lifted off the screen edge, thin-line symbols, and for the active tab a
+/// filled orange symbol that bounces while a soft highlight glides over to it.
 struct CustomTabBar: View {
     @Binding var selectedTab: TabItem
 
-    /// Height of the floating bar itself.
+    /// Height of the floating capsule.
     static let barHeight: CGFloat = 62
-    /// Gap between the bar and the bottom safe area (home indicator).
-    static let bottomGap: CGFloat = 6
+    /// Gap between the capsule and the home indicator.
+    static let bottomGap: CGFloat = 4
     /// Everything the bar occupies above the bottom safe area.
     static let dockHeight: CGFloat = barHeight + bottomGap
 
+    @Namespace private var selectionNamespace
     @State private var bounceCounts: [TabItem: Int] = [:]
 
-    private var barShape: RoundedRectangle { RoundedRectangle(cornerRadius: 26, style: .continuous) }
-
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 2) {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 tabButton(tab)
             }
         }
-        .padding(.horizontal, 6)
+        .padding(6)
         .frame(height: Self.barHeight)
-        .background(.regularMaterial, in: barShape)
-        .overlay(barShape.strokeBorder(Color.hairline, lineWidth: 1))
-        .shadow(color: .floatingShadow, radius: 20, x: 0, y: 8)
-        .padding(.horizontal, 20)
+        .background {
+            ZStack {
+                Capsule().fill(.ultraThinMaterial)
+                Capsule().fill(Color.surfaceOverlay.opacity(0.62))
+            }
+        }
+        .overlay(
+            Capsule().strokeBorder(
+                LinearGradient(colors: [Color.edgeHighlight, Color.hairline], startPoint: .top, endPoint: .bottom),
+                lineWidth: 1
+            )
+        )
+        .shadow(color: .floatingShadow, radius: 22, x: 0, y: 10)
+        .padding(.horizontal, 24)
         .padding(.bottom, Self.bottomGap)
         .animation(.dashitSpring, value: selectedTab)
     }
@@ -66,18 +75,24 @@ struct CustomTabBar: View {
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: isSelected ? tab.iconName : tab.outlineIconName)
-                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                    .foregroundColor(isSelected ? .brandAccent : .textMuted)
-                    .symbolEffect(.bounce, value: bounceCounts[tab, default: 0])
+                    .font(.system(size: 20, weight: isSelected ? .regular : .light))
+                    .symbolEffect(.bounce.up.byLayer, value: bounceCounts[tab, default: 0])
                     .frame(height: 24)
                 Text(tab.rawValue)
-                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(isSelected ? .textPrimary : .textMuted)
+                    .font(.system(size: 10.5, weight: isSelected ? .semibold : .regular))
                     .lineLimit(1)
             }
+            .foregroundColor(isSelected ? .brandAccent : .textSecondary)
             .frame(maxWidth: .infinity)
-            .frame(height: Self.barHeight)
-            .contentShape(Rectangle())
+            .frame(maxHeight: .infinity)
+            .background {
+                if isSelected {
+                    Capsule()
+                        .fill(Color.brandOrange.opacity(0.13))
+                        .matchedGeometryEffect(id: "tab-selection", in: selectionNamespace)
+                }
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(PressableButtonStyle(scale: 0.9))
         .accessibilityLabel(tab.rawValue)

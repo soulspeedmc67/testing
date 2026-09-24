@@ -33,12 +33,15 @@ public struct DASHitOrderAttributes: ActivityAttributes {
     public var itemCount: Int
     public var totalAmount: Double
     public var placedAt: Date
+    /// The 4-digit code the rider asks for at the door.
+    public var deliveryCode: String?
 
-    public init(orderId: String, itemCount: Int, totalAmount: Double, placedAt: Date = Date()) {
+    public init(orderId: String, itemCount: Int, totalAmount: Double, placedAt: Date = Date(), deliveryCode: String? = nil) {
         self.orderId = orderId
         self.itemCount = itemCount
         self.totalAmount = totalAmount
         self.placedAt = placedAt
+        self.deliveryCode = deliveryCode
     }
 }
 
@@ -81,7 +84,7 @@ public enum DeliveryStage: String, Codable, Hashable {
         case .cancelled: return 0.0
         }
     }
-    
+
     /// Stage floor, raised by the rider's live 0–100 progress when on the way;
     /// never runs backwards below the floor.
     public func progress(live: Double?) -> Double {

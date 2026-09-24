@@ -33,7 +33,15 @@ struct CartSheetView: View {
             }
             .sheet(isPresented: $isCouponsOpen) {
                 CouponsSheetView()
-                    .dashitSheet([.medium, .fraction(0.85)])
+                    .dashitSheet([.fraction(0.85), .large])
+            }
+            .task {
+                #if DEBUG
+                if ScreenshotHooks.openCoupons {
+                    try? await Task.sleep(for: .seconds(1))
+                    isCouponsOpen = true
+                }
+                #endif
             }
         }
     }
@@ -119,8 +127,7 @@ struct CartSheetView: View {
             }
         }
         .padding(14)
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
         .animation(.dashitSpring, value: bill.subtotal)
     }
 
@@ -145,53 +152,107 @@ struct CartSheetView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.96)))
             }
         }
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
     }
 
+    /// Coupons: the best code for this cart one tap away, or what the applied
+    /// code is saving, with the full list behind "View all coupons".
     private var couponRow: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "ticket.fill")
-                .font(.system(size: 15))
-                .foregroundColor(.brandAccent)
-            if let coupon = cart.appliedCoupon {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("‘\(coupon.code)’ applied")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-                    Text("You save \(CurrencyFormatter.format(cart.bill.couponDiscount))")
-                        .font(.system(size: 12))
-                        .foregroundColor(.positive)
+        let bill = cart.bill
+        let best = Coupon.best(forSubtotal: bill.subtotal)
+
+        return VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(cart.appliedCoupon != nil ? Color.positive : Color.brandOrange)
+                        .frame(width: 34, height: 34)
+                    Image(systemName: cart.appliedCoupon != nil ? "checkmark" : "percent")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
                 }
-                Spacer()
-                Button("Remove") {
-                    cart.removeCoupon()
-                }
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.danger)
-                .buttonStyle(.pressable)
-            } else {
-                Button {
-                    HapticsManager.shared.light()
-                    isCouponsOpen = true
-                } label: {
-                    HStack {
-                        Text("Apply coupon")
+
+                if let coupon = cart.appliedCoupon {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(coupon.code) applied")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.textPrimary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 12, weight: .semibold))
+                        Text(bill.couponDiscount > 0
+                             ? "You're saving \(CurrencyFormatter.format(bill.couponDiscount)) on this order"
+                             : "Delivery fee waived")
+                            .font(.system(size: 12))
+                            .foregroundColor(.positive)
+                    }
+                    Spacer(minLength: 8)
+                    Button("Remove") {
+                        cart.removeCoupon()
+                    }
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.danger)
+                    .buttonStyle(.pressable)
+                } else if let best {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Save \(CurrencyFormatter.format(best.saving(onSubtotal: bill.subtotal))) with \(best.code)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                        Text(best.title)
+                            .font(.system(size: 12))
+                            .foregroundColor(.textMuted)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    Button {
+                        cart.applyCoupon(best)
+                    } label: {
+                        Text("APPLY")
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundColor(.brandAccent)
+                            .padding(.horizontal, 12)
+                            .frame(height: 32)
+                            .overlay(Capsule().strokeBorder(Color.brandOrange.opacity(0.6), lineWidth: 1))
+                    }
+                    .buttonStyle(.pressable)
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Apply a coupon")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                        Text("\(Coupon.catalog.count) offers available")
+                            .font(.system(size: 12))
                             .foregroundColor(.textMuted)
                     }
-                    .contentShape(Rectangle())
+                    Spacer(minLength: 8)
                 }
-                .buttonStyle(.plain)
             }
+            .padding(14)
+
+            Rectangle()
+                .fill(Color.hairline)
+                .frame(height: 1)
+                .padding(.leading, 60)
+
+            Button {
+                HapticsManager.shared.light()
+                isCouponsOpen = true
+            } label: {
+                HStack {
+                    Text("View all coupons")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.textSecondary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.textFaint)
+                }
+                .padding(.leading, 60)
+                .padding(.trailing, 14)
+                .frame(height: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
-        .padding(14)
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
+        .animation(.dashitSpring, value: cart.appliedCoupon?.code)
     }
 
     private var billCard: some View {
@@ -228,8 +289,7 @@ struct CartSheetView: View {
             }
         }
         .padding(14)
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
         .animation(.dashitSpring, value: bill.grandTotal)
     }
 
