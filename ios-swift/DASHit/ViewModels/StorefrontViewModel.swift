@@ -10,6 +10,13 @@ struct CategoryTile: Identifiable {
     let productCount: Int
 }
 
+/// A department on the home feed ("Grocery & Kitchen"), grouping categories.
+struct Department: Identifiable {
+    let id: String
+    let title: String
+    let tiles: [CategoryTile]
+}
+
 /// One "everyday" rail on the home feed: a category and its first few products.
 struct ProductRail: Identifiable {
     let id: String
@@ -121,6 +128,51 @@ final class StorefrontViewModel: ObservableObject {
         }
     }
 
+    /// Rotating search hints drawn from what the store actually sells.
+    var searchHints: [String] {
+        var seen = Set<String>()
+        return products
+            .filter { $0.isAvailable }
+            .map { product -> String in
+                let words = product.name.lowercased().split(separator: " ").prefix(3)
+                return words.joined(separator: " ")
+            }
+            .filter { seen.insert($0).inserted }
+            .prefix(8)
+            .map { $0 }
+    }
+
+    /// The busiest categories, shown as collage tiles at the top of the feed.
+    var topCategoryTiles: [CategoryTile] {
+        Array(categoryTiles.sorted { $0.productCount > $1.productCount }.prefix(6))
+    }
+
+    /// Categories grouped into store departments, Blinkit-style; anything that
+    /// fits none of them lands in "More to explore".
+    var departments: [Department] {
+        let groups: [(title: String, keys: [String])] = [
+            ("Fresh & Daily", ["dairy", "fruit", "vegetable", "egg", "chicken", "meat", "fish", "bread"]),
+            ("Grocery & Kitchen", ["staple", "grocery", "atta", "rice", "dal", "oil", "spice", "masala", "instant", "kitchen"]),
+            ("Snacks & Drinks", ["snack", "chip", "namkeen", "biscuit", "cookie", "bakery", "beverage", "drink", "juice", "sweet", "chocolate"]),
+            ("Home & Household", ["home", "clean", "household", "care"])
+        ]
+        var remaining = categoryTiles
+        var result: [Department] = []
+        for group in groups {
+            let matched = remaining.filter { tile in
+                let name = tile.name.lowercased()
+                return group.keys.contains { name.contains($0) }
+            }
+            guard !matched.isEmpty else { continue }
+            remaining.removeAll { tile in matched.contains { $0.id == tile.id } }
+            result.append(Department(id: group.title, title: group.title, tiles: matched))
+        }
+        if !remaining.isEmpty {
+            result.append(Department(id: "more", title: "More to explore", tiles: remaining))
+        }
+        return result
+    }
+
     var rails: [ProductRail] {
         productsByCategory.map { entry in
             ProductRail(id: entry.category.id, title: entry.category.name, products: Array(entry.products.prefix(12)))
@@ -152,7 +204,8 @@ final class StorefrontViewModel: ObservableObject {
 
         // Categories are derived from the products (see `categories`).
 
-        // Fallback featured offer
+        // The web's built-in deals (`DEFAULT_OFFERS` in src/lib/offers.js), shown
+        // until the admin publishes offers in Firestore.
         self.offers = [
             Offer(
                 id: "offer-snacks-01",
@@ -165,6 +218,30 @@ final class StorefrontViewModel: ObservableObject {
                 discountPercent: 20,
                 expiresIn: "Ends in 3 hours",
                 img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80"
+            ),
+            Offer(
+                id: "offer-bakery-02",
+                badge: "FRESH FROM OVEN",
+                title: "Artisan Breads & Morning Bakes",
+                subtitle: "Authentic Kashmiri lavas, soft croissants & golden rolls delivered warm.",
+                priceTag: "Starting ₹30",
+                category: "Bakery",
+                promoCode: "BAKE15",
+                discountPercent: 15,
+                expiresIn: "Ends at 12:00 PM",
+                img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80"
+            ),
+            Offer(
+                id: "offer-dairy-03",
+                badge: "FARM TO DOORSTEP",
+                title: "Fresh Milk, Butter & Kashmiri Apples",
+                subtitle: "Chilled Amul dairy, creamy butter & crisp valley apples in minutes.",
+                priceTag: "Save up to 25%",
+                category: "Dairy",
+                promoCode: "FRESH25",
+                discountPercent: 25,
+                expiresIn: "Active Today",
+                img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80"
             )
         ]
     }

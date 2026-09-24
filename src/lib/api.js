@@ -28,6 +28,8 @@ export {
   signInWithTruecaller,
   signInWithEmail,
   signUpWithEmail,
+  sendWhatsappOtp,
+  verifyWhatsappOtp,
 } from "./auth";
 
 const readLocal = (key, fallback) => {

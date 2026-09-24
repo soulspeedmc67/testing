@@ -8,8 +8,10 @@ import ActivityKit
 final class LiveTrackingViewModel: ObservableObject {
     @Published var activeOrder: Order?
     @Published var riderLocation: DriverLiveTracking?
-    @Published var secondsRemainingForModification: Int = 60
-    @Published var isModificationWindowActive: Bool = true
+    /// Seconds left to add items or cancel, counted from the order's server
+    /// timestamp, so leaving and reopening this screen never restarts it.
+    @Published var secondsRemainingForModification: Int = 0
+    @Published var isModificationWindowActive: Bool = false
     /// Starts on Anantnag rather than `.automatic`, which with no pins yet
     /// shows the whole subcontinent.
     @Published var cameraPosition: MapCameraPosition = .region(
@@ -62,6 +64,7 @@ final class LiveTrackingViewModel: ObservableObject {
         orderListener = FirestoreService.shared.listenOrder(orderId: orderId) { [weak self] order in
             guard let self = self, let order = order else { return }
             self.activeOrder = order
+            self.refreshModificationWindow()
 
             // Update Dynamic Island Live Activity if active
             self.updateLiveActivity(for: order)
@@ -85,33 +88,57 @@ final class LiveTrackingViewModel: ObservableObject {
         startModificationCountdown()
     }
 
-    func cancelOrder(reason: String = "Customer cancelled") async -> Bool {
-        guard let order = activeOrder else { return false }
+    /// Cancels inside the change window. With `restoreCart` the items go back
+    /// in the cart, as the web's cancel sheet offers.
+    func cancelOrder(restoreCart: Bool = false, reason: String = "Customer cancelled") async -> Bool {
+        guard let order = activeOrder, order.modifySecondsRemaining() > 0 else { return false }
         do {
             try await FirestoreService.shared.cancelOrder(orderId: order.id, reason: reason)
+            if restoreCart {
+                CartViewModel.shared.reorder(order.items)
+            }
             HapticsManager.shared.warning()
             return true
         } catch {
+            HapticsManager.shared.error()
             return false
         }
     }
 
     private func startModificationCountdown() {
         countdownTimer?.invalidate()
-        secondsRemainingForModification = 60
-        isModificationWindowActive = true
+        refreshModificationWindow()
 
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self else { return }
             Task { @MainActor in
-                if self.secondsRemainingForModification > 0 {
-                    self.secondsRemainingForModification -= 1
-                } else {
-                    self.isModificationWindowActive = false
+                self.refreshModificationWindow()
+                if !self.isModificationWindowActive, self.activeOrder != nil {
                     timer.invalidate()
                 }
             }
         }
+    }
+
+    private func refreshModificationWindow() {
+        let seconds = activeOrder?.modifySecondsRemaining() ?? 0
+        if seconds != secondsRemainingForModification {
+            secondsRemainingForModification = seconds
+        }
+        let active = seconds > 0
+        if active != isModificationWindowActive {
+            withAnimation(.dashitSpring) {
+                isModificationWindowActive = active
+            }
+        }
+    }
+
+    /// Follows the order that replaced this one after items were added.
+    func switchTo(order replacement: Order) {
+        activeOrder = replacement
+        hasFramedRoute = false
+        lastRouteOrigin = nil
+        startTracking(orderId: replacement.id, initialOrder: replacement)
     }
 
     /// Re-routes when the rider has moved more than ~60 m since the last route,

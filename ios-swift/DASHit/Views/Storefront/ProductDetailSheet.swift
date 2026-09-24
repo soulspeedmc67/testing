@@ -241,8 +241,7 @@ struct ProductDetailSheet: View {
             Spacer(minLength: 0)
         }
         .padding(14)
-        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cornerRadius: 14)
     }
 
     private var statutoryCopy: String {
@@ -273,8 +272,7 @@ struct ProductDetailSheet: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
-                    .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                    .dashitCard(cornerRadius: 12)
                 }
             }
         }
@@ -289,8 +287,7 @@ struct ProductDetailSheet: View {
             detailRow("Sold by", value: "DASHit Express Hub, Anantnag")
         }
         .padding(.horizontal, 14)
-        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cornerRadius: 14)
     }
 
     private func detailRow(_ label: String, value: String) -> some View {

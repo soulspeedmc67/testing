@@ -27,3 +27,31 @@ public struct UserProfile: Codable, Identifiable, Hashable {
         self.defaultAddress = defaultAddress
     }
 }
+
+/// Profiles are shared with the web app, which writes server Timestamps and
+/// sometimes only a subset of fields, so reads are lenient.
+extension UserProfile {
+    private enum DecodingKeys: String, CodingKey {
+        case id, uid, mobile, phone, phoneNumber, name, displayName, email, createdAt, lastLoginAt, defaultAddress
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: DecodingKeys.self)
+        guard let id = c.flexibleString(.id) ?? c.flexibleString(.uid) else {
+            throw DecodingError.keyNotFound(
+                DecodingKeys.id,
+                DecodingError.Context(codingPath: c.codingPath, debugDescription: "Profile has no id")
+            )
+        }
+        let rawMobile = c.flexibleString(.mobile) ?? c.flexibleString(.phone) ?? c.flexibleString(.phoneNumber) ?? ""
+        self.init(
+            id: id,
+            mobile: String(rawMobile.filter(\.isNumber).suffix(10)),
+            name: c.flexibleString(.name) ?? c.flexibleString(.displayName),
+            email: c.flexibleString(.email),
+            createdAt: c.flexibleTimestamp(.createdAt),
+            lastLoginAt: c.flexibleTimestamp(.lastLoginAt),
+            defaultAddress: try? c.decode(DeliveryAddress.self, forKey: .defaultAddress)
+        )
+    }
+}

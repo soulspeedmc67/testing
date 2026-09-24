@@ -28,11 +28,18 @@ final class LiveActivityManager {
             Task { await activity.end(nil, dismissalPolicy: .immediate) }
         }
 
+        // An order that replaced another (items added in the change window)
+        // keeps the original arrival time rather than restarting the clock.
+        if let replaced = order.replacesOrderId, let last = lastEta, last.orderId == replaced {
+            lastEta = (orderId: order.id, minutes: last.minutes, arrival: last.arrival)
+        }
+
         let attributes = DASHitOrderAttributes(
             orderId: order.id,
             itemCount: order.items.reduce(0) { $0 + $1.qty },
             totalAmount: order.grandTotal,
-            placedAt: Date(timeIntervalSince1970: order.createdAt)
+            placedAt: Date(timeIntervalSince1970: order.createdAt),
+            deliveryCode: order.otp
         )
         let state = contentState(for: order)
 

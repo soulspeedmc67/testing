@@ -232,8 +232,7 @@ private struct OrderHistoryCard: View {
             }
         }
         .padding(14)
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.hairline, lineWidth: 1))
+        .dashitCard(cardShape)
         .contentShape(cardShape)
         .onTapGesture(perform: onOpen)
     }

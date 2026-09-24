@@ -9,7 +9,7 @@ final class CheckoutViewModel: ObservableObject {
     @Published var isSubmitting: Bool = false
     @Published var orderError: String?
     @Published var completedOrder: Order?
-    
+
     init() {
         self.selectedAddress = LocalStorage.shared.loadAddress() ?? DeliveryAddress(
             nickname: "Home",
@@ -21,21 +21,21 @@ final class CheckoutViewModel: ObservableObject {
             longitude: 75.1487
         )
     }
-    
+
     /// ETA and serviceability for the selected address (web deliveryEta.js).
     var deliveryQuote: DeliveryEta.Quote {
         DeliveryEta.quote(for: selectedAddress.coordinate)
     }
-    
+
     func reloadSavedAddress() {
         if let saved = LocalStorage.shared.loadAddress() {
             selectedAddress = saved
         }
     }
-    
+
     func placeOrder(cart: CartViewModel, auth: AuthService) async -> Bool {
         orderError = nil
-        
+
         // An empty cart satisfies the minimum-order check (subtotal 0), so it
         // has to be refused explicitly or a ₹0 order goes through.
         guard !cart.items.isEmpty else {
@@ -43,20 +43,26 @@ final class CheckoutViewModel: ObservableObject {
             HapticsManager.shared.warning()
             return false
         }
-        
+
         // Enforce ₹299 minimum order value
         guard cart.bill.isMinOrderSatisfied else {
             cart.showMinOrderModal = true
             HapticsManager.shared.warning()
             return false
         }
-        
+
         guard let user = auth.currentUser, let uid = auth.firebaseUID else {
             HapticsManager.shared.warning()
             orderError = "Please sign in to complete your order."
             return false
         }
-        
+        // Apple and email accounts can be phone-less; the rider has to call.
+        guard !user.mobile.isEmpty else {
+            HapticsManager.shared.warning()
+            orderError = "Add your delivery phone number in Profile so the rider can reach you."
+            return false
+        }
+
         // Same gates as the web checkout: the admin can close the store, and
         // only addresses within 5 km of the hub are served.
         let store = StoreStatusStore.shared
@@ -71,12 +77,12 @@ final class CheckoutViewModel: ObservableObject {
             HapticsManager.shared.warning()
             return false
         }
-        
+
         isSubmitting = true
         defer { isSubmitting = false }
-        
+
         let order = Order(
-            id: Self.newOrderCode(),
+            id: Order.newCode(),
             userId: uid,
             items: cart.items,
             subtotal: cart.bill.subtotal,
@@ -88,24 +94,21 @@ final class CheckoutViewModel: ObservableObject {
             paymentMethod: paymentMethod == "apple_pay" ? "Apple Pay" : "Cash on Delivery",
             // Nothing is charged in-app yet, so no order is ever marked paid here.
             paymentStatus: "pending",
-            etaMinutes: store.etaMinutes(for: quote) ?? 8
+            etaMinutes: store.etaMinutes(for: quote) ?? 8,
+            otp: Order.newDeliveryCode(),
+            couponCode: cart.appliedCoupon?.code
         )
-        
+
         do {
-            try await FirestoreService.shared.createOrder(
-                order,
-                customer: user,
-                couponCode: cart.appliedCoupon?.code,
-                distanceKm: quote.distanceKm
-            )
-            
+            try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm)
+
             LocalStorage.shared.saveActiveOrderId(order.id)
             completedOrder = order
             ActiveOrderStore.shared.orderPlaced(order)
-            
+
             // Start iOS 17+ Lock Screen & Dynamic Island Live Activity
             LiveActivityManager.shared.startActivity(for: order)
-            
+
             cart.clearCart()
             HapticsManager.shared.success()
             SoundManager.shared.playOrderSuccess()
@@ -119,10 +122,6 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
     }
-    
-    /// Short, readable order code, e.g. DSH-48213907.
-    private static func newOrderCode() -> String {
-        let clock = Int(Date().timeIntervalSince1970) % 10_000
-        return "DSH-\(String(format: "%04d", clock))\(Int.random(in: 1000...9999))"
-    }
+
+
 }
