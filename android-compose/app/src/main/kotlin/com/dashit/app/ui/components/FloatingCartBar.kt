@@ -98,7 +98,7 @@ fun FloatingCartBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = 28.dp)
                 .scale(animatedScale)
                 .onGloballyPositioned { coordinates ->
                     val pos = coordinates.positionInRoot()
@@ -112,9 +112,9 @@ fun FloatingCartBar(
                     )
                 }
                 .shadow(
-                    elevation = 18.dp,
+                    elevation = 14.dp,
                     shape = CircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.6f),
+                    ambientColor = Color.Black.copy(alpha = 0.5f),
                     spotColor = DashitColors.BlinkitGreenDark
                 )
                 .clip(CircleShape)
@@ -123,33 +123,33 @@ fun FloatingCartBar(
                     HapticsManager.medium(view)
                     onTap()
                 }
-                .padding(horizontal = 10.dp, vertical = 7.dp)
+                .padding(horizontal = 8.dp, vertical = 5.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // White capsule housing the overlapping product thumbnails (Matching Blinkit reference)
+                // White capsule housing the overlapping product thumbnails (compact)
                 Box(
                     modifier = Modifier
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(22.dp))
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(18.dp))
                         .background(Color.White)
-                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                        .padding(horizontal = 3.dp, vertical = 3.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Box(
-                        modifier = Modifier.width((34 + (lastItems.size - 1) * 18).dp),
+                        modifier = Modifier.width((28 + (lastItems.size - 1) * 14).dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         lastItems.forEachIndexed { index, item ->
                             Box(
                                 modifier = Modifier
-                                    .offset(x = (index * 18).dp)
-                                    .size(34.dp)
+                                    .offset(x = (index * 14).dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFF1F5F9))
-                                    .border(1.5.dp, Color.White, CircleShape)
+                                    .border(1.2.dp, Color.White, CircleShape)
                             ) {
                                 AsyncImage(
                                     model = ImageRequest.Builder(LocalContext.current)
@@ -167,7 +167,7 @@ fun FloatingCartBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 // Cart texts (View cart • N Items)
                 Column(
@@ -177,8 +177,8 @@ fun FloatingCartBar(
                     Text(
                         text = "View cart",
                         color = Color.White,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Black
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
                     )
 
                     val subtext = if (!bill.isMinOrderSatisfied) {
@@ -190,15 +190,15 @@ fun FloatingCartBar(
                     Text(
                         text = subtext,
                         color = Color.White.copy(alpha = 0.95f),
-                        fontSize = 12.5.sp,
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                // Dark Green Circular Chevron Disc (Matching reference)
+                // Dark Green Circular Chevron Disc (compact)
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(32.dp)
                         .clip(CircleShape)
                         .background(DashitColors.BlinkitGreenDark),
                     contentAlignment = Alignment.Center
@@ -207,7 +207,7 @@ fun FloatingCartBar(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Open Cart",
                         tint = Color.White,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
