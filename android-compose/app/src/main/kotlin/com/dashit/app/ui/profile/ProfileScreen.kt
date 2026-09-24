@@ -51,16 +51,26 @@ import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.UserProfile
+import androidx.compose.runtime.rememberCoroutineScope
+import com.dashit.app.data.auth.AuthRepository
+import com.dashit.app.ui.auth.PhoneConfirmSheet
+import com.dashit.app.ui.orders.IosActionSheet
+import com.dashit.app.ui.orders.SheetAction
+import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileScreen(
-    user: UserProfile = remember { UserProfile() },
+    user: UserProfile?,
     onSignOut: () -> Unit = {}
 ) {
     val view = LocalView.current
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showPolicyDialog by remember { mutableStateOf(false) }
-    var accountDeleted by remember { mutableStateOf(false) }
+    var isSignInOpen by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
+    var deleteError by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val accountDeleted = user == null
 
     val cardShape = RoundedCornerShape(16.dp)
     val scrollState = rememberScrollState()
@@ -120,7 +130,7 @@ fun ProfileScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (accountDeleted) "D" else user.initials,
+                        text = user?.initials ?: "D",
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
@@ -129,19 +139,19 @@ fun ProfileScreen(
 
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(
-                        text = if (accountDeleted) "Guest User" else (user.name ?: "Shopper"),
+                        text = user?.name?.takeIf { it.isNotBlank() } ?: if (user == null) "Guest" else "DASHit shopper",
                         color = DashitColors.TextPrimary,
                         fontSize = 19.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = if (accountDeleted) "Not signed in" else "+91 ${user.mobile}",
+                        text = user?.let { "+91 ${it.mobile}" } ?: "Confirm your number to order",
                         color = DashitColors.TextMuted,
                         fontSize = 13.5.sp
                     )
-                    if (!accountDeleted && !user.email.isNullOrEmpty()) {
+                    if (!user?.email.isNullOrEmpty()) {
                         Text(
-                            text = user.email,
+                            text = user?.email ?: "",
                             color = DashitColors.TextMuted,
                             fontSize = 12.sp
                         )
@@ -160,7 +170,7 @@ fun ProfileScreen(
                 ProfileOptionRow(
                     icon = Icons.Default.LocationOn,
                     title = "Delivery addresses",
-                    subtitle = user.defaultAddress.displaySummary,
+                    subtitle = (user?.defaultAddress ?: com.dashit.app.data.model.DeliveryAddress()).displaySummary,
                     onClick = { HapticsManager.light(view) }
                 )
 
@@ -251,7 +261,12 @@ fun ProfileScreen(
                     .border(1.dp, DashitColors.Hairline, cardShape)
                     .pressable(scale = 0.96f) {
                         HapticsManager.medium(view)
-                        onSignOut()
+                        if (user == null) {
+                            isSignInOpen = true
+                        } else {
+                            AuthRepository.signOut()
+                            onSignOut()
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -261,12 +276,12 @@ fun ProfileScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Logout,
-                        contentDescription = "Sign Out",
+                        contentDescription = null,
                         tint = DashitColors.TextSecondary,
                         modifier = Modifier.size(18.dp)
                     )
                     Text(
-                        text = "Sign Out",
+                        text = if (user == null) "Confirm your number" else "Sign Out",
                         color = DashitColors.TextSecondary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
@@ -274,53 +289,47 @@ fun ProfileScreen(
                 }
             }
 
+            if (isDeleting) {
+                Text("Deleting your account…", color = DashitColors.TextMuted, fontSize = 13.sp)
+            }
+            deleteError?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
+
             Spacer(modifier = Modifier.height(130.dp))
         }
     }
 
-    // Google Play Account Deletion Compliance Dialog
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            containerColor = DashitColors.SurfaceRaised,
-            title = {
-                Text(
-                    text = "Delete Account & Personal Data?",
-                    color = DashitColors.TextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Text(
-                    text = "In accordance with Google Play policies, this action will permanently delete your DASHit shopper account, address books, and order history from our servers. This action cannot be undone.",
-                    color = DashitColors.TextMuted,
-                    fontSize = 13.5.sp,
-                    lineHeight = 18.sp
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        accountDeleted = true
-                        HapticsManager.error(view)
+    // Google Play account deletion: really deletes, confirmed in an iOS-style sheet.
+    if (showDeleteDialog && user != null) {
+        IosActionSheet(
+            title = "Delete your account and data?",
+            message = "This permanently deletes your DASHit account, saved addresses and profile. It can't be undone.",
+            actions = listOf(
+                SheetAction("Delete everything", isDestructive = true) {
+                    showDeleteDialog = false
+                    isDeleting = true
+                    deleteError = null
+                    scope.launch {
+                        try {
+                            AuthRepository.deleteAccount()
+                            HapticsManager.success(view)
+                        } catch (e: Exception) {
+                            HapticsManager.error(view)
+                            deleteError = "We couldn't delete your account right now. Check your connection and try again."
+                        } finally {
+                            isDeleting = false
+                        }
                     }
-                ) {
-                    Text(
-                        text = "Delete Everything",
-                        color = DashitColors.Danger,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(
-                        text = "Cancel",
-                        color = DashitColors.TextSecondary
-                    )
-                }
-            }
+            ),
+            cancelLabel = "Keep my account",
+            onDismiss = { showDeleteDialog = false }
+        )
+    }
+
+    if (isSignInOpen) {
+        PhoneConfirmSheet(
+            onSignedIn = { isSignInOpen = false },
+            onDismiss = { isSignInOpen = false }
         )
     }
 

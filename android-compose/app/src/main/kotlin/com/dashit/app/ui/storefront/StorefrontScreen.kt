@@ -100,6 +100,12 @@ import com.dashit.app.ui.components.NavigationTab
 import com.dashit.app.ui.components.ProductCard
 import com.dashit.app.ui.components.WelcomeHeroBanner
 import com.dashit.app.ui.orders.LiveTrackingMapScreen
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.graphics.TransformOrigin
+import com.dashit.app.data.auth.AuthRepository
+import com.dashit.app.ui.orders.OrderStatusPill
 import com.dashit.app.ui.orders.OrdersScreen
 import com.dashit.app.ui.profile.ProfileScreen
 import com.dashit.app.ui.sheet.ProductDetailSheet
@@ -131,38 +137,29 @@ fun StorefrontScreen(
 
     val cartItems by cartVm.items.collectAsState()
     val bill by cartVm.bill.collectAsState()
-    val orders by OrderRepository.shared.orders.collectAsState()
-    val activeDeliveryOrder = orders.firstOrNull { it.status != OrderStatus.DELIVERED && it.status != OrderStatus.CANCELLED }
+    val activeOrder by OrderRepository.shared.activeOrder.collectAsState()
+    val liveTracking by OrderRepository.shared.liveTracking.collectAsState()
+    val allProducts by storefrontVm.products.collectAsState()
+    val signedInUser by AuthRepository.user.collectAsState()
 
     var activeTab by remember { mutableStateOf(NavigationTab.HOME) }
     var detailProduct by remember { mutableStateOf<Product?>(null) }
-    var activeTrackingOrder by remember { mutableStateOf<Order?>(null) }
+    var trackingOrderId by remember { mutableStateOf<String?>(null) }
     var isCartSheetOpen by remember { mutableStateOf(false) }
     var isCheckoutOpen by remember { mutableStateOf(false) }
     var isProfileOpen by remember { mutableStateOf(false) }
     var isAddressSheetOpen by remember { mutableStateOf(false) }
     var currentAddress by remember { mutableStateOf(DeliveryAddress()) }
-    var recentOrderPlacedTime by remember { mutableStateOf<Long?>(null) }
-    var showTopOrderBanner by remember { mutableStateOf(false) }
-
-    LaunchedEffect(recentOrderPlacedTime) {
-        if (recentOrderPlacedTime != null) {
-            showTopOrderBanner = true
-            delay(10000)
-            showTopOrderBanner = false
-        }
-    }
-
     val productSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cartSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val addressSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    BackHandler(enabled = isAddressSheetOpen || isProfileOpen || activeTrackingOrder != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
+    BackHandler(enabled = isAddressSheetOpen || isProfileOpen || trackingOrderId != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
         when {
             isAddressSheetOpen -> isAddressSheetOpen = false
             isProfileOpen -> isProfileOpen = false
-            activeTrackingOrder != null -> activeTrackingOrder = null
+            trackingOrderId != null -> trackingOrderId = null
             detailProduct != null -> detailProduct = null
             isCheckoutOpen -> {
                 isCheckoutOpen = false
@@ -181,13 +178,14 @@ fun StorefrontScreen(
     ) {
         if (isProfileOpen) {
             ProfileScreen(
+                user = signedInUser,
                 onSignOut = { isProfileOpen = false }
             )
-        } else if (activeTrackingOrder != null) {
+        } else if (trackingOrderId != null) {
             LiveTrackingMapScreen(
-                initialOrder = activeTrackingOrder!!,
-                orderRepo = OrderRepository.shared,
-                onBack = { activeTrackingOrder = null }
+                orderId = trackingOrderId!!,
+                products = allProducts,
+                onBack = { trackingOrderId = null }
             )
         } else {
             when (activeTab) {
@@ -415,116 +413,31 @@ fun StorefrontScreen(
             orderRepo = OrderRepository.shared,
             cartVm = cartVm,
             onOpenCart = { isCartSheetOpen = true },
-            onTrackOrder = { activeTrackingOrder = it }
+            onTrackOrder = { trackingOrderId = it.id }
         )
     }
 }
 
-        // Top Order Status Announcement (Visible for 10 seconds max after order placed)
+        // The live order, docked above the tab bar like the iOS app; the cart bar stacks on top.
         AnimatedVisibility(
-            visible = showTopOrderBanner && activeDeliveryOrder != null,
-            enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+            visible = activeOrder != null && trackingOrderId == null && !isProfileOpen,
+            enter = fadeIn() + scaleIn(initialScale = 0.6f, transformOrigin = TransformOrigin(0.5f, 1f)),
+            exit = fadeOut() + scaleOut(targetScale = 0.6f, transformOrigin = TransformOrigin(0.5f, 1f)),
             modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 10.dp, start = 16.dp, end = 16.dp)
-                .zIndex(10f)
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 76.dp)
+                .padding(horizontal = 24.dp)
+                .widthIn(max = 360.dp)
         ) {
-            TopOrderAnnouncementBanner(
-                order = activeDeliveryOrder!!,
-                onTrack = {
-                    showTopOrderBanner = false
-                    activeTrackingOrder = activeDeliveryOrder
-                },
-                onDismiss = { showTopOrderBanner = false }
-            )
-        }
-
-        // Sleek Live Order Tracking Pill (Dynamic Island / Sleek Pill above navbar)
-        if (activeDeliveryOrder != null && activeTab == NavigationTab.HOME && !showTopOrderBanner) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = if (cartItems.isNotEmpty()) 136.dp else 74.dp)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 24.dp)
-                    .shadow(12.dp, RoundedCornerShape(22.dp), spotColor = DashitColors.BlinkitGreen)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(Color(0xF0131F17))
-                    .border(1.dp, DashitColors.BlinkitGreen.copy(alpha = 0.55f), RoundedCornerShape(22.dp))
-                    .pressable(scale = 0.96f) {
-                        HapticsManager.medium(view)
-                        activeTrackingOrder = activeDeliveryOrder
-                    }
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(DashitColors.BlinkitGreen.copy(alpha = 0.22f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "🛵", fontSize = 14.sp)
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            Text(
-                                text = "Arriving in ${activeDeliveryOrder.etaMinutes ?: 8} mins",
-                                color = Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "•",
-                                color = DashitColors.BlinkitGreen,
-                                fontSize = 10.sp
-                            )
-                            Text(
-                                text = activeDeliveryOrder.driverName ?: "Tariq on route",
-                                color = DashitColors.Positive,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF233827))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = "Track",
-                                color = DashitColors.FestiveGold,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = null,
-                                tint = DashitColors.FestiveGold,
-                                modifier = Modifier.size(9.dp)
-                            )
-                        }
-                    }
-                }
+            val order = activeOrder
+            if (order != null) {
+                OrderStatusPill(
+                    order = order,
+                    tracking = liveTracking,
+                    onOpen = { trackingOrderId = order.id },
+                    onDismiss = { OrderRepository.shared.retireActiveOrder() }
+                )
             }
         }
 
@@ -535,7 +448,7 @@ fun StorefrontScreen(
             exit = fadeOut(DashitMotion.snappySpring()),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 76.dp)
+                .padding(bottom = if (activeOrder != null && trackingOrderId == null) 144.dp else 76.dp)
                 .navigationBarsPadding()
         ) {
             FloatingCartBar(
@@ -597,17 +510,12 @@ fun StorefrontScreen(
                 cartVm = cartVm,
                 orderRepo = OrderRepository.shared,
                 sheetState = checkoutSheetState,
+                address = currentAddress,
                 onDismiss = { isCheckoutOpen = false },
                 onOrderPlaced = { orderId ->
                     isCheckoutOpen = false
-                    val placed = OrderRepository.shared.orders.value.firstOrNull { it.id == orderId }
-                        ?: OrderRepository.shared.orders.value.firstOrNull()
-                    if (placed != null) {
-                        recentOrderPlacedTime = System.currentTimeMillis()
-                        showTopOrderBanner = true
-                    } else {
-                        activeTab = NavigationTab.ORDERS
-                    }
+                    // Straight onto the live map, as the iOS app does.
+                    trackingOrderId = orderId
                 }
             )
         }
@@ -628,111 +536,6 @@ fun StorefrontScreen(
 
         // Parabolic Fly-To-Cart Badge Overlay (Always active at root)
         FlyToCartOverlay()
-    }
-}
-
-@Composable
-private fun TopOrderAnnouncementBanner(
-    order: Order,
-    onTrack: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    val bannerShape = RoundedCornerShape(20.dp)
-    var progress by remember { mutableStateOf(1f) }
-
-    LaunchedEffect(Unit) {
-        val startTime = System.currentTimeMillis()
-        val totalDuration = 10000L
-        while (progress > 0f) {
-            val elapsed = System.currentTimeMillis() - startTime
-            progress = ((totalDuration - elapsed).toFloat() / totalDuration).coerceIn(0f, 1f)
-            delay(50)
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(20.dp, bannerShape, spotColor = DashitColors.BlinkitGreen)
-            .clip(bannerShape)
-            .background(
-                Brush.horizontalGradient(
-                    listOf(
-                        Color(0xFF0C1F13),
-                        Color(0xFF173622),
-                        Color(0xFF102818)
-                    )
-                )
-            )
-            .border(1.2.dp, DashitColors.BlinkitGreen.copy(alpha = 0.85f), bannerShape)
-            .clickable { onTrack() }
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(DashitColors.BlinkitGreen.copy(alpha = 0.25f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "🛵", fontSize = 18.sp)
-                }
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Order Placed! Arriving in ${order.etaMinutes ?: 8} mins",
-                        color = Color.White,
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = order.tracking?.statusText ?: "Store is packing your items • Tap to track",
-                        color = DashitColors.Positive,
-                        fontSize = 11.5.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DashitColors.BlinkitGreen)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = "Track",
-                        color = Color.Black,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Dismiss",
-                    tint = DashitColors.TextMuted,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .clickable { onDismiss() }
-                )
-            }
-
-            // 10-second countdown indicator bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .height(2.5.dp)
-                    .background(DashitColors.BlinkitGreen)
-            )
-        }
     }
 }
 
