@@ -94,34 +94,34 @@ struct CartSheetView: View {
         }
     }
 
-    /// ₹299 minimum order: a neutral card with one coloured icon and a thin
-    /// progress bar, rather than a tinted warning slab.
+    /// Free delivery on orders above ₹299.
     private var minimumOrderCard: some View {
         let bill = cart.bill
-        let progress = min(bill.subtotal / CartBillBreakdown.minOrderValue, 1)
+        let isFreeDelivery = bill.deliveryFee == 0
+        let progress = min(bill.subtotal / CartBillBreakdown.freeDeliveryThreshold, 1)
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                Image(systemName: bill.isMinOrderSatisfied ? "checkmark.circle.fill" : "cart.badge.plus")
+                Image(systemName: isFreeDelivery ? "checkmark.circle.fill" : "cart.badge.plus")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(bill.isMinOrderSatisfied ? .positive : .caution)
+                    .foregroundColor(isFreeDelivery ? .positive : .brandOrange)
                 Text(minimumOrderMessage)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.textPrimary)
                     .contentTransition(.numericText())
                 Spacer(minLength: 0)
             }
-            if !bill.isMinOrderSatisfied {
+            if !isFreeDelivery && bill.subtotal > 0 {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.surfaceMuted)
                         Capsule()
-                            .fill(Color.caution)
+                            .fill(Color.brandOrange)
                             .frame(width: geo.size.width * CGFloat(progress))
                     }
                 }
                 .frame(height: 5)
-                Text("Minimum order value is \(CurrencyFormatter.format(CartBillBreakdown.minOrderValue))")
+                Text("Free delivery on orders above \(CurrencyFormatter.format(CartBillBreakdown.freeDeliveryThreshold))")
                     .font(.system(size: 11.5))
                     .foregroundColor(.textMuted)
             }
@@ -133,10 +133,10 @@ struct CartSheetView: View {
 
     private var minimumOrderMessage: String {
         let bill = cart.bill
-        guard bill.isMinOrderSatisfied else {
-            return "Add \(CurrencyFormatter.format(bill.amountNeededForMinOrder)) more to place your order"
+        guard bill.deliveryFee > 0 else {
+            return "You're all set · free delivery unlocked"
         }
-        return bill.deliveryFee == 0 ? "You're all set · free delivery unlocked" : "You're all set"
+        return "Add \(CurrencyFormatter.format(bill.amountNeededForFreeDelivery)) more for FREE delivery"
     }
 
     private var itemsCard: some View {
@@ -314,12 +314,8 @@ struct CartSheetView: View {
                 .fill(Color.hairline)
                 .frame(height: 1)
             Button {
-                if bill.isMinOrderSatisfied {
-                    HapticsManager.shared.medium()
-                    isCheckoutOpen = true
-                } else {
-                    HapticsManager.shared.warning()
-                }
+                HapticsManager.shared.medium()
+                isCheckoutOpen = true
             } label: {
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 1) {
@@ -333,7 +329,7 @@ struct CartSheetView: View {
                             .foregroundColor(Color.white.opacity(0.75))
                     }
                     Spacer()
-                    Text(bill.isMinOrderSatisfied ? "Proceed to checkout" : "Add \(CurrencyFormatter.format(bill.amountNeededForMinOrder)) more")
+                    Text("Proceed to checkout")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.white)
                     Image(systemName: "arrow.right")
@@ -343,7 +339,7 @@ struct CartSheetView: View {
                 .padding(.horizontal, 18)
                 .frame(height: 58)
                 .background(
-                    bill.isMinOrderSatisfied ? Color.brandOrange : Color.surfaceMuted,
+                    Color.brandOrange,
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }
