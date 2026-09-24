@@ -37,17 +37,20 @@ struct RootView: View {
         // beneath it and comes to rest above it, and the cart pill stacks on top.
         // The order pill rides on top of the bar, so screens (and the cart
         // pill) make room for it without knowing it exists. Scrolling down a
-        // feed tucks the bar away; the pills drop down in its place.
+        // feed tucks the bar away and the pills drop into its slot, but only by
+        // offset: the inset keeps its height, because resizing it would re-lay
+        // out every scroll view in the middle of a drag and make it jump.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !isKeyboardVisible {
                 VStack(spacing: 10) {
                     orderPill
-                    if !tabBar.isHidden {
-                        CustomTabBar(selectedTab: tabSelection)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
+                        .followsTabBar()
+                    CustomTabBar(selectedTab: tabSelection)
+                        .offset(y: tabBar.isHidden ? CustomTabBar.hiddenOffset : 0)
+                        .opacity(tabBar.isHidden ? 0 : 1)
+                        .allowsHitTesting(!tabBar.isHidden)
+                        .accessibilityHidden(tabBar.isHidden)
                 }
-                .padding(.bottom, tabBar.isHidden ? 6 : 0)
                 .transition(.move(edge: .bottom))
             }
         }
