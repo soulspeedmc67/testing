@@ -91,7 +91,7 @@ struct LiveOrderFloatingTrackerView: View {
                 if order.modifySecondsRemaining(at: context.date) > 0 {
                     HStack(spacing: 8) {
                         ModifyCountdownBadge(order: order)
-                        Text("to add items or cancel")
+                        Text("left to change")
                             .font(.system(size: 12.5, weight: .medium))
                             .foregroundColor(.textSecondary)
                             .lineLimit(1)
@@ -101,6 +101,7 @@ struct LiveOrderFloatingTrackerView: View {
                             Text("Cancel")
                                 .font(.system(size: 12.5, weight: .semibold))
                                 .foregroundColor(.danger)
+                                .fixedSize()
                                 .padding(.horizontal, 10)
                                 .frame(height: 30)
                                 .background(Color.white.opacity(0.08), in: Capsule())
@@ -110,6 +111,8 @@ struct LiveOrderFloatingTrackerView: View {
                             Label("Add items", systemImage: "plus")
                                 .font(.system(size: 12.5, weight: .bold))
                                 .foregroundColor(.white)
+                                .lineLimit(1)
+                                .fixedSize()
                                 .padding(.horizontal, 10)
                                 .frame(height: 30)
                                 .background(Color.brandOrange, in: Capsule())
