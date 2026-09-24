@@ -2,7 +2,7 @@ name: Build iOS IPA (GitHub Actions Cloud Mac)
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, native-android-compose, native-swift-ios ]
   workflow_dispatch:
 
 jobs:
