@@ -117,7 +117,7 @@ struct RootView: View {
             AddressSearchView()
         }
         .sheet(isPresented: $isAddressPickerOpen) {
-            AddressPickerMapView()
+            AddressPickerMapView(addsNewAddress: true)
         }
         .sheet(isPresented: $isAddItemsOpen) {
             if let order = activeOrder.order {
@@ -214,7 +214,7 @@ struct RootView: View {
             OrderStatusPill(
                 order: order,
                 tracking: activeOrder.liveTracking,
-                onExpand: showTrackerCard,
+                onExpand: { showTrackerCard() },
                 onDismiss: { activeOrder.retireFinishedOrder() }
             )
             .frame(maxWidth: CustomTabBar.maxWidth)

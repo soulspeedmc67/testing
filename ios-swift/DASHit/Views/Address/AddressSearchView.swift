@@ -141,7 +141,7 @@ struct AddressSearchView: View {
                 .submitLabel(.search)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.words)
-                .onSubmit(pickFirstResult)
+                .onSubmit { pickFirstResult() }
                 .accessibilityLabel("Search for an address")
             if !search.query.isEmpty {
                 Button {
