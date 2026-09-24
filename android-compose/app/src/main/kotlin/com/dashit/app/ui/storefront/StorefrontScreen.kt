@@ -558,6 +558,12 @@ fun StorefrontScreen(
             onTabSelected = { activeTab = it }
         )
 
+        // Crossing ₹299 while shopping: shown here unless a sheet is in front.
+        com.dashit.app.ui.cart.FreeDeliveryToastHost(
+            modifier = Modifier.align(Alignment.TopCenter),
+            enabled = !isCartSheetOpen && detailProduct == null
+        )
+
         // Product Detail Bottom Sheet
         if (detailProduct != null) {
             val qty = cartItems.filter { it.productId == detailProduct!!.id }.sumOf { it.qty }

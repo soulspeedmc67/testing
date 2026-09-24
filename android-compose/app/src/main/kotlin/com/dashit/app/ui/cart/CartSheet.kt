@@ -83,173 +83,176 @@ fun CartSheet(
         dragHandle = null,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.92f)
-                .background(DashitColors.Surface)
-        ) {
-            // Header Bar
-            Row(
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxHeight(0.92f)
+                    .background(DashitColors.Surface)
             ) {
-                Text(
-                    text = "Your Cart",
-                    color = DashitColors.TextPrimary,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
+                // Header Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Your Cart",
+                        color = DashitColors.TextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(DashitColors.SurfaceRaised)
+                            .border(1.dp, DashitColors.Hairline, CircleShape)
+                            .clickable {
+                                HapticsManager.light(view)
+                                onDismiss()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = DashitColors.TextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
 
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(DashitColors.SurfaceRaised)
-                        .border(1.dp, DashitColors.Hairline, CircleShape)
-                        .clickable {
-                            HapticsManager.light(view)
-                            onDismiss()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
-                        tint = DashitColors.TextMuted,
-                        modifier = Modifier.size(18.dp)
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(DashitColors.Hairline)
+                )
+
+                if (items.isEmpty()) {
+                    // Empty State
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingBag,
+                                contentDescription = "Empty cart",
+                                tint = DashitColors.TextFaint,
+                                modifier = Modifier.size(56.dp)
+                            )
+
+                            Text(
+                                text = "Your cart is empty",
+                                color = DashitColors.TextPrimary,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                text = "Explore fresh groceries delivered in 8 mins.",
+                                color = DashitColors.TextMuted,
+                                fontSize = 14.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .height(46.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(DashitColors.BrandOrange)
+                                    .pressable(scale = 0.95f) {
+                                        HapticsManager.medium(view)
+                                        onDismiss()
+                                    }
+                                    .padding(horizontal = 28.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Start shopping",
+                                    color = Color.White,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // Cart Content
+                    Box(modifier = Modifier.weight(1f)) {
+                        val scrollState = rememberScrollState()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            FreeDeliveryStrip(bill = bill)
+
+                            // 2. Cart Items Card
+                            CartItemsCard(
+                                items = items,
+                                onIncrement = { cartVm.increment(it) },
+                                onDecrement = { cartVm.decrement(it) }
+                            )
+
+                            // 3. Coupon Row
+                            CouponCard(
+                                appliedCoupon = coupon,
+                                savedAmount = bill.couponDiscount,
+                                onApply = {
+                                    HapticsManager.selection(view)
+                                    cartVm.applyCoupon(
+                                        Coupon(
+                                            id = "dashfirst",
+                                            code = "DASHFIRST",
+                                            title = "First Order Deal",
+                                            description = "Flat ₹50 OFF on orders above ₹199",
+                                            discount = 50.0,
+                                            minOrder = 199.0
+                                        )
+                                    )
+                                },
+                                onRemove = {
+                                    HapticsManager.light(view)
+                                    cartVm.applyCoupon(null)
+                                }
+                            )
+
+                            // 4. Bill Details Card
+                            BillDetailsCard(bill = bill)
+
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                    }
+
+                    // Sticky Bottom Proceed Bar
+                    ProceedBottomBar(
+                        bill = bill,
+                        onProceed = {
+                            if (bill.subtotal > 0) {
+                                HapticsManager.medium(view)
+                                onProceedToCheckout()
+                            } else {
+                                HapticsManager.error(view)
+                            }
+                        }
                     )
                 }
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(DashitColors.Hairline)
-            )
-
-            if (items.isEmpty()) {
-                // Empty State
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingBag,
-                            contentDescription = "Empty cart",
-                            tint = DashitColors.TextFaint,
-                            modifier = Modifier.size(56.dp)
-                        )
-
-                        Text(
-                            text = "Your cart is empty",
-                            color = DashitColors.TextPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Explore fresh groceries delivered in 8 mins.",
-                            color = DashitColors.TextMuted,
-                            fontSize = 14.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .height(46.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(DashitColors.BrandOrange)
-                                .pressable(scale = 0.95f) {
-                                    HapticsManager.medium(view)
-                                    onDismiss()
-                                }
-                                .padding(horizontal = 28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Start shopping",
-                                color = Color.White,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Cart Content
-                Box(modifier = Modifier.weight(1f)) {
-                    val scrollState = rememberScrollState()
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(scrollState)
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        FreeDeliveryStrip(bill = bill)
-
-                        // 2. Cart Items Card
-                        CartItemsCard(
-                            items = items,
-                            onIncrement = { cartVm.increment(it) },
-                            onDecrement = { cartVm.decrement(it) }
-                        )
-
-                        // 3. Coupon Row
-                        CouponCard(
-                            appliedCoupon = coupon,
-                            savedAmount = bill.couponDiscount,
-                            onApply = {
-                                HapticsManager.selection(view)
-                                cartVm.applyCoupon(
-                                    Coupon(
-                                        id = "dashfirst",
-                                        code = "DASHFIRST",
-                                        title = "First Order Deal",
-                                        description = "Flat ₹50 OFF on orders above ₹199",
-                                        discount = 50.0,
-                                        minOrder = 199.0
-                                    )
-                                )
-                            },
-                            onRemove = {
-                                HapticsManager.light(view)
-                                cartVm.applyCoupon(null)
-                            }
-                        )
-
-                        // 4. Bill Details Card
-                        BillDetailsCard(bill = bill)
-
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-                }
-
-                // Sticky Bottom Proceed Bar
-                ProceedBottomBar(
-                    bill = bill,
-                    onProceed = {
-                        if (bill.subtotal > 0) {
-                            HapticsManager.medium(view)
-                            onProceedToCheckout()
-                        } else {
-                            HapticsManager.error(view)
-                        }
-                    }
-                )
-            }
+            FreeDeliveryToastHost(insideSheet = true)
         }
     }
 }
