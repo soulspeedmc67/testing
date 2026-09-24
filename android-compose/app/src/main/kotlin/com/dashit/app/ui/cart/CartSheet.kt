@@ -198,8 +198,7 @@ fun CartSheet(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // 1. Free Delivery Progress Card (₹299 threshold)
-                        FreeDeliveryCard(bill = bill)
+                        FreeDeliveryStrip(bill = bill)
 
                         // 2. Cart Items Card
                         CartItemsCard(
@@ -251,78 +250,6 @@ fun CartSheet(
                     }
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun FreeDeliveryCard(bill: CartBillBreakdown) {
-    val cardShape = RoundedCornerShape(14.dp)
-    val isFreeDelivery = bill.deliveryFee == 0.0
-    val progress = (bill.subtotal / CartBillBreakdown.FREE_DELIVERY_THRESHOLD).coerceIn(0.0, 1.0).toFloat()
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = DashitMotion.houseSpring(),
-        label = "free_delivery_progress"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(cardShape)
-            .background(DashitColors.SurfaceRaised)
-            .border(1.dp, DashitColors.Hairline, cardShape)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = if (isFreeDelivery) DashitColors.Positive else DashitColors.BrandOrange,
-                modifier = Modifier.size(18.dp)
-            )
-
-            val message = if (isFreeDelivery) {
-                "You're all set · free delivery unlocked"
-            } else {
-                "Add ₹${bill.amountNeededForFreeDelivery.toInt()} more for FREE delivery"
-            }
-
-            Text(
-                text = message,
-                color = DashitColors.TextPrimary,
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        if (!isFreeDelivery && bill.subtotal > 0) {
-            // Thin progress capsule bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(5.dp)
-                    .clip(CircleShape)
-                    .background(DashitColors.SurfaceMuted)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedProgress)
-                        .fillMaxHeight()
-                        .clip(CircleShape)
-                        .background(DashitColors.BrandOrange)
-                )
-            }
-
-            Text(
-                text = "Free delivery on orders above ₹${CartBillBreakdown.FREE_DELIVERY_THRESHOLD.toInt()}",
-                color = DashitColors.TextMuted,
-                fontSize = 11.5.sp
-            )
         }
     }
 }
