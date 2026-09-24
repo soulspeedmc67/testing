@@ -193,11 +193,11 @@ export default function FloatingCartBar() {
             </span>
             {subtotal < 299 ? (
               <span className="text-[9.5px] font-extrabold text-amber-300">
-                Add ₹{299 - subtotal} for min
+                Add ₹{299 - subtotal} for FREE del
               </span>
             ) : (
               <span className="text-[9.5px] font-extrabold text-emerald-400">
-                Min met ✓
+                Free delivery ✓
               </span>
             )}
           </div>

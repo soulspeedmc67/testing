@@ -14,7 +14,7 @@ export default function FloatingDeliveryBanner() {
             <img src="/rider/rider_moving.png" alt="Free Delivery" className="w-full h-full object-contain filter drop-shadow-xs" />
           </div>
           <span className="font-extrabold text-[11px] text-slate-800 dark:text-content">
-            Get <span className="text-[#FF5B00] font-black">FREE delivery</span> on order above ₹399
+            Get <span className="text-[#FF5B00] font-black">FREE delivery</span> on order above ₹299
           </span>
         </div>
 

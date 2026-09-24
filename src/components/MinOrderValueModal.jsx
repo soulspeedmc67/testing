@@ -6,7 +6,7 @@ import { hapticMedium, hapticLight } from "../lib/haptics";
 import { SPRING_SNAPPY, EASE_OUT } from "../lib/motion";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 
-const MIN_ORDER_VALUE = 299;
+const FREE_DELIVERY_THRESHOLD = 299;
 
 export default function MinOrderValueModal({
   isOpen,
@@ -44,8 +44,8 @@ export default function MinOrderValueModal({
   }, [location, isOpen]);
 
   const currentSubtotal = Math.max(0, Number(subtotal) || 0);
-  const remaining = Math.max(0, MIN_ORDER_VALUE - currentSubtotal);
-  const progressPercent = Math.min(100, Math.round((currentSubtotal / MIN_ORDER_VALUE) * 100));
+  const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - currentSubtotal);
+  const progressPercent = Math.min(100, Math.round((currentSubtotal / FREE_DELIVERY_THRESHOLD) * 100));
 
   const activeEta = eta || calculateDeliveryEta(resolvedLocation);
   const etaMinutes = activeEta?.etaMinutes || 12;
@@ -114,10 +114,10 @@ export default function MinOrderValueModal({
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-[#061838] dark:text-white tracking-tight leading-snug">
-                  Minimum order is ₹{MIN_ORDER_VALUE}
+                  Free delivery on orders above ₹{FREE_DELIVERY_THRESHOLD}
                 </h2>
                 <p className="text-[13px] text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                  Add items worth <span className="font-extrabold text-[#061838] dark:text-white">₹{remaining}</span> more to proceed to checkout.
+                  Add items worth <span className="font-extrabold text-[#061838] dark:text-white">₹{remaining}</span> more to get <span className="text-emerald-500 font-bold">FREE delivery</span>.
                 </p>
               </div>
             </div>
@@ -147,7 +147,7 @@ export default function MinOrderValueModal({
               <div className="flex items-center justify-between text-xs font-semibold">
                 <span className="text-slate-500 dark:text-slate-400">Current Cart</span>
                 <span className="font-black text-slate-800 dark:text-white">
-                  ₹{currentSubtotal} <span className="text-slate-400 font-normal">/ ₹{MIN_ORDER_VALUE}</span>
+                  ₹{currentSubtotal} <span className="text-slate-400 font-normal">/ ₹{FREE_DELIVERY_THRESHOLD}</span>
                 </span>
               </div>
 
@@ -157,13 +157,13 @@ export default function MinOrderValueModal({
                   initial={{ width: 0 }}
                   animate={{ width: `${progressPercent}%` }}
                   transition={{ duration: 0.5, ease: EASE_OUT }}
-                  className="h-full bg-[#FF5B00] rounded-full"
+                  className="h-full bg-emerald-500 rounded-full"
                 />
               </div>
 
               <div className="flex items-center justify-between text-[11px] pt-0.5">
                 <span className="font-semibold text-slate-500 dark:text-slate-400">
-                  Add <span className="font-black text-[#FF5B00]">₹{remaining}</span> more to unlock order
+                  Add <span className="font-black text-[#FF5B00]">₹{remaining}</span> more for free delivery
                 </span>
                 <span className="font-bold text-slate-400 dark:text-slate-500">
                   {progressPercent}%

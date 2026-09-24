@@ -181,11 +181,7 @@ fun FloatingCartBar(
                         fontWeight = FontWeight.Bold
                     )
 
-                    val subtext = if (!bill.isMinOrderSatisfied) {
-                        "Add ₹${bill.amountNeededForMinOrder.toInt()} more to order"
-                    } else {
-                        "$totalCount ${if (totalCount == 1) "Item" else "Items"} · ₹${bill.grandTotal.toInt()}"
-                    }
+                    val subtext = "$totalCount ${if (totalCount == 1) "Item" else "Items"} · ₹${bill.grandTotal.toInt()}"
 
                     Text(
                         text = subtext,

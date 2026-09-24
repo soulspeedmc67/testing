@@ -198,8 +198,8 @@ fun CartSheet(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        // 1. Minimum Order Progress Card (₹299 threshold)
-                        MinimumOrderCard(bill = bill)
+                        // 1. Free Delivery Progress Card (₹299 threshold)
+                        FreeDeliveryCard(bill = bill)
 
                         // 2. Cart Items Card
                         CartItemsCard(
@@ -242,7 +242,7 @@ fun CartSheet(
                 ProceedBottomBar(
                     bill = bill,
                     onProceed = {
-                        if (bill.isMinOrderSatisfied) {
+                        if (bill.subtotal > 0) {
                             HapticsManager.medium(view)
                             onProceedToCheckout()
                         } else {
@@ -256,13 +256,14 @@ fun CartSheet(
 }
 
 @Composable
-private fun MinimumOrderCard(bill: CartBillBreakdown) {
+private fun FreeDeliveryCard(bill: CartBillBreakdown) {
     val cardShape = RoundedCornerShape(14.dp)
-    val progress = (bill.subtotal / CartBillBreakdown.MIN_ORDER_VALUE).coerceIn(0.0, 1.0).toFloat()
+    val isFreeDelivery = bill.deliveryFee == 0.0
+    val progress = (bill.subtotal / CartBillBreakdown.FREE_DELIVERY_THRESHOLD).coerceIn(0.0, 1.0).toFloat()
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
         animationSpec = DashitMotion.houseSpring(),
-        label = "min_order_progress"
+        label = "free_delivery_progress"
     )
 
     Column(
@@ -279,16 +280,16 @@ private fun MinimumOrderCard(bill: CartBillBreakdown) {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Icon(
-                imageVector = if (bill.isMinOrderSatisfied) Icons.Default.CheckCircle else Icons.Default.Warning,
+                imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
-                tint = if (bill.isMinOrderSatisfied) DashitColors.Positive else DashitColors.Caution,
+                tint = if (isFreeDelivery) DashitColors.Positive else DashitColors.BrandOrange,
                 modifier = Modifier.size(18.dp)
             )
 
-            val message = if (bill.isMinOrderSatisfied) {
-                if (bill.deliveryFee == 0.0) "You're all set · free delivery unlocked" else "You're all set"
+            val message = if (isFreeDelivery) {
+                "You're all set · free delivery unlocked"
             } else {
-                "Add ₹${bill.amountNeededForMinOrder.toInt()} more to place your order"
+                "Add ₹${bill.amountNeededForFreeDelivery.toInt()} more for FREE delivery"
             }
 
             Text(
@@ -299,7 +300,7 @@ private fun MinimumOrderCard(bill: CartBillBreakdown) {
             )
         }
 
-        if (!bill.isMinOrderSatisfied) {
+        if (!isFreeDelivery && bill.subtotal > 0) {
             // Thin progress capsule bar
             Box(
                 modifier = Modifier
@@ -313,12 +314,12 @@ private fun MinimumOrderCard(bill: CartBillBreakdown) {
                         .fillMaxWidth(animatedProgress)
                         .fillMaxHeight()
                         .clip(CircleShape)
-                        .background(DashitColors.Caution)
+                        .background(DashitColors.BrandOrange)
                 )
             }
 
             Text(
-                text = "Minimum order value is ₹299",
+                text = "Free delivery on orders above ₹${CartBillBreakdown.FREE_DELIVERY_THRESHOLD.toInt()}",
                 color = DashitColors.TextMuted,
                 fontSize = 11.5.sp
             )
@@ -620,7 +621,7 @@ private fun ProceedBottomBar(
     bill: CartBillBreakdown,
     onProceed: () -> Unit
 ) {
-    val canProceed = bill.isMinOrderSatisfied
+    val canProceed = bill.subtotal > 0
 
     Column(
         modifier = Modifier
@@ -674,7 +675,7 @@ private fun ProceedBottomBar(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = if (canProceed) "Proceed to checkout" else "Add ₹${bill.amountNeededForMinOrder.toInt()} more",
+                        text = "Proceed to checkout",
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold

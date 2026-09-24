@@ -33,8 +33,8 @@ data class CartBillBreakdown(
     val amountNeededForFreeDelivery: Double
 ) {
     companion object {
-        const val MIN_ORDER_VALUE: Double = 299.0
-        const val FREE_DELIVERY_THRESHOLD: Double = 199.0
+        const val MIN_ORDER_VALUE: Double = 0.0
+        const val FREE_DELIVERY_THRESHOLD: Double = 299.0
         const val STANDARD_DELIVERY_FEE: Double = 25.0
 
         fun calculate(items: List<CartItem>, appliedCoupon: Coupon? = null): CartBillBreakdown {
@@ -52,8 +52,8 @@ data class CartBillBreakdown(
             val discount = if (effectiveCoupon != null) minOf(subtotal, effectiveCoupon.discount) else 0.0
             val grandTotal = maxOf(0.0, subtotal + deliveryFee - discount)
 
-            val isMinOrder = subtotal >= MIN_ORDER_VALUE || subtotal == 0.0
-            val neededForMin = maxOf(0.0, MIN_ORDER_VALUE - subtotal)
+            val isMinOrder = true
+            val neededForMin = 0.0
             val neededForFreeDel = maxOf(0.0, FREE_DELIVERY_THRESHOLD - subtotal)
 
             return CartBillBreakdown(

@@ -16,8 +16,6 @@ import {
 import { hapticLight, hapticMedium, hapticSuccess, hapticHeavy } from "../lib/haptics";
 import { SPRING_SNAPPY } from "../lib/motion";
 
-const MIN_ORDER_VALUE = 299;
-
 export default function ModifyOrderModal({
   isOpen,
   onClose,
@@ -56,13 +54,11 @@ export default function ModifyOrderModal({
 
   const deliveryFee = useMemo(() => {
     if (order?.deliveryFee !== undefined) return Number(order.deliveryFee);
-    return subtotal >= 499 ? 0 : 25;
+    return subtotal >= 299 ? 0 : 25;
   }, [order, subtotal]);
 
   const couponDiscount = Number(order?.couponDiscount || order?.discount || 0);
   const grandTotal = Math.max(0, subtotal + deliveryFee - couponDiscount);
-  const isBelowMin = subtotal < MIN_ORDER_VALUE;
-  const deficit = Math.max(0, MIN_ORDER_VALUE - subtotal);
 
   // Filter catalogue items for quick adding
   const availableCatalogue = useMemo(() => {
@@ -138,7 +134,7 @@ export default function ModifyOrderModal({
 
   // Save changes back to order
   const handleSave = async () => {
-    if (isBelowMin || items.length === 0 || isSaving) return;
+    if (items.length === 0 || isSaving) return;
     setIsSaving(true);
     hapticSuccess();
 
@@ -405,38 +401,23 @@ export default function ModifyOrderModal({
             </div>
           </div>
 
-          {/* Sticky Modal Footer with ₹299 Guard */}
+          {/* Sticky Modal Footer */}
           <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.02] shrink-0 space-y-3">
-            {/* Minimum Order Warning if Below ₹299 */}
-            {isBelowMin ? (
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/50 rounded-xl p-2.5 flex items-start space-x-2 text-xs">
-                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <div>
-                  <span className="font-bold text-amber-900 dark:text-amber-200 block">
-                    Minimum order value is ₹{MIN_ORDER_VALUE}
-                  </span>
-                  <span className="text-[11px] text-amber-800 dark:text-amber-300/80 block mt-0.5">
-                    Current subtotal: ₹{subtotal}. Please add items worth <strong>₹{deficit}</strong> more to update order.
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500 dark:text-neutral-400 font-medium">
-                  Updated Grand Total
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-slate-500 dark:text-neutral-400 font-medium">
+                Updated Grand Total {deliveryFee === 0 ? "(Free Delivery)" : "(incl. ₹25 delivery)"}
+              </span>
+              <div className="text-right">
+                <span className="font-mono font-black text-base text-slate-900 dark:text-white">
+                  ₹{grandTotal}
                 </span>
-                <div className="text-right">
-                  <span className="font-mono font-black text-base text-slate-900 dark:text-white">
-                    ₹{grandTotal}
+                {savings > 0 && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">
+                    Saved ₹{savings}
                   </span>
-                  {savings > 0 && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">
-                      Saved ₹{savings}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Primary Action Button */}
             <div className="flex items-center space-x-2">
@@ -451,9 +432,9 @@ export default function ModifyOrderModal({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={isBelowMin || items.length === 0 || isSaving}
+                disabled={items.length === 0 || isSaving}
                 className={`grow h-12 rounded-2xl font-extrabold text-sm transition-all flex items-center justify-center space-x-2 shadow-md cursor-pointer ${
-                  isBelowMin || items.length === 0
+                  items.length === 0
                     ? "bg-slate-200 dark:bg-white/10 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-white/5"
                     : "bg-[#FF5B00] hover:bg-[#E04E00] text-white active:scale-[0.98]"
                 }`}
