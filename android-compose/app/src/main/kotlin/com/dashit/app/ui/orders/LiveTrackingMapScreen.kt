@@ -1,17 +1,22 @@
 package com.dashit.app.ui.orders
 
-import androidx.compose.animation.core.FastOutSlowInEasing
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas as AndroidCanvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,24 +37,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Store
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,17 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -77,6 +71,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
@@ -86,6 +84,101 @@ import com.dashit.app.data.model.Order
 import com.dashit.app.data.model.OrderStatus
 import com.dashit.app.data.repository.OrderRepository
 import kotlinx.coroutines.delay
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
+import java.io.File
+
+/**
+ * Real turn-by-turn road route coordinates in Lal Chowk / Anantnag.
+ * Sourced via Open Source Routing Machine (OSRM) on OpenStreetMap street vectors.
+ */
+private val OSM_ROUTE_POINTS = listOf(
+    GeoPoint(33.735831, 75.143615), // DASHit Express Dark Store Hub (Lal Chowk)
+    GeoPoint(33.735549, 75.143378),
+    GeoPoint(33.736326, 75.142130),
+    GeoPoint(33.736469, 75.141834),
+    GeoPoint(33.736801, 75.140695),
+    GeoPoint(33.736988, 75.140087),
+    GeoPoint(33.737115, 75.139659),
+    GeoPoint(33.737181, 75.139437),
+    GeoPoint(33.737376, 75.138723),
+    GeoPoint(33.737622, 75.137863),
+    GeoPoint(33.737722, 75.137507),
+    GeoPoint(33.737900, 75.136839),
+    GeoPoint(33.738005, 75.136470),
+    GeoPoint(33.738131, 75.136116),
+    GeoPoint(33.738202, 75.136081),
+    GeoPoint(33.738852, 75.135876),
+    GeoPoint(33.738950, 75.135920),
+    GeoPoint(33.738959, 75.135906),
+    GeoPoint(33.738973, 75.135899),
+    GeoPoint(33.738988, 75.135898),
+    GeoPoint(33.738998, 75.135904),
+    GeoPoint(33.739010, 75.135914),
+    GeoPoint(33.739015, 75.135928),
+    GeoPoint(33.739017, 75.135943),
+    GeoPoint(33.739014, 75.135958),
+    GeoPoint(33.739006, 75.135972),
+    GeoPoint(33.738994, 75.135981),
+    GeoPoint(33.738980, 75.135984),
+    GeoPoint(33.738964, 75.136061),
+    GeoPoint(33.738968, 75.136151),
+    GeoPoint(33.738971, 75.136258),
+    GeoPoint(33.738977, 75.136399),
+    GeoPoint(33.739036, 75.136725),
+    GeoPoint(33.739118, 75.137165),
+    GeoPoint(33.739125, 75.137299),
+    GeoPoint(33.739125, 75.137418),
+    GeoPoint(33.739125, 75.137589),
+    GeoPoint(33.739067, 75.137989),
+    GeoPoint(33.739032, 75.138249),
+    GeoPoint(33.738985, 75.138622),
+    GeoPoint(33.738945, 75.138936),
+    GeoPoint(33.738802, 75.139966),
+    GeoPoint(33.738679, 75.141003),
+    GeoPoint(33.738592, 75.141726),
+    GeoPoint(33.738465, 75.142538),
+    GeoPoint(33.738441, 75.142664),
+    GeoPoint(33.738380, 75.143056),
+    GeoPoint(33.738355, 75.143290),
+    GeoPoint(33.738178, 75.144684),
+    GeoPoint(33.737999, 75.146084),
+    GeoPoint(33.737829, 75.147420),
+    GeoPoint(33.737718, 75.148432),
+    GeoPoint(33.737573, 75.149537),
+    GeoPoint(33.737404, 75.150938),
+    GeoPoint(33.737185, 75.152396),
+    GeoPoint(33.736960, 75.153738),
+    GeoPoint(33.736928, 75.153929),
+    GeoPoint(33.736695, 75.155374),
+    GeoPoint(33.736474, 75.157089),
+    GeoPoint(33.736898, 75.157168),
+    GeoPoint(33.737090, 75.157194),
+    GeoPoint(33.737503, 75.157117),
+    GeoPoint(33.737420, 75.156586),
+    GeoPoint(33.737815, 75.156505),
+    GeoPoint(33.737951, 75.156607),
+    GeoPoint(33.738058, 75.156704),
+    GeoPoint(33.738515, 75.156627)  // Customer Delivery Destination (Court Road)
+)
+
+private fun getRiderGeoPoint(progress: Float): GeoPoint {
+    val totalPoints = OSM_ROUTE_POINTS.size
+    if (totalPoints < 2) return OSM_ROUTE_POINTS.first()
+    val scaled = (progress.coerceIn(0f, 1f) * (totalPoints - 1))
+    val index = scaled.toInt().coerceIn(0, totalPoints - 2)
+    val fraction = (scaled - index).toDouble()
+    val p1 = OSM_ROUTE_POINTS[index]
+    val p2 = OSM_ROUTE_POINTS[index + 1]
+    return GeoPoint(
+        p1.latitude + (p2.latitude - p1.latitude) * fraction,
+        p1.longitude + (p2.longitude - p1.longitude) * fraction
+    )
+}
 
 @Composable
 fun LiveTrackingMapScreen(
@@ -93,11 +186,13 @@ fun LiveTrackingMapScreen(
     orderRepo: OrderRepository = OrderRepository.shared,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val view = LocalView.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
     val orders by orderRepo.orders.collectAsState()
     val activeOrder = orders.firstOrNull { it.id == initialOrder.id } ?: initialOrder
 
-    // 60-second cancellation window countdown
     var cancelTimerSeconds by remember { mutableIntStateOf(58) }
     LaunchedEffect(Unit) {
         while (cancelTimerSeconds > 0) {
@@ -106,263 +201,163 @@ fun LiveTrackingMapScreen(
         }
     }
 
-    // Map Pan & Zoom states
-    var mapScale by remember { mutableFloatStateOf(1.0f) }
-    var mapOffset by remember { mutableStateOf(Offset.Zero) }
-
-    // Pulsing animations for Radar, Destination & polyline flow
-    val infiniteTransition = rememberInfiniteTransition(label = "map_animations")
-    val radarPulse by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "radar"
-    )
-    val destPulse by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "dest_pulse"
-    )
-    val polylineDashPhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 60f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "dash_phase"
-    )
-
-    // Smooth rider progression along route (0.0 store to 1.0 destination)
+    // Smooth rider progression
+    val infiniteTransition = rememberInfiniteTransition(label = "rider_movement")
     val simulatedProgress by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.88f,
+        initialValue = 0.20f,
+        targetValue = 0.95f,
         animationSpec = infiniteRepeatable(
-            animation = tween(24000, easing = LinearEasing),
+            animation = tween(28000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rider_drive"
     )
     val effectiveProgress = activeOrder.tracking?.progress?.toFloat() ?: simulatedProgress
 
+    // OpenStreetMap view reference & tile mode state
+    var osmMapView by remember { mutableStateOf<MapView?>(null) }
+    var riderMarkerRef by remember { mutableStateOf<Marker?>(null) }
+    var isDarkModeMap by remember { mutableStateOf(false) }
+
+    // Manage MapView lifecycle
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> osmMapView?.onResume()
+                Lifecycle.Event.ON_PAUSE -> osmMapView?.onPause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            osmMapView?.onDetach()
+        }
+    }
+
+    BackHandler {
+        onBack()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF11141B))
+            .background(Color(0xFF10131A))
     ) {
-        // 1. Vector Map Canvas
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        mapScale = (mapScale * zoom).coerceIn(0.75f, 2.5f)
-                        mapOffset += pan
+        // 1. Real OpenStreetMap Native MapView
+        AndroidView(
+            factory = { ctx ->
+                val config = Configuration.getInstance()
+                config.load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
+                config.userAgentValue = "DASHit-Android-OpenStreetMap/1.1"
+                config.osmdroidBasePath = File(ctx.cacheDir, "osmdroid")
+                config.osmdroidTileCache = File(ctx.cacheDir, "osmdroid/tiles")
+
+                MapView(ctx).apply {
+                    setTileSource(TileSourceFactory.MAPNIK) // Authentic OpenStreetMap tiles from tile.openstreetmap.org
+                    setMultiTouchControls(true)
+                    isTilesScaledToDpi = true
+                    zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
+
+                    // Position over Anantnag delivery route
+                    controller.setZoom(15.8)
+                    // Offset center slightly south so route remains visible above bottom sheet
+                    controller.setCenter(GeoPoint(33.7362, 75.1495))
+
+                    // Road Route Glow Underlay
+                    val routeGlow = Polyline(this).apply {
+                        outlinePaint.color = android.graphics.Color.parseColor("#440C831F")
+                        outlinePaint.strokeWidth = 24f
+                        outlinePaint.strokeCap = Paint.Cap.ROUND
+                        outlinePaint.strokeJoin = Paint.Join.ROUND
+                        setPoints(OSM_ROUTE_POINTS)
                     }
+                    overlays.add(routeGlow)
+
+                    // Road Route Vibrant Polyline
+                    val routeLine = Polyline(this).apply {
+                        outlinePaint.color = android.graphics.Color.parseColor("#0C831F")
+                        outlinePaint.strokeWidth = 12f
+                        outlinePaint.strokeCap = Paint.Cap.ROUND
+                        outlinePaint.strokeJoin = Paint.Join.ROUND
+                        setPoints(OSM_ROUTE_POINTS)
+                    }
+                    overlays.add(routeLine)
+
+                    // Dark Store Hub Marker
+                    val hubMarker = Marker(this).apply {
+                        position = OSM_ROUTE_POINTS.first()
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        title = "DASHit Express Hub (Lal Chowk)"
+                        icon = createHubMarkerDrawable(ctx)
+                    }
+                    overlays.add(hubMarker)
+
+                    // Delivery Destination Pin Marker
+                    val homeMarker = Marker(this).apply {
+                        position = OSM_ROUTE_POINTS.last()
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        title = "Delivery Location (Home)"
+                        icon = createHomeMarkerDrawable(ctx)
+                    }
+                    overlays.add(homeMarker)
+
+                    // Live Moving Delivery Rider Marker
+                    val riderMarker = Marker(this).apply {
+                        position = getRiderGeoPoint(effectiveProgress)
+                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                        title = "Tariq Ahmad • Delivery Partner"
+                        icon = createRiderMarkerDrawable(ctx)
+                    }
+                    overlays.add(riderMarker)
+                    riderMarkerRef = riderMarker
+
+                    osmMapView = this
                 }
-        ) {
-            val width = size.width
-            val height = size.height
-
-            // Base map coordinate anchors
-            val storePos = Offset(width * 0.18f + mapOffset.x, height * 0.24f + mapOffset.y)
-            val corner1 = Offset(width * 0.42f + mapOffset.x, height * 0.24f + mapOffset.y)
-            val corner2 = Offset(width * 0.42f + mapOffset.x, height * 0.40f + mapOffset.y)
-            val corner3 = Offset(width * 0.72f + mapOffset.x, height * 0.40f + mapOffset.y)
-            val homePos = Offset(width * 0.72f + mapOffset.x, height * 0.52f + mapOffset.y)
-
-            // Draw Background grid / blocks
-            val blockSize = 70f * mapScale
-            val startX = (mapOffset.x % blockSize)
-            val startY = (mapOffset.y % blockSize)
-
-            var x = startX - blockSize
-            while (x < width + blockSize) {
-                var y = startY - blockSize
-                while (y < height + blockSize) {
-                    drawRoundRect(
-                        color = Color(0xFF161B25),
-                        topLeft = Offset(x + 4f, y + 4f),
-                        size = Size(blockSize - 8f, blockSize - 8f),
-                        cornerRadius = CornerRadius(8f, 8f)
+            },
+            update = { mapView ->
+                // Apply optional dark mode matrix or keep pure OpenStreetMap colors
+                if (isDarkModeMap) {
+                    val nightMatrix = ColorMatrix(
+                        floatArrayOf(
+                            -0.80f, 0f, 0f, 0f, 240f,
+                            0f, -0.80f, 0f, 0f, 240f,
+                            0f, 0f, -0.80f, 0f, 240f,
+                            0f, 0f, 0f, 1f, 0f
+                        )
                     )
-                    y += blockSize
+                    mapView.overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(nightMatrix))
+                } else {
+                    mapView.overlayManager.tilesOverlay.setColorFilter(null)
                 }
-                x += blockSize
-            }
 
-            // Draw Green Park Zones
-            drawRoundRect(
-                color = Color(0xFF13281E),
-                topLeft = Offset(width * 0.52f + mapOffset.x, height * 0.14f + mapOffset.y),
-                size = Size(130f * mapScale, 90f * mapScale),
-                cornerRadius = CornerRadius(14f, 14f)
-            )
+                // Smoothly update rider marker coordinates as delivery advances
+                val currentRiderPos = getRiderGeoPoint(effectiveProgress)
+                riderMarkerRef?.position = currentRiderPos
+                mapView.invalidate()
+            },
+            modifier = Modifier.fillMaxSize()
+        )
 
-            // Draw River / Water body
-            val riverPath = Path().apply {
-                moveTo(0f, height * 0.65f + mapOffset.y)
-                quadraticTo(
-                    width * 0.5f + mapOffset.x,
-                    height * 0.62f + mapOffset.y,
-                    width,
-                    height * 0.68f + mapOffset.y
-                )
-            }
-            drawPath(
-                path = riverPath,
-                color = Color(0xFF14273C),
-                style = Stroke(width = 28f * mapScale, cap = StrokeCap.Round)
-            )
-
-            // Draw Secondary Road Network (arterials)
-            val roadLines = listOf(
-                Offset(0f, height * 0.24f + mapOffset.y) to Offset(width, height * 0.24f + mapOffset.y),
-                Offset(0f, height * 0.40f + mapOffset.y) to Offset(width, height * 0.40f + mapOffset.y),
-                Offset(0f, height * 0.52f + mapOffset.y) to Offset(width, height * 0.52f + mapOffset.y),
-                Offset(width * 0.18f + mapOffset.x, 0f) to Offset(width * 0.18f + mapOffset.x, height),
-                Offset(width * 0.42f + mapOffset.x, 0f) to Offset(width * 0.42f + mapOffset.x, height),
-                Offset(width * 0.72f + mapOffset.x, 0f) to Offset(width * 0.72f + mapOffset.x, height)
-            )
-            roadLines.forEach { (start, end) ->
-                drawLine(
-                    color = Color(0xFF242C3D),
-                    start = start,
-                    end = end,
-                    strokeWidth = 14f * mapScale,
-                    cap = StrokeCap.Square
-                )
-                // Center road dashed divider
-                drawLine(
-                    color = Color(0xFF333D52),
-                    start = start,
-                    end = end,
-                    strokeWidth = 2f * mapScale,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 16f), 0f)
-                )
-            }
-
-            // Draw Route Polyline from Dark Store to Destination
-            val routePath = Path().apply {
-                moveTo(storePos.x, storePos.y)
-                lineTo(corner1.x, corner1.y)
-                lineTo(corner2.x, corner2.y)
-                lineTo(corner3.x, corner3.y)
-                lineTo(homePos.x, homePos.y)
-            }
-
-            // Polyline Glow Underneath
-            drawPath(
-                path = routePath,
-                color = DashitColors.BrandOrange.copy(alpha = 0.25f),
-                style = Stroke(width = 16f * mapScale, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-            // Polyline Solid Base Line
-            drawPath(
-                path = routePath,
-                color = DashitColors.BrandOrange,
-                style = Stroke(width = 6f * mapScale, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            )
-            // Polyline Animated Neon Dash Pulse
-            drawPath(
-                path = routePath,
+        // 2. OpenStreetMap License Attribution Chip (Top-right of map)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 64.dp, end = 16.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Black.copy(alpha = 0.65f))
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "© OpenStreetMap",
                 color = Color.White.copy(alpha = 0.85f),
-                style = Stroke(
-                    width = 4f * mapScale,
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round,
-                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(18f, 24f), polylineDashPhase)
-                )
-            )
-
-            // Origin Marker: Dark Store Hub Pin
-            drawCircle(
-                color = Color(0xFF141720),
-                radius = 18f * mapScale,
-                center = storePos
-            )
-            drawCircle(
-                color = DashitColors.FestiveGold,
-                radius = 14f * mapScale,
-                center = storePos
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 5f * mapScale,
-                center = storePos
-            )
-
-            // Destination Marker: Home Pin with Concentric Glowing Pulse Waves
-            drawCircle(
-                color = DashitColors.BrandOrange.copy(alpha = (1f - destPulse / 1.2f).coerceIn(0f, 0.4f)),
-                radius = (36f * destPulse) * mapScale,
-                center = homePos
-            )
-            drawCircle(
-                color = DashitColors.BrandOrange,
-                radius = 16f * mapScale,
-                center = homePos
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 6f * mapScale,
-                center = homePos
-            )
-
-            // Calculate Rider Position along the 4 segments
-            val segmentPoints = listOf(storePos, corner1, corner2, corner3, homePos)
-            val totalSegments = segmentPoints.size - 1
-            val scaledProgress = (effectiveProgress * totalSegments).coerceIn(0f, totalSegments.toFloat())
-            val segIdx = scaledProgress.toInt().coerceIn(0, totalSegments - 1)
-            val segFraction = scaledProgress - segIdx
-
-            val segStart = segmentPoints[segIdx]
-            val segEnd = segmentPoints[segIdx + 1]
-            val riderPos = Offset(
-                x = segStart.x + (segEnd.x - segStart.x) * segFraction,
-                y = segStart.y + (segEnd.y - segStart.y) * segFraction
-            )
-
-            // Pulsing Live Radar Rings around Rider
-            val maxRadarRadius = 52f * mapScale
-            drawCircle(
-                color = DashitColors.BlinkitGreen.copy(alpha = (1f - radarPulse) * 0.55f),
-                radius = radarPulse * maxRadarRadius,
-                center = riderPos
-            )
-            drawCircle(
-                color = Color(0xFF22C55E).copy(alpha = (1f - radarPulse) * 0.25f),
-                radius = (radarPulse * maxRadarRadius * 1.4f),
-                center = riderPos
-            )
-
-            // Rider Disc
-            drawCircle(
-                color = Color.Black.copy(alpha = 0.5f),
-                radius = 20f * mapScale,
-                center = Offset(riderPos.x, riderPos.y + 4f)
-            )
-            drawCircle(
-                color = DashitColors.BlinkitGreen,
-                radius = 18f * mapScale,
-                center = riderPos
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 15f * mapScale,
-                center = riderPos,
-                style = Stroke(width = 2.5f * mapScale)
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium
             )
         }
 
-        // 2. Top Navigation Bar (Glassmorphic)
+        // 3. Top Navigation Bar (Glassmorphic)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -376,7 +371,7 @@ fun LiveTrackingMapScreen(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF181C26).copy(alpha = 0.92f))
+                    .background(Color(0xFF181C26).copy(alpha = 0.94f))
                     .border(1.dp, DashitColors.HairlineStrong, CircleShape)
                     .pressable(scale = 0.90f) {
                         HapticsManager.light(view)
@@ -396,7 +391,7 @@ fun LiveTrackingMapScreen(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color(0xFF141720).copy(alpha = 0.92f))
+                    .background(Color(0xFF141720).copy(alpha = 0.94f))
                     .border(1.dp, DashitColors.Hairline, CircleShape)
                     .padding(horizontal = 14.dp, vertical = 7.dp)
             ) {
@@ -423,7 +418,7 @@ fun LiveTrackingMapScreen(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(Color(0xFF181C26).copy(alpha = 0.92f))
+                    .background(Color(0xFF181C26).copy(alpha = 0.94f))
                     .border(1.dp, DashitColors.HairlineStrong, CircleShape)
                     .padding(horizontal = 13.dp, vertical = 7.dp)
                     .pressable(scale = 0.92f) {
@@ -439,32 +434,102 @@ fun LiveTrackingMapScreen(
             }
         }
 
-        // 3. Floating Re-Center Map Button
-        Box(
+        // 4. Floating Map Action Buttons (Top-Right under Nav Bar)
+        Column(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 16.dp)
-                .offset(y = (-60).dp)
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
-                .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                .pressable(scale = 0.90f) {
-                    HapticsManager.light(view)
-                    mapScale = 1.0f
-                    mapOffset = Offset.Zero
-                },
-            contentAlignment = Alignment.Center
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 96.dp, end = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "Center on delivery",
-                tint = DashitColors.FestiveGold,
-                modifier = Modifier.size(20.dp)
-            )
+            // Map Tile Style Toggle: OSM Standard vs Night OSM
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
+                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
+                    .pressable(scale = 0.90f) {
+                        HapticsManager.selection(view)
+                        isDarkModeMap = !isDarkModeMap
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isDarkModeMap) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = "Toggle Map Theme",
+                    tint = DashitColors.FestiveGold,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Zoom In
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
+                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
+                    .pressable(scale = 0.90f) {
+                        HapticsManager.light(view)
+                        osmMapView?.controller?.zoomIn()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Zoom In",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Zoom Out
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
+                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
+                    .pressable(scale = 0.90f) {
+                        HapticsManager.light(view)
+                        osmMapView?.controller?.zoomOut()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Zoom Out",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Re-center on Rider
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
+                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
+                    .pressable(scale = 0.90f) {
+                        HapticsManager.light(view)
+                        val riderPoint = getRiderGeoPoint(effectiveProgress)
+                        osmMapView?.controller?.animateTo(riderPoint)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MyLocation,
+                    contentDescription = "Center on Rider",
+                    tint = DashitColors.BlinkitGreen,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
-        // 4. Floating Bottom Delivery Card
+        // 5. Floating Bottom Delivery Card
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -607,6 +672,109 @@ fun LiveTrackingMapScreen(
             OrderItemsMiniPreview(order = activeOrder)
         }
     }
+}
+
+// Custom High-DPI Marker Generators for OpenStreetMap
+private fun createHubMarkerDrawable(context: Context): BitmapDrawable {
+    val size = (46 * context.resources.displayMetrics.density).toInt()
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+
+    val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#44F59E0B")
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f, glowPaint)
+
+    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#18140E")
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size * 0.38f, bgPaint)
+
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#F59E0B")
+        style = Paint.Style.STROKE
+        strokeWidth = 3f * context.resources.displayMetrics.density
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size * 0.38f, strokePaint)
+
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 18f * context.resources.displayMetrics.density
+        textAlign = Paint.Align.CENTER
+    }
+    val yPos = (size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f)
+    canvas.drawText("🏬", size / 2f, yPos, textPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
+private fun createHomeMarkerDrawable(context: Context): BitmapDrawable {
+    val size = (46 * context.resources.displayMetrics.density).toInt()
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+
+    val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#44FF6F00")
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f, glowPaint)
+
+    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#221206")
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size * 0.38f, bgPaint)
+
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#FF6F00")
+        style = Paint.Style.STROKE
+        strokeWidth = 3f * context.resources.displayMetrics.density
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size * 0.38f, strokePaint)
+
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 18f * context.resources.displayMetrics.density
+        textAlign = Paint.Align.CENTER
+    }
+    val yPos = (size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f)
+    canvas.drawText("🏠", size / 2f, yPos, textPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
+}
+
+private fun createRiderMarkerDrawable(context: Context): BitmapDrawable {
+    val size = (52 * context.resources.displayMetrics.density).toInt()
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = AndroidCanvas(bitmap)
+
+    val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#440C831F")
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size / 2f, pulsePaint)
+
+    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.parseColor("#0C831F")
+        style = Paint.Style.FILL
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size * 0.38f, bgPaint)
+
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f * context.resources.displayMetrics.density
+    }
+    canvas.drawCircle(size / 2f, size / 2f, size * 0.38f, strokePaint)
+
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = 18f * context.resources.displayMetrics.density
+        textAlign = Paint.Align.CENTER
+    }
+    val yPos = (size / 2f - (textPaint.descent() + textPaint.ascent()) / 2f)
+    canvas.drawText("🛵", size / 2f, yPos, textPaint)
+
+    return BitmapDrawable(context.resources, bitmap)
 }
 
 @Composable
@@ -816,7 +984,8 @@ private fun OrderItemsMiniPreview(order: Order) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
