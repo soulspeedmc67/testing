@@ -5,6 +5,10 @@ import FirebaseCore
 struct DASHitApp: App {
     @StateObject private var auth = AuthService.shared
     @StateObject private var cart = CartViewModel.shared
+    /// The animated splash that takes over from the static launch screen.
+    @State private var isSplashVisible = true
+    /// The app starts a touch zoomed in behind the splash and settles as it clears.
+    @State private var isAppSettled = false
     
     init() {
         FirebaseManager.shared.configure()
@@ -15,9 +19,21 @@ struct DASHitApp: App {
     
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(auth)
-                .environmentObject(cart)
+            ZStack {
+                RootView()
+                    .environmentObject(auth)
+                    .environmentObject(cart)
+                    .scaleEffect(isAppSettled ? 1 : 1.04)
+                if isSplashVisible {
+                    SplashView(
+                        onReveal: {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { isAppSettled = true }
+                        },
+                        onFinish: { isSplashVisible = false }
+                    )
+                    .zIndex(1)
+                }
+            }
         }
     }
 }
