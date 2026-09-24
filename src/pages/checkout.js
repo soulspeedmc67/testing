@@ -47,7 +47,7 @@ import { useStoreDetails } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { ALL_PRODUCTS } from "../data/products";
 
-const MIN_ORDER_VALUE = 299;
+const FREE_DELIVERY_THRESHOLD = 299;
 
 const parsePrice = (val) => {
   if (typeof val === "number") return val;
@@ -221,7 +221,7 @@ export default function CheckoutPage() {
       setCheckoutData({
         cart: activeCart,
         subtotal: sub,
-        grandTotal: sub >= 199 ? sub : sub + 25,
+        grandTotal: sub >= 299 ? sub : sub + 25,
         location: loc || {
           nickname: "Home",
           address: ""
@@ -268,7 +268,7 @@ export default function CheckoutPage() {
   const effectiveCoupon = isCouponValid ? appliedCoupon : null;
 
   const deliveryFee =
-    subtotal >= 199 || effectiveCoupon?.waivesDelivery || effectiveCoupon?.code === "FREEDEL"
+    subtotal >= 299 || effectiveCoupon?.waivesDelivery || effectiveCoupon?.code === "FREEDEL"
       ? 0
       : 25;
   const couponDiscount = effectiveCoupon
@@ -329,11 +329,11 @@ export default function CheckoutPage() {
 
   const checkoutEta = calculateDeliveryEta(checkoutData?.location);
 
-  // Trigger Free Delivery Celebration when cart reaches ₹199 (Shown only once until order placed)
+  // Trigger Free Delivery Celebration when cart reaches ₹299 (Shown only once until order placed)
   useEffect(() => {
     try {
       const alreadyShown = localStorage.getItem("dashit_free_delivery_seen");
-      if (subtotal >= 199 && !alreadyShown && !hasShownFreeDelivery) {
+      if (subtotal >= 299 && !alreadyShown && !hasShownFreeDelivery) {
         setIsFreeDeliveryModalOpen(true);
         localStorage.setItem("dashit_free_delivery_seen", "true");
         setHasShownFreeDelivery(true);
@@ -428,13 +428,6 @@ export default function CheckoutPage() {
     
     if (cartItems.length === 0 || isProcessing) return;
 
-    // Minimum Order Value check (₹299)
-    if (subtotal < MIN_ORDER_VALUE) {
-      hapticLight();
-      setIsMinOrderModalOpen(true);
-      return;
-    }
-
     // Login is strictly mandatory before placing an order
     let userObj = null;
     try {
@@ -467,11 +460,6 @@ export default function CheckoutPage() {
 
   const executeOrderPlacement = async (authenticatedUser) => {
     if (placingRef.current) return;
-
-    if (subtotal < MIN_ORDER_VALUE) {
-      setIsMinOrderModalOpen(true);
-      return;
-    }
 
     placingRef.current = true;
     setIsProcessing(true);
@@ -694,21 +682,21 @@ export default function CheckoutPage() {
             </button>
           </div>
 
-          {/* Minimum Order Value Progress (Shown ONLY when below threshold - no useless green box when met) */}
-          {subtotal < MIN_ORDER_VALUE && (
+          {/* Free Delivery Progress (Shown when below ₹299 threshold) */}
+          {subtotal < FREE_DELIVERY_THRESHOLD && subtotal > 0 && (
             <div className="bg-slate-50 dark:bg-[#161B26] border border-slate-200/70 dark:border-slate-800/80 rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                  Minimum order is ₹{MIN_ORDER_VALUE}
+                  Free Delivery on orders above ₹{FREE_DELIVERY_THRESHOLD}
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Add items worth <span className="font-bold text-[#FF5B00]">₹{MIN_ORDER_VALUE - subtotal}</span> more to place order
+                  Add items worth <span className="font-bold text-[#FF5B00]">₹{FREE_DELIVERY_THRESHOLD - subtotal}</span> more for <span className="text-emerald-500 font-bold">FREE delivery</span>
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => setIsMinOrderModalOpen(true)}
+                onClick={() => router.push("/shop")}
                 className="px-3 py-1.5 text-xs font-bold bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-xl transition-colors cursor-pointer"
               >
                 Add Items
@@ -718,13 +706,13 @@ export default function CheckoutPage() {
             <div className="space-y-1">
               <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-[#FF5B00] transition-all duration-300 rounded-full"
-                  style={{ width: `${Math.min(100, Math.round((subtotal / MIN_ORDER_VALUE) * 100))}%` }}
+                  className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
+                  style={{ width: `${Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100))}%` }}
                 />
               </div>
               <div className="flex justify-between text-[10px] font-semibold text-slate-400">
                 <span>Current: ₹{subtotal}</span>
-                <span>Target: ₹{MIN_ORDER_VALUE}</span>
+                <span>Free Delivery: ₹{FREE_DELIVERY_THRESHOLD}</span>
               </div>
             </div>
           </div>
@@ -1188,8 +1176,6 @@ export default function CheckoutPage() {
                 className={`grow rounded-2xl py-3 px-4 border transition-all flex items-center justify-between ${
                   !isStoreOpen || !checkoutEta.isDeliverable
                     ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:bg-surface-muted dark:border-line dark:text-content-faint"
-                    : subtotal < MIN_ORDER_VALUE
-                    ? "bg-gradient-to-r from-[#FF6F1E] to-[#FF5B00] text-white shadow-md border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : !isUserLoggedIn
                     ? "bg-[#FF5B00] hover:bg-[#E04E00] text-white shadow-sm border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : "bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white shadow-sm border-slate-700/60 dark:border-orange-500/40 active:scale-[0.98] cursor-pointer"
@@ -1215,16 +1201,12 @@ export default function CheckoutPage() {
                       ? "Beyond 5km Service Area"
                       : !isStoreOpen
                       ? "Store Closed"
-                      : subtotal < MIN_ORDER_VALUE
-                      ? `Add ₹${MIN_ORDER_VALUE - subtotal} more (Min ₹${MIN_ORDER_VALUE})`
                       : !isUserLoggedIn
                       ? "Sign In to Place Order"
                       : "Place Order (COD)"}
                   </span>
                   {!isProcessing && isStoreOpen && checkoutEta.isDeliverable && (
-                    subtotal < MIN_ORDER_VALUE ? (
-                      <ArrowRight className="w-4 h-4 stroke-[3]" />
-                    ) : !isUserLoggedIn ? (
+                    !isUserLoggedIn ? (
                       <ArrowRight className="w-4 h-4 stroke-[3]" />
                     ) : (
                       <ChevronRight className="w-4 h-4 stroke-[3]" />
