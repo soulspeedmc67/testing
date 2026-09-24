@@ -32,11 +32,6 @@ struct StorefrontHomeView: View {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                     header
                         .id("top")
-                        .onGeometryChange(for: CGFloat.self) { geometry in
-                            geometry.frame(in: .named("homeScroll")).maxY
-                        } action: { maxY in
-                            chrome.headerBottomChanged(maxY)
-                        }
 
                     Section {
                         if vm.isBrowsing {
@@ -279,6 +274,13 @@ struct StorefrontHomeView: View {
             )
         }
         .background(PinnedSearchBackdrop(chrome: chrome))
+        // The pinned bar is always laid out, unlike the header, which a lazy
+        // stack drops once it is far off screen; so track the bar's own top.
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.frame(in: .named("homeScroll")).minY
+        } action: { minY in
+            chrome.pinnedTopChanged(minY)
+        }
     }
 
     // MARK: - Shop by category
@@ -428,7 +430,7 @@ struct StorefrontHomeView: View {
             proxy.scrollTo(target, anchor: .top)
         }
         if let id = ScreenshotHooks.openProductId {
-            detailProduct = vm.products.first(where: { $0.id == id })
+            detailProduct = vm.products.first(where: { $0.id == id }) ?? vm.products.first
         }
         if ScreenshotHooks.openCart {
             cart.isCartSheetPresented = true
@@ -448,8 +450,10 @@ final class HomeChromeState: ObservableObject {
     /// 0 while the header is in view, 1 once search has pinned under the clock.
     @Published private(set) var pinProgress: CGFloat = 0
 
-    func headerBottomChanged(_ maxY: CGFloat) {
-        let raw = min(1, max(0, 1 - maxY / 44))
+    /// `minY` is the pinned bar's top in the scroll view: the header's height
+    /// at rest, 0 once it has pinned under the status bar.
+    func pinnedTopChanged(_ minY: CGFloat) {
+        let raw = min(1, max(0, 1 - minY / 44))
         let stepped = (raw * 10).rounded() / 10
         if stepped != pinProgress {
             pinProgress = stepped
