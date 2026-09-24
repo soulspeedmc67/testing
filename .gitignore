@@ -15,6 +15,14 @@ android/keystore.properties
 *.keystore
 release/
 
+# iOS release signing — never commit these
+ios-certs/
+*.key
+*.cer
+*.p12
+*.certSigningRequest
+*.mobileprovision
+
 # Build binaries
 *.apk
 *.aab
