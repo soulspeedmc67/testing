@@ -214,16 +214,8 @@ fun CartSheet(
                                 savedAmount = bill.couponDiscount,
                                 onApply = {
                                     HapticsManager.selection(view)
-                                    cartVm.applyCoupon(
-                                        Coupon(
-                                            id = "dashfirst",
-                                            code = "DASHFIRST",
-                                            title = "First Order Deal",
-                                            description = "Flat ₹50 OFF on orders above ₹199",
-                                            discount = 50.0,
-                                            minOrder = 199.0
-                                        )
-                                    )
+                                    // The web's coupons: the one that saves the most on this cart.
+                                    cartVm.applyCoupon(Coupon.best(bill.subtotal) ?: Coupon.catalog.first())
                                 },
                                 onRemove = {
                                     HapticsManager.light(view)
@@ -435,7 +427,7 @@ private fun CouponCard(
             )
         } else {
             Text(
-                text = "Apply coupon (DASHFIRST: ₹50 OFF)",
+                text = "Apply the best coupon for this cart",
                 color = DashitColors.TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,

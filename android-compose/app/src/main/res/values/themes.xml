@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.DASHit" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">#14171F</item>
-        <item name="android:navigationBarColor">#14171F</item>
-        <item name="android:windowBackground">#14171F</item>
+        <item name="android:statusBarColor">#0B0B0E</item>
+        <item name="android:navigationBarColor">#0B0B0E</item>
+        <item name="android:windowBackground">#0B0B0E</item>
+    </style>
+
+    <!-- The system splash: the launch mark on midnight, the same frame the
+         animated splash (SplashOverlay) starts from. -->
+    <style name="Theme.DASHit.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#061838</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_launch_icon</item>
+        <item name="postSplashScreenTheme">@style/Theme.DASHit</item>
     </style>
 </resources>
