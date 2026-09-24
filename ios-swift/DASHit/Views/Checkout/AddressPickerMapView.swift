@@ -2,12 +2,31 @@ import SwiftUI
 import MapKit
 import Combine
 
+/// The pin picker as its own sheet, with Cancel.
+struct AddressPickerMapView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            AddressPinPicker(onSaved: { dismiss() })
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Cancel") { dismiss() }
+                            .foregroundColor(.textMuted)
+                    }
+                }
+        }
+    }
+}
+
 /// Drop-a-pin address picker. The pin stays fixed in the middle of the map and
 /// the map moves under it; when the map settles, the spot is reverse-geocoded
 /// and checked against the 5 km delivery radius, so the saved address carries
-/// the real coordinates the rider navigates to.
-struct AddressPickerMapView: View {
-    @Environment(\.dismiss) private var dismiss
+/// the real coordinates the rider navigates to. Pushed from address search
+/// with the place picked there, or opened on the current address.
+struct AddressPinPicker: View {
+    var onSaved: () -> Void
+
     @StateObject private var locator = LocationProvider()
 
     @State private var cameraPosition: MapCameraPosition
@@ -21,48 +40,44 @@ struct AddressPickerMapView: View {
     @State private var landmark: String
     @State private var selectedNickname: String
 
-    init() {
-        let saved = LocalStorage.shared.loadAddress()
-        let start = saved?.coordinate ?? DeliveryEta.hub
-        _pinCoordinate = State(initialValue: start)
+    /// With `start`, a new address at that place; without, the current one.
+    init(start: CLLocationCoordinate2D? = nil, startLine: String? = nil, onSaved: @escaping () -> Void) {
+        self.onSaved = onSaved
+        let saved = start == nil ? LocalStorage.shared.loadAddress() : nil
+        let origin = start ?? saved?.coordinate ?? DeliveryEta.hub
+        _pinCoordinate = State(initialValue: origin)
         _cameraPosition = State(initialValue: .region(
-            MKCoordinateRegion(center: start, span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006))
+            MKCoordinateRegion(center: origin, span: MKCoordinateSpan(latitudeDelta: 0.006, longitudeDelta: 0.006))
         ))
-        _addressLine = State(initialValue: saved?.street ?? "")
+        _addressLine = State(initialValue: startLine ?? saved?.street ?? "")
         _houseNumber = State(initialValue: saved?.houseNumber ?? "")
         _landmark = State(initialValue: saved?.landmark ?? "")
-        _selectedNickname = State(initialValue: saved?.nickname ?? "Home")
+        let known = LocalStorage.shared.loadAddressBook() + [LocalStorage.shared.loadAddress()].compactMap { $0 }
+        let hasHome = known.contains { $0.nickname == "Home" }
+        _selectedNickname = State(initialValue: saved?.nickname ?? (start != nil && hasHome ? "Other" : "Home"))
     }
 
     private var quote: DeliveryEta.Quote { DeliveryEta.quote(for: pinCoordinate) }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                map
-                form
+        VStack(spacing: 0) {
+            map
+            form
+        }
+        .background(Color.surface.ignoresSafeArea())
+        .navigationTitle("Pin your address")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.surface, for: .navigationBar)
+        .onAppear {
+            if addressLine.isEmpty {
+                resolveAddress(for: pinCoordinate)
             }
-            .background(Color.surface.ignoresSafeArea())
-            .navigationTitle("Pin your address")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(Color.surface, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundColor(.textMuted)
-                }
-            }
-            .onAppear {
-                if addressLine.isEmpty {
-                    resolveAddress(for: pinCoordinate)
-                }
-            }
-            .onReceive(locator.$lastFix.compactMap { $0 }) { coordinate in
-                withAnimation(.dashitSpring) {
-                    cameraPosition = .region(
-                        MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004))
-                    )
-                }
+        }
+        .onReceive(locator.$lastFix.compactMap { $0 }) { coordinate in
+            withAnimation(.dashitSpring) {
+                cameraPosition = .region(
+                    MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.004, longitudeDelta: 0.004))
+                )
             }
         }
     }
@@ -73,12 +88,7 @@ struct AddressPickerMapView: View {
         Map(position: $cameraPosition) {
             UserAnnotation()
             Annotation("DASHit hub", coordinate: DeliveryEta.hub) {
-                Image(systemName: "storefront.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 26, height: 26)
-                    .background(Circle().fill(Color.midnight))
-                    .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
+                BrandMapMarker(size: 28)
             }
         }
         .mapControls {
@@ -91,8 +101,14 @@ struct AddressPickerMapView: View {
         }
         .onMapCameraChange(frequency: .onEnd) { context in
             withAnimation(.dashitSpring) { isMoving = false }
-            pinCoordinate = context.region.center
-            resolveAddress(for: context.region.center)
+            let center = context.region.center
+            // The first settle lands where the picker opened; keep the name
+            // already known for that spot rather than re-geocoding it.
+            let hasMoved = DeliveryEta.haversineKm(from: pinCoordinate, to: center) > 0.005
+            pinCoordinate = center
+            if hasMoved || addressLine.isEmpty {
+                resolveAddress(for: center)
+            }
         }
         .overlay {
             centrePin
@@ -278,8 +294,8 @@ struct AddressPickerMapView: View {
             latitude: pinCoordinate.latitude,
             longitude: pinCoordinate.longitude
         )
-        LocalStorage.shared.saveAddress(address)
+        AddressBook.shared.use(address)
         HapticsManager.shared.success()
-        dismiss()
+        onSaved()
     }
 }

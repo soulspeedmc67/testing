@@ -97,25 +97,24 @@ struct LiveTrackingMapView: View {
 
     private var map: some View {
         Map(position: $vm.cameraPosition) {
-            // The way the rider comes: the road route, or a dashed line
-            // straight to the door when Apple Maps has none.
-            if let route = vm.route {
-                MapPolyline(route.polyline)
-                    .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
-            } else if vm.fallbackPath.count == 2 {
-                MapPolyline(coordinates: vm.fallbackPath)
-                    .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 4, lineCap: .round, dash: [6, 8]))
+            // The way the rider comes, along the roads: an orange line on a
+            // dark casing so it reads on both map themes. A faint dashed
+            // straight line only stands in until the route arrives.
+            if vm.routePath.count > 1 {
+                if vm.isRoadRoute {
+                    MapPolyline(coordinates: vm.routePath)
+                        .stroke(Color.black.opacity(0.35), style: StrokeStyle(lineWidth: 9, lineCap: .round, lineJoin: .round))
+                    MapPolyline(coordinates: vm.routePath)
+                        .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
+                } else {
+                    MapPolyline(coordinates: vm.routePath)
+                        .stroke(Color.brandOrange.opacity(0.55), style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [4, 8]))
+                }
             }
 
-            // Dark store the order is packed at.
+            // Dark store the order is packed at, marked with the app icon.
             Annotation("DASHit hub", coordinate: DeliveryEta.hub) {
-                Image(systemName: "storefront.fill")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(Color.midnight))
-                    .overlay(Circle().strokeBorder(Color.white, lineWidth: 2))
-                    .shadow(color: .black.opacity(0.25), radius: 4, x: 0, y: 2)
+                BrandMapMarker(size: 34)
             }
 
             // Customer destination
@@ -292,5 +291,23 @@ struct DeliveryCodeRow: View {
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Delivery code \(code.map { String($0) }.joined(separator: " "))")
         }
+    }
+}
+
+/// The app icon as a map pin for the DASHit hub.
+struct BrandMapMarker: View {
+    var size: CGFloat = 34
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.27, style: .continuous)
+        Image("BrandTile")
+            .resizable()
+            .interpolation(.high)
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(Color.white, lineWidth: 2))
+            .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+            .accessibilityHidden(true)
     }
 }

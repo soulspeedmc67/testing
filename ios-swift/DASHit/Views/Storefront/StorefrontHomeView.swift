@@ -5,14 +5,16 @@ import UIKit
 /// the category tabs pin under the status bar, as in the web shop page.
 struct StorefrontHomeView: View {
     var onOpenProfile: () -> Void
+    /// Opens the address menu growing out of the given on-screen frame.
+    var onChangeAddress: (CGRect) -> Void
 
     @StateObject private var vm = StorefrontViewModel()
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var storeStatus = StoreStatusStore.shared
     @State private var detailProduct: Product? = nil
     @State private var ageGateProduct: Product? = nil
-    @State private var isAddressPickerOpen = false
-    @State private var address: DeliveryAddress? = LocalStorage.shared.loadAddress()
+    @ObservedObject private var addressBook = AddressBook.shared
+    @State private var addressAnchor = ScreenAnchor()
     @FocusState private var isSearchFocused: Bool
     @State private var isVoiceSearchOpen = false
     /// Scroll-driven chrome, held by reference so scrolling redraws only the
@@ -22,9 +24,12 @@ struct StorefrontHomeView: View {
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
     private let tileColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
 
-    init(onOpenProfile: @escaping () -> Void = {}) {
+    init(onOpenProfile: @escaping () -> Void = {}, onChangeAddress: @escaping (CGRect) -> Void = { _ in }) {
         self.onOpenProfile = onOpenProfile
+        self.onChangeAddress = onChangeAddress
     }
+
+    private var address: DeliveryAddress? { addressBook.current }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -79,9 +84,16 @@ struct StorefrontHomeView: View {
                     }
                 }
                 .background(alignment: .top) {
-                    HeaderBackdrop()
-                        .frame(height: 320)
-                        .allowsHitTesting(false)
+                    // Pulling past the top drags the feed down; the glow reaches
+                    // up behind it so no bare page opens under the status bar.
+                    VStack(spacing: 0) {
+                        Color.headerGlow
+                            .frame(height: 1000)
+                        HeaderBackdrop()
+                            .frame(height: 320)
+                    }
+                    .offset(y: -1000)
+                    .allowsHitTesting(false)
                 }
             }
             .coordinateSpace(.named("homeScroll"))
@@ -114,11 +126,6 @@ struct StorefrontHomeView: View {
                 cart.confirmAge()
                 cart.add(product: product)
             }
-        }
-        .sheet(isPresented: $isAddressPickerOpen, onDismiss: {
-            address = LocalStorage.shared.loadAddress()
-        }) {
-            AddressPickerMapView()
         }
         .sheet(isPresented: $isVoiceSearchOpen) {
             VoiceSearchSheet { phrase in
@@ -164,8 +171,7 @@ struct StorefrontHomeView: View {
             }
 
             Button {
-                HapticsManager.shared.light()
-                isAddressPickerOpen = true
+                onChangeAddress(addressAnchor.rect)
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "mappin")
@@ -180,6 +186,7 @@ struct StorefrontHomeView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.textSecondary)
                         .lineLimit(1)
+                        .contentTransition(.opacity)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.textMuted)
@@ -187,6 +194,11 @@ struct StorefrontHomeView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.pressable)
+            .onGeometryChange(for: CGRect.self) { geometry in
+                geometry.frame(in: .global)
+            } action: { frame in
+                addressAnchor.rect = frame
+            }
             .padding(.top, 6)
             .accessibilityLabel("Delivery address. Change")
 
@@ -436,7 +448,7 @@ struct StorefrontHomeView: View {
             cart.isCartSheetPresented = true
         }
         if ScreenshotHooks.openAddressPicker {
-            isAddressPickerOpen = true
+            onChangeAddress(addressAnchor.rect)
         }
     }
     #endif

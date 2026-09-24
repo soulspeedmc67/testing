@@ -32,8 +32,11 @@ struct CustomTabBar: View {
     static let barHeight: CGFloat = 62
     /// Gap between the capsule and the home indicator.
     static let bottomGap: CGFloat = 4
-    /// Everything the bar occupies above the bottom safe area.
-    static let dockHeight: CGFloat = barHeight + bottomGap
+    /// Width cap, so on every phone the bar floats as a compact island
+    /// rather than running edge to edge. The order pill above matches it.
+    static let maxWidth: CGFloat = 312
+    /// Smallest gap to the screen edges on narrow phones.
+    static let sideInset: CGFloat = 24
 
     @Namespace private var selectionNamespace
     @State private var bounceCounts: [TabItem: Int] = [:]
@@ -59,7 +62,8 @@ struct CustomTabBar: View {
             )
         )
         .shadow(color: .floatingShadow, radius: 22, x: 0, y: 10)
-        .padding(.horizontal, 24)
+        .frame(maxWidth: Self.maxWidth)
+        .padding(.horizontal, Self.sideInset)
         .padding(.bottom, Self.bottomGap)
         .animation(.dashitSpring, value: selectedTab)
     }
