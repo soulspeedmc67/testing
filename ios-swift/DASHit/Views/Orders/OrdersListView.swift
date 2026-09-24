@@ -82,7 +82,9 @@ struct OrdersListView: View {
                             }
                         }
                         .padding(16)
+                        .drivesTabBarVisibility(in: "ordersScroll")
                     }
+                    .coordinateSpace(.named("ordersScroll"))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

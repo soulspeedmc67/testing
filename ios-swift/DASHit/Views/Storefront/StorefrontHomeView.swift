@@ -12,6 +12,7 @@ struct StorefrontHomeView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var storeStatus = StoreStatusStore.shared
     @State private var detailProduct: Product? = nil
+    @State private var opensCartAfterDetail = false
     @State private var ageGateProduct: Product? = nil
     @ObservedObject private var addressBook = AddressBook.shared
     @State private var addressAnchor = ScreenAnchor()
@@ -95,6 +96,7 @@ struct StorefrontHomeView: View {
                     .offset(y: -1000)
                     .allowsHitTesting(false)
                 }
+                .drivesTabBarVisibility(in: "homeScroll")
             }
             .coordinateSpace(.named("homeScroll"))
             .scrollDismissesKeyboard(.immediately)
@@ -118,8 +120,18 @@ struct StorefrontHomeView: View {
             }
         }
         .background(Color.surface.ignoresSafeArea())
-        .sheet(item: $detailProduct) { product in
-            ProductDetailSheet(product: product)
+        .sheet(item: $detailProduct, onDismiss: {
+            // The cart opens only once the product sheet has gone: UIKit drops
+            // a presentation made while another sheet is still on screen.
+            if opensCartAfterDetail {
+                opensCartAfterDetail = false
+                cart.isCartSheetPresented = true
+            }
+        }) { product in
+            ProductDetailSheet(product: product, onGoToCart: {
+                opensCartAfterDetail = true
+                detailProduct = nil
+            })
         }
         .sheet(item: $ageGateProduct) { product in
             AgeGateSheet(product: product) {
@@ -474,18 +486,11 @@ final class HomeChromeState: ObservableObject {
 }
 
 /// The warm glow behind the header, search and tabs: the web header's peach in
-/// light mode, a deep ember with a soft orange bloom in dark.
+/// light mode, a deep ember in dark. Straight top-to-bottom, so it carries on
+/// from the flat colour behind the status bar without a seam.
 private struct HeaderBackdrop: View {
     var body: some View {
-        ZStack(alignment: .top) {
-            LinearGradient(colors: [Color.headerGlow, Color.surface], startPoint: .top, endPoint: .bottom)
-            RadialGradient(
-                colors: [Color.brandOrange.opacity(0.18), Color.brandOrange.opacity(0)],
-                center: UnitPoint(x: 0.9, y: 0),
-                startRadius: 0,
-                endRadius: 280
-            )
-        }
+        LinearGradient(colors: [Color.headerGlow, Color.surface], startPoint: .top, endPoint: .bottom)
     }
 }
 

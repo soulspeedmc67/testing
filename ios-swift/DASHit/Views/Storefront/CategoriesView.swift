@@ -7,6 +7,7 @@ struct CategoriesView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @State private var selectedCategoryID: String? = nil
     @State private var detailProduct: Product? = nil
+    @State private var opensCartAfterDetail = false
     @State private var ageGateProduct: Product? = nil
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 2)
@@ -54,8 +55,18 @@ struct CategoriesView: View {
             .padding(.bottom, 10)
         }
         .background(Color.surface.ignoresSafeArea())
-        .sheet(item: $detailProduct) { product in
-            ProductDetailSheet(product: product)
+        .sheet(item: $detailProduct, onDismiss: {
+            // The cart opens only once the product sheet has gone: UIKit drops
+            // a presentation made while another sheet is still on screen.
+            if opensCartAfterDetail {
+                opensCartAfterDetail = false
+                cart.isCartSheetPresented = true
+            }
+        }) { product in
+            ProductDetailSheet(product: product, onGoToCart: {
+                opensCartAfterDetail = true
+                detailProduct = nil
+            })
         }
         .sheet(item: $ageGateProduct) { product in
             AgeGateSheet(product: product) {
@@ -160,7 +171,9 @@ struct CategoriesView: View {
                 }
                 .padding(12)
                 .padding(.bottom, 12)
+                .drivesTabBarVisibility(in: "categoriesScroll")
             }
+            .coordinateSpace(.named("categoriesScroll"))
             .onChange(of: selectedCategoryID) { _, _ in
                 proxy.scrollTo("top", anchor: .top)
             }

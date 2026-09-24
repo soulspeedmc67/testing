@@ -103,3 +103,63 @@ struct CustomTabBar: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
+
+/// Tucks the tab bar away while the shopper scrolls down a feed and brings it
+/// back as soon as they scroll up, or reach the top.
+@MainActor
+final class TabBarVisibility: ObservableObject {
+    static let shared = TabBarVisibility()
+
+    @Published private(set) var isHidden = false
+
+    private var lastOffset: CGFloat = 0
+    /// Distance scrolled in the current direction; flips reset it, so a small
+    /// wobble of the finger never toggles the bar.
+    private var travel: CGFloat = 0
+    private static let threshold: CGFloat = 24
+
+    private init() {}
+
+    /// `offset` is how far the content has scrolled from its top.
+    func scrolled(to offset: CGFloat) {
+        defer { lastOffset = offset }
+        guard offset > 60 else {
+            travel = 0
+            show()
+            return
+        }
+        let delta = offset - lastOffset
+        if delta == 0 { return }
+        if (delta > 0) != (travel > 0) {
+            travel = 0
+        }
+        travel += delta
+        if travel > Self.threshold {
+            hide()
+        } else if travel < -Self.threshold {
+            show()
+        }
+    }
+
+    func show() {
+        guard isHidden else { return }
+        withAnimation(.dashitSpring) { isHidden = false }
+    }
+
+    private func hide() {
+        guard !isHidden else { return }
+        withAnimation(.dashitSpring) { isHidden = true }
+    }
+}
+
+extension View {
+    /// Put on a scroll view's content, inside a ScrollView carrying
+    /// `.coordinateSpace(.named(space))`: its scrolling hides and shows the tab bar.
+    func drivesTabBarVisibility(in space: String) -> some View {
+        onGeometryChange(for: CGFloat.self) { proxy in
+            -proxy.frame(in: .named(space)).minY
+        } action: { offset in
+            TabBarVisibility.shared.scrolled(to: offset)
+        }
+    }
+}
