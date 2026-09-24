@@ -81,6 +81,9 @@ struct CartSheetView: View {
     private var cartContent: some View {
         ScrollView {
             VStack(spacing: 14) {
+                if cart.bill.subtotal > 0 {
+                    FreeDeliveryStrip(bill: cart.bill)
+                }
                 itemsCard
                 couponRow
                 billCard
