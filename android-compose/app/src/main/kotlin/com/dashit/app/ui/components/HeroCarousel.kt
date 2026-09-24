@@ -1,6 +1,7 @@
 package com.dashit.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -167,6 +168,87 @@ fun HeroBanner(
                     fontWeight = FontWeight.Medium
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun WelcomeHeroBanner(
+    modifier: Modifier = Modifier,
+    onTap: () -> Unit = {}
+) {
+    val view = LocalView.current
+    val bannerShape = RoundedCornerShape(20.dp)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(bannerShape)
+            .background(
+                androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF5A3906),
+                        Color(0xFF382103),
+                        Color(0xFF221402)
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                    listOf(
+                        Color(0xFF8A5A0C).copy(alpha = 0.5f),
+                        Color(0xFFFFDF88).copy(alpha = 0.8f),
+                        Color(0xFF8A5A0C).copy(alpha = 0.5f)
+                    )
+                ),
+                bannerShape
+            )
+            .pressable(scale = 0.98f) {
+                HapticsManager.light(view)
+                onTap()
+            }
+            .padding(horizontal = 16.dp, vertical = 20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "🛍️",
+                fontSize = 42.sp,
+                modifier = Modifier.padding(start = 4.dp)
+            )
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+            ) {
+                Text(
+                    text = "✦ WELCOME ✦",
+                    color = Color(0xFFFFF1D6),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.2.sp
+                )
+
+                Text(
+                    text = "Order now & enjoy FREE delivery",
+                    color = Color(0xFFFFE0A8),
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Text(
+                text = "🛒",
+                fontSize = 42.sp,
+                modifier = Modifier.padding(end = 4.dp)
+            )
         }
     }
 }

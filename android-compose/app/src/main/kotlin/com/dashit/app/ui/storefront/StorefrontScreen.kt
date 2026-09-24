@@ -29,18 +29,25 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.LocalDrink
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingBasket
+import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -55,12 +62,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
@@ -70,6 +79,8 @@ import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.DeliveryAddress
+import com.dashit.app.data.model.Order
+import com.dashit.app.data.model.OrderStatus
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.repository.OrderRepository
 import com.dashit.app.ui.cart.CartSheet
@@ -78,9 +89,12 @@ import com.dashit.app.ui.checkout.CheckoutSheet
 import com.dashit.app.ui.components.BottomNavBar
 import com.dashit.app.ui.components.CategoryCollageTile
 import com.dashit.app.ui.components.FloatingCartBar
+import com.dashit.app.ui.components.FlyToCartOverlay
 import com.dashit.app.ui.components.HeroBanner
 import com.dashit.app.ui.components.NavigationTab
 import com.dashit.app.ui.components.ProductCard
+import com.dashit.app.ui.components.WelcomeHeroBanner
+import com.dashit.app.ui.orders.LiveTrackingMapScreen
 import com.dashit.app.ui.orders.OrdersScreen
 import com.dashit.app.ui.profile.ProfileScreen
 import com.dashit.app.ui.sheet.ProductDetailSheet
@@ -108,9 +122,12 @@ fun StorefrontScreen(
 
     val cartItems by cartVm.items.collectAsState()
     val bill by cartVm.bill.collectAsState()
+    val orders by OrderRepository.shared.orders.collectAsState()
+    val activeDeliveryOrder = orders.firstOrNull { it.status != OrderStatus.DELIVERED && it.status != OrderStatus.CANCELLED }
 
     var activeTab by remember { mutableStateOf(NavigationTab.HOME) }
     var detailProduct by remember { mutableStateOf<Product?>(null) }
+    var activeTrackingOrder by remember { mutableStateOf<Order?>(null) }
     var isCartSheetOpen by remember { mutableStateOf(false) }
     var isCheckoutOpen by remember { mutableStateOf(false) }
 
@@ -119,8 +136,9 @@ fun StorefrontScreen(
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val address = remember { DeliveryAddress() }
 
-    BackHandler(enabled = detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
+    BackHandler(enabled = activeTrackingOrder != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
         when {
+            activeTrackingOrder != null -> activeTrackingOrder = null
             detailProduct != null -> detailProduct = null
             isCheckoutOpen -> {
                 isCheckoutOpen = false
@@ -137,14 +155,21 @@ fun StorefrontScreen(
             .fillMaxSize()
             .background(DashitColors.Surface)
     ) {
-        when (activeTab) {
-            NavigationTab.HOME -> {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding(),
-                    contentPadding = PaddingValues(bottom = 140.dp)
-                ) {
+        if (activeTrackingOrder != null) {
+            LiveTrackingMapScreen(
+                initialOrder = activeTrackingOrder!!,
+                orderRepo = OrderRepository.shared,
+                onBack = { activeTrackingOrder = null }
+            )
+        } else {
+            when (activeTab) {
+                NavigationTab.HOME -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding(),
+                        contentPadding = PaddingValues(bottom = 140.dp)
+                    ) {
                     // 1. Top Header: ETA + Address + Profile
                     item(key = "header") {
                         StorefrontHeader(
@@ -183,27 +208,28 @@ fun StorefrontScreen(
 
             // 3. Main Feed Content
             if (isBrowsing) {
-                // Hero Banner Carousel
-                if (offers.isNotEmpty()) {
-                    item(key = "hero_banner") {
-                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                            HeroBanner(
-                                offer = offers.first(),
-                                onShopNow = { storefrontVm.selectCategory(offers.first().category) }
-                            )
-                        }
+                // Welcome Festive Banner (matching reference screenshot)
+                item(key = "welcome_hero_banner") {
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                        WelcomeHeroBanner(
+                            onTap = {
+                                if (offers.isNotEmpty()) {
+                                    storefrontVm.selectCategory(offers.first().category)
+                                }
+                            }
+                        )
                     }
                 }
 
-                // "Shop by category" Blinkit 3-Column Collage Tiles
+                // "Bestsellers" Blinkit 3-Column Collage Tiles
                 if (categoryTiles.isNotEmpty()) {
-                    item(key = "shop_by_category_title") {
+                    item(key = "bestsellers_title") {
                         Text(
-                            text = "Shop by category",
+                            text = "Bestsellers",
                             color = DashitColors.TextPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            modifier = Modifier.padding(start = 16.dp, top = 22.dp, bottom = 12.dp)
+                            modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 12.dp)
                         )
                     }
 
@@ -357,13 +383,60 @@ fun StorefrontScreen(
                 OrdersScreen(
                     orderRepo = OrderRepository.shared,
                     cartVm = cartVm,
-                    onOpenCart = { isCartSheetOpen = true }
+                    onOpenCart = { isCartSheetOpen = true },
+                    onTrackOrder = { activeTrackingOrder = it }
                 )
             }
             NavigationTab.PROFILE -> {
                 ProfileScreen(
                     onSignOut = { activeTab = NavigationTab.HOME }
                 )
+            }
+        }
+
+        // Live Order Tracking Sticky Pill
+        if (activeDeliveryOrder != null && activeTab == NavigationTab.HOME) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (cartItems.isNotEmpty()) 142.dp else 78.dp)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF142217))
+                    .border(1.dp, DashitColors.BlinkitGreen.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
+                    .pressable(scale = 0.96f) {
+                        HapticsManager.medium(view)
+                        activeTrackingOrder = activeDeliveryOrder
+                    }
+                    .padding(horizontal = 14.dp, vertical = 9.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(text = "🛵", fontSize = 18.sp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Live Order In Transit",
+                            color = Color.White,
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = activeDeliveryOrder.tracking?.statusText ?: "Arriving in ${activeDeliveryOrder.etaMinutes ?: 8} mins",
+                            color = DashitColors.Positive,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        text = "Track >",
+                        color = DashitColors.FestiveGold,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
 
@@ -431,12 +504,22 @@ fun StorefrontScreen(
                 orderRepo = OrderRepository.shared,
                 sheetState = checkoutSheetState,
                 onDismiss = { isCheckoutOpen = false },
-                onOrderPlaced = { _ ->
+                onOrderPlaced = { orderId ->
                     isCheckoutOpen = false
-                    activeTab = NavigationTab.ORDERS
+                    val placed = OrderRepository.shared.orders.value.firstOrNull { it.id == orderId }
+                        ?: OrderRepository.shared.orders.value.firstOrNull()
+                    if (placed != null) {
+                        activeTrackingOrder = placed
+                    } else {
+                        activeTab = NavigationTab.ORDERS
+                    }
                 }
             )
         }
+        }
+
+        // 5. Parabolic Fly-To-Cart Badge Overlay (Always active at root)
+        FlyToCartOverlay()
     }
 }
 
@@ -446,84 +529,155 @@ private fun StorefrontHeader(
     onOpenProfile: () -> Unit
 ) {
     val view = LocalView.current
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF8C5D08),
+                        Color(0xFF4C3004),
+                        DashitColors.Surface
+                    )
+                )
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(end = 10.dp)
+            ) {
                 Text(
-                    text = "DASHIT IN",
-                    color = DashitColors.TextSecondary,
-                    fontSize = 11.5.sp,
+                    text = "DASHit in",
+                    color = Color(0xFFFDE68A),
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.6.sp
+                    letterSpacing = 0.5.sp
                 )
 
-                Text(
-                    text = "8 minutes",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 36.sp
-                )
+                Spacer(modifier = Modifier.height(2.dp))
 
-                // Location selector
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "8 minutes",
+                        color = Color.White,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 34.sp
+                    )
+
+                    // 24/7 Pill Badge (matching reference screenshot)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF48330B))
+                            .border(1.dp, Color(0xFF825D1D), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Timer,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "24/7",
+                                color = Color.White,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Location selector matching reference screenshot
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier
-                        .padding(top = 3.dp)
-                        .pressable(scale = 0.96f) {
-                            HapticsManager.light(view)
-                        }
+                    modifier = Modifier.pressable(scale = 0.96f) {
+                        HapticsManager.light(view)
+                    }
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Delivery Location",
-                        tint = DashitColors.BrandOrange,
-                        modifier = Modifier.size(16.dp)
-                    )
-
                     Text(
-                        text = address.displaySummary,
-                        color = DashitColors.TextPrimary,
+                        text = "HOME - ${address.displaySummary}",
+                        color = Color(0xFFFFECC4),
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
 
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = "Change address",
-                        tint = DashitColors.TextMuted,
+                        tint = Color(0xFFFFECC4),
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
 
-            // Profile Avatar Button
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(DashitColors.SurfaceRaised)
-                    .border(1.dp, DashitColors.Hairline, CircleShape)
-                    .pressable(scale = 0.90f) {
-                        onOpenProfile()
-                    },
-                contentAlignment = Alignment.Center
+            // Top Right Actions: Green Wallet Pill + Profile Avatar Button
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = DashitColors.TextPrimary,
-                    modifier = Modifier.size(22.dp)
-                )
+                // Wallet Pill [ 💵 ₹0 ]
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(DashitColors.WalletGreen)
+                        .border(1.dp, DashitColors.WalletGreenBorder, RoundedCornerShape(12.dp))
+                        .pressable(scale = 0.92f) {
+                            HapticsManager.light(view)
+                        }
+                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "💵", fontSize = 13.sp)
+                        Text(
+                            text = "₹0",
+                            color = Color.White,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                    }
+                }
+
+                // Profile Avatar Button
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2C2214))
+                        .border(1.dp, Color(0xFF5A4420), CircleShape)
+                        .pressable(scale = 0.90f) {
+                            onOpenProfile()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
@@ -542,7 +696,7 @@ private fun SearchBarField(
             .padding(horizontal = 16.dp)
             .height(48.dp)
             .clip(searchShape)
-            .background(DashitColors.SurfaceRaised)
+            .background(Color(0xFF181C26))
             .border(1.dp, DashitColors.Hairline, searchShape)
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
@@ -562,9 +716,9 @@ private fun SearchBarField(
             Box(modifier = Modifier.weight(1f)) {
                 if (query.isEmpty()) {
                     Text(
-                        text = "Search \"kashmiri cherries\"",
+                        text = "Search \"ganesh idol\"",
                         color = DashitColors.TextMuted,
-                        fontSize = 14.5.sp
+                        fontSize = 14.sp
                     )
                 }
                 BasicTextField(
@@ -572,7 +726,7 @@ private fun SearchBarField(
                     onValueChange = onQueryChange,
                     textStyle = TextStyle(
                         color = DashitColors.TextPrimary,
-                        fontSize = 14.5.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     ),
                     cursorBrush = SolidColor(DashitColors.BrandOrange),
@@ -580,6 +734,13 @@ private fun SearchBarField(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = "Voice Search",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp)
+            )
         }
     }
 }
@@ -601,7 +762,7 @@ private fun CategoryTabsRow(
 
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         items(allTabs, key = { it.id }) { cat ->
             val isSelected = if (cat.id == "all") selectedCategory == null else selectedCategory.equals(cat.name, ignoreCase = true)
@@ -623,28 +784,28 @@ private fun CategoryTabsRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = cat.name,
-                    tint = if (isSelected) DashitColors.BrandOrange else DashitColors.TextMuted,
-                    modifier = Modifier.size(22.dp)
+                    tint = if (isSelected) Color.White else DashitColors.TextMuted,
+                    modifier = Modifier.size(24.dp)
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = cat.name,
-                    color = if (isSelected) DashitColors.TextPrimary else DashitColors.TextMuted,
+                    color = if (isSelected) Color.White else DashitColors.TextMuted,
                     fontSize = 11.5.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Active orange indicator bar
+                // Active white indicator bar
                 Box(
                     modifier = Modifier
                         .width(22.dp)
                         .height(2.5.dp)
                         .clip(RoundedCornerShape(1.dp))
-                        .background(if (isSelected) DashitColors.BrandOrange else Color.Transparent)
+                        .background(if (isSelected) Color.White else Color.Transparent)
                 )
             }
         }
@@ -653,15 +814,16 @@ private fun CategoryTabsRow(
 
 private fun getCategoryIcon(name: String): ImageVector {
     return when (name.lowercase()) {
-        "all" -> Icons.Default.GridView
-        "dairy" -> Icons.Default.Coffee
-        "snacks" -> Icons.Default.Fastfood
-        "grocery", "staples" -> Icons.Default.ShoppingBasket
-        "bakery" -> Icons.Default.Cake
-        "drinks", "beverages" -> Icons.Default.LocalDrink
-        "fresh fruits", "fruits" -> Icons.Default.WaterDrop
-        "vegetables" -> Icons.Default.Eco
-        "kitchen care" -> Icons.Default.Kitchen
+        "all" -> Icons.Default.ShoppingBag
+        "ganeshotsav", "seasonal" -> Icons.Default.Celebration
+        "electronics" -> Icons.Default.Headphones
+        "beauty" -> Icons.Default.Spa
+        "gifting" -> Icons.Default.CardGiftcard
+        "dairy", "dairy, bread & eggs" -> Icons.Default.Coffee
+        "chips & namkeen", "snacks" -> Icons.Default.Fastfood
+        "drinks & juices", "drinks" -> Icons.Default.LocalDrink
+        "vegetables & fruits", "vegetables" -> Icons.Default.Eco
+        "sweets & chocolates", "bakery" -> Icons.Default.Cake
         else -> Icons.Default.GridView
     }
 }

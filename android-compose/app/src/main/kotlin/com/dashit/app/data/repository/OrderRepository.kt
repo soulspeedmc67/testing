@@ -92,6 +92,8 @@ class OrderRepository(
             deliveryAddress = address,
             paymentMethod = paymentMethod,
             paymentStatus = if (paymentMethod == "cod") "pending" else "completed",
+            driverName = "Tariq Ahmad",
+            driverPhone = "+91 94190 12345",
             etaMinutes = 8,
             tracking = DriverLiveTracking(
                 lat = 33.7311,
@@ -105,6 +107,16 @@ class OrderRepository(
 
         // Insert at beginning of orders flow
         _orders.value = listOf(newOrder) + _orders.value
+
+        // Simulate live lifecycle progression
+        scope.launch {
+            kotlinx.coroutines.delay(5000)
+            updateOrderTracking(newOrder.id, OrderStatus.PACKING, 0.35, "Items being packed at Anantnag Dark Store Hub", 7)
+            kotlinx.coroutines.delay(7000)
+            updateOrderTracking(newOrder.id, OrderStatus.OUT_FOR_DELIVERY, 0.60, "Tariq is on his way to your address!", 5)
+            kotlinx.coroutines.delay(8000)
+            updateOrderTracking(newOrder.id, OrderStatus.OUT_FOR_DELIVERY, 0.85, "Rider is near your gate! Arriving in 2 mins", 2)
+        }
 
         // Sync to firestore in background
         scope.launch {
@@ -137,6 +149,28 @@ class OrderRepository(
         }
 
         return newOrder
+    }
+
+    fun updateOrderTracking(
+        orderId: String,
+        status: OrderStatus,
+        progress: Double,
+        statusText: String,
+        eta: Int
+    ) {
+        _orders.value = _orders.value.map { ord ->
+            if (ord.id == orderId) {
+                ord.copy(
+                    status = status,
+                    etaMinutes = eta,
+                    tracking = (ord.tracking ?: DriverLiveTracking(lat = 33.7311, lng = 75.1487)).copy(
+                        progress = progress,
+                        statusText = statusText,
+                        etaMinutes = eta
+                    )
+                )
+            } else ord
+        }
     }
 
     private fun createSampleOrders(): List<Order> {

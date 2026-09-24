@@ -1,11 +1,89 @@
 package com.dashit.app.data.repository
 
 import com.dashit.app.data.model.Category
+import com.dashit.app.data.model.CategoryTile
 import com.dashit.app.data.model.Offer
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.model.ProductVariant
 
 object CatalogSeed {
+    val topCategories = listOf(
+        Category(id = "all", name = "All", icon = "grid_view"),
+        Category(id = "ganeshotsav", name = "Ganeshotsav", icon = "emoji_events"),
+        Category(id = "electronics", name = "Electronics", icon = "headphones"),
+        Category(id = "beauty", name = "Beauty", icon = "face"),
+        Category(id = "gifting", name = "Gifting", icon = "card_giftcard")
+    )
+
+    val bestsellerTiles = listOf(
+        CategoryTile(
+            id = "chips_namkeen",
+            name = "Chips & Namkeen",
+            previewImages = listOf(
+                "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1621447504864-d8686e12698c?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1600952841320-db92ec4047ca?w=300&auto=format&fit=crop&q=80"
+            ),
+            productCount = 521
+        ),
+        CategoryTile(
+            id = "drinks_juices",
+            name = "Drinks & Juices",
+            previewImages = listOf(
+                "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=300&auto=format&fit=crop&q=80"
+            ),
+            productCount = 244
+        ),
+        CategoryTile(
+            id = "ice_creams",
+            name = "Ice Creams & More",
+            previewImages = listOf(
+                "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1570197788417-0e82375c9371?w=300&auto=format&fit=crop&q=80"
+            ),
+            productCount = 55
+        ),
+        CategoryTile(
+            id = "vegetables_fruits",
+            name = "Vegetables & Fruits",
+            previewImages = listOf(
+                "https://images.unsplash.com/photo-1518977956812-cd3dbadaaf31?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1600335895229-6e75511892c8?w=300&auto=format&fit=crop&q=80"
+            ),
+            productCount = 155
+        ),
+        CategoryTile(
+            id = "dairy_bread_eggs",
+            name = "Dairy, Bread & Eggs",
+            previewImages = listOf(
+                "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&auto=format&fit=crop&q=80"
+            ),
+            productCount = 27
+        ),
+        CategoryTile(
+            id = "sweets_chocolates",
+            name = "Sweets & Chocolates",
+            previewImages = listOf(
+                "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1582293041079-7814c2f12063?w=300&auto=format&fit=crop&q=80",
+                "https://images.unsplash.com/photo-1511381939415-e44015466834?w=300&auto=format&fit=crop&q=80"
+            ),
+            productCount = 269
+        )
+    )
+
     val categories = listOf(
         Category(id = "all", name = "All", icon = "grid_view"),
         Category(id = "dairy", name = "Dairy", icon = "coffee"),
