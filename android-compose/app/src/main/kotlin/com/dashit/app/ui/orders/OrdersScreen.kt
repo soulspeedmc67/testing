@@ -1,5 +1,6 @@
 package com.dashit.app.ui.orders
 
+import com.dashit.app.ui.components.OrderListSkeleton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +43,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.dashit.app.ui.components.ShimmerImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
@@ -64,6 +65,7 @@ fun OrdersScreen(
 ) {
     val view = LocalView.current
     val orders by orderRepo.orders.collectAsState()
+    val ordersLoaded by orderRepo.ordersLoaded.collectAsState()
 
     Column(
         modifier = Modifier
@@ -93,7 +95,9 @@ fun OrdersScreen(
                 .background(DashitColors.Hairline)
         )
 
-        if (orders.isEmpty()) {
+        if (!ordersLoaded) {
+            OrderListSkeleton(modifier = Modifier.padding(16.dp))
+        } else if (orders.isEmpty()) {
             // Empty State
             Box(
                 modifier = Modifier
@@ -221,7 +225,7 @@ private fun OrderCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(order.items, key = { it.id }) { item ->
-                AsyncImage(
+                ShimmerImage(
                     model = ImageRequest.Builder(context)
                         .data(item.img)
                         .crossfade(true)

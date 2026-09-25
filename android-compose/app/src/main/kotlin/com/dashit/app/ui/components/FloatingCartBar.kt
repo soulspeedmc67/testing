@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
-import com.dashit.app.core.design.FlyToCartManager
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.CartBillBreakdown
@@ -67,24 +66,6 @@ fun FloatingCartBar(
 ) {
     val view = LocalView.current
     val isVisible = items.isNotEmpty()
-    val bounceTrigger by FlyToCartManager.bounceTrigger.collectAsState()
-
-    var isBouncing by remember { mutableStateOf(false) }
-
-    LaunchedEffect(bounceTrigger) {
-        if (bounceTrigger > 0L) {
-            isBouncing = true
-            HapticsManager.light(view)
-            delay(180)
-            isBouncing = false
-        }
-    }
-
-    val animatedScale by animateFloatAsState(
-        targetValue = if (isBouncing) 1.05f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.45f, stiffness = 600f),
-        label = "cart_bounce"
-    )
 
     AnimatedVisibility(
         visible = isVisible,
@@ -95,58 +76,45 @@ fun FloatingCartBar(
         val lastItems = items.takeLast(3).reversed()
         val totalCount = items.sumOf { it.qty }
 
+        // A compact pill centred above the tab bar: thumbnails, the count and total, a chevron.
+        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 28.dp)
-                .scale(animatedScale)
-                .onGloballyPositioned { coordinates ->
-                    val pos = coordinates.positionInRoot()
-                    val size = coordinates.size
-                    // Center of cart bar
-                    FlyToCartManager.registerTarget(
-                        androidx.compose.ui.geometry.Offset(
-                            pos.x + size.width / 2f,
-                            pos.y + size.height / 2f
-                        )
-                    )
-                }
                 .shadow(
-                    elevation = 14.dp,
+                    elevation = 12.dp,
                     shape = CircleShape,
                     ambientColor = Color.Black.copy(alpha = 0.5f),
                     spotColor = DashitColors.BlinkitGreenDark
                 )
                 .clip(CircleShape)
                 .background(DashitColors.BlinkitGreen)
-                .pressable(scale = 0.97f) {
+                .pressable(scale = 0.96f) {
                     HapticsManager.medium(view)
                     onTap()
                 }
-                .padding(horizontal = 8.dp, vertical = 5.dp)
+                .padding(start = 5.dp, end = 5.dp, top = 4.dp, bottom = 4.dp)
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // White capsule housing the overlapping product thumbnails (compact)
                 Box(
                     modifier = Modifier
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
                         .background(Color.White)
                         .padding(horizontal = 3.dp, vertical = 3.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Box(
-                        modifier = Modifier.width((28 + (lastItems.size - 1) * 14).dp),
+                        modifier = Modifier.width((26 + (lastItems.size - 1) * 12).dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         lastItems.forEachIndexed { index, item ->
                             Box(
                                 modifier = Modifier
-                                    .offset(x = (index * 14).dp)
-                                    .size(28.dp)
+                                    .offset(x = (index * 12).dp)
+                                    .size(26.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFF1F5F9))
                                     .border(1.2.dp, Color.White, CircleShape)
@@ -167,17 +135,14 @@ fun FloatingCartBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(9.dp))
 
                 // Cart texts (View cart • N Items)
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
+                Column(verticalArrangement = Arrangement.Center) {
                     Text(
                         text = "View cart",
                         color = Color.White,
-                        fontSize = 15.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
 
@@ -186,15 +151,17 @@ fun FloatingCartBar(
                     Text(
                         text = subtext,
                         color = Color.White.copy(alpha = 0.95f),
-                        fontSize = 11.5.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
+                Spacer(modifier = Modifier.width(14.dp))
+
                 // Dark Green Circular Chevron Disc (compact)
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(28.dp)
                         .clip(CircleShape)
                         .background(DashitColors.BlinkitGreenDark),
                     contentAlignment = Alignment.Center
@@ -203,10 +170,11 @@ fun FloatingCartBar(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = "Open Cart",
                         tint = Color.White,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(17.dp)
                     )
                 }
             }
+        }
         }
     }
 }

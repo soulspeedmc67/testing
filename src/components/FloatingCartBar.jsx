@@ -191,15 +191,6 @@ export default function FloatingCartBar() {
             <span className="text-[10px] font-black text-white bg-[#FF5B00] px-1.5 py-0.5 rounded-md leading-none">
               <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "Item" : "Items"}
             </span>
-            {subtotal < 299 ? (
-              <span className="text-[9.5px] font-extrabold text-amber-300">
-                Add ₹{299 - subtotal} for FREE del
-              </span>
-            ) : (
-              <span className="text-[9.5px] font-extrabold text-emerald-400">
-                Free delivery ✓
-              </span>
-            )}
           </div>
         </div>
 
