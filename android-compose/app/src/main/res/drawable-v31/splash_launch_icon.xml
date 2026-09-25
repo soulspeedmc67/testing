@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ draws the splash icon 1.78× (192/108, the adaptive-icon
+     scale) larger than its drawable, so the mark is 64.5dp here to land on
+     screen at 114.67dp, the size SplashOverlay starts from. Measured on a
+     Pixel 5: 427 px system mark vs 240 px overlay mark before this change. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <size android:width="288dp" android:height="288dp" />
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+    <item
+        android:width="64.5dp"
+        android:height="64.5dp"
+        android:gravity="center"
+        android:drawable="@drawable/splash_mark_full" />
+</layer-list>

@@ -30,7 +30,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // The system splash hands straight over to SplashOverlay, which starts
         // on the same frame, so it leaves without an animation of its own.
-        installSplashScreen().setOnExitAnimationListener { it.remove() }
+        installSplashScreen().setOnExitAnimationListener { provider ->
+            provider.remove()
+            // Removing the splash re-applies the theme's bar colours; stay edge to edge.
+            enableEdgeToEdge()
+        }
         enableEdgeToEdge()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
@@ -60,7 +64,8 @@ class MainActivity : ComponentActivity() {
                 var isSettled by rememberSaveable { mutableStateOf(false) }
                 val appScale by animateFloatAsState(
                     targetValue = if (isSettled) 1f else 1.04f,
-                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 300f),
+                    // The iOS spring (response 0.5 s, damping 0.86): stiffness = (2π / 0.5)².
+                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 158f),
                     label = "app_settle"
                 )
                 Box(modifier = Modifier.fillMaxSize()) {
