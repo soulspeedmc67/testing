@@ -18,9 +18,13 @@ public struct AdminDashboardView: View {
     @State private var distributorToRemove: Distributor? = nil
 
     public var onSwitchToCustomer: (() -> Void)? = nil
+    /// Shown as a Sign out button in the header when set.
+    public var onSignOut: (() -> Void)? = nil
+    @State private var isSignOutConfirmOpen = false
 
-    public init(onSwitchToCustomer: (() -> Void)? = nil) {
+    public init(onSwitchToCustomer: (() -> Void)? = nil, onSignOut: (() -> Void)? = nil) {
         self.onSwitchToCustomer = onSwitchToCustomer
+        self.onSignOut = onSignOut
     }
 
     public var body: some View {
@@ -188,6 +192,22 @@ public struct AdminDashboardView: View {
                     .padding(.vertical, 6)
                     .background((vm.storeConfig.isOpen ? Color.green : Color.red).opacity(0.12))
                     .clipShape(Capsule())
+                }
+
+                if onSignOut != nil {
+                    Button(action: { isSignOutConfirmOpen = true }) {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .padding(8)
+                            .background(Color(uiColor: .secondarySystemFill))
+                            .clipShape(Circle())
+                    }
+                    .accessibilityLabel("Sign out")
+                    .confirmationDialog("Sign out of DASHit Admin?", isPresented: $isSignOutConfirmOpen, titleVisibility: .visible) {
+                        Button("Sign out", role: .destructive) { onSignOut?() }
+                        Button("Cancel", role: .cancel) {}
+                    }
                 }
 
                 // Customer View Toggle
