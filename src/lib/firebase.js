@@ -1,5 +1,10 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { initializeFirestore, getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { isNative, isIOS } from "./platform";
 import {
   initializeAuth,
@@ -62,9 +67,19 @@ export function getDb() {
   if (!app) return null;
   if (cachedDb) return cachedDb;
   try {
-    cachedDb = initializeFirestore(app, {
+    const firestoreSettings = {
       ignoreUndefinedProperties: true,
-    });
+    };
+    if (typeof window !== "undefined" && typeof persistentLocalCache === "function") {
+      try {
+        firestoreSettings.localCache = persistentLocalCache({
+          tabManager: typeof persistentMultipleTabManager === "function" ? persistentMultipleTabManager() : undefined,
+        });
+      } catch (cacheErr) {
+        console.warn("Firestore persistent cache notice:", cacheErr?.message);
+      }
+    }
+    cachedDb = initializeFirestore(app, firestoreSettings);
   } catch (e) {
     /* initializeFirestore throws if Firestore was already started for this app
        (a hot reload, or an earlier getFirestore call). The existing instance is

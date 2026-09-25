@@ -52,10 +52,13 @@ export function assignDefaultDistributor(p) {
   return "Kashmir Wholesale FMCG";
 }
 
-// In-Memory Catalogue Cache with 5-minute TTL & Single Shared Listener
+// Two-tier Catalogue Cache (Memory 5-min TTL + Persistent LocalStorage 30-min TTL)
 let memoryProductsCache = null;
 let memoryProductsCacheTime = 0;
 const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LOCAL_CATALOGUE_CACHE_KEY = "dashit_cached_products";
+const LOCAL_CATALOGUE_TIME_KEY = "dashit_products_cached_at";
+const LOCAL_CATALOGUE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 function enrichProducts(rawList = []) {
   let merged = rawList;
@@ -82,6 +85,10 @@ export function invalidateProductCache() {
   memoryProductsCache = null;
   memoryProductsCacheTime = 0;
   if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(LOCAL_CATALOGUE_CACHE_KEY);
+      localStorage.removeItem(LOCAL_CATALOGUE_TIME_KEY);
+    } catch (e) {}
     window.dispatchEvent(new CustomEvent("dashit_products_updated"));
   }
 }
@@ -90,6 +97,22 @@ export async function fetchProducts(forceRefresh = false) {
   const now = Date.now();
   if (!forceRefresh && memoryProductsCache && (now - memoryProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
     return memoryProductsCache;
+  }
+
+  // Check persistent LocalStorage cache before touching network
+  if (!forceRefresh && typeof window !== "undefined") {
+    try {
+      const cachedRaw = localStorage.getItem(LOCAL_CATALOGUE_CACHE_KEY);
+      const cachedTime = Number(localStorage.getItem(LOCAL_CATALOGUE_TIME_KEY)) || 0;
+      if (cachedRaw && (now - cachedTime < LOCAL_CATALOGUE_TTL_MS)) {
+        const parsed = JSON.parse(cachedRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          memoryProductsCache = parsed;
+          memoryProductsCacheTime = cachedTime;
+          return parsed;
+        }
+      }
+    } catch (e) {}
   }
 
   let firestoreList = [];
@@ -109,6 +132,12 @@ export async function fetchProducts(forceRefresh = false) {
   if (enriched.length > 0) {
     memoryProductsCache = enriched;
     memoryProductsCacheTime = now;
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(LOCAL_CATALOGUE_CACHE_KEY, JSON.stringify(enriched));
+        localStorage.setItem(LOCAL_CATALOGUE_TIME_KEY, String(now));
+      } catch (e) {}
+    }
   }
   return enriched;
 }
@@ -124,6 +153,12 @@ function broadcastProducts(list) {
   const enriched = enrichProducts(list);
   memoryProductsCache = enriched;
   memoryProductsCacheTime = Date.now();
+  if (typeof window !== "undefined" && enriched.length > 0) {
+    try {
+      localStorage.setItem(LOCAL_CATALOGUE_CACHE_KEY, JSON.stringify(enriched));
+      localStorage.setItem(LOCAL_CATALOGUE_TIME_KEY, String(Date.now()));
+    } catch (e) {}
+  }
   productSubscribers.forEach((cb) => {
     try { cb(enriched); } catch (e) {}
   });
@@ -174,11 +209,29 @@ export function watchProducts(callback) {
   } else if (memoryProductsCache && memoryProductsCache.length > 0) {
     callback(memoryProductsCache);
   } else {
-    fetchProducts().then((p) => {
-      if (productSubscribers.has(callback) && p?.length) {
-        callback(p);
-      }
-    });
+    let immediateLoaded = false;
+    if (typeof window !== "undefined") {
+      try {
+        const cachedRaw = localStorage.getItem(LOCAL_CATALOGUE_CACHE_KEY);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            memoryProductsCache = parsed;
+            memoryProductsCacheTime = Number(localStorage.getItem(LOCAL_CATALOGUE_TIME_KEY)) || Date.now();
+            callback(parsed);
+            immediateLoaded = true;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!immediateLoaded) {
+      fetchProducts().then((p) => {
+        if (productSubscribers.has(callback) && p?.length) {
+          callback(p);
+        }
+      });
+    }
   }
 
   startSharedProductWatcher();

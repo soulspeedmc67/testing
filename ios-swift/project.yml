@@ -46,7 +46,14 @@ targets:
         CFBundleVersion: "1"
         UILaunchScreen: {}
         UIRequiredDeviceCapabilities: [arm64]
-        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         # Lets SwiftUI animations run at 120Hz on ProMotion iPhones; without it
         # Core Animation caps custom animations at 60Hz.
         CADisableMinimumFrameDurationOnPhone: true
