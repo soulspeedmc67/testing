@@ -101,6 +101,8 @@ final class CheckoutViewModel: ObservableObject {
 
             // Start iOS 17+ Lock Screen & Dynamic Island Live Activity
             LiveActivityManager.shared.startActivity(for: order)
+            // Now the reason is obvious: ask to tell them when it's delivered.
+            OrderNotifications.requestPermissionIfNeeded()
 
             cart.clearCart()
             HapticsManager.shared.success()

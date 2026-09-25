@@ -199,8 +199,16 @@ final class StorefrontViewModel: ObservableObject {
     }
 
     private func loadInitialData() {
-        // Instant offline catalog seed
-        self.products = CatalogSeed.products
+        // The live catalogue comes first, with skeletons while it loads. The
+        // built-in catalogue only stands in if Firestore hasn't answered in a
+        // few seconds (no network and nothing cached yet).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self, self.products.isEmpty else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                self.products = CatalogSeed.products
+                self.isLoading = false
+            }
+        }
 
         // Categories are derived from the products (see `categories`).
 
@@ -250,10 +258,18 @@ final class StorefrontViewModel: ObservableObject {
         // Real-time products
         productListener = FirestoreService.shared.listenProducts { [weak self] fetched in
             guard let self = self else { return }
-            if !fetched.isEmpty {
+            // An empty answer is usually an empty offline cache: keep the
+            // skeletons up until real products (or the fallback) arrive.
+            guard !fetched.isEmpty else { return }
+            // The skeletons cross-fade into the catalogue on its first arrival.
+            if self.isLoading {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self.products = fetched
+                    self.isLoading = false
+                }
+            } else {
                 self.products = fetched
             }
-            self.isLoading = false
         }
 
         // Real-time categories

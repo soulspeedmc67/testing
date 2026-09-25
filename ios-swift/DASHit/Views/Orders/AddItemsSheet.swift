@@ -77,7 +77,23 @@ struct AddItemsSheet: View {
                         }
                         row(line)
                     }
-                    if visibleLines.isEmpty {
+                    if catalogue.isLoading && catalogue.products.isEmpty {
+                        VStack(spacing: 18) {
+                            ForEach(0..<6, id: \.self) { _ in
+                                HStack(spacing: 12) {
+                                    SkeletonBlock(width: 52, height: 52, cornerRadius: 10)
+                                    VStack(alignment: .leading, spacing: 7) {
+                                        SkeletonBlock(width: 150, height: 12)
+                                        SkeletonBlock(width: 90, height: 10)
+                                    }
+                                    Spacer()
+                                    SkeletonBlock(width: 72, height: 32, cornerRadius: 10)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 12)
+                        .shimmering()
+                    } else if visibleLines.isEmpty {
                         Text("Nothing matches “\(query)”")
                             .font(.system(size: 14))
                             .foregroundColor(.textMuted)
@@ -177,6 +193,8 @@ struct AddItemsSheet: View {
                     AsyncImage(url: URL(string: line.product.img)) { phase in
                         if let image = phase.image {
                             image.resizable().scaledToFill()
+                        } else if phase.error == nil && !line.product.img.isEmpty {
+                            ShimmerView()
                         } else {
                             Color.surfaceMuted
                         }

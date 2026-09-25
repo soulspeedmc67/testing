@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 import FirebaseFirestore
 
 /// Watches the shopper's in-flight order for the app-wide tracker and keeps the
@@ -14,6 +15,11 @@ final class ActiveOrderStore: ObservableObject {
     /// Set when checkout succeeds; RootView opens live tracking once the cart
     /// and checkout sheets have finished dismissing.
     @Published var pendingTrackingPresentation = false
+    /// A delivered order whose celebration the shopper hasn't seen yet.
+    @Published private(set) var deliveredCelebration: Order?
+
+    private static let celebratedKey = "dashit_celebrated_orders"
+    private static let notifiedKey = "dashit_delivery_notified_orders"
 
     private var listener: ListenerRegistration?
     private var trackingListener: ListenerRegistration?
@@ -63,6 +69,58 @@ final class ActiveOrderStore: ObservableObject {
         track(orderId: LocalStorage.shared.loadActiveOrderId())
     }
 
+    /// Back in the foreground: bring the Live Activity up to date, and back if
+    /// it was swiped away while the order is still in progress; and celebrate a
+    /// delivery that happened while the app was away.
+    func resume() {
+        guard let order else { return }
+        LiveActivityManager.shared.sync(with: order, tracking: liveTracking)
+        noteDelivery(of: order)
+    }
+
+    /// The celebration was seen: remember it and retire the delivered order.
+    func finishCelebration() {
+        if let order = deliveredCelebration {
+            Self.remember(order.id, under: Self.celebratedKey)
+        }
+        deliveredCelebration = nil
+        retireFinishedOrder()
+    }
+
+    /// A delivered order celebrates once: straight away if the app is on screen,
+    /// otherwise a notification now and the celebration when the app is next opened.
+    private func noteDelivery(of order: Order) {
+        guard order.status.stage == .delivered,
+              !Self.contains(order.id, under: Self.celebratedKey),
+              // Not for old orders found long after the fact.
+              Date().timeIntervalSince1970 - order.createdAt < 12 * 60 * 60
+        else { return }
+        switch UIApplication.shared.applicationState {
+        case .active:
+            if deliveredCelebration?.id != order.id {
+                deliveredCelebration = order
+            }
+        case .background:
+            guard !Self.contains(order.id, under: Self.notifiedKey) else { return }
+            Self.remember(order.id, under: Self.notifiedKey)
+            OrderNotifications.notifyDelivered(order)
+        default:
+            // Launching or briefly covered: resume() celebrates once the app is active.
+            break
+        }
+    }
+
+    private static func contains(_ id: String, under key: String) -> Bool {
+        (UserDefaults.standard.stringArray(forKey: key) ?? []).contains(id)
+    }
+
+    private static func remember(_ id: String, under key: String) {
+        var ids = UserDefaults.standard.stringArray(forKey: key) ?? []
+        guard !ids.contains(id) else { return }
+        ids.append(id)
+        UserDefaults.standard.set(Array(ids.suffix(50)), forKey: key)
+    }
+
     func track(orderId: String?) {
         guard orderId != listeningOrderId else { return }
         listener?.remove()
@@ -95,6 +153,7 @@ final class ActiveOrderStore: ObservableObject {
                 self.order = order
             }
             LiveActivityManager.shared.sync(with: order, tracking: self.liveTracking)
+            self.noteDelivery(of: order)
         }
     }
 

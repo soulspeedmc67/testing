@@ -81,7 +81,9 @@ struct CartSheetView: View {
     private var cartContent: some View {
         ScrollView {
             VStack(spacing: 14) {
-                minimumOrderCard
+                if cart.bill.subtotal > 0 {
+                    FreeDeliveryStrip(bill: cart.bill)
+                }
                 itemsCard
                 couponRow
                 billCard
@@ -92,51 +94,6 @@ struct CartSheetView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             proceedBar
         }
-    }
-
-    /// Free delivery on orders above ₹299.
-    private var minimumOrderCard: some View {
-        let bill = cart.bill
-        let isFreeDelivery = bill.deliveryFee == 0
-        let progress = min(bill.subtotal / CartBillBreakdown.freeDeliveryThreshold, 1)
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: isFreeDelivery ? "checkmark.circle.fill" : "cart.badge.plus")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(isFreeDelivery ? .positive : .brandOrange)
-                Text(minimumOrderMessage)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.textPrimary)
-                    .contentTransition(.numericText())
-                Spacer(minLength: 0)
-            }
-            if !isFreeDelivery && bill.subtotal > 0 {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(Color.surfaceMuted)
-                        Capsule()
-                            .fill(Color.brandOrange)
-                            .frame(width: geo.size.width * CGFloat(progress))
-                    }
-                }
-                .frame(height: 5)
-                Text("Free delivery on orders above \(CurrencyFormatter.format(CartBillBreakdown.freeDeliveryThreshold))")
-                    .font(.system(size: 11.5))
-                    .foregroundColor(.textMuted)
-            }
-        }
-        .padding(14)
-        .dashitCard(cardShape)
-        .animation(.dashitSpring, value: bill.subtotal)
-    }
-
-    private var minimumOrderMessage: String {
-        let bill = cart.bill
-        guard bill.deliveryFee > 0 else {
-            return "You're all set · free delivery unlocked"
-        }
-        return "Add \(CurrencyFormatter.format(bill.amountNeededForFreeDelivery)) more for FREE delivery"
     }
 
     private var itemsCard: some View {
@@ -365,6 +322,8 @@ private struct CartLineRow: View {
                     image
                         .resizable()
                         .scaledToFill()
+                } else if phase.error == nil && !item.img.isEmpty {
+                    ShimmerView()
                 } else {
                     Color.surfaceMuted
                 }

@@ -147,6 +147,31 @@ final class AuthService: ObservableObject {
         HapticsManager.shared.light()
     }
 
+    /// Whether this account came from Sign in with Apple. Deleting it then
+    /// needs a fresh Apple confirmation, so its Apple tokens can be revoked.
+    var isAppleAccount: Bool {
+        Auth.auth().currentUser?.providerData.contains { $0.providerID == "apple.com" } ?? false
+    }
+
+    /// Deletes a Sign in with Apple account. The fresh Apple credential signs
+    /// in again (Firebase only deletes after a recent login), then the app's
+    /// Apple tokens are revoked, as Apple requires, before the usual deletion.
+    func deleteAppleAccount(idToken: String, rawNonce: String, authorizationCode: String) async throws {
+        guard let user = Auth.auth().currentUser else { return }
+        let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idToken, rawNonce: rawNonce)
+        _ = try await user.reauthenticate(with: credential)
+        do {
+            try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
+        } catch {
+            // Revocation needs the Apple key set up in Firebase; the account
+            // and its data are still deleted if Apple refuses.
+            #if DEBUG
+            print("⚠️ [Auth] Apple token revocation failed: \(error)")
+            #endif
+        }
+        try await deleteAccount()
+    }
+
     /// Delete user account (App Store 5.1.1(v) Requirement)
     func deleteAccount() async throws {
         guard let user = Auth.auth().currentUser else { return }
@@ -160,6 +185,7 @@ final class AuthService: ObservableObject {
 
         // 3. Purge all local data
         LocalStorage.shared.clearAll()
+        AddressBook.shared.forgetAll()
         self.currentUser = nil
         self.isAuthenticated = false
 

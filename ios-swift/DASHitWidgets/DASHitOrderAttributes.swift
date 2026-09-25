@@ -121,13 +121,14 @@ public enum DeliveryStage: String, Codable, Hashable {
 
     public var badgeText: String {
         switch self {
-        case .placed: return "Confirmed"
-        case .packing, .onTheWay: return "On time"
+        case .placed, .packing: return "Confirmed"
+        case .onTheWay: return "On time"
         case .delivered: return "Arrived"
         case .cancelled: return "Cancelled"
         }
     }
 
+    /// Short stage name for the admin console's order list.
     public var label: String {
         switch self {
         case .placed: return "Placed"

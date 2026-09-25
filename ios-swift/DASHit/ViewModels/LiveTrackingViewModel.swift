@@ -21,11 +21,12 @@ final class LiveTrackingViewModel: ObservableObject {
         )
     )
 
-    /// Road route the rider takes to the door (from the rider, or from the hub
-    /// until a rider is assigned). A straight dashed line stands in when Apple
-    /// Maps has no route.
-    @Published var route: MKRoute?
-    @Published var fallbackPath: [CLLocationCoordinate2D] = []
+    /// The way the rider takes to the door along the roads (from the rider, or
+    /// from the hub until a rider is assigned).
+    @Published var routePath: [CLLocationCoordinate2D] = []
+    /// False while `routePath` is only the straight line, shown until a
+    /// router answers.
+    @Published var isRoadRoute = false
 
     private var orderListener: ListenerRegistration?
     private var trackingListener: ListenerRegistration?
@@ -142,16 +143,17 @@ final class LiveTrackingViewModel: ObservableObject {
     }
 
     /// Re-routes when the rider has moved more than ~60 m since the last route,
-    /// so a stream of GPS ticks does not flood MapKit with direction requests.
+    /// so a stream of GPS ticks does not flood the routers with requests.
     private func updateRoute() {
         guard let order = activeOrder, !order.status.stage.isFinished else {
-            route = nil
-            fallbackPath = []
+            routeTask?.cancel()
+            routePath = []
+            isRoadRoute = false
             return
         }
         let origin = riderLocation?.coordinate ?? DeliveryEta.hub
         let destination = order.deliveryAddress.coordinate
-        if let last = lastRouteOrigin, route != nil || !fallbackPath.isEmpty {
+        if let last = lastRouteOrigin, !routePath.isEmpty {
             let moved = CLLocation(latitude: last.latitude, longitude: last.longitude)
                 .distance(from: CLLocation(latitude: origin.latitude, longitude: origin.longitude))
             if moved < 60 { return }
@@ -159,26 +161,40 @@ final class LiveTrackingViewModel: ObservableObject {
         lastRouteOrigin = origin
         routeTask?.cancel()
         routeTask = Task { [weak self] in
-            let request = MKDirections.Request()
-            request.source = MKMapItem(placemark: MKPlacemark(coordinate: origin))
-            request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destination))
-            request.transportType = .automobile
-            let response = try? await MKDirections(request: request).calculate()
-            guard let self = self, !Task.isCancelled else { return }
-            if let best = response?.routes.first {
-                withAnimation(.easeInOut(duration: 0.4)) {
-                    self.route = best
-                    self.fallbackPath = []
-                }
-                self.frameOnce(best.polyline.boundingMapRect)
-            } else {
-                self.route = nil
-                self.fallbackPath = [origin, destination]
-                let a = MKMapPoint(origin)
-                let b = MKMapPoint(destination)
-                self.frameOnce(MKMapRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y)))
-            }
+            let path = await RoadRouter.path(from: origin, to: destination)
+            guard !Task.isCancelled,
+                  let routed = self?.apply(path, origin: origin, destination: destination),
+                  !routed else { return }
+            // A cold start or a patchy connection must not leave the ride
+            // unrouted, so ask again shortly. `self` stays weak across the
+            // wait, so closing the screen still releases this model.
+            try? await Task.sleep(for: .seconds(12))
+            guard !Task.isCancelled else { return }
+            self?.retryRoute()
         }
+    }
+
+    /// Shows a routed path; true when it was one. Without one the straight
+    /// line stands in, but never over a road line from an earlier fix.
+    private func apply(_ path: [CLLocationCoordinate2D]?, origin: CLLocationCoordinate2D, destination: CLLocationCoordinate2D) -> Bool {
+        if let path {
+            withAnimation(.easeInOut(duration: 0.4)) {
+                routePath = path
+                isRoadRoute = true
+            }
+            frameOnce(RoadRouter.boundingRect(of: path))
+            return true
+        }
+        if !isRoadRoute {
+            routePath = [origin, destination]
+            frameOnce(RoadRouter.boundingRect(of: routePath))
+        }
+        return false
+    }
+
+    private func retryRoute() {
+        lastRouteOrigin = nil
+        updateRoute()
     }
 
     /// Fits the whole ride on screen the first time a route arrives, leaving
@@ -218,5 +234,6 @@ final class LiveTrackingViewModel: ObservableObject {
         orderListener?.remove()
         trackingListener?.remove()
         countdownTimer?.invalidate()
+        routeTask?.cancel()
     }
 }

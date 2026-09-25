@@ -5,14 +5,17 @@ import UIKit
 /// the category tabs pin under the status bar, as in the web shop page.
 struct StorefrontHomeView: View {
     var onOpenProfile: () -> Void
+    /// Opens the address menu growing out of the given on-screen frame.
+    var onChangeAddress: (CGRect) -> Void
 
     @StateObject private var vm = StorefrontViewModel()
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var storeStatus = StoreStatusStore.shared
     @State private var detailProduct: Product? = nil
+    @State private var opensCartAfterDetail = false
     @State private var ageGateProduct: Product? = nil
-    @State private var isAddressPickerOpen = false
-    @State private var address: DeliveryAddress? = LocalStorage.shared.loadAddress()
+    @ObservedObject private var addressBook = AddressBook.shared
+    @State private var addressAnchor = ScreenAnchor()
     @FocusState private var isSearchFocused: Bool
     @State private var isVoiceSearchOpen = false
     /// Scroll-driven chrome, held by reference so scrolling redraws only the
@@ -22,9 +25,12 @@ struct StorefrontHomeView: View {
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
     private let tileColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
 
-    init(onOpenProfile: @escaping () -> Void = {}) {
+    init(onOpenProfile: @escaping () -> Void = {}, onChangeAddress: @escaping (CGRect) -> Void = { _ in }) {
         self.onOpenProfile = onOpenProfile
+        self.onChangeAddress = onChangeAddress
     }
+
+    private var address: DeliveryAddress? { addressBook.current }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -38,9 +44,16 @@ struct StorefrontHomeView: View {
                             welcomeBanner
                                 .padding(.top, 14)
 
-                            categorySection
-                                .id("categories")
-                                .padding(.top, 28)
+                            if vm.isLoading && vm.products.isEmpty {
+                                HomeFeedSkeleton()
+                                    .padding(.top, 28)
+                                    .transition(.opacity)
+                            } else {
+                                categorySection
+                                    .id("categories")
+                                    .padding(.top, 28)
+                                    .transition(.opacity)
+                            }
 
                             if !vm.offers.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {
@@ -79,10 +92,18 @@ struct StorefrontHomeView: View {
                     }
                 }
                 .background(alignment: .top) {
-                    HeaderBackdrop()
-                        .frame(height: 320)
-                        .allowsHitTesting(false)
+                    // Pulling past the top drags the feed down; the glow reaches
+                    // up behind it so no bare page opens under the status bar.
+                    VStack(spacing: 0) {
+                        Color.headerGlow
+                            .frame(height: 1000)
+                        HeaderBackdrop()
+                            .frame(height: 320)
+                    }
+                    .offset(y: -1000)
+                    .allowsHitTesting(false)
                 }
+                .drivesTabBarVisibility(in: "homeScroll")
             }
             .coordinateSpace(.named("homeScroll"))
             .scrollDismissesKeyboard(.immediately)
@@ -97,6 +118,7 @@ struct StorefrontHomeView: View {
                         cart.isCartSheetPresented = true
                     }
                     .padding(.bottom, 10)
+                    .followsTabBar()
                 }
             }
             .task {
@@ -106,19 +128,24 @@ struct StorefrontHomeView: View {
             }
         }
         .background(Color.surface.ignoresSafeArea())
-        .sheet(item: $detailProduct) { product in
-            ProductDetailSheet(product: product)
+        .sheet(item: $detailProduct, onDismiss: {
+            // The cart opens only once the product sheet has gone: UIKit drops
+            // a presentation made while another sheet is still on screen.
+            if opensCartAfterDetail {
+                opensCartAfterDetail = false
+                cart.isCartSheetPresented = true
+            }
+        }) { product in
+            ProductDetailSheet(product: product, onGoToCart: {
+                opensCartAfterDetail = true
+                detailProduct = nil
+            })
         }
         .sheet(item: $ageGateProduct) { product in
             AgeGateSheet(product: product) {
                 cart.confirmAge()
                 cart.add(product: product)
             }
-        }
-        .sheet(isPresented: $isAddressPickerOpen, onDismiss: {
-            address = LocalStorage.shared.loadAddress()
-        }) {
-            AddressPickerMapView()
         }
         .sheet(isPresented: $isVoiceSearchOpen) {
             VoiceSearchSheet { phrase in
@@ -164,8 +191,7 @@ struct StorefrontHomeView: View {
             }
 
             Button {
-                HapticsManager.shared.light()
-                isAddressPickerOpen = true
+                onChangeAddress(addressAnchor.rect)
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "mappin")
@@ -180,6 +206,7 @@ struct StorefrontHomeView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.textSecondary)
                         .lineLimit(1)
+                        .contentTransition(.opacity)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.textMuted)
@@ -187,6 +214,11 @@ struct StorefrontHomeView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.pressable)
+            .onGeometryChange(for: CGRect.self) { geometry in
+                geometry.frame(in: .global)
+            } action: { frame in
+                addressAnchor.rect = frame
+            }
             .padding(.top, 6)
             .accessibilityLabel("Delivery address. Change")
 
@@ -293,7 +325,7 @@ struct StorefrontHomeView: View {
     }
 
     /// Welcome banner with the brand's rider artwork.
-    /// Free delivery on orders above ₹299.
+    /// Free delivery on orders of ₹299 or more.
     private var welcomeBanner: some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
@@ -307,7 +339,7 @@ struct StorefrontHomeView: View {
                     .tracking(1.6)
                     .foregroundColor(Color.white.opacity(0.75))
             }
-            Text("Free delivery\non every order")
+            Text("Free delivery\non orders ₹299+")
                 .font(.system(size: 23, weight: .heavy))
                 .foregroundColor(.white)
                 .fixedSize(horizontal: false, vertical: true)
@@ -436,7 +468,7 @@ struct StorefrontHomeView: View {
             cart.isCartSheetPresented = true
         }
         if ScreenshotHooks.openAddressPicker {
-            isAddressPickerOpen = true
+            onChangeAddress(addressAnchor.rect)
         }
     }
     #endif
@@ -462,18 +494,11 @@ final class HomeChromeState: ObservableObject {
 }
 
 /// The warm glow behind the header, search and tabs: the web header's peach in
-/// light mode, a deep ember with a soft orange bloom in dark.
+/// light mode, a deep ember in dark. Straight top-to-bottom, so it carries on
+/// from the flat colour behind the status bar without a seam.
 private struct HeaderBackdrop: View {
     var body: some View {
-        ZStack(alignment: .top) {
-            LinearGradient(colors: [Color.headerGlow, Color.surface], startPoint: .top, endPoint: .bottom)
-            RadialGradient(
-                colors: [Color.brandOrange.opacity(0.18), Color.brandOrange.opacity(0)],
-                center: UnitPoint(x: 0.9, y: 0),
-                startRadius: 0,
-                endRadius: 280
-            )
-        }
+        LinearGradient(colors: [Color.headerGlow, Color.surface], startPoint: .top, endPoint: .bottom)
     }
 }
 

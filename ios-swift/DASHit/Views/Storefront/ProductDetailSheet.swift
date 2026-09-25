@@ -4,6 +4,8 @@ import SwiftUI
 /// nutrition callouts when the product carries them, and a sticky add bar.
 struct ProductDetailSheet: View {
     let product: Product
+    /// Closes the sheet and opens the cart; offered once the item is in it.
+    var onGoToCart: (() -> Void)? = nil
 
     @ObservedObject private var cart = CartViewModel.shared
     @State private var selectedVariantID: String? = nil
@@ -309,19 +311,25 @@ struct ProductDetailSheet: View {
     private var purchaseBar: some View {
         let quantity = cart.quantity(forItemId: lineId)
 
-        return HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(CurrencyFormatter.format(price))
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.textPrimary)
-                    .contentTransition(.numericText(value: price))
-                Text(unit)
-                    .font(.system(size: 12))
-                    .foregroundColor(.textMuted)
-                    .lineLimit(1)
-            }
+        // Once the item is in the cart the price gives way to "Go to cart".
+        let showsGoToCart = quantity > 0 && onGoToCart != nil
 
-            Spacer(minLength: 8)
+        return HStack(spacing: showsGoToCart ? 10 : 16) {
+            if !showsGoToCart {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(CurrencyFormatter.format(price))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(.textPrimary)
+                        .contentTransition(.numericText(value: price))
+                    Text(unit)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textMuted)
+                        .lineLimit(1)
+                }
+                .transition(.opacity)
+
+                Spacer(minLength: 8)
+            }
 
             if quantity == 0 {
                 Button(action: handleAdd) {
@@ -343,6 +351,11 @@ struct ProductDetailSheet: View {
                     onDecrement: { cart.decrement(itemId: lineId) }
                 )
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
+
+                if showsGoToCart {
+                    goToCartButton
+                        .transition(.move(edge: .trailing).combined(with: .opacity))
+                }
             }
         }
         .animation(.dashitSpring, value: quantity == 0)
@@ -357,6 +370,41 @@ struct ProductDetailSheet: View {
                 }
                 .ignoresSafeArea(edges: .bottom)
         )
+    }
+
+    private var goToCartButton: some View {
+        let count = cart.totalQuantity
+
+        return Button {
+            HapticsManager.shared.light()
+            onGoToCart?()
+        } label: {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Go to cart")
+                        .font(.system(size: 15, weight: .bold))
+                    Text("\(count) item\(count == 1 ? "" : "s") · \(CurrencyFormatter.format(cart.bill.grandTotal))")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .opacity(0.75)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+            }
+            .foregroundColor(.surface)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(Color.textPrimary, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.pressable)
+        .animation(.dashitSpring, value: count)
+        .accessibilityLabel("Go to cart, \(count) items, \(CurrencyFormatter.format(cart.bill.grandTotal))")
     }
 
     private func handleAdd() {
