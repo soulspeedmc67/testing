@@ -761,7 +761,7 @@ struct OrderDetailSheetView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: 16) {
                     // Status Header Card
                     VStack(alignment: .leading, spacing: 6) {
