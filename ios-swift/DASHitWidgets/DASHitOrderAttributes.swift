@@ -94,6 +94,16 @@ public enum DeliveryStage: String, Codable, Hashable {
 
     public var isFinished: Bool { self == .delivered || self == .cancelled }
 
+    public var label: String {
+        switch self {
+        case .placed: return "Placed"
+        case .packing: return "Packing"
+        case .onTheWay: return "Out for Delivery"
+        case .delivered: return "Delivered"
+        case .cancelled: return "Cancelled"
+        }
+    }
+
     /// SF Symbol for the marker that rides along the progress rail.
     public var symbol: String {
         switch self {

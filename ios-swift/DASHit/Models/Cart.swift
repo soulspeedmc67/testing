@@ -13,6 +13,11 @@ public struct CartItem: Codable, Identifiable, Hashable {
     /// Stock on hand when the line was added; the stepper stops here.
     public var maxQuantity: Int?
 
+    public var quantity: Int {
+        get { qty }
+        set { qty = newValue }
+    }
+
     public init(
         id: String,
         productId: String,
