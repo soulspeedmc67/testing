@@ -121,7 +121,8 @@ class OrderRepository(
         if (System.currentTimeMillis() - order.createdAt > 12 * 60 * 60 * 1000L) return
         if (OrderNotifications.isAppInForeground) {
             if (_deliveredCelebration.value?.id != order.id) _deliveredCelebration.value = order
-        } else if (!isRemembered(order.id, NOTIFIED_KEY)) {
+        } else if (OrderNotifications.isAppInBackground && !isRemembered(order.id, NOTIFIED_KEY)) {
+            // Only once the shopper has left; while starting up, onStart celebrates instead.
             remember(order.id, NOTIFIED_KEY)
             appContext?.let { OrderNotifications.notifyDelivered(it, order) }
         }
