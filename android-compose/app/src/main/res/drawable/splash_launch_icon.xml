@@ -1,17 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The launch mark for the system splash screen. The icon canvas is 288dp
-     (no icon background); the mark sits at 114.67dp in its centre, the same
-     size the animated splash in SplashOverlay starts from. -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape android:shape="rectangle">
-            <size android:width="288dp" android:height="288dp" />
-            <solid android:color="@android:color/transparent" />
-        </shape>
-    </item>
-    <item
-        android:width="114.67dp"
-        android:height="114.67dp"
-        android:gravity="center"
-        android:drawable="@drawable/splash_mark_full" />
-</layer-list>
+<!-- Nothing on the system splash: the screen is plain midnight, and
+     SplashOverlay reveals the logo once the app is up. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <size android:width="288dp" android:height="288dp" />
+    <solid android:color="@android:color/transparent" />
+</shape>
