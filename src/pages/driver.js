@@ -67,12 +67,9 @@ import { orderAddress } from "../lib/orderReceipt";
 const DARK_STORE_HUB = { latitude: 33.735832, longitude: 75.143614 };
 const NAI_BASTI_HUB = DARK_STORE_HUB; // Backwards-compatible alias
 
-/* The customer's live map is fed by a fixed-cadence heartbeat, not by however
-   often the device happens to emit a GPS fix. watchPosition() goes quiet while
-   the rider is stopped at a light or indoors, which used to leave the tracking
-   document untouched for minutes at a time; the interval below re-broadcasts
-   the last known fix so the customer always sees a position no older than this. */
-const TELEMETRY_PUSH_INTERVAL_MS = 5000;
+/* Throttled heartbeat (20 seconds) with distance gating to conserve battery
+   and keep Firestore writes well within Spark/free-tier daily quotas. */
+const TELEMETRY_PUSH_INTERVAL_MS = 20000;
 
 // Numbered Drop Location Map Pin with sequence badge
 function createNumberedDropIcon(L, stopNumber, isCurrent) {
@@ -183,6 +180,8 @@ export default function DashItDriverApp() {
      next heartbeat start a second one — overlapping broadcasts can land out of
      order and write a stale position over a fresh one. */
   const broadcastInFlightRef = useRef(false);
+  const lastBroadcastCoordsRef = useRef(null);
+  const lastBroadcastTimeRef = useRef(0);
 
   const [isFleetAuthorized, setIsFleetAuthorized] = useState(false);
   const [fleetEmail, setFleetEmail] = useState("");
@@ -590,12 +589,31 @@ export default function DashItDriverApp() {
   }, []);
 
   /* Single broadcast of one fix to every order currently on the rider's queue.
-     Reads the queue from a ref so newly claimed drops are picked up by the
-     already-running heartbeat. */
+     Throttled by movement distance (>20m) and time to conserve write quotas. */
   const broadcastFix = useCallback(
-    async (fix) => {
+    async (fix, force = false) => {
       if (!fix || broadcastInFlightRef.current) return;
+
+      const now = Date.now();
+      const lastPushed = lastBroadcastCoordsRef.current;
+      const lastTime = lastBroadcastTimeRef.current || 0;
+      const elapsedMs = now - lastTime;
+
+      if (!force && lastPushed) {
+        // Approximate distance moved in meters (equirectangular approximation)
+        const dLat = (fix.latitude - lastPushed.latitude) * 111139;
+        const dLon = (fix.longitude - lastPushed.longitude) * 111139 * Math.cos((fix.latitude * Math.PI) / 180);
+        const distMeters = Math.hypot(dLat, dLon);
+
+        // If rider moved less than 20m and less than 60s has passed, skip write!
+        if (distMeters < 20 && elapsedMs < 60000) {
+          return;
+        }
+      }
+
       broadcastInFlightRef.current = true;
+      lastBroadcastCoordsRef.current = { latitude: fix.latitude, longitude: fix.longitude };
+      lastBroadcastTimeRef.current = now;
 
       try {
         const queue = activeQueueRef.current || [];
@@ -695,7 +713,7 @@ export default function DashItDriverApp() {
       heading: 0,
       speed: 0,
     };
-    broadcastFix(lastFixRef.current);
+    broadcastFix(lastFixRef.current, true);
 
     /* Every mode shares one heartbeat: the customer's tracking document is
        rewritten on a fixed TELEMETRY_PUSH_INTERVAL_MS cadence whether or not

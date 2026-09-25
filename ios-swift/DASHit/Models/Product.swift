@@ -46,6 +46,8 @@ public struct Product: Codable, Identifiable, Hashable {
     public let nutrition: [NutritionFact]?
     /// Units on hand, as the admin console maintains it; nil when not tracked.
     public let stock: Int?
+    /// Wholesale supplier or partner shopkeeper attributing this inventory stock.
+    public let distributor: String?
     
     public init(
         id: String,
@@ -65,7 +67,8 @@ public struct Product: Codable, Identifiable, Hashable {
         minAge: Int? = nil,
         inStock: Bool? = true,
         nutrition: [NutritionFact]? = nil,
-        stock: Int? = nil
+        stock: Int? = nil,
+        distributor: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -85,6 +88,7 @@ public struct Product: Codable, Identifiable, Hashable {
         self.inStock = inStock
         self.nutrition = nutrition
         self.stock = stock
+        self.distributor = distributor
     }
     
     /// Out of stock when the admin marks it so or the stock count hits zero.

@@ -20,6 +20,10 @@ struct RootView: View {
     @ObservedObject private var cart = CartViewModel.shared
 
     var body: some View {
+        customerStorefront
+    }
+
+    private var customerStorefront: some View {
         ZStack {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 if mountedTabs.contains(tab) {

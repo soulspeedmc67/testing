@@ -5,6 +5,7 @@ struct ProfileView: View {
     @State private var isDeleteAccountOpen = false
     @State private var isEditingPhone = false
     @State private var isAddressPickerOpen = false
+    @State private var isAdminConsoleOpen = false
 
     private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
 
@@ -24,6 +25,8 @@ struct ProfileView: View {
                     }
 
                     AppearanceSetting()
+
+                    adminPartnerRow
                 }
                 .padding(16)
                 .animation(.dashitSpring, value: auth.isAuthenticated)
@@ -172,6 +175,20 @@ struct ProfileView: View {
         let source = user.name.flatMap { $0.isEmpty ? nil : $0 } ?? user.email ?? "D"
         let letters = source.split(separator: " ").prefix(2).compactMap { $0.first }.map { String($0) }.joined()
         return letters.isEmpty ? "D" : letters.uppercased()
+    }
+
+    private var adminPartnerRow: some View {
+        VStack(spacing: 0) {
+            row(icon: "building.2.fill", title: "Dark Store Partner Console") {
+                isAdminConsoleOpen = true
+            }
+        }
+        .dashitCard(cardShape)
+        .fullScreenCover(isPresented: $isAdminConsoleOpen) {
+            AdminDashboardView(onSwitchToCustomer: {
+                isAdminConsoleOpen = false
+            })
+        }
     }
 }
 

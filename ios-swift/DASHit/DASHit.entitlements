@@ -2,9 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>com.apple.developer.applesignin</key>
+	<key>application-identifier</key>
+	<string>8V873ZU49N.com.dashit.app</string>
+	<key>beta-reports-active</key>
+	<true/>
+	<key>com.apple.developer.team-identifier</key>
+	<string>8V873ZU49N</string>
+	<key>get-task-allow</key>
+	<false/>
+	<key>keychain-access-groups</key>
 	<array>
-		<string>Default</string>
+		<string>8V873ZU49N.*</string>
+		<string>com.apple.token</string>
 	</array>
 </dict>
 </plist>

@@ -97,75 +97,85 @@ export async function verifyOtp(mobile, otp) {
   return authVerifyOtp(mobile, otp);
 }
 
+let isSubmittingOrder = false;
+let lastSubmitOrderTimestamp = 0;
+
 export async function submitOrder(orderData) {
-  const uid = await ensureAuthenticatedUid();
+  const now = Date.now();
+  if (isSubmittingOrder) {
+    throw new Error("Your order is currently processing. Please wait a moment.");
+  }
+  if (now - lastSubmitOrderTimestamp < 2500) {
+    throw new Error("Please wait a moment before placing another order.");
+  }
 
-  // If Firebase is available, submit directly to Firestore
-  if (isFirebaseConfigured) {
-    try {
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Connection timeout contacting store")), 8000)
-      );
-      const result = await Promise.race([createOrder(orderData, uid), timeoutPromise]);
-      const confirmedOrder = {
-        ...orderData,
-        orderId: result.orderId,
-        status: "Placed",
-      };
-      writeLocal("dashit_active_order", confirmedOrder);
-      const history = readLocal("dashit_orders_history", []);
-      const filtered = history.filter((h) => h.orderId !== result.orderId && h.orderId !== orderData.orderId);
-      writeLocal("dashit_orders_history", [confirmedOrder, ...filtered]);
+  isSubmittingOrder = true;
+  try {
+    const uid = await ensureAuthenticatedUid();
 
-      // Broadcast order across browser tabs, windows, and dark store portals
-      if (typeof window !== "undefined") {
-        try {
-          window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: confirmedOrder }));
-          if (window.BroadcastChannel) {
-            const bc = new BroadcastChannel("dashit_orders_channel");
-            bc.postMessage({ type: "NEW_ORDER", order: confirmedOrder });
-          }
-        } catch (e) {}
+    // If Firebase is available, submit directly to Firestore
+    if (isFirebaseConfigured) {
+      try {
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timeout contacting store")), 8000)
+        );
+        const result = await Promise.race([createOrder(orderData, uid), timeoutPromise]);
+        lastSubmitOrderTimestamp = Date.now();
+        const confirmedOrder = {
+          ...orderData,
+          orderId: result.orderId,
+          status: "Placed",
+        };
+        writeLocal("dashit_active_order", confirmedOrder);
+        const history = readLocal("dashit_orders_history", []);
+        const filtered = history.filter((h) => h.orderId !== result.orderId && h.orderId !== orderData.orderId);
+        writeLocal("dashit_orders_history", [confirmedOrder, ...filtered]);
+
+        // Broadcast order across browser tabs, windows, and dark store portals
+        if (typeof window !== "undefined") {
+          try {
+            window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: confirmedOrder }));
+            if (window.BroadcastChannel) {
+              const bc = new BroadcastChannel("dashit_orders_channel");
+              bc.postMessage({ type: "NEW_ORDER", order: confirmedOrder });
+            }
+          } catch (e) {}
+        }
+
+        return result;
+      } catch (e) {
+        console.error("Firestore order write error:", e);
+        throw new Error(
+          "We could not reach the store to place your order. Please check your connection and try again."
+        );
       }
-
-      return result;
-    } catch (e) {
-      console.error("Firestore order write error:", e);
-
-      /* A configured backend that rejects the write is a real failure and has to
-         reach the customer. This used to fall through to the local branch below,
-         which stored the order on the device and returned success — so the
-         customer saw "Order placed", waited, and the store never received
-         anything. The offline branch is now only for a build with no Firebase at
-         all. */
-      throw new Error(
-        "We could not reach the store to place your order. Please check your connection and try again."
-      );
     }
+
+    // Fallback for a build with no Firebase configured at all (local demo mode).
+    const local = {
+      ...orderData,
+      orderId: orderData.orderId || `DSH-${Date.now().toString().slice(-4)}${Math.floor(1000 + Math.random() * 9000)}`,
+      status: "Placed",
+      createdAt: new Date().toISOString(),
+    };
+    writeLocal("dashit_active_order", local);
+    const history = readLocal("dashit_orders_history", []);
+    writeLocal("dashit_orders_history", [local, ...history]);
+
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: local }));
+        if (window.BroadcastChannel) {
+          const bc = new BroadcastChannel("dashit_orders_channel");
+          bc.postMessage({ type: "NEW_ORDER", order: local });
+        }
+      } catch (e) {}
+    }
+
+    return { success: true, orderId: local.orderId, order: local, offline: true };
+  } finally {
+    isSubmittingOrder = false;
   }
-
-  // Fallback for a build with no Firebase configured at all (local demo mode).
-  const local = {
-    ...orderData,
-    orderId: orderData.orderId || `DSH-${Date.now().toString().slice(-4)}${Math.floor(1000 + Math.random() * 9000)}`,
-    status: "Placed",
-    createdAt: new Date().toISOString(),
-  };
-  writeLocal("dashit_active_order", local);
-  const history = readLocal("dashit_orders_history", []);
-  writeLocal("dashit_orders_history", [local, ...history]);
-
-  if (typeof window !== "undefined") {
-    try {
-      window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: local }));
-      if (window.BroadcastChannel) {
-        const bc = new BroadcastChannel("dashit_orders_channel");
-        bc.postMessage({ type: "NEW_ORDER", order: local });
-      }
-    } catch (e) {}
-  }
-
-  return { success: true, orderId: local.orderId, order: local, offline: true };
 }
 
 export async function fetchAdminOrders() {
