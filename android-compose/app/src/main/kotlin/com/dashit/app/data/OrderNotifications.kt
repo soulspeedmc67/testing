@@ -27,6 +27,10 @@ object OrderNotifications {
     @Volatile
     var isAppInForeground: Boolean = false
 
+    /** True once the shopper has left the app; false while it is still starting up. */
+    @Volatile
+    var isAppInBackground: Boolean = false
+
     fun createChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val channel = NotificationChannel(

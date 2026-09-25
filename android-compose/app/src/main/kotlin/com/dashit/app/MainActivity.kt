@@ -95,12 +95,14 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         OrderNotifications.isAppInForeground = true
+        OrderNotifications.isAppInBackground = false
         // Celebrate a delivery that happened while the app was away.
         OrderRepository.shared.noteDelivery()
     }
 
     override fun onStop() {
         OrderNotifications.isAppInForeground = false
+        OrderNotifications.isAppInBackground = true
         super.onStop()
     }
 }
