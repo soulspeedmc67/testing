@@ -2,12 +2,50 @@ import Foundation
 
 public struct Offer: Codable, Identifiable, Hashable {
     public let id: String
-    public let code: String
+    public let badge: String
     public let title: String
+    public let subtitle: String
+    public let priceTag: String
+    public let category: String
+    public let promoCode: String
     public let discountPercent: Int
-    public let minOrder: Double
-    public let active: Bool
+    public let expiresIn: String
+    public let img: String
+    public let active: Bool?
+    public let createdAt: Double?
+    public let minOrder: Double?
 
+    public init(
+        id: String,
+        badge: String,
+        title: String,
+        subtitle: String,
+        priceTag: String,
+        category: String,
+        promoCode: String,
+        discountPercent: Int,
+        expiresIn: String,
+        img: String,
+        active: Bool? = true,
+        createdAt: Double? = nil,
+        minOrder: Double? = 199.0
+    ) {
+        self.id = id
+        self.badge = badge
+        self.title = title
+        self.subtitle = subtitle
+        self.priceTag = priceTag
+        self.category = category
+        self.promoCode = promoCode
+        self.discountPercent = discountPercent
+        self.expiresIn = expiresIn
+        self.img = img
+        self.active = active
+        self.createdAt = createdAt
+        self.minOrder = minOrder
+    }
+
+    // Convenience initializer for Admin Discount Coupon creation
     public init(
         id: String = UUID().uuidString,
         code: String,
@@ -17,12 +55,21 @@ public struct Offer: Codable, Identifiable, Hashable {
         active: Bool = true
     ) {
         self.id = id
-        self.code = code
+        self.badge = "DISCOUNT"
         self.title = title
+        self.subtitle = "Flat \(discountPercent)% OFF on orders above ₹\(Int(minOrder))"
+        self.priceTag = "₹\(Int(minOrder)) min"
+        self.category = "Deals"
+        self.promoCode = code
         self.discountPercent = discountPercent
-        self.minOrder = minOrder
+        self.expiresIn = "Active"
+        self.img = "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600"
         self.active = active
+        self.createdAt = Date().timeIntervalSince1970
+        self.minOrder = minOrder
     }
+
+    public var code: String { promoCode }
 
     public static let defaults: [Offer] = [
         Offer(id: "off_1", code: "DASHIT50", title: "Flat ₹50 OFF on first order above ₹249", discountPercent: 20, minOrder: 249.0, active: true),

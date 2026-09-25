@@ -575,7 +575,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     public func toggleOffer(offerId: String, active: Bool) {
         if let idx = offers.firstIndex(where: { $0.id == offerId }) {
             let old = offers[idx]
-            offers[idx] = Offer(id: old.id, code: old.code, title: old.title, discountPercent: old.discountPercent, minOrder: old.minOrder, active: active)
+            offers[idx] = Offer(id: old.id, code: old.code, title: old.title, discountPercent: old.discountPercent, minOrder: old.minOrder ?? 199.0, active: active)
             db.collection("offers").document(offerId).setData(["active": active], merge: true)
         }
     }
