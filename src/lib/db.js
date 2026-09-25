@@ -1731,49 +1731,53 @@ export async function updateOrderContent(orderId, updatedFields = {}) {
 
 /** Driver claims an unassigned order. */
 export async function claimOrder(orderId, driverId, driverName) {
-  if (typeof window !== "undefined") {
-    try {
-      const active = localStorage.getItem("dashit_active_order");
-      if (active) {
-        const ord = JSON.parse(active);
-        if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
-          ord.driverId = driverId;
-          ord.driverName = driverName || "Delivery Partner";
-          ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
-          ord.updatedAt = new Date().toISOString();
-          localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+  const applyLocalClaim = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const active = localStorage.getItem("dashit_active_order");
+        if (active) {
+          const ord = JSON.parse(active);
+          if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
+            ord.driverId = driverId;
+            ord.driverName = driverName || "Delivery Partner";
+            ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
+            ord.updatedAt = new Date().toISOString();
+            localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+          }
         }
-      }
-      const historyStr = localStorage.getItem("dashit_orders_history");
-      if (historyStr) {
-        const list = JSON.parse(historyStr);
-        const updatedList = list.map((o) =>
-          String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
-            ? {
-                ...o,
-                driverId,
-                driverName: driverName || "Delivery Partner",
-                status: ORDER_STATUS.OUT_FOR_DELIVERY,
-                updatedAt: new Date().toISOString(),
-              }
-            : o
+        const historyStr = localStorage.getItem("dashit_orders_history");
+        if (historyStr) {
+          const list = JSON.parse(historyStr);
+          const updatedList = list.map((o) =>
+            String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
+              ? {
+                  ...o,
+                  driverId,
+                  driverName: driverName || "Delivery Partner",
+                  status: ORDER_STATUS.OUT_FOR_DELIVERY,
+                  updatedAt: new Date().toISOString(),
+                }
+              : o
+          );
+          localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList.slice(0, 20)));
+        }
+        window.dispatchEvent(
+          new CustomEvent("dashit_orders_updated", {
+            detail: { orderId, status: ORDER_STATUS.OUT_FOR_DELIVERY },
+          })
         );
-        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
-      }
-      window.dispatchEvent(
-        new CustomEvent("dashit_orders_updated", {
-          detail: { orderId, status: ORDER_STATUS.OUT_FOR_DELIVERY },
-        })
-      );
-    } catch (e) {}
-  }
+      } catch (e) {}
+    }
+  };
 
   const db = getDb();
-  if (!db) return { success: true, localUpdated: true };
+  if (!db) {
+    applyLocalClaim();
+    return { success: true, localUpdated: true };
+  }
 
   /* Claiming is a transaction so two riders tapping "Claim" on the same order
-     cannot both win: the second read sees a driverId and aborts. A plain
-     updateDoc let the later write silently steal an order already en route. */
+     cannot both win: the second read sees a driverId and aborts. */
   try {
     await runTransaction(db, async (tx) => {
       const ref = doc(db, "orders", String(orderId));
@@ -1791,6 +1795,9 @@ export async function claimOrder(orderId, driverId, driverName) {
         statusHistory: arrayUnion({ status: ORDER_STATUS.OUT_FOR_DELIVERY, at: new Date().toISOString() }),
       });
     });
+
+    // Transaction succeeded: apply local updates safely
+    applyLocalClaim();
     return { success: true, firestoreSynced: true };
   } catch (err) {
     if (err?.message === "ORDER_ALREADY_CLAIMED") {
@@ -1801,7 +1808,7 @@ export async function claimOrder(orderId, driverId, driverName) {
       };
     }
     console.warn("Firestore claimOrder sync note:", err?.message || err);
-    return { success: true, localUpdated: true, firestoreSynced: false };
+    return { success: false, message: err?.message || "Could not claim order" };
   }
 }
 
@@ -2162,15 +2169,67 @@ export function watchOrderTracking(orderId, callback) {
 
 /* ------------------------------------------------------------ store config */
 
-export function watchStoreConfig(callback) {
-  const db = getDb();
-  if (!db) return () => {};
-  return onSnapshot(doc(db, "config", "store"), (snap) => {
-    callback(snap.exists() ? snap.data() : { isOpen: true, highDemand: false });
+let memoryStoreConfig = null;
+const storeConfigSubscribers = new Set();
+let sharedStoreConfigUnsub = null;
+let sharedConfigCleanupTimer = null;
+
+function broadcastStoreConfig(cfg) {
+  memoryStoreConfig = cfg;
+  storeConfigSubscribers.forEach((cb) => {
+    try { cb(cfg); } catch (e) {}
   });
 }
 
+function startSharedStoreConfigWatcher() {
+  if (sharedConfigCleanupTimer) {
+    clearTimeout(sharedConfigCleanupTimer);
+    sharedConfigCleanupTimer = null;
+  }
+  if (sharedStoreConfigUnsub) return;
+
+  const db = getDb();
+  if (!db) return;
+  try {
+    sharedStoreConfigUnsub = onSnapshot(
+      doc(db, "config", "store"),
+      (snap) => {
+        broadcastStoreConfig(snap.exists() ? snap.data() : { isOpen: true, highDemand: false });
+      },
+      (err) => {
+        console.warn("watchStoreConfig snapshot error:", err?.message);
+      }
+    );
+  } catch (e) {
+    console.warn("watchStoreConfig init error:", e?.message);
+  }
+}
+
+export function watchStoreConfig(callback) {
+  storeConfigSubscribers.add(callback);
+  if (memoryStoreConfig) {
+    callback(memoryStoreConfig);
+  }
+  startSharedStoreConfigWatcher();
+
+  return () => {
+    storeConfigSubscribers.delete(callback);
+    if (storeConfigSubscribers.size === 0) {
+      if (sharedConfigCleanupTimer) clearTimeout(sharedConfigCleanupTimer);
+      sharedConfigCleanupTimer = setTimeout(() => {
+        if (storeConfigSubscribers.size === 0 && typeof sharedStoreConfigUnsub === "function") {
+          sharedStoreConfigUnsub();
+          sharedStoreConfigUnsub = null;
+        }
+      }, 30000);
+    }
+  };
+}
+
 export async function setStoreConfig(patch) {
+  if (memoryStoreConfig) {
+    broadcastStoreConfig({ ...memoryStoreConfig, ...patch });
+  }
   const db = getDb();
   if (!db) return;
   await setDoc(

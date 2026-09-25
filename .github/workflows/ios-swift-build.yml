@@ -122,6 +122,9 @@ jobs:
           mkdir -p Payload
           cp -r DASHit.xcarchive/Products/Applications/DASHit.app Payload/
 
+          # Clean up any unprovisioned app extensions since provisioning profile is com.dashit.app only
+          rm -rf Payload/DASHit.app/PlugIns
+
           PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
           if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -f "$PP_PATH" ]; then
             echo "Signing Native Swift App with Apple Distribution Certificate..."

@@ -21,7 +21,8 @@ targets:
       - path: DASHitWidgets/DASHitOrderAttributes.swift
       - path: DASHitWidgets/OrderProgressRail.swift
     dependencies:
-      - target: DASHitWidgets
+      # DASHitWidgets requires a separate com.dashit.app.widgets provisioning profile
+      # - target: DASHitWidgets
       - package: Firebase
         product: FirebaseAuth
       - package: Firebase
