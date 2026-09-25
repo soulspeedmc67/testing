@@ -189,42 +189,10 @@ jobs:
           echo "Issuer ID length: ${#CLEAN_ISSUER_ID}"
 
           mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys
-
-          python3 -c "
-          import os, base64
-
-          raw = os.environ.get('APP_STORE_CONNECT_KEY_P8', '').strip()
-          key_id = '$CLEAN_KEY_ID'
-
-          if 'BEGIN PRIVATE KEY' in raw:
-              key_content = raw
-          elif 'BEGIN' not in raw and len(raw) > 50:
-              try:
-                  decoded = base64.b64decode(raw).decode('utf-8')
-                  if 'BEGIN PRIVATE KEY' in decoded:
-                      key_content = decoded
-                  else:
-                      key_content = f'-----BEGIN PRIVATE KEY-----\n{raw}\n-----END PRIVATE KEY-----\n'
-              except Exception:
-                  key_content = f'-----BEGIN PRIVATE KEY-----\n{raw}\n-----END PRIVATE KEY-----\n'
-          else:
-              key_content = raw
-
-          key_content = key_content.replace('\\n', '\n').strip() + '\n'
-
-          paths = [
-              os.path.expanduser(f'~/.appstoreconnect/private_keys/AuthKey_{key_id}.p8'),
-              os.path.expanduser(f'~/.private_keys/AuthKey_{key_id}.p8'),
-              os.path.expanduser(f'~/private_keys/AuthKey_{key_id}.p8'),
-              f'./private_keys/AuthKey_{key_id}.p8'
-          ]
-          for p in paths:
-              os.makedirs(os.path.dirname(p), exist_ok=True)
-              with open(p, 'w') as f:
-                  f.write(key_content)
-              os.chmod(p, 0o600)
-              print(f'Wrote {len(key_content)} bytes to {p}')
-          "
+          for dir in ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys; do
+            printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
+            chmod 600 "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
+          done
 
           echo "Uploading Dashit.ipa to TestFlight via App Store Connect API..."
           xcrun altool --upload-app \
