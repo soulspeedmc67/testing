@@ -8,17 +8,19 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.dashit.app.R
@@ -29,24 +31,39 @@ import kotlinx.coroutines.launch
 
 private val EaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val EaseIn = CubicBezierEasing(0.55f, 0f, 1f, 0.45f)
-/** The launch mark's size on the system splash (see `splash_launch_icon.xml`). */
-private val MarkSize = 114.67.dp
+private val EaseInOut = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
+
+// Lockup geometry, in dp around the screen centre (the same as the iOS SplashView).
+private val LogoSize = 114.67.dp
+private const val TUCKED_LOGO_X = -82.35f
+private const val TUCKED_LOGO_SCALE = 0.5f
+private val WordWidth = 158.dp
+private val WordHeight = 34.dp
+private const val WORD_X = 29.3f
+/** The wipe's left edge in the wordmark's own dp, following the logo's right edge. */
+private const val WIPE_START = 98.4f
+private const val WIPE_END = -8.3f
 
 /**
- * Picks up from the system splash and hands over to the app, the same
- * sequence as the iOS `SplashView`: the first frame is the system splash
- * exactly, then the orange dash winds back and streaks off, the mark zooms
- * away and the midnight backdrop clears onto the app.
+ * Takes over from the plain midnight system splash and hands over to the app,
+ * exactly as the iOS `SplashView` does: the logo sharpens out of a blur, then
+ * shrinks and tucks left while the "dashit" wordmark is uncovered behind it,
+ * sharpening as it appears; the lockup lifts away in a blur and the backdrop
+ * clears onto the app. (Blur needs Android 12+; older phones get the same
+ * motion without it.)
  */
 @Composable
 fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
     val context = LocalContext.current
-    val density = LocalDensity.current
-    val travelPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
-    val dashOffset = remember { Animatable(0f) }
-    val dashStretch = remember { Animatable(1f) }
-    val markScale = remember { Animatable(1f) }
-    val markAlpha = remember { Animatable(1f) }
+    val logoAlpha = remember { Animatable(0f) }
+    val logoBlur = remember { Animatable(14f) }
+    val logoRevealScale = remember { Animatable(0.86f) }
+    val tuck = remember { Animatable(0f) } // 0 → 1 drives the logo move and the wipe together
+    val wordAlpha = remember { Animatable(0f) }
+    val wordBlur = remember { Animatable(8f) }
+    val lockupScale = remember { Animatable(1f) }
+    val lockupBlur = remember { Animatable(0f) }
+    val lockupAlpha = remember { Animatable(1f) }
     val backdropAlpha = remember { Animatable(1f) }
 
     LaunchedEffect(Unit) {
@@ -54,34 +71,57 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
             context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f
         ) == 0f
         if (reduceMotion) {
-            delay(200)
+            // The finished lockup, faded in and out.
+            tuck.snapTo(1f)
+            logoBlur.snapTo(0f)
+            logoRevealScale.snapTo(1f)
+            wordBlur.snapTo(0f)
+            coroutineScope {
+                launch { logoAlpha.animateTo(1f, tween(300)) }
+                launch { wordAlpha.animateTo(1f, tween(300)) }
+            }
+            delay(600)
             onReveal()
             coroutineScope {
+                launch { lockupAlpha.animateTo(0f, tween(300)) }
                 launch { backdropAlpha.animateTo(0f, tween(300)) }
-                launch { markAlpha.animateTo(0f, tween(300)) }
             }
             onFinished()
             return@LaunchedEffect
         }
 
-        // Hold the launch frame a beat, so the handoff is invisible.
-        delay(150)
-        // Wind-up: the dash pulls back and the mark tightens.
-        val windBack = with(density) { (-7).dp.toPx() }
         coroutineScope {
-            launch { dashOffset.animateTo(windBack, tween(220, easing = EaseOut)) }
-            launch { markScale.animateTo(0.96f, tween(220, easing = EaseOut)) }
-        }
-        // The dash streaks off; the mark zooms away and the backdrop clears.
-        coroutineScope {
-            launch { dashOffset.animateTo(travelPx, tween(320, easing = EaseIn)) }
-            launch { dashStretch.animateTo(3.2f, tween(320, easing = EaseIn)) }
-            launch { markScale.animateTo(1.3f, tween(280, delayMillis = 20, easing = EaseIn)) }
-            launch { markAlpha.animateTo(0f, tween(200, delayMillis = 20, easing = EaseOut)) }
-            launch { backdropAlpha.animateTo(0f, tween(340, delayMillis = 90, easing = EaseOut)) }
+            // 1. The logo sharpens out of a blur.
             launch {
-                delay(10)
-                onReveal()
+                delay(120)
+                coroutineScope {
+                    launch { logoAlpha.animateTo(1f, tween(520, easing = EaseOut)) }
+                    launch { logoBlur.animateTo(0f, tween(520, easing = EaseOut)) }
+                    launch { logoRevealScale.animateTo(1f, tween(520, easing = EaseOut)) }
+                }
+            }
+            // 2. It tucks left and the wordmark is uncovered behind it.
+            launch {
+                delay(760)
+                coroutineScope {
+                    launch { tuck.animateTo(1f, tween(560, easing = EaseInOut)) }
+                    launch { wordAlpha.animateTo(1f, tween(480, delayMillis = 80, easing = EaseOut)) }
+                    launch { wordBlur.animateTo(0f, tween(480, delayMillis = 80, easing = EaseOut)) }
+                }
+            }
+            // 3. The lockup lifts away and the backdrop clears onto the app.
+            launch {
+                delay(1590)
+                coroutineScope {
+                    launch { lockupScale.animateTo(1.08f, tween(320, easing = EaseIn)) }
+                    launch { lockupBlur.animateTo(8f, tween(320, easing = EaseIn)) }
+                    launch { lockupAlpha.animateTo(0f, tween(320, easing = EaseIn)) }
+                    launch { backdropAlpha.animateTo(0f, tween(380, delayMillis = 80, easing = EaseOut)) }
+                    launch {
+                        delay(80)
+                        onReveal()
+                    }
+                }
             }
         }
         onFinished()
@@ -94,30 +134,49 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                 .graphicsLayer { alpha = backdropAlpha.value }
                 .background(DashitColors.Midnight)
         )
-        Image(
-            painter = painterResource(R.drawable.splash_mark_white),
-            contentDescription = null,
+        Box(
             modifier = Modifier
-                .align(Alignment.Center)
-                .size(MarkSize)
+                .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = markScale.value
-                    scaleY = markScale.value
-                    alpha = markAlpha.value
+                    scaleX = lockupScale.value
+                    scaleY = lockupScale.value
+                    alpha = lockupAlpha.value
                 }
-        )
-        Image(
-            painter = painterResource(R.drawable.splash_mark_dash),
-            contentDescription = null,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(MarkSize)
-                .graphicsLayer {
-                    translationX = dashOffset.value
-                    scaleX = dashStretch.value
-                    // Stretch from the dash's left end.
-                    transformOrigin = TransformOrigin(0.084f, 0.497f)
-                }
-        )
+                .blur(lockupBlur.value.dp, BlurredEdgeTreatment.Unbounded)
+        ) {
+            Image(
+                painter = painterResource(R.drawable.splash_wordmark),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .offset(x = WORD_X.dp)
+                    .size(WordWidth, WordHeight)
+                    .graphicsLayer { alpha = wordAlpha.value }
+                    .blur(wordBlur.value.dp, BlurredEdgeTreatment.Unbounded)
+                    .drawWithContent {
+                        val wipe = (WIPE_START + (WIPE_END - WIPE_START) * tuck.value).dp.toPx()
+                        clipRect(left = wipe, top = -size.height, right = size.width * 2, bottom = size.height * 2) {
+                            this@drawWithContent.drawContent()
+                        }
+                    }
+            )
+            Image(
+                painter = painterResource(R.drawable.splash_logo),
+                contentDescription = null,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(LogoSize)
+                    .graphicsLayer {
+                        val t = tuck.value
+                        val tuckScale = 1f + (TUCKED_LOGO_SCALE - 1f) * t
+                        val scale = tuckScale * logoRevealScale.value
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = (TUCKED_LOGO_X * t).dp.toPx()
+                        alpha = logoAlpha.value
+                    }
+                    .blur(logoBlur.value.dp, BlurredEdgeTreatment.Unbounded)
+            )
+        }
     }
 }
