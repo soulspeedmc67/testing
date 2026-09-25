@@ -73,6 +73,7 @@ import com.dashit.app.R
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
+import com.dashit.app.ui.components.TrackingCardSkeleton
 import com.dashit.app.data.DeliveryEta
 import com.dashit.app.data.model.DriverLiveTracking
 import com.dashit.app.data.model.Order
@@ -180,20 +181,8 @@ fun LiveTrackingMapScreen(
                 .padding(bottom = 20.dp)
         ) {
             if (order == null) {
-                // Never leave a bare map: say what is happening until the order loads.
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(DashitColors.SurfaceRaised)
-                        .border(1.dp, DashitColors.Hairline, RoundedCornerShape(20.dp))
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    CircularProgressIndicator(color = DashitColors.BrandOrange, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
-                    Text("Loading your order…", color = DashitColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                }
+                // Never leave a bare map: the card's skeleton until the order loads.
+                TrackingCardSkeleton()
             } else {
                 OrderCard(
                     order = order,

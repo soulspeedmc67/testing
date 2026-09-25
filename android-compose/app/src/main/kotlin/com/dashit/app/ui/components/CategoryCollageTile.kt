@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
@@ -149,7 +148,7 @@ private fun CollageCell(
             .background(DashitColors.SurfaceMuted)
     ) {
         if (!url.isNullOrBlank()) {
-            AsyncImage(
+            ShimmerImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
                     .crossfade(200)

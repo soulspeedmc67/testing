@@ -1,5 +1,7 @@
 package com.dashit.app.ui.orders
 
+import com.dashit.app.ui.components.shimmer
+import com.dashit.app.ui.components.SkeletonBlock
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -46,7 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.dashit.app.ui.components.ShimmerImage
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
@@ -170,7 +172,22 @@ fun AddItemsSheet(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                if (visible.isEmpty()) {
+                if (products.isEmpty()) {
+                    item(key = "skeleton") {
+                        Column(Modifier.shimmer(), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                            repeat(6) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    SkeletonBlock(width = 56.dp, height = 56.dp, cornerRadius = 12.dp)
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                        SkeletonBlock(width = 150.dp, height = 12.dp)
+                                        SkeletonBlock(width = 90.dp, height = 10.dp)
+                                    }
+                                    SkeletonBlock(width = 72.dp, height = 32.dp, cornerRadius = 10.dp)
+                                }
+                            }
+                        }
+                    }
+                } else if (visible.isEmpty()) {
                     item {
                         Text(
                             if (query.isBlank()) "Nothing in this aisle right now" else "Nothing matches “$query”",
@@ -193,7 +210,7 @@ fun AddItemsSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        AsyncImage(
+                        ShimmerImage(
                             model = product.img,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
