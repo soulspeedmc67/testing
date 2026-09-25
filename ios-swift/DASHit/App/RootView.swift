@@ -18,8 +18,22 @@ struct RootView: View {
 
     @ObservedObject private var activeOrder = ActiveOrderStore.shared
     @ObservedObject private var cart = CartViewModel.shared
+    @AppStorage("dashit_is_admin_mode") private var isShowingAdmin: Bool = true
 
     var body: some View {
+        if isShowingAdmin {
+            AdminDashboardView(onSwitchToCustomer: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    isShowingAdmin = false
+                }
+            })
+            .preferredColorScheme(colorScheme)
+        } else {
+            customerStorefront
+        }
+    }
+
+    private var customerStorefront: some View {
         ZStack {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 if mountedTabs.contains(tab) {
@@ -29,6 +43,30 @@ struct RootView: View {
                         .accessibilityHidden(selectedTab != tab)
                 }
             }
+        }
+        // Floating button to quickly return to Admin Console
+        .overlay(alignment: .topTrailing) {
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    isShowingAdmin = true
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "building.2.fill")
+                        .font(.system(size: 11))
+                    Text("Admin")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(.white)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.black.opacity(0.75))
+                .clipShape(Capsule())
+                .shadow(radius: 4)
+            }
+            .padding(.top, 50)
+            .padding(.trailing, 16)
         }
         // The floating tab bar insets every screen's safe area: content scrolls
         // beneath it and comes to rest above it, and the cart pill stacks on top.
