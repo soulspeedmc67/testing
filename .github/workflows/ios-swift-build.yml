@@ -96,9 +96,10 @@ jobs:
           cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
           cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/DASHit_AppStore_Profile.mobileprovision
 
-      - name: Build Xcode Archive
+      - name: Build Xcode Archives
         run: |
           cd ios-swift
+          echo "=== Building DASHit Customer App Archive ==="
           xcodebuild archive \
             -project DASHit.xcodeproj \
             -scheme DASHit \
@@ -114,38 +115,61 @@ jobs:
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             ENABLE_USER_SCRIPT_SANDBOXING=NO
 
-      - name: Package and Sign Native IPA
+          echo "=== Building DASHit Admin Console App Archive ==="
+          xcodebuild archive \
+            -project DASHit.xcodeproj \
+            -scheme DASHitAdmin \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath build/DASHitAdmin.xcarchive \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 100)) \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO
+
+      - name: Package and Sign Native IPAs
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERT_BASE64 }}
         run: |
           cd ios-swift/build
-          mkdir -p Payload
-          cp -r DASHit.xcarchive/Products/Applications/DASHit.app Payload/
-
-          # Clean up any unprovisioned app extensions since provisioning profile is com.dashit.app only
-          rm -rf Payload/DASHit.app/PlugIns
-
           PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -f "$PP_PATH" ]; then
-            echo "Signing Native Swift App with Apple Distribution Certificate..."
-            cp "$PP_PATH" Payload/DASHit.app/embedded.mobileprovision
+          BUILD_VER=$((GITHUB_RUN_NUMBER + 100))
 
-            BUILD_VER=$((GITHUB_RUN_NUMBER + 100))
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_VER}" Payload/DASHit.app/Info.plist 2>/dev/null || true
-            /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" Payload/DASHit.app/Info.plist || true
+          sign_and_package() {
+            local ARCHIVE_NAME=$1
+            local APP_NAME=$2
+            local OUTPUT_IPA=$3
 
-            # Extract exact entitlements from the provisioning profile
-            security cms -D -i "$PP_PATH" > $RUNNER_TEMP/profile.plist
-            /usr/libexec/PlistBuddy -x -c "Print :Entitlements" $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
+            echo "=== Packaging and Signing $OUTPUT_IPA from $ARCHIVE_NAME ==="
+            rm -rf Payload
+            mkdir -p Payload
+            cp -r "$ARCHIVE_NAME/Products/Applications/$APP_NAME.app" Payload/
+            rm -rf "Payload/$APP_NAME.app/PlugIns"
 
-            for fw in $(find Payload/DASHit.app -name "*.framework" 2>/dev/null || true); do
-              codesign --force --sign "Apple Distribution" --preserve-metadata=identifier,flags,runtime "$fw" || true
-            done
-            codesign --force --sign "Apple Distribution" --entitlements $RUNNER_TEMP/entitlements.plist --generate-entitlement-der Payload/DASHit.app
-          fi
+            if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -f "$PP_PATH" ]; then
+              cp "$PP_PATH" "Payload/$APP_NAME.app/embedded.mobileprovision"
+              /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_VER}" "Payload/$APP_NAME.app/Info.plist" 2>/dev/null || true
+              /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" "Payload/$APP_NAME.app/Info.plist" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" "Payload/$APP_NAME.app/Info.plist" || true
 
-          zip -r -q DASHit-Native.ipa Payload
-          ls -lh DASHit-Native.ipa
+              security cms -D -i "$PP_PATH" > $RUNNER_TEMP/profile.plist
+              /usr/libexec/PlistBuddy -x -c "Print :Entitlements" $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
+
+              for fw in $(find "Payload/$APP_NAME.app" -name "*.framework" 2>/dev/null || true); do
+                codesign --force --sign "Apple Distribution" --preserve-metadata=identifier,flags,runtime "$fw" || true
+              done
+              codesign --force --sign "Apple Distribution" --entitlements $RUNNER_TEMP/entitlements.plist --generate-entitlement-der "Payload/$APP_NAME.app"
+            fi
+
+            zip -r -q "$OUTPUT_IPA" Payload
+            ls -lh "$OUTPUT_IPA"
+          }
+
+          sign_and_package "DASHit.xcarchive" "DASHit" "DASHit-Native.ipa"
+          sign_and_package "DASHitAdmin.xcarchive" "DASHitAdmin" "DASHit-Admin.ipa"
 
       - name: Upload Native iOS IPA Artifact
         if: always()
@@ -153,6 +177,14 @@ jobs:
         with:
           name: DASHit-Native-Swift-IPA
           path: ios-swift/build/DASHit-Native.ipa
+          if-no-files-found: error
+
+      - name: Upload Native Admin IPA Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DASHit-Admin-Swift-IPA
+          path: ios-swift/build/DASHit-Admin.ipa
           if-no-files-found: error
 
       - name: Upload Native Swift to TestFlight (Internal Testing)
