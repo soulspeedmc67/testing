@@ -206,6 +206,16 @@ final class FirestoreService {
             }
     }
 
+    /// One read of the shopper's orders, newest first; [] when offline.
+    func fetchUserOrders(userId: String) async -> [Order] {
+        guard let snapshot = try? await db.collection("orders")
+            .whereField("userId", isEqualTo: userId)
+            .getDocuments() else { return [] }
+        return snapshot.documents
+            .compactMap { try? $0.data(as: Order.self, with: .estimate) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     func listenDriverTracking(orderId: String, completion: @escaping (DriverLiveTracking?) -> Void) -> ListenerRegistration {
         // Subcollection: /orders/{orderId}/tracking/live
         return db.collection("orders").document(orderId)

@@ -85,7 +85,8 @@ private struct LockScreenLiveActivityView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
-                if !stage.isFinished {
+                // The arrival time only once a rider has the order.
+                if stage == .onTheWay {
                     CountdownText(context: context)
                         .font(.system(size: 19, weight: .bold))
                         .foregroundColor(Palette.brandText)
@@ -177,6 +178,11 @@ private struct ExpandedETAView: View {
             Image(systemName: stage == .delivered ? "checkmark.circle.fill" : "xmark.circle.fill")
                 .font(.system(size: 30))
                 .foregroundColor(stage == .delivered ? Palette.success : Palette.danger)
+        } else if stage != .onTheWay {
+            // No arrival time until a rider has the order: the stage instead.
+            Image(systemName: stage.symbol)
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundColor(Palette.brandText)
         } else {
             VStack(alignment: .trailing, spacing: 0) {
                 CountdownText(context: context)
@@ -201,6 +207,10 @@ private struct CompactETAView: View {
             Image(systemName: stage == .delivered ? "checkmark" : "xmark")
                 .font(.system(size: 13, weight: .bold))
                 .foregroundColor(stage == .delivered ? Palette.success : Palette.danger)
+        } else if stage != .onTheWay {
+            Image(systemName: stage.symbol)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(Palette.brandText)
         } else {
             CountdownText(context: context)
                 .font(.system(size: 14, weight: .semibold))

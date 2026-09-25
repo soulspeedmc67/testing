@@ -8,22 +8,24 @@ struct RootView: View {
     /// bar, so scroll position and listeners survive switching back and forth.
     @State private var mountedTabs: Set<TabItem> = [.home]
     @State private var isLiveTrackingOpen = false
-    @State private var isTrackerCollapsed = false
+    /// The home address row's on-screen frame while the address menu is open.
+    @State private var addressMenuAnchor: CGRect?
+    @State private var isAddressSearchOpen = false
+    @State private var isAddressPickerOpen = false
     @State private var isKeyboardVisible = false
     @State private var isProfileOpen = false
     @State private var isAddItemsOpen = false
-    @State private var isCancelOrderConfirmOpen = false
+    /// The delivered order being celebrated, once other screens are out of the way.
+    @State private var celebrationOrder: Order?
     /// "light", "dark" or "system", same values as the web's `dashit_theme`.
     @AppStorage("dashit_theme") private var themePreference = "system"
 
     @ObservedObject private var activeOrder = ActiveOrderStore.shared
     @ObservedObject private var cart = CartViewModel.shared
+    @ObservedObject private var tabBar = TabBarVisibility.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        customerStorefront
-    }
-
-    private var customerStorefront: some View {
         ZStack {
             ForEach(TabItem.allCases, id: \.self) { tab in
                 if mountedTabs.contains(tab) {
@@ -36,17 +38,27 @@ struct RootView: View {
         }
         // The floating tab bar insets every screen's safe area: content scrolls
         // beneath it and comes to rest above it, and the cart pill stacks on top.
+        // The order pill rides on top of the bar, so screens (and the cart
+        // pill) make room for it without knowing it exists. Scrolling down a
+        // feed tucks the bar away and the pills drop into its slot, but only by
+        // offset: the inset keeps its height, because resizing it would re-lay
+        // out every scroll view in the middle of a drag and make it jump.
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !isKeyboardVisible {
-                CustomTabBar(selectedTab: tabSelection)
-                    .transition(.move(edge: .bottom))
+                VStack(spacing: 10) {
+                    orderPill
+                        .followsTabBar()
+                    CustomTabBar(selectedTab: tabSelection)
+                        .offset(y: tabBar.isHidden ? CustomTabBar.hiddenOffset : 0)
+                        .opacity(tabBar.isHidden ? 0 : 1)
+                        .allowsHitTesting(!tabBar.isHidden)
+                        .accessibilityHidden(tabBar.isHidden)
+                }
+                .transition(.move(edge: .bottom))
             }
         }
-        .overlay(alignment: .top) {
-            expandedTracker
-        }
-        .overlay(alignment: .bottomTrailing) {
-            collapsedTracker
+        .overlay {
+            addressMenu
         }
         .background(Color.surface.ignoresSafeArea())
         .preferredColorScheme(colorScheme)
@@ -76,8 +88,28 @@ struct RootView: View {
             }
             #endif
         }
-        .onChange(of: activeOrder.order?.id) { _, _ in
-            isTrackerCollapsed = false
+        .onChange(of: selectedTab) { _, _ in
+            tabBar.show()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                activeOrder.resume()
+            }
+        }
+        .onChange(of: activeOrder.deliveredCelebration?.id) { _, id in
+            guard id != nil, let delivered = activeOrder.deliveredCelebration else { return }
+            // Clear whatever is on screen first; UIKit drops a sheet presented over another.
+            let wasCovered = isLiveTrackingOpen || cart.isCartSheetPresented || isProfileOpen || isAddItemsOpen
+                || isAddressSearchOpen || isAddressPickerOpen
+            isLiveTrackingOpen = false
+            cart.isCartSheetPresented = false
+            isProfileOpen = false
+            isAddItemsOpen = false
+            isAddressSearchOpen = false
+            isAddressPickerOpen = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + (wasCovered ? 0.6 : 0.2)) {
+                celebrationOrder = delivered
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             withAnimation(.dashitSnappy) { isKeyboardVisible = true }
@@ -102,21 +134,23 @@ struct RootView: View {
             ProfileView()
                 .dashitSheet([.large])
         }
+        .sheet(isPresented: $isAddressSearchOpen) {
+            AddressSearchView()
+        }
+        .sheet(isPresented: $isAddressPickerOpen) {
+            AddressPickerMapView(addsNewAddress: true)
+        }
         .sheet(isPresented: $isAddItemsOpen) {
             if let order = activeOrder.order {
                 AddItemsSheet(order: order)
             }
         }
-        .confirmationDialog("Cancel this order?", isPresented: $isCancelOrderConfirmOpen, titleVisibility: .visible) {
-            Button("Cancel and keep items in cart", role: .destructive) {
-                Task { _ = await activeOrder.cancelActiveOrder(restoreCart: true) }
+        .sheet(item: $celebrationOrder, onDismiss: {
+            activeOrder.finishCelebration()
+        }) { order in
+            DeliveredCelebrationSheet(order: order) {
+                cart.reorder(order.items)
             }
-            Button("Cancel order", role: .destructive) {
-                Task { _ = await activeOrder.cancelActiveOrder(restoreCart: false) }
-            }
-            Button("Keep order", role: .cancel) {}
-        } message: {
-            Text("The store will stop preparing it straight away.")
         }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
             if let order = activeOrder.order {
@@ -139,7 +173,10 @@ struct RootView: View {
     private func screen(for tab: TabItem) -> some View {
         switch tab {
         case .home:
-            StorefrontHomeView(onOpenProfile: { isProfileOpen = true })
+            StorefrontHomeView(
+                onOpenProfile: { isProfileOpen = true },
+                onChangeAddress: { anchor in addressMenuAnchor = anchor }
+            )
         case .orderAgain:
             OrdersListView(onOpenProfile: { isProfileOpen = true })
         case .categories:
@@ -147,61 +184,37 @@ struct RootView: View {
         }
     }
 
-    // MARK: - Live order tracker
+    // MARK: - Live order status
 
+    /// The live order lives in a pill above the tab bar, never as a banner
+    /// over the screen. Tap it for the live map.
     @ViewBuilder
-    private var expandedTracker: some View {
-        if let order = activeOrder.order, !isTrackerCollapsed, !isKeyboardVisible {
-            LiveOrderFloatingTrackerView(
+    private var orderPill: some View {
+        if let order = activeOrder.order {
+            OrderStatusPill(
                 order: order,
                 tracking: activeOrder.liveTracking,
                 onOpen: { isLiveTrackingOpen = true },
-                onClose: {
-                    if order.status.stage.isFinished {
-                        activeOrder.retireFinishedOrder()
-                    } else {
-                        withAnimation(.dashitSpring) { isTrackerCollapsed = true }
-                    }
-                },
-                onAddItems: { isAddItemsOpen = true },
-                onCancelOrder: { isCancelOrderConfirmOpen = true }
+                onDismiss: { activeOrder.retireFinishedOrder() }
             )
-            .padding(.top, 6)
-            .background(alignment: .top) {
-                // Solid behind the card (it covers the header anyway), fading out just below it.
-                VStack(spacing: 0) {
-                    Color.surface
-                    LinearGradient(
-                        colors: [Color.surface, Color.surface.opacity(0)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .frame(height: 24)
-                }
-                .padding(.bottom, -24)
-                .ignoresSafeArea(edges: .top)
-                .allowsHitTesting(false)
-            }
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .frame(maxWidth: CustomTabBar.maxWidth)
+            .padding(.horizontal, CustomTabBar.sideInset)
+            .transition(.scale(scale: 0.6, anchor: .bottom).combined(with: .opacity))
         }
     }
+
+    // MARK: - Address menu
 
     @ViewBuilder
-    private var collapsedTracker: some View {
-        if let order = activeOrder.order, isTrackerCollapsed, !isKeyboardVisible {
-            CollapsedOrderTrackerButton(order: order) {
-                withAnimation(.dashitSpring) { isTrackerCollapsed = false }
-            }
-            .padding(.trailing, 16)
-            .padding(.bottom, CustomTabBar.dockHeight + 12 + cartDockHeight)
-            .transition(.scale(scale: 0.6).combined(with: .opacity))
+    private var addressMenu: some View {
+        if let anchor = addressMenuAnchor {
+            AddressMenuPopup(
+                anchor: anchor,
+                onSearch: { isAddressSearchOpen = true },
+                onPickOnMap: { isAddressPickerOpen = true },
+                onDismiss: { addressMenuAnchor = nil }
+            )
         }
-    }
-
-    /// Room for the floating cart pill, so the two never overlap.
-    private var cartDockHeight: CGFloat {
-        let showsCartPill = selectedTab == .home || selectedTab == .categories
-        return showsCartPill && !cart.items.isEmpty ? 66 : 0
     }
 
     private var colorScheme: ColorScheme? {

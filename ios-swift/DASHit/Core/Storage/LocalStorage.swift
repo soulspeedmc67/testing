@@ -11,6 +11,7 @@ final class LocalStorage {
     private let keyUser = "dashit_user_profile"
     private let keyCart = "dashit_cart_items"
     private let keyAddress = "dashit_saved_address"
+    private let keyAddressBook = "dashit_address_book"
     private let keyActiveOrderId = "dashit_active_order_id"
     
     private init() {}
@@ -58,6 +59,18 @@ final class LocalStorage {
         return try? decoder.decode(DeliveryAddress.self, from: data)
     }
     
+    /// Every address the shopper has confirmed, most recent first.
+    func saveAddressBook(_ addresses: [DeliveryAddress]) {
+        if let data = try? encoder.encode(addresses) {
+            defaults.set(data, forKey: keyAddressBook)
+        }
+    }
+
+    func loadAddressBook() -> [DeliveryAddress] {
+        guard let data = defaults.data(forKey: keyAddressBook) else { return [] }
+        return (try? decoder.decode([DeliveryAddress].self, from: data)) ?? []
+    }
+
     // MARK: - Active Order
     
     func saveActiveOrderId(_ id: String?) {
@@ -78,6 +91,7 @@ final class LocalStorage {
         defaults.removeObject(forKey: keyUser)
         defaults.removeObject(forKey: keyCart)
         defaults.removeObject(forKey: keyAddress)
+        defaults.removeObject(forKey: keyAddressBook)
         defaults.removeObject(forKey: keyActiveOrderId)
     }
 }

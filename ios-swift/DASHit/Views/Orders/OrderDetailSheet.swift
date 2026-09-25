@@ -37,6 +37,8 @@ struct OrderDetailSheet: View {
                                 AsyncImage(url: URL(string: item.img)) { phase in
                                     if let image = phase.image {
                                         image.resizable().scaledToFill()
+                                    } else if phase.error == nil && !item.img.isEmpty {
+                                        ShimmerView()
                                     } else {
                                         Color.surfaceMuted
                                     }

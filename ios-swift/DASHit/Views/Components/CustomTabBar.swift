@@ -32,8 +32,11 @@ struct CustomTabBar: View {
     static let barHeight: CGFloat = 62
     /// Gap between the capsule and the home indicator.
     static let bottomGap: CGFloat = 4
-    /// Everything the bar occupies above the bottom safe area.
-    static let dockHeight: CGFloat = barHeight + bottomGap
+    /// Width cap, so on every phone the bar floats as a compact island
+    /// rather than running edge to edge. The order pill above matches it.
+    static let maxWidth: CGFloat = 312
+    /// Smallest gap to the screen edges on narrow phones.
+    static let sideInset: CGFloat = 24
 
     @Namespace private var selectionNamespace
     @State private var bounceCounts: [TabItem: Int] = [:]
@@ -59,7 +62,8 @@ struct CustomTabBar: View {
             )
         )
         .shadow(color: .floatingShadow, radius: 22, x: 0, y: 10)
-        .padding(.horizontal, 24)
+        .frame(maxWidth: Self.maxWidth)
+        .padding(.horizontal, Self.sideInset)
         .padding(.bottom, Self.bottomGap)
         .animation(.dashitSpring, value: selectedTab)
     }
@@ -97,5 +101,87 @@ struct CustomTabBar: View {
         .buttonStyle(PressableButtonStyle(scale: 0.9))
         .accessibilityLabel(tab.rawValue)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// Tucks the tab bar away while the shopper scrolls down a feed and brings it
+/// back as soon as they scroll up, or reach the top.
+@MainActor
+final class TabBarVisibility: ObservableObject {
+    static let shared = TabBarVisibility()
+
+    @Published private(set) var isHidden = false
+
+    private var lastOffset: CGFloat = 0
+    /// Distance scrolled in the current direction; flips reset it, so a small
+    /// wobble of the finger never toggles the bar.
+    private var travel: CGFloat = 0
+    private static let threshold: CGFloat = 24
+
+    private init() {}
+
+    /// `offset` is how far the content has scrolled from its top.
+    func scrolled(to offset: CGFloat) {
+        defer { lastOffset = offset }
+        guard offset > 60 else {
+            travel = 0
+            show()
+            return
+        }
+        let delta = offset - lastOffset
+        if delta == 0 { return }
+        if (delta > 0) != (travel > 0) {
+            travel = 0
+        }
+        travel += delta
+        if travel > Self.threshold {
+            hide()
+        } else if travel < -Self.threshold {
+            show()
+        }
+    }
+
+    func show() {
+        guard isHidden else { return }
+        withAnimation(.dashitSpring) { isHidden = false }
+    }
+
+    private func hide() {
+        guard !isHidden else { return }
+        withAnimation(.dashitSpring) { isHidden = true }
+    }
+}
+
+extension CustomTabBar {
+    /// How far the bar slides down, out of view, while tucked away.
+    static let hiddenOffset: CGFloat = barHeight + 48
+    /// How far the pills stacked above the bar drop, settling into its slot.
+    static let pillDrop: CGFloat = barHeight + 10
+}
+
+/// Drops a pill that floats above the tab bar into the bar's slot while the bar
+/// is tucked away. It only offsets, so no scroll view's insets change mid-drag.
+private struct FollowsTabBar: ViewModifier {
+    @ObservedObject private var tabBar = TabBarVisibility.shared
+
+    func body(content: Content) -> some View {
+        content.offset(y: tabBar.isHidden ? CustomTabBar.pillDrop : 0)
+    }
+}
+
+extension View {
+    /// For pills floating above the tab bar; see `FollowsTabBar`.
+    func followsTabBar() -> some View {
+        modifier(FollowsTabBar())
+    }
+
+    /// Put on a scroll view's content, inside a ScrollView carrying
+    /// `.coordinateSpace(.named(space))`: its scrolling hides and shows the tab bar.
+    func drivesTabBarVisibility(in space: String) -> some View {
+        onGeometryChange(for: CGFloat.self) { proxy in
+            -proxy.frame(in: .named(space)).minY
+        } action: { offset in
+            TabBarVisibility.shared.scrolled(to: offset)
+        }
     }
 }

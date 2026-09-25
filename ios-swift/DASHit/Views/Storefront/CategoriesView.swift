@@ -7,6 +7,7 @@ struct CategoriesView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @State private var selectedCategoryID: String? = nil
     @State private var detailProduct: Product? = nil
+    @State private var opensCartAfterDetail = false
     @State private var ageGateProduct: Product? = nil
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 2)
@@ -52,10 +53,21 @@ struct CategoriesView: View {
                 cart.isCartSheetPresented = true
             }
             .padding(.bottom, 10)
+            .followsTabBar()
         }
         .background(Color.surface.ignoresSafeArea())
-        .sheet(item: $detailProduct) { product in
-            ProductDetailSheet(product: product)
+        .sheet(item: $detailProduct, onDismiss: {
+            // The cart opens only once the product sheet has gone: UIKit drops
+            // a presentation made while another sheet is still on screen.
+            if opensCartAfterDetail {
+                opensCartAfterDetail = false
+                cart.isCartSheetPresented = true
+            }
+        }) { product in
+            ProductDetailSheet(product: product, onGoToCart: {
+                opensCartAfterDetail = true
+                detailProduct = nil
+            })
         }
         .sheet(item: $ageGateProduct) { product in
             AgeGateSheet(product: product) {
@@ -67,14 +79,22 @@ struct CategoriesView: View {
 
     // MARK: - Sidebar
 
+    /// Nothing to show yet: the catalogue is still on its way.
+    private var isLoadingCatalogue: Bool { vm.isLoading && vm.products.isEmpty }
+
     private var sidebar: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 2) {
-                ForEach(tiles) { tile in
-                    sidebarItem(tile)
+            if isLoadingCatalogue {
+                CategorySidebarSkeleton()
+            } else {
+                LazyVStack(spacing: 2) {
+                    ForEach(tiles) { tile in
+                        sidebarItem(tile)
+                    }
                 }
+                .padding(.vertical, 6)
+                .transition(.opacity)
             }
-            .padding(.vertical, 6)
         }
         .frame(width: Self.sidebarWidth)
         .background(Color.surfaceSunken)
@@ -99,6 +119,8 @@ struct CategoriesView: View {
                                 image
                                     .resizable()
                                     .scaledToFill()
+                            } else if phase.error == nil && tile.previewImages.first?.isEmpty == false {
+                                ShimmerView()
                             } else {
                                 Color.surfaceMuted
                             }
@@ -136,31 +158,43 @@ struct CategoriesView: View {
     private var productPane: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(selectedTile?.name ?? "")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(.textPrimary)
-                        Spacer()
-                        Text("\(products.count) item\(products.count == 1 ? "" : "s")")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.textMuted)
+                if isLoadingCatalogue {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SkeletonBlock(width: 120, height: 17)
+                            .shimmering()
+                        ProductGridSkeleton(columns: 2, count: 6)
                     }
-                    .id("top")
+                    .padding(12)
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(selectedTile?.name ?? "")
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                            Text("\(products.count) item\(products.count == 1 ? "" : "s")")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.textMuted)
+                        }
+                        .id("top")
 
-                    LazyVGrid(columns: gridColumns, spacing: 10) {
-                        ForEach(products) { product in
-                            ProductCardView(
-                                product: product,
-                                onOpen: { detailProduct = product },
-                                onRequestAgeConfirmation: { ageGateProduct = product }
-                            )
+                        LazyVGrid(columns: gridColumns, spacing: 10) {
+                            ForEach(products) { product in
+                                ProductCardView(
+                                    product: product,
+                                    onOpen: { detailProduct = product },
+                                    onRequestAgeConfirmation: { ageGateProduct = product }
+                                )
+                            }
                         }
                     }
+                    .padding(12)
+                    .padding(.bottom, 12)
+                    .drivesTabBarVisibility(in: "categoriesScroll")
+                    .transition(.opacity)
                 }
-                .padding(12)
-                .padding(.bottom, 12)
             }
+            .coordinateSpace(.named("categoriesScroll"))
             .onChange(of: selectedCategoryID) { _, _ in
                 proxy.scrollTo("top", anchor: .top)
             }

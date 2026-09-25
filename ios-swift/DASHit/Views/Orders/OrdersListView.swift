@@ -59,9 +59,12 @@ struct OrdersListView: View {
                         action: ("Sign in", onOpenProfile)
                     )
                 } else if history.isLoading && history.orders.isEmpty {
-                    ProgressView()
-                        .tint(.brandOrange)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ScrollView {
+                        OrderListSkeleton()
+                            .padding(16)
+                    }
+                    .scrollDisabled(true)
+                    .transition(.opacity)
                 } else if history.orders.isEmpty {
                     emptyState(
                         symbol: "shippingbox",
@@ -82,7 +85,9 @@ struct OrdersListView: View {
                             }
                         }
                         .padding(16)
+                        .drivesTabBarVisibility(in: "ordersScroll")
                     }
+                    .coordinateSpace(.named("ordersScroll"))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -183,6 +188,8 @@ private struct OrderHistoryCard: View {
                             image
                                 .resizable()
                                 .scaledToFill()
+                        } else if phase.error == nil && !item.img.isEmpty {
+                            ShimmerView()
                         } else {
                             Color.surfaceMuted
                         }
