@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
-import com.dashit.app.core.design.FlyToCartManager
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.Product
@@ -107,31 +106,17 @@ fun ProductCard(
             }
 
             // Quantity Stepper (Bottom-Right overlay)
-            var stepperCenter by remember { mutableStateOf(Offset.Zero) }
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(5.dp)
-                    .onGloballyPositioned { coords ->
-                        val pos = coords.positionInRoot()
-                        stepperCenter = Offset(
-                            pos.x + coords.size.width / 2f,
-                            pos.y + coords.size.height / 2f
-                        )
-                    }
             ) {
                 QuantityStepper(
                     quantity = quantity,
                     size = StepperSize.COMPACT,
                     isEnabled = product.isAvailable,
-                    onAdd = {
-                        FlyToCartManager.trigger(product.img, stepperCenter)
-                        onAdd()
-                    },
-                    onIncrement = {
-                        FlyToCartManager.trigger(product.img, stepperCenter)
-                        onIncrement()
-                    },
+                    onAdd = onAdd,
+                    onIncrement = onIncrement,
                     onDecrement = onDecrement
                 )
             }
