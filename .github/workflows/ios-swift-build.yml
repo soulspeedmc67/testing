@@ -242,3 +242,30 @@ jobs:
           else
             echo "SUCCESS: Native Swift IPA uploaded to Apple TestFlight!"
           fi
+
+      - name: Upload Admin App to TestFlight
+        # Needs the admin profile, and an app for com.dashit.admin in App Store Connect.
+        if: env.ADMIN_PROVISION_PROFILE_BASE64 != '' && env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
+        env:
+          ADMIN_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_ADMIN_PROVISION_PROFILE_BASE64 }}
+          APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || '2P8Y532J2R' }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          CLEAN_KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
+          CLEAN_ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
+          mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys
+          printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${CLEAN_KEY_ID}.p8
+          printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > ~/.private_keys/AuthKey_${CLEAN_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${CLEAN_KEY_ID}.p8
+
+          if xcrun altool --upload-app \
+              --type ios \
+              --file ios-swift/build/DASHit-Admin.ipa \
+              --apiKey "$CLEAN_KEY_ID" \
+              --apiIssuer "$CLEAN_ISSUER_ID" \
+              --verbose; then
+            echo "SUCCESS: Admin IPA uploaded to Apple TestFlight!"
+          else
+            echo "WARNING: admin upload failed. Is there an app for com.dashit.admin in App Store Connect?"
+          fi
