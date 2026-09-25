@@ -251,7 +251,7 @@ fun CheckoutSheet(
                         )
 
                         Text(
-                            text = "Arriving in about $placedEta minutes at ${address.nickname}",
+                            text = "We'll show your arrival time once a rider picks it up",
                             color = DashitColors.TextMuted,
                             fontSize = 14.sp
                         )

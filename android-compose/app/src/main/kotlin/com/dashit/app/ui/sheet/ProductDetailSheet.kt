@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.sp
 import com.dashit.app.ui.components.ShimmerImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
-import com.dashit.app.core.design.FlyToCartManager
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.Product
@@ -373,31 +372,14 @@ fun ProductDetailSheet(
                             )
                         }
 
-                        var stepperCenter by remember { mutableStateOf(Offset.Zero) }
-                        Box(
-                            modifier = Modifier.onGloballyPositioned { coords ->
-                                val pos = coords.positionInRoot()
-                                stepperCenter = Offset(
-                                    pos.x + coords.size.width / 2f,
-                                    pos.y + coords.size.height / 2f
-                                )
-                            }
-                        ) {
-                            QuantityStepper(
-                                quantity = quantity,
-                                size = StepperSize.REGULAR,
-                                isEnabled = product.isAvailable,
-                                onAdd = {
-                                    FlyToCartManager.trigger(product.img, stepperCenter)
-                                    onAdd(product, selectedVariant)
-                                },
-                                onIncrement = {
-                                    FlyToCartManager.trigger(product.img, stepperCenter)
-                                    onIncrement(product, selectedVariant)
-                                },
-                                onDecrement = { onDecrement(product) }
-                            )
-                        }
+                        QuantityStepper(
+                            quantity = quantity,
+                            size = StepperSize.REGULAR,
+                            isEnabled = product.isAvailable,
+                            onAdd = { onAdd(product, selectedVariant) },
+                            onIncrement = { onIncrement(product, selectedVariant) },
+                            onDecrement = { onDecrement(product) }
+                        )
                     }
                 }
             }

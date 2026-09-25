@@ -103,6 +103,8 @@ class OrderRepository(
     // MARK: - Listeners
 
     private fun listenUserOrders(uid: String?) {
+        // Signed out there is nothing to wait for, so no skeleton either.
+        if (uid == null) _ordersLoaded.value = true
         if (uid == listeningUid) return
         listeningUid = uid
         ordersRegistration?.remove()

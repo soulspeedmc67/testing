@@ -95,7 +95,6 @@ import com.dashit.app.ui.checkout.CheckoutSheet
 import com.dashit.app.ui.components.BottomNavBar
 import com.dashit.app.ui.components.CategoryCollageTile
 import com.dashit.app.ui.components.FloatingCartBar
-import com.dashit.app.ui.components.FlyToCartOverlay
 import com.dashit.app.ui.components.HeroBanner
 import com.dashit.app.ui.components.NavigationTab
 import com.dashit.app.ui.components.ProductCard
@@ -538,8 +537,6 @@ fun StorefrontScreen(
         }
         }
 
-        // Parabolic Fly-To-Cart Badge Overlay (Always active at root)
-        FlyToCartOverlay()
     }
 }
 

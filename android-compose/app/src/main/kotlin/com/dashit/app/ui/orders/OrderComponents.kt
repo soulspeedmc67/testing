@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
@@ -217,8 +218,8 @@ fun OrderStatusPill(
             ) {
                 Icon(Icons.Filled.Close, contentDescription = null, tint = DashitColors.TextSecondary, modifier = Modifier.size(15.dp))
             }
-        } else {
-            // Minutes to the door, the orange block on the right.
+        } else if (stage == OrderStatus.OUT_FOR_DELIVERY) {
+            // Minutes to the door, only once a rider has the order.
             Column(
                 modifier = Modifier
                     .size(width = 44.dp, height = 40.dp)
@@ -231,6 +232,17 @@ fun OrderStatusPill(
                     Text("$minutes", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 18.sp)
                 }
                 Text("MIN", color = Color.White, fontSize = 8.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp, lineHeight = 9.sp)
+            }
+        } else {
+            // Before a rider has it there is no honest arrival time: just the way in.
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DashitColors.TextSecondary, modifier = Modifier.size(20.dp))
             }
         }
     }

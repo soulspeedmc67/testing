@@ -277,7 +277,8 @@ private fun OrderCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (!stage.isFinished) {
+            // The arrival time only once a rider has the order and is on the way.
+            if (stage == OrderStatus.OUT_FOR_DELIVERY) {
                 Text("ETA $eta MINS", color = DashitColors.BrandAccent, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
             }
         }
