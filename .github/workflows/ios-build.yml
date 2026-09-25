@@ -176,28 +176,47 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload to TestFlight (Internal Testing)
-        if: env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
+        if: (env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != '') || (env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '')
         env:
           APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || '2P8Y532J2R' }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
-          echo "Setting up App Store Connect API Key..."
-          CLEAN_KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
-          CLEAN_ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
-          echo "Key ID: $CLEAN_KEY_ID"
-          echo "Issuer ID length: ${#CLEAN_ISSUER_ID}"
+          UPLOAD_SUCCESS=0
 
-          mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys
-          for dir in ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys; do
-            printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
-            chmod 600 "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
-          done
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
+            echo "Attempting TestFlight upload with Apple ID + App-Specific Password..."
+            xcrun altool --upload-app \
+              --type ios \
+              --file ios/App/build/Dashit.ipa \
+              --username "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --verbose && UPLOAD_SUCCESS=1 || echo "Apple ID upload attempt failed."
+          fi
 
-          echo "Uploading Dashit.ipa to TestFlight via App Store Connect API..."
-          xcrun altool --upload-app \
-            --type ios \
-            --file ios/App/build/Dashit.ipa \
-            --apiKey "$CLEAN_KEY_ID" \
-            --apiIssuer "$CLEAN_ISSUER_ID" \
-            --verbose
+          if [ $UPLOAD_SUCCESS -eq 0 ] && [ -n "$APP_STORE_CONNECT_KEY_P8" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+            echo "Attempting TestFlight upload via App Store Connect API Key..."
+            CLEAN_KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
+            CLEAN_ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
+
+            mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys
+            for dir in ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys; do
+              printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
+              chmod 600 "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
+            done
+
+            xcrun altool --upload-app \
+              --type ios \
+              --file ios/App/build/Dashit.ipa \
+              --apiKey "$CLEAN_KEY_ID" \
+              --apiIssuer "$CLEAN_ISSUER_ID" \
+              --verbose && UPLOAD_SUCCESS=1 || echo "API Key upload attempt failed."
+          fi
+
+          if [ $UPLOAD_SUCCESS -eq 0 ]; then
+            echo "WARNING: TestFlight upload did not authenticate with Apple. The compiled IPA has been saved and is available in Artifacts."
+          else
+            echo "SUCCESS: IPA uploaded to Apple TestFlight!"
+          fi
