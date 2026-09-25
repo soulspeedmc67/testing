@@ -721,7 +721,7 @@ public struct AdminDashboardView: View {
                 Text(offer.title)
                     .font(.system(size: 13))
                     .foregroundColor(.primary)
-                Text("\(offer.discountPercent)% OFF • Min Order ₹\(Int(offer.minOrder))")
+                Text("\(offer.discountPercent)% OFF • Min Order ₹\(Int(offer.minOrder ?? 199.0))")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -729,7 +729,7 @@ public struct AdminDashboardView: View {
             Spacer()
 
             Toggle("", isOn: Binding(
-                get: { offer.active },
+                get: { offer.active ?? true },
                 set: { vm.toggleOffer(offerId: offer.id, active: $0) }
             ))
             .labelsHidden()
