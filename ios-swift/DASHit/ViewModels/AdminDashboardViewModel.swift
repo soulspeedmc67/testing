@@ -114,6 +114,31 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
     }
 
+    /// Stops every live listener, e.g. when the owner signs out.
+    public func stopListeners() {
+        productListener?.remove()
+        distributorListener?.remove()
+        orderListener?.remove()
+        driverListener?.remove()
+        offerListener?.remove()
+        storeConfigListener?.remove()
+        productListener = nil
+        distributorListener = nil
+        orderListener = nil
+        driverListener = nil
+        offerListener = nil
+        storeConfigListener = nil
+    }
+
+    /// Listens again from scratch, after the owner signs in: listeners opened
+    /// before that were refused by the database rules.
+    public func restartListeners() {
+        stopListeners()
+        knownOrderIds = []
+        isFirstOrderFetch = true
+        startListeners()
+    }
+
     public func startListeners() {
         isLoading = true
 
