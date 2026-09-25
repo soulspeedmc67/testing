@@ -54,6 +54,14 @@ jobs:
           mkdir -p out
           cp -r .next/server/pages/* out/ 2>/dev/null || true
           cp -r public/* out/ 2>/dev/null || true
+          # Make sure the app launches straight into the Admin Dashboard
+          if [ -f out/admin/index.html ]; then
+            cp out/admin/index.html out/index.html
+            echo "Set out/index.html to out/admin/index.html"
+          elif [ -f out/xcyop/index.html ]; then
+            cp out/xcyop/index.html out/index.html
+            echo "Set out/index.html to out/xcyop/index.html"
+          fi
 
       - name: Sync Capacitor iOS Assets
         run: |
