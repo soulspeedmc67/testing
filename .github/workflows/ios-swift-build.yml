@@ -107,7 +107,7 @@ jobs:
             -archivePath build/DASHit.xcarchive \
             -skipMacroValidation \
             -skipPackagePluginValidation \
-            CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER \
+            CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 100)) \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -130,7 +130,8 @@ jobs:
             echo "Signing Native Swift App with Apple Distribution Certificate..."
             cp "$PP_PATH" Payload/DASHit.app/embedded.mobileprovision
 
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" Payload/DASHit.app/Info.plist 2>/dev/null || true
+            BUILD_VER=$((GITHUB_RUN_NUMBER + 100))
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_VER}" Payload/DASHit.app/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" Payload/DASHit.app/Info.plist || true
 
             # Extract exact entitlements from the provisioning profile
