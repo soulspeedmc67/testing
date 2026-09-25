@@ -292,8 +292,8 @@ struct StorefrontHomeView: View {
             .padding(.horizontal, 16)
     }
 
-    /// Welcome banner with the brand's rider artwork. Every order qualifies:
-    /// the ₹299 minimum is above the ₹199 free-delivery threshold.
+    /// Welcome banner with the brand's rider artwork.
+    /// Free delivery on orders above ₹299.
     private var welcomeBanner: some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 

@@ -40,6 +40,18 @@ export const ORDER_STATUS = {
 
 /* ------------------------------------------------------------------ products */
 
+export function assignDefaultDistributor(p) {
+  if (p && p.distributor) return p.distributor;
+  const cat = String(p?.cat || "").toLowerCase();
+  const brand = String(p?.brand || "").toLowerCase();
+  if (cat.includes("dairy") || brand.includes("amul")) return "Amul Valley Dairy Logistics";
+  if (cat.includes("bakery") || brand.includes("kandur") || cat.includes("bread")) return "Local Kandur Bakeries";
+  if (cat.includes("fruit") || cat.includes("veg") || brand.includes("farm") || brand.includes("orchard")) return "Anantnag Fresh Farm Orchards";
+  if (cat.includes("care") || cat.includes("clean") || brand.includes("vim") || brand.includes("surf") || brand.includes("dove")) return "Hindustan Unilever Direct";
+  if (cat.includes("instant") || brand.includes("nestle") || brand.includes("maggi") || brand.includes("itc")) return "ITC & Nestlé Supply Hub";
+  return "Kashmir Wholesale FMCG";
+}
+
 export async function fetchProducts() {
   let firestoreList = [];
   const db = getDb();
@@ -54,18 +66,26 @@ export async function fetchProducts() {
     }
   }
 
+  let finalProducts = firestoreList;
   // Merge locally created custom products at the top
   if (typeof window !== "undefined") {
     try {
       const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
       if (custom.length > 0) {
         const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
-        return [...custom, ...firestoreList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
+        finalProducts = [...custom, ...firestoreList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
+      }
+      const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
+      if (deletedIds.size > 0) {
+        finalProducts = finalProducts.filter((p) => !deletedIds.has(String(p.id || p.barcode)));
       }
     } catch (e) {}
   }
 
-  return firestoreList;
+  return finalProducts.map((p) => ({
+    ...p,
+    distributor: p.distributor || assignDefaultDistributor(p),
+  }));
 }
 
 /** Live catalogue — admin edits appear in the storefront without a refresh. */
@@ -81,9 +101,17 @@ export function watchProducts(callback) {
           const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
           merged = [...custom, ...live.filter((p) => !customIds.has(String(p.id || p.barcode)))];
         }
+        const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
+        if (deletedIds.size > 0) {
+          merged = merged.filter((p) => !deletedIds.has(String(p.id || p.barcode)));
+        }
       } catch (e) {}
     }
-    callback(merged);
+    const enriched = merged.map((p) => ({
+      ...p,
+      distributor: p.distributor || assignDefaultDistributor(p),
+    }));
+    callback(enriched);
   };
 
   const db = getDb();
@@ -135,6 +163,12 @@ export async function upsertProduct(product) {
       const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
       const updated = [itemToSave, ...custom.filter((p) => String(p.id || p.barcode) !== prodId)];
       localStorage.setItem("dashit_custom_products", JSON.stringify(updated));
+
+      // Remove from deleted list if re-added
+      const deleted = JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]");
+      const unDeleted = deleted.filter((dId) => String(dId) !== prodId);
+      localStorage.setItem("dashit_deleted_products", JSON.stringify(unDeleted));
+
       window.dispatchEvent(new CustomEvent("dashit_products_updated"));
     } catch (e) {
       console.warn("localStorage save error:", e);
@@ -162,6 +196,14 @@ export async function deleteProduct(productId) {
       const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
       const filtered = custom.filter((p) => String(p.id || p.barcode) !== targetId);
       localStorage.setItem("dashit_custom_products", JSON.stringify(filtered));
+
+      // Persist deleted product ID so default/seed items also stay deleted
+      const deletedIds = JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]");
+      if (!deletedIds.includes(targetId)) {
+        deletedIds.push(targetId);
+        localStorage.setItem("dashit_deleted_products", JSON.stringify(deletedIds));
+      }
+
       window.dispatchEvent(new CustomEvent("dashit_products_updated"));
     } catch (e) {}
   }
@@ -169,6 +211,8 @@ export async function deleteProduct(productId) {
   const db = getDb();
   if (!db) return;
   try {
+    // Soft delete then hard delete to ensure real-time query listeners and persistent index reflect removal
+    await setDoc(doc(db, "products", targetId), { active: false, deletedAt: serverTimestamp() }, { merge: true });
     await deleteDoc(doc(db, "products", targetId));
   } catch (e) {
     console.warn("deleteProduct Firestore warning:", e?.message);
@@ -246,6 +290,12 @@ export async function bulkUpdateProductStock(stockUpdates = []) {
             custom[idx].stock = Math.max(0, Number(up.newStock));
           } else if (up.qtyToAdd !== undefined) {
             custom[idx].stock = Math.max(0, (Number(custom[idx].stock) || 0) + Number(up.qtyToAdd));
+          }
+          if (up.product) {
+            if (up.product.distributor) custom[idx].distributor = up.product.distributor;
+            if (up.product.price !== undefined) custom[idx].price = up.product.price;
+            if (up.product.originalPrice !== undefined) custom[idx].originalPrice = up.product.originalPrice;
+            if (up.product.cat) custom[idx].cat = up.product.cat;
           }
         } else if (up.product) {
           custom.unshift({
@@ -433,6 +483,214 @@ export async function deleteOffer(offerId) {
   if (!db) return;
   await deleteDoc(doc(db, "offers", String(offerId)));
 }
+
+/* ---------------------------------------------------------------- distributors */
+
+export const DEFAULT_DISTRIBUTORS = [
+  {
+    id: "DIST-KASHMIR-FMCG",
+    name: "Kashmir Wholesale FMCG",
+    contactPerson: "Bashir Ahmad",
+    phone: "+91 94190 12345",
+    email: "bashir.fmcg@dashit.store",
+    address: "KP Road, Near Bus Stand, Anantnag",
+    notes: "Primary supplier for branded packaged goods, snacks, and daily staples.",
+    leadTime: "Same Day",
+    active: true,
+  },
+  {
+    id: "DIST-AMUL-VALLEY",
+    name: "Amul Valley Dairy Logistics",
+    contactPerson: "Tariq Mir",
+    phone: "+91 97970 54321",
+    email: "tariq.amul@dashit.store",
+    address: "Industrial Estate, Anantnag",
+    notes: "Delivers chilled milk packets, fresh butter, paneer, and curd daily at 6:30 AM.",
+    leadTime: "Daily 6:30 AM",
+    active: true,
+  },
+  {
+    id: "DIST-KANDUR-BAKERY",
+    name: "Local Kandur Bakeries",
+    contactPerson: "Ghulam Nabi",
+    phone: "+91 91498 76543",
+    email: "kandur.orders@dashit.store",
+    address: "Reshi Bazar, Anantnag",
+    notes: "Traditional artisan Kashmiri bakery: fresh Lavas, Roth, Sheermal, and Bakarkhani.",
+    leadTime: "Twice Daily (Morning / Evening)",
+    active: true,
+  },
+  {
+    id: "DIST-ANANTNAG-ORCHARDS",
+    name: "Anantnag Fresh Farm Orchards",
+    contactPerson: "Shabir Lone",
+    phone: "+91 99065 11223",
+    email: "shabir.orchards@dashit.store",
+    address: "Mattan Fruit Mandi, Anantnag",
+    notes: "Direct farm fresh apples, seasonal cherries, pears, and fresh valley greens.",
+    leadTime: "Next Day 7:00 AM",
+    active: true,
+  },
+  {
+    id: "DIST-HUL-DIRECT",
+    name: "Hindustan Unilever Direct",
+    contactPerson: "Manzoor Dar",
+    phone: "+91 94191 88990",
+    email: "hul.anantnag@dashit.store",
+    address: "Nai Basti, Anantnag",
+    notes: "Direct wholesale distributor for soaps, detergents, shampoos, and household essentials.",
+    leadTime: "2 Days",
+    active: true,
+  },
+  {
+    id: "DIST-ITC-NESTLE",
+    name: "ITC & Nestlé Supply Hub",
+    contactPerson: "Farooq Shah",
+    phone: "+91 96222 33445",
+    email: "itc.farooq@dashit.store",
+    address: "Bijbehara Highway Link, Anantnag",
+    notes: "Instant noodles, chocolates, confectionery, beverages, and wheat flour.",
+    leadTime: "Every 2 Days",
+    active: true,
+  },
+];
+
+export async function fetchDistributors() {
+  let firestoreList = [];
+  const db = getDb();
+  if (db) {
+    try {
+      const snap = await getDocs(
+        query(collection(db, "distributors"), where("active", "==", true))
+      );
+      firestoreList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn("fetchDistributors Firestore warning:", e?.message);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_distributors") || "[]");
+      if (custom.length > 0) {
+        const customIds = new Set(custom.map((c) => String(c.id)));
+        return [...custom, ...firestoreList.filter((d) => !customIds.has(String(d.id)))];
+      }
+    } catch (e) {}
+  }
+
+  return firestoreList.length > 0 ? firestoreList : DEFAULT_DISTRIBUTORS;
+}
+
+export function watchDistributors(callback) {
+  let currentLive = [];
+
+  const emitMerged = (live = []) => {
+    let merged = live;
+    if (typeof window !== "undefined") {
+      try {
+        let stored = localStorage.getItem("dashit_distributors");
+        if (!stored) {
+          localStorage.setItem("dashit_distributors", JSON.stringify(DEFAULT_DISTRIBUTORS));
+          stored = JSON.stringify(DEFAULT_DISTRIBUTORS);
+        }
+        const custom = JSON.parse(stored || "[]");
+        if (custom.length > 0) {
+          const customIds = new Set(custom.map((c) => String(c.id)));
+          merged = [...custom, ...live.filter((d) => !customIds.has(String(d.id)))];
+        }
+      } catch (e) {}
+    }
+    if (merged.length === 0) merged = DEFAULT_DISTRIBUTORS;
+    callback(merged);
+  };
+
+  const db = getDb();
+  let unsub = () => {};
+  if (db) {
+    try {
+      unsub = onSnapshot(
+        query(collection(db, "distributors"), where("active", "==", true)),
+        (snap) => {
+          currentLive = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          emitMerged(currentLive);
+        },
+        (err) => {
+          console.warn("watchDistributors snapshot warning:", err?.message);
+          emitMerged(currentLive);
+        }
+      );
+    } catch (e) {
+      console.warn("watchDistributors init warning:", e?.message);
+    }
+  }
+
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = () => emitMerged(currentLive);
+    window.addEventListener("dashit_distributors_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    setTimeout(() => emitMerged(currentLive), 10);
+  }
+
+  return () => {
+    if (typeof unsub === "function") unsub();
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_distributors_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+  };
+}
+
+export async function upsertDistributor(distributor) {
+  const { id, ...data } = distributor;
+  const distId = id ? String(id) : `DIST-${Date.now()}`;
+  const itemToSave = { id: distId, active: true, ...data };
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = JSON.parse(localStorage.getItem("dashit_distributors") || JSON.stringify(DEFAULT_DISTRIBUTORS));
+      const updated = [itemToSave, ...stored.filter((d) => String(d.id) !== distId)];
+      localStorage.setItem("dashit_distributors", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("dashit_distributors_updated"));
+    } catch (e) {
+      console.warn("localStorage upsertDistributor error:", e);
+    }
+  }
+
+  const db = getDb();
+  if (db) {
+    try {
+      const payload = { active: true, ...data, updatedAt: serverTimestamp() };
+      await setDoc(doc(db, "distributors", distId), payload, { merge: true });
+    } catch (err) {
+      console.warn("Firestore upsertDistributor warning:", err?.message);
+    }
+  }
+
+  return distId;
+}
+
+export async function deleteDistributor(distributorId) {
+  const targetId = String(distributorId);
+  if (typeof window !== "undefined") {
+    try {
+      const stored = JSON.parse(localStorage.getItem("dashit_distributors") || JSON.stringify(DEFAULT_DISTRIBUTORS));
+      const filtered = stored.filter((d) => String(d.id) !== targetId);
+      localStorage.setItem("dashit_distributors", JSON.stringify(filtered));
+      window.dispatchEvent(new CustomEvent("dashit_distributors_updated"));
+    } catch (e) {}
+  }
+
+  const db = getDb();
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, "distributors", targetId));
+  } catch (e) {
+    console.warn("deleteDistributor Firestore warning:", e?.message);
+  }
+}
+
 
 /* -------------------------------------------------------------------- orders */
 

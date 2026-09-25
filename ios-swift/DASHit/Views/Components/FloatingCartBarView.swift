@@ -56,9 +56,6 @@ struct FloatingCartBarView: View {
     }
 
     private var subtitle: String {
-        guard cart.bill.isMinOrderSatisfied else {
-            return "Add \(CurrencyFormatter.format(cart.bill.amountNeededForMinOrder)) more to order"
-        }
         let count = cart.totalQuantity
         return "\(count) item\(count == 1 ? "" : "s") · \(CurrencyFormatter.format(cart.bill.grandTotal))"
     }
