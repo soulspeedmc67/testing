@@ -88,6 +88,8 @@ struct CategoryCollageTile: View {
                         image
                             .resizable()
                             .scaledToFill()
+                    } else if phase.error == nil && url?.isEmpty == false {
+                        ShimmerView()
                     } else {
                         Color.surfaceMuted
                     }
