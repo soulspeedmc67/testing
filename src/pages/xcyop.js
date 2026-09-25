@@ -58,7 +58,6 @@ import {
   watchDistributors,
   upsertDistributor,
   deleteDistributor,
-  DEFAULT_DISTRIBUTORS,
   ORDER_STATUS
 } from "../lib/db";
 import { searchOffByBarcode, searchOffByQuery } from "../lib/openFoodFacts";
@@ -1047,26 +1046,26 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
          rather than being told it worked. */
       if (res?.failures?.length) {
         showToast(
-          `${res.count} of ${res.attempted} saved — ${res.failures.length} rejected (${res.failures[0].reason}). Nothing else was changed.`,
+          `${res.count} of ${res.attempted} saved. ${res.failures.length} didn't save (${res.failures[0].reason}).`,
           8000
         );
         return res;
       }
       if (res && res.syncedToServer === false) {
         showToast(
-          `Saved on this device only — the store database did not accept the write. Check you are signed in as an admin.`,
+          `Only saved on this device. The shop's online list didn't accept it, so check you're signed in as the owner and try again.`,
           8000
         );
         return { ...res, success: false };
       }
 
       showToast(
-        `Imported ${summary.approved} items (${summary.newItems} new, ${summary.restocks} restocked, ${summary.units} units).`
+        `Saved ${summary.approved} ${summary.approved === 1 ? "item" : "items"} (${summary.units} units).`
       );
       setActiveTab("inventory");
       return res;
     } catch (err) {
-      showToast(`Import failed: ${err?.message || "Please try again."}`);
+      showToast(`Couldn't save: ${err?.message || "Please try again."}`);
       return { success: false };
     }
   };
@@ -1239,18 +1238,18 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       const inwardRes = await bulkUpdateProductStock(updates);
       if (inwardRes?.failures?.length) {
         showToast(
-          `${inwardRes.count} of ${inwardRes.attempted} saved — ${inwardRes.failures.length} rejected by the store database.`,
+          `${inwardRes.count} of ${inwardRes.attempted} saved. ${inwardRes.failures.length} didn't save.`,
           8000
         );
         return;
       }
       const totalUnits = batchInwardList.reduce((acc, curr) => acc + (curr.qtyToAdd || 1), 0);
-      showToast(`Restocked +${totalUnits} units across ${batchInwardList.length} products.`);
+      showToast(`Added ${totalUnits} units to ${batchInwardList.length} ${batchInwardList.length === 1 ? "item" : "items"}.`);
       setBatchInwardList([]);
       setShowBatchScanner(false);
       setActiveTab("inventory");
     } catch (err) {
-      showToast(`Batch update notice: ${err?.message}`);
+      showToast(`Couldn't save: ${err?.message || "Please try again."}`);
     }
   };
 
@@ -1260,14 +1259,14 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       await upsertDistributor(distData);
       setToastMessage({
         type: "success",
-        title: "Distributor Saved",
-        description: `Successfully saved ${distData.name}.`,
+        title: "Saved",
+        description: `${distData.name} is saved.`,
       });
     } catch (e) {
       setToastMessage({
         type: "error",
-        title: "Error Saving",
-        description: e.message || "Failed to save distributor.",
+        title: "Couldn't save",
+        description: e.message || "Please try again.",
       });
     }
   };
@@ -1277,14 +1276,14 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       await deleteDistributor(distId);
       setToastMessage({
         type: "success",
-        title: "Distributor Removed",
-        description: "Distributor was successfully removed.",
+        title: "Removed",
+        description: "The distributor is removed. Their items are still in your stock.",
       });
     } catch (e) {
       setToastMessage({
         type: "error",
-        title: "Error Removing",
-        description: e.message || "Failed to remove distributor.",
+        title: "Couldn't remove",
+        description: e.message || "Please try again.",
       });
     }
   };
@@ -1293,10 +1292,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     try {
       const payload =
         typeof distInput === "string"
-          ? { name: distInput, active: true, leadTime: "Same Day" }
-          : { active: true, leadTime: "Same Day", ...distInput };
+          ? { name: distInput, active: true }
+          : { active: true, ...distInput };
       await upsertDistributor(payload);
-      showToast(`Added supplier "${payload.name}".`);
+      showToast(`Added ${payload.name} to your distributors.`);
     } catch (e) {
       console.warn("Failed to quick add distributor:", e);
     }
@@ -1452,7 +1451,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       activeOrdersCount={activeOrdersCount}
       lowStockCount={inventorySummary.lowStockCount}
       catalogueCount={catalogue.length}
-      distributorsCount={distributors.length}
+      distributorsCount={distributors.filter((d) => !d.isSelf).length}
       newOrderAlert={newOrderAlert}
       onDismissNewOrderAlert={() => setNewOrderAlert(null)}
       toastMessage={toastMessage}
@@ -1660,6 +1659,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           isSearching={isSearchingOff}
           results={offResults}
           onImportProduct={handleImportOffProduct}
+          onOpenCsvImport={() => setActiveTab("csv")}
           darkMode={darkMode}
         />
       )}

@@ -15,6 +15,7 @@ public struct AdminDashboardView: View {
     @State private var isBatchInwardSheetOpen: Bool = false
     @State private var productToDelete: Product? = nil
     @State private var productToEdit: Product? = nil
+    @State private var distributorToRemove: Distributor? = nil
 
     public var onSwitchToCustomer: (() -> Void)? = nil
 
@@ -53,6 +54,8 @@ public struct AdminDashboardView: View {
                         offersTabContent
                     case .batchInward:
                         batchInwardTabContent
+                    case .importCSV:
+                        AdminCSVImportView(vm: vm)
                     }
                 }
             }
@@ -64,9 +67,11 @@ public struct AdminDashboardView: View {
                 AssignDriverSheetView(order: order, vm: vm)
             }
             .sheet(isPresented: $isAddSupplierSheetOpen) {
-                AddSupplierSheetView { name, contact, phone, cat, lead, notes in
-                    vm.addDistributor(name: name, contact: contact, phone: phone, category: cat, leadTime: lead, notes: notes)
+                AddSupplierSheetView { name, phone, address, notes in
+                    vm.addDistributor(name: name, phone: phone, address: address, notes: notes)
                 }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isAddProductSheetOpen) {
                 AddProductSheetView(vm: vm, editingProduct: productToEdit)
@@ -85,7 +90,27 @@ public struct AdminDashboardView: View {
                 }
             }
             .confirmationDialog(
-                "Delete Product from Dark Store?",
+                "Remove \(distributorToRemove?.name ?? "")?",
+                isPresented: Binding(
+                    get: { distributorToRemove != nil },
+                    set: { if !$0 { distributorToRemove = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let d = distributorToRemove {
+                    Button("Remove", role: .destructive) {
+                        vm.removeDistributor(d)
+                        distributorToRemove = nil
+                    }
+                    Button("Keep", role: .cancel) {
+                        distributorToRemove = nil
+                    }
+                }
+            } message: {
+                Text("Their items stay in your stock. Only the name is removed from this list.")
+            }
+            .confirmationDialog(
+                "Delete this item?",
                 isPresented: Binding(
                     get: { productToDelete != nil },
                     set: { if !$0 { productToDelete = nil } }
@@ -103,7 +128,7 @@ public struct AdminDashboardView: View {
                 }
             } message: {
                 if let p = productToDelete {
-                    Text("This will remove \(p.name) from warehouse shelves and customer catalogue immediately.")
+                    Text("\(p.name) will be removed from the shop straight away.")
                 }
             }
         }
@@ -384,7 +409,7 @@ public struct AdminDashboardView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
-                        TextField("Search item, brand, supplier...", text: $vm.searchQuery)
+                        TextField("Search items or distributors", text: $vm.searchQuery)
                             .font(.system(size: 14))
                         if !vm.searchQuery.isEmpty {
                             Button(action: { vm.searchQuery = "" }) {
@@ -415,11 +440,11 @@ public struct AdminDashboardView: View {
                 }
                 .padding(.horizontal, 16)
 
-                // Category & Supplier Filters
+                // Distributor filter
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         Button(action: { vm.selectedDistributor = nil }) {
-                            Text("All Suppliers")
+                            Text("All")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundColor(vm.selectedDistributor == nil ? .white : .primary)
                                 .padding(.horizontal, 12)
@@ -461,9 +486,9 @@ public struct AdminDashboardView: View {
 
     private var metricsStripView: some View {
         HStack(spacing: 8) {
-            metricCard(title: "TOTAL SKUS", value: "\(vm.totalProductsCount)", color: .blue)
+            metricCard(title: "ITEMS", value: "\(vm.totalProductsCount)", color: .blue)
             metricCard(title: "IN STOCK", value: "\(vm.totalStockUnits)", color: .green)
-            metricCard(title: "₹ VALUATION", value: "₹\(Int(vm.totalStockValuation))", color: .purple)
+            metricCard(title: "STOCK VALUE", value: "₹\(Int(vm.totalStockValuation))", color: .purple)
             metricCard(title: "LOW STOCK", value: "\(vm.lowStockCount)", color: .orange)
         }
         .padding(.horizontal, 16)
@@ -503,7 +528,7 @@ public struct AdminDashboardView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .lineLimit(1)
 
-                Text(product.distributor ?? "Wholesale FMCG")
+                Text(Distributor.resolvedName(product.distributor))
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
@@ -619,14 +644,19 @@ public struct AdminDashboardView: View {
     private var distributorsTabContent: some View {
         ScrollView {
             VStack(spacing: 14) {
-                HStack {
-                    Text("Wholesale Vendors (\(vm.distributors.count))")
-                        .font(.system(size: 18, weight: .bold))
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Distributors")
+                            .font(.system(size: 18, weight: .bold))
+                        Text("The people you buy stock from.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    }
                     Spacer()
-                    Button("+ Add Supplier") {
+                    Button("+ Add") {
                         isAddSupplierSheetOpen = true
                     }
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.orange)
                 }
                 .padding(.horizontal, 16)
@@ -638,25 +668,59 @@ public struct AdminDashboardView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 30)
+
+                if vm.distributors.count <= 1 {
+                    Text("Add the people you buy from, so you can see whose stock is whose.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
             }
+            .padding(.bottom, 30)
         }
     }
 
     private func distributorCard(dist: Distributor) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        let stat = vm.supplierStats.first { $0.name == dist.name }
+        let items = stat?.skuCount ?? 0
+        let units = stat?.totalUnits ?? 0
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Image(systemName: dist.isSelf ? "person.fill" : "shippingbox.fill")
+                    .font(.system(size: 15))
+                    .foregroundColor(dist.isSelf ? .orange : .primary)
+                    .frame(width: 38, height: 38)
+                    .background(dist.isSelf ? Color.orange.opacity(0.12) : Color(uiColor: .tertiarySystemFill))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(dist.name)
                         .font(.system(size: 15, weight: .bold))
-                    Text(dist.category)
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                    if dist.isSelf {
+                        Text("My own stock")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                    } else {
+                        if !dist.phone.isEmpty {
+                            Text(dist.phone)
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        if !dist.address.isEmpty {
+                            Text(dist.address)
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
 
                 Spacer()
 
-                if let url = URL(string: "tel:\(dist.phone.filter { "0123456789+".contains($0) })") {
+                if !dist.isSelf, !dist.phone.isEmpty,
+                   let url = URL(string: "tel:\(dist.phone.filter { "0123456789+".contains($0) })") {
                     Link(destination: url) {
                         Image(systemName: "phone.fill")
                             .font(.system(size: 13))
@@ -665,12 +729,44 @@ public struct AdminDashboardView: View {
                             .background(Color.green)
                             .clipShape(Circle())
                     }
+                    .accessibilityLabel("Call \(dist.name)")
                 }
             }
 
-            Text("Contact: \(dist.contact) • Lead Time: \(dist.leadTime)")
-                .font(.system(size: 12))
-                .foregroundColor(.secondary)
+            HStack {
+                Button {
+                    vm.selectedDistributor = dist.name
+                    vm.selectedTab = .inventory
+                } label: {
+                    Text("\(items) \(items == 1 ? "item" : "items") · \(units) units")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(uiColor: .tertiarySystemFill))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                if !dist.isSelf {
+                    Button {
+                        distributorToRemove = dist
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 14))
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .accessibilityLabel("Remove \(dist.name)")
+                }
+            }
+
+            if !dist.isSelf && !dist.notes.isEmpty {
+                Text(dist.notes)
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(14)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
@@ -910,7 +1006,7 @@ struct AddProductSheetView: View {
     @State private var price: String = "99"
     @State private var originalPrice: String = "120"
     @State private var cat: String = "Staples"
-    @State private var distributor: String = "Kashmir Wholesale FMCG"
+    @State private var distributor: String = Distributor.selfName
     @State private var img: String = ""
     @State private var stock: String = "50"
     @State private var badge: String = ""
@@ -928,7 +1024,7 @@ struct AddProductSheetView: View {
                             Text(c).tag(c)
                         }
                     }
-                    Picker("Wholesale Supplier", selection: $distributor) {
+                    Picker("Distributor", selection: $distributor) {
                         ForEach(vm.distributors) { d in
                             Text(d.name).tag(d.name)
                         }
@@ -1043,28 +1139,26 @@ struct StoreControlSheetView: View {
 struct AddSupplierSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    @State private var contact = ""
     @State private var phone = ""
-    @State private var category = "Wholesale Staples"
-    @State private var leadTime = "1 day"
+    @State private var address = ""
     @State private var notes = ""
 
-    var onSave: (String, String, String, String, String, String) -> Void
+    var onSave: (String, String, String, String) -> Void
+
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Supplier Details") {
-                    TextField("Company Name", text: $name)
-                    TextField("Contact Person", text: $contact)
-                    TextField("Phone Number", text: $phone)
+                Section {
+                    TextField("Name", text: $name)
+                    TextField("Phone (optional)", text: $phone)
                         .keyboardType(.phonePad)
-                    TextField("Category", text: $category)
-                    TextField("Lead Time (e.g. 1 day)", text: $leadTime)
-                    TextField("Delivery Notes", text: $notes)
+                    TextField("Address (optional)", text: $address)
+                    TextField("Notes (optional)", text: $notes)
                 }
             }
-            .navigationTitle("New Supplier")
+            .navigationTitle("Add distributor")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1072,12 +1166,10 @@ struct AddSupplierSheetView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if !name.isEmpty {
-                            onSave(name, contact, phone, category, leadTime, notes)
-                            dismiss()
-                        }
+                        onSave(trimmedName, phone, address, notes)
+                        dismiss()
                     }
-                    .disabled(name.isEmpty)
+                    .disabled(trimmedName.isEmpty)
                 }
             }
         }
@@ -1173,7 +1265,7 @@ struct AddOfferSheetView: View {
 
 struct BatchInwardSheetView: View {
     @ObservedObject var vm: AdminDashboardViewModel
-    @State private var selectedDistributor: String = "Kashmir Wholesale FMCG"
+    @State private var selectedDistributor: String = Distributor.selfName
     @State private var invoiceNumber: String = ""
     @State private var quantities: [String: Int] = [:]
 
@@ -1181,34 +1273,34 @@ struct BatchInwardSheetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Incoming Shipment Log")
+                    Text("Add many at once")
                         .font(.system(size: 16, weight: .bold))
-                    Text("Select a wholesale supplier and apply stock additions to warehouse inventory.")
+                    Text("Pick who the stock is from, then add to each item.")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)
 
-                    Picker("Supplier", selection: $selectedDistributor) {
+                    Picker("From", selection: $selectedDistributor) {
                         ForEach(vm.distributors) { d in
                             Text(d.name).tag(d.name)
                         }
                     }
                     .pickerStyle(.menu)
 
-                    TextField("Invoice / PO Number", text: $invoiceNumber)
+                    TextField("Bill number (optional)", text: $invoiceNumber)
                         .textFieldStyle(.roundedBorder)
                 }
                 .padding(14)
                 .background(Color(uiColor: .secondarySystemGroupedBackground))
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                let supplierProducts = vm.products.filter { ($0.distributor ?? "") == selectedDistributor }
+                let supplierProducts = vm.products.filter { Distributor.resolvedName($0.distributor) == selectedDistributor }
 
                 ForEach(supplierProducts) { prod in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(prod.name)
                                 .font(.system(size: 13, weight: .semibold))
-                            Text("Current: \(prod.stock ?? 10) in stock")
+                            Text("In stock: \(prod.stock ?? 10)")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
@@ -1244,7 +1336,7 @@ struct BatchInwardSheetView: View {
                     vm.processBatchInward(distributor: selectedDistributor, invoice: invoiceNumber, increments: quantities)
                     quantities.removeAll()
                 }) {
-                    Text("Apply Inward Stock to Warehouse")
+                    Text("Save stock")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)

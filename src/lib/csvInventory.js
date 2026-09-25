@@ -358,7 +358,9 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
       (name && byName.get(name.toLowerCase())) ||
       null;
 
-    const assignedDistributor = record.distributor || defaultDistributor || (match ? match.distributor : "");
+    /* The distributor picked for the whole file wins; a distributor column is
+       only used when nothing was picked. */
+    const assignedDistributor = defaultDistributor || record.distributor || (match ? match.distributor : "");
 
     const price = parseAmount(record.price);
     const originalPrice = parseAmount(record.originalPrice);
@@ -379,7 +381,7 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
         changes.push(`Category ${match.cat} → ${record.cat}`);
       }
       if (assignedDistributor && match.distributor && assignedDistributor !== match.distributor) {
-        changes.push(`Distributor ${match.distributor} → ${assignedDistributor}`);
+        changes.push(`From ${match.distributor} → ${assignedDistributor}`);
       }
     }
 
@@ -504,10 +506,10 @@ export function productsToCsv(products = []) {
   return `${header}\n${body}\n`;
 }
 
-export const CSV_TEMPLATE = `barcode,name,category,distributor,quantity,price,mrp,unit,brand,badge,image
-,Fresh Onion,Vegetables,Anantnag Fresh Farm Orchards,40,35,45,1 kg,Local Farm,Daily Staple,
-,Amul Gold Full Cream Milk,Dairy,Amul Valley Dairy Logistics,60,36,38,500 ml,Amul,Full Cream,
-,Vim Dishwash Gel Lemon,Kitchen Care,Hindustan Unilever Direct,25,115,130,500 ml,Vim,Bestseller,
+export const CSV_TEMPLATE = `name,category,quantity,price,mrp,unit,brand,barcode
+Onion,Vegetables,40,35,45,1 kg,,
+Full Cream Milk,Dairy,60,36,38,500 ml,Amul,
+Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,
 `;
 
 export function downloadCsv(filename, contents) {

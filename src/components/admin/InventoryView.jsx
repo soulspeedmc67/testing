@@ -84,7 +84,7 @@ export default function InventoryView({
     catalogue.forEach((p) => {
       if (p.distributor) set.add(p.distributor);
     });
-    return ["All", ...Array.from(set), "Unassigned"];
+    return ["All", ...Array.from(set)];
   }, [distributors, catalogue]);
 
   // Distributor Stock & Valuation Breakdown
@@ -97,7 +97,7 @@ export default function InventoryView({
     });
 
     catalogue.forEach((p) => {
-      const dist = p.distributor || "Unassigned";
+      const dist = p.distributor || "Myself";
       if (!map[dist]) {
         map[dist] = { name: dist, productCount: 0, totalUnits: 0, totalValue: 0, lowStockCount: 0 };
       }
@@ -119,7 +119,7 @@ export default function InventoryView({
       const name = String(p.name || "").toLowerCase();
       const brand = String(p.brand || "").toLowerCase();
       const barcode = String(p.barcode || p.id || "").toLowerCase();
-      const dist = String(p.distributor || "Unassigned").toLowerCase();
+      const dist = String(p.distributor || "Myself").toLowerCase();
 
       const matchesSearch = !q || name.includes(q) || brand.includes(q) || barcode.includes(q) || dist.includes(q);
       if (!matchesSearch) return false;
@@ -127,7 +127,7 @@ export default function InventoryView({
       if (categoryFilter !== "All" && p.cat !== categoryFilter) return false;
 
       if (distributorFilter !== "All") {
-        const itemDist = p.distributor || "Unassigned";
+        const itemDist = p.distributor || "Myself";
         if (itemDist !== distributorFilter) return false;
       }
 
@@ -140,9 +140,9 @@ export default function InventoryView({
 
     // Sorting
     if (sortBy === "distributor-asc") {
-      result.sort((a, b) => (a.distributor || "Unassigned").localeCompare(b.distributor || "Unassigned"));
+      result.sort((a, b) => (a.distributor || "Myself").localeCompare(b.distributor || "Myself"));
     } else if (sortBy === "distributor-desc") {
-      result.sort((a, b) => (b.distributor || "Unassigned").localeCompare(a.distributor || "Unassigned"));
+      result.sort((a, b) => (b.distributor || "Myself").localeCompare(a.distributor || "Myself"));
     } else if (sortBy === "stock-asc") {
       result.sort((a, b) => (Number(a.stock) || 0) - (Number(b.stock) || 0));
     } else if (sortBy === "stock-desc") {
@@ -191,26 +191,26 @@ export default function InventoryView({
           <span className="text-2xl font-black text-blue-500 mt-1 block">
             {summary.totalUnits.toLocaleString()}
           </span>
-          <p className="text-[10px] text-blue-500/80 font-semibold mt-0.5">Across {catalogue.length} product lines</p>
+          <p className="text-[10px] text-blue-500/80 font-semibold mt-0.5">Across {catalogue.length} items</p>
         </div>
 
         <div className={`p-4 rounded-2xl border transition-colors ${cardCls}`}>
           <div className="flex items-center justify-between">
             <span className="text-[10.5px] font-black uppercase tracking-wider text-[#FF5B00] block">
-              Active Suppliers
+              Distributors
             </span>
             <button
               type="button"
               onClick={() => onNavigateTab("distributors")}
               className="text-[10px] font-black text-[#FF5B00] hover:underline"
             >
-              Manage &rarr;
+              See all &rarr;
             </button>
           </div>
           <span className="text-2xl font-black mt-1 block text-slate-900 dark:text-white">
             {allDistributorNames.length - 1}
           </span>
-          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">Wholesale supply partners</p>
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">Including Myself</p>
         </div>
       </div>
 
@@ -220,11 +220,8 @@ export default function InventoryView({
           <div className="flex items-center space-x-2">
             <Truck className="w-4 h-4 text-[#FF5B00]" />
             <h3 className="font-black text-xs sm:text-sm uppercase tracking-wide">
-              Stock Distributions by Supplier
+              Stock by distributor
             </h3>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400">
-              {distributorBreakdown.length} Sources
-            </span>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -233,13 +230,13 @@ export default function InventoryView({
               onClick={() => onNavigateTab("distributors")}
               className="text-xs font-black text-[#FF5B00] hover:underline cursor-pointer"
             >
-              + Add / Manage
+              Manage
             </button>
             <button
               type="button"
               onClick={() => setShowDistributorBreakdown(!showDistributorBreakdown)}
               className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 cursor-pointer"
-              title="Toggle supplier breakdown"
+              title="Show or hide"
             >
               {showDistributorBreakdown ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -262,7 +259,7 @@ export default function InventoryView({
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase text-slate-500 dark:text-zinc-400">
-                  All Stock
+                  All stock
                 </span>
                 {distributorFilter === "All" && (
                   <CheckCircle2 className="w-3.5 h-3.5 text-[#FF5B00]" />
@@ -272,7 +269,7 @@ export default function InventoryView({
                 {summary.totalUnits} <span className="text-[10px] font-bold text-slate-400">units</span>
               </span>
               <p className="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 truncate mt-0.5">
-                Entire Warehouse
+                Everything
               </p>
             </div>
 
@@ -306,7 +303,7 @@ export default function InventoryView({
                   </span>
                   <div className="flex items-center justify-between mt-0.5 text-[10px] font-semibold text-slate-500 dark:text-zinc-400">
                     <span>₹{item.totalValue.toLocaleString()}</span>
-                    <span>{item.productCount} SKUs</span>
+                    <span>{item.productCount} items</span>
                   </div>
                 </div>
               );
@@ -325,7 +322,7 @@ export default function InventoryView({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search title, brand, barcode, distributor..."
+              placeholder="Search name, brand, barcode or distributor"
               className={`w-full text-xs pl-9 pr-3 py-2 rounded-xl border outline-none font-medium transition-all ${
                 darkMode
                   ? "bg-[#1A1D26] border-zinc-700 text-white focus:border-[#FF5B00]"
@@ -354,7 +351,7 @@ export default function InventoryView({
               >
                 {allDistributorNames.map((d) => (
                   <option key={d} value={d} className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                    {d === "All" ? "🏢 All Distributors" : `📦 ${d}`}
+                    {d === "All" ? "All distributors" : d}
                   </option>
                 ))}
               </select>
@@ -376,25 +373,25 @@ export default function InventoryView({
                 title="Sort stock inventory"
               >
                 <option value="default" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  ↕️ Sort: Default SKU
+                  Sort: Default
                 </option>
                 <option value="distributor-asc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  🏢 Sort: Distributor (A → Z)
+                  Sort: Distributor (A → Z)
                 </option>
                 <option value="distributor-desc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  🏢 Sort: Distributor (Z → A)
+                  Sort: Distributor (Z → A)
                 </option>
                 <option value="stock-asc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  📉 Sort: Stock (Lowest First)
+                  Sort: Lowest stock first
                 </option>
                 <option value="stock-desc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  📈 Sort: Stock (Highest First)
+                  Sort: Highest stock first
                 </option>
                 <option value="value-desc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  💰 Sort: Stock Value (Highest)
+                  Sort: Highest value first
                 </option>
                 <option value="name-asc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
-                  🔤 Sort: Product Name (A → Z)
+                  Sort: Name (A → Z)
                 </option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />
@@ -531,13 +528,13 @@ export default function InventoryView({
               }`}
             >
               <tr>
-                <th className="py-3 px-4">Product Details</th>
+                <th className="py-3 px-4">Item</th>
                 <th className="py-3 px-3">Barcode</th>
                 <th className="py-3 px-3">Category</th>
-                <th className="py-3 px-3">Distributor / Supplier</th>
+                <th className="py-3 px-3">Distributor</th>
                 <th className="py-3 px-3">Price / MRP</th>
-                <th className="py-3 px-3">Current Stock</th>
-                <th className="py-3 px-4 text-right">Quick Stock &amp; Remove</th>
+                <th className="py-3 px-3">Stock</th>
+                <th className="py-3 px-4 text-right">Change stock</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${darkMode ? "divide-zinc-800" : "divide-slate-100"}`}>
@@ -552,7 +549,7 @@ export default function InventoryView({
                   const stockNum = Number(p.stock) || 0;
                   const isLow = stockNum > 0 && stockNum <= 10;
                   const isOut = stockNum <= 0;
-                  const distName = p.distributor || "Unassigned";
+                  const distName = p.distributor || "Myself";
 
                   return (
                     <tr
@@ -598,7 +595,7 @@ export default function InventoryView({
                             if (onSelectDistributor) onSelectDistributor(distName);
                           }}
                           className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[10.5px] font-bold border transition-all cursor-pointer ${
-                            distName === "Unassigned"
+                            distName === "Myself"
                               ? "bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-zinc-700"
                               : "bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-300 border-blue-500/20 hover:bg-blue-500/20"
                           }`}
@@ -728,7 +725,7 @@ export default function InventoryView({
                 <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
                   All {catalogue.length} items will be set to 0 units, and customers
                   will not be able to order any of them. Nothing is deleted — type
-                  the stock back in, or use Excel file, whenever you restock.
+                  the stock back in, or use Import CSV, whenever you restock.
                 </p>
               </div>
             </div>

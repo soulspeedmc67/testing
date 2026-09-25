@@ -40,16 +40,38 @@ export const ORDER_STATUS = {
 
 /* ------------------------------------------------------------------ products */
 
+/** The owner's own stock. Always in the distributor list; can't be removed. */
+export const SELF_DISTRIBUTOR_NAME = "Myself";
+export const SELF_DISTRIBUTOR = { id: "SELF", name: SELF_DISTRIBUTOR_NAME, isSelf: true, active: true };
+
+/* Six made-up distributors were once filled in as examples. They are dropped
+   wherever they turn up (saved lists, product tags), so only real ones remain. */
+const DEMO_DISTRIBUTOR_IDS = new Set([
+  "DIST-KASHMIR-FMCG",
+  "DIST-AMUL-VALLEY",
+  "DIST-KANDUR-BAKERY",
+  "DIST-ANANTNAG-ORCHARDS",
+  "DIST-HUL-DIRECT",
+  "DIST-ITC-NESTLE",
+]);
+const DEMO_DISTRIBUTOR_NAMES = new Set([
+  "Kashmir Wholesale FMCG",
+  "Amul Valley Dairy Logistics",
+  "Local Kandur Bakeries",
+  "Anantnag Fresh Farm Orchards",
+  "Hindustan Unilever Direct",
+  "ITC & Nestlé Supply Hub",
+]);
+
+function isRealDistributor(d) {
+  return d && d.id !== SELF_DISTRIBUTOR.id && !DEMO_DISTRIBUTOR_IDS.has(String(d.id)) && !DEMO_DISTRIBUTOR_NAMES.has(d.name);
+}
+
+/** Who a product's stock came from; untagged items are the owner's own. */
 export function assignDefaultDistributor(p) {
-  if (p && p.distributor) return p.distributor;
-  const cat = String(p?.cat || "").toLowerCase();
-  const brand = String(p?.brand || "").toLowerCase();
-  if (cat.includes("dairy") || brand.includes("amul")) return "Amul Valley Dairy Logistics";
-  if (cat.includes("bakery") || brand.includes("kandur") || cat.includes("bread")) return "Local Kandur Bakeries";
-  if (cat.includes("fruit") || cat.includes("veg") || brand.includes("farm") || brand.includes("orchard")) return "Anantnag Fresh Farm Orchards";
-  if (cat.includes("care") || cat.includes("clean") || brand.includes("vim") || brand.includes("surf") || brand.includes("dove")) return "Hindustan Unilever Direct";
-  if (cat.includes("instant") || brand.includes("nestle") || brand.includes("maggi") || brand.includes("itc")) return "ITC & Nestlé Supply Hub";
-  return "Kashmir Wholesale FMCG";
+  const name = String(p?.distributor || "").trim();
+  if (!name || DEMO_DISTRIBUTOR_NAMES.has(name)) return SELF_DISTRIBUTOR_NAME;
+  return name;
 }
 
 // Two-tier Catalogue Cache (Memory 5-min TTL + Persistent LocalStorage 30-min TTL)
@@ -77,7 +99,7 @@ function enrichProducts(rawList = []) {
   }
   return merged.map((p) => ({
     ...p,
-    distributor: p.distributor || assignDefaultDistributor(p),
+    distributor: assignDefaultDistributor(p),
   }));
 }
 
@@ -107,6 +129,8 @@ export async function fetchProducts(forceRefresh = false) {
       if (cachedRaw && (now - cachedTime < LOCAL_CATALOGUE_TTL_MS)) {
         const parsed = JSON.parse(cachedRaw);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Saved before the example distributors were removed: tidy on read.
+          parsed.forEach((p) => { p.distributor = assignDefaultDistributor(p); });
           memoryProductsCache = parsed;
           memoryProductsCacheTime = cachedTime;
           return parsed;
@@ -595,74 +619,26 @@ export async function deleteOffer(offerId) {
 
 /* ---------------------------------------------------------------- distributors */
 
-export const DEFAULT_DISTRIBUTORS = [
-  {
-    id: "DIST-KASHMIR-FMCG",
-    name: "Kashmir Wholesale FMCG",
-    contactPerson: "Bashir Ahmad",
-    phone: "+91 94190 12345",
-    email: "bashir.fmcg@dashit.store",
-    address: "KP Road, Near Bus Stand, Anantnag",
-    notes: "Primary supplier for branded packaged goods, snacks, and daily staples.",
-    leadTime: "Same Day",
-    active: true,
-  },
-  {
-    id: "DIST-AMUL-VALLEY",
-    name: "Amul Valley Dairy Logistics",
-    contactPerson: "Tariq Mir",
-    phone: "+91 97970 54321",
-    email: "tariq.amul@dashit.store",
-    address: "Industrial Estate, Anantnag",
-    notes: "Delivers chilled milk packets, fresh butter, paneer, and curd daily at 6:30 AM.",
-    leadTime: "Daily 6:30 AM",
-    active: true,
-  },
-  {
-    id: "DIST-KANDUR-BAKERY",
-    name: "Local Kandur Bakeries",
-    contactPerson: "Ghulam Nabi",
-    phone: "+91 91498 76543",
-    email: "kandur.orders@dashit.store",
-    address: "Reshi Bazar, Anantnag",
-    notes: "Traditional artisan Kashmiri bakery: fresh Lavas, Roth, Sheermal, and Bakarkhani.",
-    leadTime: "Twice Daily (Morning / Evening)",
-    active: true,
-  },
-  {
-    id: "DIST-ANANTNAG-ORCHARDS",
-    name: "Anantnag Fresh Farm Orchards",
-    contactPerson: "Shabir Lone",
-    phone: "+91 99065 11223",
-    email: "shabir.orchards@dashit.store",
-    address: "Mattan Fruit Mandi, Anantnag",
-    notes: "Direct farm fresh apples, seasonal cherries, pears, and fresh valley greens.",
-    leadTime: "Next Day 7:00 AM",
-    active: true,
-  },
-  {
-    id: "DIST-HUL-DIRECT",
-    name: "Hindustan Unilever Direct",
-    contactPerson: "Manzoor Dar",
-    phone: "+91 94191 88990",
-    email: "hul.anantnag@dashit.store",
-    address: "Nai Basti, Anantnag",
-    notes: "Direct wholesale distributor for soaps, detergents, shampoos, and household essentials.",
-    leadTime: "2 Days",
-    active: true,
-  },
-  {
-    id: "DIST-ITC-NESTLE",
-    name: "ITC & Nestlé Supply Hub",
-    contactPerson: "Farooq Shah",
-    phone: "+91 96222 33445",
-    email: "itc.farooq@dashit.store",
-    address: "Bijbehara Highway Link, Anantnag",
-    notes: "Instant noodles, chocolates, confectionery, beverages, and wheat flour.",
-    leadTime: "Every 2 Days",
-    active: true,
-  },
-];
+/** Saved distributors on this device, with the old example ones cleared out. */
+function readLocalDistributors() {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = JSON.parse(localStorage.getItem("dashit_distributors") || "[]");
+    const real = stored.filter(isRealDistributor);
+    if (real.length !== stored.length) {
+      localStorage.setItem("dashit_distributors", JSON.stringify(real));
+    }
+    return real;
+  } catch (e) {
+    return [];
+  }
+}
+
+function withSelfFirst(local, live) {
+  const localIds = new Set(local.map((d) => String(d.id)));
+  const others = [...local, ...live.filter((d) => isRealDistributor(d) && !localIds.has(String(d.id)))];
+  return [SELF_DISTRIBUTOR, ...others];
+}
 
 export async function fetchDistributors() {
   let firestoreList = [];
@@ -677,42 +653,13 @@ export async function fetchDistributors() {
       console.warn("fetchDistributors Firestore warning:", e?.message);
     }
   }
-
-  if (typeof window !== "undefined") {
-    try {
-      const custom = JSON.parse(localStorage.getItem("dashit_distributors") || "[]");
-      if (custom.length > 0) {
-        const customIds = new Set(custom.map((c) => String(c.id)));
-        return [...custom, ...firestoreList.filter((d) => !customIds.has(String(d.id)))];
-      }
-    } catch (e) {}
-  }
-
-  return firestoreList.length > 0 ? firestoreList : DEFAULT_DISTRIBUTORS;
+  return withSelfFirst(readLocalDistributors(), firestoreList);
 }
 
+/** Live list of distributors, always starting with "Myself". */
 export function watchDistributors(callback) {
   let currentLive = [];
-
-  const emitMerged = (live = []) => {
-    let merged = live;
-    if (typeof window !== "undefined") {
-      try {
-        let stored = localStorage.getItem("dashit_distributors");
-        if (!stored) {
-          localStorage.setItem("dashit_distributors", JSON.stringify(DEFAULT_DISTRIBUTORS));
-          stored = JSON.stringify(DEFAULT_DISTRIBUTORS);
-        }
-        const custom = JSON.parse(stored || "[]");
-        if (custom.length > 0) {
-          const customIds = new Set(custom.map((c) => String(c.id)));
-          merged = [...custom, ...live.filter((d) => !customIds.has(String(d.id)))];
-        }
-      } catch (e) {}
-    }
-    if (merged.length === 0) merged = DEFAULT_DISTRIBUTORS;
-    callback(merged);
-  };
+  const emitMerged = (live = []) => callback(withSelfFirst(readLocalDistributors(), live));
 
   const db = getDb();
   let unsub = () => {};
@@ -752,13 +699,15 @@ export function watchDistributors(callback) {
 }
 
 export async function upsertDistributor(distributor) {
-  const { id, ...data } = distributor;
+  const { id, isSelf, ...data } = distributor;
+  // "Myself" is built in, not saved.
+  if (isSelf || String(id) === SELF_DISTRIBUTOR.id) return SELF_DISTRIBUTOR.id;
   const distId = id ? String(id) : `DIST-${Date.now()}`;
   const itemToSave = { id: distId, active: true, ...data };
 
   if (typeof window !== "undefined") {
     try {
-      const stored = JSON.parse(localStorage.getItem("dashit_distributors") || JSON.stringify(DEFAULT_DISTRIBUTORS));
+      const stored = readLocalDistributors();
       const updated = [itemToSave, ...stored.filter((d) => String(d.id) !== distId)];
       localStorage.setItem("dashit_distributors", JSON.stringify(updated));
       window.dispatchEvent(new CustomEvent("dashit_distributors_updated"));
@@ -782,9 +731,10 @@ export async function upsertDistributor(distributor) {
 
 export async function deleteDistributor(distributorId) {
   const targetId = String(distributorId);
+  if (targetId === SELF_DISTRIBUTOR.id) return;
   if (typeof window !== "undefined") {
     try {
-      const stored = JSON.parse(localStorage.getItem("dashit_distributors") || JSON.stringify(DEFAULT_DISTRIBUTORS));
+      const stored = readLocalDistributors();
       const filtered = stored.filter((d) => String(d.id) !== targetId);
       localStorage.setItem("dashit_distributors", JSON.stringify(filtered));
       window.dispatchEvent(new CustomEvent("dashit_distributors_updated"));

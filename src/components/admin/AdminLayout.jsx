@@ -124,7 +124,7 @@ export default function AdminLayout({
         },
         {
           id: "csv",
-          label: "Excel file",
+          label: "Import CSV",
           icon: FileSpreadsheet,
         },
         {

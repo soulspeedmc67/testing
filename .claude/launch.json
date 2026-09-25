@@ -4,21 +4,9 @@
     {
       "name": "dashit-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["run", "dev"],
       "port": 3000,
       "autoPort": true
-    },
-    {
-      "name": "admin-wt-preview",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "cd /tmp/claude-1000/-home-aleemkanyu-Projects-Blinkit/21fc472b-2a81-40ce-a2dc-9549fae8af71/scratchpad/wtadmin && exec npx next dev -p 3107"
-      ],
-      "port": 3107
     }
   ]
 }

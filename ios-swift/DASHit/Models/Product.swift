@@ -108,7 +108,7 @@ extension Product {
     private enum DecodingKeys: String, CodingKey {
         case id, barcode, name, title, unit, weight, price, originalPrice, mrp
         case rating, ratingCount, time, options, badge, img, image, imageUrl
-        case cat, category, variants, ageRestricted, minAge, inStock, nutrition, stock
+        case cat, category, variants, ageRestricted, minAge, inStock, nutrition, stock, distributor
     }
     
     public init(from decoder: Decoder) throws {
@@ -138,7 +138,8 @@ extension Product {
             minAge: c.flexibleInt(.minAge),
             inStock: try? c.decode(Bool.self, forKey: .inStock),
             nutrition: try? c.decode([NutritionFact].self, forKey: .nutrition),
-            stock: c.flexibleInt(.stock)
+            stock: c.flexibleInt(.stock),
+            distributor: c.flexibleString(.distributor)
         )
     }
 }
