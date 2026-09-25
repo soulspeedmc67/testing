@@ -133,10 +133,14 @@ jobs:
             /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" Payload/DASHit.app/Info.plist 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" Payload/DASHit.app/Info.plist || true
 
+            # Extract exact entitlements from the provisioning profile
+            security cms -D -i "$PP_PATH" > $RUNNER_TEMP/profile.plist
+            /usr/libexec/PlistBuddy -x -c "Print :Entitlements" $RUNNER_TEMP/profile.plist > $RUNNER_TEMP/entitlements.plist
+
             for fw in $(find Payload/DASHit.app -name "*.framework" 2>/dev/null || true); do
               codesign --force --sign "Apple Distribution" --preserve-metadata=identifier,flags,runtime "$fw" || true
             done
-            codesign --force --sign "Apple Distribution" --entitlements ../DASHit/DASHit.entitlements --generate-entitlement-der Payload/DASHit.app
+            codesign --force --sign "Apple Distribution" --entitlements $RUNNER_TEMP/entitlements.plist --generate-entitlement-der Payload/DASHit.app
           fi
 
           zip -r -q DASHit-Native.ipa Payload
