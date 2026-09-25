@@ -136,7 +136,7 @@ jobs:
               -archivePath build/App.xcarchive \
               -skipMacroValidation \
               -skipPackagePluginValidation \
-              CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER \
+              CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 100)) \
               CODE_SIGN_STYLE=Manual \
               CODE_SIGN_IDENTITY="Apple Distribution" \
               PROVISIONING_PROFILE_SPECIFIER="DASHit AppStore Profile" \
