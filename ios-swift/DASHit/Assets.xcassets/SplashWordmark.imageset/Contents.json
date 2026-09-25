@@ -5,12 +5,11 @@
       "scale": "1x"
     },
     {
-      "filename": "SplashMark@2x.png",
       "idiom": "universal",
       "scale": "2x"
     },
     {
-      "filename": "SplashMark@3x.png",
+      "filename": "SplashWordmark@3x.png",
       "idiom": "universal",
       "scale": "3x"
     }
