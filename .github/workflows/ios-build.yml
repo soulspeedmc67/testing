@@ -7,18 +7,18 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS IPA (Xcode 16 + macos-14)
-    runs-on: macos-14
+    name: Build iOS IPA (Xcode 26 + macos-15)
+    runs-on: macos-15
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16
+      - name: Select Xcode 26
         run: |
           echo "Available Xcode installations:"
           ls -d /Applications/Xcode* || true
-          for xcode in /Applications/Xcode_16*.app /Applications/Xcode_16.app; do
+          for xcode in /Applications/Xcode_26*.app /Applications/Xcode_26.app /Applications/Xcode_16*.app /Applications/Xcode.app; do
             if [ -d "$xcode" ]; then
               echo "Selecting $xcode"
               sudo xcode-select -s "$xcode/Contents/Developer"
