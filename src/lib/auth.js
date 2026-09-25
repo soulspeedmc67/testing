@@ -102,6 +102,10 @@ function ensureRecaptcha(auth, containerId = "dashit-recaptcha") {
 
 /** Sends an OTP. Returns { success, devOtp?, message }. */
 export async function sendOtp(mobile) {
+  if (AUTH_MODE === "whatsapp" || process.env.NEXT_PUBLIC_AUTH_MODE === "whatsapp") {
+    return sendWhatsappOtp(mobile);
+  }
+
   if (AUTH_MODE === "otp") {
     const code = issueCode();
     challenge = {
@@ -141,6 +145,10 @@ export async function sendOtp(mobile) {
  * Returns { success, user }.
  */
 export async function verifyOtp(mobile, otp) {
+  if (AUTH_MODE === "whatsapp" || process.env.NEXT_PUBLIC_AUTH_MODE === "whatsapp") {
+    return verifyWhatsappOtp(mobile, otp);
+  }
+
   if (AUTH_MODE === "otp") {
     if (!challenge) {
       return { success: false, message: "Request a code first" };

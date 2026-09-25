@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseCore
 
+#if !ADMIN_APP_TARGET
 @main
 struct DASHitApp: App {
     @StateObject private var auth = AuthService.shared
@@ -21,3 +22,4 @@ struct DASHitApp: App {
         }
     }
 }
+#endif

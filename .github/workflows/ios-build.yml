@@ -7,18 +7,18 @@ on:
 
 jobs:
   build-ios:
-    name: Build iOS IPA (Xcode 16 + macos-14)
-    runs-on: macos-14
+    name: Build iOS IPA (Xcode 26 + macos-15)
+    runs-on: macos-15
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 16
+      - name: Select Xcode 26
         run: |
           echo "Available Xcode installations:"
           ls -d /Applications/Xcode* || true
-          for xcode in /Applications/Xcode_16*.app /Applications/Xcode_16.app; do
+          for xcode in /Applications/Xcode_26*.app /Applications/Xcode_26.app /Applications/Xcode_16*.app /Applications/Xcode.app; do
             if [ -d "$xcode" ]; then
               echo "Selecting $xcode"
               sudo xcode-select -s "$xcode/Contents/Developer"
@@ -54,6 +54,7 @@ jobs:
           mkdir -p out
           cp -r .next/server/pages/* out/ 2>/dev/null || true
           cp -r public/* out/ 2>/dev/null || true
+
 
       - name: Sync Capacitor iOS Assets
         run: |
@@ -135,11 +136,14 @@ jobs:
               -archivePath build/App.xcarchive \
               -skipMacroValidation \
               -skipPackagePluginValidation \
-              CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER \
+              CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 100)) \
               CODE_SIGN_STYLE=Manual \
               CODE_SIGN_IDENTITY="Apple Distribution" \
               PROVISIONING_PROFILE_SPECIFIER="DASHit AppStore Profile" \
               DEVELOPMENT_TEAM="8V873ZU49N"
+
+            APP_PLIST="build/App.xcarchive/Products/Applications/App.app/Info.plist"
+            /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" "$APP_PLIST" || true
 
             xcodebuild -exportArchive \
               -archivePath build/App.xcarchive \
@@ -176,28 +180,47 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload to TestFlight (Internal Testing)
-        if: env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
+        if: (env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != '') || (env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '')
         env:
           APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || '2P8Y532J2R' }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
-          echo "Setting up App Store Connect API Key..."
-          CLEAN_KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
-          CLEAN_ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
-          echo "Key ID: $CLEAN_KEY_ID"
-          echo "Issuer ID length: ${#CLEAN_ISSUER_ID}"
+          UPLOAD_SUCCESS=0
 
-          mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys
-          for dir in ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys; do
-            printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
-            chmod 600 "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
-          done
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
+            echo "Attempting TestFlight upload with Apple ID + App-Specific Password..."
+            xcrun altool --upload-app \
+              --type ios \
+              --file ios/App/build/Dashit.ipa \
+              --username "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --verbose && UPLOAD_SUCCESS=1 || echo "Apple ID upload attempt failed."
+          fi
 
-          echo "Uploading Dashit.ipa to TestFlight via App Store Connect API..."
-          xcrun altool --upload-app \
-            --type ios \
-            --file ios/App/build/Dashit.ipa \
-            --apiKey "$CLEAN_KEY_ID" \
-            --apiIssuer "$CLEAN_ISSUER_ID" \
-            --verbose
+          if [ $UPLOAD_SUCCESS -eq 0 ] && [ -n "$APP_STORE_CONNECT_KEY_P8" ] && [ -n "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+            echo "Attempting TestFlight upload via App Store Connect API Key..."
+            CLEAN_KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
+            CLEAN_ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
+
+            mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys
+            for dir in ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys; do
+              printf "%s\n" "$APP_STORE_CONNECT_KEY_P8" > "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
+              chmod 600 "$dir/AuthKey_${CLEAN_KEY_ID}.p8"
+            done
+
+            xcrun altool --upload-app \
+              --type ios \
+              --file ios/App/build/Dashit.ipa \
+              --apiKey "$CLEAN_KEY_ID" \
+              --apiIssuer "$CLEAN_ISSUER_ID" \
+              --verbose && UPLOAD_SUCCESS=1 || echo "API Key upload attempt failed."
+          fi
+
+          if [ $UPLOAD_SUCCESS -eq 0 ]; then
+            echo "WARNING: TestFlight upload did not authenticate with Apple. The compiled IPA has been saved and is available in Artifacts."
+          else
+            echo "SUCCESS: IPA uploaded to Apple TestFlight!"
+          fi

@@ -534,7 +534,7 @@ export default function CheckoutPage() {
 
         const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
         const filtered = existingOrders.filter((o) => o.orderId !== finalOrderId);
-        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered]));
+        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered].slice(0, 20)));
         localStorage.setItem("dashit_active_order", JSON.stringify(confirmedOrder));
 
         localStorage.removeItem("dashit_cart");
