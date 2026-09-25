@@ -3,6 +3,7 @@ package com.dashit.app.data.repository
 import android.content.Context
 import android.content.SharedPreferences
 import com.dashit.app.data.DeliveryEta
+import com.dashit.app.data.OrderNotifications
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.CartBillBreakdown
 import com.dashit.app.data.model.CartItem
@@ -53,6 +54,11 @@ class OrderRepository(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var prefs: SharedPreferences? = null
+    private var appContext: Context? = null
+
+    private val _deliveredCelebration = MutableStateFlow<Order?>(null)
+    /** A delivered order whose celebration the shopper hasn't seen yet. */
+    val deliveredCelebration: StateFlow<Order?> = _deliveredCelebration.asStateFlow()
 
     private val _orders = MutableStateFlow<List<Order>>(emptyList())
     /** The shopper's own orders, newest first. Empty while signed out. */
@@ -80,6 +86,7 @@ class OrderRepository(
     fun init(context: Context) {
         if (prefs != null) return
         prefs = context.applicationContext.getSharedPreferences("dashit_orders", Context.MODE_PRIVATE)
+        appContext = context.applicationContext
         activeOrderId.value = prefs?.getString("active_order_id", null)
 
         scope.launch {
@@ -99,6 +106,42 @@ class OrderRepository(
 
     /** The pill's close button once an order is delivered or cancelled. */
     fun retireActiveOrder() = setActiveOrderId(null)
+
+    // MARK: - Delivered
+
+    /**
+     * A delivered order celebrates once: straight away if the app is on screen,
+     * otherwise a notification now and the celebration when the app is next opened.
+     */
+    fun noteDelivery() {
+        val id = activeOrderId.value ?: return
+        val order = _orders.value.firstOrNull { it.id == id } ?: return
+        if (order.status != OrderStatus.DELIVERED || isRemembered(order.id, CELEBRATED_KEY)) return
+        // Not for old orders found long after the fact.
+        if (System.currentTimeMillis() - order.createdAt > 12 * 60 * 60 * 1000L) return
+        if (OrderNotifications.isAppInForeground) {
+            if (_deliveredCelebration.value?.id != order.id) _deliveredCelebration.value = order
+        } else if (!isRemembered(order.id, NOTIFIED_KEY)) {
+            remember(order.id, NOTIFIED_KEY)
+            appContext?.let { OrderNotifications.notifyDelivered(it, order) }
+        }
+    }
+
+    /** The celebration was seen: remember it and retire the delivered order. */
+    fun finishCelebration() {
+        _deliveredCelebration.value?.let { remember(it.id, CELEBRATED_KEY) }
+        _deliveredCelebration.value = null
+        retireActiveOrder()
+    }
+
+    private fun isRemembered(id: String, key: String): Boolean =
+        prefs?.getStringSet(key, emptySet())?.contains(id) == true
+
+    private fun remember(id: String, key: String) {
+        val ids = prefs?.getStringSet(key, emptySet()).orEmpty().toMutableSet()
+        ids.add(id)
+        prefs?.edit()?.putStringSet(key, ids.toList().takeLast(50).toSet())?.apply()
+    }
 
     // MARK: - Listeners
 
@@ -124,6 +167,7 @@ class OrderRepository(
                 _orders.value = list
                 _ordersLoaded.value = true
                 adoptLatestIfNeeded(list)
+                noteDelivery()
             }
     }
 
@@ -389,5 +433,7 @@ class OrderRepository(
 
     companion object {
         val shared = OrderRepository()
+        private const val CELEBRATED_KEY = "celebrated_orders"
+        private const val NOTIFIED_KEY = "delivery_notified_orders"
     }
 }

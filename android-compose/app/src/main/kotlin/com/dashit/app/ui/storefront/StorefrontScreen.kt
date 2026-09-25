@@ -99,7 +99,13 @@ import com.dashit.app.ui.components.HeroBanner
 import com.dashit.app.ui.components.NavigationTab
 import com.dashit.app.ui.components.ProductCard
 import com.dashit.app.ui.components.WelcomeHeroBanner
+import com.dashit.app.ui.orders.DeliveredCelebrationSheet
 import com.dashit.app.ui.orders.LiveTrackingMapScreen
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.dashit.app.data.OrderNotifications
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.widthIn
@@ -154,6 +160,26 @@ fun StorefrontScreen(
     val cartSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val addressSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    // Delivered while the app is open (or before it was reopened): close whatever
+    // is in front, then celebrate.
+    val deliveredCelebration by OrderRepository.shared.deliveredCelebration.collectAsState()
+    var celebrationOrder by remember { mutableStateOf<Order?>(null) }
+    LaunchedEffect(deliveredCelebration?.id) {
+        val order = deliveredCelebration ?: return@LaunchedEffect
+        val covered = trackingOrderId != null || isCartSheetOpen || isCheckoutOpen ||
+            isProfileOpen || isAddressSheetOpen || detailProduct != null
+        trackingOrderId = null
+        isCartSheetOpen = false
+        isCheckoutOpen = false
+        isProfileOpen = false
+        isAddressSheetOpen = false
+        detailProduct = null
+        delay(if (covered) 600 else 200)
+        celebrationOrder = order
+    }
 
     BackHandler(enabled = isAddressSheetOpen || isProfileOpen || trackingOrderId != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
         when {
@@ -517,6 +543,11 @@ fun StorefrontScreen(
                 onDismiss = { isCheckoutOpen = false },
                 onOrderPlaced = { orderId ->
                     isCheckoutOpen = false
+                    // Asked once, right after the first order, when the reason is obvious.
+                    if (OrderNotifications.shouldAskPermission(context)) {
+                        OrderNotifications.markPermissionAsked(context)
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                     // Straight onto the live map, as the iOS app does.
                     trackingOrderId = orderId
                 }
@@ -532,6 +563,17 @@ fun StorefrontScreen(
                 onSelectAddress = { newAddr ->
                     currentAddress = newAddr
                     isAddressSheetOpen = false
+                }
+            )
+        }
+
+        celebrationOrder?.let { order ->
+            DeliveredCelebrationSheet(
+                order = order,
+                onReorder = { cartVm.reorder(order.items) },
+                onDismiss = {
+                    celebrationOrder = null
+                    OrderRepository.shared.finishCelebration()
                 }
             )
         }

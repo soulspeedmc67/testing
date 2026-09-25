@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dashit.app.ui.SplashOverlay
 import com.dashit.app.core.design.DashitTheme
+import com.dashit.app.data.OrderNotifications
 import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.repository.OrderRepository
@@ -47,6 +48,7 @@ class MainActivity : ComponentActivity() {
         AuthRepository.init(this)
         OrderRepository.shared.init(this)
         StoreStatus.start()
+        OrderNotifications.createChannel(this)
 
         // Initialize OpenStreetMap (osmdroid) configuration with compliant User-Agent & dedicated tile cache
         val osmConfig = org.osmdroid.config.Configuration.getInstance()
@@ -88,5 +90,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        OrderNotifications.isAppInForeground = true
+        // Celebrate a delivery that happened while the app was away.
+        OrderRepository.shared.noteDelivery()
+    }
+
+    override fun onStop() {
+        OrderNotifications.isAppInForeground = false
+        super.onStop()
     }
 }
