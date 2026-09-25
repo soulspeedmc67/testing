@@ -8,6 +8,8 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
@@ -23,22 +25,32 @@ class FirestoreRepository {
     }
 
     fun observeProducts(): Flow<List<Product>> = callbackFlow {
-        // Emit seed initially for instant render (zero lag cold start)
-        trySend(CatalogSeed.products)
-
         val db = firestore
         if (db == null) {
+            trySend(CatalogSeed.products)
             awaitClose { }
             return@callbackFlow
+        }
+
+        // The live catalogue comes first, with skeletons while it loads. The
+        // built-in catalogue only stands in if Firestore hasn't answered in a
+        // few seconds (no network and nothing cached yet) or fails outright.
+        var delivered = false
+        val fallback = launch {
+            delay(5000)
+            if (!delivered) trySend(CatalogSeed.products)
         }
 
         var listener: ListenerRegistration? = null
         try {
             listener = db.collection("products").addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null || snapshot.isEmpty) {
-                    trySend(CatalogSeed.products)
+                if (error != null) {
+                    fallback.cancel()
+                    if (!delivered) trySend(CatalogSeed.products)
                     return@addSnapshotListener
                 }
+                // An empty answer is usually an empty offline cache: keep waiting.
+                if (snapshot == null || snapshot.isEmpty) return@addSnapshotListener
 
                 val list = snapshot.documents.mapNotNull { doc ->
                     val data = doc.data ?: return@mapNotNull null
@@ -87,16 +99,20 @@ class FirestoreRepository {
                 }
 
                 if (list.isNotEmpty()) {
+                    delivered = true
+                    fallback.cancel()
                     trySend(list)
-                } else {
-                    trySend(CatalogSeed.products)
                 }
             }
         } catch (_: Exception) {
+            fallback.cancel()
             trySend(CatalogSeed.products)
         }
 
-        awaitClose { listener?.remove() }
+        awaitClose {
+            fallback.cancel()
+            listener?.remove()
+        }
     }
 
     fun observeCategories(): Flow<List<Category>> = callbackFlow {

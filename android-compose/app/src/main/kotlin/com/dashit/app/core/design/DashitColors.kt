@@ -15,27 +15,31 @@ object DashitColors {
     val WalletGreen = Color(0xFF0E4A1C)
     val WalletGreenBorder = Color(0xFF1B7030)
 
-    // Dark surfaces (matching iOS dark palette)
-    val Surface = Color(0xFF14171F)
-    val SurfaceSunken = Color(0xFF0E1117)
-    val SurfaceRaised = Color(0xFF1E222D)
-    val SurfaceOverlay = Color(0xFF252A37)
-    val SurfaceMuted = Color(0xFF2D3342)
+    // Dark surfaces: the iOS app's deep neutrals, which read as more premium
+    // on a phone than the web's slate blues.
+    val Surface = Color(0xFF0B0B0E)
+    val SurfaceSunken = Color(0xFF050507)
+    val SurfaceRaised = Color(0xFF151519)
+    val SurfaceOverlay = Color(0xFF1B1B21)
+    val SurfaceMuted = Color(0xFF222228)
     val TrackerCard = Color(0xFF16171B)
 
     // Text tokens
-    val TextPrimary = Color(0xFFF8FAFC)
-    val TextSecondary = Color(0xFFCBD5E1)
-    val TextMuted = Color(0xFFA0ABC0)
-    val TextFaint = Color(0xFF8290A4)
+    val TextPrimary = Color(0xFFF5F5F7)
+    val TextSecondary = Color(0xFFC7C7CC)
+    val TextMuted = Color(0xFF9A9AA1)
+    val TextFaint = Color(0xFF6C6C73)
 
     // Hairlines and borders
-    val Hairline = Color(0xFF2A303F)
-    val HairlineSoft = Color(0xFF212633)
-    val HairlineStrong = Color(0xFF384054)
+    val Hairline = Color(0xFF24242A)
+    val HairlineSoft = Color(0xFF19191E)
+    val HairlineStrong = Color(0xFF33333B)
 
     // Semantics
     val Positive = Color(0xFF22C55E)
     val Caution = Color(0xFFF59E0B)
     val Danger = Color(0xFFF43F5E)
+
+    /** The 1px top-lit edge iOS draws on raised cards in dark mode. */
+    val EdgeHighlight = Color(0x17FFFFFF)
 }

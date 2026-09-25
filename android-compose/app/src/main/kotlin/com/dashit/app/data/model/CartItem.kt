@@ -21,7 +21,31 @@ data class Coupon(
     val discount: Double,
     val minOrder: Double,
     val waivesDelivery: Boolean? = false
-)
+) {
+    /** What this coupon takes off a cart of [subtotal], counting a waived ₹25 fee. */
+    fun saving(onSubtotal: Double): Double {
+        if (onSubtotal < minOrder) return 0.0
+        val waived = if (waivesDelivery == true && onSubtotal < CartBillBreakdown.FREE_DELIVERY_THRESHOLD) {
+            CartBillBreakdown.STANDARD_DELIVERY_FEE
+        } else 0.0
+        return minOf(onSubtotal, discount) + waived
+    }
+
+    companion object {
+        /** The web's coupon drawer (`src/components/CouponsDrawer.jsx`), so a code works everywhere. */
+        val catalog = listOf(
+            Coupon("get30", "GET30", "₹30 off on orders of ₹199 or more", "Valid on all grocery and fresh items in Anantnag", 30.0, 199.0),
+            Coupon("dashit50", "DASHIT50", "Flat ₹50 off on orders above ₹299", "Launch offer for DASHit customers in Anantnag", 50.0, 299.0),
+            Coupon("freedel", "FREEDEL", "Free delivery on your order", "The ₹25 delivery fee is waived", 0.0, 99.0, waivesDelivery = true)
+        )
+
+        fun find(code: String?): Coupon? = catalog.firstOrNull { it.code.equals(code?.trim(), ignoreCase = true) }
+
+        /** The eligible coupon that saves the most on [subtotal], if any. */
+        fun best(forSubtotal: Double): Coupon? =
+            catalog.filter { forSubtotal >= it.minOrder }.maxByOrNull { it.saving(forSubtotal) }?.takeIf { it.saving(forSubtotal) > 0 }
+    }
+}
 
 data class CartBillBreakdown(
     val subtotal: Double,

@@ -2,21 +2,25 @@ package com.dashit.app.ui.orders
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas as AndroidCanvas
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
+import android.graphics.DashPathEffect
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,35 +30,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,20 +47,21 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,1215 +69,605 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import com.dashit.app.R
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
+import com.dashit.app.ui.components.TrackingCardSkeleton
+import com.dashit.app.data.DeliveryEta
+import com.dashit.app.data.model.DriverLiveTracking
 import com.dashit.app.data.model.Order
 import com.dashit.app.data.model.OrderStatus
+import com.dashit.app.data.model.Product
 import com.dashit.app.data.repository.OrderRepository
-import kotlinx.coroutines.delay
+import com.dashit.app.viewmodel.CartViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import org.osmdroid.views.overlay.Polyline
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+
+private val HUB = GeoPoint(DeliveryEta.HUB_LAT, DeliveryEta.HUB_LNG)
 
 /**
- * Real turn-by-turn road route coordinates in Lal Chowk / Anantnag.
- * Sourced via Open Source Routing Machine (OSRM) on OpenStreetMap street vectors.
+ * Live tracking for an order, in the iOS app's layout: the map fills the
+ * screen with the rider coming along the roads, a back button and the
+ * change-window countdown on top, and the dark order card at the bottom with
+ * the ETA, the stage rail, the delivery code and, while it still can, the
+ * option to add items or cancel.
  */
-private val OSM_ROUTE_POINTS = listOf(
-    GeoPoint(33.735831, 75.143615), // DASHit Express Dark Store Hub (Lal Chowk)
-    GeoPoint(33.735549, 75.143378),
-    GeoPoint(33.736326, 75.142130),
-    GeoPoint(33.736469, 75.141834),
-    GeoPoint(33.736801, 75.140695),
-    GeoPoint(33.736988, 75.140087),
-    GeoPoint(33.737115, 75.139659),
-    GeoPoint(33.737181, 75.139437),
-    GeoPoint(33.737376, 75.138723),
-    GeoPoint(33.737622, 75.137863),
-    GeoPoint(33.737722, 75.137507),
-    GeoPoint(33.737900, 75.136839),
-    GeoPoint(33.738005, 75.136470),
-    GeoPoint(33.738131, 75.136116),
-    GeoPoint(33.738202, 75.136081),
-    GeoPoint(33.738852, 75.135876),
-    GeoPoint(33.738950, 75.135920),
-    GeoPoint(33.738959, 75.135906),
-    GeoPoint(33.738973, 75.135899),
-    GeoPoint(33.738988, 75.135898),
-    GeoPoint(33.738998, 75.135904),
-    GeoPoint(33.739010, 75.135914),
-    GeoPoint(33.739015, 75.135928),
-    GeoPoint(33.739017, 75.135943),
-    GeoPoint(33.739014, 75.135958),
-    GeoPoint(33.739006, 75.135972),
-    GeoPoint(33.738994, 75.135981),
-    GeoPoint(33.738980, 75.135984),
-    GeoPoint(33.738964, 75.136061),
-    GeoPoint(33.738968, 75.136151),
-    GeoPoint(33.738971, 75.136258),
-    GeoPoint(33.738977, 75.136399),
-    GeoPoint(33.739036, 75.136725),
-    GeoPoint(33.739118, 75.137165),
-    GeoPoint(33.739125, 75.137299),
-    GeoPoint(33.739125, 75.137418),
-    GeoPoint(33.739125, 75.137589),
-    GeoPoint(33.739067, 75.137989),
-    GeoPoint(33.739032, 75.138249),
-    GeoPoint(33.738985, 75.138622),
-    GeoPoint(33.738945, 75.138936),
-    GeoPoint(33.738802, 75.139966),
-    GeoPoint(33.738679, 75.141003),
-    GeoPoint(33.738592, 75.141726),
-    GeoPoint(33.738465, 75.142538),
-    GeoPoint(33.738441, 75.142664),
-    GeoPoint(33.738380, 75.143056),
-    GeoPoint(33.738355, 75.143290),
-    GeoPoint(33.738178, 75.144684),
-    GeoPoint(33.737999, 75.146084),
-    GeoPoint(33.737829, 75.147420),
-    GeoPoint(33.737718, 75.148432),
-    GeoPoint(33.737573, 75.149537),
-    GeoPoint(33.737404, 75.150938),
-    GeoPoint(33.737185, 75.152396),
-    GeoPoint(33.736960, 75.153738),
-    GeoPoint(33.736928, 75.153929),
-    GeoPoint(33.736695, 75.155374),
-    GeoPoint(33.736474, 75.157089),
-    GeoPoint(33.736898, 75.157168),
-    GeoPoint(33.737090, 75.157194),
-    GeoPoint(33.737503, 75.157117),
-    GeoPoint(33.737420, 75.156586),
-    GeoPoint(33.737815, 75.156505),
-    GeoPoint(33.737951, 75.156607),
-    GeoPoint(33.738058, 75.156704),
-    GeoPoint(33.738515, 75.156627)  // Customer Delivery Destination (Court Road)
-)
-
-private fun getRiderGeoPoint(progress: Float): GeoPoint {
-    val totalPoints = OSM_ROUTE_POINTS.size
-    if (totalPoints < 2) return OSM_ROUTE_POINTS.first()
-    val scaled = (progress.coerceIn(0f, 1f) * (totalPoints - 1))
-    val index = scaled.toInt().coerceIn(0, totalPoints - 2)
-    val fraction = (scaled - index).toDouble()
-    val p1 = OSM_ROUTE_POINTS[index]
-    val p2 = OSM_ROUTE_POINTS[index + 1]
-    return GeoPoint(
-        p1.latitude + (p2.latitude - p1.latitude) * fraction,
-        p1.longitude + (p2.longitude - p1.longitude) * fraction
-    )
-}
-
 @Composable
 fun LiveTrackingMapScreen(
-    initialOrder: Order,
-    orderRepo: OrderRepository = OrderRepository.shared,
-    onBack: () -> Unit
+    orderId: String,
+    products: List<Product>,
+    onBack: () -> Unit,
+    orderRepo: OrderRepository = OrderRepository.shared
 ) {
-    val context = LocalContext.current
     val view = LocalView.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
+    val scope = rememberCoroutineScope()
+    var shownId by remember { mutableStateOf(orderId) }
     val orders by orderRepo.orders.collectAsState()
-    val activeOrder = orders.firstOrNull { it.id == initialOrder.id } ?: initialOrder
+    val tracking by orderRepo.liveTracking.collectAsState()
+    val order = orders.firstOrNull { it.id == shownId }
+    // Only the active order has a tracking feed; don't show another order's rider.
+    val rider = tracking?.takeIf { order != null && orderRepo.activeOrder.value?.id == order.id }
 
-    var cancelTimerSeconds by remember { mutableIntStateOf(58) }
-    LaunchedEffect(Unit) {
-        while (cancelTimerSeconds > 0) {
-            delay(1000)
-            cancelTimerSeconds--
+    var isCancelSheetOpen by remember { mutableStateOf(false) }
+    var isAddItemsOpen by remember { mutableStateOf(false) }
+    var isCancelling by remember { mutableStateOf(false) }
+    var cancelError by remember { mutableStateOf<String?>(null) }
+
+    BackHandler { onBack() }
+
+    Box(modifier = Modifier.fillMaxSize().background(DashitColors.SurfaceSunken)) {
+        TrackingMap(order = order, rider = rider)
+
+        // Back button and the change-window countdown
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.72f))
+                    .pressable(scale = 0.9f) { onBack() }
+                    .semantics { contentDescription = "Back" },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            if (order != null) {
+                val seconds = rememberModifySecondsRemaining(order)
+                AnimatedVisibility(visible = seconds > 0, enter = fadeIn() + scaleIn(initialScale = 0.9f), exit = fadeOut() + scaleOut(targetScale = 0.9f)) {
+                    Row(
+                        modifier = Modifier
+                            .height(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.78f))
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        ModifyCountdownBadge(order)
+                        Text("to change", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 20.dp)
+        ) {
+            if (order == null) {
+                // Never leave a bare map: the card's skeleton until the order loads.
+                TrackingCardSkeleton()
+            } else {
+                OrderCard(
+                    order = order,
+                    rider = rider,
+                    isCancelling = isCancelling,
+                    cancelError = cancelError,
+                    onCancel = {
+                        HapticsManager.light(view)
+                        isCancelSheetOpen = true
+                    },
+                    onAddItems = {
+                        HapticsManager.light(view)
+                        isAddItemsOpen = true
+                    }
+                )
+            }
         }
     }
 
-    // Smooth rider progression
-    val infiniteTransition = rememberInfiniteTransition(label = "rider_movement")
-    val simulatedProgress by infiniteTransition.animateFloat(
-        initialValue = 0.20f,
-        targetValue = 0.95f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(28000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rider_drive"
-    )
-    val effectiveProgress = activeOrder.tracking?.progress?.toFloat() ?: simulatedProgress
+    if (isCancelSheetOpen && order != null) {
+        fun cancel(restoreCart: Boolean) {
+            isCancelSheetOpen = false
+            isCancelling = true
+            cancelError = null
+            scope.launch {
+                try {
+                    orderRepo.cancelOrder(order.id)
+                    if (restoreCart) CartViewModel.shared.reorder(order.items)
+                    HapticsManager.success(view)
+                    onBack()
+                } catch (e: Exception) {
+                    HapticsManager.error(view)
+                    cancelError = "The store has already started on it, so it can't be cancelled now."
+                } finally {
+                    isCancelling = false
+                }
+            }
+        }
+        CancelOrderSheet(
+            onCancelKeepItems = { cancel(restoreCart = true) },
+            onCancel = { cancel(restoreCart = false) },
+            onDismiss = { isCancelSheetOpen = false }
+        )
+    }
 
-    // OpenStreetMap view reference & tile mode state
-    var osmMapView by remember { mutableStateOf<MapView?>(null) }
-    var riderMarkerRef by remember { mutableStateOf<Marker?>(null) }
-    var isDarkModeMap by remember { mutableStateOf(false) }
-    var isDetailsExpanded by remember { mutableStateOf(false) }
+    if (isAddItemsOpen && order != null) {
+        AddItemsSheet(
+            order = order,
+            products = products,
+            onUpdated = { replacement ->
+                shownId = replacement.id
+                isAddItemsOpen = false
+            },
+            onDismiss = { isAddItemsOpen = false }
+        )
+    }
+}
 
-    // Manage MapView lifecycle
+@Composable
+private fun OrderCard(
+    order: Order,
+    rider: DriverLiveTracking?,
+    isCancelling: Boolean,
+    cancelError: String?,
+    onCancel: () -> Unit,
+    onAddItems: () -> Unit
+) {
+    val stage = order.status
+    val seconds = rememberModifySecondsRemaining(order)
+    val eta = rider?.etaMinutes ?: order.etaMinutes ?: 8
+    val shape = RoundedCornerShape(24.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(18.dp, shape, clip = false)
+            .clip(shape)
+            .background(DashitColors.TrackerCard)
+            .border(1.dp, Color.White.copy(alpha = 0.1f), shape)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(stage.icon, contentDescription = null, tint = DashitColors.BrandAccent, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                stage.headline(order.driverName),
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            // The arrival time only once a rider has the order and is on the way.
+            if (stage == OrderStatus.OUT_FOR_DELIVERY) {
+                Text("ETA $eta MINS", color = DashitColors.BrandAccent, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+            }
+        }
+
+        val line = rider?.statusText?.takeIf { it.isNotBlank() } ?: rider?.distanceFormatted
+        if (stage == OrderStatus.OUT_FOR_DELIVERY && line != null) {
+            Text(line, color = Color.White.copy(alpha = 0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+
+        OrderProgressRail(stage = stage, progress = stage.progress(rider?.progress))
+
+        val code = order.otp
+        if (!stage.isFinished && !code.isNullOrEmpty()) DeliveryCodeRow(code)
+
+        AnimatedVisibility(visible = seconds > 0, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
+            ChangeWindowRow(isCancelling = isCancelling, onCancel = onCancel, onAddItems = onAddItems)
+        }
+        cancelError?.let { Text(it, color = DashitColors.Danger, fontSize = 12.5.sp) }
+
+        CardDivider()
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val units = order.itemCount
+            Text(
+                "$units item${if (units == 1) "" else "s"} • ₹${order.grandTotal.toInt()}",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 12.5.sp,
+                modifier = Modifier.weight(1f)
+            )
+            Text("#${order.id.takeLast(6)}", color = Color.White.copy(alpha = 0.45f), fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+        }
+    }
+}
+
+/** While the order can still change: add more items or cancel. */
+@Composable
+private fun ChangeWindowRow(isCancelling: Boolean, onCancel: () -> Unit, onAddItems: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Forgot something?", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Text("Add or cancel before packing", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text(
+            if (isCancelling) "…" else "Cancel",
+            color = DashitColors.Danger,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .height(34.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+                .pressable(scale = 0.95f) { if (!isCancelling) onCancel() }
+                .padding(horizontal = 12.dp, vertical = 8.dp)
+        )
+        Row(
+            modifier = Modifier
+                .height(34.dp)
+                .clip(CircleShape)
+                .background(DashitColors.BrandOrange)
+                .pressable(scale = 0.95f, onClick = onAddItems)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+            Text("Add items", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+    }
+}
+
+// MARK: - Map
+
+private class MapLayers {
+    var map: MapView? = null
+    var routeCasing: Polyline? = null
+    var routeLine: Polyline? = null
+    var destination: Marker? = null
+    var rider: Marker? = null
+    var riderSprite: String? = null
+    var framed = false
+    var routedFrom: GeoPoint? = null
+    var routedTo: GeoPoint? = null
+}
+
+@Composable
+private fun TrackingMap(order: Order?, rider: DriverLiveTracking?) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val layers = remember { MapLayers() }
+    var route by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
+    var isRoadRoute by remember { mutableStateOf(false) }
+
+    val destination = order?.deliveryAddress?.let { GeoPoint(it.latitude, it.longitude) }
+    val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) }
+    // The way the rider comes: from the rider while riding, from the hub before.
+    val routeStart = riderPoint?.takeIf { order?.status == OrderStatus.OUT_FOR_DELIVERY } ?: HUB
+
+    LaunchedEffect(routeStart.latitude, routeStart.longitude, destination?.latitude, destination?.longitude) {
+        val to = destination ?: return@LaunchedEffect
+        val from = routeStart
+        // Re-route only when the rider has moved on by more than ~60 m.
+        val lastFrom = layers.routedFrom
+        if (lastFrom != null && layers.routedTo == to && lastFrom.distanceToAsDouble(from) < 60) return@LaunchedEffect
+        layers.routedFrom = from
+        layers.routedTo = to
+        val road = fetchRoadRoute(from, to)
+        if (road != null && road.size > 1) {
+            route = road
+            isRoadRoute = true
+        } else {
+            route = listOf(from, to)
+            isRoadRoute = false
+        }
+    }
+
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> osmMapView?.onResume()
-                Lifecycle.Event.ON_PAUSE -> osmMapView?.onPause()
+                Lifecycle.Event.ON_RESUME -> layers.map?.onResume()
+                Lifecycle.Event.ON_PAUSE -> layers.map?.onPause()
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            osmMapView?.onDetach()
+            layers.map?.onDetach()
         }
     }
 
-    BackHandler {
-        onBack()
-    }
+    AndroidView(
+        modifier = Modifier.fillMaxSize(),
+        factory = { ctx ->
+            val config = Configuration.getInstance()
+            config.load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
+            config.userAgentValue = "DASHit-App/1.0 (https://dashit.in; support@dashit.in)"
+            val basePath = File(ctx.cacheDir, "osmdroid").apply { mkdirs() }
+            config.osmdroidBasePath = basePath
+            config.osmdroidTileCache = File(basePath, "tiles").apply { mkdirs() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF10131A))
-    ) {
-        // 1. Real OpenStreetMap Native MapView
-        AndroidView(
-            factory = { ctx ->
-                val config = Configuration.getInstance()
-                config.load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-                // Compliant OpenStreetMap User-Agent policy: AppName/Version (URL; Email)
-                config.userAgentValue = "DASHit-App/1.0 (https://dashit.in; support@dashit.in)"
-                val basePath = File(ctx.cacheDir, "osmdroid").apply { mkdirs() }
-                val tileCache = File(basePath, "tiles").apply { mkdirs() }
-                config.osmdroidBasePath = basePath
-                config.osmdroidTileCache = tileCache
+            MapView(ctx).apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                isTilesScaledToDpi = true
+                minZoomLevel = 11.0
+                maxZoomLevel = 19.0
+                zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
+                // The app is dark, so the map is too: OpenStreetMap's tiles, inverted with their hues kept.
+                overlayManager.tilesOverlay.setColorFilter(darkMapFilter())
+                overlayManager.tilesOverlay.setLoadingBackgroundColor(android.graphics.Color.parseColor("#0B0B0E"))
+                overlayManager.tilesOverlay.setLoadingLineColor(android.graphics.Color.parseColor("#151519"))
+                controller.setZoom(15.0)
+                controller.setCenter(HUB)
 
-                MapView(ctx).apply {
-                    setTileSource(TileSourceFactory.MAPNIK) // Authentic OpenStreetMap tiles from tile.openstreetmap.org
-                    setUseDataConnection(true)
-                    setMultiTouchControls(true)
-                    isTilesScaledToDpi = true
-                    minZoomLevel = 11.0
-                    maxZoomLevel = 20.0
-                    zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
-
-                    // Loading tile background colors
-                    overlayManager.tilesOverlay.setLoadingBackgroundColor(android.graphics.Color.parseColor("#E8ECEF"))
-                    overlayManager.tilesOverlay.setLoadingLineColor(android.graphics.Color.parseColor("#CBD5E1"))
-
-                    // Perfectly center the Lal Chowk to Court Road delivery route in visible upper screen
-                    controller.setZoom(15.2)
-                    controller.setCenter(GeoPoint(33.7335, 75.1465))
-
-                    // Road Route Glow Underlay
-                    val routeGlow = Polyline(this).apply {
-                        outlinePaint.color = android.graphics.Color.parseColor("#440C831F")
-                        outlinePaint.strokeWidth = 26f
-                        outlinePaint.strokeCap = Paint.Cap.ROUND
-                        outlinePaint.strokeJoin = Paint.Join.ROUND
-                        setPoints(OSM_ROUTE_POINTS)
-                    }
-                    overlays.add(routeGlow)
-
-                    // Road Route Vibrant Polyline
-                    val routeLine = Polyline(this).apply {
-                        outlinePaint.color = android.graphics.Color.parseColor("#0C831F")
-                        outlinePaint.strokeWidth = 14f
-                        outlinePaint.strokeCap = Paint.Cap.ROUND
-                        outlinePaint.strokeJoin = Paint.Join.ROUND
-                        setPoints(OSM_ROUTE_POINTS)
-                    }
-                    overlays.add(routeLine)
-
-                    // Road Route Inner Bright Emerald Stripe
-                    val innerLine = Polyline(this).apply {
-                        outlinePaint.color = android.graphics.Color.parseColor("#00E676")
-                        outlinePaint.strokeWidth = 6f
-                        outlinePaint.strokeCap = Paint.Cap.ROUND
-                        outlinePaint.strokeJoin = Paint.Join.ROUND
-                        setPoints(OSM_ROUTE_POINTS)
-                    }
-                    overlays.add(innerLine)
-
-                    // Dark Store Hub Marker
-                    val hubMarker = Marker(this).apply {
-                        position = OSM_ROUTE_POINTS.first()
-                        setAnchor(Marker.ANCHOR_CENTER, 0.40f)
-                        title = "DASHit Express Hub (Lal Chowk)"
-                        icon = createHubMarkerDrawable(ctx)
-                    }
-                    overlays.add(hubMarker)
-
-                    // Delivery Destination Pin Marker
-                    val homeMarker = Marker(this).apply {
-                        position = OSM_ROUTE_POINTS.last()
-                        setAnchor(Marker.ANCHOR_CENTER, 0.40f)
-                        title = "Delivery Location (Home)"
-                        icon = createHomeMarkerDrawable(ctx)
-                    }
-                    overlays.add(homeMarker)
-
-                    // Live Moving Delivery Rider Marker
-                    val riderMarker = Marker(this).apply {
-                        position = getRiderGeoPoint(effectiveProgress)
-                        setAnchor(Marker.ANCHOR_CENTER, 0.40f)
-                        title = "Tariq Ahmad • Delivery Partner"
-                        icon = createRiderMarkerDrawable(ctx)
-                    }
-                    overlays.add(riderMarker)
-                    riderMarkerRef = riderMarker
-
-                    osmMapView = this
+                val casing = Polyline(this).apply {
+                    outlinePaint.color = android.graphics.Color.argb(90, 0, 0, 0)
+                    outlinePaint.strokeWidth = dp(ctx, 9f)
+                    outlinePaint.strokeCap = Paint.Cap.ROUND
+                    outlinePaint.strokeJoin = Paint.Join.ROUND
                 }
-            },
-            update = { mapView ->
-                // Apply optional dark mode matrix or keep pure OpenStreetMap colors
-                if (isDarkModeMap) {
-                    val nightMatrix = ColorMatrix(
-                        floatArrayOf(
-                            -0.80f, 0f, 0f, 0f, 240f,
-                            0f, -0.80f, 0f, 0f, 240f,
-                            0f, 0f, -0.80f, 0f, 240f,
-                            0f, 0f, 0f, 1f, 0f
-                        )
-                    )
-                    mapView.overlayManager.tilesOverlay.setColorFilter(ColorMatrixColorFilter(nightMatrix))
-                } else {
-                    mapView.overlayManager.tilesOverlay.setColorFilter(null)
+                val line = Polyline(this).apply {
+                    outlinePaint.color = android.graphics.Color.parseColor("#FF5B00")
+                    outlinePaint.strokeWidth = dp(ctx, 5f)
+                    outlinePaint.strokeCap = Paint.Cap.ROUND
+                    outlinePaint.strokeJoin = Paint.Join.ROUND
                 }
+                overlays.add(casing)
+                overlays.add(line)
 
-                // Smoothly update rider marker coordinates as delivery advances
-                val currentRiderPos = getRiderGeoPoint(effectiveProgress)
-                riderMarkerRef?.position = currentRiderPos
-                mapView.invalidate()
-            },
-            modifier = Modifier.fillMaxSize()
+                // Dark store the order is packed at, marked with the app icon.
+                overlays.add(Marker(this).apply {
+                    position = HUB
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    icon = BitmapDrawable(ctx.resources, hubMarkerBitmap(ctx))
+                    title = "DASHit hub"
+                    setInfoWindow(null)
+                })
+                val dest = Marker(this).apply {
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+                    icon = BitmapDrawable(ctx.resources, destinationMarkerBitmap(ctx))
+                    title = "Delivery address"
+                    setInfoWindow(null)
+                }
+                overlays.add(dest)
+                val riderMarker = Marker(this).apply {
+                    setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
+                    title = "Delivery partner"
+                    setInfoWindow(null)
+                    isEnabled = false
+                }
+                overlays.add(riderMarker)
+
+                layers.map = this
+                layers.routeCasing = casing
+                layers.routeLine = line
+                layers.destination = dest
+                layers.rider = riderMarker
+            }
+        },
+        update = { map ->
+            val casing = layers.routeCasing
+            val line = layers.routeLine
+            if (route.size > 1) {
+                casing?.setPoints(route)
+                line?.setPoints(route)
+                casing?.isEnabled = isRoadRoute
+                line?.outlinePaint?.apply {
+                    color = if (isRoadRoute) android.graphics.Color.parseColor("#FF5B00") else android.graphics.Color.argb(140, 255, 91, 0)
+                    strokeWidth = dp(context, if (isRoadRoute) 5f else 3f)
+                    pathEffect = if (isRoadRoute) null else DashPathEffect(floatArrayOf(dp(context, 4f), dp(context, 8f)), 0f)
+                }
+            }
+            destination?.let { layers.destination?.position = it }
+            layers.destination?.isEnabled = destination != null
+
+            val riderMarker = layers.rider
+            if (riderPoint != null && riderMarker != null) {
+                val bearing = rider?.let { r -> r.heading?.takeIf { (r.speed ?: 0.0) > 0.5 } }
+                    ?: destination?.let { bearing(riderPoint, it) }
+                val sprite = riderSpriteName(bearing)
+                if (sprite != layers.riderSprite) {
+                    riderMarker.icon = BitmapDrawable(context.resources, riderMarkerBitmap(context, sprite))
+                    layers.riderSprite = sprite
+                }
+                riderMarker.position = riderPoint
+                riderMarker.isEnabled = true
+            } else {
+                riderMarker?.isEnabled = false
+            }
+
+            // Frame hub, rider and door once, leaving room for the card below.
+            if (!layers.framed && destination != null && map.width > 0) {
+                val points = listOfNotNull(HUB, destination, riderPoint)
+                val box = BoundingBox.fromGeoPointsSafe(points)
+                map.zoomToBoundingBox(box.increaseByScale(1.6f), false, dp(context, 48f).toInt())
+                // Nudge the view down so the pins sit above the order card.
+                map.controller.scrollBy(0, (map.height * 0.18).toInt())
+                layers.framed = true
+            }
+            map.invalidate()
+        }
+    )
+}
+
+/** OSRM's road route between two points, or null when it can't be reached. */
+private suspend fun fetchRoadRoute(from: GeoPoint, to: GeoPoint): List<GeoPoint>? = withContext(Dispatchers.IO) {
+    try {
+        val url = URL(
+            "https://router.project-osrm.org/route/v1/driving/" +
+                "${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=full&geometries=geojson"
         )
-
-        // 2. OpenStreetMap License Attribution Chip (Top-right of map)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 64.dp, end = 16.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.Black.copy(alpha = 0.65f))
-                .padding(horizontal = 8.dp, vertical = 4.dp)
-        ) {
-            Text(
-                text = "© OpenStreetMap",
-                color = Color.White.copy(alpha = 0.85f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Medium
-            )
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            connectTimeout = 6000
+            readTimeout = 6000
+            setRequestProperty("User-Agent", "DASHit-App/1.0 (https://dashit.in; support@dashit.in)")
         }
-
-        // 3. Top Navigation Bar (Glassmorphic)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Circular Back Button
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF181C26).copy(alpha = 0.94f))
-                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.light(view)
-                        onBack()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Center Order Status Pill
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color(0xFF141720).copy(alpha = 0.94f))
-                    .border(1.dp, DashitColors.Hairline, CircleShape)
-                    .padding(horizontal = 14.dp, vertical = 7.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(DashitColors.Positive)
-                    )
-                    Text(
-                        text = "Order #${activeOrder.id.takeLast(6)}",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            // Help / Support Button
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color(0xFF181C26).copy(alpha = 0.94f))
-                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                    .padding(horizontal = 13.dp, vertical = 7.dp)
-                    .pressable(scale = 0.92f) {
-                        HapticsManager.selection(view)
-                    }
-            ) {
-                Text(
-                    text = "Help",
-                    color = DashitColors.TextPrimary,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.Bold
-                )
+        connection.inputStream.bufferedReader().use { reader ->
+            val json = JSONObject(reader.readText())
+            val coordinates = json.getJSONArray("routes").getJSONObject(0)
+                .getJSONObject("geometry").getJSONArray("coordinates")
+            (0 until coordinates.length()).map { i ->
+                val pair = coordinates.getJSONArray(i)
+                GeoPoint(pair.getDouble(1), pair.getDouble(0))
             }
         }
-
-        // 4. Floating Map Action Buttons (Top-Right under Nav Bar)
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 96.dp, end = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Map Tile Style Toggle: OSM Standard vs Night OSM
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
-                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.selection(view)
-                        isDarkModeMap = !isDarkModeMap
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isDarkModeMap) Icons.Default.LightMode else Icons.Default.DarkMode,
-                    contentDescription = "Toggle Map Theme",
-                    tint = DashitColors.FestiveGold,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Zoom In
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
-                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.light(view)
-                        osmMapView?.controller?.zoomIn()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Zoom In",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Zoom Out
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
-                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.light(view)
-                        osmMapView?.controller?.zoomOut()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Remove,
-                    contentDescription = "Zoom Out",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Re-center on Rider
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1A1F2C).copy(alpha = 0.95f))
-                    .border(1.dp, DashitColors.HairlineStrong, CircleShape)
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.light(view)
-                        val riderPoint = getRiderGeoPoint(effectiveProgress)
-                        val centerTarget = GeoPoint(riderPoint.latitude - 0.0030, riderPoint.longitude)
-                        osmMapView?.controller?.animateTo(centerTarget)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Center on Rider",
-                    tint = DashitColors.BlinkitGreen,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        // 5. Floating Bottom Delivery Card (Collapsible for full OpenStreetMap visibility)
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                .background(Color(0xFF161A23))
-                .border(1.dp, DashitColors.HairlineStrong, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                .animateContentSize()
-                .padding(horizontal = 20.dp, vertical = 14.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Drag handle & toggle header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        HapticsManager.light(view)
-                        isDetailsExpanded = !isDetailsExpanded
-                    }
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 42.dp, height = 5.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF384054))
-                )
-            }
-
-            // ETA Header Row (tappable to expand/collapse)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        HapticsManager.light(view)
-                        isDetailsExpanded = !isDetailsExpanded
-                    },
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Timer,
-                            contentDescription = null,
-                            tint = DashitColors.BlinkitGreen,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Text(
-                            text = "Arriving in ${activeOrder.etaMinutes ?: 8} mins",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                        Icon(
-                            imageVector = if (isDetailsExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = if (isDetailsExpanded) "Collapse" else "Expand",
-                            tint = DashitColors.TextMuted,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Text(
-                        text = activeOrder.tracking?.statusText ?: "Partner on route • 1.2 km away",
-                        color = DashitColors.TextSecondary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(top = 2.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                // Delivery PIN Badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF222836))
-                        .border(1.dp, Color(0xFF384258), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "DELIVERY PIN",
-                            color = DashitColors.TextMuted,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                        Text(
-                            text = "4821",
-                            color = DashitColors.FestiveGold,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Black,
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                }
-            }
-
-            // Compact Rider Bar (Always visible in collapsed mode)
-            if (!isDetailsExpanded) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF1D222E))
-                        .border(1.dp, DashitColors.Hairline, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF262D3D)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = "🛵", fontSize = 18.sp)
-                        }
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = activeOrder.driverName ?: "Tariq Ahmad",
-                                    color = Color.White,
-                                    fontSize = 13.5.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Icon(
-                                    imageVector = Icons.Default.Shield,
-                                    contentDescription = null,
-                                    tint = DashitColors.Positive,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                            }
-                            Text(
-                                text = "Hero Electric • 4.9 ★",
-                                color = DashitColors.TextMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF272E3E))
-                                .pressable(scale = 0.90f) { HapticsManager.light(view) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Message,
-                                contentDescription = "Message",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(DashitColors.BlinkitGreen)
-                                .pressable(scale = 0.90f) { HapticsManager.medium(view) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Call,
-                                contentDescription = "Call",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Expanded Order Lifecycle & Items View
-            AnimatedVisibility(
-                visible = isDetailsExpanded,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    // 4-Stage Stepper Rail
-                    OrderTrackingStepper(status = activeOrder.status)
-
-                    // Rider Contact & Vehicle Card
-                    RiderContactCard(
-                        driverName = activeOrder.driverName ?: "Tariq Ahmad",
-                        driverPhone = activeOrder.driverPhone ?: "+91 94190 12345"
-                    )
-
-                    // 60-second Cancellation Window Notice
-                    if (cancelTimerSeconds > 0) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFF241E10))
-                                .border(1.dp, Color(0xFF6B4E12), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(text = "⏱️", fontSize = 16.sp)
-                                Text(
-                                    text = "Free cancellation: ${cancelTimerSeconds}s left",
-                                    color = Color(0xFFFFD466),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-
-                            Text(
-                                text = "Modify",
-                                color = Color(0xFFFFB703),
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.pressable(scale = 0.94f) {
-                                    HapticsManager.light(view)
-                                }
-                            )
-                        }
-                    }
-
-                    // Order Items Summary Accordion
-                    OrderItemsMiniPreview(order = activeOrder)
-                }
-            }
-        }
+    } catch (e: Exception) {
+        null
     }
 }
 
-// Custom High-DPI Marker Generators for OpenStreetMap
-private fun createHubMarkerDrawable(context: Context): BitmapDrawable {
-    val density = context.resources.displayMetrics.density
-    val width = (64 * density).toInt()
-    val height = (68 * density).toInt()
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = AndroidCanvas(bitmap)
+private fun bearing(a: GeoPoint, b: GeoPoint): Double {
+    val lat1 = Math.toRadians(a.latitude)
+    val lat2 = Math.toRadians(b.latitude)
+    val dLon = Math.toRadians(b.longitude - a.longitude)
+    val y = sin(dLon) * cos(lat2)
+    val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+    return Math.toDegrees(atan2(y, x))
+}
 
-    val cx = width / 2f
-    val cy = 24f * density
-    val radius = 22f * density
+/** The same eight-direction rider sprites as iOS, picked by bearing. */
+private fun riderSpriteName(bearing: Double?): String {
+    if (bearing == null) return "rider_map_live"
+    val names = listOf("rider_back", "rider_back_right", "rider_right", "rider_front_right", "rider_front", "rider_front_left", "rider_left", "rider_back_left")
+    val normalized = ((bearing % 360) + 360) % 360
+    return names[((normalized + 22.5) / 45).toInt() % names.size]
+}
 
-    // Outer glow
-    val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#55F59E0B")
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(cx, cy, radius, glowPaint)
+private fun dp(context: Context, value: Float): Float = value * context.resources.displayMetrics.density
 
-    // Inner circle
-    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#18140E")
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(cx, cy, radius * 0.78f, bgPaint)
+/** Inverts the tiles' lightness but keeps their hues, then dims them to the app's surface. */
+private fun darkMapFilter(): ColorMatrixColorFilter {
+    val invert = ColorMatrix(floatArrayOf(
+        -1f, 0f, 0f, 0f, 255f,
+        0f, -1f, 0f, 0f, 255f,
+        0f, 0f, -1f, 0f, 255f,
+        0f, 0f, 0f, 1f, 0f
+    ))
+    val hueRotate180 = ColorMatrix(floatArrayOf(
+        -0.574f, 1.430f, 0.144f, 0f, 0f,
+        0.426f, 0.430f, 0.144f, 0f, 0f,
+        0.426f, 1.430f, -0.856f, 0f, 0f,
+        0f, 0f, 0f, 1f, 0f
+    ))
+    val dim = ColorMatrix().apply { setScale(0.82f, 0.82f, 0.86f, 1f) }
+    val desaturate = ColorMatrix().apply { setSaturation(0.55f) }
+    return ColorMatrixColorFilter(invert.apply {
+        postConcat(hueRotate180)
+        postConcat(desaturate)
+        postConcat(dim)
+    })
+}
 
-    // Border
-    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#F59E0B")
-        style = Paint.Style.STROKE
-        strokeWidth = 2.5f * density
-    }
-    canvas.drawCircle(cx, cy, radius * 0.78f, strokePaint)
-
-    // Emoji icon
-    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 17f * density
-        textAlign = Paint.Align.CENTER
-    }
-    val yPos = (cy - (textPaint.descent() + textPaint.ascent()) / 2f)
-    canvas.drawText("🏬", cx, yPos, textPaint)
-
-    // Text Label Pill underneath
-    val pillRect = android.graphics.RectF(
-        cx - 24f * density,
-        48f * density,
-        cx + 24f * density,
-        64f * density
+/** The app icon as a rounded tile with a white edge, for the hub. */
+private fun hubMarkerBitmap(context: Context): Bitmap {
+    val size = dp(context, 34f).toInt()
+    val tile = BitmapFactory.decodeResource(context.resources, R.drawable.brand_tile)
+    val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(out)
+    val radius = size * 0.27f
+    val rect = RectF(0f, 0f, size.toFloat(), size.toFloat())
+    val clip = Path().apply { addRoundRect(rect, radius, radius, Path.Direction.CW) }
+    canvas.save()
+    canvas.clipPath(clip)
+    canvas.drawBitmap(Bitmap.createScaledBitmap(tile, size, size, true), 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG))
+    canvas.restore()
+    val stroke = dp(context, 2f)
+    canvas.drawRoundRect(
+        RectF(stroke / 2, stroke / 2, size - stroke / 2, size - stroke / 2), radius, radius,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = stroke; color = android.graphics.Color.WHITE }
     )
-    val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#F018140E")
-        style = Paint.Style.FILL
-    }
-    val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#80F59E0B")
-        style = Paint.Style.STROKE
-        strokeWidth = 1f * density
-    }
-    val pillTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#FBBF24")
-        textSize = 9.5f * density
-        typeface = android.graphics.Typeface.DEFAULT_BOLD
-        textAlign = Paint.Align.CENTER
-    }
-    canvas.drawRoundRect(pillRect, 8f * density, 8f * density, pillBgPaint)
-    canvas.drawRoundRect(pillRect, 8f * density, 8f * density, pillBorderPaint)
-    val pillYPos = (pillRect.centerY() - (pillTextPaint.descent() + pillTextPaint.ascent()) / 2f)
-    canvas.drawText("Hub", cx, pillYPos, pillTextPaint)
-
-    return BitmapDrawable(context.resources, bitmap)
+    return out
 }
 
-private fun createHomeMarkerDrawable(context: Context): BitmapDrawable {
-    val density = context.resources.displayMetrics.density
-    val width = (64 * density).toInt()
-    val height = (68 * density).toInt()
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = AndroidCanvas(bitmap)
-
-    val cx = width / 2f
-    val cy = 24f * density
-    val radius = 22f * density
-
-    // Outer glow
-    val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#55FF6F00")
-        style = Paint.Style.FILL
+/** An orange pin with a house, for the delivery address. */
+private fun destinationMarkerBitmap(context: Context): Bitmap {
+    val d = context.resources.displayMetrics.density
+    val w = (38 * d).toInt()
+    val h = (52 * d).toInt()
+    val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(out)
+    val orange = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#FF5B00") }
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE }
+    val cx = w / 2f
+    val r = 19 * d
+    // Pointer
+    canvas.drawPath(Path().apply {
+        moveTo(cx - 7 * d, 34 * d); lineTo(cx + 7 * d, 34 * d); lineTo(cx, 44 * d); close()
+    }, orange)
+    // Shadow under the tip
+    canvas.drawOval(RectF(cx - 9 * d, 46 * d, cx + 9 * d, 50 * d), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(64, 0, 0, 0) })
+    canvas.drawCircle(cx, r, r, white)
+    canvas.drawCircle(cx, r, r - 3 * d, orange)
+    // House glyph
+    val house = Path().apply {
+        moveTo(cx, r - 7 * d); lineTo(cx + 7 * d, r - 0.5f * d); lineTo(cx + 5 * d, r - 0.5f * d)
+        lineTo(cx + 5 * d, r + 6 * d); lineTo(cx - 5 * d, r + 6 * d); lineTo(cx - 5 * d, r - 0.5f * d)
+        lineTo(cx - 7 * d, r - 0.5f * d); close()
     }
-    canvas.drawCircle(cx, cy, radius, glowPaint)
-
-    // Inner circle
-    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#221206")
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(cx, cy, radius * 0.78f, bgPaint)
-
-    // Border
-    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#FF6F00")
-        style = Paint.Style.STROKE
-        strokeWidth = 2.5f * density
-    }
-    canvas.drawCircle(cx, cy, radius * 0.78f, strokePaint)
-
-    // Emoji icon
-    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 17f * density
-        textAlign = Paint.Align.CENTER
-    }
-    val yPos = (cy - (textPaint.descent() + textPaint.ascent()) / 2f)
-    canvas.drawText("🏠", cx, yPos, textPaint)
-
-    // Text Label Pill underneath
-    val pillRect = android.graphics.RectF(
-        cx - 24f * density,
-        48f * density,
-        cx + 24f * density,
-        64f * density
-    )
-    val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#F0221206")
-        style = Paint.Style.FILL
-    }
-    val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#80FF6F00")
-        style = Paint.Style.STROKE
-        strokeWidth = 1f * density
-    }
-    val pillTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#FFA000")
-        textSize = 9.5f * density
-        typeface = android.graphics.Typeface.DEFAULT_BOLD
-        textAlign = Paint.Align.CENTER
-    }
-    canvas.drawRoundRect(pillRect, 8f * density, 8f * density, pillBgPaint)
-    canvas.drawRoundRect(pillRect, 8f * density, 8f * density, pillBorderPaint)
-    val pillYPos = (pillRect.centerY() - (pillTextPaint.descent() + pillTextPaint.ascent()) / 2f)
-    canvas.drawText("Home", cx, pillYPos, pillTextPaint)
-
-    return BitmapDrawable(context.resources, bitmap)
+    canvas.drawPath(house, white)
+    return out
 }
 
-private fun createRiderMarkerDrawable(context: Context): BitmapDrawable {
-    val density = context.resources.displayMetrics.density
-    val width = (64 * density).toInt()
-    val height = (68 * density).toInt()
-    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = AndroidCanvas(bitmap)
-
-    val cx = width / 2f
-    val cy = 24f * density
-    val radius = 23f * density
-
-    // Outer pulse glow
-    val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#550C831F")
-        style = Paint.Style.FILL
+/** The rider sprite for a heading, over a soft orange halo and a ground shadow. */
+private fun riderMarkerBitmap(context: Context, spriteName: String): Bitmap {
+    val d = context.resources.displayMetrics.density
+    val size = (80 * d).toInt()
+    val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(out)
+    val c = size / 2f
+    canvas.drawCircle(c, c + 18 * d, 23 * d, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(80, 255, 91, 0) })
+    canvas.drawOval(RectF(c - 22 * d, c + 20 * d, c + 22 * d, c + 32 * d), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(70, 0, 0, 0) })
+    val id = context.resources.getIdentifier(spriteName, "drawable", context.packageName)
+    val sprite = if (id != 0) BitmapFactory.decodeResource(context.resources, id) else null
+    if (sprite != null) {
+        val targetH = 60 * d
+        val targetW = sprite.width * targetH / sprite.height
+        canvas.drawBitmap(
+            sprite, null,
+            RectF(c - targetW / 2, c - targetH / 2, c + targetW / 2, c + targetH / 2),
+            Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+        )
     }
-    canvas.drawCircle(cx, cy, radius, pulsePaint)
-
-    // Inner circle
-    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#0C831F")
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(cx, cy, radius * 0.78f, bgPaint)
-
-    // Border
-    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 2.5f * density
-    }
-    canvas.drawCircle(cx, cy, radius * 0.78f, strokePaint)
-
-    // Emoji icon
-    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        textSize = 17f * density
-        textAlign = Paint.Align.CENTER
-    }
-    val yPos = (cy - (textPaint.descent() + textPaint.ascent()) / 2f)
-    canvas.drawText("🛵", cx, yPos, textPaint)
-
-    // Text Label Pill underneath
-    val pillRect = android.graphics.RectF(
-        cx - 24f * density,
-        48f * density,
-        cx + 24f * density,
-        64f * density
-    )
-    val pillBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#F00A3814")
-        style = Paint.Style.FILL
-    }
-    val pillBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#8000E676")
-        style = Paint.Style.STROKE
-        strokeWidth = 1f * density
-    }
-    val pillTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.parseColor("#00E676")
-        textSize = 9.5f * density
-        typeface = android.graphics.Typeface.DEFAULT_BOLD
-        textAlign = Paint.Align.CENTER
-    }
-    canvas.drawRoundRect(pillRect, 8f * density, 8f * density, pillBgPaint)
-    canvas.drawRoundRect(pillRect, 8f * density, 8f * density, pillBorderPaint)
-    val pillYPos = (pillRect.centerY() - (pillTextPaint.descent() + pillTextPaint.ascent()) / 2f)
-    canvas.drawText("Tariq", cx, pillYPos, pillTextPaint)
-
-    return BitmapDrawable(context.resources, bitmap)
-}
-
-@Composable
-private fun OrderTrackingStepper(status: OrderStatus) {
-    val steps = listOf(
-        "Order Placed",
-        "Packing",
-        "On the Way",
-        "Delivered"
-    )
-
-    val currentStepIndex = when (status) {
-        OrderStatus.PLACED -> 0
-        OrderStatus.PACKING -> 1
-        OrderStatus.OUT_FOR_DELIVERY -> 2
-        OrderStatus.DELIVERED -> 3
-        OrderStatus.CANCELLED -> 0
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        steps.forEachIndexed { index, title ->
-            val isCompleted = index <= currentStepIndex
-            val isActive = index == currentStepIndex
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(
-                            when {
-                                isCompleted -> DashitColors.BlinkitGreen
-                                else -> Color(0xFF262C3A)
-                            }
-                        )
-                        .border(
-                            1.dp,
-                            if (isActive) Color.White else Color.Transparent,
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (isCompleted) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(13.dp)
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(DashitColors.TextMuted)
-                        )
-                    }
-                }
-
-                Text(
-                    text = title,
-                    color = if (isCompleted) Color.White else DashitColors.TextMuted,
-                    fontSize = 10.5.sp,
-                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            // Connector line between steps
-            if (index < steps.size - 1) {
-                Box(
-                    modifier = Modifier
-                        .height(2.dp)
-                        .weight(0.6f)
-                        .offset(y = (-10).dp)
-                        .background(
-                            if (index < currentStepIndex) DashitColors.BlinkitGreen
-                            else Color(0xFF262C3A)
-                        )
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RiderContactCard(driverName: String, driverPhone: String) {
-    val view = LocalView.current
-    val cardShape = RoundedCornerShape(16.dp)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(cardShape)
-            .background(Color(0xFF1E232F))
-            .border(1.dp, DashitColors.Hairline, cardShape)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Rider Avatar
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2A3142)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "🛵", fontSize = 22.sp)
-            }
-
-            Column {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = driverName,
-                        color = Color.White,
-                        fontSize = 14.5.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Icon(
-                        imageVector = Icons.Default.Shield,
-                        contentDescription = "Verified Delivery Partner",
-                        tint = DashitColors.Positive,
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-
-                Text(
-                    text = "Hero Electric • 4.9 ★ (1,420 orders)",
-                    color = DashitColors.TextMuted,
-                    fontSize = 11.5.sp
-                )
-            }
-        }
-
-        // Call & Message Action Buttons
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // Message Button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF272E3E))
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.light(view)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Message,
-                    contentDescription = "Message Rider",
-                    tint = Color.White,
-                    modifier = Modifier.size(17.dp)
-                )
-            }
-
-            // Call Button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(DashitColors.BlinkitGreen)
-                    .pressable(scale = 0.90f) {
-                        HapticsManager.medium(view)
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Call,
-                    contentDescription = "Call Rider",
-                    tint = Color.White,
-                    modifier = Modifier.size(17.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun OrderItemsMiniPreview(order: Order) {
-    val cardShape = RoundedCornerShape(14.dp)
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(cardShape)
-            .background(Color(0xFF191D27))
-            .border(1.dp, DashitColors.Hairline, cardShape)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "${order.items.sumOf { it.qty }} items ordered",
-                color = DashitColors.TextPrimary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "₹${order.grandTotal.toInt()}",
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Black
-            )
-        }
-
-        // Thumbnails of items
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            order.items.take(4).forEach { item ->
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(item.img)
-                        .crossfade(200)
-                        .build(),
-                    contentDescription = item.name,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF282F3E))
-                )
-            }
-
-            if (order.items.size > 4) {
-                Text(
-                    text = "+${order.items.size - 4} more",
-                    color = DashitColors.TextMuted,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-    }
+    return out
 }

@@ -24,7 +24,6 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
@@ -48,7 +47,7 @@ fun HeroBanner(
             .background(DashitColors.SurfaceRaised)
     ) {
         // Background Image
-        AsyncImage(
+        ShimmerImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(offer.img)
                 .crossfade(300)

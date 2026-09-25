@@ -57,6 +57,11 @@ import androidx.compose.ui.unit.sp
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
+import com.dashit.app.data.DeliveryEta
+import com.dashit.app.data.StoreStatus
+import com.dashit.app.data.auth.AuthRepository
+import com.dashit.app.data.model.Order
+import com.dashit.app.data.model.UserProfile
 import com.dashit.app.data.model.DeliveryAddress
 import com.dashit.app.data.repository.OrderRepository
 import com.dashit.app.viewmodel.CartViewModel
@@ -69,6 +74,7 @@ fun CheckoutSheet(
     cartVm: CartViewModel = CartViewModel.shared,
     orderRepo: OrderRepository = OrderRepository.shared,
     sheetState: SheetState,
+    address: DeliveryAddress,
     onDismiss: () -> Unit,
     onOrderPlaced: (orderId: String) -> Unit
 ) {
@@ -80,7 +86,71 @@ fun CheckoutSheet(
     var paymentMethod by remember { mutableStateOf("cod") }
     var isSubmitting by remember { mutableStateOf(false) }
     var orderSuccess by remember { mutableStateOf(false) }
-    val address = remember { DeliveryAddress() }
+    val coupon by cartVm.coupon.collectAsState()
+    val signedInUser by AuthRepository.user.collectAsState()
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isSignInOpen by remember { mutableStateOf(false) }
+    var placedEta by remember { mutableStateOf(8) }
+
+    /** Same gates as the web and iOS checkouts, then the real order write. */
+    fun placeOrder(customer: UserProfile) {
+        errorMessage = null
+        if (items.isEmpty()) {
+            errorMessage = "Your cart is empty."
+            return
+        }
+        val store = StoreStatus.state.value
+        if (!store.isOpen) {
+            errorMessage = "The store is closed right now. ${store.closeReason}".trim()
+            HapticsManager.warning(view)
+            return
+        }
+        val quote = DeliveryEta.quote(address.latitude, address.longitude)
+        if (!quote.isDeliverable) {
+            errorMessage = "Delivery isn't available at this address yet. It's ${quote.distanceText} from our Anantnag hub, and we deliver within 5 km."
+            HapticsManager.warning(view)
+            return
+        }
+        val eta = StoreStatus.etaMinutes(quote) ?: 8
+        val order = Order(
+            id = Order.newCode(),
+            userId = customer.id,
+            items = items.map { it.copy() },
+            subtotal = bill.subtotal,
+            deliveryFee = bill.deliveryFee,
+            discount = bill.couponDiscount,
+            grandTotal = bill.grandTotal,
+            deliveryAddress = address,
+            paymentMethod = when (paymentMethod) {
+                "cod" -> "Cash on Delivery"
+                "upi" -> "UPI on Delivery"
+                else -> paymentMethod
+            },
+            // Nothing is charged in the app yet, so no order is ever marked paid here.
+            paymentStatus = "pending",
+            etaMinutes = eta,
+            otp = Order.newDeliveryCode(),
+            couponCode = coupon?.takeIf { bill.couponDiscount > 0 || it.waivesDelivery == true }?.code
+        )
+        isSubmitting = true
+        HapticsManager.medium(view)
+        scope.launch {
+            try {
+                orderRepo.placeOrder(order, customer, quote.distanceKm)
+                cartVm.clear()
+                placedEta = eta
+                orderSuccess = true
+                HapticsManager.success(view)
+                delay(1100)
+                onOrderPlaced(order.id)
+            } catch (e: Exception) {
+                HapticsManager.error(view)
+                errorMessage = e.message ?: "We couldn't reach the store to place your order. Check your connection and try again."
+            } finally {
+                isSubmitting = false
+            }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = {
@@ -181,7 +251,7 @@ fun CheckoutSheet(
                         )
 
                         Text(
-                            text = "Delivering in 8 minutes to ${address.nickname}",
+                            text = "We'll show your arrival time once a rider picks it up",
                             color = DashitColors.TextMuted,
                             fontSize = 14.sp
                         )
@@ -237,6 +307,14 @@ fun CheckoutSheet(
                             .background(DashitColors.Hairline)
                     )
 
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = DashitColors.Danger,
+                            fontSize = 13.sp,
+                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -251,22 +329,13 @@ fun CheckoutSheet(
                                 .background(if (isSubmitting) DashitColors.SurfaceMuted else DashitColors.BrandOrange)
                                 .pressable(scale = 0.98f) {
                                     if (!isSubmitting) {
-                                        isSubmitting = true
-                                        HapticsManager.medium(view)
-                                        scope.launch {
-                                            delay(900) // Brief smooth placing transition
-                                            val placed = orderRepo.placeOrder(
-                                                items = items,
-                                                bill = bill,
-                                                address = address,
-                                                paymentMethod = paymentMethod
-                                            )
-                                            cartVm.clear()
-                                            isSubmitting = false
-                                            orderSuccess = true
-                                            HapticsManager.success(view)
-                                            delay(1400)
-                                            onOrderPlaced(placed.id)
+                                        val customer = signedInUser
+                                        if (customer == null) {
+                                            // Orders need a signed-in shopper: confirm the number first.
+                                            HapticsManager.light(view)
+                                            isSignInOpen = true
+                                        } else {
+                                            placeOrder(customer)
                                         }
                                     }
                                 },
@@ -302,6 +371,16 @@ fun CheckoutSheet(
                 }
             }
         }
+    }
+
+    if (isSignInOpen) {
+        com.dashit.app.ui.auth.PhoneConfirmSheet(
+            onSignedIn = { profile ->
+                isSignInOpen = false
+                placeOrder(profile)
+            },
+            onDismiss = { isSignInOpen = false }
+        )
     }
 }
 

@@ -23,6 +23,11 @@ class CartViewModel : ViewModel() {
     private val _isCartSheetPresented = MutableStateFlow(false)
     val isCartSheetPresented: StateFlow<Boolean> = _isCartSheetPresented.asStateFlow()
 
+    private val _freeDeliveryCelebration = MutableStateFlow(0)
+    /** Ticks when the cart crosses the free-delivery threshold, for the toast. */
+    val freeDeliveryCelebration: StateFlow<Int> = _freeDeliveryCelebration.asStateFlow()
+    private var celebratedFreeDelivery = false
+
     private val _isCheckoutPresented = MutableStateFlow(false)
     val isCheckoutPresented: StateFlow<Boolean> = _isCheckoutPresented.asStateFlow()
 
@@ -142,7 +147,16 @@ class CartViewModel : ViewModel() {
     }
 
     private fun recalculateBill() {
-        _bill.value = CartBillBreakdown.calculate(_items.value, _coupon.value)
+        val previousSubtotal = _bill.value.subtotal
+        val bill = CartBillBreakdown.calculate(_items.value, _coupon.value)
+        _bill.value = bill
+        // Once per cart: emptying it (or placing the order) re-arms the toast.
+        if (bill.subtotal == 0.0) celebratedFreeDelivery = false
+        val threshold = CartBillBreakdown.FREE_DELIVERY_THRESHOLD
+        if (previousSubtotal < threshold && bill.subtotal >= threshold && !celebratedFreeDelivery) {
+            celebratedFreeDelivery = true
+            _freeDeliveryCelebration.value += 1
+        }
     }
 
     companion object {

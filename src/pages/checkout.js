@@ -36,8 +36,7 @@ import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
-import FreeDeliveryCelebrationModal from "../components/FreeDeliveryCelebrationModal";
-import MinOrderValueModal from "../components/MinOrderValueModal";
+import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
@@ -47,7 +46,6 @@ import { useStoreDetails } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { ALL_PRODUCTS } from "../data/products";
 
-const FREE_DELIVERY_THRESHOLD = 299;
 
 const parsePrice = (val) => {
   if (typeof val === "number") return val;
@@ -65,13 +63,10 @@ export default function CheckoutPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isMinOrderModalOpen, setIsMinOrderModalOpen] = useState(false);
   const [isOrderingForSomeoneElseOpen, setIsOrderingForSomeoneElseOpen] = useState(false);
   const [receiverDetails, setReceiverDetails] = useState(null);
   const [isCouponsOpen, setIsCouponsOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [isFreeDeliveryModalOpen, setIsFreeDeliveryModalOpen] = useState(false);
-  const [hasShownFreeDelivery, setHasShownFreeDelivery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   /* `isProcessing` only disables the button on the next render, which leaves a
      frame in which a second tap — or the login modal's callback racing the
@@ -329,18 +324,6 @@ export default function CheckoutPage() {
 
   const checkoutEta = calculateDeliveryEta(checkoutData?.location);
 
-  // Trigger Free Delivery Celebration when cart reaches ₹299 (Shown only once until order placed)
-  useEffect(() => {
-    try {
-      const alreadyShown = localStorage.getItem("dashit_free_delivery_seen");
-      if (subtotal >= 299 && !alreadyShown && !hasShownFreeDelivery) {
-        setIsFreeDeliveryModalOpen(true);
-        localStorage.setItem("dashit_free_delivery_seen", "true");
-        setHasShownFreeDelivery(true);
-      }
-    } catch (e) {}
-  }, [subtotal, hasShownFreeDelivery]);
-
   const handleAddToCart = (prod) => {
     hapticLight();
     const prodId = String(prod.id || prod.barcode);
@@ -556,8 +539,6 @@ export default function CheckoutPage() {
 
         localStorage.removeItem("dashit_cart");
         localStorage.removeItem("dashit_checkout_data");
-        // Reset free delivery popup so future orders can see it again
-        localStorage.removeItem("dashit_free_delivery_seen");
         window.dispatchEvent(new Event("dashit_cart_updated"));
       } catch (err) {
         console.error("Order placement error:", err);
@@ -682,41 +663,7 @@ export default function CheckoutPage() {
             </button>
           </div>
 
-          {/* Free Delivery Progress (Shown when below ₹299 threshold) */}
-          {subtotal < FREE_DELIVERY_THRESHOLD && subtotal > 0 && (
-            <div className="bg-slate-50 dark:bg-[#161B26] border border-slate-200/70 dark:border-slate-800/80 rounded-xl p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                  Free Delivery on orders above ₹{FREE_DELIVERY_THRESHOLD}
-                </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Add items worth <span className="font-bold text-[#FF5B00]">₹{FREE_DELIVERY_THRESHOLD - subtotal}</span> more for <span className="text-emerald-500 font-bold">FREE delivery</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push("/shop")}
-                className="px-3 py-1.5 text-xs font-bold bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-xl transition-colors cursor-pointer"
-              >
-                Add Items
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 transition-all duration-300 rounded-full"
-                  style={{ width: `${Math.min(100, Math.round((subtotal / FREE_DELIVERY_THRESHOLD) * 100))}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10px] font-semibold text-slate-400">
-                <span>Current: ₹{subtotal}</span>
-                <span>Free Delivery: ₹{FREE_DELIVERY_THRESHOLD}</span>
-              </div>
-            </div>
-          </div>
-        )}
+          <FreeDeliveryProgress subtotal={subtotal} />
 
           {/* Product Items List matching screenshot */}
           <div className="divide-y divide-slate-100 pt-1 dark:divide-line-soft">
@@ -1270,12 +1217,6 @@ export default function CheckoutPage() {
         onApplyCoupon={(coupon) => setAppliedCoupon(coupon)}
       />
 
-      {/* Free Delivery Celebration Popup (Screenshot 5) */}
-      <FreeDeliveryCelebrationModal
-        isOpen={isFreeDeliveryModalOpen}
-        onClose={() => setIsFreeDeliveryModalOpen(false)}
-      />
-
       {/* Animated Order Processing & Email Confirmation Modal */}
       <OrderProcessingModal
         isOpen={showProcessingModal}
@@ -1288,14 +1229,6 @@ export default function CheckoutPage() {
         }}
       />
 
-      {/* Minimum Order Value Modal */}
-      <MinOrderValueModal
-        isOpen={isMinOrderModalOpen}
-        onClose={() => setIsMinOrderModalOpen(false)}
-        subtotal={subtotal}
-        eta={checkoutEta}
-        location={checkoutData?.location}
-      />
     </div>
   );
 }
