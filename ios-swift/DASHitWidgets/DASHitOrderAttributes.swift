@@ -128,6 +128,16 @@ public enum DeliveryStage: String, Codable, Hashable {
         }
     }
 
+    public var label: String {
+        switch self {
+        case .placed: return "Placed"
+        case .packing: return "Packing"
+        case .onTheWay: return "Out for Delivery"
+        case .delivered: return "Delivered"
+        case .cancelled: return "Cancelled"
+        }
+    }
+
     public func subtitle(etaMinutes: Int, itemCount: Int) -> String {
         switch self {
         case .placed:

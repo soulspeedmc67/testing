@@ -52,7 +52,46 @@ export function assignDefaultDistributor(p) {
   return "Kashmir Wholesale FMCG";
 }
 
-export async function fetchProducts() {
+// In-Memory Catalogue Cache with 5-minute TTL & Single Shared Listener
+let memoryProductsCache = null;
+let memoryProductsCacheTime = 0;
+const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+function enrichProducts(rawList = []) {
+  let merged = rawList;
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      if (custom.length > 0) {
+        const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
+        merged = [...custom, ...rawList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
+      }
+      const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
+      if (deletedIds.size > 0) {
+        merged = merged.filter((p) => !deletedIds.has(String(p.id || p.barcode)));
+      }
+    } catch (e) {}
+  }
+  return merged.map((p) => ({
+    ...p,
+    distributor: p.distributor || assignDefaultDistributor(p),
+  }));
+}
+
+export function invalidateProductCache() {
+  memoryProductsCache = null;
+  memoryProductsCacheTime = 0;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+  }
+}
+
+export async function fetchProducts(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && memoryProductsCache && (now - memoryProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
+    return memoryProductsCache;
+  }
+
   let firestoreList = [];
   const db = getDb();
   if (db) {
@@ -66,67 +105,51 @@ export async function fetchProducts() {
     }
   }
 
-  let finalProducts = firestoreList;
-  // Merge locally created custom products at the top
-  if (typeof window !== "undefined") {
-    try {
-      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
-      if (custom.length > 0) {
-        const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
-        finalProducts = [...custom, ...firestoreList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
-      }
-      const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
-      if (deletedIds.size > 0) {
-        finalProducts = finalProducts.filter((p) => !deletedIds.has(String(p.id || p.barcode)));
-      }
-    } catch (e) {}
+  const enriched = enrichProducts(firestoreList);
+  if (enriched.length > 0) {
+    memoryProductsCache = enriched;
+    memoryProductsCacheTime = now;
   }
-
-  return finalProducts.map((p) => ({
-    ...p,
-    distributor: p.distributor || assignDefaultDistributor(p),
-  }));
+  return enriched;
 }
 
-/** Live catalogue — admin edits appear in the storefront without a refresh. */
-export function watchProducts(callback) {
-  let currentLive = [];
+// Single shared Firestore onSnapshot listener for watchProducts
+const productSubscribers = new Set();
+let sharedProductUnsub = null;
+let sharedCurrentLive = [];
+let sharedCleanupTimer = null;
 
-  const emitMerged = (live = []) => {
-    let merged = live;
-    if (typeof window !== "undefined") {
-      try {
-        const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
-        if (custom.length > 0) {
-          const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
-          merged = [...custom, ...live.filter((p) => !customIds.has(String(p.id || p.barcode)))];
-        }
-        const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
-        if (deletedIds.size > 0) {
-          merged = merged.filter((p) => !deletedIds.has(String(p.id || p.barcode)));
-        }
-      } catch (e) {}
-    }
-    const enriched = merged.map((p) => ({
-      ...p,
-      distributor: p.distributor || assignDefaultDistributor(p),
-    }));
-    callback(enriched);
-  };
+function broadcastProducts(list) {
+  sharedCurrentLive = list;
+  const enriched = enrichProducts(list);
+  memoryProductsCache = enriched;
+  memoryProductsCacheTime = Date.now();
+  productSubscribers.forEach((cb) => {
+    try { cb(enriched); } catch (e) {}
+  });
+}
+
+function startSharedProductWatcher() {
+  if (sharedCleanupTimer) {
+    clearTimeout(sharedCleanupTimer);
+    sharedCleanupTimer = null;
+  }
+  if (sharedProductUnsub) return;
 
   const db = getDb();
-  let unsub = () => {};
   if (db) {
     try {
-      unsub = onSnapshot(
+      sharedProductUnsub = onSnapshot(
         query(collection(db, "products"), where("active", "==", true)),
         (snap) => {
-          currentLive = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          emitMerged(currentLive);
+          const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          broadcastProducts(docs);
         },
         (err) => {
           console.warn("watchProducts snapshot warning:", err?.message);
-          emitMerged(currentLive);
+          if (sharedCurrentLive.length > 0) {
+            broadcastProducts(sharedCurrentLive);
+          }
         }
       );
     } catch (e) {
@@ -134,20 +157,44 @@ export function watchProducts(callback) {
     }
   }
 
-  let localHandler = null;
   if (typeof window !== "undefined") {
-    localHandler = () => emitMerged(currentLive);
+    const localHandler = () => broadcastProducts(sharedCurrentLive);
     window.addEventListener("dashit_products_updated", localHandler);
     window.addEventListener("storage", localHandler);
-    // Initial emit for immediate responsiveness
-    setTimeout(() => emitMerged(currentLive), 10);
+  }
+}
+
+/** Live catalogue — shares a single Firestore connection across all components */
+export function watchProducts(callback) {
+  productSubscribers.add(callback);
+
+  // Immediate emit from memory cache or current live data
+  if (sharedCurrentLive.length > 0) {
+    callback(enrichProducts(sharedCurrentLive));
+  } else if (memoryProductsCache && memoryProductsCache.length > 0) {
+    callback(memoryProductsCache);
+  } else {
+    fetchProducts().then((p) => {
+      if (productSubscribers.has(callback) && p?.length) {
+        callback(p);
+      }
+    });
   }
 
+  startSharedProductWatcher();
+
   return () => {
-    if (typeof unsub === "function") unsub();
-    if (typeof window !== "undefined" && localHandler) {
-      window.removeEventListener("dashit_products_updated", localHandler);
-      window.removeEventListener("storage", localHandler);
+    productSubscribers.delete(callback);
+    if (productSubscribers.size === 0) {
+      // 30-second grace period before closing the Firestore connection
+      // so navigating between screens doesn't churn connections and reads
+      if (sharedCleanupTimer) clearTimeout(sharedCleanupTimer);
+      sharedCleanupTimer = setTimeout(() => {
+        if (productSubscribers.size === 0 && typeof sharedProductUnsub === "function") {
+          sharedProductUnsub();
+          sharedProductUnsub = null;
+        }
+      }, 30000);
     }
   };
 }
@@ -186,6 +233,7 @@ export async function upsertProduct(product) {
     }
   }
 
+  invalidateProductCache();
   return prodId;
 }
 
@@ -209,7 +257,10 @@ export async function deleteProduct(productId) {
   }
 
   const db = getDb();
-  if (!db) return;
+  if (!db) {
+    invalidateProductCache();
+    return;
+  }
   try {
     // Soft delete then hard delete to ensure real-time query listeners and persistent index reflect removal
     await setDoc(doc(db, "products", targetId), { active: false, deletedAt: serverTimestamp() }, { merge: true });
@@ -217,6 +268,7 @@ export async function deleteProduct(productId) {
   } catch (e) {
     console.warn("deleteProduct Firestore warning:", e?.message);
   }
+  invalidateProductCache();
 }
 
 /**
@@ -270,6 +322,7 @@ export async function adjustSingleProductStock(productId, deltaOrAbsolute, isAbs
     }
   }
 
+  invalidateProductCache();
   return newStockVal === null ? 0 : newStockVal;
 }
 
@@ -365,6 +418,8 @@ export async function bulkUpdateProductStock(stockUpdates = []) {
     attempted: stockUpdates.length,
     failures,
   };
+  invalidateProductCache();
+  return result;
 }
 
 /**
@@ -448,6 +503,7 @@ export async function deductInventoryForOrder(orderId, items = []) {
     }
   }
 
+  invalidateProductCache();
   return { success: true, count: deducted.length };
 }
 
@@ -788,6 +844,42 @@ export async function createOrder(orderData, explicitUid = null) {
   let code = orderData?.orderId || newOrderCode();
   let lastError = null;
 
+  // Pre-checkout stock sanity check against Firestore to prevent overselling
+  if (db && Array.isArray(sanitized.items) && sanitized.items.length > 0) {
+    try {
+      const stockChecks = await Promise.all(
+        sanitized.items.map(async (item) => {
+          const itemId = String(item.id || item.barcode || "").trim();
+          if (!itemId) return null;
+          const pRef = doc(db, "products", itemId);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) {
+            const pData = pSnap.data();
+            const avail = Number(pData.stock);
+            const reqQty = Number(item.quantity || item.qty) || 1;
+            if (pData.active === false) {
+              return `${item.name || "Item"} is currently unavailable.`;
+            }
+            if (!isNaN(avail) && avail < reqQty) {
+              return avail <= 0
+                ? `${item.name || "Item"} is out of stock.`
+                : `Only ${avail} left in stock for ${item.name || "Item"}.`;
+            }
+          }
+          return null;
+        })
+      );
+      const stockIssue = stockChecks.find(Boolean);
+      if (stockIssue) {
+        throw new Error(stockIssue);
+      }
+    } catch (stockErr) {
+      if (stockErr.message && !stockErr.message.includes("permission-denied")) {
+        throw stockErr;
+      }
+    }
+  }
+
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const payload = buildPayload(code);
     try {
@@ -1034,6 +1126,127 @@ export function watchAllOrders(callback, max = 100) {
   };
 }
 
+/** Admin / Ops console: only active unfulfilled orders, client-sorted newest first. */
+export function watchActiveOrders(callback, max = 50) {
+  const getLocalActive = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+        const active = localStorage.getItem("dashit_active_order");
+        let list = [...hist];
+        if (active) {
+          const parsed = JSON.parse(active);
+          if (!list.some((o) => (o.orderId || o.id) === (parsed.orderId || parsed.id))) {
+            list = [parsed, ...list];
+          }
+        }
+        return list.filter(
+          (o) =>
+            o.status !== ORDER_STATUS.DELIVERED &&
+            o.status !== ORDER_STATUS.CANCELLED
+        );
+      } catch (e) {}
+    }
+    return [];
+  };
+
+  let unsubFirestore = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
+  let firestoreLive = false;
+
+  const emitLocal = () => {
+    if (firestoreLive) return;
+    callback(getLocalActive());
+  };
+
+  const bind = () => {
+    if (isClosed) return;
+    try { unsubFirestore(); } catch (e) {}
+    const db = getDb();
+    if (!db) {
+      emitLocal();
+      return;
+    }
+
+    try {
+      unsubFirestore = onSnapshot(
+        query(
+          collection(db, "orders"),
+          where("status", "in", [
+            ORDER_STATUS.PLACED,
+            ORDER_STATUS.PACKED,
+            "Packing",
+            ORDER_STATUS.OUT_FOR_DELIVERY,
+          ]),
+          limit(max)
+        ),
+        (snap) => {
+          firestoreLive = true;
+          const orders = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => getOrderTimestampMs(b) - getOrderTimestampMs(a));
+          callback(orders);
+        },
+        (err) => {
+          console.warn("watchActiveOrders permission notice (using local):", err?.message);
+          firestoreLive = false;
+          emitLocal();
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2500);
+          }
+        }
+      );
+    } catch (e) {
+      emitLocal();
+    }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
+  } else {
+    bind();
+  }
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) bind();
+      });
+    } catch (e) {}
+  }
+
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = emitLocal;
+    window.addEventListener("dashit_orders_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    setTimeout(emitLocal, 10);
+  }
+
+  return () => {
+    isClosed = true;
+    clearTimeout(retryTimer);
+    try { unsubFirestore(); } catch (e) {}
+    try { unsubAuth(); } catch (e) {}
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_orders_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+  };
+}
+
 /** Driver console: only orders assigned to this rider. */
 export function watchDriverOrders(driverId, callback) {
   const getLocalDriverOrders = () => {
@@ -1206,13 +1419,13 @@ export function watchAvailableOrders(callback) {
       unsub = onSnapshot(
         query(
           collection(db, "orders"),
+          where("driverId", "==", null),
           where("status", "in", [
             ORDER_STATUS.PLACED,
             ORDER_STATUS.PACKED,
             "Packing",
-            ORDER_STATUS.OUT_FOR_DELIVERY,
           ]),
-          limit(50)
+          limit(30)
         ),
         (snap) => {
           firestoreLive = true;
@@ -1319,14 +1532,14 @@ export function retireFinishedOrder(orderId, status) {
       completedAt: active.completedAt || new Date().toISOString(),
     };
 
-    // Keep the receipt: history is what /orders reads for past purchases.
+    // Keep the receipt: history is what /orders reads for past purchases (capped to 20).
     const history = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
     const withoutThis = history.filter(
       (o) => String(o.orderId) !== targetId && String(o.id) !== targetId
     );
     localStorage.setItem(
       "dashit_orders_history",
-      JSON.stringify([finished, ...withoutThis])
+      JSON.stringify([finished, ...withoutThis].slice(0, 20))
     );
 
     localStorage.removeItem("dashit_active_order");
