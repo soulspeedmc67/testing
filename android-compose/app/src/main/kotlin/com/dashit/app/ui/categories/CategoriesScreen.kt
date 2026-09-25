@@ -1,5 +1,7 @@
 package com.dashit.app.ui.categories
 
+import com.dashit.app.ui.components.SkeletonBlock
+import com.dashit.app.ui.components.ProductGridSkeleton
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,7 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.dashit.app.ui.components.ShimmerImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
@@ -148,48 +150,54 @@ fun CategoriesScreen(
                     .background(DashitColors.Surface)
                     .padding(horizontal = 12.dp)
             ) {
-                // Header with category name and count
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = selectedTile?.name ?: "Products",
-                        color = DashitColors.TextPrimary,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        text = "${filteredProducts.size} items",
-                        color = DashitColors.TextMuted,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                // 2-Column Product Grid
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 140.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(filteredProducts, key = { it.id }) { product ->
-                        val qty = cartItems.filter { it.productId == product.id }.sumOf { it.qty }
-                        ProductCard(
-                            product = product,
-                            quantity = qty,
-                            modifier = Modifier.fillMaxWidth(),
-                            onOpen = { onOpenProductDetail(product) },
-                            onAdd = { cartVm.add(product) },
-                            onIncrement = { cartVm.add(product) },
-                            onDecrement = { cartVm.decrementLatest(product.id) }
+                if (allProducts.isEmpty()) {
+                    // Skeletons until the live catalogue arrives.
+                    SkeletonBlock(width = 120.dp, height = 17.dp, modifier = Modifier.padding(top = 14.dp, bottom = 12.dp))
+                    ProductGridSkeleton(columns = 2, rows = 3)
+                } else {
+                    // Header with category name and count
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp, bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = selectedTile?.name ?: "Products",
+                            color = DashitColors.TextPrimary,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
                         )
+
+                        Text(
+                            text = "${filteredProducts.size} items",
+                            color = DashitColors.TextMuted,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // 2-Column Product Grid
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 140.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filteredProducts, key = { it.id }) { product ->
+                            val qty = cartItems.filter { it.productId == product.id }.sumOf { it.qty }
+                            ProductCard(
+                                product = product,
+                                quantity = qty,
+                                modifier = Modifier.fillMaxWidth(),
+                                onOpen = { onOpenProductDetail(product) },
+                                onAdd = { cartVm.add(product) },
+                                onIncrement = { cartVm.add(product) },
+                                onDecrement = { cartVm.decrementLatest(product.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -232,7 +240,7 @@ private fun SidebarItem(
                 contentAlignment = Alignment.Center
             ) {
                 if (!previewUrl.isNullOrEmpty()) {
-                    AsyncImage(
+                    ShimmerImage(
                         model = ImageRequest.Builder(context)
                             .data(previewUrl)
                             .crossfade(true)

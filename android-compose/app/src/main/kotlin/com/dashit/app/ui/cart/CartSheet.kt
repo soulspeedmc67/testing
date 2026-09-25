@@ -51,7 +51,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.dashit.app.ui.components.ShimmerImage
 import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.DashitMotion
@@ -299,7 +299,7 @@ private fun CartLineRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Thumbnail Image
-        AsyncImage(
+        ShimmerImage(
             model = ImageRequest.Builder(context)
                 .data(item.img)
                 .crossfade(true)

@@ -1,5 +1,6 @@
 package com.dashit.app.ui.storefront
 
+import com.dashit.app.ui.components.HomeFeedSkeleton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -250,8 +251,11 @@ fun StorefrontScreen(
                     }
                 }
 
-                // "Bestsellers" Blinkit 3-Column Collage Tiles
-                if (categoryTiles.isNotEmpty()) {
+                // Skeletons until the live catalogue arrives, then the real feed.
+                if (allProducts.isEmpty()) {
+                    item(key = "home_skeleton") { HomeFeedSkeleton() }
+                } else if (categoryTiles.isNotEmpty()) {
+                    // "Bestsellers" Blinkit 3-Column Collage Tiles
                     item(key = "bestsellers_title") {
                         Text(
                             text = "Bestsellers",

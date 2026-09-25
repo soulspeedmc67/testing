@@ -58,6 +58,10 @@ class OrderRepository(
     /** The shopper's own orders, newest first. Empty while signed out. */
     val orders: StateFlow<List<Order>> = _orders.asStateFlow()
 
+    private val _ordersLoaded = MutableStateFlow(false)
+    /** False until the first answer for the signed-in shopper, for the skeletons. */
+    val ordersLoaded: StateFlow<Boolean> = _ordersLoaded.asStateFlow()
+
     private val activeOrderId = MutableStateFlow<String?>(null)
     private val _liveTracking = MutableStateFlow<DriverLiveTracking?>(null)
     /** The rider's live position for the active order, from `tracking/live`. */
@@ -105,8 +109,10 @@ class OrderRepository(
         ordersRegistration = null
         if (uid == null) {
             _orders.value = emptyList()
+            _ordersLoaded.value = true
             return
         }
+        _ordersLoaded.value = false
         // The rules only let a customer read their own orders, so the query must say so.
         ordersRegistration = db.collection("orders")
             .whereEqualTo("userId", uid)
@@ -114,6 +120,7 @@ class OrderRepository(
                 if (snapshot == null) return@addSnapshotListener
                 val list = snapshot.documents.mapNotNull { parseOrder(it) }.sortedByDescending { it.createdAt }
                 _orders.value = list
+                _ordersLoaded.value = true
                 adoptLatestIfNeeded(list)
             }
     }
