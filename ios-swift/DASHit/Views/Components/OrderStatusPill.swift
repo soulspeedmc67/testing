@@ -116,7 +116,8 @@ struct OrderStatusPill: View {
         .frame(width: 42, height: 42)
     }
 
-    /// Minutes to the door while live; a dismiss button once it's over.
+    /// Minutes to the door once a rider has the order; before that a quiet
+    /// chevron (there is no honest arrival time yet); a dismiss button once it's over.
     @ViewBuilder
     private var trailing: some View {
         if stage.isFinished {
@@ -133,6 +134,13 @@ struct OrderStatusPill: View {
             }
             .buttonStyle(PressableButtonStyle(scale: 0.85))
             .transition(.scale.combined(with: .opacity))
+        } else if stage != .onTheWay {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundColor(.textSecondary)
+                .frame(width: 36, height: 36)
+                .background(Color.white.opacity(0.1), in: Circle())
+                .transition(.scale.combined(with: .opacity))
         } else {
             VStack(spacing: -1) {
                 Text("\(etaMinutes)")
