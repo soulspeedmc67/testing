@@ -13,7 +13,8 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     case distributors = "Distributors"
     case storeControls = "Store Settings"
     case offers = "Discounts"
-    case batchInward = "Batch Inward"
+    case batchInward = "Add Many"
+    case importCSV = "Import CSV"
 
     public var id: String { rawValue }
 
@@ -27,6 +28,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .storeControls: return "storefront.fill"
         case .offers: return "sparkles"
         case .batchInward: return "arrow.down.to.line.circle.fill"
+        case .importCSV: return "doc.text.fill"
         }
     }
 }
@@ -34,10 +36,10 @@ public enum AdminTab: String, CaseIterable, Identifiable {
 public enum AdminSortOption: String, CaseIterable, Identifiable {
     case distributorAsc = "Distributor (A → Z)"
     case distributorDesc = "Distributor (Z → A)"
-    case stockAsc = "Stock (Lowest First)"
-    case stockDesc = "Stock (Highest First)"
-    case valueDesc = "Stock Value (Highest ₹)"
-    case nameAsc = "Product Name (A → Z)"
+    case stockAsc = "Lowest stock first"
+    case stockDesc = "Highest stock first"
+    case valueDesc = "Highest value first"
+    case nameAsc = "Name (A → Z)"
 
     public var id: String { rawValue }
 }
@@ -62,7 +64,8 @@ public final class AdminDashboardViewModel: ObservableObject {
 
     // Core Data Entities
     @Published public var products: [Product] = []
-    @Published public var distributors: [Distributor] = Distributor.defaults
+    /// Always starts with "Myself".
+    @Published public var distributors: [Distributor] = [Distributor.myself]
     @Published public var recentOrders: [Order] = []
     @Published public var drivers: [Driver] = Driver.defaults
     @Published public var offers: [Offer] = Offer.defaults
@@ -126,10 +129,7 @@ public final class AdminDashboardViewModel: ObservableObject {
                 let id = (data["id"] as? String) ?? doc.documentID
                 if deleted.contains(id) { return nil }
                 data["id"] = id
-                if data["distributor"] == nil {
-                    let cat = (data["cat"] as? String) ?? ""
-                    data["distributor"] = self.defaultDistributor(for: cat)
-                }
+                data["distributor"] = Distributor.resolvedName(data["distributor"] as? String)
                 return try? decoder.decode(Product.self, from: data)
             }
             Task { @MainActor in
@@ -140,17 +140,17 @@ public final class AdminDashboardViewModel: ObservableObject {
 
         // 2. Distributors Realtime Listener
         distributorListener = db.collection("distributors").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let docs = snapshot?.documents, error == nil, !docs.isEmpty else { return }
+            guard let self = self, let docs = snapshot?.documents, error == nil else { return }
             let decoder = Firestore.Decoder()
             let list: [Distributor] = docs.compactMap { doc in
                 var data = doc.data()
                 data["id"] = (data["id"] as? String) ?? doc.documentID
                 return try? decoder.decode(Distributor.self, from: data)
             }
-            if !list.isEmpty {
-                Task { @MainActor in
-                    self.distributors = list
-                }
+            .filter { $0.isReal }
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+            Task { @MainActor in
+                self.distributors = [Distributor.myself] + list
             }
         }
 
@@ -240,16 +240,6 @@ public final class AdminDashboardViewModel: ObservableObject {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
-    private func defaultDistributor(for category: String) -> String {
-        let cat = category.lowercased()
-        if cat.contains("dairy") || cat.contains("milk") { return "Amul Valley Dairy Logistics" }
-        if cat.contains("bakery") || cat.contains("bread") || cat.contains("kandur") { return "Local Kandur Bakeries" }
-        if cat.contains("fruit") || cat.contains("apple") || cat.contains("vegetable") { return "Anantnag Fresh Farm Orchards" }
-        if cat.contains("clean") || cat.contains("beauty") || cat.contains("soap") { return "Hindustan Unilever Direct" }
-        if cat.contains("snack") || cat.contains("noodle") || cat.contains("biscuit") { return "ITC & Nestlé Supply Hub" }
-        return "Kashmir Wholesale FMCG"
-    }
-
     // MARK: - Filtered Views
 
     public var filteredProducts: [Product] {
@@ -265,7 +255,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
 
         if let selected = selectedDistributor, !selected.isEmpty {
-            result = result.filter { ($0.distributor ?? "Unassigned") == selected }
+            result = result.filter { Distributor.resolvedName($0.distributor) == selected }
         }
 
         if selectedCategory != "All" {
@@ -325,7 +315,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     public var supplierStats: [SupplierStat] {
         var dict: [String: (count: Int, units: Int, val: Double, low: Int)] = [:]
         for p in products {
-            let supplier = p.distributor ?? "Kashmir Wholesale FMCG"
+            let supplier = Distributor.resolvedName(p.distributor)
             let units = p.stock ?? 10
             let value = Double(units) * p.price
             let low = units < 5 ? 1 : 0
@@ -342,8 +332,8 @@ public final class AdminDashboardViewModel: ObservableObject {
             let distObj = distributors.first { $0.name == name }
             return SupplierStat(
                 name: name,
-                category: distObj?.category ?? "Supplier",
-                phone: distObj?.phone ?? "+91 94190 00000",
+                category: distObj?.category ?? "",
+                phone: distObj?.phone ?? "",
                 skuCount: tuple.count,
                 totalUnits: tuple.units,
                 totalValue: tuple.val,
@@ -497,23 +487,107 @@ public final class AdminDashboardViewModel: ObservableObject {
         ], merge: true)
     }
 
-    public func addDistributor(name: String, contact: String, phone: String, category: String, leadTime: String, notes: String) {
+    /// Saves a distributor and returns the name to use. A name that's already on
+    /// the list (or "Myself") reuses that one instead of adding a copy.
+    @discardableResult
+    public func addDistributor(name: String, phone: String = "", address: String = "", notes: String = "") -> String {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return Distributor.selfName }
+        if let existing = distributors.first(where: { $0.name.caseInsensitiveCompare(clean) == .orderedSame }) {
+            return existing.name
+        }
         let newDist = Distributor(
-            id: "dist_\(Date().timeIntervalSince1970)",
-            name: name,
-            contact: contact,
-            phone: phone,
-            category: category.isEmpty ? "Wholesale FMCG" : category,
-            leadTime: leadTime.isEmpty ? "1 day" : leadTime,
-            notes: notes
+            id: "DIST-\(Int(Date().timeIntervalSince1970 * 1000))",
+            name: clean,
+            phone: phone.trimmingCharacters(in: .whitespacesAndNewlines),
+            address: address.trimmingCharacters(in: .whitespacesAndNewlines),
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines)
         )
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             distributors.append(newDist)
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        if let data = toDict(newDist) {
-            db.collection("distributors").document(newDist.id).setData(data)
+        // Same fields the web console writes, so both show the same list.
+        db.collection("distributors").document(newDist.id).setData([
+            "name": newDist.name,
+            "phone": newDist.phone,
+            "address": newDist.address,
+            "notes": newDist.notes,
+            "active": true,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true)
+        return newDist.name
+    }
+
+    /// Takes a distributor off the list. Their items stay in stock.
+    public func removeDistributor(_ distributor: Distributor) {
+        guard !distributor.isSelf else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            distributors.removeAll { $0.id == distributor.id }
         }
+        db.collection("distributors").document(distributor.id).delete()
+    }
+
+    // MARK: - CSV import
+
+    /// Saves the checked lines of a CSV file, all marked as from `distributor`.
+    /// Returns how many items were saved.
+    public func applyCSVImport(_ items: [CSVStockImport.Item], mode: CSVStockImport.Mode, distributor: String) async throws -> Int {
+        let chosen = items.filter { $0.include && $0.problem == nil }
+        guard !chosen.isEmpty else { return 0 }
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+
+        // Firestore takes up to 500 writes per batch.
+        var start = 0
+        while start < chosen.count {
+            let chunk = chosen[start..<min(start + 400, chosen.count)]
+            let batch = db.batch()
+            for item in chunk {
+                let ref = db.collection("products").document(item.id)
+                if let existing = item.existing {
+                    var data: [String: Any] = [
+                        "distributor": distributor,
+                        "active": true,
+                        "updatedAt": FieldValue.serverTimestamp()
+                    ]
+                    switch mode {
+                    case .add:
+                        data["stock"] = FieldValue.increment(Int64(item.qty))
+                        if item.qty > 0 { data["inStock"] = true }
+                    case .set:
+                        data["stock"] = item.qty
+                        data["inStock"] = item.qty > 0
+                    }
+                    if let price = item.price, price != existing.price { data["price"] = price }
+                    if let mrp = item.mrp { data["originalPrice"] = mrp }
+                    batch.setData(data, forDocument: ref, merge: true)
+                } else {
+                    let price = item.price ?? 0
+                    let product = Product(
+                        id: item.id,
+                        name: item.name,
+                        unit: item.unit.isEmpty ? "1 pc" : item.unit,
+                        price: price,
+                        originalPrice: item.mrp ?? price,
+                        img: item.img,
+                        cat: item.category.isEmpty ? "Grocery" : item.category,
+                        inStock: item.qty > 0,
+                        stock: item.qty,
+                        distributor: distributor
+                    )
+                    var data = toDict(product) ?? [:]
+                    data["active"] = true
+                    data["createdAt"] = FieldValue.serverTimestamp()
+                    if !item.brand.isEmpty { data["brand"] = item.brand }
+                    batch.setData(data, forDocument: ref, merge: true)
+                }
+            }
+            try await batch.commit()
+            start += chunk.count
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        return chosen.count
     }
 
     public func addDriver(name: String, phone: String, vehicle: String) {

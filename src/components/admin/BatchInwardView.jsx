@@ -55,16 +55,16 @@ export default function BatchInwardView({
           <div className="flex items-center space-x-2">
             <ArrowDownToLine className="w-5 h-5 text-emerald-500" />
             <h2 className="font-black text-base text-slate-900 dark:text-white">
-              Rapid Inward Restocking Desk
+              Add many at once
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-zinc-400">
-            Stock intake for supplier shipments. Scan barcodes repeatedly or paste distributor lists to update warehouse stock in 1 tap.
+            Scan barcodes one after another, or paste a list, to add stock to many items together.
           </p>
         </div>
 
         <div className="flex items-center space-x-2 flex-wrap gap-2">
-          {/* Shipment Supplier */}
+          {/* Who the stock came from */}
           <div className="flex items-center space-x-1.5">
             <Truck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <select
@@ -76,12 +76,14 @@ export default function BatchInwardView({
                   : "bg-white border-slate-200 text-slate-800"
               }`}
             >
-              <option value="">Supplier / Distributor (Optional)</option>
-              {distributors.map((d) => (
-                <option key={d.id || d.name} value={d.name}>
-                  {d.name}
-                </option>
-              ))}
+              <option value="">From: Myself</option>
+              {distributors
+                .filter((d) => !d.isSelf)
+                .map((d) => (
+                  <option key={d.id || d.name} value={d.name}>
+                    From: {d.name}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -91,7 +93,7 @@ export default function BatchInwardView({
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-black text-xs shadow-md transition-all cursor-pointer flex items-center space-x-1.5 active:scale-95"
           >
             <Camera className="w-4 h-4" />
-            <span>Continuous Scanner</span>
+            <span>Scan barcodes</span>
           </button>
           <button
             type="button"
@@ -103,7 +105,7 @@ export default function BatchInwardView({
             }`}
           >
             <FileText className="w-4 h-4" />
-            <span>Paste Barcode List</span>
+            <span>Paste a list</span>
           </button>
         </div>
       </div>
@@ -143,11 +145,11 @@ export default function BatchInwardView({
               }`}
             >
               <tr>
-                <th className="py-3 px-4">Item Details</th>
+                <th className="py-3 px-4">Item</th>
                 <th className="py-3 px-3">Barcode</th>
-                <th className="py-3 px-3">Current Stock</th>
-                <th className="py-3 px-4 text-center">Inward Quantity</th>
-                <th className="py-3 px-3">New Warehouse Stock</th>
+                <th className="py-3 px-3">Stock now</th>
+                <th className="py-3 px-4 text-center">Adding</th>
+                <th className="py-3 px-3">New stock</th>
                 <th className="py-3 px-4 text-right">Remove</th>
               </tr>
             </thead>
@@ -245,7 +247,7 @@ export default function BatchInwardView({
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-6 py-2.5 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center space-x-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Confirm & Apply Inward Restock</span>
+              <span>Save stock</span>
             </button>
           </div>
         )}

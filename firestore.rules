@@ -78,6 +78,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- Distributors: who the owner buys stock from. Admin only. --------
+    match /distributors/{distributorId} {
+      allow read, write: if isAdmin();
+    }
+
     // Store open/closed, high-demand flag, delivery radius.
     match /config/{docId} {
       allow read: if true;
