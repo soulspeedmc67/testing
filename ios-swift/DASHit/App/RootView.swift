@@ -15,6 +15,8 @@ struct RootView: View {
     @State private var isKeyboardVisible = false
     @State private var isProfileOpen = false
     @State private var isAddItemsOpen = false
+    /// The delivered order being celebrated, once other screens are out of the way.
+    @State private var celebrationOrder: Order?
     /// "light", "dark" or "system", same values as the web's `dashit_theme`.
     @AppStorage("dashit_theme") private var themePreference = "system"
 
@@ -94,6 +96,21 @@ struct RootView: View {
                 activeOrder.resume()
             }
         }
+        .onChange(of: activeOrder.deliveredCelebration?.id) { _, id in
+            guard id != nil, let delivered = activeOrder.deliveredCelebration else { return }
+            // Clear whatever is on screen first; UIKit drops a sheet presented over another.
+            let wasCovered = isLiveTrackingOpen || cart.isCartSheetPresented || isProfileOpen || isAddItemsOpen
+                || isAddressSearchOpen || isAddressPickerOpen
+            isLiveTrackingOpen = false
+            cart.isCartSheetPresented = false
+            isProfileOpen = false
+            isAddItemsOpen = false
+            isAddressSearchOpen = false
+            isAddressPickerOpen = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + (wasCovered ? 0.6 : 0.2)) {
+                celebrationOrder = delivered
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             withAnimation(.dashitSnappy) { isKeyboardVisible = true }
         }
@@ -126,6 +143,13 @@ struct RootView: View {
         .sheet(isPresented: $isAddItemsOpen) {
             if let order = activeOrder.order {
                 AddItemsSheet(order: order)
+            }
+        }
+        .sheet(item: $celebrationOrder, onDismiss: {
+            activeOrder.finishCelebration()
+        }) { order in
+            DeliveredCelebrationSheet(order: order) {
+                cart.reorder(order.items)
             }
         }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
