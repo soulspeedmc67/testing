@@ -21,6 +21,7 @@ struct RootView: View {
     @ObservedObject private var activeOrder = ActiveOrderStore.shared
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var tabBar = TabBarVisibility.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -87,6 +88,11 @@ struct RootView: View {
         }
         .onChange(of: selectedTab) { _, _ in
             tabBar.show()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                activeOrder.resume()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
             withAnimation(.dashitSnappy) { isKeyboardVisible = true }
