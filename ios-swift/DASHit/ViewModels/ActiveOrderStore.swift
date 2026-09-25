@@ -63,6 +63,13 @@ final class ActiveOrderStore: ObservableObject {
         track(orderId: LocalStorage.shared.loadActiveOrderId())
     }
 
+    /// Back in the foreground: bring the Live Activity up to date, and back if
+    /// it was swiped away while the order is still in progress.
+    func resume() {
+        guard let order else { return }
+        LiveActivityManager.shared.sync(with: order, tracking: liveTracking)
+    }
+
     func track(orderId: String?) {
         guard orderId != listeningOrderId else { return }
         listener?.remove()

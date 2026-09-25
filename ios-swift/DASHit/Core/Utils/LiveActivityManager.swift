@@ -3,6 +3,11 @@ import ActivityKit
 
 /// Starts, updates and ends the order Live Activity (Lock Screen + Dynamic Island).
 /// Called from the main actor: checkout, the tracking screen and ActiveOrderStore.
+///
+/// The activity stays up for as long as the order is in progress: it never goes
+/// stale, it is put back if it disappears (swiped away, or ended by the system)
+/// the next time the app opens or hears about the order, and it only ends once
+/// the order is delivered or cancelled.
 final class LiveActivityManager {
     static let shared = LiveActivityManager()
 
@@ -62,8 +67,14 @@ final class LiveActivityManager {
 
     /// Pushes the latest order state, and ends the activity once the order is
     /// delivered or cancelled (leaving the final state up for 15 seconds).
+    /// An order still in progress without an activity gets one again.
     func sync(with order: Order, tracking: DriverLiveTracking? = nil) {
-        guard let activity = activity(for: order.id) else { return }
+        guard let activity = activity(for: order.id) else {
+            if !order.status.stage.isFinished {
+                startActivity(for: order)
+            }
+            return
+        }
         let state = contentState(for: order, tracking: tracking)
 
         if order.status.stage.isFinished {
@@ -77,9 +88,8 @@ final class LiveActivityManager {
             }
         } else {
             Task {
-                await activity.update(
-                    ActivityContent(state: state, staleDate: state.estimatedArrival.addingTimeInterval(15 * 60))
-                )
+                // No stale date: the card stays current-looking until the order ends.
+                await activity.update(ActivityContent(state: state, staleDate: nil))
             }
         }
     }
