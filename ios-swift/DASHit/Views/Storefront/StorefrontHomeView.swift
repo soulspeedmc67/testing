@@ -44,9 +44,16 @@ struct StorefrontHomeView: View {
                             welcomeBanner
                                 .padding(.top, 14)
 
-                            categorySection
-                                .id("categories")
-                                .padding(.top, 28)
+                            if vm.isLoading && vm.products.isEmpty {
+                                HomeFeedSkeleton()
+                                    .padding(.top, 28)
+                                    .transition(.opacity)
+                            } else {
+                                categorySection
+                                    .id("categories")
+                                    .padding(.top, 28)
+                                    .transition(.opacity)
+                            }
 
                             if !vm.offers.isEmpty {
                                 VStack(alignment: .leading, spacing: 12) {

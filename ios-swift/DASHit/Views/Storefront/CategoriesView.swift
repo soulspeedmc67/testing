@@ -79,14 +79,22 @@ struct CategoriesView: View {
 
     // MARK: - Sidebar
 
+    /// Nothing to show yet: the catalogue is still on its way.
+    private var isLoadingCatalogue: Bool { vm.isLoading && vm.products.isEmpty }
+
     private var sidebar: some View {
         ScrollView(showsIndicators: false) {
-            LazyVStack(spacing: 2) {
-                ForEach(tiles) { tile in
-                    sidebarItem(tile)
+            if isLoadingCatalogue {
+                CategorySidebarSkeleton()
+            } else {
+                LazyVStack(spacing: 2) {
+                    ForEach(tiles) { tile in
+                        sidebarItem(tile)
+                    }
                 }
+                .padding(.vertical, 6)
+                .transition(.opacity)
             }
-            .padding(.vertical, 6)
         }
         .frame(width: Self.sidebarWidth)
         .background(Color.surfaceSunken)
@@ -111,6 +119,8 @@ struct CategoriesView: View {
                                 image
                                     .resizable()
                                     .scaledToFill()
+                            } else if phase.error == nil && tile.previewImages.first?.isEmpty == false {
+                                ShimmerView()
                             } else {
                                 Color.surfaceMuted
                             }
@@ -148,31 +158,41 @@ struct CategoriesView: View {
     private var productPane: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(selectedTile?.name ?? "")
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundColor(.textPrimary)
-                        Spacer()
-                        Text("\(products.count) item\(products.count == 1 ? "" : "s")")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.textMuted)
+                if isLoadingCatalogue {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SkeletonBlock(width: 120, height: 17)
+                            .shimmering()
+                        ProductGridSkeleton(columns: 2, count: 6)
                     }
-                    .id("top")
+                    .padding(12)
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(selectedTile?.name ?? "")
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                            Text("\(products.count) item\(products.count == 1 ? "" : "s")")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.textMuted)
+                        }
+                        .id("top")
 
-                    LazyVGrid(columns: gridColumns, spacing: 10) {
-                        ForEach(products) { product in
-                            ProductCardView(
-                                product: product,
-                                onOpen: { detailProduct = product },
-                                onRequestAgeConfirmation: { ageGateProduct = product }
-                            )
+                        LazyVGrid(columns: gridColumns, spacing: 10) {
+                            ForEach(products) { product in
+                                ProductCardView(
+                                    product: product,
+                                    onOpen: { detailProduct = product },
+                                    onRequestAgeConfirmation: { ageGateProduct = product }
+                                )
+                            }
                         }
                     }
+                    .padding(12)
+                    .padding(.bottom, 12)
+                    .drivesTabBarVisibility(in: "categoriesScroll")
+                    .transition(.opacity)
                 }
-                .padding(12)
-                .padding(.bottom, 12)
-                .drivesTabBarVisibility(in: "categoriesScroll")
             }
             .coordinateSpace(.named("categoriesScroll"))
             .onChange(of: selectedCategoryID) { _, _ in

@@ -53,19 +53,11 @@ struct LiveTrackingMapView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 20)
             } else {
-                // Never leave a bare map: say what is happening until the order loads.
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .tint(.brandOrange)
-                    Text("Loading your order…")
-                        .font(.dashitBodyBold)
-                        .foregroundColor(.textPrimary)
-                    Spacer()
-                }
-                .padding(16)
-                .dashitCard(cornerRadius: 20)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 20)
+                // Never leave a bare map: the card's skeleton until the order loads.
+                TrackingCardSkeleton()
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 20)
+                    .transition(.opacity)
             }
         }
         .onAppear {

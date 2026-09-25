@@ -322,6 +322,8 @@ private struct CartLineRow: View {
                     image
                         .resizable()
                         .scaledToFill()
+                } else if phase.error == nil && !item.img.isEmpty {
+                    ShimmerView()
                 } else {
                     Color.surfaceMuted
                 }
