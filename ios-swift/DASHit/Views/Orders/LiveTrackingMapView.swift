@@ -146,7 +146,8 @@ struct LiveTrackingMapView: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                if !stage.isFinished {
+                // The arrival time only once a rider has the order and is on the way.
+                if stage == .onTheWay {
                     Text("ETA \(vm.riderLocation?.etaMinutes ?? order.etaMinutes ?? 8) MINS")
                         .font(.dashitHeadline)
                         .foregroundColor(.brandAccent)
