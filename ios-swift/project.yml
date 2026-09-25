@@ -105,3 +105,58 @@ targets:
         SWIFT_VERSION: "5.9"
         INFOPLIST_FILE: DASHitWidgets/Info.plist
         SKIP_INSTALL: YES
+
+  DASHitAdmin:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: DASHit
+      - path: DASHitWidgets/DASHitOrderAttributes.swift
+      - path: DASHitWidgets/OrderProgressRail.swift
+    dependencies:
+      - package: Firebase
+        product: FirebaseAuth
+      - package: Firebase
+        product: FirebaseFirestore
+      - sdk: SwiftUI.framework
+      - sdk: MapKit.framework
+      - sdk: PassKit.framework
+      - sdk: ActivityKit.framework
+      - sdk: WidgetKit.framework
+      - sdk: AVFoundation.framework
+      - sdk: CoreLocation.framework
+      - sdk: CoreHaptics.framework
+      - sdk: AuthenticationServices.framework
+      - sdk: Speech.framework
+    info:
+      path: DASHit/Info.plist
+      properties:
+        CFBundleDisplayName: "DASHit Admin"
+        CFBundleIdentifier: com.dashit.app
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIRequiredDeviceCapabilities: [arm64]
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        CADisableMinimumFrameDurationOnPhone: true
+        ITSAppUsesNonExemptEncryption: false
+        NSLocationWhenInUseUsageDescription: "DASHit Admin requires location access to monitor delivery radius and rider fleet coordinates in Anantnag."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dashit.app
+        OTHER_SWIFT_FLAGS: $(inherited) -DADMIN_APP_TARGET
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+        SWIFT_VERSION: "5.9"
+        INFOPLIST_FILE: DASHit/Info.plist
+        CODE_SIGN_ENTITLEMENTS: DASHit/DASHit.entitlements
+
