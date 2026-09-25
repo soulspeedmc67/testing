@@ -150,12 +150,7 @@ jobs:
               DEVELOPMENT_TEAM="8V873ZU49N"
 
             APP_PLIST="build/App.xcarchive/Products/Applications/App.app/Info.plist"
-            /usr/libexec/PlistBuddy -c "Set :DTPlatformVersion 26.0" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTPlatformVersion string 26.0" "$APP_PLIST" || true
-            /usr/libexec/PlistBuddy -c "Set :DTSDKName iphoneos26.0" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTSDKName string iphoneos26.0" "$APP_PLIST" || true
-            /usr/libexec/PlistBuddy -c "Set :DTXcode 2600" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTXcode string 2600" "$APP_PLIST" || true
-            /usr/libexec/PlistBuddy -c "Set :DTXcodeBuild 26A100" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTXcodeBuild string 26A100" "$APP_PLIST" || true
-            /usr/libexec/PlistBuddy -c "Set :DTSDKBuild 26A100" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTSDKBuild string 26A100" "$APP_PLIST" || true
-            /usr/libexec/PlistBuddy -c "Set :DTPlatformBuild 26A100" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTPlatformBuild string 26A100" "$APP_PLIST" || true
+            /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" "$APP_PLIST" || true
 
             xcodebuild -exportArchive \
               -archivePath build/App.xcarchive \
