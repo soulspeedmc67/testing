@@ -1,6 +1,9 @@
 import SwiftUI
 import FirebaseCore
 
+// The admin app (DASHitAdmin target) compiles these sources too and has its
+// own entry point, DASHitAdminApp.
+#if !ADMIN_APP_TARGET
 @main
 struct DASHitApp: App {
     @StateObject private var auth = AuthService.shared
@@ -37,3 +40,4 @@ struct DASHitApp: App {
         }
     }
 }
+#endif
