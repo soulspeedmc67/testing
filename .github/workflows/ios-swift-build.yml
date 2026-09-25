@@ -2,7 +2,7 @@ name: Build Native Swift iOS IPA (Xcode 16)
 
 on:
   push:
-    branches: [ native-swift-ios ]
+    branches: [ main, native-swift-ios ]
   workflow_dispatch:
 
 jobs:
