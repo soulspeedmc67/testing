@@ -167,6 +167,14 @@ jobs:
             zip -r -q Dashit.ipa Payload
           fi
 
+      - name: Upload iOS IPA Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dashit-Admin-IPA
+          path: ios/App/build/Dashit.ipa
+          if-no-files-found: warn
+
       - name: Upload to TestFlight (Internal Testing)
         if: env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
         env:
@@ -175,26 +183,53 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
         run: |
           echo "Setting up App Store Connect API Key..."
-          mkdir -p ~/.appstoreconnect/private_keys
-          KEY_FILE=~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
-          if echo "$APP_STORE_CONNECT_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
-            echo "$APP_STORE_CONNECT_KEY_P8" > "$KEY_FILE"
-          else
-            echo "$APP_STORE_CONNECT_KEY_P8" | base64 --decode > "$KEY_FILE"
-          fi
-          chmod 600 "$KEY_FILE"
+          CLEAN_KEY_ID=$(echo "$APP_STORE_CONNECT_KEY_ID" | tr -d '[:space:]')
+          CLEAN_ISSUER_ID=$(echo "$APP_STORE_CONNECT_ISSUER_ID" | tr -d '[:space:]')
+          echo "Key ID: $CLEAN_KEY_ID"
+          echo "Issuer ID length: ${#CLEAN_ISSUER_ID}"
+
+          mkdir -p ~/.appstoreconnect/private_keys ~/.private_keys ~/private_keys ./private_keys
+
+          python3 -c "
+          import os, base64
+
+          raw = os.environ.get('APP_STORE_CONNECT_KEY_P8', '').strip()
+          key_id = '$CLEAN_KEY_ID'
+
+          if 'BEGIN PRIVATE KEY' in raw:
+              key_content = raw
+          elif 'BEGIN' not in raw and len(raw) > 50:
+              try:
+                  decoded = base64.b64decode(raw).decode('utf-8')
+                  if 'BEGIN PRIVATE KEY' in decoded:
+                      key_content = decoded
+                  else:
+                      key_content = f'-----BEGIN PRIVATE KEY-----\n{raw}\n-----END PRIVATE KEY-----\n'
+              except Exception:
+                  key_content = f'-----BEGIN PRIVATE KEY-----\n{raw}\n-----END PRIVATE KEY-----\n'
+          else:
+              key_content = raw
+
+          key_content = key_content.replace('\\n', '\n').strip() + '\n'
+
+          paths = [
+              os.path.expanduser(f'~/.appstoreconnect/private_keys/AuthKey_{key_id}.p8'),
+              os.path.expanduser(f'~/.private_keys/AuthKey_{key_id}.p8'),
+              os.path.expanduser(f'~/private_keys/AuthKey_{key_id}.p8'),
+              f'./private_keys/AuthKey_{key_id}.p8'
+          ]
+          for p in paths:
+              os.makedirs(os.path.dirname(p), exist_ok=True)
+              with open(p, 'w') as f:
+                  f.write(key_content)
+              os.chmod(p, 0o600)
+              print(f'Wrote {len(key_content)} bytes to {p}')
+          "
 
           echo "Uploading Dashit.ipa to TestFlight via App Store Connect API..."
           xcrun altool --upload-app \
             --type ios \
             --file ios/App/build/Dashit.ipa \
-            --apiKey "$APP_STORE_CONNECT_KEY_ID" \
-            --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
-            --show-progress
-
-      - name: Upload iOS IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Dashit-Admin-IPA
-          path: ios/App/build/Dashit.ipa
-          if-no-files-found: error
+            --apiKey "$CLEAN_KEY_ID" \
+            --apiIssuer "$CLEAN_ISSUER_ID" \
+            --verbose
