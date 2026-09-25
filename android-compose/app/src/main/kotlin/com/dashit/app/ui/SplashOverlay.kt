@@ -32,6 +32,8 @@ import kotlinx.coroutines.launch
 private val EaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
 private val EaseIn = CubicBezierEasing(0.55f, 0f, 1f, 0.45f)
 private val EaseInOut = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
+/** A settle with a touch of overshoot, for each letter's pop. */
+private val Pop = CubicBezierEasing(0.34f, 1.36f, 0.64f, 1f)
 
 // Lockup geometry, in dp around the screen centre (the same as the iOS SplashView).
 private val LogoSize = 114.67.dp
@@ -40,17 +42,16 @@ private const val TUCKED_LOGO_SCALE = 0.5f
 private val WordWidth = 158.dp
 private val WordHeight = 34.dp
 private const val WORD_X = 29.3f
-/** The wipe's left edge in the wordmark's own dp, following the logo's right edge. */
-private const val WIPE_START = 98.4f
-private const val WIPE_END = -8.3f
+/** Where each letter of the wordmark image starts (d, a, s, h, i, t), cut in the gaps. */
+private val LETTER_CUTS = floatArrayOf(0f, 0.1862f, 0.3936f, 0.5727f, 0.7713f, 0.8652f, 1f)
 
 /**
  * Takes over from the plain midnight system splash and hands over to the app,
  * exactly as the iOS `SplashView` does: the logo sharpens out of a blur, then
- * shrinks and tucks left while the "dashit" wordmark is uncovered behind it,
- * sharpening as it appears; the lockup lifts away in a blur and the backdrop
- * clears onto the app. (Blur needs Android 12+; older phones get the same
- * motion without it.)
+ * shrinks and tucks left while the letters of "dashit" pop in from its side
+ * one after another, each sliding and settling as it sharpens, in a gentle
+ * wave; the lockup lifts away in a blur and the backdrop clears onto the app.
+ * (Blur needs Android 12+; older phones get the same motion without it.)
  */
 @Composable
 fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
@@ -58,9 +59,9 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
     val logoAlpha = remember { Animatable(0f) }
     val logoBlur = remember { Animatable(14f) }
     val logoRevealScale = remember { Animatable(0.86f) }
-    val tuck = remember { Animatable(0f) } // 0 → 1 drives the logo move and the wipe together
-    val wordAlpha = remember { Animatable(0f) }
-    val wordBlur = remember { Animatable(8f) }
+    val tuck = remember { Animatable(0f) } // 0 → 1 moves the logo into the lockup
+    val letterSettle = remember { List(6) { Animatable(0f) } } // 0 → 1: slide and rise into place
+    val letterShow = remember { List(6) { Animatable(0f) } } // 0 → 1: fade in and sharpen
     val lockupScale = remember { Animatable(1f) }
     val lockupBlur = remember { Animatable(0f) }
     val lockupAlpha = remember { Animatable(1f) }
@@ -75,10 +76,10 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
             tuck.snapTo(1f)
             logoBlur.snapTo(0f)
             logoRevealScale.snapTo(1f)
-            wordBlur.snapTo(0f)
+            letterSettle.forEach { it.snapTo(1f) }
             coroutineScope {
                 launch { logoAlpha.animateTo(1f, tween(300)) }
-                launch { wordAlpha.animateTo(1f, tween(300)) }
+                letterShow.forEach { launch { it.animateTo(1f, tween(300)) } }
             }
             delay(600)
             onReveal()
@@ -100,18 +101,21 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                     launch { logoRevealScale.animateTo(1f, tween(520, easing = EaseOut)) }
                 }
             }
-            // 2. It tucks left and the wordmark is uncovered behind it.
+            // 2. It tucks left, and the letters pop in from its side in a wave.
             launch {
                 delay(760)
                 coroutineScope {
                     launch { tuck.animateTo(1f, tween(560, easing = EaseInOut)) }
-                    launch { wordAlpha.animateTo(1f, tween(480, delayMillis = 80, easing = EaseOut)) }
-                    launch { wordBlur.animateTo(0f, tween(480, delayMillis = 80, easing = EaseOut)) }
+                    for (index in 0 until 6) {
+                        val start = 220 + 45 * index
+                        launch { letterSettle[index].animateTo(1f, tween(480, delayMillis = start, easing = Pop)) }
+                        launch { letterShow[index].animateTo(1f, tween(420, delayMillis = start, easing = EaseOut)) }
+                    }
                 }
             }
             // 3. The lockup lifts away and the backdrop clears onto the app.
             launch {
-                delay(1590)
+                delay(1820)
                 coroutineScope {
                     launch { lockupScale.animateTo(1.08f, tween(320, easing = EaseIn)) }
                     launch { lockupBlur.animateTo(8f, tween(320, easing = EaseIn)) }
@@ -144,22 +148,35 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                 }
                 .blur(lockupBlur.value.dp, BlurredEdgeTreatment.Unbounded)
         ) {
-            Image(
-                painter = painterResource(R.drawable.splash_wordmark),
-                contentDescription = null,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .offset(x = WORD_X.dp)
-                    .size(WordWidth, WordHeight)
-                    .graphicsLayer { alpha = wordAlpha.value }
-                    .blur(wordBlur.value.dp, BlurredEdgeTreatment.Unbounded)
-                    .drawWithContent {
-                        val wipe = (WIPE_START + (WIPE_END - WIPE_START) * tuck.value).dp.toPx()
-                        clipRect(left = wipe, top = -size.height, right = size.width * 2, bottom = size.height * 2) {
-                            this@drawWithContent.drawContent()
+            // Each letter is the wordmark image cut to that letter, so it can move on its own.
+            for (index in 0 until 6) {
+                val settle = letterSettle[index]
+                val show = letterShow[index]
+                Image(
+                    painter = painterResource(R.drawable.splash_wordmark),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .offset(x = WORD_X.dp)
+                        .size(WordWidth, WordHeight)
+                        .graphicsLayer {
+                            translationX = (-14f * (1f - settle.value)).dp.toPx()
+                            translationY = (7f * (1f - settle.value)).dp.toPx()
+                            alpha = show.value
                         }
-                    }
-            )
+                        .blur((7f * (1f - show.value)).dp, BlurredEdgeTreatment.Unbounded)
+                        .drawWithContent {
+                            clipRect(
+                                left = size.width * LETTER_CUTS[index],
+                                top = -size.height,
+                                right = size.width * LETTER_CUTS[index + 1],
+                                bottom = size.height * 2
+                            ) {
+                                this@drawWithContent.drawContent()
+                            }
+                        }
+                )
+            }
             Image(
                 painter = painterResource(R.drawable.splash_logo),
                 contentDescription = null,
