@@ -130,7 +130,7 @@ def build_flavor(flavor, src_ipa):
     role_entry_map = {
         "customer": os.path.join(public_dir, "shop", "index.html"),
         "driver": os.path.join(public_dir, "driver", "index.html"),
-        "admin": os.path.join(public_dir, "admin", "index.html"),
+        "admin": os.path.join(public_dir, "admin", "index.html") if os.path.exists(os.path.join(public_dir, "admin", "index.html")) else os.path.join(public_dir, "xcyop", "index.html"),
     }
     entry_src = role_entry_map.get(role)
     if entry_src and os.path.exists(entry_src):

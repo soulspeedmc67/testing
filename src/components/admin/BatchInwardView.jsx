@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Camera,
   FileText,
@@ -8,7 +8,8 @@ import {
   CheckCircle2,
   ArrowDownToLine,
   Boxes,
-  Barcode
+  Barcode,
+  Truck
 } from "lucide-react";
 
 export default function BatchInwardView({
@@ -17,8 +18,10 @@ export default function BatchInwardView({
   onOpenContinuousScanner,
   onOpenBulkPasteModal,
   onApplyBatchInward,
+  distributors = [],
   darkMode = false,
 }) {
+  const [batchDistributor, setBatchDistributor] = useState("");
   const totalUnits = batchInwardList.reduce((acc, i) => acc + (i.qtyToAdd || 1), 0);
 
   const updateItemQty = (idx, delta) => {
@@ -60,7 +63,28 @@ export default function BatchInwardView({
           </p>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-wrap gap-2">
+          {/* Shipment Supplier */}
+          <div className="flex items-center space-x-1.5">
+            <Truck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <select
+              value={batchDistributor}
+              onChange={(e) => setBatchDistributor(e.target.value)}
+              className={`text-xs font-bold px-3 py-2 rounded-xl border outline-none cursor-pointer ${
+                darkMode
+                  ? "bg-[#1A1D26] border-zinc-700 text-zinc-200"
+                  : "bg-white border-slate-200 text-slate-800"
+              }`}
+            >
+              <option value="">Supplier / Distributor (Optional)</option>
+              {distributors.map((d) => (
+                <option key={d.id || d.name} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             type="button"
             onClick={onOpenContinuousScanner}
@@ -217,7 +241,7 @@ export default function BatchInwardView({
             </span>
             <button
               type="button"
-              onClick={onApplyBatchInward}
+              onClick={() => onApplyBatchInward(batchDistributor)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-6 py-2.5 rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center space-x-1.5"
             >
               <CheckCircle2 className="w-4 h-4" />

@@ -44,13 +44,6 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
 
-        // Enforce ₹299 minimum order value
-        guard cart.bill.isMinOrderSatisfied else {
-            cart.showMinOrderModal = true
-            HapticsManager.shared.warning()
-            return false
-        }
-
         guard let user = auth.currentUser, let uid = auth.firebaseUID else {
             HapticsManager.shared.warning()
             orderError = "Please sign in to complete your order."

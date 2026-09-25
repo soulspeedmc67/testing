@@ -13,6 +13,7 @@ import {
   Barcode
 } from "lucide-react";
 import { get4KPhotoSuggestions } from "../../lib/barcodeCatalog";
+import { Truck } from "lucide-react";
 
 export default function AddProductView({
   productForm,
@@ -25,8 +26,12 @@ export default function AddProductView({
   quickTemplates = [],
   categories = [],
   visualPalette = [],
+  distributors = [],
+  onQuickAddDistributor,
   darkMode = false,
 }) {
+  const [showNewDistributorInput, setShowNewDistributorInput] = useState(false);
+  const [newDistributorName, setNewDistributorName] = useState("");
   /* One definition for every box on this form: the styling used to be pasted
      onto each input, which is how they drifted apart in the first place. */
   const labelCls =
@@ -282,6 +287,67 @@ export default function AddProductView({
                 className={fieldCls}
               />
             </div>
+          </div>
+
+          {/* Distributor / Supplier Selection */}
+          <div className="p-3.5 rounded-xl border border-slate-200/80 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#14161E]/50">
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="add-distributor" className="text-[11px] font-black uppercase text-slate-700 dark:text-zinc-200 flex items-center space-x-1.5">
+                <Truck className="w-3.5 h-3.5 text-[#FF5B00]" />
+                <span>Distributor / Supplier</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowNewDistributorInput(!showNewDistributorInput)}
+                className="text-[10.5px] font-black text-[#FF5B00] hover:underline cursor-pointer"
+              >
+                {showNewDistributorInput ? "Choose From List" : "+ Add New Supplier"}
+              </button>
+            </div>
+
+            {showNewDistributorInput ? (
+              <div className="flex items-center space-x-2 mt-1">
+                <input
+                  type="text"
+                  value={newDistributorName}
+                  onChange={(e) => setNewDistributorName(e.target.value)}
+                  placeholder="Enter new supplier / distributor name..."
+                  className={fieldCls}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = newDistributorName.trim();
+                    if (trimmed) {
+                      if (onQuickAddDistributor) onQuickAddDistributor(trimmed);
+                      setProductForm((p) => ({ ...p, distributor: trimmed }));
+                      setShowNewDistributorInput(false);
+                      setNewDistributorName("");
+                    }
+                  }}
+                  className="bg-[#FF5B00] hover:bg-[#E04E00] text-white px-3.5 py-2.5 rounded-xl text-xs font-black shrink-0 shadow-xs cursor-pointer active:scale-95"
+                >
+                  Save & Pick
+                </button>
+              </div>
+            ) : (
+              <select
+                id="add-distributor"
+                value={productForm.distributor || ""}
+                onChange={(e) => setProductForm((p) => ({ ...p, distributor: e.target.value }))}
+                className={`${fieldCls} cursor-pointer`}
+              >
+                <option value="">Direct Store / General Sourcing</option>
+                {distributors.map((d) => (
+                  <option key={d.id || d.name} value={d.name}>
+                    {d.name} {d.leadTime ? `(${d.leadTime})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1">
+              Categorizes stock ownership and tracks who needs to be paid or reordered.
+            </p>
           </div>
 
           {/* A plain <details>: no extra state, opens with the keyboard. */}

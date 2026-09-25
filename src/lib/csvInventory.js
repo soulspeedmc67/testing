@@ -11,6 +11,7 @@ export const CANONICAL_FIELDS = [
   "barcode",
   "name",
   "cat",
+  "distributor",
   "qty",
   "price",
   "originalPrice",
@@ -81,6 +82,15 @@ const HEADER_ALIASES = {
   brand: "brand",
   company: "brand",
   manufacturer: "brand",
+
+  distributor: "distributor",
+  distributer: "distributor",
+  supplier: "distributor",
+  vendor: "distributor",
+  wholesaler: "distributor",
+  dealer: "distributor",
+  source: "distributor",
+  agency: "distributor",
 
   badge: "badge",
   tag: "badge",
@@ -284,7 +294,7 @@ const slugId = (name) => {
  *
  * @param stockMode "add" increments existing stock, "set" overwrites it.
  */
-export function buildImportPlan(raw, existingProducts = [], stockMode = "add") {
+export function buildImportPlan(raw, existingProducts = [], stockMode = "add", defaultDistributor = "") {
   const rows = parseCsv(raw);
   if (rows.length === 0) {
     return { items: [], errors: [], unmappedHeaders: [], missingColumns: ["name"], headerFields: [], stockMode };
@@ -348,13 +358,15 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add") {
       (name && byName.get(name.toLowerCase())) ||
       null;
 
+    const assignedDistributor = record.distributor || defaultDistributor || (match ? match.distributor : "");
+
     const price = parseAmount(record.price);
     const originalPrice = parseAmount(record.originalPrice);
     const currentStock = match ? Number(match.stock) || 0 : 0;
     const newStock = match && stockMode === "add" ? currentStock + qty : qty;
 
-    /* Price and category changes on an existing item are surfaced separately so
-       the owner can see a repricing hidden inside a restock file. */
+    /* Price, category, and distributor changes on an existing item are surfaced
+       separately so the owner can verify before landing. */
     const changes = [];
     if (match) {
       if (price !== null && Number(match.price) !== price) {
@@ -365,6 +377,9 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add") {
       }
       if (record.cat && match.cat && record.cat !== match.cat) {
         changes.push(`Category ${match.cat} → ${record.cat}`);
+      }
+      if (assignedDistributor && match.distributor && assignedDistributor !== match.distributor) {
+        changes.push(`Distributor ${match.distributor} → ${assignedDistributor}`);
       }
     }
 
@@ -397,6 +412,7 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add") {
       id: resolvedId,
       name: name || (match ? match.name : barcode),
       cat: record.cat || (match ? match.cat : "Grocery"),
+      distributor: assignedDistributor || "",
       unit: record.unit || (match ? match.unit : "1 pc"),
       brand: record.brand || (match ? match.brand : ""),
       badge: record.badge || (match ? match.badge : "Fresh"),
@@ -428,7 +444,7 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add") {
  * say — was silently overwritten. "set" is an explicit absolute count, so it
  * still writes `newStock`.
  */
-export function planToStockUpdates(items, stockMode = "add") {
+export function planToStockUpdates(items, stockMode = "add", defaultDistributor = "") {
   return items
     .filter((i) => i.include && !i.blocked)
     .map((item) => ({
@@ -440,6 +456,7 @@ export function planToStockUpdates(items, stockMode = "add") {
         barcode: item.id,
         name: item.name,
         cat: item.cat,
+        distributor: item.distributor || defaultDistributor || undefined,
         unit: item.unit,
         brand: item.brand || undefined,
         badge: item.badge || undefined,
@@ -469,6 +486,7 @@ export const EXPORT_COLUMNS = [
   ["barcode", (p) => p.id || p.barcode],
   ["name", (p) => p.name],
   ["category", (p) => p.cat],
+  ["distributor", (p) => p.distributor || ""],
   ["quantity", (p) => (p.stock === undefined || p.stock === null ? 0 : p.stock)],
   ["price", (p) => p.price],
   ["mrp", (p) => p.originalPrice || p.price],
@@ -486,10 +504,10 @@ export function productsToCsv(products = []) {
   return `${header}\n${body}\n`;
 }
 
-export const CSV_TEMPLATE = `barcode,name,category,quantity,price,mrp,unit,brand,badge,image
-,Fresh Onion,Vegetables,40,35,45,1 kg,Local Farm,Daily Staple,
-,Amul Gold Full Cream Milk,Dairy,60,36,38,500 ml,Amul,Full Cream,
-,Vim Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,Bestseller,
+export const CSV_TEMPLATE = `barcode,name,category,distributor,quantity,price,mrp,unit,brand,badge,image
+,Fresh Onion,Vegetables,Anantnag Fresh Farm Orchards,40,35,45,1 kg,Local Farm,Daily Staple,
+,Amul Gold Full Cream Milk,Dairy,Amul Valley Dairy Logistics,60,36,38,500 ml,Amul,Full Cream,
+,Vim Dishwash Gel Lemon,Kitchen Care,Hindustan Unilever Direct,25,115,130,500 ml,Vim,Bestseller,
 `;
 
 export function downloadCsv(filename, contents) {

@@ -33,6 +33,7 @@ import OffersView from "../components/admin/OffersView";
 import ImporterView from "../components/admin/ImporterView";
 import CsvInventoryView from "../components/admin/CsvInventoryView";
 import StoreControlsView from "../components/admin/StoreControlsView";
+import DistributorsView from "../components/admin/DistributorsView";
 
 import BarcodeScannerView from "../components/BarcodeScannerView";
 import { get4KPhotoSuggestions, findInIndianCatalog, STUDIO_4K_PHOTOS } from "../lib/barcodeCatalog";
@@ -54,6 +55,10 @@ import {
   watchStoreConfig,
   setStoreConfig,
   assignDriver,
+  watchDistributors,
+  upsertDistributor,
+  deleteDistributor,
+  DEFAULT_DISTRIBUTORS,
   ORDER_STATUS
 } from "../lib/db";
 import { searchOffByBarcode, searchOffByQuery } from "../lib/openFoodFacts";
@@ -507,6 +512,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   const [productForm, setProductForm] = useState({
     name: "",
     cat: "Bakery",
+    distributor: "",
     price: "",
     originalPrice: "",
     unit: "1 pc",
@@ -517,6 +523,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     stock: 100,
   });
   const [isPublishingProduct, setIsPublishingProduct] = useState(false);
+
+  // Distributors State
+  const [distributors, setDistributors] = useState([]);
+  const [selectedDistributorForStock, setSelectedDistributorForStock] = useState("All");
 
   // Catalogue State
   const [catalogue, setCatalogue] = useState([]);
@@ -717,6 +727,16 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     const unsub = watchProducts((products) => {
       setCatalogue(products);
       setIsLoadingCatalogue(false);
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
+
+  // 3b. Realtime Distributors watching
+  useEffect(() => {
+    const unsub = watchDistributors((list) => {
+      setDistributors(list || []);
     });
     return () => {
       if (typeof unsub === "function") unsub();
@@ -965,6 +985,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       barcode: productForm.barcode || prodId,
       name: productForm.name.trim(),
       cat: productForm.cat,
+      distributor: productForm.distributor ? productForm.distributor.trim() : "",
       price: Number(productForm.price),
       originalPrice: productForm.originalPrice ? Number(productForm.originalPrice) : Number(productForm.price),
       unit: productForm.unit || "1 pc",
@@ -993,6 +1014,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       setProductForm({
         name: "",
         cat: "Bakery",
+        distributor: "",
         price: "",
         originalPrice: "",
         unit: "1 pc",
@@ -1050,8 +1072,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   };
 
   // Delete Product
-  const handleDeleteProduct = async (id, name) => {
-    if (!confirm(`Are you sure you want to remove "${name}" from the store catalogue?`)) return;
+  const handleDeleteProduct = async (id, name, skipConfirm = false) => {
+    if (!skipConfirm && !confirm(`Are you sure you want to remove "${name}" from the store catalogue?`)) return;
     try {
       await fsDeleteProduct(id);
       showToast(`Removed "${name}" from store.`);
@@ -1197,16 +1219,23 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   };
 
   // Apply Batch Inward Restock
-  const handleApplyBatchInward = async () => {
+  const handleApplyBatchInward = async (batchDistributor) => {
     if (batchInwardList.length === 0) return;
     try {
-      const updates = batchInwardList.map((item) => ({
-        id: item.id || item.barcode,
-        barcode: item.barcode,
-        qtyToAdd: item.qtyToAdd,
-        calculatedStock: item.newStock,
-        product: item.product,
-      }));
+      const updates = batchInwardList.map((item) => {
+        const prod = item.product || {};
+        const dist = batchDistributor || prod.distributor;
+        return {
+          id: item.id || item.barcode,
+          barcode: item.barcode,
+          qtyToAdd: item.qtyToAdd,
+          calculatedStock: item.newStock,
+          product: {
+            ...prod,
+            ...(dist ? { distributor: dist } : {}),
+          },
+        };
+      });
       const inwardRes = await bulkUpdateProductStock(updates);
       if (inwardRes?.failures?.length) {
         showToast(
@@ -1223,6 +1252,59 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     } catch (err) {
       showToast(`Batch update notice: ${err?.message}`);
     }
+  };
+
+  // Distributor Operations Handlers
+  const handleUpsertDistributor = async (distData) => {
+    try {
+      await upsertDistributor(distData);
+      setToastMessage({
+        type: "success",
+        title: "Distributor Saved",
+        description: `Successfully saved ${distData.name}.`,
+      });
+    } catch (e) {
+      setToastMessage({
+        type: "error",
+        title: "Error Saving",
+        description: e.message || "Failed to save distributor.",
+      });
+    }
+  };
+
+  const handleDeleteDistributor = async (distId) => {
+    try {
+      await deleteDistributor(distId);
+      setToastMessage({
+        type: "success",
+        title: "Distributor Removed",
+        description: "Distributor was successfully removed.",
+      });
+    } catch (e) {
+      setToastMessage({
+        type: "error",
+        title: "Error Removing",
+        description: e.message || "Failed to remove distributor.",
+      });
+    }
+  };
+
+  const handleQuickAddDistributor = async (distInput) => {
+    try {
+      const payload =
+        typeof distInput === "string"
+          ? { name: distInput, active: true, leadTime: "Same Day" }
+          : { active: true, leadTime: "Same Day", ...distInput };
+      await upsertDistributor(payload);
+      showToast(`Added supplier "${payload.name}".`);
+    } catch (e) {
+      console.warn("Failed to quick add distributor:", e);
+    }
+  };
+
+  const handleViewDistributorStock = (distName) => {
+    setSelectedDistributorForStock(distName);
+    setActiveTab("inventory");
   };
 
   // Bulk Paste list parser
@@ -1370,6 +1452,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       activeOrdersCount={activeOrdersCount}
       lowStockCount={inventorySummary.lowStockCount}
       catalogueCount={catalogue.length}
+      distributorsCount={distributors.length}
       newOrderAlert={newOrderAlert}
       onDismissNewOrderAlert={() => setNewOrderAlert(null)}
       toastMessage={toastMessage}
@@ -1488,10 +1571,25 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       {activeTab === "inventory" && (
         <InventoryView
           catalogue={catalogue}
+          distributors={distributors}
           onQuickStockAdjust={handleQuickStockAdjust}
           onClearAllStock={handleClearAllStock}
           isClearingStock={isClearingStock}
           onNavigateTab={setActiveTab}
+          onDeleteProduct={handleDeleteProduct}
+          selectedDistributor={selectedDistributorForStock}
+          onSelectDistributor={setSelectedDistributorForStock}
+          darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "distributors" && (
+        <DistributorsView
+          distributors={distributors}
+          catalogue={catalogue}
+          onUpsertDistributor={handleUpsertDistributor}
+          onDeleteDistributor={handleDeleteDistributor}
+          onViewDistributorStock={handleViewDistributorStock}
           darkMode={darkMode}
         />
       )}
@@ -1508,6 +1606,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           quickTemplates={QUICK_TEMPLATES}
           categories={CATEGORIES}
           visualPalette={VISUAL_IMAGE_PALETTE}
+          distributors={distributors}
+          onQuickAddDistributor={handleQuickAddDistributor}
           darkMode={darkMode}
         />
       )}
@@ -1519,6 +1619,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onOpenContinuousScanner={() => setShowBatchScanner(true)}
           onOpenBulkPasteModal={() => setShowBulkPasteModal(true)}
           onApplyBatchInward={handleApplyBatchInward}
+          distributors={distributors}
           darkMode={darkMode}
         />
       )}
@@ -1544,6 +1645,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       {activeTab === "csv" && (
         <CsvInventoryView
           catalogue={catalogue}
+          distributors={distributors}
+          onQuickAddDistributor={handleQuickAddDistributor}
           onApplyImport={handleApplyCsvImport}
           darkMode={darkMode}
         />

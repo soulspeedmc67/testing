@@ -155,8 +155,8 @@ public struct CartBillBreakdown {
     public let amountNeededForMinOrder: Double
     public let amountNeededForFreeDelivery: Double
 
-    public static let minOrderValue: Double = 299.0
-    public static let freeDeliveryThreshold: Double = 199.0
+    public static let minOrderValue: Double = 0.0
+    public static let freeDeliveryThreshold: Double = 299.0
     public static let standardDeliveryFee: Double = 25.0
 
     public static func calculate(items: [CartItem], appliedCoupon: Coupon?) -> CartBillBreakdown {
@@ -175,8 +175,8 @@ public struct CartBillBreakdown {
         let discount = effectiveCoupon != nil ? min(subtotal, effectiveCoupon!.discount) : 0.0
         let grandTotal = max(0.0, subtotal + deliveryFee - discount)
 
-        let isMinOrder = subtotal >= minOrderValue || subtotal == 0
-        let neededForMin = max(0.0, minOrderValue - subtotal)
+        let isMinOrder = true
+        let neededForMin = 0.0
         let neededForFreeDel = max(0.0, freeDeliveryThreshold - subtotal)
 
         return CartBillBreakdown(

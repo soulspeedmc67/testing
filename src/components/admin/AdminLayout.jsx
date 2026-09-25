@@ -23,7 +23,8 @@ import {
   Search,
   CheckCircle2,
   AlertTriangle,
-  Truck
+  Truck,
+  Building2
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -41,6 +42,7 @@ export default function AdminLayout({
   activeOrdersCount = 0,
   lowStockCount = 0,
   catalogueCount = 0,
+  distributorsCount = 0,
   newOrderAlert = null,
   onDismissNewOrderAlert,
   toastMessage = null,
@@ -86,6 +88,13 @@ export default function AdminLayout({
     {
       group: "Shop setup",
       items: [
+        {
+          id: "distributors",
+          label: "Distributors",
+          icon: Building2,
+          badge: distributorsCount > 0 ? `${distributorsCount}` : null,
+          badgeColor: "bg-blue-500/15 text-blue-500 dark:text-blue-400 font-bold",
+        },
         {
           id: "catalogue",
           label: "All items",
@@ -151,10 +160,10 @@ export default function AdminLayout({
         <link rel="shortcut icon" href="/favicon.ico" />
       </Head>
 
-      {/* 1. TOP EXECUTIVE NAVBAR */}
+      {/* 1. TOP EXECUTIVE NAVBAR (iOS Frosted Glass) */}
       <header
-        className={`shrink-0 sticky top-0 z-40 border-b px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-2.5 flex items-center justify-between transition-colors shadow-xs ${
-          darkMode ? "bg-[#12141A] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+        className={`shrink-0 sticky top-0 z-40 border-b px-4 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+10px)] pb-2.5 flex items-center justify-between transition-all backdrop-blur-xl shadow-xs ${
+          darkMode ? "bg-[#12141A]/85 border-zinc-800 text-white" : "bg-white/85 border-slate-200/80 text-slate-900"
         }`}
       >
         <div className="flex items-center space-x-3 min-w-0">
