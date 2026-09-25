@@ -131,6 +131,12 @@ jobs:
             cp "$PP_PATH" Payload/DASHit.app/embedded.mobileprovision
 
             /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${GITHUB_RUN_NUMBER}" Payload/DASHit.app/Info.plist 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :DTPlatformVersion 26.0" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTPlatformVersion string 26.0" Payload/DASHit.app/Info.plist || true
+            /usr/libexec/PlistBuddy -c "Set :DTSDKName iphoneos26.0" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTSDKName string iphoneos26.0" Payload/DASHit.app/Info.plist || true
+            /usr/libexec/PlistBuddy -c "Set :DTXcode 2600" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTXcode string 2600" Payload/DASHit.app/Info.plist || true
+            /usr/libexec/PlistBuddy -c "Set :DTXcodeBuild 26A100" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTXcodeBuild string 26A100" Payload/DASHit.app/Info.plist || true
+            /usr/libexec/PlistBuddy -c "Set :DTSDKBuild 26A100" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTSDKBuild string 26A100" Payload/DASHit.app/Info.plist || true
+            /usr/libexec/PlistBuddy -c "Set :DTPlatformBuild 26A100" Payload/DASHit.app/Info.plist 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :DTPlatformBuild string 26A100" Payload/DASHit.app/Info.plist || true
 
             for fw in $(find Payload/DASHit.app -name "*.framework" 2>/dev/null || true); do
               codesign --force --sign "Apple Distribution" --preserve-metadata=identifier,flags,runtime "$fw" || true
