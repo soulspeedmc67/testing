@@ -18,6 +18,10 @@ struct SplashView: View {
     @State private var markOpacity: Double = 1
     @State private var backdropOpacity: Double = 1
 
+    /// The same curves the Android splash uses, so both apps move identically.
+    private static func easeOut(_ duration: Double) -> Animation { .timingCurve(0.22, 1, 0.36, 1, duration: duration) }
+    private static func easeIn(_ duration: Double) -> Animation { .timingCurve(0.55, 0, 1, 0.45, duration: duration) }
+
     /// The dash's left end within the mark image, so it stretches from there.
     private static let dashAnchor = UnitPoint(x: 0.084, y: 0.497)
 
@@ -61,24 +65,24 @@ struct SplashView: View {
         try? await Task.sleep(for: .milliseconds(150))
 
         // Wind-up: the dash pulls back and the mark tightens.
-        withAnimation(.easeOut(duration: 0.22)) {
+        withAnimation(Self.easeOut(0.22)) {
             dashOffset = -7
             markScale = 0.96
         }
         try? await Task.sleep(for: .milliseconds(220))
 
         // The dash streaks off to the right; the mark zooms away behind it.
-        withAnimation(.easeIn(duration: 0.32)) {
+        withAnimation(Self.easeIn(0.32)) {
             dashOffset = travel
             dashStretch = 3.2
         }
-        withAnimation(.easeIn(duration: 0.28).delay(0.02)) {
+        withAnimation(Self.easeIn(0.28).delay(0.02)) {
             markScale = 1.3
         }
-        withAnimation(.easeOut(duration: 0.2).delay(0.02)) {
+        withAnimation(Self.easeOut(0.2).delay(0.02)) {
             markOpacity = 0
         }
-        withAnimation(.easeOut(duration: 0.34).delay(0.09)) {
+        withAnimation(Self.easeOut(0.34).delay(0.09)) {
             backdropOpacity = 0
         }
         try? await Task.sleep(for: .milliseconds(10))
