@@ -22,7 +22,7 @@ export default function CartDrawerSheet({
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const originalSubtotal = cart.reduce((sum, item) => sum + (item.originalPrice || item.price + 10) * item.qty, 0);
-  const deliveryFee = subtotal >= 399 || subtotal === 0 ? 0 : 25;
+  const deliveryFee = subtotal >= 299 || subtotal === 0 ? 0 : 25;
   const handlingFee = subtotal > 0 ? 5 : 0;
   const totalSavings = (originalSubtotal - subtotal) + discount;
   const grandTotal = Math.max(0, subtotal + deliveryFee + handlingFee - discount);

@@ -36,8 +36,7 @@ import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
-import FreeDeliveryCelebrationModal from "../components/FreeDeliveryCelebrationModal";
-import MinOrderValueModal from "../components/MinOrderValueModal";
+import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
@@ -47,7 +46,14 @@ import { useStoreDetails } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { ALL_PRODUCTS } from "../data/products";
 
-const MIN_ORDER_VALUE = 299;
+
+const parsePrice = (val) => {
+  if (typeof val === "number") return val;
+  if (!val) return 0;
+  const cleaned = String(val).replace(/[^0-9.]/g, "");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -57,13 +63,10 @@ export default function CheckoutPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isMinOrderModalOpen, setIsMinOrderModalOpen] = useState(false);
   const [isOrderingForSomeoneElseOpen, setIsOrderingForSomeoneElseOpen] = useState(false);
   const [receiverDetails, setReceiverDetails] = useState(null);
   const [isCouponsOpen, setIsCouponsOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [isFreeDeliveryModalOpen, setIsFreeDeliveryModalOpen] = useState(false);
-  const [hasShownFreeDelivery, setHasShownFreeDelivery] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   /* `isProcessing` only disables the button on the next render, which leaves a
      frame in which a second tap — or the login modal's callback racing the
@@ -78,7 +81,7 @@ export default function CheckoutPage() {
 
   // Dynamic smart recommendations based on cart items
   const { pairsWell, popularAdditions } = useMemo(() => {
-    const cartIds = new Set(cartItems.map((i) => i.id));
+    const cartIds = new Set(cartItems.map((i) => String(i.id || i.barcode)));
     const cartCats = new Set(cartItems.map((i) => i.cat).filter(Boolean));
     const cartNames = cartItems.map((i) => (i.name || "").toLowerCase()).join(" ");
 
@@ -106,7 +109,7 @@ export default function CheckoutPage() {
       targetCats.add("Drinks");
     }
 
-    const available = ALL_PRODUCTS.filter((p) => !cartIds.has(p.id));
+    const available = ALL_PRODUCTS.filter((p) => !cartIds.has(String(p.id || p.barcode)));
     const complementary = available.filter((p) => targetCats.has(p.cat));
     const popularStaples = available.filter((p) => !targetCats.has(p.cat));
 
@@ -114,9 +117,9 @@ export default function CheckoutPage() {
       ? complementary 
       : [...complementary, ...popularStaples];
     const pairsSlice = pairs.slice(0, 8);
-    const pairsIds = new Set(pairsSlice.map((p) => p.id));
+    const pairsIds = new Set(pairsSlice.map((p) => String(p.id || p.barcode)));
 
-    const popular = available.filter((p) => !pairsIds.has(p.id));
+    const popular = available.filter((p) => !pairsIds.has(String(p.id || p.barcode)));
 
     return {
       pairsWell: pairsSlice,
@@ -156,6 +159,7 @@ export default function CheckoutPage() {
     }, 220);
   };
 
+  // 1. Initial Load: Read cart from master dashit_cart as single source of truth
   useEffect(() => {
     try {
       const savedAddress = (() => {
@@ -167,33 +171,86 @@ export default function CheckoutPage() {
         }
       })();
 
-      const savedCheckout = localStorage.getItem("dashit_checkout_data");
-      if (savedCheckout) {
-        const parsed = JSON.parse(savedCheckout);
-        setCheckoutData(parsed);
-        setCartItems(parsed.cart || []);
-      } else {
-        const savedCart = localStorage.getItem("dashit_cart");
-        if (savedCart) {
-          const cart = JSON.parse(savedCart);
-          const sub = cart.reduce((s, i) => s + i.price * i.qty, 0);
-          setCartItems(cart);
-          setCheckoutData({
-            cart,
-            subtotal: sub,
-            grandTotal: sub + 25,
-            location: savedAddress || {
-              nickname: "Home",
-              address: ""
-            }
-          });
-        }
+      // Single source of truth: dashit_cart
+      let activeCart = [];
+      const savedCart = localStorage.getItem("dashit_cart");
+      if (savedCart) {
+        try {
+          const parsed = JSON.parse(savedCart);
+          if (Array.isArray(parsed)) activeCart = parsed;
+        } catch (e) {}
       }
+
+      // Fallback only if dashit_cart was never set
+      if (activeCart.length === 0) {
+        try {
+          const savedCheckout = localStorage.getItem("dashit_checkout_data");
+          if (savedCheckout) {
+            const parsed = JSON.parse(savedCheckout);
+            if (Array.isArray(parsed?.cart) && parsed.cart.length > 0) {
+              activeCart = parsed.cart;
+              localStorage.setItem("dashit_cart", JSON.stringify(activeCart));
+            }
+          }
+        } catch (e) {}
+      }
+
+      setCartItems(activeCart);
+
+      let loc = savedAddress;
+      try {
+        const savedCheckout = localStorage.getItem("dashit_checkout_data");
+        if (savedCheckout) {
+          const parsed = JSON.parse(savedCheckout);
+          if (parsed?.location && (!loc || !loc.address)) {
+            loc = parsed.location;
+          }
+        }
+      } catch (e) {}
+
+      const sub = activeCart.reduce(
+        (s, i) => s + parsePrice(i.price) * (Number(i.qty) || 0),
+        0
+      );
+
+      setCheckoutData({
+        cart: activeCart,
+        subtotal: sub,
+        grandTotal: sub >= 299 ? sub : sub + 25,
+        location: loc || {
+          nickname: "Home",
+          address: ""
+        }
+      });
     } catch (e) {}
   }, []);
 
+  // 2. React to external cart changes from shop / drawers / background events
+  useEffect(() => {
+    const handleCartSync = () => {
+      try {
+        const raw = localStorage.getItem("dashit_cart");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            setCartItems(parsed);
+          }
+        } else {
+          setCartItems([]);
+        }
+      } catch (e) {}
+    };
+
+    window.addEventListener("dashit_cart_updated", handleCartSync);
+    window.addEventListener("storage", handleCartSync);
+    return () => {
+      window.removeEventListener("dashit_cart_updated", handleCartSync);
+      window.removeEventListener("storage", handleCartSync);
+    };
+  }, []);
+
   const subtotal = cartItems.reduce(
-    (s, i) => s + (Number(i.price) || 0) * (Number(i.qty) || 0),
+    (s, i) => s + parsePrice(i.price) * (Number(i.qty) || 0),
     0
   );
 
@@ -206,13 +263,40 @@ export default function CheckoutPage() {
   const effectiveCoupon = isCouponValid ? appliedCoupon : null;
 
   const deliveryFee =
-    subtotal >= 199 || effectiveCoupon?.waivesDelivery || effectiveCoupon?.code === "FREEDEL"
+    subtotal >= 299 || effectiveCoupon?.waivesDelivery || effectiveCoupon?.code === "FREEDEL"
       ? 0
       : 25;
   const couponDiscount = effectiveCoupon
     ? Math.min(subtotal, Number(effectiveCoupon.discount) || 0)
     : 0;
   const grandTotal = Math.max(0, subtotal + deliveryFee - couponDiscount);
+
+  // Sync checkoutData and localStorage dashit_checkout_data with live calculations
+  useEffect(() => {
+    setCheckoutData((prev) => ({
+      ...prev,
+      cart: cartItems,
+      subtotal,
+      grandTotal,
+      location: prev?.location || null,
+    }));
+
+    try {
+      const coStr = localStorage.getItem("dashit_checkout_data");
+      const co = coStr ? JSON.parse(coStr) : {};
+      localStorage.setItem(
+        "dashit_checkout_data",
+        JSON.stringify({
+          ...co,
+          cart: cartItems,
+          subtotal,
+          grandTotal,
+          deliveryFee,
+          discount: couponDiscount,
+        })
+      );
+    } catch (e) {}
+  }, [cartItems, subtotal, grandTotal, deliveryFee, couponDiscount]);
 
   // Drop a coupon that the cart no longer qualifies for, so the UI stops
   // showing it as applied.
@@ -240,32 +324,60 @@ export default function CheckoutPage() {
 
   const checkoutEta = calculateDeliveryEta(checkoutData?.location);
 
-  // Trigger Free Delivery Celebration when cart reaches ₹199 (Shown only once until order placed)
-  useEffect(() => {
+  const handleAddToCart = (prod) => {
+    hapticLight();
+    const prodId = String(prod.id || prod.barcode);
+    const existingIndex = cartItems.findIndex(
+      (i) => String(i.id || i.barcode) === prodId
+    );
+
+    let updated;
+    if (existingIndex > -1) {
+      updated = cartItems.map((item, idx) =>
+        idx === existingIndex
+          ? { ...item, qty: (Number(item.qty) || 1) + 1 }
+          : item
+      );
+    } else {
+      const newItem = {
+        ...prod,
+        id: prod.id,
+        price: parsePrice(prod.price),
+        originalPrice: parsePrice(prod.originalPrice || prod.price),
+        img: prod.img || prod.image || "",
+        image: prod.img || prod.image || "",
+        qty: 1,
+      };
+      updated = [...cartItems, newItem];
+    }
+
+    setCartItems(updated);
     try {
-      const alreadyShown = localStorage.getItem("dashit_free_delivery_seen");
-      if (subtotal >= 199 && !alreadyShown && !hasShownFreeDelivery) {
-        setIsFreeDeliveryModalOpen(true);
-        localStorage.setItem("dashit_free_delivery_seen", "true");
-        setHasShownFreeDelivery(true);
-      }
+      localStorage.setItem("dashit_cart", JSON.stringify(updated));
+      window.dispatchEvent(new Event("dashit_cart_updated"));
     } catch (e) {}
-  }, [subtotal, hasShownFreeDelivery]);
+  };
 
   const updateItemQty = (id, delta) => {
+    const idStr = String(id);
     if (delta > 0) {
       hapticLight();
     } else {
-      const current = cartItems.find((i) => i.id === id);
-      if (current && current.qty <= 1) {
+      const current = cartItems.find((i) => String(i.id || i.barcode) === idStr);
+      if (current && (Number(current.qty) || 0) <= 1) {
         hapticMedium();
       } else {
         hapticLight();
       }
     }
     const updated = cartItems
-      .map((item) => (item.id === id ? { ...item, qty: item.qty + delta } : item))
-      .filter((item) => item.qty > 0);
+      .map((item) =>
+        String(item.id || item.barcode) === idStr
+          ? { ...item, qty: Math.max(0, (Number(item.qty) || 0) + delta) }
+          : item
+      )
+      .filter((item) => (Number(item.qty) || 0) > 0);
+
     setCartItems(updated);
     try {
       localStorage.setItem("dashit_cart", JSON.stringify(updated));
@@ -299,13 +411,6 @@ export default function CheckoutPage() {
     
     if (cartItems.length === 0 || isProcessing) return;
 
-    // Minimum Order Value check (₹299)
-    if (subtotal < MIN_ORDER_VALUE) {
-      hapticLight();
-      setIsMinOrderModalOpen(true);
-      return;
-    }
-
     // Login is strictly mandatory before placing an order
     let userObj = null;
     try {
@@ -338,11 +443,6 @@ export default function CheckoutPage() {
 
   const executeOrderPlacement = async (authenticatedUser) => {
     if (placingRef.current) return;
-
-    if (subtotal < MIN_ORDER_VALUE) {
-      setIsMinOrderModalOpen(true);
-      return;
-    }
 
     placingRef.current = true;
     setIsProcessing(true);
@@ -434,13 +534,11 @@ export default function CheckoutPage() {
 
         const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
         const filtered = existingOrders.filter((o) => o.orderId !== finalOrderId);
-        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered]));
+        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered].slice(0, 20)));
         localStorage.setItem("dashit_active_order", JSON.stringify(confirmedOrder));
 
         localStorage.removeItem("dashit_cart");
         localStorage.removeItem("dashit_checkout_data");
-        // Reset free delivery popup so future orders can see it again
-        localStorage.removeItem("dashit_free_delivery_seen");
         window.dispatchEvent(new Event("dashit_cart_updated"));
       } catch (err) {
         console.error("Order placement error:", err);
@@ -538,107 +636,41 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* 2. DELIVERY IN 12 MINUTES BANNER */}
-        <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-2xs space-y-3 dark:bg-surface-raised dark:border-line/90">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3">
-              <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#061838] flex items-center justify-center shrink-0 border border-blue-100 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/60">
-                <Clock className="w-5 h-5 stroke-[2.5]" />
+        {/* Delivery Summary Banner */}
+        <div className="bg-white dark:bg-[#12161F] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-[#FF5B00] flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4 stroke-[2.2]" />
               </div>
               <div>
-                <h2 className="font-black text-base text-slate-900 leading-tight dark:text-content">
-                  Delivery in 12 minutes
+                <h2 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
+                  Delivery in {checkoutEta.isDeliverable ? `${checkoutEta.etaMinutes || 12} minutes` : "Unavailable"}
                 </h2>
-                <p className="text-slate-500 font-semibold text-xs mt-0.5 dark:text-content-muted">
-                  Shipment of {cartItems.reduce((s, i) => s + i.qty, 0)} item{cartItems.length !== 1 ? "s" : ""}
+                <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-0.5">
+                  Shipment of {cartItems.reduce((s, i) => s + (Number(i.qty) || 0), 0)} item{cartItems.length !== 1 ? "s" : ""} • Doorstep delivery
                 </p>
               </div>
             </div>
 
-            {/* Red Bin Remove All Button */}
             <button
               type="button"
               onClick={handleClearAllCart}
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/80 text-xs font-black active:scale-95 transition-all cursor-pointer shadow-2xs shrink-0 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 dark:text-rose-400 dark:border-rose-900/60"
+              className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors cursor-pointer py-1 px-1.5"
               title="Remove all items from cart"
             >
-              <Trash2 className="w-3.5 h-3.5 stroke-[2.5] text-red-600 dark:text-rose-400" />
-              <span>Remove all</span>
+              Clear all
             </button>
           </div>
 
-          {/* Open box delivery badge */}
-          <div className="bg-[#f0f7ff] border border-blue-200/60 rounded-2xl p-3 dark:bg-blue-950/30 dark:border-blue-900/50">
-            <span className="font-extrabold text-xs text-slate-900 block leading-tight dark:text-content">
-              Open box delivery eligible
-            </span>
-            <div className="flex items-center justify-between text-[11px] text-slate-600 mt-0.5 dark:text-content-secondary">
-              <span>Check & accept at doorstep</span>
-              <span className="text-blue-600 font-bold underline cursor-pointer dark:text-blue-400">Know more</span>
-            </div>
-          </div>
-
-          {/* Minimum Order Value Alert & Progress Card */}
-          {subtotal < MIN_ORDER_VALUE ? (
-            <div className="bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-orange-500/5 border border-orange-200 dark:border-orange-500/30 rounded-2xl p-3.5 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#FF5B00] text-white flex items-center justify-center shrink-0 shadow-xs">
-                    <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black text-slate-900 dark:text-content">
-                      Minimum order is ₹{MIN_ORDER_VALUE}
-                    </h4>
-                    <p className="text-[11px] font-bold text-[#FF5B00] dark:text-orange-400">
-                      Add items worth ₹{MIN_ORDER_VALUE - subtotal} more to place order
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsMinOrderModalOpen(true)}
-                  className="px-3 py-1.5 text-xs font-black bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
-                >
-                  Add Items
-                </button>
-              </div>
-
-              {/* Animated Progress bar */}
-              <div className="space-y-1">
-                <div className="w-full bg-slate-200/80 dark:bg-surface-muted h-2 rounded-full overflow-hidden p-0.5">
-                  <div
-                    className="h-full bg-gradient-to-r from-amber-500 to-[#FF5B00] transition-all duration-500 rounded-full"
-                    style={{ width: `${Math.min(100, Math.round((subtotal / MIN_ORDER_VALUE) * 100))}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-content-faint">
-                  <span>Current: ₹{subtotal}</span>
-                  <span className="text-[#FF5B00] dark:text-orange-400 font-extrabold">₹{MIN_ORDER_VALUE - subtotal} to unlock order</span>
-                  <span>Target: ₹{MIN_ORDER_VALUE}</span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/40 rounded-2xl p-2.5 px-3 flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 stroke-[2.5]" />
-                <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                  Minimum order criteria met (₹{subtotal} / ₹{MIN_ORDER_VALUE})
-                </span>
-              </div>
-              <span className="text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-md">
-                UNLOCKED
-              </span>
-            </div>
-          )}
+          <FreeDeliveryProgress subtotal={subtotal} />
 
           {/* Product Items List matching screenshot */}
           <div className="divide-y divide-slate-100 pt-1 dark:divide-line-soft">
             {cartItems.map((item) => (
               <div key={item.id} className="py-3 flex items-start justify-between space-x-3">
                 <img
-                  src={item.img}
+                  src={item.img || item.image || "/products/milk.png"}
                   alt={item.name}
                   className="w-16 h-16 object-contain bg-slate-50 rounded-2xl p-1.5 border border-slate-100 shrink-0 dark:bg-surface-raised dark:border-line-soft"
                 />
@@ -662,37 +694,34 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="flex flex-col items-end space-y-1.5 shrink-0">
-                  <div className="flex items-center space-x-2 bg-[#061838] text-white rounded-xl px-2.5 py-1 font-bold text-xs shadow-xs">
-                    {/* These were 16px targets with no accessible name, on the
-                        control customers use most before paying. The pill keeps
-                        its size; the pseudo-element carries the touch area. */}
+                  <div className="flex items-center space-x-1.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-[#161B26] text-slate-800 dark:text-white px-2 py-1 font-bold text-xs shadow-2xs">
                     <button
                       type="button"
                       aria-label={`Remove one ${item.name || "item"}`}
                       onClick={() => updateItemQty(item.id, -1)}
-                      className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
+                      className="p-0.5 hover:text-[#FF5B00] active:scale-75 transition-transform"
                     >
-                      <Minus className="w-3 h-3 stroke-[3]" />
+                      <Minus className="w-3 h-3 stroke-[2.5]" />
                     </button>
-                    <span className="font-mono px-1" aria-live="polite" aria-label={`Quantity ${item.qty}`}>
+                    <span className="font-mono px-1.5 text-xs" aria-live="polite" aria-label={`Quantity ${item.qty}`}>
                       {item.qty}
                     </span>
                     <button
                       type="button"
                       aria-label={`Add one more ${item.name || "item"}`}
                       onClick={() => updateItemQty(item.id, 1)}
-                      className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
+                      className="p-0.5 hover:text-[#FF5B00] active:scale-75 transition-transform"
                     >
-                      <Plus className="w-3 h-3 stroke-[3]" />
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
                     </button>
                   </div>
 
                   <div className="text-right">
                     <span className="text-[10px] text-slate-400 line-through mr-1 font-mono dark:text-content-faint">
-                      ₹{(item.originalPrice || item.price + 20) * item.qty}
+                      ₹{parsePrice(item.originalPrice || parsePrice(item.price) + 20) * (Number(item.qty) || 0)}
                     </span>
                     <span className="font-black text-xs text-slate-900 font-mono dark:text-content">
-                      ₹{item.price * item.qty}
+                      ₹{parsePrice(item.price) * (Number(item.qty) || 0)}
                     </span>
                   </div>
                 </div>
@@ -704,34 +733,34 @@ export default function CheckoutPage() {
         {/* Coupons & Offers Banner matching Screenshot 3 */}
         <div
           onClick={() => setIsCouponsOpen(true)}
-          className="bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-4 flex items-center justify-between shadow-2xs cursor-pointer active:scale-[0.99] transition-transform"
+          className="bg-white dark:bg-[#12161F] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
         >
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200 dark:border-blue-900/60">
-              <Tag className="w-4 h-4 stroke-[2.5]" />
+            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-[#FF5B00] flex items-center justify-center shrink-0">
+              <Tag className="w-4 h-4 stroke-[2.2]" />
             </div>
             <div>
-              <span className="text-xs font-black text-slate-900 dark:text-content block">
-                {appliedCoupon ? `Coupon '${appliedCoupon.code}' Applied!` : "Avail Offers and Coupons"}
+              <span className="text-xs font-bold text-slate-900 dark:text-white block">
+                {appliedCoupon ? `Coupon '${appliedCoupon.code}' applied` : "Avail Offers & Coupons"}
               </span>
-              <span className="text-[11px] font-bold text-[#FF5B00] block">
-                {appliedCoupon ? `You are saving ₹${couponDiscount} with this order` : "Save up to ₹50 with GET30 & DASHIT50"}
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
+                {appliedCoupon ? `You are saving ₹${couponDiscount} with this order` : "Save up to ₹50 on this order"}
               </span>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 dark:text-content-faint" />
+          <ChevronRight className="w-4 h-4 text-slate-400" />
         </div>
 
         {/* Bill Details */}
-        <div className="bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-4 space-y-2.5 shadow-2xs text-xs">
-          <h4 className="font-black text-slate-900 dark:text-content text-xs">Bill Details</h4>
-          <div className="flex justify-between text-slate-600 dark:text-content-secondary">
+        <div className="bg-white dark:bg-[#12161F] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-2xs text-xs">
+          <h4 className="font-extrabold text-slate-900 dark:text-white text-xs">Bill Details</h4>
+          <div className="flex justify-between text-slate-600 dark:text-slate-400">
             <span>Items total</span>
-            <span className="font-mono font-bold text-slate-900 dark:text-content">₹{subtotal}</span>
+            <span className="font-mono font-bold text-slate-900 dark:text-white">₹{subtotal}</span>
           </div>
-          <div className="flex justify-between text-slate-600 dark:text-content-secondary">
+          <div className="flex justify-between text-slate-600 dark:text-slate-400">
             <span>Delivery fee</span>
-            <span className="font-mono font-bold text-[#2563EB] dark:text-blue-400">
+            <span className="font-mono font-bold text-slate-900 dark:text-white">
               {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
             </span>
           </div>
@@ -763,7 +792,7 @@ export default function CheckoutPage() {
 
             <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2 pt-1 px-1">
               {pairsWell.map((prod) => {
-                const inCart = cartItems.find((i) => i.id === prod.id);
+                const inCart = cartItems.find((i) => String(i.id || i.barcode) === String(prod.id || prod.barcode));
                 const savings = prod.originalPrice && prod.originalPrice > prod.price 
                   ? prod.originalPrice - prod.price 
                   : 0;
@@ -775,12 +804,12 @@ export default function CheckoutPage() {
                   >
                     <div className="relative">
                       {savings > 0 && (
-                        <span className="absolute top-0 left-0 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 font-bold text-[9.5px] px-2 py-0.5 rounded-md border border-emerald-200/70">
+                        <span className="absolute top-0 left-0 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 font-bold text-[9.5px] px-1.5 py-0.5 rounded-md">
                           Save ₹{savings}
                         </span>
                       )}
                       <img
-                        src={prod.img}
+                        src={prod.img || prod.image || "/products/milk.png"}
                         alt={prod.name}
                         className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-surface-muted rounded-2xl p-2 mt-2"
                       />
@@ -833,13 +862,7 @@ export default function CheckoutPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => {
-                            const updated = [...cartItems, { ...prod, qty: 1 }];
-                            setCartItems(updated);
-                            localStorage.setItem("dashit_cart", JSON.stringify(updated));
-                            window.dispatchEvent(new Event("dashit_cart_updated"));
-                            hapticLight();
-                          }}
+                          onClick={() => handleAddToCart(prod)}
                           className="bg-white dark:bg-surface-muted border-2 border-[#061838] dark:border-line-strong text-[#061838] dark:text-content font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-raised active:scale-95 shadow-2xs transition-all"
                         >
                           ADD
@@ -869,7 +892,7 @@ export default function CheckoutPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
               {popularAdditions.map((prod) => {
-                const inCart = cartItems.find((i) => i.id === prod.id);
+                const inCart = cartItems.find((i) => String(i.id || i.barcode) === String(prod.id || prod.barcode));
                 const savings = prod.originalPrice && prod.originalPrice > prod.price 
                   ? prod.originalPrice - prod.price 
                   : 0;
@@ -881,12 +904,12 @@ export default function CheckoutPage() {
                   >
                     <div className="relative">
                       {savings > 0 && (
-                        <span className="absolute top-0 left-0 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 font-bold text-[9.5px] px-2 py-0.5 rounded-md border border-emerald-200/70">
+                        <span className="absolute top-0 left-0 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 font-bold text-[9.5px] px-1.5 py-0.5 rounded-md">
                           Save ₹{savings}
                         </span>
                       )}
                       <img
-                        src={prod.img}
+                        src={prod.img || prod.image || "/products/milk.png"}
                         alt={prod.name}
                         className="w-24 h-24 object-contain mx-auto bg-slate-50 dark:bg-surface-muted rounded-2xl p-2 mt-2"
                       />
@@ -937,13 +960,7 @@ export default function CheckoutPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => {
-                            const updated = [...cartItems, { ...prod, qty: 1 }];
-                            setCartItems(updated);
-                            localStorage.setItem("dashit_cart", JSON.stringify(updated));
-                            window.dispatchEvent(new Event("dashit_cart_updated"));
-                            hapticLight();
-                          }}
+                          onClick={() => handleAddToCart(prod)}
                           className="bg-white dark:bg-surface-muted border-2 border-[#061838] dark:border-line-strong text-[#061838] dark:text-content font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-raised active:scale-95 shadow-2xs transition-all"
                         >
                           ADD
@@ -984,13 +1001,14 @@ export default function CheckoutPage() {
                         Delivering to {checkoutData?.location?.alias || checkoutData?.location?.nickname || "Home"}
                       </span>
                       {checkoutEta.isDeliverable ? (
-                        <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 px-1.5 py-0.5 rounded border border-emerald-200/80 flex items-center space-x-1">
-                          <Zap className="w-2.5 h-2.5 fill-emerald-600 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                          <span>{checkoutEta.pillText} ({checkoutEta.distanceFormatted})</span>
+                        <span className="text-[11px] font-medium text-slate-500 dark:text-content-muted flex items-center space-x-1">
+                          <span>•</span>
+                          <span className="text-slate-700 dark:text-content-secondary font-semibold">{checkoutEta.pillText}</span>
+                          <span className="text-slate-400 dark:text-content-faint">({checkoutEta.distanceFormatted})</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-black uppercase text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900/60 px-1.5 py-0.5 rounded border border-rose-200/80 flex items-center space-x-1">
-                          <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400 shrink-0" />
+                        <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center space-x-1">
+                          <span>•</span>
                           <span>Beyond 5km ({checkoutEta.distanceFormatted})</span>
                         </span>
                       )}
@@ -1105,8 +1123,6 @@ export default function CheckoutPage() {
                 className={`grow rounded-2xl py-3 px-4 border transition-all flex items-center justify-between ${
                   !isStoreOpen || !checkoutEta.isDeliverable
                     ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:bg-surface-muted dark:border-line dark:text-content-faint"
-                    : subtotal < MIN_ORDER_VALUE
-                    ? "bg-gradient-to-r from-[#FF6F1E] to-[#FF5B00] text-white shadow-md border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : !isUserLoggedIn
                     ? "bg-[#FF5B00] hover:bg-[#E04E00] text-white shadow-sm border-orange-500/40 active:scale-[0.98] cursor-pointer"
                     : "bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white shadow-sm border-slate-700/60 dark:border-orange-500/40 active:scale-[0.98] cursor-pointer"
@@ -1132,16 +1148,12 @@ export default function CheckoutPage() {
                       ? "Beyond 5km Service Area"
                       : !isStoreOpen
                       ? "Store Closed"
-                      : subtotal < MIN_ORDER_VALUE
-                      ? `Add ₹${MIN_ORDER_VALUE - subtotal} more (Min ₹${MIN_ORDER_VALUE})`
                       : !isUserLoggedIn
                       ? "Sign In to Place Order"
                       : "Place Order (COD)"}
                   </span>
                   {!isProcessing && isStoreOpen && checkoutEta.isDeliverable && (
-                    subtotal < MIN_ORDER_VALUE ? (
-                      <ArrowRight className="w-4 h-4 stroke-[3]" />
-                    ) : !isUserLoggedIn ? (
+                    !isUserLoggedIn ? (
                       <ArrowRight className="w-4 h-4 stroke-[3]" />
                     ) : (
                       <ChevronRight className="w-4 h-4 stroke-[3]" />
@@ -1205,12 +1217,6 @@ export default function CheckoutPage() {
         onApplyCoupon={(coupon) => setAppliedCoupon(coupon)}
       />
 
-      {/* Free Delivery Celebration Popup (Screenshot 5) */}
-      <FreeDeliveryCelebrationModal
-        isOpen={isFreeDeliveryModalOpen}
-        onClose={() => setIsFreeDeliveryModalOpen(false)}
-      />
-
       {/* Animated Order Processing & Email Confirmation Modal */}
       <OrderProcessingModal
         isOpen={showProcessingModal}
@@ -1223,12 +1229,6 @@ export default function CheckoutPage() {
         }}
       />
 
-      {/* Minimum Order Value Modal */}
-      <MinOrderValueModal
-        isOpen={isMinOrderModalOpen}
-        onClose={() => setIsMinOrderModalOpen(false)}
-        subtotal={subtotal}
-      />
     </div>
   );
 }

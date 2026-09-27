@@ -10,6 +10,7 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import FloatingCartBar from '../components/FloatingCartBar';
 import BottomNav from '../components/BottomNav';
 import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
+import FreeDeliveryToast from '../components/FreeDeliveryToast';
 import PremiumSplashScreen from '../components/PremiumSplashScreen';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
@@ -465,6 +466,7 @@ export default function App({ Component, pageProps }) {
         <FloatingCartBar />
         {!['/login', '/driver', '/xcyop', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
         <FlyingBadgeOverlay />
+        <FreeDeliveryToast />
         <CookieConsentBanner />
         </AgeGateProvider>
       </ScrollChromeProvider>

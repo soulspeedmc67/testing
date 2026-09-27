@@ -40,7 +40,105 @@ export const ORDER_STATUS = {
 
 /* ------------------------------------------------------------------ products */
 
-export async function fetchProducts() {
+/** The owner's own stock. Always in the distributor list; can't be removed. */
+export const SELF_DISTRIBUTOR_NAME = "Myself";
+export const SELF_DISTRIBUTOR = { id: "SELF", name: SELF_DISTRIBUTOR_NAME, isSelf: true, active: true };
+
+/* Six made-up distributors were once filled in as examples. They are dropped
+   wherever they turn up (saved lists, product tags), so only real ones remain. */
+const DEMO_DISTRIBUTOR_IDS = new Set([
+  "DIST-KASHMIR-FMCG",
+  "DIST-AMUL-VALLEY",
+  "DIST-KANDUR-BAKERY",
+  "DIST-ANANTNAG-ORCHARDS",
+  "DIST-HUL-DIRECT",
+  "DIST-ITC-NESTLE",
+]);
+const DEMO_DISTRIBUTOR_NAMES = new Set([
+  "Kashmir Wholesale FMCG",
+  "Amul Valley Dairy Logistics",
+  "Local Kandur Bakeries",
+  "Anantnag Fresh Farm Orchards",
+  "Hindustan Unilever Direct",
+  "ITC & Nestlé Supply Hub",
+]);
+
+function isRealDistributor(d) {
+  return d && d.id !== SELF_DISTRIBUTOR.id && !DEMO_DISTRIBUTOR_IDS.has(String(d.id)) && !DEMO_DISTRIBUTOR_NAMES.has(d.name);
+}
+
+/** Who a product's stock came from; untagged items are the owner's own. */
+export function assignDefaultDistributor(p) {
+  const name = String(p?.distributor || "").trim();
+  if (!name || DEMO_DISTRIBUTOR_NAMES.has(name)) return SELF_DISTRIBUTOR_NAME;
+  return name;
+}
+
+// Two-tier Catalogue Cache (Memory 5-min TTL + Persistent LocalStorage 30-min TTL)
+let memoryProductsCache = null;
+let memoryProductsCacheTime = 0;
+const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const LOCAL_CATALOGUE_CACHE_KEY = "dashit_cached_products";
+const LOCAL_CATALOGUE_TIME_KEY = "dashit_products_cached_at";
+const LOCAL_CATALOGUE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function enrichProducts(rawList = []) {
+  let merged = rawList;
+  if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      if (custom.length > 0) {
+        const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
+        merged = [...custom, ...rawList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
+      }
+      const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
+      if (deletedIds.size > 0) {
+        merged = merged.filter((p) => !deletedIds.has(String(p.id || p.barcode)));
+      }
+    } catch (e) {}
+  }
+  return merged.map((p) => ({
+    ...p,
+    distributor: assignDefaultDistributor(p),
+  }));
+}
+
+export function invalidateProductCache() {
+  memoryProductsCache = null;
+  memoryProductsCacheTime = 0;
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(LOCAL_CATALOGUE_CACHE_KEY);
+      localStorage.removeItem(LOCAL_CATALOGUE_TIME_KEY);
+    } catch (e) {}
+    window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+  }
+}
+
+export async function fetchProducts(forceRefresh = false) {
+  const now = Date.now();
+  if (!forceRefresh && memoryProductsCache && (now - memoryProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
+    return memoryProductsCache;
+  }
+
+  // Check persistent LocalStorage cache before touching network
+  if (!forceRefresh && typeof window !== "undefined") {
+    try {
+      const cachedRaw = localStorage.getItem(LOCAL_CATALOGUE_CACHE_KEY);
+      const cachedTime = Number(localStorage.getItem(LOCAL_CATALOGUE_TIME_KEY)) || 0;
+      if (cachedRaw && (now - cachedTime < LOCAL_CATALOGUE_TTL_MS)) {
+        const parsed = JSON.parse(cachedRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Saved before the example distributors were removed: tidy on read.
+          parsed.forEach((p) => { p.distributor = assignDefaultDistributor(p); });
+          memoryProductsCache = parsed;
+          memoryProductsCacheTime = cachedTime;
+          return parsed;
+        }
+      }
+    } catch (e) {}
+  }
+
   let firestoreList = [];
   const db = getDb();
   if (db) {
@@ -54,51 +152,63 @@ export async function fetchProducts() {
     }
   }
 
-  // Merge locally created custom products at the top
-  if (typeof window !== "undefined") {
-    try {
-      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
-      if (custom.length > 0) {
-        const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
-        return [...custom, ...firestoreList.filter((p) => !customIds.has(String(p.id || p.barcode)))];
-      }
-    } catch (e) {}
-  }
-
-  return firestoreList;
-}
-
-/** Live catalogue — admin edits appear in the storefront without a refresh. */
-export function watchProducts(callback) {
-  let currentLive = [];
-
-  const emitMerged = (live = []) => {
-    let merged = live;
+  const enriched = enrichProducts(firestoreList);
+  if (enriched.length > 0) {
+    memoryProductsCache = enriched;
+    memoryProductsCacheTime = now;
     if (typeof window !== "undefined") {
       try {
-        const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
-        if (custom.length > 0) {
-          const customIds = new Set(custom.map((c) => String(c.id || c.barcode)));
-          merged = [...custom, ...live.filter((p) => !customIds.has(String(p.id || p.barcode)))];
-        }
+        localStorage.setItem(LOCAL_CATALOGUE_CACHE_KEY, JSON.stringify(enriched));
+        localStorage.setItem(LOCAL_CATALOGUE_TIME_KEY, String(now));
       } catch (e) {}
     }
-    callback(merged);
-  };
+  }
+  return enriched;
+}
+
+// Single shared Firestore onSnapshot listener for watchProducts
+const productSubscribers = new Set();
+let sharedProductUnsub = null;
+let sharedCurrentLive = [];
+let sharedCleanupTimer = null;
+
+function broadcastProducts(list) {
+  sharedCurrentLive = list;
+  const enriched = enrichProducts(list);
+  memoryProductsCache = enriched;
+  memoryProductsCacheTime = Date.now();
+  if (typeof window !== "undefined" && enriched.length > 0) {
+    try {
+      localStorage.setItem(LOCAL_CATALOGUE_CACHE_KEY, JSON.stringify(enriched));
+      localStorage.setItem(LOCAL_CATALOGUE_TIME_KEY, String(Date.now()));
+    } catch (e) {}
+  }
+  productSubscribers.forEach((cb) => {
+    try { cb(enriched); } catch (e) {}
+  });
+}
+
+function startSharedProductWatcher() {
+  if (sharedCleanupTimer) {
+    clearTimeout(sharedCleanupTimer);
+    sharedCleanupTimer = null;
+  }
+  if (sharedProductUnsub) return;
 
   const db = getDb();
-  let unsub = () => {};
   if (db) {
     try {
-      unsub = onSnapshot(
+      sharedProductUnsub = onSnapshot(
         query(collection(db, "products"), where("active", "==", true)),
         (snap) => {
-          currentLive = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          emitMerged(currentLive);
+          const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          broadcastProducts(docs);
         },
         (err) => {
           console.warn("watchProducts snapshot warning:", err?.message);
-          emitMerged(currentLive);
+          if (sharedCurrentLive.length > 0) {
+            broadcastProducts(sharedCurrentLive);
+          }
         }
       );
     } catch (e) {
@@ -106,20 +216,62 @@ export function watchProducts(callback) {
     }
   }
 
-  let localHandler = null;
   if (typeof window !== "undefined") {
-    localHandler = () => emitMerged(currentLive);
+    const localHandler = () => broadcastProducts(sharedCurrentLive);
     window.addEventListener("dashit_products_updated", localHandler);
     window.addEventListener("storage", localHandler);
-    // Initial emit for immediate responsiveness
-    setTimeout(() => emitMerged(currentLive), 10);
+  }
+}
+
+/** Live catalogue — shares a single Firestore connection across all components */
+export function watchProducts(callback) {
+  productSubscribers.add(callback);
+
+  // Immediate emit from memory cache or current live data
+  if (sharedCurrentLive.length > 0) {
+    callback(enrichProducts(sharedCurrentLive));
+  } else if (memoryProductsCache && memoryProductsCache.length > 0) {
+    callback(memoryProductsCache);
+  } else {
+    let immediateLoaded = false;
+    if (typeof window !== "undefined") {
+      try {
+        const cachedRaw = localStorage.getItem(LOCAL_CATALOGUE_CACHE_KEY);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            memoryProductsCache = parsed;
+            memoryProductsCacheTime = Number(localStorage.getItem(LOCAL_CATALOGUE_TIME_KEY)) || Date.now();
+            callback(parsed);
+            immediateLoaded = true;
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (!immediateLoaded) {
+      fetchProducts().then((p) => {
+        if (productSubscribers.has(callback) && p?.length) {
+          callback(p);
+        }
+      });
+    }
   }
 
+  startSharedProductWatcher();
+
   return () => {
-    if (typeof unsub === "function") unsub();
-    if (typeof window !== "undefined" && localHandler) {
-      window.removeEventListener("dashit_products_updated", localHandler);
-      window.removeEventListener("storage", localHandler);
+    productSubscribers.delete(callback);
+    if (productSubscribers.size === 0) {
+      // 30-second grace period before closing the Firestore connection
+      // so navigating between screens doesn't churn connections and reads
+      if (sharedCleanupTimer) clearTimeout(sharedCleanupTimer);
+      sharedCleanupTimer = setTimeout(() => {
+        if (productSubscribers.size === 0 && typeof sharedProductUnsub === "function") {
+          sharedProductUnsub();
+          sharedProductUnsub = null;
+        }
+      }, 30000);
     }
   };
 }
@@ -135,6 +287,12 @@ export async function upsertProduct(product) {
       const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
       const updated = [itemToSave, ...custom.filter((p) => String(p.id || p.barcode) !== prodId)];
       localStorage.setItem("dashit_custom_products", JSON.stringify(updated));
+
+      // Remove from deleted list if re-added
+      const deleted = JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]");
+      const unDeleted = deleted.filter((dId) => String(dId) !== prodId);
+      localStorage.setItem("dashit_deleted_products", JSON.stringify(unDeleted));
+
       window.dispatchEvent(new CustomEvent("dashit_products_updated"));
     } catch (e) {
       console.warn("localStorage save error:", e);
@@ -152,6 +310,7 @@ export async function upsertProduct(product) {
     }
   }
 
+  invalidateProductCache();
   return prodId;
 }
 
@@ -162,17 +321,31 @@ export async function deleteProduct(productId) {
       const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
       const filtered = custom.filter((p) => String(p.id || p.barcode) !== targetId);
       localStorage.setItem("dashit_custom_products", JSON.stringify(filtered));
+
+      // Persist deleted product ID so default/seed items also stay deleted
+      const deletedIds = JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]");
+      if (!deletedIds.includes(targetId)) {
+        deletedIds.push(targetId);
+        localStorage.setItem("dashit_deleted_products", JSON.stringify(deletedIds));
+      }
+
       window.dispatchEvent(new CustomEvent("dashit_products_updated"));
     } catch (e) {}
   }
 
   const db = getDb();
-  if (!db) return;
+  if (!db) {
+    invalidateProductCache();
+    return;
+  }
   try {
+    // Soft delete then hard delete to ensure real-time query listeners and persistent index reflect removal
+    await setDoc(doc(db, "products", targetId), { active: false, deletedAt: serverTimestamp() }, { merge: true });
     await deleteDoc(doc(db, "products", targetId));
   } catch (e) {
     console.warn("deleteProduct Firestore warning:", e?.message);
   }
+  invalidateProductCache();
 }
 
 /**
@@ -226,6 +399,7 @@ export async function adjustSingleProductStock(productId, deltaOrAbsolute, isAbs
     }
   }
 
+  invalidateProductCache();
   return newStockVal === null ? 0 : newStockVal;
 }
 
@@ -246,6 +420,12 @@ export async function bulkUpdateProductStock(stockUpdates = []) {
             custom[idx].stock = Math.max(0, Number(up.newStock));
           } else if (up.qtyToAdd !== undefined) {
             custom[idx].stock = Math.max(0, (Number(custom[idx].stock) || 0) + Number(up.qtyToAdd));
+          }
+          if (up.product) {
+            if (up.product.distributor) custom[idx].distributor = up.product.distributor;
+            if (up.product.price !== undefined) custom[idx].price = up.product.price;
+            if (up.product.originalPrice !== undefined) custom[idx].originalPrice = up.product.originalPrice;
+            if (up.product.cat) custom[idx].cat = up.product.cat;
           }
         } else if (up.product) {
           custom.unshift({
@@ -315,6 +495,8 @@ export async function bulkUpdateProductStock(stockUpdates = []) {
     attempted: stockUpdates.length,
     failures,
   };
+  invalidateProductCache();
+  return result;
 }
 
 /**
@@ -398,6 +580,7 @@ export async function deductInventoryForOrder(orderId, items = []) {
     }
   }
 
+  invalidateProductCache();
   return { success: true, count: deducted.length };
 }
 
@@ -433,6 +616,140 @@ export async function deleteOffer(offerId) {
   if (!db) return;
   await deleteDoc(doc(db, "offers", String(offerId)));
 }
+
+/* ---------------------------------------------------------------- distributors */
+
+/** Saved distributors on this device, with the old example ones cleared out. */
+function readLocalDistributors() {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = JSON.parse(localStorage.getItem("dashit_distributors") || "[]");
+    const real = stored.filter(isRealDistributor);
+    if (real.length !== stored.length) {
+      localStorage.setItem("dashit_distributors", JSON.stringify(real));
+    }
+    return real;
+  } catch (e) {
+    return [];
+  }
+}
+
+function withSelfFirst(local, live) {
+  const localIds = new Set(local.map((d) => String(d.id)));
+  const others = [...local, ...live.filter((d) => isRealDistributor(d) && !localIds.has(String(d.id)))];
+  return [SELF_DISTRIBUTOR, ...others];
+}
+
+export async function fetchDistributors() {
+  let firestoreList = [];
+  const db = getDb();
+  if (db) {
+    try {
+      const snap = await getDocs(
+        query(collection(db, "distributors"), where("active", "==", true))
+      );
+      firestoreList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn("fetchDistributors Firestore warning:", e?.message);
+    }
+  }
+  return withSelfFirst(readLocalDistributors(), firestoreList);
+}
+
+/** Live list of distributors, always starting with "Myself". */
+export function watchDistributors(callback) {
+  let currentLive = [];
+  const emitMerged = (live = []) => callback(withSelfFirst(readLocalDistributors(), live));
+
+  const db = getDb();
+  let unsub = () => {};
+  if (db) {
+    try {
+      unsub = onSnapshot(
+        query(collection(db, "distributors"), where("active", "==", true)),
+        (snap) => {
+          currentLive = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          emitMerged(currentLive);
+        },
+        (err) => {
+          console.warn("watchDistributors snapshot warning:", err?.message);
+          emitMerged(currentLive);
+        }
+      );
+    } catch (e) {
+      console.warn("watchDistributors init warning:", e?.message);
+    }
+  }
+
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = () => emitMerged(currentLive);
+    window.addEventListener("dashit_distributors_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    setTimeout(() => emitMerged(currentLive), 10);
+  }
+
+  return () => {
+    if (typeof unsub === "function") unsub();
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_distributors_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+  };
+}
+
+export async function upsertDistributor(distributor) {
+  const { id, isSelf, ...data } = distributor;
+  // "Myself" is built in, not saved.
+  if (isSelf || String(id) === SELF_DISTRIBUTOR.id) return SELF_DISTRIBUTOR.id;
+  const distId = id ? String(id) : `DIST-${Date.now()}`;
+  const itemToSave = { id: distId, active: true, ...data };
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = readLocalDistributors();
+      const updated = [itemToSave, ...stored.filter((d) => String(d.id) !== distId)];
+      localStorage.setItem("dashit_distributors", JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("dashit_distributors_updated"));
+    } catch (e) {
+      console.warn("localStorage upsertDistributor error:", e);
+    }
+  }
+
+  const db = getDb();
+  if (db) {
+    try {
+      const payload = { active: true, ...data, updatedAt: serverTimestamp() };
+      await setDoc(doc(db, "distributors", distId), payload, { merge: true });
+    } catch (err) {
+      console.warn("Firestore upsertDistributor warning:", err?.message);
+    }
+  }
+
+  return distId;
+}
+
+export async function deleteDistributor(distributorId) {
+  const targetId = String(distributorId);
+  if (targetId === SELF_DISTRIBUTOR.id) return;
+  if (typeof window !== "undefined") {
+    try {
+      const stored = readLocalDistributors();
+      const filtered = stored.filter((d) => String(d.id) !== targetId);
+      localStorage.setItem("dashit_distributors", JSON.stringify(filtered));
+      window.dispatchEvent(new CustomEvent("dashit_distributors_updated"));
+    } catch (e) {}
+  }
+
+  const db = getDb();
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, "distributors", targetId));
+  } catch (e) {
+    console.warn("deleteDistributor Firestore warning:", e?.message);
+  }
+}
+
 
 /* -------------------------------------------------------------------- orders */
 
@@ -529,6 +846,42 @@ export async function createOrder(orderData, explicitUid = null) {
      customer's order on top of another's live order. */
   let code = orderData?.orderId || newOrderCode();
   let lastError = null;
+
+  // Pre-checkout stock sanity check against Firestore to prevent overselling
+  if (db && Array.isArray(sanitized.items) && sanitized.items.length > 0) {
+    try {
+      const stockChecks = await Promise.all(
+        sanitized.items.map(async (item) => {
+          const itemId = String(item.id || item.barcode || "").trim();
+          if (!itemId) return null;
+          const pRef = doc(db, "products", itemId);
+          const pSnap = await getDoc(pRef);
+          if (pSnap.exists()) {
+            const pData = pSnap.data();
+            const avail = Number(pData.stock);
+            const reqQty = Number(item.quantity || item.qty) || 1;
+            if (pData.active === false) {
+              return `${item.name || "Item"} is currently unavailable.`;
+            }
+            if (!isNaN(avail) && avail < reqQty) {
+              return avail <= 0
+                ? `${item.name || "Item"} is out of stock.`
+                : `Only ${avail} left in stock for ${item.name || "Item"}.`;
+            }
+          }
+          return null;
+        })
+      );
+      const stockIssue = stockChecks.find(Boolean);
+      if (stockIssue) {
+        throw new Error(stockIssue);
+      }
+    } catch (stockErr) {
+      if (stockErr.message && !stockErr.message.includes("permission-denied")) {
+        throw stockErr;
+      }
+    }
+  }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const payload = buildPayload(code);
@@ -776,6 +1129,127 @@ export function watchAllOrders(callback, max = 100) {
   };
 }
 
+/** Admin / Ops console: only active unfulfilled orders, client-sorted newest first. */
+export function watchActiveOrders(callback, max = 50) {
+  const getLocalActive = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+        const active = localStorage.getItem("dashit_active_order");
+        let list = [...hist];
+        if (active) {
+          const parsed = JSON.parse(active);
+          if (!list.some((o) => (o.orderId || o.id) === (parsed.orderId || parsed.id))) {
+            list = [parsed, ...list];
+          }
+        }
+        return list.filter(
+          (o) =>
+            o.status !== ORDER_STATUS.DELIVERED &&
+            o.status !== ORDER_STATUS.CANCELLED
+        );
+      } catch (e) {}
+    }
+    return [];
+  };
+
+  let unsubFirestore = () => {};
+  let unsubAuth = () => {};
+  let retryTimer = null;
+  let isClosed = false;
+  let firestoreLive = false;
+
+  const emitLocal = () => {
+    if (firestoreLive) return;
+    callback(getLocalActive());
+  };
+
+  const bind = () => {
+    if (isClosed) return;
+    try { unsubFirestore(); } catch (e) {}
+    const db = getDb();
+    if (!db) {
+      emitLocal();
+      return;
+    }
+
+    try {
+      unsubFirestore = onSnapshot(
+        query(
+          collection(db, "orders"),
+          where("status", "in", [
+            ORDER_STATUS.PLACED,
+            ORDER_STATUS.PACKED,
+            "Packing",
+            ORDER_STATUS.OUT_FOR_DELIVERY,
+          ]),
+          limit(max)
+        ),
+        (snap) => {
+          firestoreLive = true;
+          const orders = snap.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => getOrderTimestampMs(b) - getOrderTimestampMs(a));
+          callback(orders);
+        },
+        (err) => {
+          console.warn("watchActiveOrders permission notice (using local):", err?.message);
+          firestoreLive = false;
+          emitLocal();
+          if (!isClosed) {
+            clearTimeout(retryTimer);
+            retryTimer = setTimeout(() => {
+              bind();
+            }, 2500);
+          }
+        }
+      );
+    } catch (e) {
+      emitLocal();
+    }
+  };
+
+  const auth = getFirebaseAuth();
+  if (auth?.currentUser) {
+    bind();
+  } else if (auth && typeof auth.authStateReady === "function") {
+    auth.authStateReady().then(() => {
+      if (!isClosed) bind();
+    }).catch(() => {
+      if (!isClosed) bind();
+    });
+  } else {
+    bind();
+  }
+
+  if (auth) {
+    try {
+      unsubAuth = onAuthStateChanged(auth, () => {
+        if (!isClosed) bind();
+      });
+    } catch (e) {}
+  }
+
+  let localHandler = null;
+  if (typeof window !== "undefined") {
+    localHandler = emitLocal;
+    window.addEventListener("dashit_orders_updated", localHandler);
+    window.addEventListener("storage", localHandler);
+    setTimeout(emitLocal, 10);
+  }
+
+  return () => {
+    isClosed = true;
+    clearTimeout(retryTimer);
+    try { unsubFirestore(); } catch (e) {}
+    try { unsubAuth(); } catch (e) {}
+    if (typeof window !== "undefined" && localHandler) {
+      window.removeEventListener("dashit_orders_updated", localHandler);
+      window.removeEventListener("storage", localHandler);
+    }
+  };
+}
+
 /** Driver console: only orders assigned to this rider. */
 export function watchDriverOrders(driverId, callback) {
   const getLocalDriverOrders = () => {
@@ -948,13 +1422,13 @@ export function watchAvailableOrders(callback) {
       unsub = onSnapshot(
         query(
           collection(db, "orders"),
+          where("driverId", "==", null),
           where("status", "in", [
             ORDER_STATUS.PLACED,
             ORDER_STATUS.PACKED,
             "Packing",
-            ORDER_STATUS.OUT_FOR_DELIVERY,
           ]),
-          limit(50)
+          limit(30)
         ),
         (snap) => {
           firestoreLive = true;
@@ -1061,14 +1535,14 @@ export function retireFinishedOrder(orderId, status) {
       completedAt: active.completedAt || new Date().toISOString(),
     };
 
-    // Keep the receipt: history is what /orders reads for past purchases.
+    // Keep the receipt: history is what /orders reads for past purchases (capped to 20).
     const history = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
     const withoutThis = history.filter(
       (o) => String(o.orderId) !== targetId && String(o.id) !== targetId
     );
     localStorage.setItem(
       "dashit_orders_history",
-      JSON.stringify([finished, ...withoutThis])
+      JSON.stringify([finished, ...withoutThis].slice(0, 20))
     );
 
     localStorage.removeItem("dashit_active_order");
@@ -1260,49 +1734,53 @@ export async function updateOrderContent(orderId, updatedFields = {}) {
 
 /** Driver claims an unassigned order. */
 export async function claimOrder(orderId, driverId, driverName) {
-  if (typeof window !== "undefined") {
-    try {
-      const active = localStorage.getItem("dashit_active_order");
-      if (active) {
-        const ord = JSON.parse(active);
-        if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
-          ord.driverId = driverId;
-          ord.driverName = driverName || "Delivery Partner";
-          ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
-          ord.updatedAt = new Date().toISOString();
-          localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+  const applyLocalClaim = () => {
+    if (typeof window !== "undefined") {
+      try {
+        const active = localStorage.getItem("dashit_active_order");
+        if (active) {
+          const ord = JSON.parse(active);
+          if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
+            ord.driverId = driverId;
+            ord.driverName = driverName || "Delivery Partner";
+            ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
+            ord.updatedAt = new Date().toISOString();
+            localStorage.setItem("dashit_active_order", JSON.stringify(ord));
+          }
         }
-      }
-      const historyStr = localStorage.getItem("dashit_orders_history");
-      if (historyStr) {
-        const list = JSON.parse(historyStr);
-        const updatedList = list.map((o) =>
-          String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
-            ? {
-                ...o,
-                driverId,
-                driverName: driverName || "Delivery Partner",
-                status: ORDER_STATUS.OUT_FOR_DELIVERY,
-                updatedAt: new Date().toISOString(),
-              }
-            : o
+        const historyStr = localStorage.getItem("dashit_orders_history");
+        if (historyStr) {
+          const list = JSON.parse(historyStr);
+          const updatedList = list.map((o) =>
+            String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
+              ? {
+                  ...o,
+                  driverId,
+                  driverName: driverName || "Delivery Partner",
+                  status: ORDER_STATUS.OUT_FOR_DELIVERY,
+                  updatedAt: new Date().toISOString(),
+                }
+              : o
+          );
+          localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList.slice(0, 20)));
+        }
+        window.dispatchEvent(
+          new CustomEvent("dashit_orders_updated", {
+            detail: { orderId, status: ORDER_STATUS.OUT_FOR_DELIVERY },
+          })
         );
-        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
-      }
-      window.dispatchEvent(
-        new CustomEvent("dashit_orders_updated", {
-          detail: { orderId, status: ORDER_STATUS.OUT_FOR_DELIVERY },
-        })
-      );
-    } catch (e) {}
-  }
+      } catch (e) {}
+    }
+  };
 
   const db = getDb();
-  if (!db) return { success: true, localUpdated: true };
+  if (!db) {
+    applyLocalClaim();
+    return { success: true, localUpdated: true };
+  }
 
   /* Claiming is a transaction so two riders tapping "Claim" on the same order
-     cannot both win: the second read sees a driverId and aborts. A plain
-     updateDoc let the later write silently steal an order already en route. */
+     cannot both win: the second read sees a driverId and aborts. */
   try {
     await runTransaction(db, async (tx) => {
       const ref = doc(db, "orders", String(orderId));
@@ -1320,6 +1798,9 @@ export async function claimOrder(orderId, driverId, driverName) {
         statusHistory: arrayUnion({ status: ORDER_STATUS.OUT_FOR_DELIVERY, at: new Date().toISOString() }),
       });
     });
+
+    // Transaction succeeded: apply local updates safely
+    applyLocalClaim();
     return { success: true, firestoreSynced: true };
   } catch (err) {
     if (err?.message === "ORDER_ALREADY_CLAIMED") {
@@ -1330,7 +1811,7 @@ export async function claimOrder(orderId, driverId, driverName) {
       };
     }
     console.warn("Firestore claimOrder sync note:", err?.message || err);
-    return { success: true, localUpdated: true, firestoreSynced: false };
+    return { success: false, message: err?.message || "Could not claim order" };
   }
 }
 
@@ -1691,15 +2172,67 @@ export function watchOrderTracking(orderId, callback) {
 
 /* ------------------------------------------------------------ store config */
 
-export function watchStoreConfig(callback) {
-  const db = getDb();
-  if (!db) return () => {};
-  return onSnapshot(doc(db, "config", "store"), (snap) => {
-    callback(snap.exists() ? snap.data() : { isOpen: true, highDemand: false });
+let memoryStoreConfig = null;
+const storeConfigSubscribers = new Set();
+let sharedStoreConfigUnsub = null;
+let sharedConfigCleanupTimer = null;
+
+function broadcastStoreConfig(cfg) {
+  memoryStoreConfig = cfg;
+  storeConfigSubscribers.forEach((cb) => {
+    try { cb(cfg); } catch (e) {}
   });
 }
 
+function startSharedStoreConfigWatcher() {
+  if (sharedConfigCleanupTimer) {
+    clearTimeout(sharedConfigCleanupTimer);
+    sharedConfigCleanupTimer = null;
+  }
+  if (sharedStoreConfigUnsub) return;
+
+  const db = getDb();
+  if (!db) return;
+  try {
+    sharedStoreConfigUnsub = onSnapshot(
+      doc(db, "config", "store"),
+      (snap) => {
+        broadcastStoreConfig(snap.exists() ? snap.data() : { isOpen: true, highDemand: false });
+      },
+      (err) => {
+        console.warn("watchStoreConfig snapshot error:", err?.message);
+      }
+    );
+  } catch (e) {
+    console.warn("watchStoreConfig init error:", e?.message);
+  }
+}
+
+export function watchStoreConfig(callback) {
+  storeConfigSubscribers.add(callback);
+  if (memoryStoreConfig) {
+    callback(memoryStoreConfig);
+  }
+  startSharedStoreConfigWatcher();
+
+  return () => {
+    storeConfigSubscribers.delete(callback);
+    if (storeConfigSubscribers.size === 0) {
+      if (sharedConfigCleanupTimer) clearTimeout(sharedConfigCleanupTimer);
+      sharedConfigCleanupTimer = setTimeout(() => {
+        if (storeConfigSubscribers.size === 0 && typeof sharedStoreConfigUnsub === "function") {
+          sharedStoreConfigUnsub();
+          sharedStoreConfigUnsub = null;
+        }
+      }, 30000);
+    }
+  };
+}
+
 export async function setStoreConfig(patch) {
+  if (memoryStoreConfig) {
+    broadcastStoreConfig({ ...memoryStoreConfig, ...patch });
+  }
   const db = getDb();
   if (!db) return;
   await setDoc(
