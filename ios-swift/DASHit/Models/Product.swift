@@ -94,6 +94,24 @@ public struct Product: Codable, Identifiable, Hashable {
     /// Out of stock when the admin marks it so or the stock count hits zero.
     public var isAvailable: Bool { inStock != false && (stock ?? 1) > 0 }
     
+    /// Tobacco and other 18+ items, detected the same way as the web
+    /// (`src/lib/ageGate.js`): the flag, the category, or a keyword in the name,
+    /// since staff and CSV imports can add an item without the flag. The iOS
+    /// app never lists these: App Store guideline 1.4.3 doesn't allow selling
+    /// tobacco through an app.
+    public var isAgeRestricted: Bool {
+        if ageRestricted == true || (minAge ?? 0) >= 18 { return true }
+        let restrictedCategories = ["tobacco", "tobacco & smoking", "smoking"]
+        if restrictedCategories.contains(cat.lowercased()) { return true }
+        let haystack = "\(cat) \(name)".lowercased()
+        return Self.restrictedKeywords.contains { haystack.contains($0) }
+    }
+
+    private static let restrictedKeywords = [
+        "cigarette", "cigar", "tobacco", "bidi", "beedi", "hookah", "shisha", "vape",
+        "e-cigarette", "nicotine", "rolling paper", "gutkha", "paan masala", "snuff", "zarda",
+    ]
+
     public var discountPercent: Int? {
         guard let original = originalPrice, original > price else { return nil }
         return Int(round(((original - price) / original) * 100))

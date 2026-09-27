@@ -93,26 +93,6 @@ struct CheckoutView: View {
                                 .background(vm.paymentMethod == "cod" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
                                 .cornerRadius(10)
                             }
-
-                            // Apple Pay
-                            Button(action: {
-                                vm.paymentMethod = "apple_pay"
-                                HapticsManager.shared.selection()
-                            }) {
-                                HStack {
-                                    Image(systemName: "apple.logo")
-                                        .foregroundColor(.textPrimary)
-                                    Text("Apple Pay")
-                                        .font(.dashitBody)
-                                        .foregroundColor(.textPrimary)
-                                    Spacer()
-                                    Image(systemName: vm.paymentMethod == "apple_pay" ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(vm.paymentMethod == "apple_pay" ? .brandOrange : .gray)
-                                }
-                                .padding(12)
-                                .background(vm.paymentMethod == "apple_pay" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
-                                .cornerRadius(10)
-                            }
                         }
                         .padding(14)
                         .background(Color.surfaceRaised)

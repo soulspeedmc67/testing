@@ -1,11 +1,10 @@
 import Foundation
 import SwiftUI
-import PassKit
 
 @MainActor
 final class CheckoutViewModel: ObservableObject {
     @Published var selectedAddress: DeliveryAddress
-    @Published var paymentMethod: String = "cod" // "cod" or "apple_pay"
+    @Published var paymentMethod: String = "cod" // cash on delivery is the only method for now
     @Published var isSubmitting: Bool = false
     @Published var orderError: String?
     @Published var completedOrder: Order?
@@ -84,7 +83,7 @@ final class CheckoutViewModel: ObservableObject {
             grandTotal: cart.bill.grandTotal,
             status: .placed,
             deliveryAddress: selectedAddress,
-            paymentMethod: paymentMethod == "apple_pay" ? "Apple Pay" : "Cash on Delivery",
+            paymentMethod: "Cash on Delivery",
             // Nothing is charged in-app yet, so no order is ever marked paid here.
             paymentStatus: "pending",
             etaMinutes: store.etaMinutes(for: quote) ?? 8,
