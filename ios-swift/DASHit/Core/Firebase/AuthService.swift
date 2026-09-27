@@ -192,6 +192,7 @@ final class AuthService: ObservableObject {
         // 3. Purge all local data
         LocalStorage.shared.clearAll()
         AddressBook.shared.forgetAll()
+        RecentSearches.shared.clear()
         self.currentUser = nil
         self.isAuthenticated = false
 

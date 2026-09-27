@@ -7,6 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -123,7 +126,7 @@ import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun StorefrontScreen(
     storefrontVm: StorefrontViewModel,
@@ -139,7 +142,6 @@ fun StorefrontScreen(
     val filteredProducts by storefrontVm.filteredProducts.collectAsState()
     val isBrowsing by storefrontVm.isBrowsing.collectAsState()
     val selectedCategory by storefrontVm.selectedCategory.collectAsState()
-    val searchQuery by storefrontVm.searchQuery.collectAsState()
 
     val cartItems by cartVm.items.collectAsState()
     val bill by cartVm.bill.collectAsState()
@@ -155,6 +157,9 @@ fun StorefrontScreen(
     var isCheckoutOpen by remember { mutableStateOf(false) }
     var isProfileOpen by remember { mutableStateOf(false) }
     var isAddressSheetOpen by remember { mutableStateOf(false) }
+    // Full-page search over the home feed; the tab bar steps aside while it's open.
+    var isSearchOpen by remember { mutableStateOf(false) }
+    val isKeyboardOpen = WindowInsets.isImeVisible
     var currentAddress by remember { mutableStateOf(DeliveryAddress()) }
     val productSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cartSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -181,7 +186,7 @@ fun StorefrontScreen(
         celebrationOrder = order
     }
 
-    BackHandler(enabled = isAddressSheetOpen || isProfileOpen || trackingOrderId != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
+    BackHandler(enabled = isAddressSheetOpen || isProfileOpen || trackingOrderId != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || isSearchOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
         when {
             isAddressSheetOpen -> isAddressSheetOpen = false
             isProfileOpen -> isProfileOpen = false
@@ -192,6 +197,7 @@ fun StorefrontScreen(
                 isCartSheetOpen = true
             }
             isCartSheetOpen -> isCartSheetOpen = false
+            isSearchOpen -> isSearchOpen = false
             !isBrowsing -> storefrontVm.clearFilter()
             activeTab != NavigationTab.HOME -> activeTab = NavigationTab.HOME
         }
@@ -214,6 +220,16 @@ fun StorefrontScreen(
                 orderId = trackingOrderId!!,
                 products = allProducts,
                 onBack = { trackingOrderId = null }
+            )
+        } else if (isSearchOpen) {
+            SearchScreen(
+                products = allProducts,
+                categories = categories,
+                cartItems = cartItems,
+                onOpenProduct = { detailProduct = it },
+                onAdd = { cartVm.add(it) },
+                onDecrement = { cartVm.decrementLatest(it.id) },
+                onClose = { isSearchOpen = false }
             )
         } else {
             when (activeTab) {
@@ -248,8 +264,10 @@ fun StorefrontScreen(
                 ) {
                     // Search Bar
                     SearchBarField(
-                        query = searchQuery,
-                        onQueryChange = { storefrontVm.setSearchQuery(it) }
+                        onOpen = {
+                            HapticsManager.light(view)
+                            isSearchOpen = true
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -451,7 +469,7 @@ fun StorefrontScreen(
 
         // The live order, docked above the tab bar like the iOS app; the cart bar stacks on top.
         AnimatedVisibility(
-            visible = activeOrder != null && trackingOrderId == null && !isProfileOpen,
+            visible = activeOrder != null && trackingOrderId == null && !isProfileOpen && !isSearchOpen,
             enter = fadeIn() + scaleIn(initialScale = 0.6f, transformOrigin = TransformOrigin(0.5f, 1f)),
             exit = fadeOut() + scaleOut(targetScale = 0.6f, transformOrigin = TransformOrigin(0.5f, 1f)),
             modifier = Modifier
@@ -474,12 +492,18 @@ fun StorefrontScreen(
 
         // Floating Cart Bar (Above Bottom Nav)
         AnimatedVisibility(
-            visible = cartItems.isNotEmpty(),
+            visible = cartItems.isNotEmpty() && !(isSearchOpen && isKeyboardOpen),
             enter = fadeIn(DashitMotion.snappySpring()),
             exit = fadeOut(DashitMotion.snappySpring()),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (activeOrder != null && trackingOrderId == null) 144.dp else 76.dp)
+                .padding(
+                    bottom = when {
+                        isSearchOpen -> 16.dp
+                        activeOrder != null && trackingOrderId == null -> 144.dp
+                        else -> 76.dp
+                    }
+                )
                 .navigationBarsPadding()
         ) {
             FloatingCartBar(
@@ -493,14 +517,16 @@ fun StorefrontScreen(
         }
 
         // Floating Bottom Navigation Bar
-        BottomNavBar(
-            selectedTab = activeTab,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 6.dp)
-                .navigationBarsPadding(),
-            onTabSelected = { activeTab = it }
-        )
+        if (!isSearchOpen) {
+            BottomNavBar(
+                selectedTab = activeTab,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 6.dp)
+                    .navigationBarsPadding(),
+                onTabSelected = { activeTab = it }
+            )
+        }
 
         // Crossing ₹299 while shopping: shown here unless a sheet is in front.
         com.dashit.app.ui.cart.FreeDeliveryToastHost(
@@ -686,10 +712,10 @@ private fun StorefrontHeader(
     }
 }
 
+/** Opens the search page; typing happens there. */
 @Composable
 private fun SearchBarField(
-    query: String,
-    onQueryChange: (String) -> Unit
+    onOpen: () -> Unit
 ) {
     val searchShape = RoundedCornerShape(16.dp)
 
@@ -701,6 +727,7 @@ private fun SearchBarField(
             .clip(searchShape)
             .background(Color(0xFF181C26))
             .border(1.dp, DashitColors.Hairline, searchShape)
+            .clickable(onClickLabel = "Search products") { onOpen() }
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -717,24 +744,10 @@ private fun SearchBarField(
             )
 
             Box(modifier = Modifier.weight(1f)) {
-                if (query.isEmpty()) {
-                    Text(
-                        text = "Search \"ganesh idol\"",
-                        color = DashitColors.TextMuted,
-                        fontSize = 14.sp
-                    )
-                }
-                BasicTextField(
-                    value = query,
-                    onValueChange = onQueryChange,
-                    textStyle = TextStyle(
-                        color = DashitColors.TextPrimary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    ),
-                    cursorBrush = SolidColor(DashitColors.BrandOrange),
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                Text(
+                    text = "Search \"ganesh idol\"",
+                    color = DashitColors.TextMuted,
+                    fontSize = 14.sp
                 )
             }
 

@@ -35,6 +35,20 @@ data class Product(
     val isAvailable: Boolean
         get() = inStock != false && (stock ?: 1) > 0
 
+    /**
+     * Tobacco and other 18+ items, detected the same way as the web
+     * (`src/lib/ageGate.js`): the flag, the category, or a keyword in the name,
+     * since staff and CSV imports can add an item without the flag. The app
+     * never lists these: Google Play doesn't allow selling tobacco through an app.
+     */
+    val isAgeRestricted: Boolean
+        get() {
+            if (ageRestricted == true || (minAge ?: 0) >= 18) return true
+            if (cat.lowercase() in RESTRICTED_CATEGORIES) return true
+            val haystack = "$cat $name".lowercase()
+            return RESTRICTED_KEYWORDS.any { haystack.contains(it) }
+        }
+
     val discountPercent: Int?
         get() {
             val original = originalPrice ?: return null
@@ -48,3 +62,10 @@ data class Product(
     val displayOriginalPrice: String?
         get() = originalPrice?.let { "₹${it.toInt()}" }
 }
+
+private val RESTRICTED_CATEGORIES = setOf("tobacco", "tobacco & smoking", "smoking")
+
+private val RESTRICTED_KEYWORDS = listOf(
+    "cigarette", "cigar", "tobacco", "bidi", "beedi", "hookah", "shisha", "vape",
+    "e-cigarette", "nicotine", "rolling paper", "gutkha", "paan masala", "snuff", "zarda"
+)

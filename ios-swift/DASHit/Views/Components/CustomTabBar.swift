@@ -111,6 +111,9 @@ final class TabBarVisibility: ObservableObject {
     static let shared = TabBarVisibility()
 
     @Published private(set) var isHidden = false
+    /// Takes the bar and the pills above it away entirely, for full-page
+    /// screens laid over a tab, such as search.
+    @Published var isSuppressed = false
 
     private var lastOffset: CGFloat = 0
     /// Distance scrolled in the current direction; flips reset it, so a small

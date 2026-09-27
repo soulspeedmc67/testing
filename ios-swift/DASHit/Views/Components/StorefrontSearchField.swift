@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Home search field. While empty, the hint cycles through real catalogue items
 /// ("Search “amul butter”"), rolling upward like the web AnimatedSearchBar.
+/// With `onActivate` it is a button that opens the search page instead of
+/// taking text itself; the microphone still works on its own.
 struct StorefrontSearchField: View {
     @Binding var text: String
     var isFocused: FocusState<Bool>.Binding
@@ -9,6 +11,7 @@ struct StorefrontSearchField: View {
     /// the store actually sells.
     var hints: [String]
     var onVoiceSearch: (() -> Void)?
+    var onActivate: (() -> Void)?
 
     @State private var hintIndex = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -19,52 +22,55 @@ struct StorefrontSearchField: View {
         text: Binding<String>,
         isFocused: FocusState<Bool>.Binding,
         hints: [String] = [],
-        onVoiceSearch: (() -> Void)? = nil
+        onVoiceSearch: (() -> Void)? = nil,
+        onActivate: (() -> Void)? = nil
     ) {
         self._text = text
         self.isFocused = isFocused
         self.hints = hints.isEmpty ? Self.fallbackHints : hints
         self.onVoiceSearch = onVoiceSearch
+        self.onActivate = onActivate
     }
 
     private var fieldShape: RoundedRectangle { RoundedRectangle(cornerRadius: 16, style: .continuous) }
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundColor(.textMuted)
-
-            ZStack(alignment: .leading) {
-                if text.isEmpty {
-                    HStack(spacing: 4) {
-                        Text("Search")
-                        Text("“\(hints[hintIndex % hints.count])”")
-                            .id(hintIndex)
-                            .transition(
-                                .asymmetric(
-                                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                                    removal: .move(edge: .top).combined(with: .opacity)
-                                )
-                            )
+            if let onActivate {
+                Button {
+                    HapticsManager.shared.light()
+                    onActivate()
+                } label: {
+                    HStack(spacing: 10) {
+                        searchIcon
+                        hint
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .clipped()
                     }
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.textFaint)
-                    .lineLimit(1)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
                 }
-                TextField("", text: $text)
-                    .focused(isFocused)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.textPrimary)
-                    .tint(.brandOrange)
-                    .submitLabel(.search)
-                    .autocorrectionDisabled()
-                    .accessibilityLabel("Search products")
+                .buttonStyle(.plain)
+                .accessibilityLabel("Search products")
+            } else {
+                searchIcon
+
+                ZStack(alignment: .leading) {
+                    if text.isEmpty {
+                        hint
+                    }
+                    TextField("", text: $text)
+                        .focused(isFocused)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(.textPrimary)
+                        .tint(.brandOrange)
+                        .submitLabel(.search)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Search products")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .clipped()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .clipped()
 
             if !text.isEmpty {
                 Button {
@@ -109,6 +115,32 @@ struct StorefrontSearchField: View {
         .task {
             await rotateHints()
         }
+    }
+
+    private var searchIcon: some View {
+        Image(systemName: "magnifyingglass")
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundColor(.textMuted)
+    }
+
+    /// "Search “amul butter”", the product name rolling upward every few seconds.
+    private var hint: some View {
+        HStack(spacing: 4) {
+            Text("Search")
+            Text("“\(hints[hintIndex % hints.count])”")
+                .id(hintIndex)
+                .transition(
+                    .asymmetric(
+                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                        removal: .move(edge: .top).combined(with: .opacity)
+                    )
+                )
+        }
+        .font(.system(size: 15, weight: .medium))
+        .foregroundColor(.textFaint)
+        .lineLimit(1)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 
     private func rotateHints() async {

@@ -18,6 +18,11 @@ struct StorefrontHomeView: View {
     @State private var addressAnchor = ScreenAnchor()
     @FocusState private var isSearchFocused: Bool
     @State private var isVoiceSearchOpen = false
+    /// The full-page search, laid over the feed so the product and cart
+    /// sheets keep presenting from where they always do.
+    @State private var isSearchOpen = false
+    @State private var searchText = ""
+    @State private var submittedSearch: String? = nil
     /// Scroll-driven chrome, held by reference so scrolling redraws only the
     /// backdrops that watch it, never this whole feed.
     @State private var chrome = HomeChromeState()
@@ -128,6 +133,23 @@ struct StorefrontHomeView: View {
             }
         }
         .background(Color.surface.ignoresSafeArea())
+        .overlay {
+            if isSearchOpen {
+                StorefrontSearchView(
+                    vm: vm,
+                    query: $searchText,
+                    submitted: $submittedSearch,
+                    onOpenProduct: { detailProduct = $0 },
+                    onRequestAgeConfirmation: { ageGateProduct = $0 },
+                    onVoiceSearch: { isVoiceSearchOpen = true },
+                    onClose: closeSearch
+                )
+                .transition(.opacity.combined(with: .offset(y: 12)))
+            }
+        }
+        .onChange(of: isSearchOpen) { _, isOpen in
+            TabBarVisibility.shared.isSuppressed = isOpen
+        }
         .sheet(item: $detailProduct, onDismiss: {
             // The cart opens only once the product sheet has gone: UIKit drops
             // a presentation made while another sheet is still on screen.
@@ -149,7 +171,14 @@ struct StorefrontHomeView: View {
         }
         .sheet(isPresented: $isVoiceSearchOpen) {
             VoiceSearchSheet { phrase in
-                vm.searchQuery = phrase
+                let clean = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !clean.isEmpty else { return }
+                if !ProductSearch.results(for: clean, in: vm.products).isEmpty {
+                    RecentSearches.shared.record(clean)
+                }
+                searchText = clean
+                submittedSearch = clean
+                openSearch()
             }
         }
     }
@@ -292,10 +321,11 @@ struct StorefrontHomeView: View {
     private var pinnedSearch: some View {
         VStack(spacing: 6) {
             StorefrontSearchField(
-                text: $vm.searchQuery,
+                text: .constant(""),
                 isFocused: $isSearchFocused,
                 hints: vm.searchHints,
-                onVoiceSearch: { isVoiceSearchOpen = true }
+                onVoiceSearch: { isVoiceSearchOpen = true },
+                onActivate: openSearch
             )
             .padding(.horizontal, 16)
             .padding(.top, 6)
@@ -313,6 +343,16 @@ struct StorefrontHomeView: View {
         } action: { minY in
             chrome.pinnedTopChanged(minY)
         }
+    }
+
+    private func openSearch() {
+        withAnimation(.dashitSnappy) { isSearchOpen = true }
+    }
+
+    private func closeSearch() {
+        withAnimation(.dashitSnappy) { isSearchOpen = false }
+        searchText = ""
+        submittedSearch = nil
     }
 
     // MARK: - Shop by category

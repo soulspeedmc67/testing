@@ -69,6 +69,8 @@ class FirestoreRepository {
                     val badge = data["badge"] as? String
                     val options = data["options"] as? String
                     val inStock = (data["inStock"] as? Boolean) ?: true
+                    val ageRestricted = (data["ageRestricted"] as? Boolean) ?: false
+                    val minAge = (data["minAge"] as? Number)?.toInt()
 
                     @Suppress("UNCHECKED_CAST")
                     val variantsRaw = data["variants"] as? List<Map<String, Any>>
@@ -94,9 +96,11 @@ class FirestoreRepository {
                         img = img,
                         cat = cat,
                         variants = variants,
+                        ageRestricted = ageRestricted,
+                        minAge = minAge,
                         inStock = inStock
                     )
-                }
+                }.filterNot { it.isAgeRestricted } // tobacco and 18+ items are sold on the website only
 
                 if (list.isNotEmpty()) {
                     delivered = true
