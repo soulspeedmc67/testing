@@ -53,8 +53,10 @@ export default function LoginPage() {
   // Step 1: Login Overview & Sheet, Step 3: Address & Profile Setup
   const [step, setStep] = useState(1);
 
-  // Extended bottom sheet state (open by default so user immediately sees sign in form)
-  const [isSheetExtended, setIsSheetExtended] = useState(true);
+  /* The sheet starts collapsed so the artwork shows, with Log in and Create
+     account below it. ?mode=login / ?mode=signup (from the Profile card) opens
+     it straight onto that form. */
+  const [isSheetExtended, setIsSheetExtended] = useState(false);
 
   // Interactive Map Modal state
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
@@ -221,6 +223,24 @@ export default function LoginPage() {
       });
     }
   }, [router.isReady, router.query]);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const mode = router.query?.mode;
+    if (mode === "login" || mode === "signup") {
+      setAuthTab("email");
+      setEmailMode(mode === "login" ? "signin" : "signup");
+      setIsSheetExtended(true);
+    }
+  }, [router.isReady, router.query?.mode]);
+
+  /** Opens the sheet on the email form, as Log in or Create account. */
+  const openAuthForm = (mode) => {
+    setAuthTab("email");
+    setEmailMode(mode);
+    setErrorMessage("");
+    setIsSheetExtended(true);
+  };
 
   // --------------------------------------------------------------------------
   // SMOOTH POST-AUTH LOADING TRANSITION HELPER
@@ -771,7 +791,7 @@ export default function LoginPage() {
 
               {/* Bold Punchy Headline */}
               <h1 className="text-[23px] sm:text-[25px] font-black text-white text-center leading-[1.18] tracking-tight max-w-[300px] mx-auto mt-3 drop-shadow-sm">
-                One app for food, grocery, dining and more in mins!
+                Groceries at your door in minutes, across Anantnag
               </h1>
             </motion.div>
 
@@ -864,17 +884,22 @@ export default function LoginPage() {
                   transition={{ duration: 0.15 }}
                   className="px-6 pt-2 pb-[max(20px,calc(12px+env(safe-area-inset-bottom,20px)))] space-y-3.5 shrink-0"
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthTab("phone");
-                      setErrorMessage("");
-                      setIsSheetExtended(true);
-                    }}
-                    className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-[15.5px] py-4 rounded-2xl shadow-[0_4px_16px_rgba(255,91,0,0.32)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
-                  >
-                    Login
-                  </button>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => openAuthForm("signin")}
+                      className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-[15.5px] py-4 rounded-2xl shadow-[0_4px_16px_rgba(255,91,0,0.32)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
+                    >
+                      Log in
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openAuthForm("signup")}
+                      className="w-full bg-orange-50 hover:bg-orange-100 text-[#E04E00] border border-orange-200 font-black text-[15.5px] py-4 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer dark:bg-orange-950/30 dark:border-orange-900/50 dark:text-[#FF7A33]"
+                    >
+                      Sign up
+                    </button>
+                  </div>
 
                   <p className="text-[11px] text-slate-500 text-center leading-relaxed max-w-[290px] mx-auto dark:text-content-muted">
                     By tapping, I accept the{" "}
