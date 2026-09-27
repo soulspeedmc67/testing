@@ -1265,8 +1265,6 @@ struct StoreControlSheetView: View {
                             }
                         }
                     }
-                }
-
                 } header: {
                     Text("Shop")
                 } footer: {
