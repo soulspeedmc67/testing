@@ -16,6 +16,7 @@ import {
   runTransaction,
   arrayUnion,
   writeBatch,
+  increment,
 } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -403,89 +404,175 @@ export async function adjustSingleProductStock(productId, deltaOrAbsolute, isAbs
   return newStockVal === null ? 0 : newStockVal;
 }
 
-/**
- * Bulk stock inward/adjustment for mass barcode imports.
- */
-export async function bulkUpdateProductStock(stockUpdates = []) {
-  if (!stockUpdates || stockUpdates.length === 0) return { success: true, count: 0 };
+/* Firestore takes at most 500 writes per batch; staying well under leaves room
+   for the security rules' own document reads. A few batches go out at once so a
+   large file saves in seconds rather than one row at a time. */
+const STOCK_BATCH_SIZE = 250;
+const STOCK_PARALLEL_BATCHES = 3;
+const STOCK_PARALLEL_SINGLE_WRITES = 8;
 
-  if (typeof window !== "undefined") {
-    try {
-      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
-      stockUpdates.forEach((up) => {
-        const id = String(up.id || up.barcode || "");
-        const idx = custom.findIndex((p) => String(p.id || p.barcode) === id);
-        if (idx !== -1) {
-          if (up.newStock !== undefined) {
-            custom[idx].stock = Math.max(0, Number(up.newStock));
-          } else if (up.qtyToAdd !== undefined) {
-            custom[idx].stock = Math.max(0, (Number(custom[idx].stock) || 0) + Number(up.qtyToAdd));
-          }
-          if (up.product) {
-            if (up.product.distributor) custom[idx].distributor = up.product.distributor;
-            if (up.product.price !== undefined) custom[idx].price = up.product.price;
-            if (up.product.originalPrice !== undefined) custom[idx].originalPrice = up.product.originalPrice;
-            if (up.product.cat) custom[idx].cat = up.product.cat;
-          }
-        } else if (up.product) {
-          custom.unshift({
-            ...up.product,
-            id: id || `PROD-${Date.now()}`,
-            stock: Number(up.qtyToAdd || up.newStock || 1),
-            active: true,
-          });
-        }
-      });
-      localStorage.setItem("dashit_custom_products", JSON.stringify(custom));
-      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
-    } catch (e) {
-      console.warn("bulkUpdateProductStock local error:", e);
+/** Runs `worker` over `items`, at most `limit` at a time. */
+async function runPooled(items, limit, worker) {
+  let next = 0;
+  const lanes = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next;
+      next += 1;
+      await worker(items[index], index);
     }
-  }
+  });
+  await Promise.all(lanes);
+}
 
-  /* Failures are collected per item rather than aborting the loop, and they are
-     reported back to the caller. This used to be one try/catch around the whole
-     loop that swallowed the error and returned success unconditionally: a write
-     rejected by the security rules (a non-admin staff account, an expired
-     token) updated only the local mirror while the UI announced a completed
-     import, so the owner's device showed stock that no customer could see. */
+/** Mirror a stock import into this device's product list, for offline use. */
+function mirrorStockUpdatesLocally(stockUpdates) {
+  if (typeof window === "undefined") return;
+  try {
+    const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+    // Indexed once: a findIndex per row froze the page on files of a few thousand lines.
+    const indexById = new Map();
+    custom.forEach((p, i) => indexById.set(String(p.id || p.barcode), i));
+    const added = [];
+
+    stockUpdates.forEach((up) => {
+      const id = String(up.id || up.barcode || "");
+      const idx = indexById.get(id);
+      if (idx !== undefined) {
+        const item = custom[idx];
+        if (up.newStock !== undefined) {
+          item.stock = Math.max(0, Number(up.newStock));
+        } else if (up.qtyToAdd !== undefined) {
+          item.stock = Math.max(0, (Number(item.stock) || 0) + Number(up.qtyToAdd));
+        }
+        if (up.product) {
+          if (up.product.distributor) item.distributor = up.product.distributor;
+          if (up.product.price !== undefined) item.price = up.product.price;
+          if (up.product.originalPrice !== undefined) item.originalPrice = up.product.originalPrice;
+          if (up.product.cat) item.cat = up.product.cat;
+        }
+      } else if (up.product) {
+        const newId = id || `PROD-${Date.now()}-${added.length}`;
+        indexById.set(newId, -1);
+        added.push({
+          ...up.product,
+          id: newId,
+          stock: Number(up.qtyToAdd || up.newStock || 1),
+          active: true,
+        });
+      }
+    });
+
+    const next = added.length ? [...added.reverse(), ...custom] : custom;
+    localStorage.setItem("dashit_custom_products", JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+  } catch (e) {
+    // A very large list can outgrow localStorage; the server copy is what counts.
+    console.warn("bulkUpdateProductStock local mirror skipped:", e?.message);
+  }
+}
+
+/**
+ * Bulk stock inward/adjustment for CSV imports and barcode inward.
+ *
+ * Rows are written in batches with an atomic `increment()` for added stock, so
+ * a concurrent order deduction is never overwritten and nothing has to be read
+ * first. This used to run one read-then-write transaction per row, strictly in
+ * turn: a few thousand rows took many minutes and looked like the page had hung.
+ *
+ * A batch is all-or-nothing, so when one is rejected its rows are retried one
+ * by one and only the rows that really failed are reported.
+ *
+ * @param {Array} stockUpdates  { id, qtyToAdd | newStock | calculatedStock, product? }
+ * @param {{ onProgress?: (done: number, total: number) => void }} [options]
+ */
+export async function bulkUpdateProductStock(stockUpdates = [], options = {}) {
+  if (!stockUpdates || stockUpdates.length === 0) return { success: true, count: 0 };
+  const { onProgress } = options;
+
+  mirrorStockUpdatesLocally(stockUpdates);
+
   const db = getDb();
   const failures = [];
   let written = 0;
+  let done = 0;
+  const total = stockUpdates.length;
+  const report = (n) => {
+    done += n;
+    if (onProgress) onProgress(Math.min(done, total), total);
+  };
 
   if (db) {
+    const writes = [];
+    const negative = [];
     for (const up of stockUpdates) {
       const id = String(up.id || up.barcode || "");
-      if (!id) continue;
-
-      const base = { active: true, updatedAt: serverTimestamp() };
-      if (up.product) Object.assign(base, up.product);
-
-      try {
-        /* `qtyToAdd` is the shape the barcode inward screen and the CSV importer
-           send. Applied as a relative increment inside a transaction so a
-           concurrent order deduction is not overwritten. */
-        if (up.qtyToAdd !== undefined && up.newStock === undefined && up.calculatedStock === undefined) {
-          const delta = Number(up.qtyToAdd) || 0;
-          await runTransaction(db, async (tx) => {
-            const ref = doc(db, "products", id);
-            const snap = await tx.get(ref);
-            const current = snap.exists() ? Number(snap.data().stock) || 0 : 0;
-            tx.set(ref, { ...base, stock: Math.max(0, current + delta) }, { merge: true });
-          });
-        } else {
-          const payload = { ...base };
-          if (up.newStock !== undefined) payload.stock = Math.max(0, Number(up.newStock) || 0);
-          else if (up.calculatedStock !== undefined) payload.stock = Math.max(0, Number(up.calculatedStock) || 0);
-          await setDoc(doc(db, "products", id), payload, { merge: true });
+      if (!id) {
+        report(1);
+        continue;
+      }
+      const payload = { active: true, ...(up.product || {}), updatedAt: serverTimestamp() };
+      if (up.qtyToAdd !== undefined && up.newStock === undefined && up.calculatedStock === undefined) {
+        const delta = Number(up.qtyToAdd) || 0;
+        if (delta < 0) {
+          // Taking stock away must not go below zero, which needs the current value.
+          negative.push({ id, up, payload, delta });
+          continue;
         }
+        payload.stock = increment(delta);
+      } else if (up.newStock !== undefined) {
+        payload.stock = Math.max(0, Number(up.newStock) || 0);
+      } else if (up.calculatedStock !== undefined) {
+        payload.stock = Math.max(0, Number(up.calculatedStock) || 0);
+      }
+      writes.push({ id, up, payload });
+    }
+
+    const writeOne = async ({ id, up, payload }) => {
+      try {
+        await setDoc(doc(db, "products", id), payload, { merge: true });
         written += 1;
       } catch (e) {
-        console.warn(`bulkUpdateProductStock failed for ${id}:`, e?.message);
         failures.push({ id, name: up.product?.name || id, reason: e?.message || "Write rejected" });
       }
+    };
+
+    const chunks = [];
+    for (let i = 0; i < writes.length; i += STOCK_BATCH_SIZE) {
+      chunks.push(writes.slice(i, i + STOCK_BATCH_SIZE));
     }
+
+    await runPooled(chunks, STOCK_PARALLEL_BATCHES, async (chunk) => {
+      try {
+        const batch = writeBatch(db);
+        chunk.forEach(({ id, payload }) => batch.set(doc(db, "products", id), payload, { merge: true }));
+        await batch.commit();
+        written += chunk.length;
+      } catch (e) {
+        console.warn("bulkUpdateProductStock batch rejected, retrying row by row:", e?.message);
+        await runPooled(chunk, STOCK_PARALLEL_SINGLE_WRITES, writeOne);
+      }
+      report(chunk.length);
+    });
+
+    await runPooled(negative, STOCK_PARALLEL_SINGLE_WRITES, async ({ id, up, payload, delta }) => {
+      try {
+        await runTransaction(db, async (tx) => {
+          const ref = doc(db, "products", id);
+          const snap = await tx.get(ref);
+          const current = snap.exists() ? Number(snap.data().stock) || 0 : 0;
+          tx.set(ref, { ...payload, stock: Math.max(0, current + delta) }, { merge: true });
+        });
+        written += 1;
+      } catch (e) {
+        failures.push({ id, name: up.product?.name || id, reason: e?.message || "Write rejected" });
+      }
+      report(1);
+    });
+  } else {
+    report(total);
   }
+
+  invalidateProductCache();
 
   return {
     // Local-only is not a server success; say so rather than implying a sync.
@@ -495,8 +582,6 @@ export async function bulkUpdateProductStock(stockUpdates = []) {
     attempted: stockUpdates.length,
     failures,
   };
-  invalidateProductCache();
-  return result;
 }
 
 /**
@@ -722,7 +807,15 @@ export async function upsertDistributor(distributor) {
       const payload = { active: true, ...data, updatedAt: serverTimestamp() };
       await setDoc(doc(db, "distributors", distId), payload, { merge: true });
     } catch (err) {
+      /* Kept on this device either way, but the caller has to know the shared
+         list did not take it (usually the rules for /distributors are not
+         deployed yet), or the owner is told it saved when other devices never
+         see it. */
       console.warn("Firestore upsertDistributor warning:", err?.message);
+      const error = new Error(err?.message || "The shop's online list didn't accept it.");
+      error.savedLocally = true;
+      error.distributorId = distId;
+      throw error;
     }
   }
 

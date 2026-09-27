@@ -399,7 +399,9 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
          row wins, matching what the owner would expect from a stock correction. */
       first.qty = stockMode === "add" ? first.qty + qty : qty;
       first.newStock = stockMode === "add" ? first.currentStock + first.qty : first.qty;
-      first.mergedRows = [...(first.mergedRows || [first.row]), rowNo];
+      // Pushed in place: copying the list for every repeat was quadratic on big files.
+      if (!first.mergedRows) first.mergedRows = [first.row];
+      first.mergedRows.push(rowNo);
       continue;
     }
 
