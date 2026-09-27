@@ -44,6 +44,7 @@ const IST = "Asia/Kolkata";
 
 export default function OrderProcessingView({
   orders = [],
+  catalogue = [],
   onUpdateStatus,
   onAssignDriver,
   onNavigateTab,
@@ -1678,6 +1679,7 @@ export default function OrderProcessingView({
 
       <OrderDetailDrawer
         order={activeOrder}
+        catalogue={catalogue}
         isOpen={Boolean(selectedOrderId)}
         onClose={() => setSelectedOrderId(null)}
         onUpdateStatus={handleStatusChange}

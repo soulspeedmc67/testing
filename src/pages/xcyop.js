@@ -1565,6 +1565,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       {activeTab === "orders" && (
         <OrderProcessingView
           orders={orders}
+          catalogue={catalogue}
           onUpdateStatus={handleUpdateOrderStatus}
           onAssignDriver={handleAssignDriver}
           onNavigateTab={setActiveTab}

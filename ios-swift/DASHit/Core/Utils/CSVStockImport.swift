@@ -31,6 +31,8 @@ public enum CSVStockImport {
         public var problem: String?
 
         public var isNew: Bool { existing == nil }
+        /// The file gives a photo link this item doesn't have yet.
+        public var hasNewPhoto: Bool { !img.isEmpty && img != existing?.img }
         public var currentStock: Int { existing?.stock ?? 0 }
         public var shownPrice: Double { price ?? existing?.price ?? 0 }
 
@@ -48,6 +50,9 @@ public enum CSVStockImport {
             let before = Distributor.resolvedName(existing.distributor)
             if before != distributor {
                 list.append("From \(before) → \(distributor)")
+            }
+            if hasNewPhoto {
+                list.append("New photo")
             }
             return list
         }
@@ -137,7 +142,7 @@ public enum CSVStockImport {
                 category: value(.category).isEmpty ? (match?.cat ?? "") : value(.category),
                 unit: value(.unit).isEmpty ? (match?.unit ?? "") : value(.unit),
                 brand: value(.brand),
-                img: value(.image).isEmpty ? (match?.img ?? "") : value(.image),
+                img: imageURL(value(.image)) ?? match?.img ?? "",
                 qty: qty,
                 price: price,
                 mrp: number(value(.mrp)),
@@ -163,11 +168,40 @@ public enum CSVStockImport {
 
     /// A small file to start from.
     public static let sample = """
-    name,category,quantity,price,mrp,unit,brand,barcode
-    Onion,Vegetables,40,35,45,1 kg,,
-    Full Cream Milk,Dairy,60,36,38,500 ml,Amul,
-    Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,
+    name,category,quantity,price,mrp,unit,brand,barcode,image
+    Onion,Vegetables,40,35,45,1 kg,,,
+    Full Cream Milk,Dairy,60,36,38,500 ml,Amul,,https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400
+    Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,,
 
+    """
+
+    /// Pasted into ChatGPT, Gemini or Claude along with a bill, invoice or
+    /// price list, it writes a file this importer reads. Same text as
+    /// `AI_IMPORT_PROMPT` in the web's `src/lib/csvInventory.js`.
+    public static let aiPrompt = """
+    Turn the file I've attached (a bill, invoice, price list or photo of one) into a stock list for my grocery shop, as CSV.
+
+    Reply with only the CSV: no explanation before or after it.
+
+    The first line must be exactly:
+    name,category,quantity,price,mrp,unit,brand,barcode,image
+
+    Then one line for each product:
+    - name: the product's name as a shopper would search for it, without the pack size. Example: Amul Taaza Toned Milk
+    - category: a short shop category, such as Dairy, Bakery, Fruits, Vegetables, Staples, Snacks, Biscuits, Beverages, Instant Food, Spices, Personal Care, Home Care or Kitchen Care. Spell the same category the same way every time.
+    - quantity: how many single packs or pieces came in, as a whole number. If the bill counts cases or boxes, multiply by the number of pieces in each.
+    - price: the price I sell one piece at, in rupees. If the document doesn't show a selling price, use the MRP.
+    - mrp: the MRP printed for one piece, in rupees. Leave it empty if it isn't shown.
+    - unit: the pack size, such as 500 ml, 1 kg or 10 pcs.
+    - brand: the brand, or empty.
+    - barcode: the barcode or item code if the document shows one, otherwise empty. Never make one up.
+    - image: a direct https link to a clear photo of the product (ending in .jpg, .jpeg, .png or .webp), only if you can look it up and check that it opens. Otherwise leave it empty. Never make up a link.
+
+    Rules:
+    - Numbers only in quantity, price and mrp: no ₹, Rs or commas.
+    - If a value has a comma in it, put that value in double quotes.
+    - Leave out totals, taxes, discounts, delivery charges and anything that isn't a product.
+    - If you can't read a number clearly, leave that cell empty instead of guessing.
     """
 
     // MARK: - Columns
@@ -181,9 +215,11 @@ public enum CSVStockImport {
             return .name
         case "category", "cat", "type", "section", "department":
             return .category
-        case "quantity", "qty", "stock", "units", "count", "pcs", "pieces", "nos", "amount":
+        case "quantity", "qty", "stock", "units", "count", "pcs", "pieces", "nos", "amount",
+             "noofitems", "numberofitems", "totalqty", "qtyreceived", "receivedqty":
             return .qty
-        case "price", "sellingprice", "sp", "rate", "saleprice", "ourprice":
+        case "price", "sellingprice", "sp", "rate", "saleprice", "ourprice", "unitprice", "sellingrate",
+             "priceinrs", "pricers", "priceinr":
             return .price
         case "mrp", "originalprice", "listprice", "mrpprice":
             return .mrp
@@ -193,7 +229,8 @@ public enum CSVStockImport {
             return .brand
         case "barcode", "sku", "ean", "code", "id", "productid", "itemcode":
             return .barcode
-        case "image", "img", "imageurl", "photo", "picture":
+        case "image", "img", "imageurl", "photo", "picture", "imagelink", "imagelinks", "photourl",
+             "photolink", "picturelink", "pictureurl", "imgurl", "thumbnail":
             return .image
         default:
             return nil
@@ -217,6 +254,34 @@ public enum CSVStockImport {
         if text.hasSuffix(".") { text.removeLast() }
         guard !text.isEmpty, let value = Double(text), value.isFinite else { return nil }
         return value
+    }
+
+    /// A photo link the shop can show, or nil. Only web links are kept, and
+    /// Google Drive / Dropbox share links become direct links to the picture.
+    static func imageURL(_ raw: String) -> String? {
+        var link = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !link.isEmpty else { return nil }
+        if link.hasPrefix("//") { link = "https:" + link }
+        guard let url = URL(string: link),
+              let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+              let host = url.host?.lowercased(), !host.isEmpty else { return nil }
+        if host == "drive.google.com" {
+            // .../file/d/<id>/view or ...?id=<id>
+            let parts = url.pathComponents
+            let fileId = parts.firstIndex(of: "d").flatMap { $0 + 1 < parts.count ? parts[$0 + 1] : nil }
+                ?? URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                    .queryItems?.first(where: { $0.name == "id" })?.value
+            if let fileId, !fileId.isEmpty {
+                return "https://drive.google.com/uc?export=view&id=\(fileId)"
+            }
+        }
+        if host.hasSuffix("dropbox.com"), var components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
+            var items = (components.queryItems ?? []).filter { $0.name != "dl" && $0.name != "raw" }
+            items.append(URLQueryItem(name: "raw", value: "1"))
+            components.queryItems = items
+            return components.string ?? link
+        }
+        return link
     }
 
     /// A "/" in a code (e.g. "OIL/1L") would split the database path, so it
