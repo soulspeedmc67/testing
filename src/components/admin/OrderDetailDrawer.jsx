@@ -331,7 +331,7 @@ export default function OrderDetailDrawer({
                 darkMode ? "bg-[#161822] border-zinc-800" : "bg-slate-50 border-slate-200"
               )}
             >
-              {/* 60-Second Grace Period Notice */}
+              {/* 30-Second Grace Period Notice */}
               {isGracePeriod && (
                 <div className="bg-amber-500/10 border border-amber-300 dark:border-amber-700/60 rounded-2xl p-3.5 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
@@ -346,7 +346,7 @@ export default function OrderDetailDrawer({
                     </span>
                   </div>
                   <p className="text-[11.5px] text-amber-800 dark:text-amber-300/80 leading-snug">
-                    Customer has 60 seconds to add/remove items or cancel before packing. Stage progression buttons unlock automatically when this timer expires.
+                    Customer has 30 seconds to add/remove items or cancel before packing. Stage progression buttons unlock automatically when this timer expires.
                   </p>
                 </div>
               )}
@@ -379,7 +379,7 @@ export default function OrderDetailDrawer({
                       type="button"
                       onClick={() => {
                         if (isGracePeriod && step.key !== ORDER_STATUS.CANCELLED) {
-                          alert(`Order #${orderId} is in customer 60-second modifying window (${liveGraceSeconds}s remaining). Packing will unlock automatically once this window closes.`);
+                          alert(`Order #${orderId} is in customer 30-second modifying window (${liveGraceSeconds}s remaining). Packing will unlock automatically once this window closes.`);
                           return;
                         }
                         onUpdateStatus(orderId, step.key, order);

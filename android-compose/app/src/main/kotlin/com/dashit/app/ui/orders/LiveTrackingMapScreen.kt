@@ -19,6 +19,14 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +64,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
+import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
@@ -131,7 +143,30 @@ fun LiveTrackingMapScreen(
 
     BackHandler { onBack() }
 
-    Box(modifier = Modifier.fillMaxSize().background(DashitColors.SurfaceSunken)) {
+    val openCancel = {
+        HapticsManager.light(view)
+        isCancelSheetOpen = true
+    }
+    val openAddItems = {
+        HapticsManager.light(view)
+        isAddItemsOpen = true
+    }
+
+    // The map only once a rider has the order: before that there's nothing to
+    // follow, so received and packing get their own screens.
+    val showsMap = order != null &&
+        (order.status == OrderStatus.OUT_FOR_DELIVERY || order.status == OrderStatus.DELIVERED)
+
+    if (!showsMap) {
+        OrderStageScreen(
+            order = order,
+            isCancelling = isCancelling,
+            cancelError = cancelError,
+            onBack = onBack,
+            onCancel = openCancel,
+            onAddItems = openAddItems
+        )
+    } else Box(modifier = Modifier.fillMaxSize().background(DashitColors.SurfaceSunken)) {
         TrackingMap(order = order, rider = rider)
 
         // Back button and the change-window countdown
@@ -189,14 +224,8 @@ fun LiveTrackingMapScreen(
                     rider = rider,
                     isCancelling = isCancelling,
                     cancelError = cancelError,
-                    onCancel = {
-                        HapticsManager.light(view)
-                        isCancelSheetOpen = true
-                    },
-                    onAddItems = {
-                        HapticsManager.light(view)
-                        isAddItemsOpen = true
-                    }
+                    onCancel = openCancel,
+                    onAddItems = openAddItems
                 )
             }
         }
@@ -238,6 +267,192 @@ fun LiveTrackingMapScreen(
             },
             onDismiss = { isAddItemsOpen = false }
         )
+    }
+}
+
+/** Received and packing: what's happening now, the order card and the items. */
+@Composable
+private fun OrderStageScreen(
+    order: Order?,
+    isCancelling: Boolean,
+    cancelError: String?,
+    onBack: () -> Unit,
+    onCancel: () -> Unit,
+    onAddItems: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DashitColors.Surface)
+            .statusBarsPadding()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(DashitColors.SurfaceRaised)
+                    .border(1.dp, DashitColors.Hairline, CircleShape)
+                    .pressable(scale = 0.9f) { onBack() }
+                    .semantics { contentDescription = "Back" },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = DashitColors.TextPrimary, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            if (order != null) {
+                val seconds = rememberModifySecondsRemaining(order)
+                AnimatedVisibility(visible = seconds > 0, enter = fadeIn() + scaleIn(initialScale = 0.9f), exit = fadeOut() + scaleOut(targetScale = 0.9f)) {
+                    Row(
+                        modifier = Modifier
+                            .height(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.78f))
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        ModifyCountdownBadge(order)
+                        Text("to change", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            if (order == null) {
+                Spacer(Modifier.height(40.dp))
+                TrackingCardSkeleton()
+            } else {
+                val seconds = rememberModifySecondsRemaining(order)
+                OrderStageHero(stage = order.status, canStillChange = seconds > 0)
+                OrderCard(
+                    order = order,
+                    rider = null,
+                    isCancelling = isCancelling,
+                    cancelError = cancelError,
+                    onCancel = onCancel,
+                    onAddItems = onAddItems
+                )
+                OrderItemsCard(order)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean) {
+    val tint = if (stage == OrderStatus.CANCELLED) DashitColors.Danger else DashitColors.BrandOrange
+    val (title, subtitle) = when (stage) {
+        OrderStatus.PLACED -> "Order received" to
+            if (canStillChange) "You can still add items or cancel. The store starts packing right after."
+            else "The store is getting your items ready."
+        OrderStatus.PACKING -> "Packing your order" to
+            "Your items are being picked and packed. You'll see the rider on the map as soon as it leaves the store."
+        OrderStatus.CANCELLED -> "Order cancelled" to "This order won't be delivered."
+        else -> stage.headline(null) to ""
+    }
+    val pulse = rememberInfiniteTransition(label = "stagePulse")
+    val scale by pulse.animateFloat(
+        initialValue = 0.94f,
+        targetValue = if (stage == OrderStatus.CANCELLED) 0.94f else 1.06f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "stagePulseScale"
+    )
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(modifier = Modifier.size(156.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .size(148.dp)
+                    .graphicsLayer { scaleX = scale; scaleY = scale }
+                    .clip(CircleShape)
+                    .background(tint.copy(alpha = 0.10f))
+            )
+            Box(
+                Modifier
+                    .size(108.dp)
+                    .clip(CircleShape)
+                    .background(tint.copy(alpha = 0.16f))
+            )
+            Icon(stage.icon, contentDescription = null, tint = tint, modifier = Modifier.size(46.dp))
+        }
+        Spacer(Modifier.height(14.dp))
+        Text(title, color = DashitColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+        if (subtitle.isNotEmpty()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                subtitle,
+                color = DashitColors.TextMuted,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrderItemsCard(order: Order) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(DashitColors.SurfaceRaised)
+            .border(1.dp, DashitColors.Hairline, shape)
+            .padding(14.dp)
+    ) {
+        Text(
+            if (order.status == OrderStatus.PACKING) "Being packed" else "Your items",
+            color = DashitColors.TextPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+        order.items.forEachIndexed { index, item ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = item.img,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(DashitColors.SurfaceMuted)
+                        .padding(3.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(item.name, color = DashitColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text("${item.unit} · ×${item.qty}", color = DashitColors.TextMuted, fontSize = 12.sp)
+                }
+                Spacer(Modifier.width(8.dp))
+                Text("₹${(item.price * item.qty).toInt()}", color = DashitColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (index < order.items.lastIndex) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(DashitColors.Hairline))
+            }
+        }
     }
 }
 

@@ -145,7 +145,7 @@ struct CheckoutView: View {
                     }
                     Button(action: {
                         Task {
-                            if !auth.isAuthenticated || auth.needsPhoneNumber {
+                            if !auth.isReadyToOrder {
                                 isAuthModalOpen = true
                                 return
                             }
@@ -197,7 +197,7 @@ struct CheckoutView: View {
             }
             // Close once signed in with a delivery number (Apple and email
             // accounts add theirs in the same sheet first).
-            .onChange(of: auth.isAuthenticated && !auth.needsPhoneNumber) { _, isReady in
+            .onChange(of: auth.isReadyToOrder) { _, isReady in
                 if isReady {
                     isAuthModalOpen = false
                 }

@@ -303,6 +303,13 @@ final class FirestoreService {
         )
     }
 
+    func updateUserName(uid: String, name: String) async throws {
+        try await db.collection("users").document(uid).setData(
+            ["name": name, "updatedAt": FieldValue.serverTimestamp()],
+            merge: true
+        )
+    }
+
     func deleteUserData(uid: String) async throws {
         // App Store Guideline 5.1.1(v) compliance
         try await db.collection("users").document(uid).delete()

@@ -107,6 +107,18 @@ public struct Product: Codable, Identifiable, Hashable {
         return Self.restrictedKeywords.contains { haystack.contains($0) }
     }
 
+    /// One name per aisle: chips and namkeen are filed under Snacks, so the
+    /// shop never shows a "Snacks" and a "Chips" category side by side.
+    public static func shopCategory(_ raw: String) -> String {
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch key {
+        case "chips", "chip", "namkeen", "chips & namkeen", "chips and namkeen", "snack", "snacks & namkeen":
+            return "Snacks"
+        default:
+            return raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
     private static let restrictedKeywords = [
         "cigarette", "cigar", "tobacco", "bidi", "beedi", "hookah", "shisha", "vape",
         "e-cigarette", "nicotine", "rolling paper", "gutkha", "paan masala", "snuff", "zarda",
@@ -150,7 +162,7 @@ extension Product {
             options: c.flexibleString(.options),
             badge: c.flexibleString(.badge),
             img: c.flexibleString(.img) ?? c.flexibleString(.image) ?? c.flexibleString(.imageUrl) ?? "",
-            cat: c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "Other",
+            cat: Self.shopCategory(c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "Other"),
             variants: try? c.decode([ProductVariant].self, forKey: .variants),
             ageRestricted: (try? c.decode(Bool.self, forKey: .ageRestricted)) ?? false,
             minAge: c.flexibleInt(.minAge),

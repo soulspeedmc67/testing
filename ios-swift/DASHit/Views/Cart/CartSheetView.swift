@@ -5,6 +5,7 @@ struct CartSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isCheckoutOpen = false
     @State private var isCouponsOpen = false
+    @State private var isClearConfirmOpen = false
 
     private var cardShape: RoundedRectangle { RoundedRectangle(cornerRadius: 14, style: .continuous) }
 
@@ -23,10 +24,30 @@ struct CartSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color.surface, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if !cart.items.isEmpty {
+                        Button {
+                            HapticsManager.shared.light()
+                            isClearConfirmOpen = true
+                        } label: {
+                            Label("Remove all", systemImage: "trash")
+                                .labelStyle(.titleAndIcon)
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundColor(.danger)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") { dismiss() }
                         .foregroundColor(.brandAccent)
                 }
+            }
+            .confirmationDialog("Remove everything from your cart?", isPresented: $isClearConfirmOpen, titleVisibility: .visible) {
+                Button("Remove all items", role: .destructive) {
+                    withAnimation(.dashitSpring) { cart.clearCart() }
+                    HapticsManager.shared.warning()
+                }
+                Button("Keep them", role: .cancel) {}
             }
             .sheet(isPresented: $isCheckoutOpen) {
                 CheckoutView()

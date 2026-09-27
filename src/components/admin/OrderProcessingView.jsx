@@ -28,7 +28,7 @@ import {
   UserPlus,
   X
 } from "lucide-react";
-import { ORDER_STATUS } from "../../lib/db";
+import { ORDER_STATUS, ORDER_CHANGE_WINDOW_SECONDS } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, addDriverToRoster, getDriverActiveOrderCounts } from "../../lib/drivers";
 import OrderDetailDrawer from "./OrderDetailDrawer";
 import PrintPackingSlip from "./PrintPackingSlip";
@@ -83,7 +83,7 @@ export default function OrderProcessingView({
     const t = orderTimeMs(o);
     if (!t) return 0;
     const elapsed = Math.floor((now - t) / 1000);
-    return Math.max(0, 60 - elapsed);
+    return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsed);
   }, [now]);
 
   // Auto-open drawer for the latest PLACED order on first load
@@ -226,7 +226,7 @@ export default function OrderProcessingView({
         graceRem > 0
       ) {
         alert(
-          `Cannot process order #${id} yet. Customer has a 60-second grace window to modify items or cancel (${graceRem}s remaining).`
+          `Cannot process order #${id} yet. Customer has a 30-second grace window to modify items or cancel (${graceRem}s remaining).`
         );
         return;
       }
@@ -946,7 +946,7 @@ export default function OrderProcessingView({
                                   type="button"
                                   disabled
                                   className="w-full py-2.5 px-3 rounded-xl font-bold text-xs bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-300 cursor-not-allowed flex items-center justify-center space-x-2"
-                                  title="Customer has a 60-second grace window to modify items or cancel before packing starts"
+                                  title="Customer has a 30-second grace window to modify items or cancel before packing starts"
                                 >
                                   <Clock className="w-3.5 h-3.5 text-amber-600 animate-spin" style={{ animationDuration: "3s" }} />
                                   <span>Customer Editing ({getGraceSeconds(ord)}s)</span>
@@ -954,7 +954,7 @@ export default function OrderProcessingView({
                                 <div className="h-1 w-full bg-amber-100 dark:bg-amber-950/50 rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-amber-500 transition-all duration-1000 rounded-full"
-                                    style={{ width: `${Math.round(((60 - getGraceSeconds(ord)) / 60) * 100)}%` }}
+                                    style={{ width: `${Math.round(((ORDER_CHANGE_WINDOW_SECONDS - getGraceSeconds(ord)) / ORDER_CHANGE_WINDOW_SECONDS) * 100)}%` }}
                                   />
                                 </div>
                               </div>
@@ -1332,7 +1332,7 @@ export default function OrderProcessingView({
                               <button
                                 type="button"
                                 disabled
-                                title={`Order is in customer 60-second grace window (${getGraceSeconds(ord)}s remaining). Packing unlocked once window closes.`}
+                                title={`Order is in customer 30-second grace window (${getGraceSeconds(ord)}s remaining). Packing unlocked once window closes.`}
                                 className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 border border-amber-300 dark:border-amber-800/60 font-bold text-[11px] cursor-not-allowed whitespace-nowrap shadow-xs flex items-center space-x-1"
                               >
                                 <Clock className="w-3 h-3 text-amber-600 animate-spin" style={{ animationDuration: "3s" }} />

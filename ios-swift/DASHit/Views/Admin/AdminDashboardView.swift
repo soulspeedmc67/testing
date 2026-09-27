@@ -21,6 +21,8 @@ public struct AdminDashboardView: View {
     /// Shown as a Sign out button in the header when set.
     public var onSignOut: (() -> Void)? = nil
     @State private var isSignOutConfirmOpen = false
+    @State private var sidebarSelection: AdminTab? = .home
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     public init(onSwitchToCustomer: (() -> Void)? = nil, onSignOut: (() -> Void)? = nil) {
         self.onSwitchToCustomer = onSwitchToCustomer
@@ -28,42 +30,41 @@ public struct AdminDashboardView: View {
     }
 
     public var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Frosted Live Header
-                headerView
-
-                // Segmented Category Tabs
-                tabSelectorView
-
-                // Main Content Body based on selected Tab
-                ZStack {
-                    Color(uiColor: .systemGroupedBackground)
-                        .ignoresSafeArea()
-
-                    switch vm.selectedTab {
-                    case .orders:
-                        ordersTabContent
-                    case .inventory:
-                        stockTabContent
-                    case .addProduct:
-                        addProductDirectContent
-                    case .riders:
-                        ridersTabContent
-                    case .distributors:
-                        distributorsTabContent
-                    case .storeControls:
-                        storeControlsTabContent
-                    case .offers:
-                        offersTabContent
-                    case .batchInward:
-                        batchInwardTabContent
-                    case .importCSV:
-                        AdminCSVImportView(vm: vm)
-                    }
-                }
+        // The web console's layout: sections down the side, the chosen one on
+        // the right. On iPhone the list comes first and each section opens over it.
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            sidebar
+        } detail: {
+            NavigationStack {
+                detail(for: vm.selectedTab)
+                    .navigationTitle(vm.selectedTab.rawValue)
+                    .navigationBarTitleDisplayMode(vm.selectedTab == .home ? .inline : .large)
+                    .toolbar { detailToolbar }
             }
-            .navigationBarHidden(true)
+        }
+        .navigationSplitViewStyle(.balanced)
+        .tint(AdminStyle.brand)
+        .onChange(of: sidebarSelection) { _, tab in
+            if let tab, tab != vm.selectedTab { vm.selectedTab = tab }
+        }
+        .onChange(of: vm.selectedTab) { _, tab in
+            if sidebarSelection != tab { sidebarSelection = tab }
+        }
+        .confirmationDialog("Sign out of DASHit Admin?", isPresented: $isSignOutConfirmOpen, titleVisibility: .visible) {
+            Button("Sign out", role: .destructive) { onSignOut?() }
+            Button("Cancel", role: .cancel) {}
+        }
+        #if DEBUG
+        .task {
+            if let raw = ScreenshotHooks.adminTab, let tab = AdminTab(rawValue: raw) {
+                vm.selectedTab = tab
+            }
+            if ScreenshotHooks.adminOpenOrder {
+                try? await Task.sleep(for: .seconds(1.5))
+                selectedOrderForDetail = vm.recentOrders.first
+            }
+        }
+        #endif
             .alert("Not saved", isPresented: Binding(
                 get: { vm.saveError != nil },
                 set: { if !$0 { vm.saveError = nil } }
@@ -143,150 +144,162 @@ public struct AdminDashboardView: View {
                     Text("\(p.name) will be removed from the shop straight away.")
                 }
             }
-        }
     }
 
-    // MARK: - Header View
+    // MARK: - Sidebar
 
-    private var headerView: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
+    private var sidebar: some View {
+        List(selection: $sidebarSelection) {
+            Section {
+                VStack(alignment: .leading, spacing: 6) {
+                    (Text("DASH").foregroundColor(.primary) + Text("IT").foregroundColor(AdminStyle.brand))
+                        .font(.system(size: 26, weight: .black))
                     HStack(spacing: 6) {
-                        Text("DASHIT PARTNER")
-                            .font(.system(size: 11, weight: .black, design: .rounded))
-                            .tracking(1.2)
-                            .foregroundColor(.orange)
-
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 7, height: 7)
-                        Text("LIVE")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.green)
-                    }
-
-                    Text("Dark Store Operations")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.primary)
-                }
-
-                Spacer()
-
-                // Audio Chime Toggle
-                Button(action: {
-                    vm.audioChimeEnabled.toggle()
-                    if vm.audioChimeEnabled { vm.playOrderChime() }
-                }) {
-                    Image(systemName: vm.audioChimeEnabled ? "bell.badge.fill" : "bell.slash.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(vm.audioChimeEnabled ? .orange : .secondary)
-                        .padding(8)
-                        .background(Color(uiColor: .tertiarySystemFill))
-                        .clipShape(Circle())
-                }
-
-                // Store Status Button
-                Button(action: { isStoreControlSheetOpen = true }) {
-                    HStack(spacing: 5) {
                         Circle()
                             .fill(vm.storeConfig.isOpen ? Color.green : Color.red)
                             .frame(width: 8, height: 8)
-                        Text(vm.storeConfig.isOpen ? "Open" : "Closed")
-                            .font(.system(size: 12, weight: .bold))
+                        Text(vm.storeConfig.isOpen ? "Shop is open" : "Shop is closed")
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(vm.storeConfig.isOpen ? .green : .red)
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background((vm.storeConfig.isOpen ? Color.green : Color.red).opacity(0.12))
-                    .clipShape(Capsule())
                 }
+                .padding(.vertical, 6)
+                .listRowBackground(Color.clear)
+            }
 
-                if onSignOut != nil {
-                    Button(action: { isSignOutConfirmOpen = true }) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(8)
-                            .background(Color(uiColor: .secondarySystemFill))
-                            .clipShape(Circle())
-                    }
-                    .accessibilityLabel("Sign out")
-                    .confirmationDialog("Sign out of DASHit Admin?", isPresented: $isSignOutConfirmOpen, titleVisibility: .visible) {
-                        Button("Sign out", role: .destructive) { onSignOut?() }
-                        Button("Cancel", role: .cancel) {}
+            ForEach(AdminTab.NavGroup.allCases) { group in
+                Section(group.rawValue) {
+                    ForEach(AdminTab.allCases.filter { $0.group == group }) { tab in
+                        NavigationLink(value: tab) {
+                            sidebarRow(tab)
+                        }
                     }
                 }
+            }
 
-                // Customer View Toggle
+            Section {
                 if let onSwitch = onSwitchToCustomer {
                     Button(action: onSwitch) {
-                        Image(systemName: "cart.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.primary)
-                            .padding(8)
-                            .background(Color(uiColor: .secondarySystemFill))
-                            .clipShape(Circle())
+                        Label("Open the shop app", systemImage: "cart.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                }
+                if onSignOut != nil {
+                    Button(role: .destructive) {
+                        isSignOutConfirmOpen = true
+                    } label: {
+                        Label("Sign out", systemImage: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 16, weight: .semibold))
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 6)
         }
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .listStyle(.sidebar)
+        .navigationTitle("Admin")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Tab Selector View
+    /// A section in the side list: big enough to tap without aiming, with a
+    /// count when something is waiting there.
+    private func sidebarRow(_ tab: AdminTab) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: tab.iconName)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(AdminStyle.brand)
+                .frame(width: 26)
+            Text(tab.rawValue)
+                .font(.system(size: 17, weight: .semibold))
+            Spacer(minLength: 6)
+            if tab == .orders && vm.activeOrdersCount > 0 {
+                countBadge("\(vm.activeOrdersCount)", fill: AdminStyle.brand, text: .white)
+            } else if tab == .inventory && vm.lowStockCount > 0 {
+                countBadge("\(vm.lowStockCount) low", fill: Color.yellow, text: .black)
+            }
+        }
+        .padding(.vertical, 6)
+    }
 
-    private var tabSelectorView: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(AdminTab.allCases) { tab in
-                    let isSelected = vm.selectedTab == tab
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            vm.selectedTab = tab
-                        }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: tab.iconName)
-                                .font(.system(size: 12, weight: .bold))
-                            Text(tab.rawValue)
-                                .font(.system(size: 13, weight: .bold))
+    private func countBadge(_ label: String, fill: Color, text: Color) -> some View {
+        Text(label)
+            .font(.system(size: 12, weight: .heavy))
+            .foregroundColor(text)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(fill, in: Capsule())
+    }
 
-                            // Badges
-                            if tab == .orders && vm.activeOrdersCount > 0 {
-                                Text("\(vm.activeOrdersCount)")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 2)
-                                    .background(Color.orange)
-                                    .clipShape(Capsule())
-                            } else if tab == .inventory && vm.lowStockCount > 0 {
-                                Text("\(vm.lowStockCount)")
-                                    .font(.system(size: 10, weight: .black))
-                                    .foregroundColor(.black)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 2)
-                                    .background(Color.yellow)
-                                    .clipShape(Capsule())
-                            }
-                        }
-                        .foregroundColor(isSelected ? .white : .primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(isSelected ? Color.orange : Color(uiColor: .tertiarySystemFill))
-                        .clipShape(Capsule())
-                    }
+    // MARK: - Detail
+
+    @ViewBuilder
+    private func detail(for tab: AdminTab) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if tab != .home {
+                Text(tab.explanation)
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            Group {
+                switch tab {
+                case .home:
+                    AdminHomeView(vm: vm, onOpenStoreSettings: { isStoreControlSheetOpen = true })
+                case .orders:
+                    ordersTabContent
+                case .inventory:
+                    stockTabContent
+                case .addProduct:
+                    addProductDirectContent
+                case .riders:
+                    ridersTabContent
+                case .distributors:
+                    distributorsTabContent
+                case .storeControls:
+                    storeControlsTabContent
+                case .offers:
+                    offersTabContent
+                case .batchInward:
+                    batchInwardTabContent
+                case .importCSV:
+                    AdminCSVImportView(vm: vm)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .background(AdminStyle.page.ignoresSafeArea())
+    }
+
+    @ToolbarContentBuilder
+    private var detailToolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button {
+                vm.audioChimeEnabled.toggle()
+                if vm.audioChimeEnabled { vm.playOrderChime() }
+            } label: {
+                Label(vm.audioChimeEnabled ? "Order sound on" : "Order sound off",
+                      systemImage: vm.audioChimeEnabled ? "bell.badge.fill" : "bell.slash.fill")
+            }
+            .accessibilityHint("Plays a sound when a new order comes in")
+
+            Button {
+                isStoreControlSheetOpen = true
+            } label: {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(vm.storeConfig.isOpen ? Color.green : Color.red)
+                        .frame(width: 8, height: 8)
+                    Text(vm.storeConfig.isOpen ? "Open" : "Closed")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(vm.storeConfig.isOpen ? .green : .red)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background((vm.storeConfig.isOpen ? Color.green : Color.red).opacity(0.12), in: Capsule())
+            }
+            .accessibilityLabel(vm.storeConfig.isOpen ? "Shop is open. Change" : "Shop is closed. Change")
+        }
     }
 
     // MARK: - Tab 1: Orders Content
@@ -607,7 +620,7 @@ public struct AdminDashboardView: View {
     // MARK: - Tab 3: Direct Add Item Content
 
     private var addProductDirectContent: some View {
-        AddProductSheetView(vm: vm, editingProduct: nil)
+        AddProductSheetView(vm: vm, editingProduct: nil, isEmbedded: true)
     }
 
     // MARK: - Tab 4: Riders Content
@@ -808,7 +821,7 @@ public struct AdminDashboardView: View {
     // MARK: - Tab 6: Store Controls Content
 
     private var storeControlsTabContent: some View {
-        StoreControlSheetView(vm: vm)
+        StoreControlSheetView(vm: vm, isEmbedded: true)
     }
 
     // MARK: - Tab 7: Discounts Content
@@ -1072,30 +1085,48 @@ struct AssignDriverSheetView: View {
 struct AddProductSheetView: View {
     @ObservedObject var vm: AdminDashboardViewModel
     var editingProduct: Product?
+    /// Shown as the "Add an item" page rather than a pop-up: no Cancel, and
+    /// saving clears the form for the next item instead of closing.
+    var isEmbedded: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     @State private var name: String = ""
-    @State private var unit: String = "1 kg"
-    @State private var price: String = "99"
-    @State private var originalPrice: String = "120"
+    @State private var unit: String = ""
+    @State private var price: String = ""
+    @State private var originalPrice: String = ""
     @State private var cat: String = "Staples"
     @State private var distributor: String = Distributor.selfName
     @State private var img: String = ""
-    @State private var stock: String = "50"
+    @State private var stock: String = ""
     @State private var badge: String = ""
+    @State private var lastSaved: String?
+
+    private var priceValue: Double? {
+        Double(price.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
+    }
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty && priceValue != nil
+    }
 
     private static func amount(_ value: Double) -> String {
         value == value.rounded() ? String(Int(value)) : String(value)
     }
 
-    let categories = ["Staples", "Dairy", "Bakery", "Fruits", "Chips", "Biscuits", "Beverages", "Instant Food", "Spices", "Personal Care"]
+    let categories = ["Staples", "Dairy", "Bakery", "Fruits", "Snacks", "Biscuits", "Beverages", "Instant Food", "Spices", "Personal Care"]
 
     var body: some View {
-        NavigationStack {
+        OptionalNavigationStack(enabled: !isEmbedded) {
             Form {
-                Section("Basic Information") {
-                    TextField("Product Title", text: $name)
-                    TextField("Unit Size (e.g., 1 kg, 500 ml)", text: $unit)
+                if let lastSaved {
+                    Section {
+                        Label("“\(lastSaved)” is now in the shop.", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                }
+                Section("About the item") {
+                    TextField("Name, e.g. Amul Taaza Milk", text: $name)
+                    TextField("Pack size, e.g. 1 kg or 500 ml", text: $unit)
                     Picker("Category", selection: $cat) {
                         ForEach(categories, id: \.self) { c in
                             Text(c).tag(c)
@@ -1108,18 +1139,21 @@ struct AddProductSheetView: View {
                     }
                 }
 
-                Section("Pricing & Inventory") {
-                    TextField("Selling Price (₹)", text: $price)
+                Section("Price and stock") {
+                    TextField("Price you sell at (₹)", text: $price)
+                        .keyboardType(.decimalPad)
+                    TextField("MRP printed on the pack (₹, optional)", text: $originalPrice)
+                        .keyboardType(.decimalPad)
+                    TextField("How many you have", text: $stock)
                         .keyboardType(.numberPad)
-                    TextField("MRP / Original Price (₹)", text: $originalPrice)
-                        .keyboardType(.numberPad)
-                    TextField("Initial Stock Count", text: $stock)
-                        .keyboardType(.numberPad)
-                    TextField("Badge (e.g., Bestseller, Fresh)", text: $badge)
+                    TextField("Label on the item, e.g. Fresh (optional)", text: $badge)
                 }
 
-                Section("Product Photo URL") {
-                    TextField("Image HTTPS URL", text: $img)
+                Section("Photo (optional)") {
+                    TextField("Photo link, starting with https://", text: $img)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
                     if let url = URL(string: img), !img.isEmpty {
                         AsyncImage(url: url) { phase in
                             if let img = phase.image {
@@ -1129,8 +1163,8 @@ struct AddProductSheetView: View {
                     }
                 }
             }
-            .navigationTitle(editingProduct != nil ? "Edit Item" : "Add Product")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(isEmbedded ? AdminTab.addProduct.rawValue : (editingProduct != nil ? "Edit item" : "Add an item"))
+            .navigationBarTitleDisplayMode(isEmbedded ? .large : .inline)
             .onAppear {
                 // Editing starts from the item's current details, not the new-item defaults.
                 guard let p = editingProduct else { return }
@@ -1145,19 +1179,22 @@ struct AddProductSheetView: View {
                 badge = p.badge ?? ""
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                if !isEmbedded {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        let pVal = Double(price) ?? 99.0
-                        let origVal = Double(originalPrice)
+                        guard let pVal = priceValue else { return }
+                        let origVal = Double(originalPrice.trimmingCharacters(in: .whitespaces))
                         // A blank count leaves an existing item's stock as it is.
-                        let sVal = Int(stock) ?? (editingProduct == nil ? 50 : editingProduct?.stock)
+                        let sVal = Int(stock.trimmingCharacters(in: .whitespaces)) ?? (editingProduct == nil ? 0 : editingProduct?.stock)
+                        let cleanName = name.trimmingCharacters(in: .whitespaces)
                         vm.saveProduct(
                             id: editingProduct?.id,
-                            name: name.isEmpty ? "New Grocery Item" : name,
-                            unit: unit,
+                            name: cleanName,
+                            unit: unit.isEmpty ? "1 pc" : unit,
                             price: pVal,
                             originalPrice: origVal,
                             cat: cat,
@@ -1166,10 +1203,33 @@ struct AddProductSheetView: View {
                             stock: sVal,
                             badge: badge
                         )
-                        dismiss()
+                        if isEmbedded {
+                            // Ready for the next item.
+                            withAnimation { lastSaved = cleanName }
+                            name = ""; unit = ""; price = ""; originalPrice = ""; stock = ""; badge = ""; img = ""
+                        } else {
+                            dismiss()
+                        }
                     }
+                    .font(.system(size: 17, weight: .bold))
+                    .disabled(!canSave)
                 }
             }
+        }
+    }
+}
+
+/// A sheet's own NavigationStack, left out when the same screen is shown
+/// inside the admin's page (which already has one).
+struct OptionalNavigationStack<Content: View>: View {
+    let enabled: Bool
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if enabled {
+            NavigationStack { content }
+        } else {
+            content
         }
     }
 }
@@ -1178,6 +1238,8 @@ struct AddProductSheetView: View {
 
 struct StoreControlSheetView: View {
     @ObservedObject var vm: AdminDashboardViewModel
+    /// Shown as the "Shop settings" page rather than a pop-up.
+    var isEmbedded: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     @State private var isOpen: Bool = true
@@ -1187,13 +1249,17 @@ struct StoreControlSheetView: View {
     let reasons = ["Normal Operations", "Heavy Rain & Flooding", "Late Night Shift", "Power Outage", "Restocking Inventory"]
 
     var body: some View {
-        NavigationStack {
+        OptionalNavigationStack(enabled: !isEmbedded) {
             Form {
-                Section("Store Status") {
-                    Toggle("Store Open for Orders", isOn: $isOpen)
+                Section {
+                    Toggle(isOn: $isOpen) {
+                        Text("Take orders now")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .tint(.green)
 
                     if !isOpen {
-                        Picker("Reason for Closure", selection: $closeReason) {
+                        Picker("Why is it closed?", selection: $closeReason) {
                             ForEach(reasons, id: \.self) { r in
                                 Text(r).tag(r)
                             }
@@ -1201,12 +1267,22 @@ struct StoreControlSheetView: View {
                     }
                 }
 
-                Section("Surge & Peak Demand") {
-                    Toggle("Surge Pricing (+₹20 delivery)", isOn: $isSurge)
+                } header: {
+                    Text("Shop")
+                } footer: {
+                    Text(isOpen ? "Customers can order now." : "Customers see that the shop is closed, and why.")
+                }
+
+                Section {
+                    Toggle("Busy-hours delivery fee (+₹20)", isOn: $isSurge)
+                } header: {
+                    Text("Busy hours")
+                } footer: {
+                    Text("Turn on when there are too many orders or not enough riders.")
                 }
             }
-            .navigationTitle("Store Settings")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(isEmbedded ? AdminTab.storeControls.rawValue : "Shop settings")
+            .navigationBarTitleDisplayMode(isEmbedded ? .large : .inline)
             .onAppear {
                 isOpen = vm.storeConfig.isOpen
                 closeReason = vm.storeConfig.closeReason
@@ -1217,8 +1293,9 @@ struct StoreControlSheetView: View {
                     Button("Save") {
                         vm.toggleStore(isOpen: isOpen, reason: closeReason)
                         vm.toggleSurgePricing(enabled: isSurge)
-                        dismiss()
+                        if !isEmbedded { dismiss() }
                     }
+                    .font(.system(size: 17, weight: .bold))
                 }
             }
         }
@@ -1364,8 +1441,6 @@ struct BatchInwardSheetView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Add many at once")
-                        .font(.system(size: 16, weight: .bold))
                     Text("Pick who the stock is from, then add to each item.")
                         .font(.system(size: 13))
                         .foregroundColor(.secondary)

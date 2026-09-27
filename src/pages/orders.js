@@ -33,7 +33,7 @@ import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
-import { watchOrder, watchOrderTracking, updateOrderStatus, updateOrderContent, getOrderGracePeriodSeconds, retireFinishedOrder, watchProducts, ORDER_STATUS } from "../lib/db";
+import { watchOrder, watchOrderTracking, updateOrderStatus, updateOrderContent, getOrderGracePeriodSeconds, retireFinishedOrder, watchProducts, ORDER_STATUS, ORDER_CHANGE_WINDOW_SECONDS } from "../lib/db";
 import { ALL_PRODUCTS } from "../data/products";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
@@ -67,13 +67,13 @@ function getRemainingCancellationSeconds(order) {
 
   /* createdAt arrives as a Firestore Timestamp ({seconds, nanoseconds}) for any
      order read back from the server, and as an ISO string only for the local
-     copy. `new Date(timestampObject)` is Invalid Date, so the 60-second cancel
+     copy. `new Date(timestampObject)` is Invalid Date, so the 30-second cancel
      window silently never opened for real orders. */
   const orderTime = orderTimestampMs(order);
   if (!orderTime) return 0;
 
   const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
-  return Math.max(0, 60 - elapsedSec);
+  return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
 }
 
 export default function OrdersPage() {
@@ -673,7 +673,7 @@ export default function OrdersPage() {
               </div>
             )}
 
-            {/* 60-Second Order Modification & Grace Period Card */}
+            {/* 30-Second Order Modification & Grace Period Card */}
             {cancellationSeconds > 0 && (
               <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-200/90 dark:border-amber-500/30 rounded-3xl p-4 space-y-3.5 shadow-sm dark:bg-surface-raised">
                 <div className="flex items-start justify-between">
@@ -704,7 +704,7 @@ export default function OrdersPage() {
                 <div className="space-y-1">
                   <div className="h-2 w-full bg-amber-200/60 dark:bg-surface-muted rounded-full overflow-hidden p-0.5">
                     <motion.div
-                      animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / 60) * 100))}%` }}
+                      animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / ORDER_CHANGE_WINDOW_SECONDS) * 100))}%` }}
                       transition={{ ease: "linear", duration: 0.9 }}
                       className="h-full bg-gradient-to-r from-amber-500 via-[#FF6F1E] to-[#FF5B00] rounded-full"
                     />
@@ -1101,7 +1101,7 @@ export default function OrdersPage() {
         )}
       </DraggableSheet>
 
-      {/* 60s Order Content Modifier Modal */}
+      {/* 30s Order Content Modifier Modal */}
       <ModifyOrderModal
         isOpen={isModifyModalOpen}
         onClose={() => setIsModifyModalOpen(false)}
@@ -1111,7 +1111,7 @@ export default function OrdersPage() {
         remainingSeconds={cancellationSeconds}
       />
 
-      {/* 60s Frictionless Cancellation Modal */}
+      {/* 30s Frictionless Cancellation Modal */}
       <CancelOrderModal
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}

@@ -63,6 +63,12 @@ data class Product(
         get() = originalPrice?.let { "₹${it.toInt()}" }
 }
 
+/** One name per aisle: chips and namkeen are filed under Snacks, as on iOS. */
+fun shopCategory(raw: String): String = when (raw.trim().lowercase()) {
+    "chips", "chip", "namkeen", "chips & namkeen", "chips and namkeen", "snack", "snacks & namkeen" -> "Snacks"
+    else -> raw.trim()
+}
+
 private val RESTRICTED_CATEGORIES = setOf("tobacco", "tobacco & smoking", "smoking")
 
 private val RESTRICTED_KEYWORDS = listOf(

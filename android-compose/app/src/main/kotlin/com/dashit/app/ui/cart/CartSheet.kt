@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Warning
@@ -38,6 +39,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,6 +78,8 @@ fun CartSheet(
     val items by cartVm.items.collectAsState()
     val bill by cartVm.bill.collectAsState()
     val coupon by cartVm.coupon.collectAsState()
+    // "Remove all" asks once, right in the header, before emptying the cart.
+    var isConfirmingClear by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -99,11 +104,67 @@ fun CartSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Your Cart",
+                        text = if (isConfirmingClear) "Remove all items?" else "Your Cart",
                         color = DashitColors.TextPrimary,
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier.weight(1f)
                     )
+
+                    if (isConfirmingClear) {
+                        Text(
+                            text = "Keep",
+                            color = DashitColors.TextSecondary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { isConfirmingClear = false }
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        )
+                        Text(
+                            text = "Remove",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(DashitColors.Danger)
+                                .clickable {
+                                    HapticsManager.medium(view)
+                                    cartVm.clear()
+                                    isConfirmingClear = false
+                                }
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                    } else if (items.isNotEmpty()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable {
+                                    HapticsManager.light(view)
+                                    isConfirmingClear = true
+                                }
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = DashitColors.Danger,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Remove all",
+                                color = DashitColors.Danger,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
 
                     Box(
                         modifier = Modifier

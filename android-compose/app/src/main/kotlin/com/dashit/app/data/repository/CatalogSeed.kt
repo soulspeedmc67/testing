@@ -17,8 +17,8 @@ object CatalogSeed {
 
     val bestsellerTiles = listOf(
         CategoryTile(
-            id = "chips_namkeen",
-            name = "Chips & Namkeen",
+            id = "snacks",
+            name = "Snacks",
             previewImages = listOf(
                 "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80",
                 "https://images.unsplash.com/photo-1621447504864-d8686e12698c?w=300&auto=format&fit=crop&q=80",

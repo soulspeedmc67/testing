@@ -73,6 +73,23 @@ object AuthRepository {
      * then the Firebase account itself. Orders stay with the store as its
      * sales records, as on the web and iOS.
      */
+    /** Adds the shopper's name to an account that has none. */
+    suspend fun updateName(rawName: String): UserProfile {
+        val name = rawName.trim()
+        require(name.isNotEmpty()) { "Please enter your name." }
+        val current = _user.value ?: throw IllegalStateException("Please sign in first.")
+        try {
+            db.collection("users").document(current.id)
+                .set(mapOf("name" to name, "updatedAt" to FieldValue.serverTimestamp()), SetOptions.merge())
+                .await()
+        } catch (e: Exception) {
+            throw IllegalStateException("We couldn't save your name. Check your connection and try again.", e)
+        }
+        val updated = current.copy(name = name)
+        save(updated)
+        return updated
+    }
+
     suspend fun deleteAccount() {
         val current = auth.currentUser ?: return
         val profile = db.collection("users").document(current.uid)

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Adds items to an order during its 60-second change window.
+/// Adds items to an order during its 30-second change window.
 ///
 /// `firestore.rules` never lets a customer edit an order's items; it only
 /// lets them cancel an order that is still "Placed". So an update is made the
@@ -20,7 +20,7 @@ enum OrderUpdater {
         var errorDescription: String? {
             switch self {
             case .windowClosed:
-                return "The 60 seconds are up and the store is packing your order."
+                return "The 30 seconds are up and the store is packing your order."
             case .nothingAdded:
                 return "Add at least one item first."
             case .notSignedIn:

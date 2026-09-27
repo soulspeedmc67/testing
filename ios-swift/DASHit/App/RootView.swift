@@ -69,6 +69,11 @@ struct RootView: View {
             if let raw = ScreenshotHooks.initialTab, let tab = TabItem(rawValue: raw) {
                 tabSelection.wrappedValue = tab
             }
+            if ScreenshotHooks.openSignUp {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    authMode = .signUp
+                }
+            }
             if ScreenshotHooks.openProfile {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     isProfileOpen = true

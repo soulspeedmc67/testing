@@ -66,7 +66,7 @@ class StorefrontViewModel(
             val filter = cat.lowercase()
             list = list.filter { p ->
                 p.cat.lowercase() == filter ||
-                (filter.contains("chips") && (p.cat.equals("Snacks", true) || p.name.contains("chips", true))) ||
+                (filter == "snacks" && (p.name.contains("chips", true) || p.name.contains("namkeen", true))) ||
                 (filter.contains("drinks") && (p.cat.equals("Drinks", true) || p.name.contains("drink", true) || p.name.contains("bull", true))) ||
                 (filter.contains("ice cream") && (p.cat.equals("Dairy", true) || p.name.contains("cream", true) || p.name.contains("amul", true))) ||
                 (filter.contains("vegetables") && (p.cat.equals("Vegetables", true) || p.cat.equals("Fresh Fruits", true))) ||
@@ -115,7 +115,7 @@ class StorefrontViewModel(
     private fun deriveCategories(products: List<Product>): List<Category> {
         val preferredOrder = listOf(
             "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
-            "Snacks", "Chips", "Biscuits", "Bakery", "Beverages", "Drinks",
+            "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
             "Instant Food", "Spices", "Chicken", "Home Care", "Kitchen Care"
         )
         val names = products.map { it.cat.trim() }.filter { it.isNotEmpty() }.distinct()

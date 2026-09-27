@@ -4,6 +4,7 @@ import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.Offer
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.model.ProductVariant
+import com.dashit.app.data.model.shopCategory
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -62,7 +63,7 @@ class FirestoreRepository {
                     val originalPrice = (data["originalPrice"] as? Number)?.toDouble() ?: (data["mrp"] as? Number)?.toDouble()
                     val unit = (data["unit"] as? String) ?: (data["weight"] as? String) ?: ""
                     val img = (data["img"] as? String) ?: (data["image"] as? String) ?: ""
-                    val cat = (data["cat"] as? String) ?: (data["category"] as? String) ?: "Other"
+                    val cat = shopCategory((data["cat"] as? String) ?: (data["category"] as? String) ?: "Other")
                     val rating = (data["rating"] as? String) ?: "4.8"
                     val ratingCount = (data["ratingCount"] as? String) ?: "120"
                     val time = (data["time"] as? String) ?: "8 mins"
@@ -139,7 +140,7 @@ class FirestoreRepository {
                 val list = snapshot.documents.mapNotNull { doc ->
                     val data = doc.data ?: return@mapNotNull null
                     val id = (data["id"] as? String) ?: doc.id
-                    val name = (data["name"] as? String) ?: return@mapNotNull null
+                    val name = (data["name"] as? String)?.let { shopCategory(it) } ?: return@mapNotNull null
                     val icon = data["icon"] as? String
                     val image = data["image"] as? String
                     val sortOrder = (data["sortOrder"] as? Number)?.toInt() ?: 0
@@ -148,7 +149,8 @@ class FirestoreRepository {
                 }
 
                 if (list.isNotEmpty()) {
-                    trySend(list)
+                    // "Chips" and "Snacks" both become Snacks: show it once.
+                    trySend(list.distinctBy { it.name.lowercase() })
                 } else {
                     trySend(CatalogSeed.categories)
                 }

@@ -206,7 +206,9 @@ struct EmailSignInForm: View {
 
     private var canSubmit: Bool {
         guard !email.isEmpty, password.count >= 6, !auth.isAuthenticating else { return false }
-        return isCreating ? AuthService.normalizedMobile(mobile) != nil : true
+        return isCreating
+            ? AuthService.normalizedMobile(mobile) != nil && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            : true
     }
 
     var body: some View {

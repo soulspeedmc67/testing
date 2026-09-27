@@ -4,10 +4,16 @@ on:
   push:
     branches: [ main, native-swift-ios ]
   workflow_dispatch:
+    inputs:
+      screenshots_only:
+        description: "Only take simulator screenshots (no IPA, no TestFlight)"
+        type: boolean
+        default: false
 
 jobs:
   build-native-swift-ios:
     name: Build Native Swift IPA (macos-15 + Xcode 26)
+    if: ${{ !inputs.screenshots_only }}
     runs-on: macos-15
 
     steps:
@@ -269,3 +275,207 @@ jobs:
           else
             echo "WARNING: admin upload failed. Is there an app for com.dashit.admin in App Store Connect?"
           fi
+
+  # Run with screenshots_only = true: Debug builds of both apps in the iPad and
+  # iPhone simulators, opened in known states through the DEBUG-only launch
+  # arguments in ios-swift/DASHit/Core/Utils/ScreenshotHooks.swift, so UI work
+  # can be checked without a Mac. The admin runs on a sample shop
+  # (-DASHitAdminDemo), so it needs no sign-in or live data. Nothing is signed
+  # or uploaded to TestFlight.
+  screenshots:
+    name: Capture simulator screenshots
+    if: ${{ inputs.screenshots_only }}
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          for xcode in /Applications/Xcode_26*.app /Applications/Xcode_26.app /Applications/Xcode_16*.app /Applications/Xcode.app; do
+            if [ -d "$xcode" ]; then
+              echo "Selecting $xcode"
+              sudo xcode-select -s "$xcode/Contents/Developer"
+              break
+            fi
+          done
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          cd ios-swift
+          xcodegen generate
+
+      - name: Resolve Swift Package Dependencies
+        run: |
+          cd ios-swift
+          xcodebuild -resolvePackageDependencies -project DASHit.xcodeproj
+
+      # Same interface patch the IPA workflow applies to the resolved packages.
+      - name: Patch Swift Interfaces
+        run: |
+          python3 -c '
+          import os
+          derived = os.path.expanduser("~/Library/Developer/Xcode/DerivedData")
+          for root, dirs, files in os.walk(derived):
+              for f in files:
+                  if f.endswith(".swiftinterface"):
+                      p = os.path.join(root, f)
+                      try:
+                          with open(p, "r", encoding="utf-8") as fl:
+                              content = fl.read()
+                          if "$NonescapableTypes" in content:
+                              content = content.replace("#if compiler(>=5.3) && $NonescapableTypes", "#if true")
+                              with open(p, "w", encoding="utf-8") as fl:
+                                  fl.write(content)
+                      except Exception:
+                          pass
+          '
+
+      - name: Pick and boot an iPad and an iPhone
+        run: |
+          pick() {
+            xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          prefs = sys.argv[1].split("|")
+          family = sys.argv[2]
+          devices = json.load(sys.stdin)["devices"]
+          runtimes = sorted((rt for rt in devices if "iOS" in rt), reverse=True)
+          for name in prefs:
+              for rt in runtimes:
+                  for d in devices[rt]:
+                      if d["name"] == name:
+                          print(d["udid"]); sys.exit(0)
+          for rt in runtimes:
+              for d in devices[rt]:
+                  if d["name"].startswith(family):
+                      print(d["udid"]); sys.exit(0)
+          ' "$1" "$2"
+          }
+          IPAD=$(pick "iPad Pro 13-inch (M4)|iPad Pro 13-inch (M5)|iPad Air 13-inch (M3)|iPad Air 13-inch (M2)|iPad Pro (12.9-inch) (6th generation)" "iPad")
+          IPHONE=$(pick "iPhone 16 Pro|iPhone 17 Pro|iPhone 15 Pro|iPhone 16" "iPhone")
+          echo "iPad: $IPAD  iPhone: $IPHONE"
+          echo "IPAD_UDID=$IPAD" >> "$GITHUB_ENV"
+          echo "IPHONE_UDID=$IPHONE" >> "$GITHUB_ENV"
+          for udid in "$IPAD" "$IPHONE"; do
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+            xcrun simctl status_bar "$udid" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          done
+
+      - name: Build admin app for iPad simulator
+        run: |
+          cd ios-swift
+          xcodebuild build \
+            -project DASHit.xcodeproj \
+            -scheme DASHitAdmin \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$IPAD_UDID" \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            > "$RUNNER_TEMP/build-admin.log" 2>&1 \
+            || { grep -E "error:" "$RUNNER_TEMP/build-admin.log" | head -n 80; tail -n 30 "$RUNNER_TEMP/build-admin.log"; exit 1; }
+          grep -E "BUILD SUCCEEDED" "$RUNNER_TEMP/build-admin.log" || true
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*Debug-iphonesimulator/DASHitAdmin.app" -type d | head -n 1)
+          echo "Built $APP"
+          test -n "$APP"
+          echo "ADMIN_APP=$APP" >> "$GITHUB_ENV"
+
+      - name: Build shop app for iPhone simulator
+        run: |
+          cd ios-swift
+          xcodebuild build \
+            -project DASHit.xcodeproj \
+            -scheme DASHit \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$IPHONE_UDID" \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            > "$RUNNER_TEMP/build-shop.log" 2>&1 \
+            || { grep -E "error:" "$RUNNER_TEMP/build-shop.log" | head -n 80; tail -n 30 "$RUNNER_TEMP/build-shop.log"; exit 1; }
+          grep -E "BUILD SUCCEEDED" "$RUNNER_TEMP/build-shop.log" || true
+          APP=$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*Debug-iphonesimulator/DASHit.app" -type d | head -n 1)
+          echo "Built $APP"
+          test -n "$APP"
+          echo "SHOP_APP=$APP" >> "$GITHUB_ENV"
+
+      - name: Capture admin screenshots (iPad)
+        run: |
+          mkdir -p screenshots
+          BUNDLE=com.dashit.admin
+          xcrun simctl install "$IPAD_UDID" "$ADMIN_APP"
+
+          shoot() {
+            name="$1"; shift
+            xcrun simctl terminate "$IPAD_UDID" "$BUNDLE" 2>/dev/null || true
+            xcrun simctl launch "$IPAD_UDID" "$BUNDLE" -DASHitAdminDemo YES "$@"
+            sleep 10
+            xcrun simctl io "$IPAD_UDID" screenshot "screenshots/$name.png"
+            echo "captured $name"
+          }
+
+          xcrun simctl ui "$IPAD_UDID" appearance light
+          shoot ipad-portrait-01-home
+          shoot ipad-portrait-02-orders -DASHitAdminTab Orders
+
+          # Landscape: turn the device from the Simulator app's menu (best effort).
+          open -a Simulator --args -CurrentDeviceUDID "$IPAD_UDID" || true
+          sleep 8
+          osascript -e 'tell application "Simulator" to activate' \
+                    -e 'tell application "System Events" to tell process "Simulator" to click menu item "Rotate Left" of menu "Device" of menu bar 1' \
+            && echo "rotated" || echo "could not rotate; staying in portrait"
+          sleep 4
+
+          shoot ipad-01-home-light
+          shoot ipad-02-orders-light -DASHitAdminTab Orders
+          shoot ipad-03-order-details-light -DASHitAdminTab Orders -DASHitAdminOpenOrder YES
+          shoot ipad-04-stock-light -DASHitAdminTab Stock
+          shoot ipad-05-add-item-light -DASHitAdminTab "Add an item"
+          shoot ipad-06-shop-settings-light -DASHitAdminTab "Shop settings"
+          shoot ipad-07-import-csv-light -DASHitAdminTab "Import CSV"
+          shoot ipad-08-distributors-light -DASHitAdminTab Distributors
+
+          xcrun simctl ui "$IPAD_UDID" appearance dark
+          shoot ipad-09-home-dark
+          shoot ipad-10-orders-dark -DASHitAdminTab Orders
+          xcrun simctl ui "$IPAD_UDID" appearance light
+
+      - name: Capture shop screenshots (iPhone)
+        run: |
+          BUNDLE=com.dashit.app
+          xcrun simctl install "$IPHONE_UDID" "$SHOP_APP"
+
+          shoot() {
+            name="$1"; shift
+            xcrun simctl terminate "$IPHONE_UDID" "$BUNDLE" 2>/dev/null || true
+            xcrun simctl launch "$IPHONE_UDID" "$BUNDLE" "$@"
+            sleep 12
+            xcrun simctl io "$IPHONE_UDID" screenshot "screenshots/$name.png"
+            echo "captured $name"
+          }
+
+          shoot iphone-01-home-light -DASHitDemoCart YES -dashit_theme light
+          shoot iphone-02-cart-remove-all -DASHitDemoCart YES -DASHitOpenCart YES -dashit_theme light
+          shoot iphone-03-order-received -DASHitDemoCart YES -DASHitDemoOrder YES -DASHitDemoOrderPlaced YES -DASHitOpenTracking YES -dashit_theme light
+          shoot iphone-04-order-packing -DASHitDemoCart YES -DASHitDemoOrder YES -DASHitDemoOrderPacking YES -DASHitOpenTracking YES -dashit_theme light
+          shoot iphone-05-order-on-the-way -DASHitDemoCart YES -DASHitDemoOrder YES -DASHitOpenTracking YES -dashit_theme dark
+          shoot iphone-06-sign-up -DASHitOpenSignUp YES -dashit_theme dark
+          shoot iphone-07-order-received-dark -DASHitDemoCart YES -DASHitDemoOrder YES -DASHitDemoOrderPlaced YES -DASHitOpenTracking YES -dashit_theme dark
+          ls -la screenshots
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-ios-screenshots
+          path: screenshots/*.png
+          if-no-files-found: warn

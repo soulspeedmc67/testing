@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "Add to your order" during the 60-second change window: a quick catalogue
+/// "Add to your order" during the 30-second change window: a quick catalogue
 /// (search, aisle chips, compact rows). The picks are merged into the order by
 /// `OrderUpdater`; after the window they can go to the cart instead.
 struct AddItemsSheet: View {
@@ -264,7 +264,7 @@ struct AddItemsSheet: View {
                         .foregroundColor(.danger)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if !isOpen {
-                    Text("The 60 seconds are up and the store is packing your order. You can still order these separately.")
+                    Text("The 30 seconds are up and the store is packing your order. You can still order these separately.")
                         .font(.system(size: 12.5))
                         .foregroundColor(.textMuted)
                         .fixedSize(horizontal: false, vertical: true)

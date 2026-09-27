@@ -31,6 +31,18 @@ final class AuthService: ObservableObject {
         isAuthenticated && (currentUser?.mobile.isEmpty ?? true)
     }
 
+    /// A phone or email account without a name yet. Sign in with Apple
+    /// accounts keep what Apple shared: asking again breaks App Review rules.
+    var needsName: Bool {
+        isAuthenticated && !isAppleAccount
+            && (currentUser?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+
+    /// Signed in with everything an order needs: a number and a name.
+    var isReadyToOrder: Bool {
+        isAuthenticated && !needsPhoneNumber && !needsName
+    }
+
     func checkCurrentSession() {
         if Auth.auth().currentUser != nil, let cachedProfile = LocalStorage.shared.loadUserProfile() {
             self.currentUser = cachedProfile
@@ -87,6 +99,18 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// Adds the shopper's name to an account that has none.
+    func updateName(_ name: String) async throws {
+        let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { throw AuthError.missingName }
+        guard let uid = firebaseUID, var profile = currentUser else { throw AuthError.notSignedIn }
+        try await run {
+            try await FirestoreService.shared.updateUserName(uid: uid, name: clean)
+            profile.name = clean
+            self.finishSignIn(with: profile)
+        }
+    }
+
     // MARK: - Email
 
     func signIn(email: String, password: String) async throws {
@@ -106,6 +130,7 @@ final class AuthService: ObservableObject {
 
     func createAccount(email: String, password: String, name: String, mobile: String) async throws {
         let cleanEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AuthError.missingName }
         guard !cleanEmail.isEmpty, !password.isEmpty else { throw AuthError.missingCredentials }
         guard password.count >= 6 else { throw AuthError.weakPassword }
         guard let cleanMobile = Self.normalizedMobile(mobile) else { throw AuthError.invalidMobile }
@@ -231,6 +256,7 @@ final class AuthService: ObservableObject {
 
 enum AuthError: LocalizedError {
     case invalidMobile
+    case missingName
     case missingCredentials
     case weakPassword
     case notSignedIn
@@ -251,6 +277,8 @@ enum AuthError: LocalizedError {
             return "Password must be at least 6 characters."
         case .notSignedIn:
             return "Please sign in first."
+        case .missingName:
+            return "Please enter your name."
         case .wrongCredentials:
             return "Invalid email or password. Please check and try again."
         case .invalidEmail:

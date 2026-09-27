@@ -39,7 +39,7 @@ struct LegalPage: Identifiable {
 
 /// Help & support: call, WhatsApp or email the store, and answers to the
 /// questions shoppers ask most. Answers follow the app's real rules (5 km
-/// area, 60-second change window, delivery code) and the Terms.
+/// area, 30-second change window, delivery code) and the Terms.
 struct HelpSupportView: View {
     @Environment(\.openURL) private var openURL
     @State private var expandedQuestion: String? = nil
@@ -63,7 +63,7 @@ struct HelpSupportView: View {
         ),
         Question(
             question: "Can I change or cancel my order?",
-            answer: "For 60 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider."
+            answer: "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider."
         ),
         Question(
             question: "What is the delivery code?",
