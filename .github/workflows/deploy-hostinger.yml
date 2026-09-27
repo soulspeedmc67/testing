@@ -75,11 +75,29 @@ jobs:
           done
           echo "Export OK: $(find out -type f | wc -l) files, $(du -sh out | cut -f1)"
 
+      # The host secret is often pasted as "ftp://host:21/" or with a stray
+      # space; keep just the host name. If it still isn't a real server name,
+      # use the domain's own FTP host, which points at this Hostinger account.
+      # (The soulspeedmc67/testing repo names the secret HOSTINGER_FTP_SERVER.)
+      - name: Work out the FTP host
+        id: ftp
+        env:
+          RAW_HOST: ${{ secrets.HOSTINGER_FTP_SERVER || secrets.HOSTINGER_FTP_HOST }}
+        run: |
+          host="$(printf '%s' "$RAW_HOST" | tr -d '[:space:]')"
+          host="${host#*://}"
+          host="${host%%/*}"
+          host="${host%%:*}"
+          if [ -z "$host" ] || ! getent hosts "$host" > /dev/null; then
+            echo "::warning::The FTP host secret isn't a server name that resolves; using ftp.dashit.co.in. Set the secret to just the host, e.g. ftp.dashit.co.in."
+            host="ftp.dashit.co.in"
+          fi
+          echo "host=$host" >> "$GITHUB_OUTPUT"
+
       - name: Upload to Hostinger over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          # The soulspeedmc67/testing repo names this secret HOSTINGER_FTP_SERVER.
-          server: ${{ secrets.HOSTINGER_FTP_SERVER || secrets.HOSTINGER_FTP_HOST }}
+          server: ${{ steps.ftp.outputs.host }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           protocol: ftps
