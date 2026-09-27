@@ -78,7 +78,8 @@ jobs:
       - name: Upload to Hostinger over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.HOSTINGER_FTP_HOST }}
+          # The soulspeedmc67/testing repo names this secret HOSTINGER_FTP_SERVER.
+          server: ${{ secrets.HOSTINGER_FTP_SERVER || secrets.HOSTINGER_FTP_HOST }}
           username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
           password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           protocol: ftps
