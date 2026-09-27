@@ -205,6 +205,8 @@ fun StorefrontScreen(
         if (isProfileOpen) {
             ProfileScreen(
                 user = signedInUser,
+                addressSummary = currentAddress.displaySummary,
+                onOpenAddress = { isAddressSheetOpen = true },
                 onSignOut = { isProfileOpen = false }
             )
         } else if (trackingOrderId != null) {
