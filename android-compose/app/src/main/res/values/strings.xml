@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">DASHit</string>
+    <string name="privacy_policy_url">https://dashit.in/privacy-policy</string>
+    <string name="privacyPolicy">https://dashit.in/privacy-policy</string>
+</resources>
