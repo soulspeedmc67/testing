@@ -16,6 +16,7 @@ import {
   Check,
   Search,
   Loader2,
+  Copy,
 } from "lucide-react";
 import {
   buildImportPlan,
@@ -23,6 +24,7 @@ import {
   productsToCsv,
   downloadCsv,
   CSV_TEMPLATE,
+  AI_IMPORT_PROMPT,
 } from "../../lib/csvInventory";
 import { SELF_DISTRIBUTOR_NAME } from "../../lib/db";
 import StockSourceSheet from "./StockSourceSheet";
@@ -274,6 +276,26 @@ export default function CsvInventoryView({
 
   const isSelf = source === SELF_DISTRIBUTOR_NAME;
 
+  const [promptCopied, setPromptCopied] = useState(false);
+  const copyAiPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(AI_IMPORT_PROMPT);
+    } catch {
+      // Older browsers, or a page without clipboard permission.
+      const area = document.createElement("textarea");
+      area.value = AI_IMPORT_PROMPT;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      document.execCommand("copy");
+      document.body.removeChild(area);
+    }
+    setPromptCopied(true);
+    setTimeout(() => setPromptCopied(false), 2000);
+  };
+
   return (
     <div className="space-y-4">
       {/* 1. Header */}
@@ -287,9 +309,23 @@ export default function CsvInventoryView({
             Add new items or more stock from an Excel or CSV file, even thousands of lines. Nothing is
             saved until you check the list and confirm.
           </p>
+          <p className={`text-xs ${subtle}`}>
+            Have a bill or price list instead? Copy the AI prompt, paste it into ChatGPT, Gemini or
+            Claude with your PDF or photo, and save its answer as a .csv file.
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={copyAiPrompt}
+            aria-live="polite"
+            className={`flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-colors active:scale-95 cursor-pointer text-white ${
+              promptCopied ? "bg-emerald-600" : "bg-[#FF5B00] hover:bg-[#e65200]"
+            }`}
+          >
+            {promptCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{promptCopied ? "Copied" : "Copy AI prompt"}</span>
+          </button>
           <button
             onClick={() => downloadCsv("dashit-sample.csv", CSV_TEMPLATE)}
             className={`flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors active:scale-95 cursor-pointer ${

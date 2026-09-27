@@ -936,15 +936,28 @@ struct OrderDetailSheetView: View {
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.secondary)
 
-                        ForEach(order.items) { item in
-                            HStack {
-                                Text("\(item.quantity)x \(item.name)")
-                                    .font(.system(size: 14))
+                        // Grouped by distributor, so staff pick one supplier's stock at a time.
+                        ForEach(vm.itemsByDistributor(order)) { group in
+                            HStack(alignment: .firstTextBaseline) {
+                                Text("From \(group.distributor)")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.orange)
                                 Spacer()
-                                Text("₹\(Int(item.price * Double(item.quantity)))")
-                                    .font(.system(size: 14, weight: .semibold))
+                                Text("\(group.items.count) item\(group.items.count == 1 ? "" : "s")")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.secondary)
                             }
-                            Divider()
+                            .padding(.top, 6)
+                            ForEach(Array(group.items.enumerated()), id: \.offset) { _, item in
+                                HStack {
+                                    Text("\(item.quantity)x \(item.name)")
+                                        .font(.system(size: 14))
+                                    Spacer()
+                                    Text("₹\(Int(item.price * Double(item.quantity)))")
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                                Divider()
+                            }
                         }
 
                         HStack {

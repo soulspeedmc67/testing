@@ -21,7 +21,7 @@ import {
   UserPlus
 } from "lucide-react";
 import PrintPackingSlip from "./PrintPackingSlip";
-import { ORDER_STATUS, getOrderGracePeriodSeconds } from "../../lib/db";
+import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, addDriverToRoster, removeDriverFromRoster } from "../../lib/drivers";
 import { orderAddress } from "../../lib/orderReceipt";
 
@@ -31,6 +31,7 @@ export default function OrderDetailDrawer({
   onClose,
   onUpdateStatus,
   onAssignDriver,
+  catalogue = [],
   darkMode = false,
 }) {
   const [showPrintSlip, setShowPrintSlip] = useState(false);
@@ -77,6 +78,8 @@ export default function OrderDetailDrawer({
 
   const orderId = order?.orderId || order?.id || "DSH";
   const items = order?.items || [];
+  // Picked one distributor's stock at a time.
+  const itemGroups = useMemo(() => groupOrderItemsByDistributor(items, catalogue), [items, catalogue]);
   const status = order?.status || ORDER_STATUS.PLACED;
   const isPlaced = status === ORDER_STATUS.PLACED;
   const isPacking = status === ORDER_STATUS.PACKED || status === "Packing";
@@ -646,8 +649,18 @@ export default function OrderDetailDrawer({
                 />
               </div>
 
-              <div className="space-y-2 pt-1">
-                {items.map((item, idx) => {
+              <div className="space-y-4 pt-1">
+                {itemGroups.map((group) => (
+                <div key={group.distributor} className="space-y-2">
+                  <div className="flex items-baseline justify-between px-0.5">
+                    <span className={"text-[11px] font-black uppercase tracking-wider " + (darkMode ? "text-zinc-300" : "text-slate-700")}>
+                      From {group.distributor}
+                    </span>
+                    <span className="text-[10.5px] font-semibold text-slate-500">
+                      {group.entries.length} item{group.entries.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                {group.entries.map(({ item, index: idx }) => {
                   const isChecked = !!checkedItems[idx];
                   const qty = item.qty || item.quantity || 1;
                   const price = Number(item.price) || 0;
@@ -694,6 +707,8 @@ export default function OrderDetailDrawer({
                     </div>
                   );
                 })}
+                </div>
+                ))}
               </div>
 
               {allItemsPacked && !isDelivered && (

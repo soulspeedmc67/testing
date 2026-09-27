@@ -15,6 +15,7 @@ struct AdminCSVImportView: View {
     @State private var isSourceSheetOpen = false
     @State private var isSaving = false
     @State private var alertMessage: String?
+    @State private var didCopyPrompt = false
 
     /// Written once, not on every redraw of a long list.
     private static let sampleFileURL: URL = {
@@ -101,12 +102,51 @@ struct AdminCSVImportView: View {
             }
             .buttonStyle(.plain)
 
+            aiPromptCard
+
             ShareLink(item: Self.sampleFileURL) {
                 Label("Get a sample file", systemImage: "square.and.arrow.down")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.orange)
             }
         }
+    }
+
+    /// Copies the instructions that turn a bill or price list into a file
+    /// this screen reads, for pasting into ChatGPT, Gemini or Claude.
+    private var aiPromptCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Have a bill or price list instead?")
+                    .font(.system(size: 14, weight: .bold))
+                Text("Copy these instructions, paste them into ChatGPT, Gemini or Claude with your PDF or photo, and save its answer as a .csv file.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Button {
+                UIPasteboard.general.string = CSVStockImport.aiPrompt
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                withAnimation(.easeOut(duration: 0.2)) { didCopyPrompt = true }
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(2))
+                    withAnimation(.easeOut(duration: 0.2)) { didCopyPrompt = false }
+                }
+            } label: {
+                Label(didCopyPrompt ? "Copied" : "Copy AI prompt",
+                      systemImage: didCopyPrompt ? "checkmark" : "doc.on.doc")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(didCopyPrompt ? Color.green : Color.orange, in: RoundedRectangle(cornerRadius: 12))
+                    .contentTransition(.opacity)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Copies instructions for an AI app to make a stock file")
+        }
+        .padding(14)
+        .background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
     }
 
     private func read(_ url: URL) {

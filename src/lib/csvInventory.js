@@ -49,6 +49,11 @@ const HEADER_ALIASES = {
   count: "qty",
   pieces: "qty",
   pcs: "qty",
+  noofitems: "qty",
+  numberofitems: "qty",
+  totalqty: "qty",
+  qtyreceived: "qty",
+  receivedqty: "qty",
   instock: "qty",
   openingstock: "qty",
 
@@ -59,6 +64,10 @@ const HEADER_ALIASES = {
   ourprice: "price",
   dashitprice: "price",
   unitprice: "price",
+  sellingrate: "price",
+  pricers: "price",
+  priceinrs: "price",
+  priceinr: "price",
 
   originalprice: "originalPrice",
   mrp: "originalPrice",
@@ -101,7 +110,46 @@ const HEADER_ALIASES = {
   imageurl: "img",
   photo: "img",
   picture: "img",
+  imagelink: "img",
+  imagelinks: "img",
+  photourl: "img",
+  photolink: "img",
+  picturelink: "img",
+  pictureurl: "img",
+  imgurl: "img",
+  thumbnail: "img",
 };
+
+/**
+ * A photo link the shop can show, or "" — only web links are kept, and Google
+ * Drive / Dropbox share links become direct links to the picture. Same rules as
+ * `CSVStockImport.imageURL` in the iOS admin app.
+ */
+export function normaliseImageUrl(raw) {
+  let link = String(raw || "").trim();
+  if (!link) return "";
+  if (link.startsWith("//")) link = `https:${link}`;
+  let url;
+  try {
+    url = new URL(link);
+  } catch {
+    return "";
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+  const host = url.hostname.toLowerCase();
+  if (host === "drive.google.com") {
+    const parts = url.pathname.split("/");
+    const d = parts.indexOf("d");
+    const fileId = (d >= 0 && parts[d + 1]) || url.searchParams.get("id");
+    if (fileId) return `https://drive.google.com/uc?export=view&id=${encodeURIComponent(fileId)}`;
+  }
+  if (host.endsWith("dropbox.com")) {
+    url.searchParams.delete("dl");
+    url.searchParams.set("raw", "1");
+    return url.toString();
+  }
+  return url.toString();
+}
 
 const normaliseHeader = (h) =>
   String(h || "")
@@ -383,6 +431,10 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
       if (assignedDistributor && match.distributor && assignedDistributor !== match.distributor) {
         changes.push(`From ${match.distributor} → ${assignedDistributor}`);
       }
+      const newPhoto = normaliseImageUrl(record.img);
+      if (newPhoto && newPhoto !== match.img) {
+        changes.push("New photo");
+      }
     }
 
     const rowErrors = [];
@@ -420,7 +472,7 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
       unit: record.unit || (match ? match.unit : "1 pc"),
       brand: record.brand || (match ? match.brand : ""),
       badge: record.badge || (match ? match.badge : "Fresh"),
-      img: record.img || (match ? match.img : ""),
+      img: normaliseImageUrl(record.img) || (match ? match.img : ""),
       price: price !== null ? price : match ? Number(match.price) || 0 : 0,
       originalPrice:
         originalPrice !== null
@@ -508,11 +560,38 @@ export function productsToCsv(products = []) {
   return `${header}\n${body}\n`;
 }
 
-export const CSV_TEMPLATE = `name,category,quantity,price,mrp,unit,brand,barcode
-Onion,Vegetables,40,35,45,1 kg,,
-Full Cream Milk,Dairy,60,36,38,500 ml,Amul,
-Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,
+export const CSV_TEMPLATE = `name,category,quantity,price,mrp,unit,brand,barcode,image
+Onion,Vegetables,40,35,45,1 kg,,,
+Full Cream Milk,Dairy,60,36,38,500 ml,Amul,,https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400
+Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,,
 `;
+
+/* Pasted into ChatGPT, Gemini or Claude along with a bill, invoice or price
+   list, it writes a file this importer reads. Same text as
+   `CSVStockImport.aiPrompt` in the iOS admin app. */
+export const AI_IMPORT_PROMPT = `Turn the file I've attached (a bill, invoice, price list or photo of one) into a stock list for my grocery shop, as CSV.
+
+Reply with only the CSV: no explanation before or after it.
+
+The first line must be exactly:
+name,category,quantity,price,mrp,unit,brand,barcode,image
+
+Then one line for each product:
+- name: the product's name as a shopper would search for it, without the pack size. Example: Amul Taaza Toned Milk
+- category: a short shop category, such as Dairy, Bakery, Fruits, Vegetables, Staples, Snacks, Biscuits, Beverages, Instant Food, Spices, Personal Care, Home Care or Kitchen Care. Spell the same category the same way every time.
+- quantity: how many single packs or pieces came in, as a whole number. If the bill counts cases or boxes, multiply by the number of pieces in each.
+- price: the price I sell one piece at, in rupees. If the document doesn't show a selling price, use the MRP.
+- mrp: the MRP printed for one piece, in rupees. Leave it empty if it isn't shown.
+- unit: the pack size, such as 500 ml, 1 kg or 10 pcs.
+- brand: the brand, or empty.
+- barcode: the barcode or item code if the document shows one, otherwise empty. Never make one up.
+- image: a direct https link to a clear photo of the product (ending in .jpg, .jpeg, .png or .webp), only if you can look it up and check that it opens. Otherwise leave it empty. Never make up a link.
+
+Rules:
+- Numbers only in quantity, price and mrp: no ₹, Rs or commas.
+- If a value has a comma in it, put that value in double quotes.
+- Leave out totals, taxes, discounts, delivery charges and anything that isn't a product.
+- If you can't read a number clearly, leave that cell empty instead of guessing.`;
 
 export function downloadCsv(filename, contents) {
   if (typeof window === "undefined") return;

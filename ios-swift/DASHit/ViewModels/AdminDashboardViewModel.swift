@@ -44,6 +44,13 @@ public enum AdminSortOption: String, CaseIterable, Identifiable {
     public var id: String { rawValue }
 }
 
+/// One distributor's lines in an order, for picking one shelf at a time.
+public struct OrderItemGroup: Identifiable {
+    public var id: String { distributor }
+    public let distributor: String
+    public let items: [CartItem]
+}
+
 public struct SupplierStat: Identifiable {
     public var id: String { name }
     public let name: String
@@ -658,6 +665,47 @@ public final class AdminDashboardViewModel: ObservableObject {
         })
     }
 
+    // MARK: - Picking
+
+    static let unknownDistributorLabel = "Not in the item list"
+
+    /// The order's lines grouped by who supplied the stock: the owner's own
+    /// first, then each distributor A→Z, then lines no longer in the item list.
+    /// Same grouping as `groupOrderItemsByDistributor` on the web console.
+    public func itemsByDistributor(_ order: Order) -> [OrderItemGroup] {
+        var byId: [String: Product] = [:]
+        var byName: [String: Product] = [:]
+        for product in products {
+            byId[product.id.lowercased()] = product
+            byName[product.name.lowercased()] = product
+        }
+        func product(for item: CartItem) -> Product? {
+            for key in [item.productId, item.id].map({ $0.lowercased() }) where !key.isEmpty {
+                if let match = byId[key] { return match }
+                // A size variant ("54-6pcs") belongs to its product ("54").
+                if let parent = key.split(separator: "-").first, let match = byId[String(parent)] { return match }
+            }
+            return byName[item.name.lowercased()]
+        }
+
+        var labels: [String] = []
+        var groups: [String: [CartItem]] = [:]
+        for item in order.items {
+            let label = product(for: item).map { Distributor.resolvedName($0.distributor) }
+                ?? Self.unknownDistributorLabel
+            if groups[label] == nil { labels.append(label) }
+            groups[label, default: []].append(item)
+        }
+        func rank(_ label: String) -> Int {
+            label == Distributor.selfName ? 0 : label == Self.unknownDistributorLabel ? 2 : 1
+        }
+        return labels
+            .sorted { a, b in
+                rank(a) != rank(b) ? rank(a) < rank(b) : a.localizedCaseInsensitiveCompare(b) == .orderedAscending
+            }
+            .map { OrderItemGroup(distributor: $0, items: groups[$0] ?? []) }
+    }
+
     // MARK: - CSV import
 
     /// Saves the checked lines of a CSV file, all marked as from `distributor`.
@@ -690,6 +738,7 @@ public final class AdminDashboardViewModel: ObservableObject {
                     }
                     if let price = item.price, price != existing.price { data["price"] = price }
                     if let mrp = item.mrp { data["originalPrice"] = mrp }
+                    if item.hasNewPhoto { data["img"] = item.img }
                     batch.setData(data, forDocument: ref, merge: true)
                 } else {
                     let price = item.price ?? 0

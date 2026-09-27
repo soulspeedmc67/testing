@@ -75,6 +75,52 @@ export function assignDefaultDistributor(p) {
   return name;
 }
 
+/**
+ * An order's lines grouped by who supplied the stock, so staff pick one
+ * distributor's shelf at a time: the owner's own stock first, then each
+ * distributor A→Z, then lines no longer in the catalogue. Each entry keeps the
+ * line's position in `order.items`, which the packing checklist is keyed on.
+ * Lines are matched to the catalogue by product id (any app's field name), a
+ * size variant's parent id ("54-6pcs" → "54"), then by name.
+ */
+export const UNKNOWN_DISTRIBUTOR_LABEL = "Not in the item list";
+
+export function groupOrderItemsByDistributor(items = [], catalogue = []) {
+  const byId = new Map();
+  const byName = new Map();
+  catalogue.forEach((p) => {
+    [p.id, p.barcode].forEach((key) => {
+      if (key !== undefined && key !== null && key !== "") byId.set(String(key).toLowerCase(), p);
+    });
+    if (p.name) byName.set(String(p.name).trim().toLowerCase(), p);
+  });
+  const find = (item) => {
+    const keys = [item.productId, item.id, item.barcode]
+      .filter((k) => k !== undefined && k !== null && k !== "")
+      .map((k) => String(k).toLowerCase());
+    for (const key of keys) {
+      if (byId.has(key)) return byId.get(key);
+      const parent = key.split("-")[0];
+      if (parent && byId.has(parent)) return byId.get(parent);
+    }
+    return byName.get(String(item.name || "").trim().toLowerCase()) || null;
+  };
+
+  const groups = new Map();
+  items.forEach((item, index) => {
+    const product = find(item);
+    const label = product ? assignDefaultDistributor(product) : UNKNOWN_DISTRIBUTOR_LABEL;
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push({ item, index });
+  });
+
+  const rank = (label) =>
+    label === SELF_DISTRIBUTOR_NAME ? 0 : label === UNKNOWN_DISTRIBUTOR_LABEL ? 2 : 1;
+  return [...groups.entries()]
+    .map(([distributor, entries]) => ({ distributor, entries }))
+    .sort((a, b) => rank(a.distributor) - rank(b.distributor) || a.distributor.localeCompare(b.distributor));
+}
+
 // Two-tier Catalogue Cache (Memory 5-min TTL + Persistent LocalStorage 30-min TTL)
 let memoryProductsCache = null;
 let memoryProductsCacheTime = 0;
