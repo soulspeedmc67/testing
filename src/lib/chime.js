@@ -28,9 +28,18 @@ export function unlockAudio() {
   } catch (e) {}
 }
 
+let lastChimeTime = 0;
+const MIN_CHIME_GAP_MS = 750;
+
 /** Plays a pleasant, high-visibility 4-note bell chime (D5 -> A5 -> D6 -> F#6 shimmer). */
 export function playOrderChime() {
   try {
+    const nowMs = Date.now();
+    if (nowMs - lastChimeTime < MIN_CHIME_GAP_MS) {
+      return;
+    }
+    lastChimeTime = nowMs;
+
     const ctx = getAudioContext();
     if (!ctx) return;
 
