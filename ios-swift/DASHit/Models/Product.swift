@@ -113,8 +113,8 @@ public struct Product: Codable, Identifiable, Hashable {
     ]
 
     public var discountPercent: Int? {
-        guard let original = originalPrice, original > price else { return nil }
-        return Int(round(((original - price) / original) * 100))
+        guard let original = originalPrice, original > price, original > 0, price >= 0 else { return nil }
+        return Int(exactly: round(((original - price) / original) * 100))
     }
 }
 

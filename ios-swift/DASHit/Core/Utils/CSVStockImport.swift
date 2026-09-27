@@ -53,7 +53,8 @@ public enum CSVStockImport {
         }
 
         static func money(_ value: Double) -> String {
-            value.rounded() == value ? String(Int(value)) : String(format: "%.2f", value)
+            if let whole = Int(exactly: value) { return String(whole) }
+            return value.isFinite ? String(format: "%.2f", value) : "—"
         }
     }
 
@@ -112,11 +113,15 @@ public enum CSVStockImport {
                 skipped.append("Row \(rowNo): \(name.isEmpty ? barcode : name) has a negative quantity")
                 continue
             }
+            guard qtyValue <= maxQuantity else {
+                skipped.append("Row \(rowNo): \(name.isEmpty ? barcode : name) has a quantity that's too big")
+                continue
+            }
             let qty = Int(qtyValue.rounded())
 
-            let match = (barcode.isEmpty ? nil : byId[barcode.lowercased()])
+            let match = (barcode.isEmpty ? nil : byId[barcode.lowercased()] ?? byId[safeCode(barcode).lowercased()])
                 ?? (name.isEmpty ? nil : byName[name.lowercased()])
-            let id = match?.id ?? (barcode.isEmpty ? "csv-\(slug(name))" : barcode)
+            let id = match?.id ?? newId(barcode: barcode, name: name)
 
             // The same item twice in one file: add the rows together.
             if let existingIndex = indexById[id] {
@@ -140,7 +145,13 @@ public enum CSVStockImport {
                 include: true,
                 problem: nil
             )
-            if match == nil && price == nil {
+            if !isValidDocumentID(id) {
+                item.problem = "This item's code can't be saved"
+                item.include = false
+            } else if (price ?? 0) < 0 || (item.mrp ?? 0) < 0 {
+                item.problem = "Price can't be below zero"
+                item.include = false
+            } else if match == nil && price == nil {
                 item.problem = "New item needs a price"
                 item.include = false
             }
@@ -191,8 +202,12 @@ public enum CSVStockImport {
 
     // MARK: - Helpers
 
-    /// "₹1,250", "Rs 35" and " 40 " all read as numbers.
-    private static func number(_ raw: String) -> Double? {
+    /// More than any shop holds; also keeps the count well inside `Int`.
+    private static let maxQuantity = 1_000_000.0
+
+    /// "₹1,250", "Rs 35" and " 40 " all read as numbers. "nan", "inf" and
+    /// "1e999" don't: Swift reads them as numbers that can't become an `Int`.
+    static func number(_ raw: String) -> Double? {
         var text = raw.lowercased()
             .replacingOccurrences(of: "₹", with: "")
             .replacingOccurrences(of: "rs.", with: "")
@@ -200,8 +215,32 @@ public enum CSVStockImport {
             .replacingOccurrences(of: ",", with: "")
             .trimmingCharacters(in: .whitespaces)
         if text.hasSuffix(".") { text.removeLast() }
-        guard !text.isEmpty else { return nil }
-        return Double(text)
+        guard !text.isEmpty, let value = Double(text), value.isFinite else { return nil }
+        return value
+    }
+
+    /// A "/" in a code (e.g. "OIL/1L") would split the database path, so it
+    /// becomes "-".
+    private static func safeCode(_ barcode: String) -> String {
+        barcode.replacingOccurrences(of: "/", with: "-")
+    }
+
+    /// The id for an item this file adds: its barcode, or one made from its name.
+    static func newId(barcode: String, name: String) -> String {
+        let code = safeCode(barcode)
+        if !code.isEmpty && isValidDocumentID(code) { return code }
+        return "csv-\(slug(name.isEmpty ? barcode : name))"
+    }
+
+    /// Firestore stops the app (it doesn't throw) on a document id that is
+    /// empty, has a "/", is "." or "..", looks like "__name__", or is over
+    /// 1500 bytes. Nothing reaches `document(_:)` without passing this.
+    public static func isValidDocumentID(_ id: String) -> Bool {
+        !id.isEmpty
+            && !id.contains("/")
+            && id != "." && id != ".."
+            && !(id.hasPrefix("__") && id.hasSuffix("__"))
+            && id.utf8.count <= 1500
     }
 
     private static func slug(_ text: String) -> String {
