@@ -4,104 +4,29 @@ import Security
 import AuthenticationServices
 import CryptoKit
 
-/// Signed-out state of the profile: phone (with an on-screen number
-/// confirmation instead of a code), Sign in with Apple, and email.
-struct SignInView: View {
-    private enum Method {
-        case phone
-        case email
-    }
+/// "Continue with Apple", shared by the sign-in screen. Hands the credential to
+/// AuthService; a cancelled sheet is not an error.
+struct AppleSignInButton: View {
+    var label: SignInWithAppleButton.Label = .continue
 
     @ObservedObject private var auth = AuthService.shared
     @Environment(\.colorScheme) private var colorScheme
-    @State private var method: Method = .phone
     @State private var appleNonce: String? = nil
 
     var body: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 6) {
-                Image(systemName: "bolt.shield.fill")
-                    .font(.system(size: 42))
-                    .foregroundColor(.brandAccent)
-                Text("Sign in to DASHit")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundColor(.textPrimary)
-                Text("Groceries and daily essentials at your door in minutes.")
-                    .font(.system(size: 14))
-                    .foregroundColor(.textMuted)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.top, 8)
-
-            Group {
-                switch method {
-                case .phone:
-                    PhoneNumberConfirmationFlow(
-                        title: "Your mobile number",
-                        confirmTitle: "Confirm & continue"
-                    ) { mobile in
-                        try await auth.signIn(withConfirmedMobile: mobile)
-                    }
-                case .email:
-                    EmailSignInForm()
-                }
-            }
-            .transition(.opacity.combined(with: .move(edge: .bottom)))
-
-            divider
-
-            SignInWithAppleButton(.continue) { request in
-                let nonce = AppleNonce.random()
-                appleNonce = nonce
-                request.requestedScopes = [.fullName, .email]
-                request.nonce = AppleNonce.sha256(nonce)
-            } onCompletion: { result in
-                handleApple(result)
-            }
-            .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
-            .frame(height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .id(colorScheme)
-
-            Button {
-                HapticsManager.shared.selection()
-                withAnimation(.dashitSpring) {
-                    method = method == .phone ? .email : .phone
-                }
-            } label: {
-                Label(
-                    method == .phone ? "Continue with email" : "Continue with phone number",
-                    systemImage: method == .phone ? "envelope.fill" : "phone.fill"
-                )
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.textPrimary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(Color.surfaceMuted, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .buttonStyle(.pressable)
-
-            if let message = auth.errorMessage {
-                Text(message)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.danger)
-                    .multilineTextAlignment(.center)
-                    .transition(.opacity)
-            }
+        SignInWithAppleButton(label) { request in
+            let nonce = AppleNonce.random()
+            appleNonce = nonce
+            request.requestedScopes = [.fullName, .email]
+            request.nonce = AppleNonce.sha256(nonce)
+        } onCompletion: { result in
+            handleApple(result)
         }
-        .padding(20)
-        .dashitCard(cornerRadius: 20)
-        .animation(.dashitSpring, value: auth.errorMessage)
-    }
-
-    private var divider: some View {
-        HStack(spacing: 10) {
-            Rectangle().fill(Color.hairline).frame(height: 1)
-            Text("or")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.textFaint)
-            Rectangle().fill(Color.hairline).frame(height: 1)
-        }
+        .signInWithAppleButtonStyle(colorScheme == .dark ? .white : .black)
+        .frame(height: 50)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // The button's style is fixed when it's made; rebuild it on theme change.
+        .id(colorScheme)
     }
 
     private func handleApple(_ result: Result<ASAuthorization, Error>) {
@@ -268,10 +193,12 @@ struct PhoneNumberConfirmationFlow: View {
 // MARK: - Email
 
 /// Sign in or create an account with email and password, like the web.
-/// New accounts also give their delivery number.
-private struct EmailSignInForm: View {
+/// New accounts also give their delivery number. `isCreating` comes from the
+/// Log in / Sign up switch on the sign-in screen.
+struct EmailSignInForm: View {
+    var isCreating: Bool
+
     @ObservedObject private var auth = AuthService.shared
-    @State private var isCreating = false
     @State private var email = ""
     @State private var password = ""
     @State private var name = ""
@@ -284,12 +211,6 @@ private struct EmailSignInForm: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Picker("", selection: $isCreating) {
-                Text("Sign in").tag(false)
-                Text("Create account").tag(true)
-            }
-            .pickerStyle(.segmented)
-
             if isCreating {
                 field("Your name", text: $name, content: .name)
             }
@@ -315,7 +236,7 @@ private struct EmailSignInForm: View {
                         ProgressView()
                             .tint(.white)
                     }
-                    Text(isCreating ? "Create account" : "Sign in")
+                    Text(isCreating ? "Create account" : "Log in")
                         .font(.system(size: 16, weight: .bold))
                 }
                 .foregroundColor(canSubmit ? .white : .textFaint)

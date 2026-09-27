@@ -14,6 +14,7 @@ struct RootView: View {
     @State private var isAddressPickerOpen = false
     @State private var isKeyboardVisible = false
     @State private var isProfileOpen = false
+    @State private var authMode: AuthView.Mode? = nil
     @State private var isAddItemsOpen = false
     /// The delivered order being celebrated, once other screens are out of the way.
     @State private var celebrationOrder: Order?
@@ -152,6 +153,9 @@ struct RootView: View {
                 cart.reorder(order.items)
             }
         }
+        .fullScreenCover(item: $authMode) { mode in
+            AuthView(initialMode: mode) { authMode = nil }
+        }
         .fullScreenCover(isPresented: $isLiveTrackingOpen) {
             if let order = activeOrder.order {
                 LiveTrackingMapView(orderId: order.id, initialOrder: order)
@@ -178,7 +182,10 @@ struct RootView: View {
                 onChangeAddress: { anchor in addressMenuAnchor = anchor }
             )
         case .orderAgain:
-            OrdersListView(onOpenProfile: { isProfileOpen = true })
+            OrdersListView(
+                onOpenProfile: { isProfileOpen = true },
+                onSignIn: { authMode = .logIn }
+            )
         case .categories:
             CategoriesView()
         }

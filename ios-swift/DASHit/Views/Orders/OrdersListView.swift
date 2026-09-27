@@ -37,6 +37,8 @@ final class OrderHistoryStore: ObservableObject {
 /// "Order Again" tab: past and live orders with one-tap reorder.
 struct OrdersListView: View {
     var onOpenProfile: () -> Void
+    /// Opens the log in / sign up screen.
+    var onSignIn: () -> Void
 
     @ObservedObject private var auth = AuthService.shared
     @ObservedObject private var cart = CartViewModel.shared
@@ -44,8 +46,9 @@ struct OrdersListView: View {
     @State private var detailOrder: Order? = nil
     @State private var trackingOrder: Order? = nil
 
-    init(onOpenProfile: @escaping () -> Void = {}) {
+    init(onOpenProfile: @escaping () -> Void = {}, onSignIn: (() -> Void)? = nil) {
         self.onOpenProfile = onOpenProfile
+        self.onSignIn = onSignIn ?? onOpenProfile
     }
 
     var body: some View {
@@ -56,7 +59,7 @@ struct OrdersListView: View {
                         symbol: "bag",
                         title: "Sign in to see your orders",
                         message: "Your past orders and live deliveries will appear here.",
-                        action: ("Sign in", onOpenProfile)
+                        action: ("Log in or sign up", onSignIn)
                     )
                 } else if history.isLoading && history.orders.isEmpty {
                     ScrollView {

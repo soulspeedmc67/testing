@@ -211,10 +211,9 @@ struct CheckoutView: View {
             }) {
                 AddressPickerMapView()
             }
-            // Signed-out shoppers get the phone sign-in, then return here.
-            .sheet(isPresented: $isAuthModalOpen) {
-                ProfileView()
-                    .dashitSheet([.large])
+            // Signed-out shoppers log in or sign up, then come straight back here.
+            .fullScreenCover(isPresented: $isAuthModalOpen) {
+                AuthView { isAuthModalOpen = false }
             }
             // Close once signed in with a delivery number (Apple and email
             // accounts add theirs in the same sheet first).

@@ -50,9 +50,11 @@ final class AuthService: ObservableObject {
 
     // MARK: - Phone
 
-    /// Signs in with a number the shopper has confirmed on screen.
-    func signIn(withConfirmedMobile mobile: String) async throws {
+    /// Signs in with a number the shopper has confirmed on screen. `name`,
+    /// from the sign-up form, fills an account that has none yet.
+    func signIn(withConfirmedMobile mobile: String, name: String? = nil) async throws {
         guard let clean = Self.normalizedMobile(mobile) else { throw AuthError.invalidMobile }
+        let trimmedName = name?.trimmingCharacters(in: .whitespaces)
         try await run {
             let uid: String
             if let existing = Auth.auth().currentUser {
@@ -60,7 +62,11 @@ final class AuthService: ObservableObject {
             } else {
                 uid = try await Auth.auth().signInAnonymously().user.uid
             }
-            let profile = try await FirestoreService.shared.ensureUserProfile(uid: uid, mobile: clean)
+            let profile = try await FirestoreService.shared.ensureUserProfile(
+                uid: uid,
+                mobile: clean,
+                name: (trimmedName?.isEmpty ?? true) ? nil : trimmedName
+            )
             if profile.mobile != clean {
                 try await FirestoreService.shared.updateUserMobile(uid: uid, mobile: clean)
             }
