@@ -23,6 +23,8 @@ import {
   Mail,
   AlertCircle,
   RefreshCw,
+  Truck,
+  IndianRupee,
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
@@ -46,6 +48,29 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
     </svg>
   );
 }
+
+/* The artwork carousel above the form: same pictures and captions as the
+   iOS and Android sign-in screens. */
+const AUTH_SLIDES = [
+  {
+    webp: "/art/rider-scooter-hero-transparent.webp",
+    png: "/art/rider-scooter-hero-transparent.png",
+    title: "Groceries at your door, in minutes",
+    subtitle: "From our Anantnag store to your street.",
+  },
+  {
+    webp: "/art/rider-holding-groceries-transparent.webp",
+    png: "/art/rider-holding-groceries-transparent.png",
+    title: "Fresh picks, carefully packed",
+    subtitle: "Dairy, fruit, staples, snacks and more.",
+  },
+  {
+    webp: "/art/flying-grocery-box-transparent-680.webp",
+    png: "/art/flying-grocery-box-transparent.png",
+    title: "Follow every order, live",
+    subtitle: "Watch your rider right up to your door.",
+  },
+];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -114,6 +139,18 @@ export default function LoginPage() {
   // Hero illustration state
   const [heroFailed, setHeroFailed] = useState(false);
   const heroImgRef = useRef(null);
+  const [slide, setSlide] = useState(0);
+
+  /* The pictures turn on their own while the landing is showing; they stop
+     once the form is open, and for anyone who prefers reduced motion. */
+  useEffect(() => {
+    if (isSheetExtended || step !== 1) return undefined;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      return undefined;
+    }
+    const timer = setInterval(() => setSlide((i) => (i + 1) % AUTH_SLIDES.length), 4200);
+    return () => clearInterval(timer);
+  }, [isSheetExtended, step]);
 
   useEffect(() => {
     const img = heroImgRef.current;
@@ -736,108 +773,125 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#D63800] text-white font-sans flex flex-col justify-between overflow-hidden select-none relative">
+    <div className="min-h-screen bg-[#040F24] text-white font-sans flex flex-col justify-between overflow-hidden select-none relative">
       <SEO title="Sign In" noindex={true} />
       {/* STEP 1: Screenshot-styled Hero + Seamless Extensible Bottom Sheet */}
       {step === 1 && (
-        <div className="relative min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#FF5E00] via-[#F24E00] to-[#D63800] pb-[165px]">
+        <div className="relative min-h-screen flex flex-col bg-gradient-to-b from-[#061838] to-[#040F24] pb-[190px]">
           {/* Reserved Status Bar Space: Fits exact notch / Dynamic Island without arbitrary gap */}
           <div className="w-full h-[env(safe-area-inset-top,0px)] shrink-0 pointer-events-none" aria-hidden="true" />
 
-          {/* Top Section: Navigation + Brand Squircle + Headline + Large Artwork */}
-          <div className="relative z-10 flex-1 flex flex-col px-6 pt-1 pb-2 justify-between">
-            {/* Top Navigation Row: Back Button + Skip capsule */}
-            <div className="flex items-center justify-between shrink-0 pt-1">
-              <button
-                type="button"
-                onClick={() => goBack(router, "/shop")}
-                className="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 active:scale-90 flex items-center justify-center text-white border border-white/25 shadow-xs backdrop-blur-md transition-all cursor-pointer"
-                title="Go back"
-              >
-                <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSkipSetup}
-                className="group flex items-center gap-1.5 text-[12px] font-black text-white bg-white/20 hover:bg-white/30 active:scale-95 px-4 py-2 rounded-full border border-white/25 shadow-[0_2px_12px_rgba(0,0,0,0.15)] backdrop-blur-md transition-all cursor-pointer"
-              >
-                <span>Skip for now</span>
-                <ChevronRight className="w-3.5 h-3.5 stroke-[2.5] text-white/85 group-hover:translate-x-0.5 transition-transform" />
-              </button>
+          {/* Brand lockup + Skip */}
+          <div className="relative z-10 flex items-center justify-between px-5 pt-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <img src="/dashit-mark-white.png" alt="" aria-hidden="true" className="w-7 h-7 object-contain" />
+              <img src="/dashit-wordmark-white.png" alt="DASHIT" className="h-[17px] w-auto object-contain" />
+            </div>
+            <button
+              type="button"
+              onClick={handleSkipSetup}
+              className="text-[14px] font-semibold text-white px-4 py-1.5 rounded-full border border-white/20 hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+            >
+              Skip
+            </button>
+          </div>
+
+          {/* Artwork carousel on a soft orange glow, dimming back while the form is open */}
+          <motion.div
+            animate={{
+              scale: isSheetExtended ? 0.86 : 1,
+              y: isSheetExtended ? -18 : 0,
+              opacity: isSheetExtended ? 0.4 : 1,
+            }}
+            transition={{ type: "spring", damping: 30, stiffness: 280, mass: 0.8 }}
+            className="relative flex-1 min-h-0 flex flex-col items-center justify-center px-6 pt-4 origin-top"
+          >
+            <div className="relative w-full h-[min(30vh,240px)] flex items-center justify-center">
+              <div
+                aria-hidden="true"
+                className="absolute w-[min(78vw,360px)] aspect-square rounded-full bg-[radial-gradient(circle,rgba(255,91,0,0.30)_0%,rgba(255,91,0,0)_68%)] pointer-events-none"
+              />
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={slide}
+                  initial={{ opacity: 0, x: 40, scale: 0.96 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -40, scale: 0.96 }}
+                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  {heroFailed ? (
+                    <img src="/dashit-mark-white.png" alt="" aria-hidden="true" className="w-24 h-24 object-contain opacity-80" />
+                  ) : (
+                    /* WebP first with the PNG as fallback: the PNGs are well over
+                       a megabyte and the art is never shown wider than ~300 px. */
+                    <picture>
+                      <source srcSet={AUTH_SLIDES[slide].webp} type="image/webp" />
+                      <img
+                        ref={slide === 0 ? heroImgRef : undefined}
+                        src={AUTH_SLIDES[slide].png}
+                        alt=""
+                        aria-hidden="true"
+                        decoding="async"
+                        onError={() => setHeroFailed(true)}
+                        className="max-h-[min(30vh,240px)] max-w-[300px] w-auto object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.45)] animate-[authFloat_5.2s_ease-in-out_infinite]"
+                      />
+                    </picture>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </div>
 
-            {/* Centered Squircle Brand Icon (Signature DASHIT Navy Blue behind the icon) + Headline (Parallax Shift) */}
-            <motion.div
-              animate={{
-                scale: isSheetExtended ? 0.88 : 1,
-                y: isSheetExtended ? -14 : 0,
-                opacity: isSheetExtended ? 0.65 : 1,
-              }}
-              transition={{
-                type: "spring",
-                damping: 30,
-                stiffness: 280,
-                mass: 0.8,
-              }}
-              className="text-center pt-2 shrink-0 origin-top"
-            >
-              <div className="w-[72px] h-[72px] rounded-[22px] bg-[#061838] border-[2.5px] border-white shadow-[0_10px_28px_rgba(0,0,0,0.3)] flex items-center justify-center p-3.5 mx-auto">
-                <img
-                  src="/dashit-mark-white.png"
-                  alt="DASHIT"
-                  className="w-full h-full object-contain"
-                />
-              </div>
+            {/* Caption: two lines kept for every title so nothing below moves */}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={slide}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-center mt-5 max-w-[340px]"
+              >
+                <h1 className="text-[25px] font-black leading-[30px] tracking-tight text-white min-h-[60px] flex items-center justify-center">
+                  {AUTH_SLIDES[slide].title}
+                </h1>
+                <p className="text-[14px] text-white/70 mt-1.5">{AUTH_SLIDES[slide].subtitle}</p>
+              </motion.div>
+            </AnimatePresence>
 
-              {/* Bold Punchy Headline */}
-              <h1 className="text-[23px] sm:text-[25px] font-black text-white text-center leading-[1.18] tracking-tight max-w-[300px] mx-auto mt-3 drop-shadow-sm">
-                Groceries at your door in minutes, across Anantnag
-              </h1>
-            </motion.div>
-
-            {/* Artwork Sitting Underneath Headline (Zooming out with Parallax Depth) */}
-            <motion.div
-              animate={{
-                scale: isSheetExtended ? 0.78 : 1,
-                y: isSheetExtended ? -22 : 0,
-                opacity: isSheetExtended ? 0.45 : 1,
-              }}
-              transition={{
-                type: "spring",
-                damping: 30,
-                stiffness: 280,
-                mass: 0.8,
-              }}
-              className="flex-1 min-h-0 flex items-end justify-center pointer-events-none select-none pb-1 origin-bottom"
-            >
-              {heroFailed ? (
-                <img
-                  src="/dashit-mark-white.png"
-                  alt=""
-                  aria-hidden="true"
-                  className="w-24 h-24 object-contain opacity-80 mb-4"
+            {/* Page dots */}
+            <div className="flex items-center gap-1.5 mt-4" role="tablist" aria-label="Pictures">
+              {AUTH_SLIDES.map((item, i) => (
+                <button
+                  key={item.title}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === slide}
+                  aria-label={item.title}
+                  onClick={() => setSlide(i)}
+                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                    i === slide ? "w-[18px] bg-[#FF5B00]" : "w-1.5 bg-white/25"
+                  }`}
                 />
-              ) : (
-                /* WebP first with the PNG as fallback: this art is never shown
-                   wider than 320 CSS px, but the PNG behind it was over a
-                   megabyte. onError stays on the <img>, which is what actually
-                   fails if neither source loads. */
-                <picture>
-                  <source srcSet="/art/rider-scooter-hero-transparent.webp" type="image/webp" />
-                  <img
-                    ref={heroImgRef}
-                    src="/art/rider-scooter-hero-transparent.png"
-                    alt="DASHIT fastest grocery delivery"
-                    width={1142}
-                    height={1377}
-                    decoding="async"
-                    onError={() => setHeroFailed(true)}
-                    className="w-full max-w-[320px] max-h-[38vh] object-contain object-bottom drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)]"
-                  />
-                </picture>
-              )}
-            </motion.div>
-          </div>
+              ))}
+            </div>
+
+            {/* What every order gets */}
+            <div className="flex items-center justify-center gap-3.5 mt-5 text-[12px] font-semibold text-white/80 whitespace-nowrap">
+              <span className="flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-[#FF7A33]" />
+                Free over ₹299
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#FF7A33]" />
+                Live tracking
+              </span>
+              <span className="flex items-center gap-1.5">
+                <IndianRupee className="w-3.5 h-3.5 text-[#FF7A33]" />
+                Cash on delivery
+              </span>
+            </div>
+          </motion.div>
 
           {/* Dimmed Backdrop: Clean dark overlay, NO BLUR */}
           <AnimatePresence>

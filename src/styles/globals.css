@@ -808,3 +808,11 @@ textarea:focus-visible,
   filter: invert(90%) hue-rotate(180deg) contrast(110%) brightness(95%);
 }
 
+/* Sign-in artwork: a slow bob (src/pages/login.js). */
+@keyframes authFloat {
+  0%, 100% { transform: translateY(3px); }
+  50% { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[authFloat_5\.2s_ease-in-out_infinite\] { animation: none; }
+}

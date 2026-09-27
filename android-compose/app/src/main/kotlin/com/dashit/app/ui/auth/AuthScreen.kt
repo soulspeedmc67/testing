@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -11,7 +12,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +33,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,12 +43,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.ShareLocation
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,11 +60,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
@@ -76,15 +83,29 @@ import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.ui.profile.SupportContact
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 enum class AuthMode { LogIn, SignUp }
 
+/** One page of the artwork carousel above the form. */
+private data class AuthSlide(val art: Int, val title: String, val subtitle: String)
+
+private val SLIDES = listOf(
+    AuthSlide(R.drawable.auth_scooter, "Groceries at your door, in minutes", "From our Anantnag store to your street."),
+    AuthSlide(R.drawable.auth_groceries, "Fresh picks, carefully packed", "Dairy, fruit, staples, snacks and more."),
+    AuthSlide(R.drawable.auth_flying_box, "Follow every order, live", "Watch your rider right up to your door.")
+)
+
+private val MidnightDeep = Color(0xFF040F24)
+private val OnMidnightMuted = Color.White.copy(alpha = 0.68f)
+
 /**
- * Full-screen log in / sign up on the brand orange, drawn with the rider
- * artwork: the scooter rider for log in, the grocery rider for sign up. Same
- * screen as the iOS AuthView. Sign-in is the confirm-your-number flow (the
- * Spark plan has no SMS); sign up also asks for a name.
+ * Full-screen log in / sign up, the same screen as the iOS AuthView: the
+ * splash's midnight with a soft orange glow behind the brand artwork, which
+ * turns slowly with a caption each, and a clean form panel below. Sign-in is
+ * the confirm-your-number flow (the Spark plan has no SMS); sign up also asks
+ * for a name.
  *
  * Shown once on first launch with "Skip for now" (browsing never needs an
  * account) and from Profile. Calls [onClose] once signed in or dismissed.
@@ -106,16 +127,27 @@ fun AuthScreen(
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val valid = AuthRepository.normalizedMobile(digits) != null
+    val pager = rememberPagerState { SLIDES.size }
 
     BackHandler(enabled = !isSigningIn) {
         if (isConfirming) isConfirming = false else onClose()
     }
 
+    // The artwork turns on its own until the shopper starts typing.
+    val isTyping = digits.isNotEmpty() || name.isNotEmpty()
+    LaunchedEffect(isTyping) {
+        if (isTyping) return@LaunchedEffect
+        while (true) {
+            delay(4200)
+            pager.animateScrollToPage((pager.currentPage + 1) % SLIDES.size, animationSpec = tween(700))
+        }
+    }
+
     // A slow bob for the artwork.
     val float by rememberInfiniteTransition(label = "auth_float").animateFloat(
-        initialValue = 4f,
-        targetValue = -6f,
-        animationSpec = infiniteRepeatable(tween(2400), RepeatMode.Reverse),
+        initialValue = 3f,
+        targetValue = -5f,
+        animationSpec = infiniteRepeatable(tween(2600), RepeatMode.Reverse),
         label = "auth_float_y"
     )
 
@@ -125,10 +157,7 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                AuthRepository.signInWithConfirmedMobile(
-                    digits,
-                    name.takeIf { mode == AuthMode.SignUp }
-                )
+                AuthRepository.signInWithConfirmedMobile(digits, name.takeIf { mode == AuthMode.SignUp })
                 HapticsManager.success(view)
                 onClose()
             } catch (e: Exception) {
@@ -143,12 +172,20 @@ fun AuthScreen(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(listOf(Color(0xFFFF6A1A), Color(0xFFF24E00), Color(0xFFD63800)))
-            )
+            .background(Brush.verticalGradient(listOf(DashitColors.Midnight, MidnightDeep)))
     ) {
         val screenHeight = maxHeight
-        val heroHeight = (screenHeight * 0.48f).coerceIn(270.dp, 430.dp)
+        val artHeight = (screenHeight * 0.24f).coerceIn(150.dp, 230.dp)
+
+        // The panel's colour behind the bottom of the screen, so it runs on to
+        // the edge on tall screens.
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .fillMaxHeight(0.3f)
+                .background(DashitColors.SurfaceRaised)
+        )
 
         Column(
             modifier = Modifier
@@ -156,69 +193,153 @@ fun AuthScreen(
                 .verticalScroll(rememberScrollState())
                 .imePadding()
         ) {
-            // Hero: brand tile, headline and the artwork.
-            Column(
+            // Brand lockup, and Skip / close
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(heroHeight)
                     .statusBarsPadding()
-                    .padding(top = 44.dp, start = 24.dp, end = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(start = 20.dp, end = 16.dp, top = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Image(
-                    painter = painterResource(R.drawable.brand_tile),
+                    painter = painterResource(R.drawable.splash_logo),
                     contentDescription = null,
-                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Image(
+                    painter = painterResource(R.drawable.splash_wordmark),
+                    contentDescription = "DASHit",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.height(17.dp)
+                )
+                Spacer(Modifier.weight(1f))
+                if (isWelcome) {
+                    Text(
+                        "Skip",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+                            .pressable {
+                                HapticsManager.light(view)
+                                onClose()
+                            }
+                            .padding(horizontal = 16.dp, vertical = 7.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, Color.White.copy(alpha = 0.18f), CircleShape)
+                            .pressable(scale = 0.88f) {
+                                HapticsManager.light(view)
+                                onClose()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // Artwork carousel on a soft orange glow
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(artHeight + 24.dp)
+                    .padding(top = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .shadow(10.dp, RoundedCornerShape(16.dp))
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(2.dp, Color.White, RoundedCornerShape(16.dp))
+                        .size(artHeight * 1.5f)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(DashitColors.BrandOrange.copy(alpha = 0.30f), Color.Transparent)
+                            )
+                        )
                 )
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    text = if (mode == AuthMode.SignUp) "Create your account" else "Log in to DASHit",
-                    color = Color.White,
-                    fontSize = 25.sp,
-                    fontWeight = FontWeight.Black
-                )
-                Text(
-                    text = "Groceries at your door in minutes, across Anantnag.",
-                    color = Color.White.copy(alpha = 0.85f),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                AnimatedContent(
-                    targetState = mode,
-                    transitionSpec = { (scaleIn(initialScale = 0.85f) + fadeIn()) togetherWith fadeOut() },
-                    label = "auth_art",
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .graphicsLayer { translationY = float * density }
-                ) { current ->
+                HorizontalPager(
+                    state = pager,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
                     Image(
-                        painter = painterResource(
-                            if (current == AuthMode.SignUp) R.drawable.auth_groceries else R.drawable.auth_scooter
-                        ),
+                        painter = painterResource(SLIDES[page].art),
                         contentDescription = null,
                         contentScale = ContentScale.Fit,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 40.dp)
+                            .graphicsLayer { translationY = float * density }
                     )
                 }
             }
 
-            // Panel
+            // Caption for the page in view
+            AnimatedContent(
+                targetState = pager.currentPage,
+                transitionSpec = { fadeIn(tween(350)) togetherWith fadeOut(tween(200)) },
+                label = "auth_caption",
+                modifier = Modifier.fillMaxWidth()
+            ) { page ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 28.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Two lines kept for every title, so turning pages never moves the form.
+                    Text(
+                        SLIDES[page].title,
+                        color = Color.White,
+                        fontSize = 25.sp,
+                        lineHeight = 30.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        textAlign = TextAlign.Center,
+                        minLines = 2,
+                        maxLines = 2
+                    )
+                    Text(
+                        SLIDES[page].subtitle,
+                        color = OnMidnightMuted,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1
+                    )
+                }
+            }
+
+            PageDots(count = SLIDES.size, current = pager.currentPage)
+
+            // What every order gets
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally)
+            ) {
+                TrustItem(Icons.Filled.LocalShipping, "Free over ₹299")
+                TrustItem(Icons.Filled.ShareLocation, "Live tracking")
+                TrustItem(Icons.Filled.Payments, "Cash on delivery")
+            }
+
+            // Form panel
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = screenHeight - heroHeight)
-                    .shadow(24.dp, RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
-                    .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                    .heightIn(min = 320.dp)
+                    .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .background(DashitColors.SurfaceRaised)
+                    .border(
+                        1.dp,
+                        Brush.verticalGradient(listOf(DashitColors.EdgeHighlight, Color.Transparent)),
+                        RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                    )
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -241,14 +362,16 @@ fun AuthScreen(
                             ) {
                                 AuthField(
                                     value = name,
-                                    placeholder = "Your name",
+                                    label = "Your name",
+                                    placeholder = "First and last name",
                                     keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
                                     onChange = { name = it.take(60) }
                                 )
                             }
                             AuthField(
                                 value = digits,
-                                placeholder = "10-digit mobile number",
+                                label = "Mobile number",
+                                placeholder = "10-digit number",
                                 prefix = "+91",
                                 highlighted = valid,
                                 keyboard = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -318,14 +441,16 @@ fun AuthScreen(
 
                 // Legal
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 2.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("By continuing, you agree to our", color = DashitColors.TextMuted, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             "Terms & Conditions",
-                            color = DashitColors.BrandAccent,
+                            color = DashitColors.TextSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.pressable { uriHandler.openUri(SupportContact.TERMS_URL) }
@@ -333,7 +458,7 @@ fun AuthScreen(
                         Text("and", color = DashitColors.TextMuted, fontSize = 12.sp)
                         Text(
                             "Privacy Policy",
-                            color = DashitColors.BrandAccent,
+                            color = DashitColors.TextSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.pressable { uriHandler.openUri(SupportContact.PRIVACY_URL) }
@@ -342,49 +467,39 @@ fun AuthScreen(
                 }
             }
         }
+    }
+}
 
-        // Skip for now (first launch) or close.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 8.dp, end = 16.dp)
-        ) {
-            if (isWelcome) {
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
-                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
-                        .pressable {
-                            HapticsManager.light(view)
-                            onClose()
-                        }
-                        .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Skip for now", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
-                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
-                        .pressable(scale = 0.88f) {
-                            HapticsManager.light(view)
-                            onClose()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-            }
+@Composable
+private fun PageDots(count: Int, current: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+    ) {
+        repeat(count) { index ->
+            val selected = index == current
+            val width by animateDpAsState(if (selected) 18.dp else 6.dp, label = "dot_width")
+            Box(
+                modifier = Modifier
+                    .size(width = width, height = 6.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) DashitColors.BrandOrange else Color.White.copy(alpha = 0.25f))
+            )
         }
     }
+}
 
+@Composable
+private fun TrustItem(icon: ImageVector, label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = DashitColors.BrandAccent, modifier = Modifier.size(14.dp))
+        Text(label, color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
 }
 
 /** Log in | Sign up, with the selected half raised. */
@@ -406,6 +521,7 @@ private fun ModeSwitch(mode: AuthMode, onSelect: (AuthMode) -> Unit) {
                     .height(40.dp)
                     .clip(CircleShape)
                     .background(if (selected) DashitColors.Surface else Color.Transparent)
+                    .border(1.dp, if (selected) DashitColors.Hairline else Color.Transparent, CircleShape)
                     .pressable(scale = 0.97f) { onSelect(option) },
                 contentAlignment = Alignment.Center
             ) {
@@ -423,42 +539,46 @@ private fun ModeSwitch(mode: AuthMode, onSelect: (AuthMode) -> Unit) {
 @Composable
 private fun AuthField(
     value: String,
+    label: String,
     placeholder: String,
     onChange: (String) -> Unit,
     prefix: String? = null,
     highlighted: Boolean = false,
     keyboard: KeyboardOptions = KeyboardOptions.Default
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(DashitColors.SurfaceMuted)
-            .border(
-                1.dp,
-                if (highlighted) DashitColors.BrandOrange.copy(alpha = 0.7f) else Color.Transparent,
-                RoundedCornerShape(14.dp)
-            )
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        if (prefix != null) {
-            Text(prefix, color = DashitColors.TextSecondary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Box(Modifier.size(width = 1.dp, height = 22.dp).background(DashitColors.Hairline))
-        }
-        Box(Modifier.weight(1f)) {
-            if (value.isEmpty()) Text(placeholder, color = DashitColors.TextFaint, fontSize = 16.sp)
-            BasicTextField(
-                value = value,
-                onValueChange = onChange,
-                singleLine = true,
-                keyboardOptions = keyboard,
-                textStyle = TextStyle(color = DashitColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium),
-                cursorBrush = SolidColor(DashitColors.BrandOrange),
-                modifier = Modifier.fillMaxWidth()
-            )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, color = DashitColors.TextSecondary, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 2.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(DashitColors.Surface)
+                .border(
+                    1.dp,
+                    if (highlighted) DashitColors.BrandOrange.copy(alpha = 0.8f) else DashitColors.Hairline,
+                    RoundedCornerShape(14.dp)
+                )
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (prefix != null) {
+                Text(prefix, color = DashitColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                Box(Modifier.size(width = 1.dp, height = 22.dp).background(DashitColors.Hairline))
+            }
+            Box(Modifier.weight(1f)) {
+                if (value.isEmpty()) Text(placeholder, color = DashitColors.TextFaint, fontSize = 16.sp)
+                BasicTextField(
+                    value = value,
+                    onValueChange = onChange,
+                    singleLine = true,
+                    keyboardOptions = keyboard,
+                    textStyle = TextStyle(color = DashitColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp),
+                    cursorBrush = SolidColor(DashitColors.BrandOrange),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
     }
 }
@@ -469,7 +589,7 @@ private fun AuthButton(label: String, enabled: Boolean, isBusy: Boolean, onClick
         modifier = Modifier
             .fillMaxWidth()
             .height(54.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(if (enabled) DashitColors.BrandOrange else DashitColors.SurfaceMuted)
             .pressable(scale = 0.98f) { if (enabled && !isBusy) onClick() },
         contentAlignment = Alignment.Center
