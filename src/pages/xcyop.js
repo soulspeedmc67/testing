@@ -1034,10 +1034,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   /* CSV import — the plan arriving here has already been confirmed line by line
      in CsvInventoryView, so this only commits it. bulkUpdateProductStock creates
      rows that do not exist yet and sets stock on the ones that do. */
-  const handleApplyCsvImport = async (stockUpdates, summary) => {
+  const handleApplyCsvImport = async (stockUpdates, summary, onProgress) => {
     if (!stockUpdates || stockUpdates.length === 0) return { success: false };
     try {
-      const res = await bulkUpdateProductStock(stockUpdates);
+      const res = await bulkUpdateProductStock(stockUpdates, { onProgress });
       const fresh = await fetchProducts();
       if (fresh && fresh.length > 0) setCatalogue(fresh);
 
@@ -1265,8 +1265,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     } catch (e) {
       setToastMessage({
         type: "error",
-        title: "Couldn't save",
-        description: e.message || "Please try again.",
+        title: e.savedLocally ? "Saved on this device only" : "Couldn't save",
+        description: e.savedLocally
+          ? `${distData.name} is saved here, but the shop's online list didn't accept it. Check you're signed in as the owner.`
+          : e.message || "Please try again.",
       });
     }
   };
@@ -1288,16 +1290,27 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     }
   };
 
+  /* Adds a distributor from inside another screen (import, add item). It is
+     usable straight away either way; `{ synced: false }` means only this device
+     has it, and the owner is told so rather than it quietly going missing. */
   const handleQuickAddDistributor = async (distInput) => {
+    const payload =
+      typeof distInput === "string"
+        ? { name: distInput, active: true }
+        : { active: true, ...distInput };
     try {
-      const payload =
-        typeof distInput === "string"
-          ? { name: distInput, active: true }
-          : { active: true, ...distInput };
-      await upsertDistributor(payload);
+      const id = await upsertDistributor(payload);
       showToast(`Added ${payload.name} to your distributors.`);
+      return { id, synced: true };
     } catch (e) {
       console.warn("Failed to quick add distributor:", e);
+      showToast(
+        e?.savedLocally
+          ? `${payload.name} is saved on this device only. The shop's online list didn't accept it; check you're signed in as the owner.`
+          : `Couldn't add ${payload.name}: ${e?.message || "please try again."}`,
+        8000
+      );
+      return { id: e?.distributorId, synced: false, savedLocally: Boolean(e?.savedLocally) };
     }
   };
 
