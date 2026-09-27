@@ -15,15 +15,26 @@ android/keystore.properties
 *.keystore
 release/
 
+# iOS release signing — never commit these
+ios-certs/
+*.key
+*.cer
+*.p12
+*.certSigningRequest
+*.mobileprovision
+
 # Build binaries
 *.apk
 *.aab
-*-User.ipa
-*-Driver.ipa
-*-Admin.ipa
-*-darkmode.ipa
-dashit-*.ipa
+*.ipa
 !Dashit.ipa
+admin-capacitor-ipa/
+build-output-ios/
+downloaded-ipa/
+latest-ipa/
+native-swift-ipa/
+native-swift-latest/
+native-swift-signed-ipa/
 
 # Temporary and export archives
 *.zip
