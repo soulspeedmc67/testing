@@ -663,7 +663,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     /// Saves the checked lines of a CSV file, all marked as from `distributor`.
     /// Returns how many items were saved.
     public func applyCSVImport(_ items: [CSVStockImport.Item], mode: CSVStockImport.Mode, distributor: String) async throws -> Int {
-        let chosen = items.filter { $0.include && $0.problem == nil }
+        let chosen = items.filter { $0.include && $0.problem == nil && CSVStockImport.isValidDocumentID($0.id) }
         guard !chosen.isEmpty else { return 0 }
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
 

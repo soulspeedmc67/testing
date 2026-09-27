@@ -16,11 +16,12 @@ struct AdminCSVImportView: View {
     @State private var isSaving = false
     @State private var alertMessage: String?
 
-    private var sampleFileURL: URL {
+    /// Written once, not on every redraw of a long list.
+    private static let sampleFileURL: URL = {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("dashit-sample.csv")
         try? CSVStockImport.sample.write(to: url, atomically: true, encoding: .utf8)
         return url
-    }
+    }()
 
     var body: some View {
         ScrollView {
@@ -100,7 +101,7 @@ struct AdminCSVImportView: View {
             }
             .buttonStyle(.plain)
 
-            ShareLink(item: sampleFileURL) {
+            ShareLink(item: Self.sampleFileURL) {
                 Label("Get a sample file", systemImage: "square.and.arrow.down")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.orange)
@@ -112,7 +113,7 @@ struct AdminCSVImportView: View {
         let didAccess = url.startAccessingSecurityScopedResource()
         defer { if didAccess { url.stopAccessingSecurityScopedResource() } }
         guard let data = try? Data(contentsOf: url) else {
-            alertMessage = "Couldn't open that file."
+            afterPickerCloses { alertMessage = "Couldn't open that file." }
             return
         }
         let text = String(data: data, encoding: .utf8)
@@ -120,12 +121,38 @@ struct AdminCSVImportView: View {
             ?? String(data: data, encoding: .isoLatin1)
             ?? ""
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            alertMessage = "That file is empty."
+            afterPickerCloses { alertMessage = "That file is empty." }
             return
         }
         fileName = url.lastPathComponent
         fileText = text
-        isSourceSheetOpen = true
+        afterPickerCloses { isSourceSheetOpen = true }
+    }
+
+    /// The Files picker is still closing when it hands over the file. Opening
+    /// the sheet or an alert in that moment makes UIKit throw ("already
+    /// presenting") and the app quits, so wait until the picker is gone.
+    private func afterPickerCloses(_ show: @escaping @MainActor () -> Void) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(150))
+            let clock = ContinuousClock()
+            let deadline = clock.now + .seconds(3)
+            while Self.isPresentingSomething && clock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            show()
+        }
+    }
+
+    @MainActor
+    private static var isPresentingSomething: Bool {
+        let root = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)?
+            .rootViewController
+        guard let root else { return false }
+        return root.presentedViewController != nil || root.transitionCoordinator != nil
     }
 
     // MARK: - Check before saving
@@ -203,13 +230,19 @@ struct AdminCSVImportView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.orange)
             }
-            ForEach(plan.skipped, id: \.self) { line in
+            ForEach(plan.skipped.prefix(20), id: \.self) { line in
                 Label("\(line). Left out.", systemImage: "minus.circle")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
             }
+            if plan.skipped.count > 20 {
+                Text("…and \(plan.skipped.count - 20) more lines left out.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
 
-            VStack(spacing: 0) {
+            // Lazy, so a file with thousands of lines doesn't build every row at once.
+            LazyVStack(spacing: 0) {
                 ForEach(plan.items) { item in
                     row(item)
                     if item.id != plan.items.last?.id {

@@ -51,3 +51,8 @@
 ### 9. Tailwind Class Purging
 - **Trap**: Writing dynamic class names like `bg-${deal.color}-500` results in missing CSS in production builds.
 - **Rule**: Always write complete class strings (e.g. `border-orange-200/80`) or use static lookup tables.
+
+### 10. Native iOS (ios-swift): Three Ways a Stock File Quit the Admin App
+- **Sheet right after the Files picker**: `.fileImporter` hands over the file while the picker is still closing. Opening a `.sheet` or `.alert` in that callback makes UIKit throw ("already presenting") and the app quits. `AdminCSVImportView.afterPickerCloses` waits until nothing is presented before opening anything. Do the same for any new picker → sheet step.
+- **Firestore ids**: `document(_:)` on iOS does not throw on a bad id, it raises an Objective-C exception that Swift can't catch. A "/" (a code like `OIL/1L`), `.`, `..`, `__x__` or an empty id quits the app. Every id from a file goes through `CSVStockImport.isValidDocumentID`; new codes have "/" turned into "-".
+- **`Int(someDouble)` traps** on NaN, infinity, or anything past `Int.max` (`Double("inf")`, `Double("nan")` and `"1e999"` all parse). Use `Int(exactly:)` and check `isFinite`. `flexibleDouble` / `flexibleInt` in `DecodingHelpers.swift` already do, and every product in the listener goes through them.

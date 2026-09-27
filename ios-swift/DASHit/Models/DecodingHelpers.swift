@@ -6,21 +6,32 @@ extension KeyedDecodingContainer {
     func flexibleString(_ key: Key) -> String? {
         if let value = try? decode(String.self, forKey: key) { return value }
         if let value = try? decode(Int.self, forKey: key) { return String(value) }
-        if let value = try? decode(Double.self, forKey: key) {
-            return value.rounded() == value ? String(Int(value)) : String(value)
+        if let value = try? decode(Double.self, forKey: key), value.isFinite {
+            if let whole = Int(exactly: value) { return String(whole) }
+            return String(value)
         }
         return nil
     }
 
+    /// Finite numbers only: `Int(_:)` stops the app on NaN, infinity or a value
+    /// past `Int.max`, and a document can hold any of those.
     func flexibleDouble(_ key: Key) -> Double? {
-        if let value = try? decode(Double.self, forKey: key) { return value }
-        if let value = try? decode(Int.self, forKey: key) { return Double(value) }
-        if let value = try? decode(String.self, forKey: key) { return Double(value) }
-        return nil
+        let value: Double?
+        if let number = try? decode(Double.self, forKey: key) {
+            value = number
+        } else if let number = try? decode(Int.self, forKey: key) {
+            value = Double(number)
+        } else if let text = try? decode(String.self, forKey: key) {
+            value = Double(text.trimmingCharacters(in: .whitespaces))
+        } else {
+            value = nil
+        }
+        guard let value, value.isFinite else { return nil }
+        return value
     }
 
     func flexibleInt(_ key: Key) -> Int? {
-        flexibleDouble(key).map { Int($0) }
+        flexibleDouble(key).flatMap { Int(exactly: $0.rounded(.towardZero)) }
     }
 
     /// Seconds since 1970 from a Firestore Timestamp, a number (seconds or
