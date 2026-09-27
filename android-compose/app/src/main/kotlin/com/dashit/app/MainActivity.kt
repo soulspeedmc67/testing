@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dashit.app.ui.SplashOverlay
+import com.dashit.app.ui.auth.AuthScreen
 import com.dashit.app.core.design.DashitTheme
 import com.dashit.app.data.OrderNotifications
 import com.dashit.app.data.StoreStatus
@@ -59,9 +60,15 @@ class MainActivity : ComponentActivity() {
         osmConfig.osmdroidBasePath = basePath
         osmConfig.osmdroidTileCache = tileCache
 
+        // Log in / sign up, once, on the very first launch; the splash clears
+        // onto it. "Skip for now" goes straight to the shop.
+        val prefs = getSharedPreferences("dashit_prefs", MODE_PRIVATE)
+        val showWelcomeAtStart = !prefs.getBoolean(WELCOME_SEEN_KEY, false) && AuthRepository.user.value == null
+
         setContent {
             DashitTheme {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
+                var showWelcomeAuth by rememberSaveable { mutableStateOf(showWelcomeAtStart) }
                 // The app starts a touch zoomed in behind the splash and settles as it clears.
                 var isSettled by rememberSaveable { mutableStateOf(false) }
                 val appScale by animateFloatAsState(
@@ -81,6 +88,12 @@ class MainActivity : ComponentActivity() {
                     ) {
                         StorefrontScreen(storefrontVm = storefrontViewModel)
                     }
+                    if (showWelcomeAuth) {
+                        AuthScreen(isWelcome = true, onClose = {
+                            prefs.edit().putBoolean(WELCOME_SEEN_KEY, true).apply()
+                            showWelcomeAuth = false
+                        })
+                    }
                     if (showSplash) {
                         SplashOverlay(
                             onReveal = { isSettled = true },
@@ -90,6 +103,10 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private companion object {
+        const val WELCOME_SEEN_KEY = "seen_auth_welcome"
     }
 
     override fun onStart() {
