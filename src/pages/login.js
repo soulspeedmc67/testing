@@ -23,8 +23,6 @@ import {
   Mail,
   AlertCircle,
   RefreshCw,
-  Truck,
-  IndianRupee,
 } from "lucide-react";
 import { goBack } from "../lib/navigation";
 import {
@@ -48,29 +46,6 @@ function WhatsAppIcon({ className = "w-4 h-4" }) {
     </svg>
   );
 }
-
-/* The artwork carousel above the form: same pictures and captions as the
-   iOS and Android sign-in screens. */
-const AUTH_SLIDES = [
-  {
-    webp: "/art/rider-scooter-hero-transparent.webp",
-    png: "/art/rider-scooter-hero-transparent.png",
-    title: "Groceries at your door, in minutes",
-    subtitle: "From our Anantnag store to your street.",
-  },
-  {
-    webp: "/art/rider-holding-groceries-transparent.webp",
-    png: "/art/rider-holding-groceries-transparent.png",
-    title: "Fresh picks, carefully packed",
-    subtitle: "Dairy, fruit, staples, snacks and more.",
-  },
-  {
-    webp: "/art/flying-grocery-box-transparent-680.webp",
-    png: "/art/flying-grocery-box-transparent.png",
-    title: "Follow every order, live",
-    subtitle: "Watch your rider right up to your door.",
-  },
-];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -139,18 +114,6 @@ export default function LoginPage() {
   // Hero illustration state
   const [heroFailed, setHeroFailed] = useState(false);
   const heroImgRef = useRef(null);
-  const [slide, setSlide] = useState(0);
-
-  /* The pictures turn on their own while the landing is showing; they stop
-     once the form is open, and for anyone who prefers reduced motion. */
-  useEffect(() => {
-    if (isSheetExtended || step !== 1) return undefined;
-    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      return undefined;
-    }
-    const timer = setInterval(() => setSlide((i) => (i + 1) % AUTH_SLIDES.length), 4200);
-    return () => clearInterval(timer);
-  }, [isSheetExtended, step]);
 
   useEffect(() => {
     const img = heroImgRef.current;
@@ -777,12 +740,17 @@ export default function LoginPage() {
       <SEO title="Sign In" noindex={true} />
       {/* STEP 1: Screenshot-styled Hero + Seamless Extensible Bottom Sheet */}
       {step === 1 && (
-        <div className="relative min-h-screen flex flex-col bg-gradient-to-b from-[#061838] to-[#040F24] pb-[190px]">
+        <div className="relative min-h-screen flex flex-col bg-[linear-gradient(180deg,#0D2F6E_0%,#061838_48%,#040F24_100%)] pb-[196px]">
+          {/* A warm light behind the rider and a faint one in the top corner */}
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_75%_45%_at_50%_40%,rgba(255,91,0,0.34),rgba(255,91,0,0)_70%),radial-gradient(circle_at_100%_0%,rgba(255,122,26,0.14),rgba(255,122,26,0)_55%)]"
+          />
           {/* Reserved Status Bar Space: Fits exact notch / Dynamic Island without arbitrary gap */}
           <div className="w-full h-[env(safe-area-inset-top,0px)] shrink-0 pointer-events-none" aria-hidden="true" />
 
           {/* Brand lockup + Skip */}
-          <div className="relative z-10 flex items-center justify-between px-5 pt-3 shrink-0">
+          <div className="relative z-10 flex items-center justify-between pl-5 pr-2 pt-3 shrink-0">
             <div className="flex items-center gap-2">
               <img src="/dashit-mark-white.png" alt="" aria-hidden="true" className="w-7 h-7 object-contain" />
               <img src="/dashit-wordmark-white.png" alt="DASHIT" className="h-[17px] w-auto object-contain" />
@@ -790,13 +758,13 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleSkipSetup}
-              className="text-[14px] font-semibold text-white px-4 py-1.5 rounded-full border border-white/20 hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+              className="min-h-[44px] px-3 text-[15px] font-semibold text-white/80 hover:text-white active:scale-95 transition-all cursor-pointer"
             >
               Skip
             </button>
           </div>
 
-          {/* Artwork carousel on a soft orange glow, dimming back while the form is open */}
+          {/* The rider on a warm glow, dimming back while the form is open */}
           <motion.div
             animate={{
               scale: isSheetExtended ? 0.86 : 1,
@@ -806,90 +774,34 @@ export default function LoginPage() {
             transition={{ type: "spring", damping: 30, stiffness: 280, mass: 0.8 }}
             className="relative flex-1 min-h-0 flex flex-col items-center justify-center px-6 pt-4 origin-top"
           >
-            <div className="relative w-full h-[min(30vh,240px)] flex items-center justify-center">
-              <div
-                aria-hidden="true"
-                className="absolute w-[min(78vw,360px)] aspect-square rounded-full bg-[radial-gradient(circle,rgba(255,91,0,0.30)_0%,rgba(255,91,0,0)_68%)] pointer-events-none"
-              />
-              <AnimatePresence mode="popLayout" initial={false}>
-                <motion.div
-                  key={slide}
-                  initial={{ opacity: 0, x: 40, scale: 0.96 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -40, scale: 0.96 }}
-                  transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                >
-                  {heroFailed ? (
-                    <img src="/dashit-mark-white.png" alt="" aria-hidden="true" className="w-24 h-24 object-contain opacity-80" />
-                  ) : (
-                    /* WebP first with the PNG as fallback: the PNGs are well over
-                       a megabyte and the art is never shown wider than ~300 px. */
-                    <picture>
-                      <source srcSet={AUTH_SLIDES[slide].webp} type="image/webp" />
-                      <img
-                        ref={slide === 0 ? heroImgRef : undefined}
-                        src={AUTH_SLIDES[slide].png}
-                        alt=""
-                        aria-hidden="true"
-                        decoding="async"
-                        onError={() => setHeroFailed(true)}
-                        className="max-h-[min(30vh,240px)] max-w-[300px] w-auto object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.45)] animate-[authFloat_5.2s_ease-in-out_infinite]"
-                      />
-                    </picture>
-                  )}
-                </motion.div>
-              </AnimatePresence>
+            <div className="relative w-full h-[min(30vh,280px)] flex items-center justify-center">
+              {heroFailed ? (
+                <img src="/dashit-mark-white.png" alt="" aria-hidden="true" className="w-24 h-24 object-contain opacity-80" />
+              ) : (
+                /* WebP first with the PNG as fallback: the PNG is well over a
+                   megabyte and the art is never shown wider than ~340 px. */
+                <picture>
+                  <source srcSet="/art/rider-scooter-hero-transparent.webp" type="image/webp" />
+                  <img
+                    ref={heroImgRef}
+                    src="/art/rider-scooter-hero-transparent.png"
+                    alt=""
+                    aria-hidden="true"
+                    decoding="async"
+                    onError={() => setHeroFailed(true)}
+                    className="max-h-[min(30vh,280px)] max-w-[340px] w-auto object-contain drop-shadow-[0_18px_36px_rgba(0,0,0,0.45)] animate-[authFloat_5.2s_ease-in-out_infinite]"
+                  />
+                </picture>
+              )}
             </div>
 
-            {/* Caption: two lines kept for every title so nothing below moves */}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={slide}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="text-center mt-5 max-w-[340px]"
-              >
-                <h1 className="text-[25px] font-black leading-[30px] tracking-tight text-white min-h-[60px] flex items-center justify-center">
-                  {AUTH_SLIDES[slide].title}
-                </h1>
-                <p className="text-[14px] text-white/70 mt-1.5">{AUTH_SLIDES[slide].subtitle}</p>
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Page dots */}
-            <div className="flex items-center gap-1.5 mt-4" role="tablist" aria-label="Pictures">
-              {AUTH_SLIDES.map((item, i) => (
-                <button
-                  key={item.title}
-                  type="button"
-                  role="tab"
-                  aria-selected={i === slide}
-                  aria-label={item.title}
-                  onClick={() => setSlide(i)}
-                  className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                    i === slide ? "w-[18px] bg-[#FF5B00]" : "w-1.5 bg-white/25"
-                  }`}
-                />
-              ))}
-            </div>
-
-            {/* What every order gets */}
-            <div className="flex items-center justify-center gap-3.5 mt-5 text-[12px] font-semibold text-white/80 whitespace-nowrap">
-              <span className="flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5 text-[#FF7A33]" />
-                Free over ₹299
-              </span>
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#FF7A33]" />
-                Live tracking
-              </span>
-              <span className="flex items-center gap-1.5">
-                <IndianRupee className="w-3.5 h-3.5 text-[#FF7A33]" />
-                Cash on delivery
-              </span>
+            <div className="text-center mt-5 max-w-[340px]">
+              <h1 className="text-[26px] leading-[30px] min-[360px]:text-[30px] min-[360px]:leading-[34px] font-black tracking-tight text-white">
+                Groceries delivered
+                <br />
+                in minutes
+              </h1>
+              <p className="text-[14px] min-[360px]:text-[15px] text-white/70 mt-2.5">Anantnag&apos;s everyday essentials, at your door.</p>
             </div>
           </motion.div>
 
@@ -911,7 +823,7 @@ export default function LoginPage() {
           {/* Single Unified Bottom Sheet: Seamlessly morphs from collapsed card into extended details and pops towards top */}
           <motion.div
             animate={{
-              height: isSheetExtended ? "85vh" : "168px",
+              height: isSheetExtended ? "85vh" : "184px",
             }}
             transition={{
               type: "spring",
@@ -938,22 +850,23 @@ export default function LoginPage() {
                   transition={{ duration: 0.15 }}
                   className="px-6 pt-2 pb-[max(20px,calc(12px+env(safe-area-inset-bottom,20px)))] space-y-3.5 shrink-0"
                 >
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => openAuthForm("signin")}
-                      className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-[15.5px] py-4 rounded-2xl shadow-[0_4px_16px_rgba(255,91,0,0.32)] active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
-                    >
-                      Log in
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuthForm("signin")}
+                    className="w-full bg-[linear-gradient(90deg,#FF7A1A,#FF4D00)] text-white font-black text-[16px] py-4 rounded-2xl shadow-[0_8px_20px_rgba(255,77,0,0.30)] hover:brightness-105 active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer"
+                  >
+                    Log in
+                  </button>
+                  <p className="text-[14px] text-slate-500 text-center dark:text-content-muted">
+                    New to DASHit?{" "}
                     <button
                       type="button"
                       onClick={() => openAuthForm("signup")}
-                      className="w-full bg-orange-50 hover:bg-orange-100 text-[#E04E00] border border-orange-200 font-black text-[15.5px] py-4 rounded-2xl active:scale-[0.98] transition-all flex items-center justify-center cursor-pointer dark:bg-orange-950/30 dark:border-orange-900/50 dark:text-[#FF7A33]"
+                      className="font-bold text-[#E04E00] hover:underline cursor-pointer dark:text-[#FF7A33]"
                     >
-                      Sign up
+                      Create an account
                     </button>
-                  </div>
+                  </p>
 
                   <p className="text-[11px] text-slate-500 text-center leading-relaxed max-w-[290px] mx-auto dark:text-content-muted">
                     By tapping, I accept the{" "}
@@ -972,10 +885,6 @@ export default function LoginPage() {
                     >
                       Terms of Use
                     </button>
-                  </p>
-
-                  <p className="text-[10.5px] font-medium text-slate-400 text-center pt-0.5 pb-[max(16px,env(safe-area-inset-bottom,16px))] dark:text-content-faint">
-                    App version 1.0.0
                   </p>
                 </motion.div>
               ) : (
@@ -1325,9 +1234,6 @@ export default function LoginPage() {
                               <label className="block text-[10.5px] font-bold text-slate-700 pl-1 uppercase tracking-wider dark:text-content-secondary">
                                 Delivery Contact Mobile (+91)
                               </label>
-                              <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 dark:bg-emerald-950/50 dark:border-emerald-800/60 dark:text-emerald-300">
-                                For Driver Delivery
-                              </span>
                             </div>
                             <div className="relative flex items-center">
                               <span className="absolute left-3 text-xs font-black text-slate-700 select-none dark:text-content">
@@ -1358,7 +1264,7 @@ export default function LoginPage() {
                           <button
                             type="submit"
                             disabled={isProcessing}
-                            className="w-full bg-[#FF5B00] hover:bg-[#E04E00] disabled:opacity-60 text-white font-black text-[13.5px] py-3 px-5 rounded-xl flex items-center justify-center space-x-2 active:scale-[0.98] shadow-[0_4px_14px_rgba(255,91,0,0.25)] transition-all mt-1 cursor-pointer"
+                            className="w-full bg-[linear-gradient(90deg,#FF7A1A,#FF4D00)] hover:brightness-105 disabled:opacity-60 text-white font-black text-[13.5px] py-3 px-5 rounded-xl flex items-center justify-center space-x-2 active:scale-[0.98] shadow-[0_4px_14px_rgba(255,91,0,0.25)] transition-all mt-1 cursor-pointer"
                           >
                             <span>
                               {isProcessing
@@ -1641,7 +1547,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleCompleteSetup}
-              className="w-full bg-[#FF5B00] text-white font-black text-sm py-3.5 px-5 rounded-2xl shadow-sm flex items-center justify-center space-x-2 active:scale-95 transition-transform cursor-pointer"
+              className="w-full bg-[linear-gradient(90deg,#FF7A1A,#FF4D00)] text-white font-black text-sm py-3.5 px-5 rounded-2xl shadow-sm flex items-center justify-center space-x-2 active:scale-95 transition-transform cursor-pointer"
             >
               <span>Save Address &amp; Start Shopping</span>
               <ArrowRight className="w-4 h-4 stroke-[3]" />
