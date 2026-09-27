@@ -247,9 +247,6 @@ struct ProductDetailSheet: View {
     }
 
     private var statutoryCopy: String {
-        if product.cat.caseInsensitiveCompare("Tobacco") == .orderedSame {
-            return "Tobacco causes cancer. Sale of tobacco products to a person under the age of 18 years is a punishable offence. A government photo ID is checked at delivery."
-        }
         return "Sold only to customers aged \(product.minAge ?? 18) and above. A government photo ID is checked at delivery."
     }
 

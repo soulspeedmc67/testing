@@ -175,8 +175,4 @@ export const ALL_PRODUCTS = [
     ] },
   { id: 55, name: "Amul Fresh Paneer", unit: "200 g", price: 95, originalPrice: 105, rating: "4.7", ratingCount: "178", time: "8 mins", options: null, badge: "Fresh", img: "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
   { id: 56, name: "Amul Cheese Slices", unit: "100 g", price: 85, originalPrice: 95, rating: "4.6", ratingCount: "144", time: "8 mins", options: null, badge: "Breakfast", img: "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&auto=format&fit=crop&q=80", cat: "Dairy" },
-  // Tobacco — age restricted, gated behind an 18+ declaration at add-to-cart
-  { id: 60, name: "Classic Filter Kings Cigarettes", unit: "10 sticks", price: 220, originalPrice: 240, rating: "4.2", ratingCount: "64", time: "8 mins", options: null, badge: "18+ Only", img: "https://images.unsplash.com/photo-1548094878-84ced0f6896d?w=400&auto=format&fit=crop&q=80", cat: "Tobacco", ageRestricted: true, minAge: 18 },
-  { id: 61, name: "Gold Flake Small Pack", unit: "10 sticks", price: 130, originalPrice: 140, rating: "4.1", ratingCount: "88", time: "8 mins", options: null, badge: "18+ Only", img: "https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?w=400&auto=format&fit=crop&q=80", cat: "Tobacco", ageRestricted: true, minAge: 18 },
-  { id: 62, name: "Rolling Paper Booklet", unit: "1 pack", price: 45, originalPrice: 55, rating: "4.3", ratingCount: "37", time: "8 mins", options: null, badge: "18+ Only", img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=400&auto=format&fit=crop&q=80", cat: "Tobacco", ageRestricted: true, minAge: 18 },
 ];

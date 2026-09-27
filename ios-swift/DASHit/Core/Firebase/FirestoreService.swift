@@ -11,7 +11,8 @@ final class FirestoreService {
     // MARK: - Products & Categories
 
     /// Live catalogue, as the web reads it: active products only, with the
-    /// document id standing in when a product has no id field.
+    /// document id standing in when a product has no id field. Tobacco and
+    /// other 18+ items are left out of the iOS app (App Store guideline 1.4.3).
     func listenProducts(completion: @escaping ([Product]) -> Void) -> ListenerRegistration {
         return db.collection("products").addSnapshotListener { snapshot, error in
             guard let documents = snapshot?.documents, error == nil else {
@@ -24,7 +25,9 @@ final class FirestoreService {
                 var data = doc.data()
                 if (data["active"] as? Bool) == false { return nil }
                 if data["id"] == nil { data["id"] = doc.documentID }
-                return try? decoder.decode(Product.self, from: data)
+                guard let product = try? decoder.decode(Product.self, from: data),
+                      !product.isAgeRestricted else { return nil }
+                return product
             }
             completion(products)
         }

@@ -131,7 +131,7 @@ public struct Order: Identifiable, Hashable {
     public var status: OrderStatus
     public let createdAt: Double
     public let deliveryAddress: DeliveryAddress
-    public let paymentMethod: String // "cod", "apple_pay"
+    public let paymentMethod: String // e.g. "Cash on Delivery"
     public let paymentStatus: String // "pending", "completed"
     public var driverId: String?
     public var driverName: String?
