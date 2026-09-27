@@ -310,8 +310,9 @@ export default function CsvInventoryView({
             saved until you check the list and confirm.
           </p>
           <p className={`text-xs ${subtle}`}>
-            Have a bill or price list instead? Copy the AI prompt, paste it into ChatGPT, Gemini or
-            Claude with your PDF or photo, and save its answer as a .csv file.
+            Have a bill, PDF or any other list? Copy the AI prompt and paste it into ChatGPT, Gemini or
+            Claude with your file or photo. It makes a CSV file, finds a photo for each item, and you
+            import that file here.
           </p>
         </div>
 

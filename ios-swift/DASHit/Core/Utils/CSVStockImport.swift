@@ -175,13 +175,14 @@ public enum CSVStockImport {
 
     """
 
-    /// Pasted into ChatGPT, Gemini or Claude along with a bill, invoice or
-    /// price list, it writes a file this importer reads. Same text as
+    /// Pasted into ChatGPT, Gemini or Claude along with any list of products
+    /// (a bill, PDF, photo, Excel sheet or another CSV), it writes a file this
+    /// importer reads, with a photo link found for each item. Same text as
     /// `AI_IMPORT_PROMPT` in the web's `src/lib/csvInventory.js`.
     public static let aiPrompt = """
-    Turn the file I've attached (a bill, invoice, price list or photo of one) into a stock list for my grocery shop, as CSV.
+    Turn whatever I've attached or pasted into a stock list for my grocery shop, as a CSV file. It can be a bill, invoice, price list, PDF, photo or screenshot, Excel sheet, a list typed by hand, or even another CSV file with different columns: always rewrite it into the exact format below.
 
-    Reply with only the CSV: no explanation before or after it.
+    Reply with only the CSV: no explanation before or after it. If you can make files, also give it to me as a .csv file to download.
 
     The first line must be exactly:
     name,category,quantity,price,mrp,unit,brand,barcode,image
@@ -189,13 +190,13 @@ public enum CSVStockImport {
     Then one line for each product:
     - name: the product's name as a shopper would search for it, without the pack size. Example: Amul Taaza Toned Milk
     - category: a short shop category, such as Dairy, Bakery, Fruits, Vegetables, Staples, Snacks, Biscuits, Beverages, Instant Food, Spices, Personal Care, Home Care or Kitchen Care. Spell the same category the same way every time.
-    - quantity: how many single packs or pieces came in, as a whole number. If the bill counts cases or boxes, multiply by the number of pieces in each.
-    - price: the price I sell one piece at, in rupees. If the document doesn't show a selling price, use the MRP.
+    - quantity: how many single packs or pieces came in, as a whole number. If it counts cases or boxes, multiply by the number of pieces in each. If it doesn't say how many came in, put 0.
+    - price: the price I sell one piece at, in rupees. If it doesn't show a selling price, use the MRP.
     - mrp: the MRP printed for one piece, in rupees. Leave it empty if it isn't shown.
     - unit: the pack size, such as 500 ml, 1 kg or 10 pcs.
     - brand: the brand, or empty.
-    - barcode: the barcode or item code if the document shows one, otherwise empty. Never make one up.
-    - image: a direct https link to a clear photo of the product (ending in .jpg, .jpeg, .png or .webp), only if you can look it up and check that it opens. Otherwise leave it empty. Never make up a link.
+    - barcode: the barcode or item code if it's shown, otherwise empty. Never make one up.
+    - image: a photo of this exact product. Search the web for every product (brand, name and pack size) and put a direct https link to the picture itself, not to a web page: the link should open just the image. Prefer the brand's own website or a big online grocery shop, and a clear photo of the pack on a plain background. Check that each link opens the picture. If you can't search the web or can't find a working photo for an item, leave its image empty. Never make up a link.
 
     Rules:
     - Numbers only in quantity, price and mrp: no ₹, Rs or commas.

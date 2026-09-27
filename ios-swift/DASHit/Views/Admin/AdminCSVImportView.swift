@@ -117,9 +117,9 @@ struct AdminCSVImportView: View {
     private var aiPromptCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Have a bill or price list instead?")
+                Text("Have a bill, PDF or any other list?")
                     .font(.system(size: 14, weight: .bold))
-                Text("Copy these instructions, paste them into ChatGPT, Gemini or Claude with your PDF or photo, and save its answer as a .csv file.")
+                Text("Copy these instructions and paste them into ChatGPT, Gemini or Claude with your file or photo. It makes a CSV file, finds a photo for each item, and you import that file here.")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
