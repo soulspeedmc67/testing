@@ -836,7 +836,7 @@ private fun getCategoryIcon(name: String): ImageVector {
         "beauty" -> Icons.Default.Spa
         "gifting" -> Icons.Default.CardGiftcard
         "dairy", "dairy, bread & eggs" -> Icons.Default.Coffee
-        "chips & namkeen", "snacks" -> Icons.Default.Fastfood
+        "snacks" -> Icons.Default.Fastfood
         "drinks & juices", "drinks" -> Icons.Default.LocalDrink
         "vegetables & fruits", "vegetables" -> Icons.Default.Eco
         "sweets & chocolates", "bakery" -> Icons.Default.Cake

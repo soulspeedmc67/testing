@@ -93,7 +93,7 @@ object SupportContact {
 
 private data class Question(val question: String, val answer: String)
 
-/* Answers follow the app's real rules (5 km area, 60-second change window,
+/* Answers follow the app's real rules (5 km area, 30-second change window,
    delivery code, ₹25 fee under ₹299) and the Terms. */
 private val QUESTIONS = listOf(
     Question(
@@ -106,7 +106,7 @@ private val QUESTIONS = listOf(
     ),
     Question(
         "Can I change or cancel my order?",
-        "For 60 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider."
+        "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider."
     ),
     Question(
         "What is the delivery code?",

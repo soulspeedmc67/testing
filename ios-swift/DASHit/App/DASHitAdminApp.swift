@@ -77,6 +77,20 @@ struct DASHitAdminAppView: View {
     @StateObject private var session = AdminSession.shared
 
     var body: some View {
+        #if DEBUG
+        if ScreenshotHooks.adminDemo {
+            AdminDashboardView(onSignOut: {})
+                .onAppear { AdminDashboardViewModel.shared.loadDemoData() }
+        } else {
+            signedInContent
+        }
+        #else
+        signedInContent
+        #endif
+    }
+
+    @ViewBuilder
+    private var signedInContent: some View {
         switch session.state {
         case .checking:
             ProgressView()

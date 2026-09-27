@@ -116,7 +116,7 @@ data class Order(
     }
 
     companion object {
-        const val MODIFY_WINDOW_MS = 60_000L
+        const val MODIFY_WINDOW_MS = 30_000L
 
         /** "DSH-" + clock digits + random digits, the same shape as the iOS order codes. */
         fun newCode(): String {

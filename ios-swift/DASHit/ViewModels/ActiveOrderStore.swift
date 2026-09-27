@@ -169,9 +169,9 @@ final class ActiveOrderStore: ObservableObject {
             deliveryFee: 0,
             discount: 0,
             grandTotal: 420,
-            status: ScreenshotHooks.demoOrderPlaced ? .placed : .outForDelivery,
+            status: ScreenshotHooks.demoOrderPlaced ? .placed : ScreenshotHooks.demoOrderPacking ? .packing : .outForDelivery,
             deliveryAddress: DeliveryAddress(street: "Court Road, Lal Chowk"),
-            driverName: ScreenshotHooks.demoOrderPlaced ? nil : "Aamir",
+            driverName: ScreenshotHooks.demoOrderPlaced || ScreenshotHooks.demoOrderPacking ? nil : "Aamir",
             etaMinutes: 6,
             otp: "4821"
         )

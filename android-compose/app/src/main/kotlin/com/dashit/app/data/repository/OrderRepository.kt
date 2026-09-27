@@ -47,7 +47,7 @@ class OrderRepository(
     sealed class OrderError(message: String) : Exception(message) {
         class NotSignedIn : OrderError("Please confirm your number to place orders.")
         class Network : OrderError("We couldn't reach the store. Check your connection and try again.")
-        class WindowClosed : OrderError("The 60 seconds are up and the store is packing your order.")
+        class WindowClosed : OrderError("The 30 seconds are up and the store is packing your order.")
         class NothingAdded : OrderError("Add at least one item first.")
         class StoreStartedPacking : OrderError("The store has already started packing, so this order can't be changed now.")
     }
@@ -241,7 +241,7 @@ class OrderRepository(
     }
 
     /**
-     * Adds items during the 60-second window. The rules never let a customer
+     * Adds items during the 30-second window. The rules never let a customer
      * edit an order's items, only cancel a "Placed" one, so the change is made
      * as a store would record it: a full replacement order first, then the
      * original cancelled as replaced. If the original can't be cancelled any

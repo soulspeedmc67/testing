@@ -330,8 +330,8 @@ fun CheckoutSheet(
                                 .pressable(scale = 0.98f) {
                                     if (!isSubmitting) {
                                         val customer = signedInUser
-                                        if (customer == null) {
-                                            // Orders need a signed-in shopper: confirm the number first.
+                                        if (customer == null || customer.name.isNullOrBlank()) {
+                                            // Orders need a signed-in shopper with a name: confirm the number (and name) first.
                                             HapticsManager.light(view)
                                             isSignInOpen = true
                                         } else {

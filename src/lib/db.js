@@ -1791,8 +1791,12 @@ export function getOrderTimestampMs(order) {
 }
 
 /**
- * Returns remaining seconds (0 to 60) for a newly placed order's grace period.
+ * Returns remaining seconds (0 to 30) for a newly placed order's grace period.
  */
+/** How long a customer can add items or cancel after placing an order. Same as
+ * `Order.modifyWindowSeconds` (iOS) and `MODIFY_WINDOW_MS` (Android). */
+export const ORDER_CHANGE_WINDOW_SECONDS = 30;
+
 export function getOrderGracePeriodSeconds(order) {
   if (!order) return 0;
   const status = String(order.status || "").toLowerCase();
@@ -1802,7 +1806,7 @@ export function getOrderGracePeriodSeconds(order) {
   if (!orderTime) return 0;
 
   const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
-  return Math.max(0, 60 - elapsedSec);
+  return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
 }
 
 /**

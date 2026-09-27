@@ -12,7 +12,7 @@ const SUPPORT_PHONE_DISPLAY = "+91 60069 90032";
 const SUPPORT_EMAIL = "support@dashit.co.in";
 const WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order";
 
-/* Answers follow the app's real rules (5 km area, 60-second change window,
+/* Answers follow the app's real rules (5 km area, 30-second change window,
    delivery code, ₹25 fee under ₹299 in checkout.js) and the Terms. */
 const QUESTIONS = [
   {
@@ -25,7 +25,7 @@ const QUESTIONS = [
   },
   {
     q: "Can I change or cancel my order?",
-    a: "For 60 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider.",
+    a: "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider.",
   },
   {
     q: "What is the delivery code?",

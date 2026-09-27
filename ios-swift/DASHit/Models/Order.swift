@@ -208,12 +208,12 @@ extension Order {
     }
 }
 
-// MARK: - The 60-second change window
+// MARK: - The 30-second change window
 
 extension Order {
-    static let modifyWindowSeconds: TimeInterval = 60
+    static let modifyWindowSeconds: TimeInterval = 30
 
-    /// When the window to add items or cancel closes: 60 seconds after the
+    /// When the window to add items or cancel closes: 30 seconds after the
     /// server stamped the order (web `getRemainingCancellationSeconds`), or the
     /// original order's deadline for an order that replaced it.
     var modifyWindowEnd: Date {

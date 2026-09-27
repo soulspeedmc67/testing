@@ -112,10 +112,32 @@ fun AuthScreen(
     var isConfirming by remember { mutableStateOf(false) }
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // Signed in with a number, but the account has no name yet: ask before closing.
+    var needsName by remember { mutableStateOf(false) }
     val valid = AuthRepository.normalizedMobile(digits) != null
+    // Signing up needs a name as well as the number.
+    val canContinue = valid && (!isSignUp || name.isNotBlank())
 
-    BackHandler(enabled = !isSigningIn) {
+    BackHandler(enabled = !isSigningIn && !needsName) {
         if (isConfirming) isConfirming = false else onClose()
+    }
+
+    fun saveName() {
+        if (name.isBlank() || isSigningIn) return
+        isSigningIn = true
+        error = null
+        scope.launch {
+            try {
+                AuthRepository.updateName(name)
+                HapticsManager.success(view)
+                onClose()
+            } catch (e: Exception) {
+                HapticsManager.error(view)
+                error = e.message
+            } finally {
+                isSigningIn = false
+            }
+        }
     }
 
     val float by rememberInfiniteTransition(label = "auth_float").animateFloat(
@@ -131,9 +153,13 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                AuthRepository.signInWithConfirmedMobile(digits, name.takeIf { isSignUp })
-                HapticsManager.success(view)
-                onClose()
+                val profile = AuthRepository.signInWithConfirmedMobile(digits, name.trim().takeIf { isSignUp })
+                if (profile.name.isNullOrBlank()) {
+                    needsName = true
+                } else {
+                    HapticsManager.success(view)
+                    onClose()
+                }
             } catch (e: Exception) {
                 HapticsManager.error(view)
                 error = e.message
@@ -275,9 +301,25 @@ fun AuthScreen(
                     .padding(start = 24.dp, end = 24.dp, top = 26.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                SectionTitle(if (isSignUp) "Create your account" else "Log in or sign up")
+                SectionTitle(
+                    when {
+                        needsName -> "What's your name?"
+                        isSignUp -> "Create your account"
+                        else -> "Log in or sign up"
+                    }
+                )
 
-                AnimatedContent(targetState = isConfirming, label = "auth_step") { confirming ->
+                if (needsName) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AuthField(
+                            value = name,
+                            placeholder = "Your name",
+                            keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                            onChange = { name = it.take(60); error = null }
+                        )
+                        AuthButton("Save and continue", enabled = name.isNotBlank() && !isSigningIn, isBusy = isSigningIn, onClick = ::saveName)
+                    }
+                } else AnimatedContent(targetState = isConfirming, label = "auth_step") { confirming ->
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (!confirming) {
                             if (isSignUp) {
@@ -298,7 +340,7 @@ fun AuthScreen(
                                     error = null
                                 }
                             )
-                            AuthButton("Continue", enabled = valid, isBusy = false) {
+                            AuthButton("Continue", enabled = canContinue, isBusy = false) {
                                 HapticsManager.light(view)
                                 isConfirming = true
                             }

@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -76,6 +77,10 @@ fun PhoneConfirmSheet(
     var error by remember { mutableStateOf<String?>(null) }
     val valid = AuthRepository.normalizedMobile(digits) != null
     val focus = remember { FocusRequester() }
+    // Signed in but nameless (a new number, or an older account): ask for the
+    // name before the order goes through.
+    var namelessProfile by remember { mutableStateOf(AuthRepository.user.value?.takeIf { it.name.isNullOrBlank() }) }
+    var name by remember { mutableStateOf("") }
 
     ModalBottomSheet(
         onDismissRequest = { if (!isSigningIn) onDismiss() },
@@ -83,7 +88,61 @@ fun PhoneConfirmSheet(
         containerColor = DashitColors.Surface,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
-        AnimatedContent(
+        if (namelessProfile != null) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = 20.dp)
+                    .padding(bottom = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("What's your name?", color = DashitColors.TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("So the rider knows who to hand the order to.", color = DashitColors.TextMuted, fontSize = 14.sp)
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(DashitColors.SurfaceRaised)
+                        .border(1.dp, if (name.isNotBlank()) DashitColors.BrandOrange.copy(alpha = 0.7f) else DashitColors.Hairline, RoundedCornerShape(16.dp))
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (name.isEmpty()) Text("Your name", color = DashitColors.TextFaint, fontSize = 17.sp)
+                    BasicTextField(
+                        value = name,
+                        onValueChange = { name = it.take(60); error = null },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                        textStyle = TextStyle(color = DashitColors.TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold),
+                        cursorBrush = SolidColor(DashitColors.BrandOrange),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus)
+                    )
+                }
+                LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+                error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
+                PrimaryButton("Save and continue", enabled = name.isNotBlank() && !isSigningIn, isBusy = isSigningIn) {
+                    isSigningIn = true
+                    error = null
+                    scope.launch {
+                        try {
+                            val profile = AuthRepository.updateName(name)
+                            HapticsManager.success(view)
+                            onSignedIn(profile)
+                        } catch (e: Exception) {
+                            HapticsManager.error(view)
+                            error = e.message
+                        } finally {
+                            isSigningIn = false
+                        }
+                    }
+                }
+            }
+        } else AnimatedContent(
             targetState = isConfirming,
             transitionSpec = {
                 val forward = targetState
@@ -184,8 +243,12 @@ fun PhoneConfirmSheet(
                                 scope.launch {
                                     try {
                                         val profile = AuthRepository.signInWithConfirmedMobile(digits)
-                                        HapticsManager.success(view)
-                                        onSignedIn(profile)
+                                        if (profile.name.isNullOrBlank()) {
+                                            namelessProfile = profile
+                                        } else {
+                                            HapticsManager.success(view)
+                                            onSignedIn(profile)
+                                        }
                                     } catch (e: Exception) {
                                         HapticsManager.error(view)
                                         error = e.message

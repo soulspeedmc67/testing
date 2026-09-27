@@ -41,7 +41,7 @@ final class StorefrontViewModel: ObservableObject {
     /// Familiar aisles first, in store order; anything new follows, busiest first.
     private static let preferredOrder = [
         "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
-        "Snacks", "Chips", "Biscuits", "Bakery", "Beverages", "Drinks",
+        "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
         "Instant Food", "Spices", "Chicken", "Home Care", "Kitchen Care"
     ]
 

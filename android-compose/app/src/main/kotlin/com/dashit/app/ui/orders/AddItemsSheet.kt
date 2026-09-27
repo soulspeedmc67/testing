@@ -63,7 +63,7 @@ import com.dashit.app.viewmodel.CartViewModel
 import kotlinx.coroutines.launch
 
 /**
- * Adds items to an order during its 60-second change window, like the iOS
+ * Adds items to an order during its 30-second change window, like the iOS
  * `AddItemsSheet`: search and aisles over the live catalogue, steppers, and
  * one "Update order" that replaces the order with everything together.
  */
@@ -246,7 +246,7 @@ fun AddItemsSheet(
                 errorMessage?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
                 if (!windowOpen) {
                     Text(
-                        "The 60 seconds are up and the store is packing your order. You can still order these separately.",
+                        "The 30 seconds are up and the store is packing your order. You can still order these separately.",
                         color = DashitColors.TextMuted,
                         fontSize = 13.sp
                     )

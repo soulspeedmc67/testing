@@ -364,8 +364,8 @@ struct StorefrontHomeView: View {
             .padding(.horizontal, 16)
     }
 
-    /// Welcome banner with the brand's rider artwork.
-    /// Free delivery on orders of ₹299 or more.
+    /// Welcome banner with the brand's rider artwork: free delivery on orders
+    /// of ₹299 or more, and nothing else.
     private var welcomeBanner: some View {
         let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
 
@@ -383,9 +383,6 @@ struct StorefrontHomeView: View {
                 .font(.system(size: 23, weight: .heavy))
                 .foregroundColor(.white)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Groceries at your door in \(storeStatus.etaMinutes(for: deliveryQuote) ?? 10) minutes")
-                .font(.system(size: 12.5, weight: .medium))
-                .foregroundColor(Color.white.opacity(0.65))
         }
         .padding(18)
         .padding(.trailing, 96)

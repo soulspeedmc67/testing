@@ -5,21 +5,55 @@ import FirebaseFirestore
 import AudioToolbox
 import AVFoundation
 
+/// The admin's sections, named and grouped as on the web console's sidebar.
 public enum AdminTab: String, CaseIterable, Identifiable {
+    case home = "Home"
     case orders = "Orders"
     case inventory = "Stock"
-    case addProduct = "Add Item"
-    case riders = "Riders"
+    case addProduct = "Add an item"
+    case riders = "Delivery riders"
     case distributors = "Distributors"
-    case storeControls = "Store Settings"
     case offers = "Discounts"
-    case batchInward = "Add Many"
+    case storeControls = "Shop settings"
+    case batchInward = "Add many at once"
     case importCSV = "Import CSV"
+
+    public enum NavGroup: String, CaseIterable, Identifiable {
+        case everyDay = "Every day"
+        case shopSetup = "Shop setup"
+        case bulkTools = "Bulk tools"
+        public var id: String { rawValue }
+    }
 
     public var id: String { rawValue }
 
+    public var group: NavGroup {
+        switch self {
+        case .home, .orders, .inventory, .addProduct, .riders: return .everyDay
+        case .distributors, .offers, .storeControls: return .shopSetup
+        case .batchInward, .importCSV: return .bulkTools
+        }
+    }
+
+    /// One plain line under the title, saying what the page is for.
+    public var explanation: String {
+        switch self {
+        case .home: return "How the shop is doing today, and what needs doing now."
+        case .orders: return "New orders show up here. Pack them, then give them to a rider."
+        case .inventory: return "How many of each item you have. Tap − or + to change the number."
+        case .addProduct: return "Put a new item in the shop."
+        case .riders: return "The people who deliver your orders."
+        case .distributors: return "The people and companies you buy stock from."
+        case .offers: return "Coupon codes your customers can use."
+        case .storeControls: return "Open or close the shop, and turn busy-hours pricing on or off."
+        case .batchInward: return "Got a delivery of stock? Add it for many items at once."
+        case .importCSV: return "Add or update many items from a file."
+        }
+    }
+
     public var iconName: String {
         switch self {
+        case .home: return "house.fill"
         case .orders: return "shippingbox.fill"
         case .inventory: return "square.grid.2x2.fill"
         case .addProduct: return "plus.circle.fill"
@@ -67,13 +101,15 @@ public final class AdminDashboardViewModel: ObservableObject {
     public static let shared = AdminDashboardViewModel()
 
     // Active Navigation Tab
-    @Published public var selectedTab: AdminTab = .orders
+    @Published public var selectedTab: AdminTab = .home
 
     // Core Data Entities
     @Published public var products: [Product] = []
     /// Always starts with "Myself".
     @Published public var distributors: [Distributor] = [Distributor.myself]
     @Published public var recentOrders: [Order] = []
+    /// Every order from the last seven days, for the Home page's numbers and charts.
+    @Published public var weekOrders: [Order] = []
     @Published public var drivers: [Driver] = Driver.defaults
     @Published public var offers: [Offer] = Offer.defaults
     @Published public var storeConfig: StoreConfig = StoreConfig.default
@@ -97,6 +133,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     private var driverListener: ListenerRegistration?
     private var offerListener: ListenerRegistration?
     private var storeConfigListener: ListenerRegistration?
+    private var weekOrderListener: ListenerRegistration?
     private var knownOrderIds: Set<String> = []
     private var isFirstOrderFetch: Bool = true
 
@@ -105,6 +142,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     }
 
     deinit {
+        weekOrderListener?.remove()
         productListener?.remove()
         distributorListener?.remove()
         orderListener?.remove()
@@ -131,6 +169,8 @@ public final class AdminDashboardViewModel: ObservableObject {
         driverListener?.remove()
         offerListener?.remove()
         storeConfigListener?.remove()
+        weekOrderListener?.remove()
+        weekOrderListener = nil
         productListener = nil
         distributorListener = nil
         orderListener = nil
@@ -248,6 +288,27 @@ public final class AdminDashboardViewModel: ObservableObject {
             }
         }
 
+        // 6b. The last seven days of orders, for the Home charts. Every app
+        // stamps createdAt with the server's clock, so one range covers them all.
+        let calendar = Calendar.current
+        let weekStart = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: Date())) ?? Date()
+        weekOrderListener = db.collection("orders")
+            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: weekStart))
+            .order(by: "createdAt", descending: true)
+            .limit(to: 1000)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self, let docs = snapshot?.documents, error == nil else { return }
+                let decoder = Firestore.Decoder()
+                let list: [Order] = docs.compactMap { doc in
+                    var data = doc.data()
+                    data["id"] = (data["id"] as? String) ?? doc.documentID
+                    return try? decoder.decode(Order.self, from: data)
+                }
+                Task { @MainActor in
+                    self.weekOrders = list
+                }
+            }
+
         // 6. Store Configuration Realtime Listener
         storeConfigListener = db.collection("config").document("store").addSnapshotListener { [weak self] doc, error in
             guard let self = self, let doc = doc, doc.exists, error == nil, let data = doc.data() else { return }
@@ -345,6 +406,114 @@ public final class AdminDashboardViewModel: ObservableObject {
     public var totalStockValuation: Double { products.reduce(0.0) { $0 + (Double($1.stock ?? 10) * $1.price) } }
     public var lowStockCount: Int { products.filter { ($0.stock ?? 10) < 5 }.count }
     public var activeOrdersCount: Int { recentOrders.filter { !$0.status.stage.isFinished }.count }
+
+    // MARK: - Home page numbers
+
+    /// Orders that count as sales: everything but cancelled ones.
+    private var weekSales: [Order] { weekOrders.filter { $0.status.stage != .cancelled } }
+
+    private func orders(on day: Date) -> [Order] {
+        let start = Calendar.current.startOfDay(for: day).timeIntervalSince1970
+        let end = start + 86_400
+        return weekSales.filter { $0.createdAt >= start && $0.createdAt < end }
+    }
+
+    public var todaySales: Double { orders(on: Date()).reduce(0) { $0 + $1.grandTotal } }
+    public var yesterdaySales: Double {
+        orders(on: Date().addingTimeInterval(-86_400)).reduce(0) { $0 + $1.grandTotal }
+    }
+    public var todayOrderCount: Int { orders(on: Date()).count }
+    public var yesterdayOrderCount: Int { orders(on: Date().addingTimeInterval(-86_400)).count }
+    public var todayItemsSold: Int {
+        orders(on: Date()).reduce(0) { total, order in total + order.items.reduce(0) { $0 + $1.qty } }
+    }
+    public var todayAverageOrder: Double {
+        todayOrderCount == 0 ? 0 : todaySales / Double(todayOrderCount)
+    }
+    /// Orders waiting for the shop: just placed or being packed.
+    public var ordersToPack: Int {
+        recentOrders.filter { $0.status.stage == .placed || $0.status.stage == .packing }.count
+    }
+    public var ordersOnTheWay: Int { recentOrders.filter { $0.status.stage == .onTheWay }.count }
+
+    public struct DaySales: Identifiable {
+        public var id: Date { day }
+        public let day: Date
+        public let sales: Double
+        public let orders: Int
+        public var isToday: Bool { Calendar.current.isDateInToday(day) }
+    }
+
+    /// Sales for each of the last seven days, oldest first; days without orders show as 0.
+    public var salesByDay: [DaySales] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return (0..<7).reversed().compactMap { back -> DaySales? in
+            guard let day = calendar.date(byAdding: .day, value: -back, to: today) else { return nil }
+            let list = orders(on: day)
+            return DaySales(day: day, sales: list.reduce(0) { $0 + $1.grandTotal }, orders: list.count)
+        }
+    }
+
+    public struct HourCount: Identifiable {
+        public var id: Int { hour }
+        public let hour: Int
+        public let orders: Int
+    }
+
+    /// Today's orders by the hour they came in, from 7 am (or the first order) to now.
+    public var ordersByHourToday: [HourCount] {
+        let calendar = Calendar.current
+        let hours = orders(on: Date()).map { calendar.component(.hour, from: Date(timeIntervalSince1970: $0.createdAt)) }
+        let now = calendar.component(.hour, from: Date())
+        let first = min(7, hours.min() ?? 7)
+        guard first <= now else { return [] }
+        return (first...now).map { hour in HourCount(hour: hour, orders: hours.filter { $0 == hour }.count) }
+    }
+
+    public struct ItemSales: Identifiable {
+        public var id: String { name }
+        public let name: String
+        public let units: Int
+    }
+
+    /// The items sold most this week, by pieces.
+    public var bestSellers: [ItemSales] {
+        var units: [String: Int] = [:]
+        for order in weekSales {
+            for item in order.items { units[item.name, default: 0] += item.qty }
+        }
+        return units
+            .sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+            .prefix(5)
+            .map { ItemSales(name: $0.key, units: $0.value) }
+    }
+
+    public struct DistributorStock: Identifiable {
+        public var id: String { name }
+        public let name: String
+        public let units: Int
+    }
+
+    /// Pieces in stock from each distributor; the smallest ones are put together as "Others".
+    public var stockByDistributor: [DistributorStock] {
+        var units: [String: Int] = [:]
+        for product in products {
+            units[Distributor.resolvedName(product.distributor), default: 0] += max(0, product.stock ?? 0)
+        }
+        let sorted = units.filter { $0.value > 0 }.sorted { $0.value > $1.value }
+        var result = sorted.prefix(5).map { DistributorStock(name: $0.key, units: $0.value) }
+        let rest = sorted.dropFirst(5).reduce(0) { $0 + $1.value }
+        if rest > 0 { result.append(DistributorStock(name: "Others", units: rest)) }
+        return result
+    }
+
+    /// Items with fewer than 5 left, fewest first.
+    public var runningOut: [Product] {
+        products
+            .filter { ($0.stock ?? 10) < 5 }
+            .sorted { ($0.stock ?? 0) < ($1.stock ?? 0) }
+    }
 
     public var supplierStats: [SupplierStat] {
         var dict: [String: (count: Int, units: Int, val: Double, low: Int)] = [:]
@@ -863,3 +1032,77 @@ public final class AdminDashboardViewModel: ObservableObject {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 }
+
+#if DEBUG
+// MARK: - Sample shop (simulator screenshots only)
+
+extension AdminDashboardViewModel {
+    /// Fills the dashboard with a believable week of orders and stock, so the
+    /// simulator-screenshot job can show every page without the owner's
+    /// sign-in. Debug builds only; the App Store build never has this.
+    func loadDemoData() {
+        stopListeners()
+        let suppliers = ["Zahoor Traders", "Kashmir Dairy Co", "Valley Snacks", "Lone Wholesale"]
+        distributors = [Distributor.myself] + suppliers.enumerated().map { Distributor(id: "D\($0.offset)", name: $0.element) }
+
+        let stockPattern = [42, 3, 18, 0, 26, 7, 55, 2, 14, 31, 9, 4, 60, 22, 11]
+        products = CatalogSeed.products.enumerated().map { index, seed in
+            let stock = stockPattern[index % stockPattern.count]
+            let supplier = index % 5 == 0 ? Distributor.selfName : suppliers[index % suppliers.count]
+            return Product(
+                id: seed.id, name: seed.name, unit: seed.unit, price: seed.price,
+                originalPrice: seed.originalPrice, rating: seed.rating, ratingCount: seed.ratingCount,
+                img: seed.img, cat: seed.cat, inStock: stock > 0, stock: stock, distributor: supplier
+            )
+        }
+
+        func item(_ product: Product, _ qty: Int) -> CartItem {
+            CartItem(id: product.id, productId: product.id, name: product.name, unit: product.unit,
+                     price: product.price, originalPrice: product.originalPrice, img: product.img,
+                     cat: product.cat, qty: qty)
+        }
+        func order(_ number: Int, at time: Date, status: OrderStatus, driver: String? = nil) -> Order {
+            let picks = (0..<(2 + number % 4)).map { item(products[(number * 7 + $0 * 3) % products.count], 1 + ($0 + number) % 3) }
+            let subtotal = picks.reduce(0) { $0 + $1.price * Double($1.qty) }
+            let fee: Double = subtotal >= 299 ? 0 : 25
+            return Order(
+                id: "DSH-\(48_213_000 + number)", userId: "demo", items: picks,
+                subtotal: subtotal, deliveryFee: fee, discount: 0, grandTotal: subtotal + fee,
+                status: status, createdAt: time.timeIntervalSince1970,
+                deliveryAddress: DeliveryAddress(street: ["Court Road, Lal Chowk", "KP Road", "Sherbagh", "Janglat Mandi"][number % 4]),
+                driverName: driver, otp: "48\(10 + number % 90)"
+            )
+        }
+
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        var week: [Order] = []
+        var number = 1
+        // Earlier days: orders spread from 8 am to 10 pm.
+        for (back, count) in [(6, 9), (5, 12), (4, 8), (3, 14), (2, 11), (1, 16)] {
+            let day = calendar.date(byAdding: .day, value: -back, to: today) ?? today
+            for i in 0..<count {
+                let time = day.addingTimeInterval(Double(8 * 3600 + (i * 14 * 3600) / count + (i * 7 % 50) * 60))
+                week.append(order(number, at: time, status: i == 3 ? .cancelled : .delivered))
+                number += 1
+            }
+        }
+        // Today: the last few hours, newest first in the list.
+        let statuses: [(OrderStatus, String?)] = [(.placed, nil), (.placed, nil), (.packing, nil), (.outForDelivery, "Aamir"),
+                                                  (.delivered, "Bilal"), (.delivered, "Aamir"), (.delivered, "Bilal"), (.delivered, "Aamir")]
+        var todays: [Order] = []
+        for (i, entry) in statuses.enumerated() {
+            let time = max(today.addingTimeInterval(60), now.addingTimeInterval(-Double(i) * 38 * 60 - 120))
+            todays.append(order(number, at: time, status: entry.0, driver: entry.1))
+            number += 1
+        }
+        recentOrders = todays
+        weekOrders = todays + week.reversed()
+        drivers = Driver.defaults
+        offers = Offer.defaults
+        storeConfig = StoreConfig.default
+        isLoading = false
+    }
+}
+#endif

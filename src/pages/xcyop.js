@@ -58,7 +58,8 @@ import {
   watchDistributors,
   upsertDistributor,
   deleteDistributor,
-  ORDER_STATUS
+  ORDER_STATUS,
+  ORDER_CHANGE_WINDOW_SECONDS
 } from "../lib/db";
 import { searchOffByBarcode, searchOffByQuery } from "../lib/openFoodFacts";
 import {
@@ -855,11 +856,11 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
   // Order Status Update
   const handleUpdateOrderStatus = async (orderId, newStatus, order = null) => {
-    // 60-second grace window guard: admin cannot process Placed orders until 60s have elapsed
+    // 30-second grace window guard: admin cannot process Placed orders until 30s have elapsed
     const ordObj = order || orders.find((o) => (o.orderId || o.id) === orderId);
     const orderTime = getOrderTimestampMs(ordObj);
     const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
-    const graceRemaining = Math.max(0, 60 - elapsedSec);
+    const graceRemaining = Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
 
     if (
       ordObj &&
@@ -868,7 +869,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       graceRemaining > 0
     ) {
       showToast(
-        `Order #${orderId} is in customer 60s modifying window (${graceRemaining}s remaining). Packing unlocked once window closes.`
+        `Order #${orderId} is in customer 30s modifying window (${graceRemaining}s remaining). Packing unlocked once window closes.`
       );
       return;
     }

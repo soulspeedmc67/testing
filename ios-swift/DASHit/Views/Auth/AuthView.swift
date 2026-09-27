@@ -40,7 +40,8 @@ struct AuthView: View {
     @FocusState private var isMobileFocused: Bool
 
     private var isSignUp: Bool { initialMode == .signUp }
-    private var isReady: Bool { auth.isAuthenticated && !auth.needsPhoneNumber }
+    private var isReady: Bool { auth.isReadyToOrder }
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var validMobile: String? { AuthService.normalizedMobile(mobile) }
 
     var body: some View {
@@ -164,6 +165,9 @@ struct AuthView: View {
             if auth.needsPhoneNumber {
                 sectionTitle("Add your delivery number")
                 phoneStep(confirmTitle: "Yes, save it") { try await auth.updateMobile($0) }
+            } else if auth.needsName {
+                sectionTitle("What's your name?")
+                nameStep
             } else if usesEmail {
                 sectionTitle(emailCreatesAccount ? "Create your account" : "Log in with email")
                 EmailSignInForm(isCreating: emailCreatesAccount)
@@ -176,7 +180,7 @@ struct AuthView: View {
             } else {
                 sectionTitle(isSignUp ? "Create your account" : "Log in or sign up")
                 phoneStep(confirmTitle: isSignUp ? "Yes, create my account" : "Yes, continue") { digits in
-                    try await auth.signIn(withConfirmedMobile: digits, name: isSignUp ? name : nil)
+                    try await auth.signIn(withConfirmedMobile: digits, name: isSignUp ? trimmedName : nil)
                 }
             }
 
@@ -188,7 +192,7 @@ struct AuthView: View {
                     .transition(.opacity)
             }
 
-            if !auth.needsPhoneNumber && !isConfirming {
+            if !auth.isAuthenticated && !isConfirming {
                 otherOptions
             }
 
@@ -207,6 +211,23 @@ struct AuthView: View {
         .animation(.dashitSpring, value: usesEmail)
         .animation(.dashitSpring, value: auth.errorMessage)
         .animation(.dashitSpring, value: auth.needsPhoneNumber)
+        .animation(.dashitSpring, value: auth.needsName)
+    }
+
+    /// Phone and email accounts must have a name: the rider asks for it at the door.
+    private var nameStep: some View {
+        VStack(spacing: 12) {
+            TextField("", text: $name, prompt: Text("Your name").foregroundColor(.textFaint))
+                .textContentType(.name)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .modifier(AuthFieldStyle())
+            primaryButton("Save and continue", enabled: !trimmedName.isEmpty && !auth.isAuthenticating) {
+                HapticsManager.shared.light()
+                Task { try? await auth.updateName(trimmedName) }
+            }
+        }
     }
 
     /// "——  Log in or sign up  ——"
@@ -227,7 +248,7 @@ struct AuthView: View {
     private func phoneStep(confirmTitle: String, onConfirm: @escaping (String) async throws -> Void) -> some View {
         VStack(spacing: 12) {
             if !isConfirming {
-                if isSignUp && !auth.needsPhoneNumber {
+                if isSignUp && !auth.isAuthenticated {
                     TextField("", text: $name, prompt: Text("Your name").foregroundColor(.textFaint))
                         .textContentType(.name)
                         .textInputAutocapitalization(.words)
@@ -252,7 +273,8 @@ struct AuthView: View {
                 }
                 .modifier(AuthFieldStyle())
 
-                primaryButton("Continue", enabled: validMobile != nil) {
+                // Signing up needs a name as well as the number.
+                primaryButton("Continue", enabled: validMobile != nil && (!isSignUp || auth.isAuthenticated || !trimmedName.isEmpty)) {
                     isMobileFocused = false
                     HapticsManager.shared.light()
                     withAnimation(.dashitSpring) { isConfirming = true }

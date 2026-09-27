@@ -120,7 +120,7 @@ service cloud.firestore {
       /* A customer may only create an order in its initial state, attributed to
          themselves, never pre-assigned to a driver, never pre-marked delivered,
          and never pre-flagged as stock-deducted. createdAt must be the server's
-         clock so the 60-second cancellation window cannot be backdated. */
+         clock so the 30-second cancellation window cannot be backdated. */
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'Placed'
