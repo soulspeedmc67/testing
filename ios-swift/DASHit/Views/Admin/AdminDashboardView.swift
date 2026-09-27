@@ -64,6 +64,14 @@ public struct AdminDashboardView: View {
                 }
             }
             .navigationBarHidden(true)
+            .alert("Not saved", isPresented: Binding(
+                get: { vm.saveError != nil },
+                set: { if !$0 { vm.saveError = nil } }
+            )) {
+                Button("OK", role: .cancel) { vm.saveError = nil }
+            } message: {
+                Text(vm.saveError ?? "")
+            }
             .sheet(item: $selectedOrderForDetail) { order in
                 OrderDetailSheetView(order: order, vm: vm)
             }
@@ -567,10 +575,14 @@ public struct AdminDashboardView: View {
                         .font(.system(size: 22))
                         .foregroundColor(.secondary)
                 }
+                .disabled((product.stock ?? 0) == 0)
+                .opacity((product.stock ?? 0) == 0 ? 0.35 : 1)
 
-                Text("\(product.stock ?? 10)")
+                // No number yet means the item was added without a count.
+                Text(product.stock.map { String($0) } ?? "–")
                     .font(.system(size: 14, weight: .bold))
                     .frame(minWidth: 26)
+                    .accessibilityLabel(product.stock.map { "\($0) in stock" } ?? "Not counted yet")
 
                 Button(action: { vm.updateStock(productId: product.id, delta: +1) }) {
                     Image(systemName: "plus.circle.fill")
@@ -874,6 +886,19 @@ struct OrderDetailSheetView: View {
     let order: Order
     @ObservedObject var vm: AdminDashboardViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isAssignRiderOpen = false
+
+    private func primaryAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: .bold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -935,30 +960,37 @@ struct OrderDetailSheetView: View {
                     .background(Color(uiColor: .secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                    // Advance Status Button
-                    Button(action: {
-                        vm.advanceOrderStatus(order: order)
-                        dismiss()
-                    }) {
-                        Text("Advance Order Stage")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(Color.orange)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    // Next step. A packed order goes out only with a rider assigned.
+                    switch order.status.stage {
+                    case .placed:
+                        primaryAction("Start packing") {
+                            vm.advanceOrderStatus(order: order)
+                            dismiss()
+                        }
+                    case .packing:
+                        primaryAction("Assign rider") {
+                            isAssignRiderOpen = true
+                        }
+                    case .onTheWay:
+                        primaryAction("Confirm delivered") {
+                            vm.advanceOrderStatus(order: order)
+                            dismiss()
+                        }
+                    default:
+                        EmptyView()
                     }
 
-                    // Cancel Order Button
-                    Button(action: {
-                        vm.cancelOrder(order: order)
-                        dismiss()
-                    }) {
-                        Text("Cancel Order")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                    if [DeliveryStage.placed, .packing, .onTheWay].contains(order.status.stage) {
+                        Button(action: {
+                            vm.cancelOrder(order: order)
+                            dismiss()
+                        }) {
+                            Text("Cancel Order")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
                     }
                 }
                 .padding(16)
@@ -969,6 +1001,14 @@ struct OrderDetailSheetView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $isAssignRiderOpen, onDismiss: {
+                // Close the details too once a rider was picked; stay if not.
+                if vm.recentOrders.first(where: { $0.id == order.id })?.driverId?.isEmpty == false {
+                    dismiss()
+                }
+            }) {
+                AssignDriverSheetView(order: order, vm: vm)
             }
         }
     }
@@ -1031,6 +1071,10 @@ struct AddProductSheetView: View {
     @State private var stock: String = "50"
     @State private var badge: String = ""
 
+    private static func amount(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(value)
+    }
+
     let categories = ["Staples", "Dairy", "Bakery", "Fruits", "Chips", "Biscuits", "Beverages", "Instant Food", "Spices", "Personal Care"]
 
     var body: some View {
@@ -1074,6 +1118,19 @@ struct AddProductSheetView: View {
             }
             .navigationTitle(editingProduct != nil ? "Edit Item" : "Add Product")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Editing starts from the item's current details, not the new-item defaults.
+                guard let p = editingProduct else { return }
+                name = p.name
+                unit = p.unit
+                price = Self.amount(p.price)
+                originalPrice = p.originalPrice.map(Self.amount) ?? ""
+                cat = p.cat
+                distributor = Distributor.resolvedName(p.distributor)
+                img = p.img
+                stock = p.stock.map { String($0) } ?? ""
+                badge = p.badge ?? ""
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -1082,7 +1139,8 @@ struct AddProductSheetView: View {
                     Button("Save") {
                         let pVal = Double(price) ?? 99.0
                         let origVal = Double(originalPrice)
-                        let sVal = Int(stock) ?? 50
+                        // A blank count leaves an existing item's stock as it is.
+                        let sVal = Int(stock) ?? (editingProduct == nil ? 50 : editingProduct?.stock)
                         vm.saveProduct(
                             id: editingProduct?.id,
                             name: name.isEmpty ? "New Grocery Item" : name,
@@ -1320,7 +1378,7 @@ struct BatchInwardSheetView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(prod.name)
                                 .font(.system(size: 13, weight: .semibold))
-                            Text("In stock: \(prod.stock ?? 10)")
+                            Text(prod.stock.map { "In stock: \($0)" } ?? "Not counted yet")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }

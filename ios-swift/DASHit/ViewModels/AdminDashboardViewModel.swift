@@ -71,6 +71,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published public var offers: [Offer] = Offer.defaults
     @Published public var storeConfig: StoreConfig = StoreConfig.default
     @Published public var isLoading: Bool = false
+    /// Set when the database refuses a change; the dashboard shows it as an alert.
+    @Published public var saveError: String? = nil
 
     // Filters and Search
     @Published public var searchQuery: String = ""
@@ -369,9 +371,37 @@ public final class AdminDashboardViewModel: ObservableObject {
 
     // MARK: - Operational Actions
 
+    /// Completion for a database write. Every change shows on screen straight
+    /// away; if the database refuses it, `undo` puts the screen back and the
+    /// owner sees why instead of a change that silently never saved.
+    private func saveResult(_ what: String, undo: (@MainActor () -> Void)? = nil) -> (Error?) -> Void {
+        return { [weak self] error in
+            guard let error else { return }
+            Task { @MainActor in
+                guard let self else { return }
+                undo?()
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                let nsError = error as NSError
+                let denied = nsError.domain == FirestoreErrorDomain
+                    && nsError.code == FirestoreErrorCode.Code.permissionDenied.rawValue
+                self.saveError = denied
+                    ? "\(what) wasn't saved. This account isn't allowed to make changes. Sign out and sign in with the owner account."
+                    : "\(what) wasn't saved. Check the internet connection and try again."
+            }
+        }
+    }
+
+    private func replaceProduct(_ product: Product) {
+        if let idx = products.firstIndex(where: { $0.id == product.id }) {
+            products[idx] = product
+        }
+    }
+
+    /// Items the web console added without a count have no stock number; they
+    /// start from 0 here rather than from a made-up amount.
     public func updateStock(productId: String, delta: Int) {
         guard let idx = products.firstIndex(where: { $0.id == productId }) else { return }
-        let current = products[idx].stock ?? 10
+        let current = products[idx].stock ?? 0
         let newStock = max(0, current + delta)
         updateStock(productId: productId, newStock: newStock)
     }
@@ -380,8 +410,10 @@ public final class AdminDashboardViewModel: ObservableObject {
         let safeStock = max(0, newStock)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
 
+        var previous: Product? = nil
         if let idx = products.firstIndex(where: { $0.id == productId }) {
             let old = products[idx]
+            previous = old
             products[idx] = Product(
                 id: old.id,
                 name: old.name,
@@ -408,7 +440,9 @@ public final class AdminDashboardViewModel: ObservableObject {
         db.collection("products").document(productId).setData([
             "stock": safeStock,
             "inStock": safeStock > 0
-        ], merge: true)
+        ], merge: true, completion: saveResult("The stock change") { [weak self] in
+            if let previous { self?.replaceProduct(previous) }
+        })
     }
 
     public func deleteProduct(productId: String) {
@@ -417,6 +451,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         set.insert(productId)
         deletedProductIds = set
 
+        let removed = products.firstIndex(where: { $0.id == productId }).map { ($0, products[$0]) }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             products.removeAll { $0.id == productId }
         }
@@ -424,7 +459,15 @@ public final class AdminDashboardViewModel: ObservableObject {
         db.collection("products").document(productId).setData([
             "active": false,
             "deletedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult("Deleting the item") { [weak self] in
+            guard let self else { return }
+            var set = self.deletedProductIds
+            set.remove(productId)
+            self.deletedProductIds = set
+            if let removed, !self.products.contains(where: { $0.id == productId }) {
+                self.products.insert(removed.1, at: min(removed.0, self.products.count))
+            }
+        })
     }
 
     public func saveProduct(
@@ -436,21 +479,35 @@ public final class AdminDashboardViewModel: ObservableObject {
         cat: String,
         distributor: String,
         img: String,
-        stock: Int,
+        stock: Int?,
         badge: String?
     ) {
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         let prodId = id ?? "prod_\(Date().timeIntervalSince1970)"
+        let existing = products.first(where: { $0.id == prodId })
+        let cleanBadge = badge?.isEmpty == false ? badge : nil
+        let image = img.isEmpty ? "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600" : img
+
+        // An edit keeps what the form doesn't show (rating, variants, nutrition,
+        // age limit); only a brand-new item takes the defaults.
         let newProduct = Product(
             id: prodId,
             name: name,
             unit: unit,
             price: price,
             originalPrice: originalPrice,
-            badge: badge?.isEmpty == false ? badge : nil,
-            img: img.isEmpty ? "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600" : img,
+            rating: existing?.rating ?? "4.8",
+            ratingCount: existing?.ratingCount ?? "120",
+            time: existing?.time ?? "8 mins",
+            options: existing?.options,
+            badge: cleanBadge,
+            img: image,
             cat: cat,
-            inStock: stock > 0,
+            variants: existing?.variants,
+            ageRestricted: existing?.ageRestricted ?? false,
+            minAge: existing?.minAge,
+            inStock: stock.map { $0 > 0 } ?? existing?.inStock ?? true,
+            nutrition: existing?.nutrition,
             stock: stock,
             distributor: distributor
         )
@@ -463,9 +520,41 @@ public final class AdminDashboardViewModel: ObservableObject {
             }
         }
 
-        if let data = toDict(newProduct) {
-            db.collection("products").document(prodId).setData(data, merge: true)
+        let data: [String: Any]
+        if existing != nil {
+            // Only the fields the form edits, so nothing else on the item is overwritten.
+            var edited: [String: Any] = [
+                "name": name,
+                "unit": unit,
+                "price": price,
+                "originalPrice": originalPrice.map { $0 as Any } ?? FieldValue.delete(),
+                "badge": cleanBadge.map { $0 as Any } ?? FieldValue.delete(),
+                "img": image,
+                "cat": cat,
+                "distributor": distributor,
+                "active": true,
+                "updatedAt": FieldValue.serverTimestamp()
+            ]
+            if let stock {
+                edited["stock"] = stock
+                edited["inStock"] = stock > 0
+            }
+            data = edited
+        } else {
+            var fresh = toDict(newProduct) ?? [:]
+            fresh["active"] = true
+            fresh["createdAt"] = FieldValue.serverTimestamp()
+            data = fresh
         }
+
+        db.collection("products").document(prodId).setData(data, merge: true, completion: saveResult("The item") { [weak self] in
+            guard let self else { return }
+            if let existing {
+                self.replaceProduct(existing)
+            } else {
+                self.products.removeAll { $0.id == prodId }
+            }
+        })
     }
 
     private func toDict<T: Encodable>(_ value: T) -> [String: Any]? {
@@ -481,7 +570,15 @@ public final class AdminDashboardViewModel: ObservableObject {
         let nextStatus: String
         switch order.status.stage {
         case .placed: nextStatus = "Packing at Store"
-        case .packing: nextStatus = "Out for Delivery"
+        case .packing:
+            // Leaving the store is done by assigning a rider, so the customer
+            // and the driver app always know who is bringing the order.
+            guard order.driverId?.isEmpty == false else {
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                saveError = "Assign a rider before sending this order out."
+                return
+            }
+            nextStatus = "Out for Delivery"
         case .onTheWay: nextStatus = "Delivered"
         default: return
         }
@@ -489,7 +586,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         db.collection("orders").document(order.id).setData([
             "status": nextStatus,
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult("The order update"))
     }
 
     public func cancelOrder(order: Order) {
@@ -497,7 +594,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         db.collection("orders").document(order.id).setData([
             "status": "Cancelled",
             "cancelledAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult("Cancelling the order"))
     }
 
     public func assignDriver(orderId: String, driver: Driver) {
@@ -509,7 +606,7 @@ public final class AdminDashboardViewModel: ObservableObject {
             "driverVehicle": driver.vehicle,
             "status": "Out for Delivery",
             "dispatchedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult("Assigning the rider"))
     }
 
     /// Saves a distributor and returns the name to use. A name that's already on
@@ -540,7 +637,9 @@ public final class AdminDashboardViewModel: ObservableObject {
             "notes": newDist.notes,
             "active": true,
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult("The new distributor") { [weak self] in
+            self?.distributors.removeAll { $0.id == newDist.id }
+        })
         return newDist.name
     }
 
@@ -551,7 +650,12 @@ public final class AdminDashboardViewModel: ObservableObject {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
             distributors.removeAll { $0.id == distributor.id }
         }
-        db.collection("distributors").document(distributor.id).delete()
+        db.collection("distributors").document(distributor.id).delete(completion: saveResult("Removing \(distributor.name)") { [weak self] in
+            guard let self, !self.distributors.contains(where: { $0.id == distributor.id }) else { return }
+            let others = self.distributors.filter { !$0.isSelf } + [distributor]
+            self.distributors = [Distributor.myself]
+                + others.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        })
     }
 
     // MARK: - CSV import
@@ -627,12 +731,15 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         if let data = toDict(newDriver) {
-            db.collection("drivers").document(newDriver.id).setData(data)
+            db.collection("drivers").document(newDriver.id).setData(data, completion: saveResult("The new rider") { [weak self] in
+                self?.drivers.removeAll { $0.id == newDriver.id }
+            })
         }
     }
 
     public func toggleStore(isOpen: Bool, reason: String) {
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        let previous = storeConfig
         storeConfig.isOpen = isOpen
         storeConfig.closeReason = reason
 
@@ -640,17 +747,23 @@ public final class AdminDashboardViewModel: ObservableObject {
             "isOpen": isOpen,
             "closeReason": reason,
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult(isOpen ? "Opening the store" : "Closing the store") { [weak self] in
+            self?.storeConfig.isOpen = previous.isOpen
+            self?.storeConfig.closeReason = previous.closeReason
+        })
     }
 
     public func toggleSurgePricing(enabled: Bool) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let previous = storeConfig.isHighDemand
         storeConfig.isHighDemand = enabled
 
         db.collection("config").document("store").setData([
             "isHighDemand": enabled,
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true)
+        ], merge: true, completion: saveResult("The busy-hours setting") { [weak self] in
+            self?.storeConfig.isHighDemand = previous
+        })
     }
 
     public func addOffer(code: String, title: String, discountPercent: Int, minOrder: Double) {
@@ -667,7 +780,9 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         if let data = toDict(newOffer) {
-            db.collection("offers").document(newOffer.id).setData(data)
+            db.collection("offers").document(newOffer.id).setData(data, completion: saveResult("The new discount") { [weak self] in
+                self?.offers.removeAll { $0.id == newOffer.id }
+            })
         }
     }
 
@@ -675,13 +790,20 @@ public final class AdminDashboardViewModel: ObservableObject {
         if let idx = offers.firstIndex(where: { $0.id == offerId }) {
             let old = offers[idx]
             offers[idx] = Offer(id: old.id, code: old.code, title: old.title, discountPercent: old.discountPercent, minOrder: old.minOrder ?? 199.0, active: active)
-            db.collection("offers").document(offerId).setData(["active": active], merge: true)
+            db.collection("offers").document(offerId).setData(["active": active], merge: true, completion: saveResult(active ? "Turning the discount on" : "Turning the discount off") { [weak self] in
+                guard let self, let i = self.offers.firstIndex(where: { $0.id == offerId }) else { return }
+                self.offers[i] = old
+            })
         }
     }
 
     public func deleteOffer(offerId: String) {
-        offers.removeAll { $0.id == offerId }
-        db.collection("offers").document(offerId).delete()
+        guard let idx = offers.firstIndex(where: { $0.id == offerId }) else { return }
+        let removed = offers.remove(at: idx)
+        db.collection("offers").document(offerId).delete(completion: saveResult("Deleting the discount") { [weak self] in
+            guard let self, !self.offers.contains(where: { $0.id == offerId }) else { return }
+            self.offers.insert(removed, at: min(idx, self.offers.count))
+        })
     }
 
     public func processBatchInward(distributor: String, invoice: String, increments: [String: Int]) {
