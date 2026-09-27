@@ -45,7 +45,7 @@ struct RootView: View {
         // offset: the inset keeps its height, because resizing it would re-lay
         // out every scroll view in the middle of a drag and make it jump.
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isKeyboardVisible {
+            if !isKeyboardVisible && !tabBar.isSuppressed {
                 VStack(spacing: 10) {
                     orderPill
                         .followsTabBar()

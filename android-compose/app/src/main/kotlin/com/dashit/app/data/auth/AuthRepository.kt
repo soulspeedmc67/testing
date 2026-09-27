@@ -82,6 +82,7 @@ object AuthRepository {
         profile.delete().await()
         current.delete().await()
         prefs?.edit()?.clear()?.apply()
+        com.dashit.app.data.RecentSearches.clear()
         _user.value = null
     }
 
