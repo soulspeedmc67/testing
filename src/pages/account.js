@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import SEO from "../components/SEO";
 import {
   ChevronLeft,
@@ -20,6 +20,7 @@ import {
   LogOut,
   User,
   Trash2,
+  LifeBuoy,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import AppearanceSetting from "../components/AppearanceSetting";
@@ -35,6 +36,8 @@ export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isSignOutConfirmOpen, setIsSignOutConfirmOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [wishlistCount, setWishlistCount] = useState(0);
   /* The iOS-style edge swipe is opt-in per platform: Android already has a
      system back gesture, and running both makes the screen fire back twice. */
@@ -147,44 +150,75 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-[#FF5B00] rounded-3xl p-5 text-white shadow-sm space-y-3.5">
-            <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 shrink-0">
-                <User className="w-6 h-6 stroke-[2.5]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black tracking-tight text-white leading-tight">Welcome to DASHIT</h2>
-                <p className="text-xs text-white/90 font-medium mt-0.5">#1 grocery delivery app in Anantnag</p>
-              </div>
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#FF6A1A] to-[#D63800] rounded-3xl p-5 text-white shadow-sm">
+            <div className="pr-28 min-h-[104px]">
+              <h2 className="text-lg font-black tracking-tight text-white leading-tight">Welcome to DASHIT</h2>
+              <p className="text-xs text-white/90 font-medium mt-1.5 leading-relaxed">
+                Log in to order, track deliveries live and reorder in one tap.
+              </p>
             </div>
-            <p className="text-xs text-white/85 leading-relaxed font-medium">
-              Log in or create an account to view your live orders, saved addresses, and enjoy rapid delivery.
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="w-full bg-white text-[#FF5B00] hover:bg-orange-50 font-black text-xs py-3 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-xs active:scale-[0.98] transition-all cursor-pointer dark:bg-surface-raised dark:text-[#FF5B00] dark:hover:bg-surface-muted"
-            >
-              <span>Log In / Sign Up</span>
-              <ChevronRight className="w-4 h-4 stroke-[3]" />
-            </button>
+            <picture>
+              <source srcSet="/art/rider-scooter-hero-transparent.webp" type="image/webp" />
+              <img
+                src="/art/rider-scooter-hero-transparent.png"
+                alt=""
+                aria-hidden="true"
+                width={1142}
+                height={1377}
+                decoding="async"
+                className="absolute right-2 top-2 h-[118px] w-auto object-contain pointer-events-none select-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.3)]"
+              />
+            </picture>
+            <div className="relative grid grid-cols-2 gap-2.5 mt-3">
+              <button
+                type="button"
+                onClick={() => router.push("/login?mode=login")}
+                className="bg-white text-[#FF5B00] hover:bg-orange-50 font-black text-sm py-3 rounded-xl shadow-xs active:scale-[0.98] transition-all cursor-pointer dark:bg-surface-raised dark:hover:bg-surface-muted"
+              >
+                Log in
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/login?mode=signup")}
+                className="bg-white/15 hover:bg-white/25 border border-white/45 text-white font-black text-sm py-3 rounded-xl active:scale-[0.98] transition-all cursor-pointer"
+              >
+                Sign up
+              </button>
+            </div>
           </div>
         )}
 
-        {/* 3. TWO SHORTCUT CARDS (Wallet removed) */}
-        {/* Payments tile removed: it opened an alert() and did nothing.
-            Both stores treat non-functional placeholder UI as a rejection. */}
-        <div className="grid grid-cols-1 gap-3">
-          <a
-            href="tel:6006990032"
-            className="bg-white border border-slate-200/90 rounded-2xl p-3.5 flex flex-col items-center justify-center text-center shadow-xs active:scale-95 transition-all dark:bg-surface-raised dark:border-line/90"
-          >
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-700 mb-2 dark:text-content-secondary">
-              <Headphones className="w-6 h-6 stroke-[1.8]" />
-            </div>
-            <span className="text-xs font-bold text-slate-800 dark:text-content">Support</span>
-          </a>
-
+        {/* Help */}
+        <div className="pt-2">
+          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-1 block mb-2 dark:text-content-faint">
+            Help
+          </span>
+          <div className="bg-white border border-slate-200/90 rounded-3xl divide-y divide-slate-100 shadow-xs overflow-hidden dark:bg-surface-raised dark:border-line/90 dark:divide-line-soft">
+            <Link href="/help" className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-[#FF5B00] dark:bg-orange-950/40">
+                  <LifeBuoy className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block dark:text-content">Help &amp; support</span>
+                  <span className="text-[10px] font-medium text-slate-400 dark:text-content-faint">Questions, WhatsApp and email</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
+            </Link>
+            <a href="tel:+916006990032" className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted">
+              <div className="flex items-center space-x-3.5">
+                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                  <Headphones className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800 block dark:text-content">Call the store</span>
+                  <span className="text-[10px] font-medium text-slate-400 dark:text-content-faint">+91 60069 90032</span>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
+            </a>
+          </div>
         </div>
 
         <AppearanceSetting />
@@ -276,7 +310,7 @@ export default function AccountPage() {
                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 dark:bg-surface-muted dark:text-white">
                   <BookOpen className="w-4 h-4 text-slate-700 dark:text-white" />
                 </div>
-                <span className="text-xs font-bold text-slate-800 dark:text-content">Terms of Service</span>
+                <span className="text-xs font-bold text-slate-800 dark:text-content">Terms &amp; Conditions</span>
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </button>
@@ -285,10 +319,9 @@ export default function AccountPage() {
             {user && user.isLoggedIn ? (
               <button
                 type="button"
-                onClick={async () => {
-                  await signOut();
-                  setUser(null);
-                  router.push("/login");
+                onClick={() => {
+                  hapticLight();
+                  setIsSignOutConfirmOpen(true);
                 }}
                 className="w-full flex items-center justify-between p-3.5 hover:bg-rose-50/60 transition-colors cursor-pointer group border-t border-slate-100 text-left text-rose-600 dark:hover:bg-rose-950/20 dark:border-line-soft"
               >
@@ -361,6 +394,70 @@ export default function AccountPage() {
             )}
           </div>
         </div>
+
+        {/* Sign out asks first, in a bottom sheet */}
+        <AnimatePresence>
+          {isSignOutConfirmOpen && (
+            <div className="fixed inset-0 z-[120] flex items-end justify-center">
+              <motion.div
+                className="absolute inset-0 bg-black/50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isSigningOut && setIsSignOutConfirmOpen(false)}
+              />
+              <motion.div
+                role="alertdialog"
+                aria-modal="true"
+                aria-labelledby="signout-title"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 420, damping: 40 }}
+                className="relative w-full max-w-md bg-white rounded-t-3xl px-5 pt-3 pb-[max(20px,calc(12px+env(safe-area-inset-bottom,0px)))] shadow-2xl dark:bg-surface-raised"
+              >
+                <span className="mx-auto mb-4 block h-1 w-10 rounded-full bg-slate-300 dark:bg-slate-700" />
+                <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3 dark:bg-rose-950/40">
+                  <LogOut className="w-5 h-5" />
+                </div>
+                <h2 id="signout-title" className="text-lg font-black text-slate-900 dark:text-content">
+                  Sign out of DASHIT?
+                </h2>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed dark:text-content-muted">
+                  You'll need to log in again to order and to see your orders.
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 mt-5">
+                  <button
+                    type="button"
+                    disabled={isSigningOut}
+                    onClick={() => setIsSignOutConfirmOpen(false)}
+                    className="py-3 rounded-2xl border border-slate-200 text-sm font-bold text-slate-700 active:scale-[0.98] transition-transform cursor-pointer dark:border-line dark:text-content-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSigningOut}
+                    onClick={async () => {
+                      setIsSigningOut(true);
+                      try {
+                        await signOut();
+                      } finally {
+                        setIsSigningOut(false);
+                        setIsSignOutConfirmOpen(false);
+                        setUser(null);
+                        router.push("/login");
+                      }
+                    }}
+                    className="py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-black active:scale-[0.98] transition-transform cursor-pointer disabled:opacity-60"
+                  >
+                    {isSigningOut ? "Signing out…" : "Sign out"}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* App Version & Branding Footer (above bottom navbar with pb-36 main clearance) */}
         <div className="text-center pt-2 pb-6 space-y-1">
