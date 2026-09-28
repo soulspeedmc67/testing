@@ -51,3 +51,4 @@
 ### 9. Tailwind Class Purging
 - **Trap**: Writing dynamic class names like `bg-${deal.color}-500` results in missing CSS in production builds.
 - **Rule**: Always write complete class strings (e.g. `border-orange-200/80`) or use static lookup tables.
+- **Second trap — `src/context/` is not scanned**: `tailwind.config.js` `content` covers `src/pages`, `src/components` and `src/lib` only. A class that appears *only* in a context file (e.g. `dark:bg-white/[0.06]`) is never generated and silently falls back to the light style. Put markup in `src/components/` (as `TobaccoDeclarationSheet.jsx` is) rather than inside a provider.

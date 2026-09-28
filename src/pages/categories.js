@@ -23,6 +23,7 @@ import QuickProductSheet from "../components/QuickProductSheet";
 import { ALL_PRODUCTS } from "../data/products";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { watchProducts } from "../lib/db";
+import { browseable } from "../lib/tobacco";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { useStoreDetails } from "../lib/storeStatus";
 import { goBack } from "../lib/navigation";
@@ -143,10 +144,12 @@ export default function CategoriesPage() {
 
   // Filter products for the active category
   const filteredProducts = useMemo(() => {
-    if (selectedCatId === "All") return productsList;
+    // Tobacco lives only in its own gated section (/tobacco).
+    const visible = browseable(productsList);
+    if (selectedCatId === "All") return visible;
 
     const aliases = activeCategoryObj.aliases || [selectedCatId.toLowerCase()];
-    return productsList.filter((p) => {
+    return visible.filter((p) => {
       const pCat = (p.cat || "").toLowerCase();
       const pName = (p.name || "").toLowerCase();
       return aliases.some(

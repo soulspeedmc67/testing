@@ -2,6 +2,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { ALL_PRODUCTS } from "../src/data/products.js";
+import { isAgeRestricted } from "../src/lib/ageGate.js";
+
+// Tobacco pages are noindex and must not be advertised (COTPA 2003 §5).
+const INDEXABLE_PRODUCTS = ALL_PRODUCTS.filter((p) => !isAgeRestricted(p));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,7 +66,7 @@ function generateSitemapXml() {
   }
 
   // 2. Product Pages
-  for (const product of ALL_PRODUCTS) {
+  for (const product of INDEXABLE_PRODUCTS) {
     const productUrl = `${BASE_URL}/product/${product.id}/`;
     const escapedName = (product.name || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const escapedImg = (product.img || "").replace(/&/g, "&amp;");
@@ -92,4 +96,4 @@ const sitemapContent = generateSitemapXml();
 const targetPath = path.resolve(__dirname, "../public/sitemap.xml");
 
 fs.writeFileSync(targetPath, sitemapContent, "utf8");
-console.log(`[SEO] Sitemap successfully written to ${targetPath} (${ALL_PRODUCTS.length + STATIC_ROUTES.length} URLs indexed)`);
+console.log(`[SEO] Sitemap successfully written to ${targetPath} (${INDEXABLE_PRODUCTS.length + STATIC_ROUTES.length} URLs indexed)`);
