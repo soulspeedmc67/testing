@@ -938,133 +938,71 @@ public struct AdminDashboardView: View {
 
 // MARK: - Order Detail Sheet View
 
+/// An order opened from the list: a packing checklist first. Tap an item to
+/// tick it off as it goes in the bag; ticks are kept on this device, so
+/// closing the order doesn't lose them. The next step sits at the bottom, and
+/// the address, total and cancel are tucked under "More about this order".
 struct OrderDetailSheetView: View {
     let order: Order
     @ObservedObject var vm: AdminDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isAssignRiderOpen = false
+    @State private var packed: Set<String> = []
+    @State private var isMoreOpen = false
 
-    private func primaryAction(_ title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 15, weight: .bold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.orange)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
+    private var storageKey: String { "dashit_admin_packed_\(order.id)" }
+
+    private func lineKey(_ item: CartItem) -> String {
+        item.id.isEmpty ? item.name : item.id
     }
+
+    private var packedCount: Int { order.items.filter { packed.contains(lineKey($0)) }.count }
+    private var isAllPacked: Bool { !order.items.isEmpty && packedCount == order.items.count }
 
     var body: some View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: true) {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Status Header Card
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Order #\(order.id.uppercased())")
-                            .font(.system(size: 18, weight: .bold, design: .monospaced))
-                        Text("Stage: \(order.status.stage.label)")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.orange)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 18) {
+                    progressHeader
 
-                    // Customer Address Card
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Delivery Destination")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.secondary)
-                        Text(order.deliveryAddress.formattedSummary)
-                            .font(.system(size: 14))
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                    // Items List
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Order Items (\(order.items.count))")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.secondary)
-
-                        // Grouped by distributor, so staff pick one supplier's stock at a time.
-                        ForEach(vm.itemsByDistributor(order)) { group in
-                            HStack(alignment: .firstTextBaseline) {
-                                Text("From \(group.distributor)")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.orange)
-                                Spacer()
-                                Text("\(group.items.count) item\(group.items.count == 1 ? "" : "s")")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.top, 6)
-                            ForEach(Array(group.items.enumerated()), id: \.offset) { _, item in
-                                HStack {
-                                    Text("\(item.quantity)x \(item.name)")
-                                        .font(.system(size: 14))
-                                    Spacer()
-                                    Text("₹\(Int(item.price * Double(item.quantity)))")
-                                        .font(.system(size: 14, weight: .semibold))
-                                }
-                                Divider()
-                            }
-                        }
-
-                        HStack {
-                            Text("Grand Total")
-                                .font(.system(size: 16, weight: .bold))
-                            Spacer()
-                            Text("₹\(Int(order.grandTotal))")
-                                .font(.system(size: 18, weight: .black))
+                    ForEach(vm.itemsByDistributor(order)) { group in
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text("From \(group.distributor)")
+                                .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(.orange)
+                                .padding(.horizontal, 4)
+                                .padding(.bottom, 8)
+                            VStack(spacing: 0) {
+                                ForEach(Array(group.items.enumerated()), id: \.offset) { index, item in
+                                    if index > 0 { Divider().padding(.leading, 64) }
+                                    checklistRow(item)
+                                }
+                            }
+                            .background(Color(uiColor: .secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                     }
+
+                    DisclosureGroup(isExpanded: $isMoreOpen) {
+                        moreDetails
+                            .padding(.top, 10)
+                    } label: {
+                        Text("More about this order")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                    }
+                    .tint(.secondary)
                     .padding(16)
                     .background(Color(uiColor: .secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                    // Next step. A packed order goes out only with a rider assigned.
-                    switch order.status.stage {
-                    case .placed:
-                        primaryAction("Start packing") {
-                            vm.advanceOrderStatus(order: order)
-                            dismiss()
-                        }
-                    case .packing:
-                        primaryAction("Assign rider") {
-                            isAssignRiderOpen = true
-                        }
-                    case .onTheWay:
-                        primaryAction("Confirm delivered") {
-                            vm.advanceOrderStatus(order: order)
-                            dismiss()
-                        }
-                    default:
-                        EmptyView()
-                    }
-
-                    if [DeliveryStage.placed, .packing, .onTheWay].contains(order.status.stage) {
-                        Button(action: {
-                            vm.cancelOrder(order: order)
-                            dismiss()
-                        }) {
-                            Text("Cancel Order")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.red)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                        }
-                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .padding(16)
             }
-            .navigationTitle("Order Details")
+            .background(Color(uiColor: .systemGroupedBackground))
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                nextStep
+            }
+            .navigationTitle("Order #\(order.id.suffix(6).uppercased())")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1078,6 +1016,179 @@ struct OrderDetailSheetView: View {
                 }
             }) {
                 AssignDriverSheetView(order: order, vm: vm)
+            }
+            .onAppear {
+                packed = Set(UserDefaults.standard.stringArray(forKey: storageKey) ?? [])
+            }
+        }
+    }
+
+    // MARK: - Checklist
+
+    private var progressHeader: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(isAllPacked ? "Everything is packed" : "\(packedCount) of \(order.items.count) packed")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(isAllPacked ? .green : .primary)
+                    .contentTransition(.numericText())
+                Spacer()
+                Text(order.status.stage.label)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.orange)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color(uiColor: .tertiarySystemFill))
+                    Capsule()
+                        .fill(isAllPacked ? Color.green : Color.orange)
+                        .frame(width: order.items.isEmpty ? 0 : geo.size.width * CGFloat(packedCount) / CGFloat(order.items.count))
+                }
+            }
+            .frame(height: 6)
+            Text("Tap an item when it's in the bag.")
+                .font(.system(size: 13))
+                .foregroundColor(.secondary)
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: packedCount)
+    }
+
+    private func checklistRow(_ item: CartItem) -> some View {
+        let key = lineKey(item)
+        let isPacked = packed.contains(key)
+        return Button {
+            toggle(key)
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: isPacked ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 28, weight: .regular))
+                    .foregroundColor(isPacked ? .green : Color(uiColor: .tertiaryLabel))
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 34)
+
+                AsyncImage(url: URL(string: item.img)) { phase in
+                    if let image = phase.image {
+                        image.resizable().scaledToFit()
+                    } else {
+                        Color(uiColor: .tertiarySystemFill)
+                    }
+                }
+                .frame(width: 40, height: 40)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .opacity(isPacked ? 0.5 : 1)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.name)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(isPacked ? .secondary : .primary)
+                        .strikethrough(isPacked, color: .secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if !item.unit.isEmpty {
+                        Text(item.unit)
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                Spacer(minLength: 8)
+                Text("×\(item.quantity)")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundColor(isPacked ? .secondary : .primary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(item.quantity) \(item.name)")
+        .accessibilityValue(isPacked ? "Packed" : "Not packed")
+    }
+
+    private func toggle(_ key: String) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            if packed.contains(key) { packed.remove(key) } else { packed.insert(key) }
+        }
+        UserDefaults.standard.set(Array(packed), forKey: storageKey)
+        if isAllPacked {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        } else {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    // MARK: - Next step and the rest
+
+    private func primaryAction(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 15)
+                .background(Color.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
+    /// A packed order goes out only with a rider assigned.
+    @ViewBuilder
+    private var nextStep: some View {
+        switch order.status.stage {
+        case .placed:
+            bottomBar(primaryAction("Start packing") {
+                vm.advanceOrderStatus(order: order)
+                dismiss()
+            })
+        case .packing:
+            bottomBar(primaryAction("Assign rider") {
+                isAssignRiderOpen = true
+            })
+        case .onTheWay:
+            bottomBar(primaryAction("Confirm delivered") {
+                vm.advanceOrderStatus(order: order)
+                dismiss()
+            })
+        default:
+            EmptyView()
+        }
+    }
+
+    private func bottomBar<Content: View>(_ content: Content) -> some View {
+        content
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 8)
+            .background(.bar)
+    }
+
+    private var moreDetails: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Deliver to")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.secondary)
+                Text(order.deliveryAddress.formattedSummary)
+                    .font(.system(size: 14))
+            }
+            HStack {
+                Text("Total")
+                    .font(.system(size: 15, weight: .bold))
+                Spacer()
+                Text("₹\(Int(order.grandTotal))")
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundColor(.orange)
+            }
+            if [DeliveryStage.placed, .packing, .onTheWay].contains(order.status.stage) {
+                Button(role: .destructive) {
+                    vm.cancelOrder(order: order)
+                    dismiss()
+                } label: {
+                    Text("Cancel order")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
             }
         }
     }

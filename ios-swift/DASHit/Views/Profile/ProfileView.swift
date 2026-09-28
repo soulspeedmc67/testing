@@ -46,10 +46,6 @@ struct ProfileView: View {
                             rowLabel(icon: "questionmark.bubble.fill", title: "Help & support", detail: nil)
                         }
                         .buttonStyle(.plain)
-                        rowDivider
-                        row(icon: "phone.bubble.fill", title: "Call the store", detail: SupportContact.phoneDisplay, external: true) {
-                            openURL(SupportContact.phoneURL)
-                        }
                     }
 
                     section("Legal") {

@@ -4,8 +4,7 @@ import SafariServices
 /// How to reach the store, and the pages every screen links to. Same numbers
 /// and addresses as the web footer and Terms (`src/pages/terms.js`).
 enum SupportContact {
-    static let phoneDisplay = "+91 60069 90032"
-    static let phoneURL = URL(string: "tel:+916006990032")!
+    // No phone number: the owner doesn't take support calls, only messages.
     static let whatsAppURL = URL(string: "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order")!
     static let email = "support@dashit.co.in"
     static let emailURL = URL(string: "mailto:support@dashit.co.in?subject=DASHit%20app%20help")!
@@ -63,7 +62,7 @@ struct HelpSupportView: View {
         ),
         Question(
             question: "Can I change or cancel my order?",
-            answer: "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider."
+            answer: "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, message us on WhatsApp: an order can still be cancelled until it leaves with the rider."
         ),
         Question(
             question: "What is the delivery code?",
@@ -76,7 +75,7 @@ struct HelpSupportView: View {
         ),
         Question(
             question: "Something is missing, damaged or wrong",
-            answer: "Tell us within 2 hours of delivery by call, WhatsApp or email, and we'll replace it or refund it."
+            answer: "Tell us within 2 hours of delivery on WhatsApp or by email, and we'll replace it or refund it."
         ),
         Question(
             question: "How do I delete my account?",
@@ -90,13 +89,6 @@ struct HelpSupportView: View {
                 header
 
                 VStack(spacing: 10) {
-                    contactRow(
-                        symbol: "phone.fill",
-                        tint: .positive,
-                        title: "Call us",
-                        subtitle: SupportContact.phoneDisplay,
-                        url: SupportContact.phoneURL
-                    )
                     contactRow(
                         symbol: "message.fill",
                         tint: Color(hex: 0x25D366),
@@ -158,7 +150,7 @@ struct HelpSupportView: View {
                 Text("How can we help?")
                     .font(.system(size: 22, weight: .heavy))
                     .foregroundColor(.white)
-                Text("Our Anantnag team answers calls and messages while the store is open.")
+                Text("Our Anantnag team answers messages while the store is open.")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(Color.white.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)

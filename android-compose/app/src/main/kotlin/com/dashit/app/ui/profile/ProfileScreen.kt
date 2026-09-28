@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.HeadsetMic
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -152,11 +151,6 @@ fun ProfileScreen(
                     OptionRow(Icons.Filled.SupportAgent, "Help & support", subtitle = "Questions, WhatsApp and email") {
                         HapticsManager.light(view)
                         isHelpOpen = true
-                    }
-                    RowDivider()
-                    OptionRow(Icons.Filled.HeadsetMic, "Call the store", detail = SupportContact.PHONE_DISPLAY, external = true) {
-                        HapticsManager.light(view)
-                        SupportContact.call(context)
                     }
                 }
 
