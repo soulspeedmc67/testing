@@ -5,10 +5,8 @@
  * clearly the same product, see productPhotoMatch). Found photos are saved in
  * small batches as they come in, with where they came from.
  *
- * Hosting: this project has no Firebase Storage bucket (checked: the bucket
- * answers 404, and new buckets need the paid Blaze plan), so the photo saved
- * is the Open Food Facts link itself, and the storefront does the white-square
- * clean-up in CSS (components/ProductImage).
+ * Photos are saved as links (the Open Food Facts address), never uploaded;
+ * the storefront does the white-square look in CSS (components/ProductImage).
  */
 
 import { fetchOffProduct, searchOffProducts } from "./openFoodFacts";
@@ -21,7 +19,7 @@ import {
   searchTermsFor,
   toSmallImage,
 } from "./productPhotoMatch";
-import { checkPhoto, qualityReasons } from "./photoCleanup";
+import { checkPhoto, qualityReasons } from "./photoQuality";
 import { saveFoundProductPhotos } from "./db";
 
 async function runPool(items, limit, worker) {

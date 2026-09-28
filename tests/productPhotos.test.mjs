@@ -13,13 +13,7 @@ import {
   chooseSearchMatch,
   searchTermsFor,
 } from "../src/lib/productPhotoMatch.js";
-import {
-  CANVAS_SIZE,
-  findContentBox,
-  placementFor,
-  isMostlyFlat,
-  qualityReasons,
-} from "../src/lib/photoCleanup.js";
+import { findContentBox, isMostlyFlat, qualityReasons } from "../src/lib/photoQuality.js";
 
 // Shaped like real Open Food Facts API v2 answers.
 const parleG = {
@@ -143,19 +137,6 @@ function imageWithBlock(width, height, block, color = [200, 30, 30]) {
 test("trimming finds the product inside the white border", () => {
   const data = imageWithBlock(300, 200, { x: 40, y: 50, width: 120, height: 60 });
   assert.deepEqual(findContentBox(data, 300, 200), { x: 40, y: 50, width: 120, height: 60, empty: false });
-});
-
-test("a trimmed product lands centred on the 1000×1000 square at 82%", () => {
-  const box = { x: 40, y: 50, width: 120, height: 60 };
-  const place = placementFor(box);
-  assert.equal(CANVAS_SIZE, 1000);
-  assert.equal(Math.round(place.width), 820);
-  assert.equal(Math.round(place.height), 410);
-  // Centred: equal space on each side.
-  assert.equal(Math.round(place.x), Math.round(CANVAS_SIZE - place.x - place.width));
-  assert.equal(Math.round(place.y), Math.round(CANVAS_SIZE - place.y - place.height));
-  assert.equal(Math.round(place.x), 90);
-  assert.equal(Math.round(place.y), 295);
 });
 
 test("quality check: small or blank photos go on the needs-a-better-photo list", () => {
