@@ -1,5 +1,6 @@
 package com.dashit.app.ui.sheet
 
+import com.dashit.app.ui.storefront.PlainPackArt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -115,15 +116,20 @@ fun ProductDetailSheet(
                             .clip(RoundedCornerShape(20.dp))
                             .background(DashitColors.SurfaceRaised)
                     ) {
-                        ShimmerImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(product.img)
-                                .crossfade(250)
-                                .build(),
-                            contentDescription = product.name,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize()
-                        )
+                        // Tobacco is shown as a plain pack, never the brand photo.
+                        if (product.isAgeRestricted) {
+                            PlainPackArt(modifier = Modifier.matchParentSize())
+                        } else {
+                            ShimmerImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(product.img)
+                                    .crossfade(250)
+                                    .build(),
+                                contentDescription = product.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        }
 
                         // Circular Close Button (Top-Right)
                         Box(

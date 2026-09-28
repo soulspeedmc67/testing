@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Canvas
+import com.dashit.app.ui.components.ProductCard
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -238,92 +243,89 @@ fun TobaccoDeclarationSheet(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     }
 }
 
-/** The tobacco list: the health warning, then each item as a plain pack. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The tobacco list, opened from search after the declaration. Laid out like the
+ * other product screens: back arrow and title, then the same product cards in a
+ * grid (as plain packs), each opening the product details.
+ */
 @Composable
-fun TobaccoSectionSheet(
+fun TobaccoScreen(
     products: List<Product>,
     quantityOf: (Product) -> Int,
+    onOpenProduct: (Product) -> Unit,
     onAdd: (Product) -> Unit,
     onDecrement: (Product) -> Unit,
-    onDismiss: () -> Unit
+    onBack: () -> Unit
 ) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val scope = rememberCoroutineScope()
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = state,
-        containerColor = DashitColors.Surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DashitColors.Surface)
+            .statusBarsPadding()
     ) {
-        Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.92f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(44.dp).clip(CircleShape).pressable(scale = 0.9f, onClick = onBack)
             ) {
-                Text(
-                    text = "Tobacco",
-                    color = DashitColors.TextPrimary,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.weight(1f)
-                )
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .pressable(scale = 0.85f) { scope.launch { state.hide() }.invokeOnCompletion { onDismiss() } }
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = DashitColors.TextPrimary, modifier = Modifier.size(22.dp))
+            }
+            Text(
+                text = "Tobacco",
+                color = DashitColors.TextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = "${products.size} item${if (products.size == 1) "" else "s"}",
+                color = DashitColors.TextMuted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        Spacer(Modifier.fillMaxWidth().height(1.dp).background(DashitColors.Hairline))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 120.dp)
+        ) {
+            item(key = "warning") {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(bottom = 12.dp)
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.size(30.dp).clip(CircleShape).background(DashitColors.SurfaceMuted)
-                    ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close", tint = DashitColors.TextSecondary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = DashitColors.Danger, modifier = Modifier.size(16.dp))
+                    Text(Tobacco.HEALTH_WARNING, color = DashitColors.TextSecondary, fontSize = 12.5.sp, fontWeight = FontWeight.Medium)
+                }
+            }
+            if (products.isEmpty()) {
+                item(key = "empty") {
+                    Box(Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
+                        Text("Nothing here right now.", color = DashitColors.TextMuted, fontSize = 14.sp)
                     }
                 }
-            }
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(horizontal = 20.dp).padding(top = 4.dp, bottom = 14.dp)
-            ) {
-                Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = DashitColors.Danger, modifier = Modifier.size(16.dp))
-                Text(Tobacco.HEALTH_WARNING, color = DashitColors.TextSecondary, fontSize = 12.5.sp, fontWeight = FontWeight.Medium)
-            }
-            Spacer(Modifier.fillMaxWidth().height(1.dp).background(DashitColors.Hairline))
-
-            if (products.isEmpty()) {
-                Box(Modifier.fillMaxWidth().padding(top = 60.dp), contentAlignment = Alignment.Center) {
-                    Text("Nothing here right now.", color = DashitColors.TextMuted, fontSize = 14.sp)
-                }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxWidth().navigationBarsPadding()) {
-                    items(products, key = { it.id }) { product ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)
-                        ) {
-                            PlainPackArt(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .border(1.dp, DashitColors.Hairline, RoundedCornerShape(12.dp))
-                            )
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text(product.name, color = DashitColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text(product.unit, color = DashitColors.TextMuted, fontSize = 12.5.sp)
-                                Text(product.displayPrice, color = DashitColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            }
-                            QuantityStepper(
+                items(products.chunked(3), key = { row -> "tobacco_${row.first().id}" }) { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        row.forEach { product ->
+                            ProductCard(
+                                product = product,
                                 quantity = quantityOf(product),
-                                isEnabled = product.isAvailable,
+                                modifier = Modifier.weight(1f),
+                                onOpen = { onOpenProduct(product) },
                                 onAdd = { onAdd(product) },
                                 onIncrement = { onAdd(product) },
                                 onDecrement = { onDecrement(product) }
                             )
                         }
-                        Spacer(Modifier.padding(start = 90.dp).fillMaxWidth().height(1.dp).background(DashitColors.HairlineSoft))
+                        repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
                     }
                 }
             }
@@ -373,10 +375,11 @@ fun TobaccoSearchCard(onView: () -> Unit, modifier: Modifier = Modifier) {
 @Composable
 fun PlainPackArt(modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
+        // The backdrop fills the whole frame; the pack sits in the middle.
+        drawRect(Color(0xFFF1EEEA))
         val s = size.minDimension / 400f
         translate(left = (size.width - 400f * s) / 2f, top = (size.height - 400f * s) / 2f) {
             scale(scale = s, pivot = Offset.Zero) {
-                drawRect(Color(0xFFF1EEEA), size = Size(400f, 400f))
                 drawOval(Color.Black.copy(alpha = 0.08f), topLeft = Offset(111f, 321f), size = Size(184f, 18f))
                 drawPath(Path().apply {
                     moveTo(262f, 100f); lineTo(284f, 88f); lineTo(284f, 308f); lineTo(262f, 320f); close()

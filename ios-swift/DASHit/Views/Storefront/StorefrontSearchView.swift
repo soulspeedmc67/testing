@@ -20,6 +20,7 @@ struct StorefrontSearchView: View {
     @State private var isTobaccoDeclarationOpen = false
     @State private var isTobaccoSectionOpen = false
     @State private var opensTobaccoAfterDeclaration = false
+    @State private var opensCartAfterTobacco = false
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
 
@@ -71,8 +72,14 @@ struct StorefrontSearchView: View {
                 opensTobaccoAfterDeclaration = true
             }
         }
-        .sheet(isPresented: $isTobaccoSectionOpen) {
-            TobaccoSectionView(products: tobaccoList)
+        .fullScreenCover(isPresented: $isTobaccoSectionOpen, onDismiss: {
+            // The cart rises once the tobacco page has gone, not on top of it.
+            if opensCartAfterTobacco {
+                opensCartAfterTobacco = false
+                cart.isCartSheetPresented = true
+            }
+        }) {
+            TobaccoSectionView(products: tobaccoList, onGoToCart: { opensCartAfterTobacco = true })
         }
     }
 
