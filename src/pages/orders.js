@@ -35,6 +35,7 @@ import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/no
 import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
 import { watchOrder, watchOrderTracking, updateOrderStatus, updateOrderContent, getOrderGracePeriodSeconds, retireFinishedOrder, watchProducts, ORDER_STATUS } from "../lib/db";
 import { ALL_PRODUCTS } from "../data/products";
+import { browseable } from "../lib/tobacco";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import ModifyOrderModal from "../components/ModifyOrderModal";
@@ -202,7 +203,7 @@ export default function OrdersPage() {
     });
 
     const combined = Array.from(pastItemsMap.values());
-    productsList.forEach((p) => {
+    browseable(productsList).forEach((p) => {
       const key = String(p.id || p.barcode || p.name);
       if (!combined.some((c) => String(c.id || c.barcode || c.name) === key)) {
         combined.push(p);
@@ -1106,7 +1107,7 @@ export default function OrdersPage() {
         isOpen={isModifyModalOpen}
         onClose={() => setIsModifyModalOpen(false)}
         order={activeOrder}
-        productsList={productsList}
+        productsList={browseable(productsList)}
         onSaveOrder={handleSaveModifiedOrder}
         remainingSeconds={cancellationSeconds}
       />

@@ -19,6 +19,7 @@ import VoiceSearchModal from "../components/VoiceSearchModal";
 import { ALL_PRODUCTS } from "../data/products";
 import { reverseGeocodeCoords } from "../lib/maps";
 import { watchProducts } from "../lib/db";
+import { browseable } from "../lib/tobacco";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { useStoreDetails } from "../lib/storeStatus";
 import { hapticMedium } from "../lib/haptics";
@@ -256,7 +257,8 @@ export default function ShopPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    let list = [...productsList];
+    // Tobacco lives only in its own gated section (/tobacco), never the storefront.
+    let list = browseable(productsList);
 
     if (activeCategory !== "All") {
       const activeLower = activeCategory.toLowerCase();
