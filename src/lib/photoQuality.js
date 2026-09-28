@@ -1,17 +1,13 @@
 /**
- * Product photo clean-up on a canvas, in the browser: trim the white border,
- * put the product on a plain white 1000×1000 square so it fills 82% of the
- * longer side, and export WebP at 800 and 400px. Also a quality check: a small
- * source (shorter side under 300px) or a product area that's nearly all one
- * colour still gets used, but goes on the "Needs a better photo" list.
+ * A quick look at a product photo, in the browser, for the "Needs a photo"
+ * list: a small photo (shorter side under 300px) or one that's nearly all one
+ * colour still gets used, but is flagged. Photos are only ever links (nothing
+ * is uploaded); the white-square look is done in CSS by components/ProductImage.
  *
- * The measuring (`findContentBox`, `placementFor`, `isMostlyFlat`) works on
- * plain RGBA arrays and has no imports, so `node --test tests/` checks it.
+ * The measuring (`findContentBox`, `isMostlyFlat`) works on plain RGBA arrays
+ * and has no imports, so `npm test` checks it.
  */
 
-export const CANVAS_SIZE = 1000;
-export const PRODUCT_FILL = 0.82;
-export const OUTPUT_SIZES = [800, 400];
 export const MIN_SOURCE_SIDE = 300;
 
 /** Near-white (all channels at or above `threshold`) or near-transparent pixels are background. */
@@ -40,14 +36,6 @@ export function findContentBox(data, width, height, { threshold = 242, alphaMin 
   }
   if (maxX < 0) return { x: 0, y: 0, width, height, empty: true };
   return { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1, empty: false };
-}
-
-/** Where the trimmed product goes on the square: centred, its longer side at 82%. */
-export function placementFor(box, size = CANVAS_SIZE, fill = PRODUCT_FILL) {
-  const scale = (size * fill) / Math.max(box.width, box.height);
-  const width = box.width * scale;
-  const height = box.height * scale;
-  return { x: (size - width) / 2, y: (size - height) / 2, width, height, scale };
 }
 
 /**
@@ -111,8 +99,8 @@ function makeCanvas(width, height) {
   return canvas;
 }
 
-/* Measuring runs on a copy no bigger than this, so a 4000px phone photo
-   doesn't take seconds; the box is scaled back up afterwards. */
+/* Measuring runs on a copy no bigger than this, so a 4000px photo doesn't
+   take seconds. */
 const MEASURE_MAX = 600;
 
 function measure(img) {
@@ -127,17 +115,8 @@ function measure(img) {
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
   const { data } = ctx.getImageData(0, 0, w, h);
-  const small = findContentBox(data, w, h);
-  const flat = isMostlyFlat(data, w, h, small);
-  const box = small.empty
-    ? { x: 0, y: 0, width, height }
-    : {
-        x: Math.max(0, Math.floor(small.x / factor)),
-        y: Math.max(0, Math.floor(small.y / factor)),
-        width: Math.min(width, Math.ceil(small.width / factor)),
-        height: Math.min(height, Math.ceil(small.height / factor)),
-      };
-  return { width, height, box, flat };
+  const flat = isMostlyFlat(data, w, h, findContentBox(data, w, h));
+  return { width, height, flat };
 }
 
 /**
@@ -155,35 +134,22 @@ export async function checkPhoto(source) {
   }
 }
 
-function canvasToBlob(canvas, type, quality) {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
-}
-
 /**
- * The full clean-up: trimmed, centred on white at 1000×1000, exported as WebP
- * (JPEG where the browser can't encode WebP) at 800 and 400px.
+ * Whether a pasted link opens as a picture at all (a web page link doesn't).
+ * No CORS needed: this only loads it, it doesn't read the pixels.
  */
-export async function cleanupPhoto(source, { quality = 0.85 } = {}) {
-  const img = await loadImage(source);
-  const { width, height, box, flat } = measure(img);
-  const canvas = makeCanvas(CANVAS_SIZE, CANVAS_SIZE);
-  const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  ctx.imageSmoothingQuality = "high";
-  const place = placementFor(box);
-  ctx.drawImage(img, box.x, box.y, box.width, box.height, place.x, place.y, place.width, place.height);
-
-  const blobs = {};
-  for (const size of OUTPUT_SIZES) {
-    const out = makeCanvas(size, size);
-    const octx = out.getContext("2d");
-    octx.imageSmoothingQuality = "high";
-    octx.drawImage(canvas, 0, 0, size, size);
-    let blob = await canvasToBlob(out, "image/webp", quality);
-    if (!blob || blob.type !== "image/webp") blob = await canvasToBlob(out, "image/jpeg", quality);
-    blobs[size] = blob;
-  }
-  const reasons = qualityReasons({ width, height, flat });
-  return { canvas, blobs, box, placement: place, width, height, weak: reasons.length > 0, reasons };
+export function opensAsPhoto(url, timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img.naturalWidth > 0);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    img.src = url;
+  });
 }

@@ -494,30 +494,6 @@ export function setManualProductPhoto(id, url, { weak = false, issues = [] } = {
 }
 
 /**
- * Uploads a cleaned photo (800 and 400px) to Firebase Storage at
- * products/<id>/800.webp and 400.webp, and returns the 800px link. Throws
- * `{ code: "storage-unavailable" }` when the project has no Storage bucket:
- * on the free Spark plan, new projects can't create one.
- */
-export async function uploadProductPhoto(id, blobs) {
-  const app = getDb()?.app;
-  if (!app) throw Object.assign(new Error("Not connected"), { code: "storage-unavailable" });
-  try {
-    const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
-    const storage = getStorage(app);
-    const ext = blobs[800]?.type === "image/webp" ? "webp" : "jpg";
-    const meta = { contentType: blobs[800]?.type || "image/webp", cacheControl: "public, max-age=31536000" };
-    await uploadBytes(ref(storage, `products/${id}/400.${ext}`), blobs[400], meta);
-    const big = ref(storage, `products/${id}/800.${ext}`);
-    await uploadBytes(big, blobs[800], meta);
-    return await getDownloadURL(big);
-  } catch (e) {
-    const missing = /bucket|not.?found|404|storage\/unknown|no default bucket/i.test(`${e?.code} ${e?.message}`);
-    throw Object.assign(new Error(e?.message || "Upload failed"), { code: missing ? "storage-unavailable" : e?.code || "upload-failed" });
-  }
-}
-
-/**
  * "Delete all" for one distributor: removes every item whose stock came from
  * them (untagged items count as the owner's own, "Myself"). Returns how many.
  */

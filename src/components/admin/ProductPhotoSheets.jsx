@@ -1,9 +1,9 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Camera, ImagePlus, Link2, Loader2, Trash2, X } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Loader2, Trash2, X } from "lucide-react";
 import AdminSheet from "./AdminSheet";
 import ProductImage from "../ProductImage";
-import { removeProductPhoto, setManualProductPhoto, uploadProductPhoto } from "../../lib/db";
-import { cleanupPhoto } from "../../lib/photoCleanup";
+import { removeProductPhoto, setManualProductPhoto } from "../../lib/db";
+import { checkPhoto, opensAsPhoto } from "../../lib/photoQuality";
 import { normaliseImageUrl } from "../../lib/csvInventory";
 
 function SheetHeader({ id, title, subtitle, onClose, subtle }) {
@@ -98,45 +98,37 @@ export function PhotoResultsSheet({ open, onClose, results = [], darkMode = fals
   );
 }
 
-const STORAGE_MISSING =
-  "Your own photos can't be saved yet: this shop has no Firebase Storage, which needs Firebase's paid Blaze plan. Paste a photo link instead.";
-
-/** One product on the "Needs a photo" list, with camera, gallery and link. */
+/** One product on the "Needs a photo" list: paste a link to a photo of it. */
 function NeedsPhotoRow({ product, reason, darkMode, subtle }) {
-  const cameraRef = useRef(null);
-  const galleryRef = useRef(null);
-  const [state, setState] = useState({ busy: false, message: "", showLink: false });
   const [link, setLink] = useState("");
+  const [state, setState] = useState({ busy: false, message: "", saved: false });
+  const [savedUrl, setSavedUrl] = useState("");
   const id = String(product.id || product.barcode);
-
-  const handlePhoto = async (file) => {
-    if (!file) return;
-    setState({ busy: true, message: "Cleaning up the photo…", showLink: false });
-    try {
-      // Same clean-up as every other photo: trimmed, centred on white, 800 and 400px.
-      const cleaned = await cleanupPhoto(file);
-      const url = await uploadProductPhoto(id, cleaned.blobs);
-      await setManualProductPhoto(id, url, { weak: cleaned.weak, issues: cleaned.reasons });
-      setState({ busy: false, message: "Saved.", showLink: false });
-    } catch (e) {
-      setState({
-        busy: false,
-        message: e?.code === "storage-unavailable" ? STORAGE_MISSING : "Couldn't use that photo. Try another one.",
-        showLink: true,
-      });
-    }
-  };
 
   const saveLink = async () => {
     const url = normaliseImageUrl(link);
     if (!url) {
-      setState((s) => ({ ...s, message: "That isn't a web link. It should start with https://" }));
+      setState({ busy: false, saved: false, message: "That isn't a web link. It should start with https://" });
       return;
     }
-    setState({ busy: true, message: "", showLink: true });
-    await setManualProductPhoto(id, url);
-    setLink("");
-    setState({ busy: false, message: "Saved.", showLink: false });
+    setState({ busy: true, saved: false, message: "" });
+    if (!(await opensAsPhoto(url))) {
+      setState({
+        busy: false,
+        saved: false,
+        message: "That link doesn't open a photo. Press and hold the photo, choose \u201cCopy image address\u201d, and paste that.",
+      });
+      return;
+    }
+    const quality = await checkPhoto(url);
+    try {
+      await setManualProductPhoto(id, url, { weak: quality.weak, issues: quality.reasons });
+      setLink("");
+      setSavedUrl(url);
+      setState({ busy: false, saved: true, message: "Saved." });
+    } catch {
+      setState({ busy: false, saved: false, message: "Couldn't save it. Check the internet and try again." });
+    }
   };
 
   const inputCls = darkMode
@@ -147,68 +139,40 @@ function NeedsPhotoRow({ product, reason, darkMode, subtle }) {
     <li className={`py-3 border-b last:border-b-0 ${darkMode ? "border-zinc-800" : "border-slate-100"}`}>
       <div className="flex items-center gap-3">
         <div className="w-14 shrink-0 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-800">
-          <ProductImage src={product.img} name={product.name} letterClassName="text-lg" />
+          <ProductImage src={savedUrl || product.img} name={product.name} letterClassName="text-lg" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{product.name}</p>
-          <p className={`text-xs ${subtle}`}>{reason}</p>
+          <p className={`text-xs ${subtle}`}>{savedUrl ? "Photo added" : reason}</p>
         </div>
       </div>
-      <div className="mt-2.5 grid grid-cols-3 gap-2">
+      <form
+        className="mt-2.5 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          saveLink();
+        }}
+      >
+        <input
+          type="url"
+          inputMode="url"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="Paste a photo link"
+          aria-label={`Photo link for ${product.name}`}
+          className={`flex-1 min-w-0 text-sm px-3 py-2.5 rounded-xl border outline-none focus:border-[#FF5B00] ${inputCls}`}
+        />
         <button
-          type="button"
-          disabled={state.busy}
-          onClick={() => cameraRef.current?.click()}
-          className="flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl bg-[#FF5B00] text-white cursor-pointer disabled:opacity-60"
+          type="submit"
+          disabled={state.busy || !link.trim()}
+          className="shrink-0 min-w-[64px] flex items-center justify-center px-4 text-xs font-bold rounded-xl bg-[#FF5B00] text-white cursor-pointer disabled:opacity-50"
         >
-          {state.busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Camera className="w-3.5 h-3.5" />}
-          Take photo
+          {state.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
         </button>
-        <button
-          type="button"
-          disabled={state.busy}
-          onClick={() => galleryRef.current?.click()}
-          className={`flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl border cursor-pointer disabled:opacity-60 ${
-            darkMode ? "border-zinc-700 text-zinc-200" : "border-slate-200 text-slate-700"
-          }`}
-        >
-          <ImagePlus className="w-3.5 h-3.5" />
-          Choose photo
-        </button>
-        <button
-          type="button"
-          disabled={state.busy}
-          onClick={() => setState((s) => ({ ...s, showLink: !s.showLink }))}
-          className={`flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 rounded-xl border cursor-pointer disabled:opacity-60 ${
-            darkMode ? "border-zinc-700 text-zinc-200" : "border-slate-200 text-slate-700"
-          }`}
-        >
-          <Link2 className="w-3.5 h-3.5" />
-          Paste link
-        </button>
-      </div>
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhoto(e.target.files?.[0])} />
-      <input ref={galleryRef} type="file" accept="image/*" className="hidden" onChange={(e) => handlePhoto(e.target.files?.[0])} />
-      {state.showLink && (
-        <div className="mt-2 flex gap-2">
-          <input
-            type="url"
-            value={link}
-            onChange={(e) => setLink(e.target.value)}
-            placeholder="https://… link to the photo"
-            className={`flex-1 min-w-0 text-xs font-medium px-3 py-2.5 rounded-xl border outline-none focus:border-[#FF5B00] ${inputCls}`}
-          />
-          <button
-            type="button"
-            onClick={saveLink}
-            disabled={state.busy || !link.trim()}
-            className="px-4 text-xs font-bold rounded-xl bg-[#061838] text-white cursor-pointer disabled:opacity-50"
-          >
-            Save
-          </button>
-        </div>
+      </form>
+      {state.message && (
+        <p className={`mt-2 text-xs ${state.saved ? "text-emerald-600 dark:text-emerald-400 font-bold" : subtle}`}>{state.message}</p>
       )}
-      {state.message && <p className={`mt-2 text-xs ${state.message === "Saved." ? "text-emerald-600 dark:text-emerald-400 font-bold" : subtle}`}>{state.message}</p>}
     </li>
   );
 }
@@ -222,17 +186,25 @@ export function NeedsPhotoSheet({ open, onClose, products = [], darkMode = false
   const [limit, setLimit] = useState(40);
   const subtle = darkMode ? "text-zinc-400" : "text-slate-500";
 
+  // The list stays as it was when the sheet opened, so an item that just got
+  // its photo shows "Saved." instead of vanishing; it's gone next time.
+  const [rows, setRows] = useState(products);
+  useEffect(() => {
+    if (open) setRows(products);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? products.filter((p) => String(p.product.name || "").toLowerCase().includes(q)) : products;
-  }, [products, query]);
+    return q ? rows.filter((p) => String(p.product.name || "").toLowerCase().includes(q)) : rows;
+  }, [rows, query]);
 
   return (
     <AdminSheet open={open} onClose={onClose} labelledBy="needs-photo-title" darkMode={darkMode}>
       <SheetHeader
         id="needs-photo-title"
         title={`Needs a photo (${products.length})`}
-        subtitle="Items with no photo, or one that's too small or blank. Take one, choose one, or paste a link."
+        subtitle="Items with no photo, or one that's too small or blank. Paste a link to a photo of each one."
         onClose={onClose}
         subtle={subtle}
       />
@@ -253,7 +225,7 @@ export function NeedsPhotoSheet({ open, onClose, products = [], darkMode = false
       <div className="px-5 pb-6 overflow-y-auto overscroll-contain">
         {visible.length === 0 ? (
           <p className={`text-sm py-8 text-center ${subtle}`}>
-            {products.length === 0 ? "Every item has a good photo." : "No item matches that."}
+            {rows.length === 0 ? "Every item has a good photo." : "No item matches that."}
           </p>
         ) : (
           <ul>
