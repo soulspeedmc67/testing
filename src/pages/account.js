@@ -6,7 +6,6 @@ import SEO from "../components/SEO";
 import {
   ChevronLeft,
   ChevronRight,
-  Headphones,
   CreditCard,
   ShoppingBag,
   Heart,
@@ -206,18 +205,6 @@ export default function AccountPage() {
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
             </Link>
-            <a href="tel:+916006990032" className="flex items-center justify-between p-3.5 hover:bg-slate-50 transition-colors group dark:hover:bg-surface-muted">
-              <div className="flex items-center space-x-3.5">
-                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-                  <Headphones className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-slate-800 block dark:text-content">Call the store</span>
-                  <span className="text-[10px] font-medium text-slate-400 dark:text-content-faint">+91 60069 90032</span>
-                </div>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform dark:text-content-faint" />
-            </a>
           </div>
         </div>
 

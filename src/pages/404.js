@@ -9,7 +9,7 @@ import {
   MapPin,
   Heart,
   Compass,
-  PhoneCall
+  MessageCircle
 } from "lucide-react";
 
 export default function Custom404() {
@@ -206,11 +206,13 @@ export default function Custom404() {
         <div className="mt-6 pt-5 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <span>Looking for an active order?</span>
           <a
-            href="tel:+916006990032"
+            href="https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 font-bold text-[#FF5B00] hover:underline"
           >
-            <PhoneCall className="w-3.5 h-3.5" />
-            <span>Call +91 6006990032</span>
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>Message us on WhatsApp</span>
           </a>
         </div>
       </main>

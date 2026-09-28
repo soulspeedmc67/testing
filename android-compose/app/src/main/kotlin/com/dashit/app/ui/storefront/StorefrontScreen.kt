@@ -317,20 +317,17 @@ fun StorefrontScreen(
 
                     // 3-Column Collage Grid in Rows of 3
                     val chunkedTiles = categoryTiles.chunked(3)
-                    itemsIndexed(chunkedTiles, key = { _, row -> row.first().id }) { rowIndex, rowTiles ->
+                    items(chunkedTiles, key = { it.first().id }) { rowTiles ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 5.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            rowTiles.forEachIndexed { column, tile ->
+                            rowTiles.forEach { tile ->
                                 CategoryCollageTile(
                                     tile = tile,
-                                    // Row by row, left to right, on the first look after launch.
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .slideInFromLeft("categoryTiles", rowIndex * 2 + column + 2),
+                                    modifier = Modifier.weight(1f),
                                     onTap = { storefrontVm.selectCategory(tile.name) }
                                 )
                             }

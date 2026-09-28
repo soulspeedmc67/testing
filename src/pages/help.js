@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import { useRouter } from "next/router";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Phone, Mail, ChevronDown, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, Mail, ChevronDown, ArrowUpRight } from "lucide-react";
 import SEO from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/JsonLd";
 import { goBack } from "../lib/navigation";
 
 /* Same numbers and addresses as the Terms (section 6) and the site footer. */
-const SUPPORT_PHONE = "+916006990032";
-const SUPPORT_PHONE_DISPLAY = "+91 60069 90032";
 const SUPPORT_EMAIL = "support@dashit.co.in";
 const WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order";
 
@@ -25,7 +23,7 @@ const QUESTIONS = [
   },
   {
     q: "Can I change or cancel my order?",
-    a: "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider.",
+    a: "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, message us on WhatsApp: an order can still be cancelled until it leaves with the rider.",
   },
   {
     q: "What is the delivery code?",
@@ -37,7 +35,7 @@ const QUESTIONS = [
   },
   {
     q: "Something is missing, damaged or wrong",
-    a: "Tell us within 2 hours of delivery by call, WhatsApp or email, and we'll replace it or refund it.",
+    a: "Tell us within 2 hours of delivery on WhatsApp or by email, and we'll replace it or refund it.",
   },
   {
     q: "How do I delete my account?",
@@ -58,13 +56,6 @@ export default function HelpPage() {
   const [open, setOpen] = useState(null);
 
   const contacts = [
-    {
-      href: `tel:${SUPPORT_PHONE}`,
-      title: "Call us",
-      subtitle: SUPPORT_PHONE_DISPLAY,
-      icon: <Phone className="w-5 h-5" />,
-      tint: "bg-emerald-500",
-    },
     {
       href: WHATSAPP_URL,
       title: "Chat on WhatsApp",
@@ -116,7 +107,7 @@ export default function HelpPage() {
         <div className="relative overflow-hidden rounded-3xl bg-[#061838] p-5 pr-32 min-h-[132px]">
           <h2 className="text-xl font-black text-white tracking-tight">How can we help?</h2>
           <p className="text-xs text-white/75 font-medium mt-1.5 leading-relaxed">
-            Our Anantnag team answers calls and messages while the store is open.
+            Our Anantnag team answers messages while the store is open.
           </p>
           <picture>
             <source srcSet="/art/rider-holding-groceries-transparent.webp" type="image/webp" />

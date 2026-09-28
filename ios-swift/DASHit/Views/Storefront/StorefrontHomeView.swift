@@ -16,8 +16,6 @@ struct StorefrontHomeView: View {
     @State private var ageGateProduct: Product? = nil
     @ObservedObject private var addressBook = AddressBook.shared
     @State private var addressAnchor = ScreenAnchor()
-    /// False only until the launch entrance of the category tiles has played.
-    @State private var areTilesRevealed = LaunchReveal.shared.hasPlayed("categoryTiles")
     @FocusState private var isSearchFocused: Bool
     @State private var isVoiceSearchOpen = false
     /// The full-page search, laid over the feed so the product and cart
@@ -417,17 +415,14 @@ struct StorefrontHomeView: View {
             sectionTitle("Shop by category")
 
             LazyVGrid(columns: tileColumns, spacing: 12) {
-                ForEach(Array(vm.topCategoryTiles.enumerated()), id: \.element.id) { index, tile in
+                ForEach(vm.topCategoryTiles) { tile in
                     CategoryCollageTile(tile: tile) {
                         vm.selectCategory(tile.name)
                     }
-                    // Row by row, left to right, on the first look after launch.
-                    .slideInFromLeading(index: (index / 3) * 2 + index % 3 + 2, isShown: areTilesRevealed)
                 }
             }
             .padding(.horizontal, 16)
         }
-        .launchReveal("categoryTiles", isReady: !vm.topCategoryTiles.isEmpty, isShown: $areTilesRevealed)
     }
 
     /// A department grid: four compact category cards per row.

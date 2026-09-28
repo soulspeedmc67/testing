@@ -33,7 +33,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Send
@@ -68,14 +67,11 @@ import com.dashit.app.core.design.pressable
  * and addresses as the web footer, the Terms (`src/pages/terms.js`) and iOS.
  */
 object SupportContact {
-    const val PHONE = "+916006990032"
-    const val PHONE_DISPLAY = "+91 60069 90032"
+    // No phone number: the owner doesn't take support calls, only messages.
     const val EMAIL = "support@dashit.co.in"
     const val WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order"
     const val PRIVACY_URL = "https://dashit.co.in/privacy/"
     const val TERMS_URL = "https://dashit.co.in/terms/"
-
-    fun call(context: Context) = start(context, Intent(Intent.ACTION_DIAL, Uri.parse("tel:$PHONE")))
 
     fun email(context: Context) = start(
         context,
@@ -106,7 +102,7 @@ private val QUESTIONS = listOf(
     ),
     Question(
         "Can I change or cancel my order?",
-        "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, call us: an order can still be cancelled until it leaves with the rider."
+        "For 30 seconds after you place it, you can add items or cancel from the order tracker. After that, message us on WhatsApp: an order can still be cancelled until it leaves with the rider."
     ),
     Question(
         "What is the delivery code?",
@@ -118,7 +114,7 @@ private val QUESTIONS = listOf(
     ),
     Question(
         "Something is missing, damaged or wrong",
-        "Tell us within 2 hours of delivery by call, WhatsApp or email, and we'll replace it or refund it."
+        "Tell us within 2 hours of delivery on WhatsApp or by email, and we'll replace it or refund it."
     ),
     Question(
         "How do I delete my account?",
@@ -126,7 +122,7 @@ private val QUESTIONS = listOf(
     )
 )
 
-/** Help & support: call, WhatsApp or email the store, and common questions. */
+/** Help & support: WhatsApp or email the store, and common questions. */
 @Composable
 fun HelpSupportScreen(onBack: () -> Unit) {
     val view = LocalView.current
@@ -190,7 +186,7 @@ fun HelpSupportScreen(onBack: () -> Unit) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("How can we help?", color = Color.White, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
                     Text(
-                        "Our Anantnag team answers calls and messages while the store is open.",
+                        "Our Anantnag team answers messages while the store is open.",
                         color = Color.White.copy(alpha = 0.75f),
                         fontSize = 13.sp
                     )
@@ -204,10 +200,6 @@ fun HelpSupportScreen(onBack: () -> Unit) {
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                ContactRow(Icons.Filled.Call, DashitColors.Positive, "Call us", SupportContact.PHONE_DISPLAY) {
-                    HapticsManager.light(view)
-                    SupportContact.call(context)
-                }
                 ContactRow(Icons.Filled.Send, Color(0xFF25D366), "Chat on WhatsApp", "Usually the quickest") {
                     HapticsManager.light(view)
                     uriHandler.openUri(SupportContact.WHATSAPP_URL)
