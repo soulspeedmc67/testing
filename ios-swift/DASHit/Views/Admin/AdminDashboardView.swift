@@ -378,6 +378,9 @@ public struct AdminDashboardView: View {
             HStack {
                 Text("#\(order.id.prefix(8).uppercased())")
                     .font(.system(size: 14, weight: .bold, design: .monospaced))
+                Text(Self.placedTime(order))
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
 
                 Spacer()
 
@@ -411,7 +414,11 @@ public struct AdminDashboardView: View {
             // Quick Dispatch Buttons
             HStack(spacing: 8) {
                 if order.status.stage == .placed {
-                    Button(action: { vm.advanceOrderStatus(order: order) }) {
+                    // Straight into the packing checklist for this order.
+                    Button(action: {
+                        vm.advanceOrderStatus(order: order)
+                        selectedOrderForDetail = order
+                    }) {
                         Label("Start Packing", systemImage: "shippingbox.fill")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.white)
@@ -446,6 +453,16 @@ public struct AdminDashboardView: View {
         .padding(14)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// When the order came in: "10:42 am" today, "Yesterday, 9:10 pm", "25 Sep, 9:10 pm".
+    static func placedTime(_ order: Order) -> String {
+        let date = Date(timeIntervalSince1970: order.createdAt)
+        let calendar = Calendar.current
+        let time = date.formatted(date: .omitted, time: .shortened)
+        if calendar.isDateInToday(date) { return time }
+        if calendar.isDateInYesterday(date) { return "Yesterday, \(time)" }
+        return "\(date.formatted(.dateTime.day().month(.abbreviated))), \(time)"
     }
 
     private func stageColor(_ stage: DeliveryStage) -> Color {
@@ -952,6 +969,9 @@ struct OrderDetailSheetView: View {
 
     private var storageKey: String { "dashit_admin_packed_\(order.id)" }
 
+    /// The order as it is now: its stage changes while this is open.
+    private var live: Order { vm.recentOrders.first { $0.id == order.id } ?? order }
+
     private func lineKey(_ item: CartItem) -> String {
         item.id.isEmpty ? item.name : item.id
     }
@@ -1015,7 +1035,7 @@ struct OrderDetailSheetView: View {
                     dismiss()
                 }
             }) {
-                AssignDriverSheetView(order: order, vm: vm)
+                AssignDriverSheetView(order: live, vm: vm)
             }
             .onAppear {
                 packed = Set(UserDefaults.standard.stringArray(forKey: storageKey) ?? [])
@@ -1033,9 +1053,10 @@ struct OrderDetailSheetView: View {
                     .foregroundColor(isAllPacked ? .green : .primary)
                     .contentTransition(.numericText())
                 Spacer()
-                Text(order.status.stage.label)
+                Text(live.status.stage.label)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.orange)
+                    .contentTransition(.opacity)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -1134,11 +1155,11 @@ struct OrderDetailSheetView: View {
     /// A packed order goes out only with a rider assigned.
     @ViewBuilder
     private var nextStep: some View {
-        switch order.status.stage {
+        switch live.status.stage {
         case .placed:
+            // Moves it to packing and stays here, for ticking items off.
             bottomBar(primaryAction("Start packing") {
-                vm.advanceOrderStatus(order: order)
-                dismiss()
+                vm.advanceOrderStatus(order: live)
             })
         case .packing:
             bottomBar(primaryAction("Assign rider") {
@@ -1146,7 +1167,7 @@ struct OrderDetailSheetView: View {
             })
         case .onTheWay:
             bottomBar(primaryAction("Confirm delivered") {
-                vm.advanceOrderStatus(order: order)
+                vm.advanceOrderStatus(order: live)
                 dismiss()
             })
         default:
@@ -1179,7 +1200,7 @@ struct OrderDetailSheetView: View {
                     .font(.system(size: 17, weight: .black))
                     .foregroundColor(.orange)
             }
-            if [DeliveryStage.placed, .packing, .onTheWay].contains(order.status.stage) {
+            if [DeliveryStage.placed, .packing, .onTheWay].contains(live.status.stage) {
                 Button(role: .destructive) {
                     vm.cancelOrder(order: order)
                     dismiss()

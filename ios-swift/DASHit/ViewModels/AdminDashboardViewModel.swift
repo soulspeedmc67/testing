@@ -232,9 +232,13 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
 
         // 3. Orders Realtime Listener
+        // Only orders with a real date: Firestore sorts other types (old
+        // orders saved the date as text) above every date, which pushed new
+        // orders down the "All" list and out of the newest 50.
         orderListener = db.collection("orders")
+            .whereField("createdAt", isGreaterThan: Timestamp(seconds: 0, nanoseconds: 0))
             .order(by: "createdAt", descending: true)
-            .limit(to: 50)
+            .limit(to: 100)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self, let docs = snapshot?.documents, error == nil else { return }
                 let decoder = Firestore.Decoder()
@@ -255,7 +259,7 @@ public final class AdminDashboardViewModel: ObservableObject {
                     }
                     self.knownOrderIds = Set(list.map { $0.id })
                     self.isFirstOrderFetch = false
-                    self.recentOrders = list
+                    self.recentOrders = list.sorted { $0.createdAt > $1.createdAt }
                 }
             }
 
