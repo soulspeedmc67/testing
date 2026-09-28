@@ -9,6 +9,10 @@ on:
         description: "Only take simulator screenshots (no IPA, no TestFlight)"
         type: boolean
         default: false
+      skip_testflight:
+        description: "Build and sign the IPAs only; don't upload them to TestFlight"
+        type: boolean
+        default: false
 
 jobs:
   build-native-swift-ios:
@@ -231,7 +235,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Native Swift to TestFlight (Internal Testing)
-        if: (env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '') || (env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != '')
+        if: inputs.skip_testflight != true && ((env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '') || (env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''))
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -278,7 +282,7 @@ jobs:
 
       - name: Upload Admin App to TestFlight
         # Needs the admin profile, and an app for com.dashit.admin in App Store Connect.
-        if: env.ADMIN_PROVISION_PROFILE_BASE64 != '' && env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
+        if: inputs.skip_testflight != true && env.ADMIN_PROVISION_PROFILE_BASE64 != '' && env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
         env:
           ADMIN_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_ADMIN_PROVISION_PROFILE_BASE64 }}
           APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
