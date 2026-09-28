@@ -8,7 +8,8 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
     from: 10.28.0
-  # Online payments (Razorpay Standard Checkout), used by the customer app.
+  # Online payments (Razorpay Custom UI SDK): the shopper picks a UPI app in
+  # our own checkout and it opens straight away, with no Razorpay sheet.
   Razorpay:
     url: https://github.com/razorpay/razorpay-pod
     exactVersion: 1.5.8
@@ -31,7 +32,7 @@ targets:
       - package: Firebase
         product: FirebaseFirestore
       - package: Razorpay
-        product: RazorpayCheckout
+        product: RazorpayCustomUI
       - sdk: SwiftUI.framework
       - sdk: MapKit.framework
       - sdk: PassKit.framework
@@ -69,8 +70,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
-        # Razorpay's checkout hands UPI payments to these apps when installed.
-        LSApplicationQueriesSchemes: [tez, phonepe, paytmmp, credpay, mobikwik, freecharge, bhim, amazonpay, upi]
+        # UPI apps the checkout lists when installed (the schemes Razorpay's SDK checks).
+        LSApplicationQueriesSchemes: [tez, phonepe, paytmmp, credpay, mobikwik, freecharge, bhim, amazonpay, navi, kiwi, payzapp, jupiter, sbiyono, bobupi, myjio, indusmobile, in.fampay.app, kotakbank, slice-upi, popclubapp, shriramone, omnicard, whatsapp, upi]
         NSLocationWhenInUseUsageDescription: "DASHit requires your delivery address location to deliver groceries in Anantnag and show live courier arrival on the map."
         NSMicrophoneUsageDescription: "DASHit uses the microphone only while you search for products by voice."
         NSSpeechRecognitionUsageDescription: "DASHit turns what you say into search text so you can find products by voice."
@@ -144,7 +145,7 @@ targets:
       # Linked so the shared sources build the same way in both apps (the
       # admin app never opens a payment).
       - package: Razorpay
-        product: RazorpayCheckout
+        product: RazorpayCustomUI
       - sdk: SwiftUI.framework
       - sdk: MapKit.framework
       - sdk: PassKit.framework

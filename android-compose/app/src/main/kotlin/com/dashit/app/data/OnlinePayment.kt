@@ -1,102 +1,257 @@
 package com.dashit.app.data
 
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
+import android.util.Log
+import android.view.View
+import android.view.ViewGroup
+import android.webkit.WebView
+import android.widget.FrameLayout
 import com.dashit.app.data.model.UserProfile
-import com.razorpay.Checkout
 import com.razorpay.PaymentData
+import com.razorpay.PaymentResultWithDataListener
+import com.razorpay.Razorpay
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Razorpay payments, the same flow as the iPhone app (`OnlinePayment.swift`).
- * The app holds no Razorpay key: the small server next to the website
- * (dashit.co.in/api/razorpay/, PHP on Hostinger) creates the Razorpay order
- * and hands back the key id, Razorpay's checkout takes the payment, and the
- * server then checks Razorpay's signature. Only a verified payment places
- * an order.
+ * UPI payments inside our own checkout, the way Blinkit and Zomato do it: the
+ * shopper picks Google Pay, PhonePe or Paytm in the checkout, that app opens
+ * straight away, and they come back to a placed order. No Razorpay sheet.
  *
- * Razorpay reports the result to the activity; MainActivity forwards it here.
+ * Razorpay's Custom UI SDK does the talking to Razorpay. The app holds no
+ * Razorpay key: the small server next to the website (dashit.co.in/api/
+ * razorpay/, PHP on Hostinger) creates the Razorpay order and hands back the
+ * key id, and afterwards checks Razorpay's signature. Only a confirmed payment
+ * places an order, and a payment Razorpay took is never left without one:
+ * whenever the result is unclear (the shopper backed out of the UPI app, the
+ * result got lost), the server asks Razorpay whether the order was paid.
+ *
+ * Same flow as the iPhone app (`OnlinePayment.swift`).
  */
 object OnlinePayment {
+    private const val TAG = "DASHitPay"
     private const val SERVER = "https://dashit.co.in/api/razorpay/"
+    private const val RESULT_TIMEOUT_MS = 6 * 60_000L
+
+    /** Runs payments and the order writes after them; outlives the checkout sheet. */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     /** What a confirmed payment leaves behind, saved on the order. */
     data class Receipt(val razorpayOrderId: String, val razorpayPaymentId: String, val amountPaidPaise: Int?)
 
     class PaymentException(message: String, val cancelled: Boolean = false) : Exception(message)
 
-    private var pending: CompletableDeferred<PaymentData>? = null
+    /** A UPI app on this phone. `icon` is the app's own launcher icon. */
+    data class UpiApp(val packageName: String, val name: String, val icon: Bitmap?, val logoUrl: String?)
 
-    /** Takes payment for the order `orderCode`; throws a cancelled PaymentException if the shopper backs out. */
-    suspend fun pay(activity: Activity, orderCode: String, amountRupees: Double, customer: UserProfile): Receipt {
+    /** The apps most people here pay with, first; any others after, as found. */
+    private val preferredOrder = listOf(
+        "com.google.android.apps.nbu.paisa.user", // Google Pay
+        "com.phonepe.app",
+        "net.one97.paytm",
+        "in.org.npci.upiapp", // BHIM
+        "com.dreamplug.androidapp", // CRED
+        "in.amazon.mShop.android.shopping"
+    )
+
+    /**
+     * The UPI apps on this phone that are ready to pay, best known first.
+     * Looked up each time: an app set up a minute ago should show. (Google Pay,
+     * for one, only answers UPI links once it's linked to a bank account.)
+     */
+    suspend fun upiApps(context: Context): List<UpiApp> =
+        withContext(Dispatchers.IO) {
+            runCatching { Razorpay.getAppsWhichSupportUpi(context.applicationContext) }
+                .onFailure { Log.w(TAG, "Couldn't list UPI apps", it) }
+                .getOrNull().orEmpty()
+                .mapNotNull { details ->
+                    val pkg = details.packageName ?: return@mapNotNull null
+                    UpiApp(
+                        packageName = pkg,
+                        name = details.appName ?: pkg,
+                        icon = details.iconBase64?.let(::decodeIcon),
+                        logoUrl = details.appLogoUrl
+                    )
+                }
+                .distinctBy { it.packageName }
+                .sortedBy { preferredOrder.indexOf(it.packageName).let { i -> if (i < 0) Int.MAX_VALUE else i } }
+        }
+
+    private fun decodeIcon(base64: String): Bitmap? = runCatching {
+        val bytes = Base64.decode(base64.substringAfter("base64,"), Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }.getOrNull()
+
+    // MARK: - Paying
+
+    private sealed interface Outcome {
+        data class Paid(val paymentId: String?, val data: PaymentData?) : Outcome
+        data class Failed(val code: Int, val description: String?) : Outcome
+    }
+
+    private var razorpay: Razorpay? = null
+    private var webView: WebView? = null
+    private var pending: CompletableDeferred<Outcome>? = null
+
+    /**
+     * Takes payment for the order `orderCode` (its DASHit code, sent to
+     * Razorpay as the receipt) through `app`. Throws a cancelled
+     * PaymentException if the shopper backs out without paying.
+     * `onConfirming` fires once the shopper is back and the payment is being checked.
+     */
+    suspend fun pay(
+        activity: Activity,
+        orderCode: String,
+        amountRupees: Double,
+        customer: UserProfile,
+        app: UpiApp,
+        onConfirming: () -> Unit = {}
+    ): Receipt {
         val paise = Math.round(amountRupees * 100).toInt()
         val created = post("create-order.php", JSONObject().put("amount", paise).put("receipt", orderCode))
+        val razorpayOrderId = created.getString("order_id")
 
-        val result = CompletableDeferred<PaymentData>()
+        val result = CompletableDeferred<Outcome>()
         pending = result
-        withContext(Dispatchers.Main) {
-            val checkout = Checkout()
-            checkout.setKeyID(created.getString("key_id"))
-            val prefill = JSONObject().put("contact", customer.mobile)
-            customer.email?.takeIf { it.isNotBlank() }?.let { prefill.put("email", it) }
-            checkout.open(
-                activity,
-                JSONObject()
-                    .put("name", "DASHit")
-                    .put("description", "Order $orderCode")
-                    .put("order_id", created.getString("order_id"))
+        try {
+            withContext(Dispatchers.Main) {
+                val sdk = Razorpay(activity, created.getString("key_id"))
+                sdk.setWebView(attachWebView(activity))
+                razorpay = sdk
+                val payload = JSONObject()
                     .put("amount", created.getInt("amount"))
                     .put("currency", created.getString("currency"))
-                    .put("prefill", prefill)
-                    .put("theme", JSONObject().put("color", "#FF5B00"))
-            )
-        }
-        val data = result.await()
+                    .put("order_id", razorpayOrderId)
+                    .put("description", "Order $orderCode")
+                    .put("contact", customer.mobile)
+                    .put("email", customer.email?.takeIf { it.isNotBlank() } ?: "void@razorpay.com")
+                    .put("method", "upi")
+                    .put("_[flow]", "intent")
+                    .put("upi_app_package_name", app.packageName)
+                sdk.submit(payload, object : PaymentResultWithDataListener {
+                    override fun onPaymentSuccess(paymentId: String?, data: PaymentData?) {
+                        result.complete(Outcome.Paid(paymentId, data))
+                    }
 
-        val paymentId = data.paymentId
-        val orderId = data.orderId
-        val signature = data.signature
-        if (paymentId.isNullOrBlank() || orderId.isNullOrBlank() || signature.isNullOrBlank()) {
-            throw PaymentException("Razorpay didn't send the payment details back. If money was taken, message us on WhatsApp.")
+                    override fun onPaymentError(code: Int, description: String?, data: PaymentData?) {
+                        Log.i(TAG, "Payment ended: $code $description")
+                        result.complete(Outcome.Failed(code, description))
+                    }
+                })
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Couldn't start the payment", e)
+            result.complete(Outcome.Failed(Razorpay.PAYMENT_ERROR, e.message))
         }
-        val verified = post(
-            "verify-payment.php",
-            JSONObject()
-                .put("razorpay_order_id", orderId)
-                .put("razorpay_payment_id", paymentId)
-                .put("razorpay_signature", signature)
+
+        // A result that never comes (the phone dropped it) still ends in a
+        // check with Razorpay rather than an endless wait.
+        val outcome = withTimeoutOrNull(RESULT_TIMEOUT_MS) { result.await() }
+            ?: Outcome.Failed(Razorpay.PAYMENT_ERROR, "No answer from the UPI app")
+        withContext(Dispatchers.Main) { release() }
+        onConfirming()
+
+        if (outcome is Outcome.Paid) {
+            val data = outcome.data
+            val paymentId = data?.paymentId ?: outcome.paymentId
+            val signature = data?.signature
+            if (!paymentId.isNullOrBlank() && !signature.isNullOrBlank()) {
+                val verified = runCatching {
+                    post(
+                        "verify-payment.php",
+                        JSONObject()
+                            .put("razorpay_order_id", data.orderId ?: razorpayOrderId)
+                            .put("razorpay_payment_id", paymentId)
+                            .put("razorpay_signature", signature)
+                    )
+                }.getOrNull()
+                if (verified?.optBoolean("verified") == true) {
+                    val paid = if (verified.isNull("amount_paid")) null else verified.optInt("amount_paid")
+                    return Receipt(razorpayOrderId, paymentId, paid)
+                }
+            }
+        }
+
+        // Anything short of a checked success: ask Razorpay whether it was paid.
+        paidReceipt(razorpayOrderId)?.let { return it }
+
+        val failed = outcome as? Outcome.Failed
+        // Backing out of the UPI app comes back as an error whose reason says so.
+        val reason = failed?.description?.let { runCatching { JSONObject(it).getJSONObject("error").optString("reason") }.getOrNull() }
+        val cancelled = failed?.code == Razorpay.PAYMENT_CANCELED || reason == "payment_cancelled"
+        throw PaymentException(
+            when {
+                cancelled -> "Payment cancelled. Your order wasn't placed."
+                failed?.code == Razorpay.NETWORK_ERROR -> "The payment didn't go through: no connection. Nothing was charged."
+                else -> "The payment didn't go through. Nothing was charged."
+            },
+            cancelled
         )
-        if (!verified.optBoolean("verified")) {
-            throw PaymentException("This payment couldn't be confirmed, so the order wasn't placed.")
-        }
-        val paid = if (verified.isNull("amount_paid")) null else verified.optInt("amount_paid")
-        return Receipt(orderId, paymentId, paid)
     }
 
-    /** From MainActivity's PaymentResultWithDataListener. */
-    fun onPaymentSuccess(data: PaymentData?) {
-        val result = pending ?: return
-        pending = null
-        if (data == null) result.completeExceptionally(PaymentException("Razorpay didn't send the payment details back."))
-        else result.complete(data)
+    /**
+     * Asks the server (which asks Razorpay) whether this order was paid. A UPI
+     * app can confirm a moment after it hands back, so it looks twice.
+     */
+    private suspend fun paidReceipt(razorpayOrderId: String): Receipt? {
+        repeat(2) { attempt ->
+            if (attempt > 0) delay(2000)
+            val status = runCatching {
+                post("payment-status.php", JSONObject().put("razorpay_order_id", razorpayOrderId))
+            }.getOrNull() ?: return@repeat
+            if (status.optBoolean("paid")) {
+                val paymentId = status.optString("razorpay_payment_id")
+                if (paymentId.isNotBlank()) {
+                    val paid = if (status.isNull("amount_paid")) null else status.optInt("amount_paid")
+                    return Receipt(razorpayOrderId, paymentId, paid)
+                }
+            }
+        }
+        return null
     }
 
-    /** From MainActivity's PaymentResultWithDataListener. */
-    fun onPaymentError(code: Int, description: String?) {
-        val result = pending ?: return
-        pending = null
-        val cancelled = code == Checkout.PAYMENT_CANCELED
-        val message = when {
-            cancelled -> "Payment cancelled. Your order wasn't placed."
-            code == Checkout.NETWORK_ERROR -> "The payment didn't go through: no connection. Nothing was charged."
-            else -> "The payment didn't go through. Nothing was charged."
-        }
-        result.completeExceptionally(PaymentException(message, cancelled))
+    /** From MainActivity: the UPI app's answer, which the SDK reads. */
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        razorpay?.onActivityResult(requestCode, resultCode, data)
     }
+
+    /**
+     * The SDK needs a WebView of its own to talk to Razorpay. It sits behind
+     * the checkout, laid out but never drawn: the shopper only sees their UPI app.
+     */
+    private fun attachWebView(activity: Activity): WebView {
+        release()
+        val root = activity.findViewById<ViewGroup>(android.R.id.content)
+        val web = WebView(activity).apply { visibility = View.INVISIBLE }
+        root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        webView = web
+        return web
+    }
+
+    private fun release() {
+        pending = null
+        razorpay = null
+        webView?.let { web ->
+            (web.parent as? ViewGroup)?.removeView(web)
+            web.destroy()
+        }
+        webView = null
+    }
+
+    // MARK: - Server
 
     private suspend fun post(path: String, body: JSONObject): JSONObject = withContext(Dispatchers.IO) {
         val connection = try {
