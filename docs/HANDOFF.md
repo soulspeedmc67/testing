@@ -6,6 +6,25 @@
 
 ---
 
+## Tobacco section (Blinkit-style) — added
+- Tobacco (`isAgeRestricted` in `src/lib/ageGate.js`) is **hidden from all
+  browsing**: shop, categories, search results, offers, checkout upsells,
+  product "similar", order-again/modify lists, and the sitemap. Filtered via
+  `browseable()` in `src/lib/tobacco.js`.
+- Searching "cigarettes" etc. shows tobacco name rows + "No results" + the
+  **"Looking for tobacco products?"** banner (`TobaccoSearchBanner.jsx`).
+  "View items" → **"Please make sure…"** declaration
+  (`TobaccoDeclarationSheet.jsx`: 18+/not on behalf of a minor, not near a
+  school/college, photo ID at the door) → `/tobacco` section with plain,
+  unbranded pack art (`public/art/tobacco-plain-pack.svg`).
+- The declaration is stored as version 2 in `dashit_age_confirmed`; older
+  "18+ only" confirmations are asked again once.
+- **Store policy switch**: Apple guideline 1.4.3 forbids facilitating tobacco
+  sales, so the section is **off inside the iOS app by default** (web and
+  Android on — Google Play allows it in grocery apps with age-gating/ID check).
+  Build-time env: `NEXT_PUBLIC_TOBACCO_SECTION=off` (off everywhere),
+  `NEXT_PUBLIC_TOBACCO_IOS=on` (enable in iOS app; App Review risk).
+
 ## 0. Where the work stopped (read this first)
 
 **The admin dashboard is now fully migrated to Firestore and access-gated.**

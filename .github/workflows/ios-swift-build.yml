@@ -132,7 +132,7 @@ jobs:
             -archivePath build/DASHit.xcarchive \
             -skipMacroValidation \
             -skipPackagePluginValidation \
-            CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 100)) \
+            CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 200)) \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -148,7 +148,7 @@ jobs:
             -archivePath build/DASHitAdmin.xcarchive \
             -skipMacroValidation \
             -skipPackagePluginValidation \
-            CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 100)) \
+            CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 200)) \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
@@ -160,7 +160,7 @@ jobs:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERT_BASE64 }}
         run: |
           cd ios-swift/build
-          BUILD_VER=$((GITHUB_RUN_NUMBER + 100))
+          BUILD_VER=$((GITHUB_RUN_NUMBER + 200))
 
           sign_and_package() {
             local ARCHIVE_NAME=$1

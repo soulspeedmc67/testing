@@ -32,6 +32,7 @@ import { watchProducts } from "../../lib/db";
 import { useAgeGate } from "../../context/AgeGateContext";
 import { isAgeRestricted, hasConfirmedAge } from "../../lib/ageGate";
 import ProductImage from "../../components/ProductImage";
+import { browseable } from "../../lib/tobacco";
 
 export default function ProductDetailPage({ initialProduct }) {
   const router = useRouter();
@@ -146,7 +147,7 @@ export default function ProductDetailPage({ initialProduct }) {
 
   // Similar products in same category
   const similarProducts = useMemo(() => {
-    return ALL_PRODUCTS.filter(
+    return browseable(ALL_PRODUCTS).filter(
       (p) =>
         p.id !== product.id &&
         (p.cat === product.cat || p.cat === "Dairy" || p.cat === "Snacks")
@@ -308,6 +309,7 @@ export default function ProductDetailPage({ initialProduct }) {
         title={`${product.name} — Buy Online in Anantnag`}
         description={`Order fresh ${product.name} (${product.unit}) online in Anantnag, Kashmir. Fastest delivery from DASHIT. 100% genuine quality assured.`}
         canonical={`/product/${product.id}/`}
+        noindex={isAgeRestricted(product)}
         ogImage={product.img}
         ogType="product"
         keywords={`${product.name}, buy ${product.name} online Anantnag, ${product.cat} delivery Kashmir, DASHIT 192101`}

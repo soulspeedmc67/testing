@@ -9,6 +9,7 @@ import QuickProductSheet from "../components/QuickProductSheet";
 import { ALL_PRODUCTS } from "../data/products";
 import { getExclusiveOffers } from "../lib/offers";
 import { watchProducts } from "../lib/db";
+import { browseable } from "../lib/tobacco";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { useStoreDetails } from "../lib/storeStatus";
 import { goBack } from "../lib/navigation";
@@ -61,7 +62,7 @@ export default function OffersPage() {
   /* Everything actually discounted right now, deepest saving first. */
   const dealProducts = useMemo(
     () =>
-      productsList
+      browseable(productsList)
         .map((p) => ({ ...p, _off: discountOf(p) }))
         .filter((p) => p._off > 0)
         .sort((a, b) => b._off - a._off),

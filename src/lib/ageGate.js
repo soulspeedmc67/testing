@@ -45,14 +45,21 @@ export function isAgeRestricted(product) {
 
 const STORAGE_KEY = "dashit_age_confirmed";
 
-/** Has the shopper already declared they are over 18 on this device? */
+/*
+ * Bumped whenever the wording of the declaration grows. Version 2 added the
+ * school/college-premises statement (COTPA §6(b)), so a version-1 "I am 18+"
+ * no longer covers what the shopper is now asked to confirm.
+ */
+const DECLARATION_VERSION = 2;
+
+/** Has the shopper already made the current tobacco declaration on this device? */
 export function hasConfirmedAge() {
   if (typeof window === "undefined") return false;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return false;
     const parsed = JSON.parse(raw);
-    return parsed?.confirmed === true;
+    return parsed?.confirmed === true && Number(parsed.version) >= DECLARATION_VERSION;
   } catch (e) {
     return false;
   }
@@ -63,7 +70,7 @@ export function confirmAge() {
   try {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ confirmed: true, at: Date.now(), minAge: MIN_AGE })
+      JSON.stringify({ confirmed: true, at: Date.now(), minAge: MIN_AGE, version: DECLARATION_VERSION })
     );
     window.dispatchEvent(new CustomEvent("dashit_age_confirmed"));
   } catch (e) {}

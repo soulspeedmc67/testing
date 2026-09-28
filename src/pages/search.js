@@ -11,10 +11,13 @@ import FloatingCartBar from "../components/FloatingCartBar";
 import QuickProductSheet from "../components/QuickProductSheet";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { EmptySearchState } from "../components/ui/EmptyState";
+import TobaccoSearchBanner from "../components/TobaccoSearchBanner";
+import { useAgeGate } from "../context/AgeGateContext";
 import { hapticLight, hapticMedium } from "../lib/haptics";
 import { goBack } from "../lib/navigation";
 import { ALL_PRODUCTS } from "../data/products";
 import { watchProducts } from "../lib/db";
+import { browseable, isTobaccoSectionEnabled, tobaccoMatches, TOBACCO_ROUTE } from "../lib/tobacco";
 
 const POPULAR_SEARCH_CHIPS = ["Milk", "Lavas Bread", "Chips", "Apples", "Silk Chocolate", "Maggi", "Butter", "Biscuits"];
 
@@ -26,6 +29,13 @@ export default function SearchPage() {
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [allProducts, setAllProducts] = useState(ALL_PRODUCTS);
+  const [tobaccoEnabled, setTobaccoEnabled] = useState(false);
+  const { requestTobaccoAccess } = useAgeGate();
+
+  // Platform-dependent (off in the iOS app), so it is only known after mount.
+  useEffect(() => {
+    setTobaccoEnabled(isTobaccoSectionEnabled());
+  }, []);
 
   useEffect(() => {
     const unsub = watchProducts((liveList) => {
@@ -83,13 +93,26 @@ export default function SearchPage() {
   };
 
   const cleanQuery = (query || "").trim().toLowerCase();
+  // Tobacco is never a search result; a tobacco query gets the banner instead.
+  const browseProducts = browseable(allProducts);
   const filteredProducts = cleanQuery
-    ? allProducts.filter((p) =>
+    ? browseProducts.filter((p) =>
         (p.name || "").toLowerCase().includes(cleanQuery) ||
         (p.cat || "").toLowerCase().includes(cleanQuery) ||
         (p.brand || "").toLowerCase().includes(cleanQuery)
       )
-    : allProducts.slice(0, 16);
+    : browseProducts.slice(0, 16);
+
+  const tobaccoHits = tobaccoEnabled ? tobaccoMatches(cleanQuery, allProducts) : [];
+  const showTobaccoPrompt = tobaccoHits.length > 0;
+  // "No results" with the banner still shows something to buy underneath.
+  const showPopularInstead = showTobaccoPrompt && filteredProducts.length === 0;
+  const gridProducts = showPopularInstead ? browseProducts.slice(0, 8) : filteredProducts;
+
+  const openTobaccoSection = () => {
+    hapticLight();
+    requestTobaccoAccess(() => router.push(TOBACCO_ROUTE));
+  };
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
@@ -188,19 +211,32 @@ export default function SearchPage() {
           </div>
         )}
 
+        {showTobaccoPrompt && (
+          <TobaccoSearchBanner
+            query={query.trim()}
+            matches={tobaccoHits}
+            showNoResults={showPopularInstead}
+            onViewItems={openTobaccoSection}
+          />
+        )}
+
         {/* Live Filtered Search Results */}
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">
-              {query ? `Search Results for "${query}" (${filteredProducts.length})` : "All Products"}
+              {showPopularInstead
+                ? "Showing popular products"
+                : query
+                  ? `Search Results for "${query}" (${filteredProducts.length})`
+                  : "All Products"}
             </h3>
           </div>
 
-          {filteredProducts.length === 0 ? (
+          {gridProducts.length === 0 ? (
             <EmptySearchState query={query} onSelectChip={(chip) => setQuery(chip)} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {filteredProducts.map((p) => {
+              {gridProducts.map((p) => {
                 const inCart = cart.find((i) => i.id === p.id);
                 return (
                   <div key={p.id} className="bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between shadow-sm space-y-2 dark:bg-surface-raised dark:border-line/90">
