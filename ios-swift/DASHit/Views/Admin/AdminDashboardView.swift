@@ -1067,6 +1067,16 @@ struct OrderDetailSheetView: View {
                 }
             }
             .frame(height: 6)
+            // Paid online means the rider collects nothing at the door.
+            if live.paymentMethod.lowercased().contains("online") {
+                Label("Paid online: collect nothing", systemImage: "checkmark.seal.fill")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.green)
+            } else {
+                Label("Cash on delivery: collect ₹\(Int(live.grandTotal))", systemImage: "banknote")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.orange)
+            }
             Text("Tap an item when it's in the bag.")
                 .font(.system(size: 13))
                 .foregroundColor(.secondary)

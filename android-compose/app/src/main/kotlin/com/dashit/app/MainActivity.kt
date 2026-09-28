@@ -28,7 +28,7 @@ import com.dashit.app.data.repository.OrderRepository
 import com.dashit.app.ui.storefront.StorefrontScreen
 import com.dashit.app.viewmodel.StorefrontViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataListener {
     private val storefrontViewModel: StorefrontViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +46,9 @@ class MainActivity : ComponentActivity() {
         }
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onCreate(savedInstanceState)
+
+        // Razorpay's checkout loads its files ahead, so "Pay" opens quickly.
+        com.razorpay.Checkout.preload(applicationContext)
 
         // Product photos: saved on the phone after the first download.
         coil.Coil.setImageLoader(com.dashit.app.data.ProductPhotos.imageLoader(this))
@@ -124,6 +127,15 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val WELCOME_SEEN_KEY = "seen_auth_welcome"
+    }
+
+    // Razorpay reports the payment result to the activity; OnlinePayment waits for it.
+    override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: com.razorpay.PaymentData?) {
+        com.dashit.app.data.OnlinePayment.onPaymentSuccess(paymentData)
+    }
+
+    override fun onPaymentError(code: Int, response: String?, paymentData: com.razorpay.PaymentData?) {
+        com.dashit.app.data.OnlinePayment.onPaymentError(code, response)
     }
 
     override fun onStart() {

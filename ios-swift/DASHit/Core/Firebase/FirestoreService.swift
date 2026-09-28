@@ -182,7 +182,7 @@ final class FirestoreService {
     /// order whose status is "Placed", whose createdAt is the server clock and
     /// whose driverId is null; anything else is rejected, so this mirrors
     /// `createOrder` in `src/lib/db.js` field for field.
-    func createOrder(_ order: Order, customer: UserProfile, distanceKm: Double?) async throws {
+    func createOrder(_ order: Order, customer: UserProfile, distanceKm: Double?, payment: PaymentReceipt? = nil) async throws {
         let placedAt = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: order.createdAt))
         let dateLabel = Date(timeIntervalSince1970: order.createdAt)
             .formatted(.dateTime.day().month(.abbreviated).hour().minute())
@@ -244,6 +244,15 @@ final class FirestoreService {
         ]
         if let distanceKm {
             payload["distanceKm"] = distanceKm
+        }
+        // Paid online: what Razorpay confirmed, so the store can match it up.
+        if let payment {
+            payload["razorpayOrderId"] = payment.razorpayOrderId
+            payload["razorpayPaymentId"] = payment.razorpayPaymentId
+            if let paise = payment.amountPaidPaise {
+                payload["amountPaid"] = Double(paise) / 100
+            }
+            payload["paidAt"] = FieldValue.serverTimestamp()
         }
         if let couponCode = order.couponCode {
             payload["couponCode"] = couponCode

@@ -1,5 +1,7 @@
 package com.dashit.app.ui.checkout
 
+import androidx.compose.ui.platform.LocalContext
+import com.dashit.app.data.OnlinePayment
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -79,6 +81,7 @@ fun CheckoutSheet(
     onOrderPlaced: (orderId: String) -> Unit
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bill by cartVm.bill.collectAsState()
     val items by cartVm.items.collectAsState()
@@ -112,8 +115,10 @@ fun CheckoutSheet(
             return
         }
         val eta = StoreStatus.etaMinutes(quote) ?: 8
+        val code = Order.newCode()
+        val paysOnline = paymentMethod == "online"
         val order = Order(
-            id = Order.newCode(),
+            id = code,
             userId = customer.id,
             items = items.map { it.copy() },
             subtotal = bill.subtotal,
@@ -121,13 +126,8 @@ fun CheckoutSheet(
             discount = bill.couponDiscount,
             grandTotal = bill.grandTotal,
             deliveryAddress = address,
-            paymentMethod = when (paymentMethod) {
-                "cod" -> "Cash on Delivery"
-                "upi" -> "UPI on Delivery"
-                else -> paymentMethod
-            },
-            // Nothing is charged in the app yet, so no order is ever marked paid here.
-            paymentStatus = "pending",
+            paymentMethod = if (paysOnline) "Paid online" else "Cash on Delivery",
+            paymentStatus = if (paysOnline) "paid" else "pending",
             etaMinutes = eta,
             otp = Order.newDeliveryCode(),
             couponCode = coupon?.takeIf { bill.couponDiscount > 0 || it.waivesDelivery == true }?.code
@@ -135,8 +135,23 @@ fun CheckoutSheet(
         isSubmitting = true
         HapticsManager.medium(view)
         scope.launch {
+            // Paying online: the payment is taken and confirmed first, and only
+            // a confirmed payment places the order.
+            var receipt: OnlinePayment.Receipt? = null
+            if (paysOnline) {
+                val activity = context.findActivity()
+                try {
+                    if (activity == null) throw OnlinePayment.PaymentException("Online payment isn't available right now. Choose cash on delivery.")
+                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer)
+                } catch (e: OnlinePayment.PaymentException) {
+                    if (e.cancelled) HapticsManager.light(view) else HapticsManager.error(view)
+                    errorMessage = e.message
+                    isSubmitting = false
+                    return@launch
+                }
+            }
             try {
-                orderRepo.placeOrder(order, customer, quote.distanceKm)
+                orderRepo.placeOrder(order, customer, quote.distanceKm, receipt)
                 cartVm.clear()
                 placedEta = eta
                 orderSuccess = true
@@ -145,7 +160,11 @@ fun CheckoutSheet(
                 onOrderPlaced(order.id)
             } catch (e: Exception) {
                 HapticsManager.error(view)
-                errorMessage = e.message ?: "We couldn't reach the store to place your order. Check your connection and try again."
+                errorMessage = if (receipt != null) {
+                    "Your payment went through (${receipt.razorpayPaymentId}), but the order couldn't be saved. Message us on WhatsApp with that payment ID and we'll sort it out."
+                } else {
+                    e.message ?: "We couldn't reach the store to place your order. Check your connection and try again."
+                }
             } finally {
                 isSubmitting = false
             }
@@ -360,7 +379,7 @@ fun CheckoutSheet(
                                 }
                             } else {
                                 Text(
-                                    text = "Place Order • ₹${bill.grandTotal.toInt()}",
+                                    text = (if (paymentMethod == "online") "Pay" else "Place Order") + " • ₹${bill.grandTotal.toInt()}",
                                     color = Color.White,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
@@ -505,12 +524,12 @@ private fun PaymentCard(
             onSelect = { onSelectMethod("cod") }
         )
 
-        // UPI Option
+        // Pay online: UPI, cards, netbanking and wallets through Razorpay
         PaymentMethodRow(
-            title = "UPI / Google Pay / Cards",
+            title = "Pay online (UPI, cards, netbanking)",
             icon = Icons.Default.AccountBalanceWallet,
-            isSelected = selectedMethod == "upi",
-            onSelect = { onSelectMethod("upi") }
+            isSelected = selectedMethod == "online",
+            onSelect = { onSelectMethod("online") }
         )
     }
 }
@@ -590,3 +609,14 @@ private fun OrderTotalCard(total: Double) {
         )
     }
 }
+
+/** The activity behind a Compose context, which Razorpay's checkout opens from. */
+private fun android.content.Context.findActivity(): android.app.Activity? {
+    var current: android.content.Context? = this
+    while (current is android.content.ContextWrapper) {
+        if (current is android.app.Activity) return current
+        current = current.baseContext
+    }
+    return null
+}
+

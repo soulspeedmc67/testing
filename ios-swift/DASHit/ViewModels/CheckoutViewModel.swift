@@ -4,7 +4,8 @@ import SwiftUI
 @MainActor
 final class CheckoutViewModel: ObservableObject {
     @Published var selectedAddress: DeliveryAddress
-    @Published var paymentMethod: String = "cod" // cash on delivery is the only method for now
+    /// "cod" (cash on delivery) or "online" (Razorpay: UPI, cards, netbanking).
+    @Published var paymentMethod: String = "cod"
     @Published var isSubmitting: Bool = false
     @Published var orderError: String?
     @Published var completedOrder: Order?
@@ -73,8 +74,26 @@ final class CheckoutViewModel: ObservableObject {
         isSubmitting = true
         defer { isSubmitting = false }
 
+        // Paying online: the payment is taken and confirmed first, and only a
+        // confirmed payment places the order.
+        let code = Order.newCode()
+        var receipt: PaymentReceipt?
+        if paymentMethod == "online" {
+            do {
+                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user)
+            } catch {
+                orderError = (error as? LocalizedError)?.errorDescription ?? "The payment didn't go through."
+                if case OnlinePaymentError.cancelled = error {
+                    HapticsManager.shared.light()
+                } else {
+                    HapticsManager.shared.error()
+                }
+                return false
+            }
+        }
+
         let order = Order(
-            id: Order.newCode(),
+            id: code,
             userId: uid,
             items: cart.items,
             subtotal: cart.bill.subtotal,
@@ -83,16 +102,21 @@ final class CheckoutViewModel: ObservableObject {
             grandTotal: cart.bill.grandTotal,
             status: .placed,
             deliveryAddress: selectedAddress,
-            paymentMethod: "Cash on Delivery",
-            // Nothing is charged in-app yet, so no order is ever marked paid here.
-            paymentStatus: "pending",
+            paymentMethod: receipt == nil ? "Cash on Delivery" : "Paid online",
+            paymentStatus: receipt == nil ? "pending" : "paid",
             etaMinutes: store.etaMinutes(for: quote) ?? 8,
             otp: Order.newDeliveryCode(),
             couponCode: cart.appliedCoupon?.code
         )
 
         do {
-            try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm)
+            do {
+                try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm, payment: receipt)
+            } catch where receipt != nil {
+                // Already paid: one more try before giving up on the order.
+                try await Task.sleep(for: .seconds(2))
+                try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm, payment: receipt)
+            }
 
             LocalStorage.shared.saveActiveOrderId(order.id)
             completedOrder = order
@@ -111,7 +135,11 @@ final class CheckoutViewModel: ObservableObject {
             #if DEBUG
             print("❌ [Checkout] Order write failed: \(error)")
             #endif
-            orderError = "We couldn't reach the store to place your order. Check your connection and try again."
+            if let receipt {
+                orderError = "Your payment went through (\(receipt.razorpayPaymentId)), but the order couldn't be saved. Message us on WhatsApp with that payment ID and we'll sort it out."
+            } else {
+                orderError = "We couldn't reach the store to place your order. Check your connection and try again."
+            }
             HapticsManager.shared.error()
             return false
         }
