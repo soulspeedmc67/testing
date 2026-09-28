@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Truck, Plus, Search, Phone, MapPin, Edit2, Trash2, User, Boxes } from "lucide-react";
 import AdminSheet from "./AdminSheet";
+import { assignDefaultDistributor } from "../../lib/db";
 
 const EMPTY_FORM = { name: "", phone: "", address: "", notes: "" };
 
@@ -13,6 +14,7 @@ export default function DistributorsView({
   catalogue = [],
   onUpsertDistributor,
   onDeleteDistributor,
+  onDeleteDistributorStock,
   onViewDistributorStock,
   darkMode = false,
 }) {
@@ -23,12 +25,15 @@ export default function DistributorsView({
   const [isSaving, setIsSaving] = useState(false);
   const [toRemove, setToRemove] = useState(null);
   const [isRemoving, setIsRemoving] = useState(false);
+  // "Delete all": every item whose stock came from this distributor.
+  const [toEmpty, setToEmpty] = useState(null);
+  const [isEmptying, setIsEmptying] = useState(false);
 
   // Items and units per distributor.
   const stats = useMemo(() => {
     const map = {};
     catalogue.forEach((p) => {
-      const key = p.distributor || "Myself";
+      const key = assignDefaultDistributor(p);
       const entry = map[key] || (map[key] = { items: 0, units: 0 });
       entry.items += 1;
       entry.units += Number(p.stock) || 0;
@@ -181,6 +186,16 @@ export default function DistributorsView({
                     {s.items} {s.items === 1 ? "item" : "items"} · {s.units} units
                   </span>
                 </button>
+                {s.items > 0 && onDeleteDistributorStock && (
+                  <button
+                    type="button"
+                    onClick={() => setToEmpty({ name: d.name, items: s.items, units: s.units })}
+                    className="shrink-0 whitespace-nowrap text-xs font-bold px-3 py-2 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 cursor-pointer"
+                    aria-label={`Delete all ${s.items} items from ${d.name}`}
+                  >
+                    Delete all
+                  </button>
+                )}
                 {!d.isSelf && (
                   <>
                     <button type="button" onClick={() => openEdit(d)} className={ghostBtn} aria-label={`Edit ${d.name}`}>
@@ -272,6 +287,48 @@ export default function DistributorsView({
             </button>
           </div>
         </form>
+      </AdminSheet>
+
+      {/* Delete all of one distributor's items */}
+      <AdminSheet open={!!toEmpty} onClose={() => !isEmptying && setToEmpty(null)} labelledBy="distributor-empty-title" darkMode={darkMode}>
+        <div className="px-5 pt-2">
+          <h3 id="distributor-empty-title" className="text-lg font-black text-slate-900 dark:text-white">
+            Delete all {toEmpty?.items} {toEmpty?.items === 1 ? "item" : "items"} from {toEmpty?.name}?
+          </h3>
+          <p className={`text-sm mt-1.5 ${subtle}`}>
+            Every item from {toEmpty?.name} ({toEmpty?.units} units in stock) is removed from the shop straight
+            away. This can&apos;t be undone. {toEmpty?.name} stays on your list.
+          </p>
+        </div>
+        <div className="px-5 pt-5 pb-[max(20px,calc(12px+env(safe-area-inset-bottom,0px)))] grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={() => setToEmpty(null)}
+            disabled={isEmptying}
+            className={`min-h-[48px] rounded-2xl text-sm font-bold border transition-colors cursor-pointer ${
+              darkMode ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800" : "border-slate-200 text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            Keep them
+          </button>
+          <button
+            type="button"
+            onClick={async () => {
+              if (!toEmpty || isEmptying) return;
+              setIsEmptying(true);
+              try {
+                await onDeleteDistributorStock(toEmpty.name);
+                setToEmpty(null);
+              } finally {
+                setIsEmptying(false);
+              }
+            }}
+            disabled={isEmptying}
+            className="min-h-[48px] rounded-2xl text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-60 cursor-pointer"
+          >
+            {isEmptying ? "Deleting…" : "Delete all"}
+          </button>
+        </div>
       </AdminSheet>
 
       {/* Remove */}

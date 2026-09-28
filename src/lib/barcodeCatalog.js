@@ -1,77 +1,10 @@
 /**
- * DASHit Barcode Catalog & 4K Studio Image Registry.
+ * DASHit Barcode Catalog.
  *
- * Pre-compiled offline dictionary of 60+ verified Indian FMCG groceries
- * with accurate EAN-13 barcodes, categories, units, and ultra-high-definition
- * 4K studio product photos.
+ * Offline dictionary of verified Indian FMCG groceries with their EAN-13
+ * barcodes, categories and units. No photos here: real product photos come
+ * from Open Food Facts (lib/openFoodFacts.js), never stock pictures.
  */
-
-export const STUDIO_4K_PHOTOS = {
-  Bakery: [
-    "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1549931319-a545dcf3bc73?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Dairy: [
-    "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1628088062854-d1870b4553da?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1559598467-f8b76c8155d0?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Fruits: [
-    "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1557800636-894a64c1696f?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Vegetables: [
-    "https://images.unsplash.com/photo-1590779033100-9f60a05a013d?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1582284540020-8acbe03f4924?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Chips: [
-    "https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1621447504864-d8686e12698c?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1527842891421-42eec6e703ea?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Biscuits: [
-    "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Beverages: [
-    "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&q=95&w=1600"
-  ],
-  "Instant Food": [
-    "https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Staples: [
-    "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1607672632458-9eb56696346b?auto=format&fit=crop&q=95&w=1600"
-  ],
-  Spices: [
-    "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1532336414038-cf19250c5757?auto=format&fit=crop&q=95&w=1600"
-  ],
-  "Personal Care": [
-    "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1608248597359-bb5eb4351a70?auto=format&fit=crop&q=95&w=1600"
-  ],
-  "Household Items": [
-    "https://images.unsplash.com/photo-1585670270608-b404fb0019e1?auto=format&fit=crop&q=95&w=1600",
-    "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&q=95&w=1600"
-  ]
-};
 
 export const VERIFIED_INDIAN_BARCODES = [
   {
@@ -83,7 +16,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 56,
     originalPrice: 60,
     badge: "Bestseller",
-    img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&q=95&w=1600",
     stock: 120
   },
   {
@@ -95,7 +27,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 66,
     originalPrice: 70,
     badge: "Daily Fresh",
-    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&q=95&w=1600",
     stock: 180
   },
   {
@@ -107,7 +38,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 58,
     originalPrice: 60,
     badge: "Original",
-    img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&q=95&w=1600",
     stock: 90
   },
   {
@@ -119,7 +49,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 275,
     originalPrice: 285,
     badge: "Purity",
-    img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?auto=format&fit=crop&q=95&w=1600",
     stock: 45
   },
   {
@@ -131,7 +60,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 85,
     originalPrice: 90,
     badge: "Value Pack",
-    img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&q=95&w=1600",
     stock: 100
   },
   {
@@ -143,7 +71,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 45,
     originalPrice: 50,
     badge: "Crunchy",
-    img: "https://images.unsplash.com/photo-1590080875515-8a3a8dc5735e?auto=format&fit=crop&q=95&w=1600",
     stock: 80
   },
   {
@@ -155,7 +82,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 20,
     originalPrice: 20,
     badge: "Spicy",
-    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&q=95&w=1600",
     stock: 150
   },
   {
@@ -167,7 +93,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 20,
     originalPrice: 20,
     badge: "Crispy",
-    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&q=95&w=1600",
     stock: 120
   },
   {
@@ -179,7 +104,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 20,
     originalPrice: 20,
     badge: "Chatpata",
-    img: "https://images.unsplash.com/photo-1621447504864-d8686e12698c?auto=format&fit=crop&q=95&w=1600",
     stock: 130
   },
   {
@@ -191,7 +115,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 28,
     originalPrice: 28,
     badge: "Purity",
-    img: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?auto=format&fit=crop&q=95&w=1600",
     stock: 160
   },
   {
@@ -203,7 +126,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 40,
     originalPrice: 40,
     badge: "Chilled",
-    img: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=95&w=1600",
     stock: 110
   },
   {
@@ -215,7 +137,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 40,
     originalPrice: 40,
     badge: "Thunder",
-    img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&q=95&w=1600",
     stock: 95
   },
   {
@@ -227,7 +148,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 40,
     originalPrice: 40,
     badge: "Chilled",
-    img: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&q=95&w=1600",
     stock: 85
   },
   {
@@ -239,7 +159,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 260,
     originalPrice: 280,
     badge: "Aromatic",
-    img: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&q=95&w=1600",
     stock: 65
   },
   {
@@ -251,7 +170,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 38,
     originalPrice: 40,
     badge: "Protection",
-    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?auto=format&fit=crop&q=95&w=1600",
     stock: 90
   },
   {
@@ -263,7 +181,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 145,
     originalPrice: 155,
     badge: "Power Wash",
-    img: "https://images.unsplash.com/photo-1585670270608-b404fb0019e1?auto=format&fit=crop&q=95&w=1600",
     stock: 70
   },
   {
@@ -275,7 +192,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 25,
     originalPrice: 28,
     badge: "Grease Cut",
-    img: "https://images.unsplash.com/photo-1583947215259-38e31be8751f?auto=format&fit=crop&q=95&w=1600",
     stock: 140
   },
   {
@@ -287,7 +203,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 110,
     originalPrice: 125,
     badge: "Long Grain",
-    img: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&q=95&w=1600",
     stock: 80
   },
   {
@@ -299,7 +214,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 140,
     originalPrice: 155,
     badge: "Healthy",
-    img: "https://images.unsplash.com/photo-1607672632458-9eb56696346b?auto=format&fit=crop&q=95&w=1600",
     stock: 60
   },
   {
@@ -311,7 +225,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 245,
     originalPrice: 260,
     badge: "100% Whole Wheat",
-    img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&q=95&w=1600",
     stock: 40
   },
   {
@@ -323,7 +236,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 65,
     originalPrice: 70,
     badge: "Cavity Guard",
-    img: "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&q=95&w=1600",
     stock: 85
   },
   {
@@ -335,7 +247,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 80,
     originalPrice: 80,
     badge: "Rich & Silky",
-    img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&q=95&w=1600",
     stock: 75
   },
   {
@@ -347,7 +258,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 35,
     originalPrice: 40,
     badge: "Crunch & Creme",
-    img: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?auto=format&fit=crop&q=95&w=1600",
     stock: 95
   },
   {
@@ -359,7 +269,6 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 55,
     originalPrice: 60,
     badge: "Crispy Namkeen",
-    img: "https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&q=95&w=1600",
     stock: 90
   },
   {
@@ -371,18 +280,9 @@ export const VERIFIED_INDIAN_BARCODES = [
     price: 25,
     originalPrice: 25,
     badge: "Have a Break",
-    img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?auto=format&fit=crop&q=95&w=1600",
     stock: 110
   }
 ];
-
-/**
- * Returns 4 to 6 clean 4K studio photo suggestions for a given category.
- */
-export function get4KPhotoSuggestions(category = "Bakery") {
-  const list = STUDIO_4K_PHOTOS[category] || STUDIO_4K_PHOTOS.Dairy;
-  return list.slice(0, 6);
-}
 
 /**
  * Finds a product in the verified Indian FMCG catalog by barcode.

@@ -398,6 +398,161 @@ export async function deleteProduct(productId) {
 /**
  * Adjust stock for a single product (+/- delta or set absolute).
  */
+// ---------------------------------------------------------------------------
+// Product photos (see lib/productPhotoFinder.js)
+
+/* Local copies of products the admin changed, so the page shows the change
+   before Firestore's listener comes back. */
+function mirrorProductFieldsLocally(changes) {
+  if (typeof window === "undefined" || changes.length === 0) return;
+  try {
+    const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+    const byId = new Map(changes.map((c) => [String(c.id), c.fields]));
+    let touched = false;
+    custom.forEach((item) => {
+      const fields = byId.get(String(item.id || item.barcode));
+      if (fields) {
+        Object.assign(item, fields);
+        touched = true;
+      }
+    });
+    if (touched) {
+      localStorage.setItem("dashit_custom_products", JSON.stringify(custom));
+      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+    }
+  } catch (e) {}
+}
+
+async function writeProductFields(changes) {
+  mirrorProductFieldsLocally(changes);
+  invalidateProductCache();
+  const db = getDb();
+  if (!db || changes.length === 0) return { success: true, count: 0 };
+  let written = 0;
+  for (let i = 0; i < changes.length; i += 400) {
+    const batch = writeBatch(db);
+    changes.slice(i, i + 400).forEach(({ id, fields }) => {
+      batch.set(doc(db, "products", String(id)), { ...fields, updatedAt: serverTimestamp() }, { merge: true });
+    });
+    await batch.commit();
+    written += Math.min(400, changes.length - i);
+  }
+  return { success: true, count: written };
+}
+
+/**
+ * Saves photos found on Open Food Facts: `[{ id, img, offBarcode, weak, issues }]`.
+ * `imgSource` records where each came from, so a later import skips them.
+ */
+export function saveFoundProductPhotos(found = []) {
+  return writeProductFields(
+    found.map((f) => ({
+      id: f.id,
+      fields: {
+        img: f.img,
+        imgSource: "openfoodfacts",
+        offBarcode: f.offBarcode || "",
+        photoQuality: f.weak ? "weak" : "good",
+        photoIssues: f.issues || [],
+        photoRejected: false,
+      },
+    }))
+  );
+}
+
+/** "Wrong photo, remove": clears it and stops imports from finding the same one again. */
+export function removeProductPhoto(id, rejectedUrl = "") {
+  return writeProductFields([
+    {
+      id,
+      fields: {
+        img: "",
+        imgSource: "none",
+        photoRejected: true,
+        rejectedPhoto: rejectedUrl,
+        photoQuality: "none",
+        photoIssues: [],
+      },
+    },
+  ]);
+}
+
+/** A photo the admin chose (camera, gallery or a link). Imports never replace it. */
+export function setManualProductPhoto(id, url, { weak = false, issues = [] } = {}) {
+  return writeProductFields([
+    {
+      id,
+      fields: {
+        img: url,
+        imgSource: "manual",
+        photoQuality: weak ? "weak" : "good",
+        photoIssues: issues,
+        photoRejected: false,
+      },
+    },
+  ]);
+}
+
+/**
+ * Uploads a cleaned photo (800 and 400px) to Firebase Storage at
+ * products/<id>/800.webp and 400.webp, and returns the 800px link. Throws
+ * `{ code: "storage-unavailable" }` when the project has no Storage bucket:
+ * on the free Spark plan, new projects can't create one.
+ */
+export async function uploadProductPhoto(id, blobs) {
+  const app = getDb()?.app;
+  if (!app) throw Object.assign(new Error("Not connected"), { code: "storage-unavailable" });
+  try {
+    const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
+    const storage = getStorage(app);
+    const ext = blobs[800]?.type === "image/webp" ? "webp" : "jpg";
+    const meta = { contentType: blobs[800]?.type || "image/webp", cacheControl: "public, max-age=31536000" };
+    await uploadBytes(ref(storage, `products/${id}/400.${ext}`), blobs[400], meta);
+    const big = ref(storage, `products/${id}/800.${ext}`);
+    await uploadBytes(big, blobs[800], meta);
+    return await getDownloadURL(big);
+  } catch (e) {
+    const missing = /bucket|not.?found|404|storage\/unknown|no default bucket/i.test(`${e?.code} ${e?.message}`);
+    throw Object.assign(new Error(e?.message || "Upload failed"), { code: missing ? "storage-unavailable" : e?.code || "upload-failed" });
+  }
+}
+
+/**
+ * "Delete all" for one distributor: removes every item whose stock came from
+ * them (untagged items count as the owner's own, "Myself"). Returns how many.
+ */
+export async function deleteDistributorProducts(distributorName, catalogue = []) {
+  const name = String(distributorName || "").trim();
+  if (!name) return { success: false, count: 0 };
+  const ids = catalogue
+    .filter((p) => assignDefaultDistributor(p) === name)
+    .map((p) => String(p.id || p.barcode))
+    .filter(Boolean);
+  if (typeof window !== "undefined") {
+    try {
+      const idSet = new Set(ids);
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      localStorage.setItem(
+        "dashit_custom_products",
+        JSON.stringify(custom.filter((p) => !idSet.has(String(p.id || p.barcode))))
+      );
+      const deleted = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]"));
+      ids.forEach((id) => deleted.add(id));
+      localStorage.setItem("dashit_deleted_products", JSON.stringify([...deleted]));
+      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+    } catch (e) {}
+  }
+  invalidateProductCache();
+  const db = getDb();
+  if (!db) return { success: true, count: ids.length };
+  for (let i = 0; i < ids.length; i += 400) {
+    const batch = writeBatch(db);
+    ids.slice(i, i + 400).forEach((id) => batch.delete(doc(db, "products", id)));
+    await batch.commit();
+  }
+  return { success: true, count: ids.length };
+}
+
 export async function adjustSingleProductStock(productId, deltaOrAbsolute, isAbsolute = false) {
   const targetId = String(productId);
   const db = getDb();

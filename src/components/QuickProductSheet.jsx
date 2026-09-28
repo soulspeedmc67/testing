@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Star, Clock, ShieldCheck, ChevronDown, Package, CheckCircle2, Truck } from "lucide-react";
 import VaulDrawer from "./ui/VaulDrawer";
 import ProductCardStepper from "./ProductCardStepper";
+import ProductImage from "./ProductImage";
 
 /**
  * Quick-view bottom sheet (native quick-commerce pattern).
@@ -48,12 +49,8 @@ export default function QuickProductSheet({
     >
       <div className="space-y-4 pt-1">
         {/* Product Image Box */}
-        <div className="w-full h-52 bg-slate-50 rounded-2xl flex items-center justify-center p-4 border border-slate-100 relative overflow-hidden dark:bg-surface-raised dark:border-line-soft">
-          <img
-            src={product.img}
-            alt={product.name}
-            className={`max-h-44 max-w-full object-contain ${isOutOfStock ? "grayscale-[35%]" : ""}`}
-          />
+        <div className="w-full h-52 bg-white rounded-2xl border border-slate-100 relative overflow-hidden dark:border-line-soft">
+          <ProductImage src={product.img} name={product.name} fill dimmed={isOutOfStock} loading="eager" letterClassName="text-6xl" />
           {isOutOfStock && (
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center">
               <span className="text-xs font-black uppercase tracking-wider text-white bg-rose-600 px-3 py-1 rounded-lg shadow-sm">

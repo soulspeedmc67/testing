@@ -473,6 +473,9 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
       brand: record.brand || (match ? match.brand : ""),
       badge: record.badge || (match ? match.badge : "Fresh"),
       img: normaliseImageUrl(record.img) || (match ? match.img : ""),
+      // A photo link in the file always wins; otherwise one is looked up by barcode.
+      imgFromCsv: Boolean(normaliseImageUrl(record.img)),
+      csvBarcode: barcode,
       price: price !== null ? price : match ? Number(match.price) || 0 : 0,
       originalPrice:
         originalPrice !== null
@@ -517,6 +520,8 @@ export function planToStockUpdates(items, stockMode = "add", defaultDistributor 
         brand: item.brand || undefined,
         badge: item.badge || undefined,
         img: item.img || undefined,
+        imgSource: item.imgFromCsv ? "csv" : undefined,
+        photoRejected: item.imgFromCsv ? false : undefined,
         price: item.price,
         originalPrice: item.originalPrice || item.price,
       },
@@ -560,10 +565,12 @@ export function productsToCsv(products = []) {
   return `${header}\n${body}\n`;
 }
 
-export const CSV_TEMPLATE = `name,category,quantity,price,mrp,unit,brand,barcode,image
-Onion,Vegetables,40,35,45,1 kg,,,
-Full Cream Milk,Dairy,60,36,38,500 ml,Amul,,https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400
-Dishwash Gel Lemon,Kitchen Care,25,115,130,500 ml,Vim,,
+/* The barcode column is how each product's photo is found automatically
+   (Open Food Facts). A link in the image column is used instead when given. */
+export const CSV_TEMPLATE = `barcode,name,category,quantity,price,mrp,unit,brand,image
+8901719134845,Parle-G Biscuits,Biscuits,40,10,10,45 g,Parle,
+8904043901015,Tata Salt,Spices,25,28,28,1 kg,Tata,
+,Onion,Vegetables,40,35,45,1 kg,,
 `;
 
 /* Pasted into ChatGPT, Gemini or Claude along with any list of products (a

@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Camera,
-  Sparkles,
   Check,
   Plus,
   ArrowRight,
@@ -12,20 +11,18 @@ import {
   IndianRupee,
   Barcode
 } from "lucide-react";
-import { get4KPhotoSuggestions } from "../../lib/barcodeCatalog";
+import ProductImage from "../ProductImage";
 import { Truck } from "lucide-react";
 
 export default function AddProductView({
   productForm,
   setProductForm,
   photoSuggestions = [],
-  setPhotoSuggestions,
   onOpenScanner,
   onPublishProduct,
   isPublishing = false,
   quickTemplates = [],
   categories = [],
-  visualPalette = [],
   distributors = [],
   onQuickAddDistributor,
   darkMode = false,
@@ -44,11 +41,6 @@ export default function AddProductView({
 
   const handleCategoryChange = (newCat) => {
     setProductForm((prev) => ({ ...prev, cat: newCat }));
-    const newSuggestions = get4KPhotoSuggestions(newCat);
-    setPhotoSuggestions(newSuggestions);
-    if (newSuggestions && newSuggestions.length > 0) {
-      setProductForm((prev) => ({ ...prev, img: newSuggestions[0] }));
-    }
   };
 
   const handleApplyTemplate = (tpl) => {
@@ -61,11 +53,10 @@ export default function AddProductView({
       unit: tpl.unit,
       brand: tpl.brand,
       badge: tpl.badge,
-      img: tpl.img,
+      // Templates carry no photo: keep one already chosen.
+      img: tpl.img || prev.img,
       stock: tpl.stock,
     }));
-    const newSuggestions = get4KPhotoSuggestions(tpl.cat);
-    setPhotoSuggestions(newSuggestions);
   };
 
   return (
@@ -100,53 +91,41 @@ export default function AddProductView({
         </button>
       </div>
 
-      {/* 2. 4K Studio Image Palette (1-Tap Selection) */}
-      <div
-        className={`rounded-2xl p-4 sm:p-5 border space-y-3 transition-colors ${
-          darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
-        }`}
-      >
-        <div className="flex items-center justify-between">
+      {/* 2. The photo found for the scanned barcode (Open Food Facts) */}
+      {photoSuggestions.length > 0 && (
+        <div
+          className={`rounded-2xl p-4 sm:p-5 border space-y-3 transition-colors ${
+            darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"
+          }`}
+        >
           <div className="flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
-            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white uppercase tracking-wide">
-              Clean 4K Studio Photos (1-Tap Selection)
-            </h3>
+            <ImageIcon className="w-4 h-4 text-[#FF5B00]" />
+            <h3 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white">Photo found for this barcode</h3>
           </div>
-          <span className="text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-500 px-2.5 py-0.5 rounded-full">
-            Ultra-HD 4K Ready
-          </span>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
+            {photoSuggestions.map((url, idx) => {
+              const isSelected = productForm.img === url;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setProductForm((prev) => ({ ...prev, img: url, imgSource: "openfoodfacts" }))}
+                  className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                    isSelected ? "border-[#FF5B00] ring-2 ring-[#FF5B00]/30" : "border-slate-200 dark:border-zinc-700 hover:border-slate-400"
+                  }`}
+                >
+                  <ProductImage src={url} name={productForm.name || "Product"} />
+                  {isSelected && (
+                    <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#FF5B00] text-white flex items-center justify-center shadow-md">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5">
-          {photoSuggestions.map((url, idx) => {
-            const isSelected = productForm.img === url;
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setProductForm((prev) => ({ ...prev, img: url }))}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all cursor-pointer group ${
-                  isSelected
-                    ? "border-[#FF5B00] ring-2 ring-[#FF5B00]/30 scale-105"
-                    : "border-slate-200 dark:border-zinc-700 hover:border-slate-400 opacity-80 hover:opacity-100"
-                }`}
-              >
-                <img
-                  src={url}
-                  alt={`4K option ${idx + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                />
-                {isSelected && (
-                  <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#FF5B00] text-white flex items-center justify-center shadow-md">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
       {/* 3. Quick Local FMCG Templates */}
       <div
@@ -431,8 +410,8 @@ export default function AddProductView({
                   id="add-img"
                   type="url"
                   value={productForm.img}
-                  onChange={(e) => setProductForm((p) => ({ ...p, img: e.target.value }))}
-                  placeholder="Already filled in — change only if you have a better photo"
+                  onChange={(e) => setProductForm((p) => ({ ...p, img: e.target.value, imgSource: "manual" }))}
+                  placeholder="Paste a photo link, or scan the barcode to find one"
                   className={`${fieldCls} font-mono`}
                 />
               </div>
@@ -463,12 +442,8 @@ export default function AddProductView({
               darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200"
             }`}
           >
-            <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-zinc-800 border border-slate-200/50 dark:border-zinc-750 relative">
-              <img
-                src={productForm.img || visualPalette[0]?.url}
-                alt="Preview"
-                className="w-full h-full object-cover"
-              />
+            <div className="aspect-square rounded-xl overflow-hidden border border-slate-200/50 dark:border-zinc-750 relative">
+              <ProductImage src={productForm.img} name={productForm.name || "New item"} fill letterClassName="text-5xl" />
               {productForm.badge && (
                 <span className="absolute top-2 left-2 bg-[#FF5B00] text-white text-[9.5px] font-black uppercase px-2 py-0.5 rounded-md shadow-xs">
                   {productForm.badge}

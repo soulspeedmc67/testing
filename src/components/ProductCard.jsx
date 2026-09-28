@@ -2,7 +2,8 @@ import { useState, useEffect, memo } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Heart, ImageOff } from "lucide-react";
+import { Heart } from "lucide-react";
+import ProductImage from "./ProductImage";
 import ProductCardStepper from "./ProductCardStepper";
 import { isItemInWishlist, toggleWishlistItem } from "../lib/wishlist";
 import { SPRING_BOUNCY } from "../lib/motion";
@@ -35,7 +36,6 @@ function ProductCard({
   /* Catalogue images are remote and a few of them 404. Without this the card
      rendered the browser's broken-image glyph next to the alt text, which is
      the single most "unfinished" thing a storefront can show. */
-  const [imgFailed, setImgFailed] = useState(false);
 
   const ageRestricted = isAgeRestricted(product);
 
@@ -92,33 +92,17 @@ function ProductCard({
       } dark:bg-surface-raised`}
 
     >
-      {/* Photo well.
-          Every product photo fills this square edge to edge via object-cover, so
-          the imagery is identically sized and framed on every card in the grid.
-          The previous object-contain fit let each photo keep its own aspect
-          ratio inside the square, so a wide shot became a thin letterboxed strip
-          next to a square one and the grid read as ragged. */}
-      <div className="relative w-full aspect-square bg-slate-100 overflow-hidden dark:bg-surface-muted">
-        {imgFailed || !product.img ? (
-          <div
-            role="img"
-            aria-label={product.name}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-slate-50 text-slate-300 dark:bg-surface-raised dark:text-content-faint"
-          >
-            <ImageOff className={compact ? "w-5 h-5" : "w-6 h-6"} strokeWidth={1.75} />
-          </div>
-        ) : (
-          <img
-            src={product.img}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            onError={() => setImgFailed(true)}
-            className={`absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out ${
-              isOutOfStock ? "grayscale-[40%]" : "group-hover:scale-[1.04]"
-            }`}
-          />
-        )}
+      {/* Photo well: the whole product on white with even padding (object-contain),
+          so labels are never cropped; no photo shows the first letter. */}
+      <div className="relative w-full aspect-square overflow-hidden bg-white">
+        <ProductImage
+          src={product.img}
+          name={product.name}
+          fill
+          dimmed={isOutOfStock}
+          letterClassName={compact ? "text-2xl" : "text-4xl"}
+          imgClassName={`transition-transform duration-500 ease-out ${isOutOfStock ? "" : "group-hover:scale-[1.04]"}`}
+        />
 
         {/* Favorite Heart Button */}
         <motion.button
