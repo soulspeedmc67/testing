@@ -51,6 +51,7 @@
 ### 9. Tailwind Class Purging
 - **Trap**: Writing dynamic class names like `bg-${deal.color}-500` results in missing CSS in production builds.
 - **Rule**: Always write complete class strings (e.g. `border-orange-200/80`) or use static lookup tables.
+- **Second trap — `src/context/` is not scanned**: `tailwind.config.js` `content` covers `src/pages`, `src/components` and `src/lib` only. A class that appears *only* in a context file (e.g. `dark:bg-white/[0.06]`) is never generated and silently falls back to the light style. Put markup in `src/components/` (as `TobaccoDeclarationSheet.jsx` is) rather than inside a provider.
 
 ### 10. Native iOS (ios-swift): Three Ways a Stock File Quit the Admin App
 - **Sheet right after the Files picker**: `.fileImporter` hands over the file while the picker is still closing. Opening a `.sheet` or `.alert` in that callback makes UIKit throw ("already presenting") and the app quits. `AdminCSVImportView.afterPickerCloses` waits until nothing is presented before opening anything. Do the same for any new picker → sheet step.

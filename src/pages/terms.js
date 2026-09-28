@@ -125,8 +125,22 @@ export default function TermsAndConditionsPage() {
           </section>
 
           {/* Section 6 */}
+          <section id="tobacco" className="space-y-3 scroll-mt-24">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">6. Tobacco Products</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
+              Tobacco products are injurious to health. They are sold only under the Cigarettes and Other Tobacco Products Act, 2003 (COTPA) and are not promoted anywhere in the app.
+            </p>
+            <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm text-slate-600 dark:text-content-secondary">
+              <li>You must be 18 or older (or the higher legal age applicable in your area) and must not buy tobacco on behalf of anyone underage.</li>
+              <li>We do not deliver tobacco to, or in the vicinity of, a school or college premises.</li>
+              <li>Our rider will ask for a government-issued photo ID at the door. If age cannot be verified, the tobacco items are not handed over.</li>
+              <li>Orders that break these rules are cancelled, and we are bound to report the account.</li>
+            </ul>
+          </section>
+
+          {/* Section 7 */}
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">6. Customer Support</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">7. Customer Support</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
               For any issues regarding orders, delivery delays, or payment refunds, reach out to our Anantnag customer helpline:
             </p>

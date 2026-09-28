@@ -45,6 +45,7 @@ import { addToWishlist } from "../lib/wishlist";
 import { useStoreDetails } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { ALL_PRODUCTS } from "../data/products";
+import { browseable } from "../lib/tobacco";
 
 
 const parsePrice = (val) => {
@@ -109,7 +110,8 @@ export default function CheckoutPage() {
       targetCats.add("Drinks");
     }
 
-    const available = ALL_PRODUCTS.filter((p) => !cartIds.has(String(p.id || p.barcode)));
+    // Never upsell tobacco at checkout.
+    const available = browseable(ALL_PRODUCTS).filter((p) => !cartIds.has(String(p.id || p.barcode)));
     const complementary = available.filter((p) => targetCats.has(p.cat));
     const popularStaples = available.filter((p) => !targetCats.has(p.cat));
 
