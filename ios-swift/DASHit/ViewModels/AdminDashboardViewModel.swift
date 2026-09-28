@@ -837,6 +837,36 @@ public final class AdminDashboardViewModel: ObservableObject {
         })
     }
 
+    /// "Delete all" for one distributor: removes every item whose stock came
+    /// from them ("Myself" covers items with no distributor). The distributor
+    /// stays on the list. Returns how many items were deleted.
+    @discardableResult
+    public func deleteAllProducts(from distributorName: String) -> Int {
+        let removed = products.filter { Distributor.resolvedName($0.distributor) == distributorName }
+        guard !removed.isEmpty else { return 0 }
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        let ids = Set(removed.map(\.id))
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            products.removeAll { ids.contains($0.id) }
+        }
+
+        let all = removed.map(\.id)
+        var start = 0
+        while start < all.count {
+            let chunk = all[start..<min(start + 400, all.count)]
+            let batch = db.batch()
+            chunk.forEach { batch.deleteDocument(db.collection("products").document($0)) }
+            let restore = removed.filter { chunk.contains($0.id) }
+            batch.commit(completion: saveResult("Deleting \(distributorName)'s items") { [weak self] in
+                guard let self else { return }
+                let missing = restore.filter { p in !self.products.contains { $0.id == p.id } }
+                self.products.append(contentsOf: missing)
+            })
+            start += chunk.count
+        }
+        return removed.count
+    }
+
     // MARK: - Picking
 
     static let unknownDistributorLabel = "Not in the item list"
@@ -936,6 +966,10 @@ public final class AdminDashboardViewModel: ObservableObject {
             try await batch.commit()
             start += chunk.count
         }
+        // Items stocked again come back even if they were deleted on this iPad before.
+        let restocked = Set(chosen.map(\.id))
+        let deleted = deletedProductIds
+        if !deleted.isDisjoint(with: restocked) { deletedProductIds = deleted.subtracting(restocked) }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         return chosen.count
     }

@@ -16,6 +16,7 @@ public struct AdminDashboardView: View {
     @State private var productToDelete: Product? = nil
     @State private var productToEdit: Product? = nil
     @State private var distributorToRemove: Distributor? = nil
+    @State private var distributorToEmpty: String? = nil
 
     public var onSwitchToCustomer: (() -> Void)? = nil
     /// Shown as a Sign out button in the header when set.
@@ -121,6 +122,26 @@ public struct AdminDashboardView: View {
                 }
             } message: {
                 Text("Their items stay in your stock. Only the name is removed from this list.")
+            }
+            .confirmationDialog(
+                "Delete all \(emptyCount) \(emptyCount == 1 ? "item" : "items") from \(distributorToEmpty ?? "")?",
+                isPresented: Binding(
+                    get: { distributorToEmpty != nil },
+                    set: { if !$0 { distributorToEmpty = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let name = distributorToEmpty {
+                    Button("Delete all", role: .destructive) {
+                        vm.deleteAllProducts(from: name)
+                        distributorToEmpty = nil
+                    }
+                    Button("Keep them", role: .cancel) {
+                        distributorToEmpty = nil
+                    }
+                }
+            } message: {
+                Text("Every item from \(distributorToEmpty ?? "") is removed from your stock and the shop. This can't be undone.")
             }
             .confirmationDialog(
                 "Delete this item?",
@@ -726,6 +747,12 @@ public struct AdminDashboardView: View {
         }
     }
 
+    /// How many items the "Delete all" question is about.
+    private var emptyCount: Int {
+        guard let name = distributorToEmpty else { return 0 }
+        return vm.supplierStats.first { $0.name == name }?.skuCount ?? 0
+    }
+
     private func distributorCard(dist: Distributor) -> some View {
         let stat = vm.supplierStats.first { $0.name == dist.name }
         let items = stat?.skuCount ?? 0
@@ -794,6 +821,22 @@ public struct AdminDashboardView: View {
                 .buttonStyle(.plain)
 
                 Spacer()
+
+                if items > 0 {
+                    Button {
+                        distributorToEmpty = dist.name
+                    } label: {
+                        Text("Delete all")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Delete all \(items) items from \(dist.name)")
+                }
 
                 if !dist.isSelf {
                     Button {

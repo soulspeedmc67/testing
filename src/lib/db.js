@@ -605,6 +605,15 @@ async function runPooled(items, limit, worker) {
 function mirrorStockUpdatesLocally(stockUpdates) {
   if (typeof window === "undefined") return;
   try {
+    // Stocking an item again brings it back if it was deleted before (for
+    // example with a distributor's "Delete all", then the same file again).
+    const deleted = JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]");
+    if (deleted.length > 0) {
+      const restocked = new Set(stockUpdates.map((up) => String(up.id || up.barcode || "")));
+      const kept = deleted.filter((id) => !restocked.has(String(id)));
+      if (kept.length !== deleted.length) localStorage.setItem("dashit_deleted_products", JSON.stringify(kept));
+    }
+
     const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
     // Indexed once: a findIndex per row froze the page on files of a few thousand lines.
     const indexById = new Map();
