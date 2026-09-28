@@ -78,7 +78,7 @@ struct ProductDetailSheet: View {
         Color.surfaceRaised
             .frame(height: 168)
             .overlay {
-                AsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
+                CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
                     switch phase {
                     case .success(let image):
                         image

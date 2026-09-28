@@ -114,7 +114,7 @@ struct CategoriesView: View {
                 Color.surfaceMuted
                     .frame(width: 52, height: 52)
                     .overlay {
-                        AsyncImage(url: tile.previewImages.first.flatMap { URL(string: $0) }) { phase in
+                        CachedAsyncImage(url: tile.previewImages.first.flatMap { URL(string: $0) }) { phase in
                             if let image = phase.image {
                                 image
                                     .resizable()

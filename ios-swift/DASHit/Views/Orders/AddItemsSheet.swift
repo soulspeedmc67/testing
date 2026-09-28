@@ -190,7 +190,7 @@ struct AddItemsSheet: View {
             Color.surfaceMuted
                 .frame(width: 52, height: 52)
                 .overlay {
-                    AsyncImage(url: URL(string: line.product.img)) { phase in
+                    CachedAsyncImage(url: URL(string: line.product.img)) { phase in
                         if let image = phase.image {
                             image.resizable().scaledToFill()
                         } else if phase.error == nil && !line.product.img.isEmpty {

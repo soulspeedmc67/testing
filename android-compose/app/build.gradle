@@ -13,8 +13,10 @@ android {
         applicationId "com.dashit.app"
         minSdk 26
         targetSdk 36
-        versionCode 5
-        versionName "1.1.0"
+        // Well above the old web-wrapper app (android/, same app ID, up to 6), so
+        // this native app always installs over it and never the other way round.
+        versionCode 100
+        versionName "1.2.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

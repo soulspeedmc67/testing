@@ -341,7 +341,7 @@ struct StorefrontSearchView: View {
 
     private func thumbnail(_ product: Product) -> some View {
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
-        return AsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+        return CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
             if let image = phase.image {
                 image.resizable().scaledToFit().padding(4)
             } else {

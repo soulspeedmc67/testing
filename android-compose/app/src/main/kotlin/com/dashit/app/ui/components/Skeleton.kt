@@ -1,5 +1,8 @@
 package com.dashit.app.ui.components
 
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.Text
 import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -109,13 +112,26 @@ fun ShimmerImage(
     model: Any?,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    /** When set, an item with no photo (or a broken link) shows this name's first letter. */
+    letterFallbackFor: String? = null
 ) {
     // Keyed on the image address, not the request object, which is rebuilt on every recomposition.
     val key = (model as? ImageRequest)?.data ?: model
     val hasSource = key != null && key.toString().isNotBlank()
     var isLoading by remember(key) { mutableStateOf(hasSource) }
+    var hasFailed by remember(key) { mutableStateOf(!hasSource) }
     Box(modifier = modifier) {
+        if (hasFailed && letterFallbackFor != null) {
+            val letter = letterFallbackFor.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar() ?: '?'
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.matchParentSize().background(DashitColors.SurfaceMuted)
+            ) {
+                Text(letter.toString(), color = DashitColors.TextFaint, fontSize = 30.sp, fontWeight = FontWeight.Black)
+            }
+            return@Box
+        }
         if (isLoading) {
             Box(
                 modifier = Modifier
@@ -130,7 +146,10 @@ fun ShimmerImage(
             contentScale = contentScale,
             modifier = Modifier.matchParentSize(),
             onSuccess = { isLoading = false },
-            onError = { isLoading = false }
+            onError = {
+                isLoading = false
+                hasFailed = true
+            }
         )
     }
 }

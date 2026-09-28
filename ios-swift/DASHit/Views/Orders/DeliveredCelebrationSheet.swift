@@ -116,7 +116,7 @@ struct DeliveredCelebrationSheet: View {
         HStack(spacing: 12) {
             HStack(spacing: -10) {
                 ForEach(Array(order.items.prefix(4).enumerated()), id: \.offset) { _, item in
-                    AsyncImage(url: URL(string: item.img)) { phase in
+                    CachedAsyncImage(url: URL(string: item.img)) { phase in
                         if let image = phase.image {
                             image.resizable().scaledToFill()
                         } else if phase.error == nil && !item.img.isEmpty {

@@ -338,7 +338,7 @@ private struct CartLineRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: URL(string: item.img)) { phase in
+            CachedAsyncImage(url: URL(string: item.img)) { phase in
                 if let image = phase.image {
                     image
                         .resizable()

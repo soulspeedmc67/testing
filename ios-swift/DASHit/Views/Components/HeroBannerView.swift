@@ -85,7 +85,7 @@ struct HeroBannerView: View {
         } label: {
             Color.surfaceRaised
                 .overlay {
-                    AsyncImage(url: URL(string: offer.img), transaction: Transaction(animation: .easeOut(duration: 0.3))) { phase in
+                    CachedAsyncImage(url: URL(string: offer.img), transaction: Transaction(animation: .easeOut(duration: 0.3))) { phase in
                         switch phase {
                         case .success(let image):
                             image
