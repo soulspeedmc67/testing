@@ -34,7 +34,7 @@ struct OrderDetailSheet: View {
                                 Rectangle().fill(Color.hairline).frame(height: 1)
                             }
                             HStack(spacing: 12) {
-                                AsyncImage(url: URL(string: item.img)) { phase in
+                                CachedAsyncImage(url: URL(string: item.img)) { phase in
                                     if let image = phase.image {
                                         image.resizable().scaledToFill()
                                     } else if phase.error == nil && !item.img.isEmpty {

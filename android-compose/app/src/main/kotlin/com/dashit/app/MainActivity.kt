@@ -47,6 +47,9 @@ class MainActivity : ComponentActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onCreate(savedInstanceState)
 
+        // Product photos: saved on the phone after the first download.
+        coil.Coil.setImageLoader(com.dashit.app.data.ProductPhotos.imageLoader(this))
+
         // Signed-in shopper, their orders and the store's open/closed switch.
         AuthRepository.init(this)
         OrderRepository.shared.init(this)

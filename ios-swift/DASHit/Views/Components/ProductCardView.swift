@@ -79,15 +79,16 @@ struct ProductCardView: View {
         Color.surfaceMuted
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                AsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
                     switch phase {
                     case .success(let image):
                         image
                             .resizable()
                             .scaledToFill()
                     case .failure:
-                        Image(systemName: "photo")
-                            .font(.system(size: 20))
+                        // No photo (or a broken link): the name's first letter, like the website.
+                        Text(String(product.name.first { $0.isLetter || $0.isNumber } ?? "?").uppercased())
+                            .font(.system(size: 30, weight: .black))
                             .foregroundColor(.textFaint)
                     default:
                         ShimmerView()

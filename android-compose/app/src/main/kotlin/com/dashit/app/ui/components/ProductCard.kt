@@ -87,7 +87,8 @@ fun ProductCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .matchParentSize()
-                        .clip(imageShape)
+                        .clip(imageShape),
+                    letterFallbackFor = product.name
                 )
             }
 

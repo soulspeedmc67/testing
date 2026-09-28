@@ -83,7 +83,7 @@ struct CategoryCollageTile: View {
     private func cell(_ url: String?, cornerRadius: CGFloat = 11) -> some View {
         Color.surfaceMuted
             .overlay {
-                AsyncImage(url: url.flatMap { URL(string: $0) }, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                CachedAsyncImage(url: url.flatMap { URL(string: $0) }, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
                     if let image = phase.image {
                         image
                             .resizable()
@@ -112,7 +112,7 @@ struct CategoryCard: View {
                 Color.surfaceMuted
                     .aspectRatio(1, contentMode: .fit)
                     .overlay {
-                        AsyncImage(url: tile.previewImages.first.flatMap { URL(string: $0) }, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                        CachedAsyncImage(url: tile.previewImages.first.flatMap { URL(string: $0) }, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
                             if let image = phase.image {
                                 image
                                     .resizable()

@@ -167,6 +167,13 @@ final class CatalogueStore: ObservableObject {
                 .sorted { (Int($0.ratingCount ?? "") ?? 0) > (Int($1.ratingCount ?? "") ?? 0) }
                 .prefix(6)
         )
+
+        // Photos the home feed shows first, saved to the phone ahead of time
+        // (Wi-Fi only) so they appear instantly.
+        let feedPhotos = topCategoryTiles.flatMap(\.previewImages)
+            + rails.flatMap { $0.products.prefix(6).map(\.img) }
+            + departments.flatMap { $0.tiles.compactMap(\.previewImages.first) }
+        ProductPhotoStore.shared.prefetch(Array(feedPhotos.compactMap { URL(string: $0) }.prefix(300)))
     }
 
     /// Categories grouped into store departments, Blinkit-style; anything that

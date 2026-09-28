@@ -63,7 +63,7 @@ struct FloatingCartBarView: View {
     private var thumbnails: some View {
         HStack(spacing: -12) {
             ForEach(Array(cart.items.suffix(3).reversed())) { item in
-                AsyncImage(url: URL(string: item.img)) { phase in
+                CachedAsyncImage(url: URL(string: item.img)) { phase in
                     if let image = phase.image {
                         image
                             .resizable()

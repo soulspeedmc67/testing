@@ -186,7 +186,7 @@ private struct OrderHistoryCard: View {
 
             HStack(spacing: -8) {
                 ForEach(Array(order.items.prefix(4))) { item in
-                    AsyncImage(url: URL(string: item.img)) { phase in
+                    CachedAsyncImage(url: URL(string: item.img)) { phase in
                         if let image = phase.image {
                             image
                                 .resizable()

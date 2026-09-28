@@ -141,6 +141,14 @@ fun StorefrontScreen(
     val categories by storefrontVm.categories.collectAsState()
     val categoryTiles by storefrontVm.categoryTiles.collectAsState()
     val rails by storefrontVm.rails.collectAsState()
+    // Photos the home feed shows first, saved ahead of time on Wi-Fi.
+    val photoContext = LocalContext.current
+    LaunchedEffect(rails, categoryTiles) {
+        com.dashit.app.data.ProductPhotos.prefetch(
+            photoContext,
+            categoryTiles.flatMap { it.previewImages } + rails.flatMap { rail -> rail.products.take(6).map { it.img } }
+        )
+    }
     val filteredProducts by storefrontVm.filteredProducts.collectAsState()
     val tobaccoProducts by storefrontVm.tobaccoProducts.collectAsState()
     val isBrowsing by storefrontVm.isBrowsing.collectAsState()

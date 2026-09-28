@@ -319,6 +319,23 @@ export default function CsvInventoryView({
     onStartPhotoSearch?.(lookups, replace);
   };
 
+  /* "Find photos automatically": the same lookup for every item that has
+     no photo yet, not just the ones in a new file. */
+  const findAllPhotos = () => {
+    const lookups = needsPhoto
+      .filter((entry) => entry.reason === "No photo")
+      .map(({ product }) => ({
+        id: String(product.id || product.barcode),
+        name: product.name,
+        brand: product.brand,
+        unit: product.unit,
+        barcode: String(product.barcode || product.id || ""),
+        current: product,
+      }));
+    setIsNeedsPhotoOpen(false);
+    onStartPhotoSearch?.(lookups, false);
+  };
+
   const isSelf = source === SELF_DISTRIBUTOR_NAME;
 
   const [promptCopied, setPromptCopied] = useState(false);
@@ -796,6 +813,7 @@ export default function CsvInventoryView({
         open={isNeedsPhotoOpen}
         onClose={() => setIsNeedsPhotoOpen(false)}
         products={needsPhoto}
+        onFindAll={onStartPhotoSearch ? findAllPhotos : undefined}
         darkMode={darkMode}
       />
     </div>

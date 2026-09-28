@@ -130,7 +130,7 @@ struct LiveTrackingMapView: View {
                 .padding(.bottom, 6)
             ForEach(Array(order.items.enumerated()), id: \.offset) { index, item in
                 HStack(spacing: 12) {
-                    AsyncImage(url: URL(string: item.img)) { phase in
+                    CachedAsyncImage(url: URL(string: item.img)) { phase in
                         if let image = phase.image {
                             image.resizable().scaledToFit().padding(3)
                         } else {

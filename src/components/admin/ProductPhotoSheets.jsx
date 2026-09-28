@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, Trash2, X } from "lucide-react";
+import { Loader2, Search, Trash2, X } from "lucide-react";
 import AdminSheet from "./AdminSheet";
 import ProductImage from "../ProductImage";
 import { removeProductPhoto, setManualProductPhoto } from "../../lib/db";
@@ -181,7 +181,7 @@ function NeedsPhotoRow({ product, reason, darkMode, subtle }) {
  * "Needs a photo": products with no photo, or one that's too small or looks
  * blank. Shown a page at a time, with a search box for big catalogues.
  */
-export function NeedsPhotoSheet({ open, onClose, products = [], darkMode = false }) {
+export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, darkMode = false }) {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(40);
   const subtle = darkMode ? "text-zinc-400" : "text-slate-500";
@@ -198,6 +198,7 @@ export function NeedsPhotoSheet({ open, onClose, products = [], darkMode = false
     const q = query.trim().toLowerCase();
     return q ? rows.filter((p) => String(p.product.name || "").toLowerCase().includes(q)) : rows;
   }, [rows, query]);
+  const missingCount = products.filter((p) => p.reason === "No photo").length;
 
   return (
     <AdminSheet open={open} onClose={onClose} labelledBy="needs-photo-title" darkMode={darkMode}>
@@ -208,6 +209,21 @@ export function NeedsPhotoSheet({ open, onClose, products = [], darkMode = false
         onClose={onClose}
         subtle={subtle}
       />
+      {onFindAll && missingCount > 0 && (
+        <div className="px-5 pb-3">
+          <button
+            type="button"
+            onClick={onFindAll}
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl bg-[#FF5B00] text-white cursor-pointer active:scale-[0.99] transition-transform"
+          >
+            <Search className="w-4 h-4" />
+            Find photos automatically ({missingCount.toLocaleString("en-IN")})
+          </button>
+          <p className={`mt-1.5 text-[11px] text-center ${subtle}`}>
+            Looks each item up on Open Food Facts by barcode, then by name. Keep this page open; it runs at the top.
+          </p>
+        </div>
+      )}
       <div className="px-5 pb-2">
         <input
           type="search"
