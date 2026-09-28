@@ -1,4 +1,4 @@
-# Razorpay Checkout (from Razorpay's Android integration guide)
+# Razorpay Custom UI SDK (from Razorpay's Android integration guide)
 -keepclassmembers class * {
     @android.webkit.JavascriptInterface <methods>;
 }

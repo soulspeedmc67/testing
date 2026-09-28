@@ -28,7 +28,7 @@ import com.dashit.app.data.repository.OrderRepository
 import com.dashit.app.ui.storefront.StorefrontScreen
 import com.dashit.app.viewmodel.StorefrontViewModel
 
-class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataListener {
+class MainActivity : ComponentActivity() {
     private val storefrontViewModel: StorefrontViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,9 +46,6 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         }
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onCreate(savedInstanceState)
-
-        // Razorpay's checkout loads its files ahead, so "Pay" opens quickly.
-        com.razorpay.Checkout.preload(applicationContext)
 
         // Product photos: saved on the phone after the first download.
         coil.Coil.setImageLoader(com.dashit.app.data.ProductPhotos.imageLoader(this))
@@ -129,13 +126,11 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         const val WELCOME_SEEN_KEY = "seen_auth_welcome"
     }
 
-    // Razorpay reports the payment result to the activity; OnlinePayment waits for it.
-    override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: com.razorpay.PaymentData?) {
-        com.dashit.app.data.OnlinePayment.onPaymentSuccess(paymentData)
-    }
-
-    override fun onPaymentError(code: Int, response: String?, paymentData: com.razorpay.PaymentData?) {
-        com.dashit.app.data.OnlinePayment.onPaymentError(code, response)
+    // The UPI app hands its answer back here; Razorpay's SDK reads it.
+    @Deprecated("Razorpay's SDK opens the UPI app with startActivityForResult.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        com.dashit.app.data.OnlinePayment.onActivityResult(requestCode, resultCode, data)
     }
 
     override fun onStart() {

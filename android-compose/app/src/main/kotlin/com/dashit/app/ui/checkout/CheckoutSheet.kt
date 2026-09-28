@@ -5,6 +5,7 @@ import com.dashit.app.data.OnlinePayment
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,16 +43,18 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -82,12 +85,22 @@ fun CheckoutSheet(
 ) {
     val view = LocalView.current
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val bill by cartVm.bill.collectAsState()
     val items by cartVm.items.collectAsState()
 
-    var paymentMethod by remember { mutableStateOf("cod") }
+    // "cod", or "upi:<package>" for a UPI app on this phone. The last choice is kept.
+    val prefs = remember { context.getSharedPreferences("dashit_prefs", android.content.Context.MODE_PRIVATE) }
+    var paymentMethod by remember { mutableStateOf(prefs.getString(LAST_PAYMENT_KEY, null) ?: "cod") }
+    var upiApps by remember { mutableStateOf<List<OnlinePayment.UpiApp>?>(null) }
+    LaunchedEffect(Unit) {
+        val apps = OnlinePayment.upiApps(context)
+        upiApps = apps
+        // The app used last time was uninstalled: back to cash on delivery.
+        if (paymentMethod.startsWith("upi:") && apps.none { "upi:${it.packageName}" == paymentMethod }) paymentMethod = "cod"
+    }
+    val chosenApp = upiApps?.firstOrNull { "upi:${it.packageName}" == paymentMethod }
     var isSubmitting by remember { mutableStateOf(false) }
+    var progressText by remember { mutableStateOf("Placing order...") }
     var orderSuccess by remember { mutableStateOf(false) }
     val coupon by cartVm.coupon.collectAsState()
     val signedInUser by AuthRepository.user.collectAsState()
@@ -116,7 +129,8 @@ fun CheckoutSheet(
         }
         val eta = StoreStatus.etaMinutes(quote) ?: 8
         val code = Order.newCode()
-        val paysOnline = paymentMethod == "online"
+        val app = chosenApp
+        val paysOnline = app != null
         val order = Order(
             id = code,
             userId = customer.id,
@@ -133,16 +147,23 @@ fun CheckoutSheet(
             couponCode = coupon?.takeIf { bill.couponDiscount > 0 || it.waivesDelivery == true }?.code
         )
         isSubmitting = true
+        progressText = if (app != null) "Waiting for ${app.name}..." else "Placing order..."
+        prefs.edit().putString(LAST_PAYMENT_KEY, paymentMethod).apply()
         HapticsManager.medium(view)
-        scope.launch {
-            // Paying online: the payment is taken and confirmed first, and only
+        // Not tied to this sheet: once money is taken, the order is placed
+        // even if the sheet or the screen goes away meanwhile.
+        OnlinePayment.scope.launch {
+            // Paying by UPI: the payment is taken and confirmed first, and only
             // a confirmed payment places the order.
             var receipt: OnlinePayment.Receipt? = null
-            if (paysOnline) {
+            if (app != null) {
                 val activity = context.findActivity()
                 try {
                     if (activity == null) throw OnlinePayment.PaymentException("Online payment isn't available right now. Choose cash on delivery.")
-                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer)
+                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer, app) {
+                        progressText = "Confirming payment..."
+                    }
+                    progressText = "Placing order..."
                 } catch (e: OnlinePayment.PaymentException) {
                     if (e.cancelled) HapticsManager.light(view) else HapticsManager.error(view)
                     errorMessage = e.message
@@ -300,6 +321,7 @@ fun CheckoutSheet(
 
                     // 3. Payment Method Card
                     PaymentCard(
+                        upiApps = upiApps,
                         selectedMethod = paymentMethod,
                         onSelectMethod = {
                             HapticsManager.selection(view)
@@ -371,7 +393,7 @@ fun CheckoutSheet(
                                         strokeWidth = 2.5.dp
                                     )
                                     Text(
-                                        text = "Placing Order...",
+                                        text = progressText,
                                         color = Color.White,
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Bold
@@ -379,7 +401,8 @@ fun CheckoutSheet(
                                 }
                             } else {
                                 Text(
-                                    text = (if (paymentMethod == "online") "Pay" else "Place Order") + " • ₹${bill.grandTotal.toInt()}",
+                                    text = chosenApp?.let { "Pay ₹${bill.grandTotal.toInt()} with ${it.name}" }
+                                        ?: "Place Order • ₹${bill.grandTotal.toInt()}",
                                     color = Color.White,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
@@ -495,6 +518,7 @@ private fun GuaranteeCard() {
 
 @Composable
 private fun PaymentCard(
+    upiApps: List<OnlinePayment.UpiApp>?,
     selectedMethod: String,
     onSelectMethod: (String) -> Unit
 ) {
@@ -507,29 +531,65 @@ private fun PaymentCard(
             .background(DashitColors.SurfaceRaised)
             .border(1.dp, DashitColors.Hairline, cardShape)
             .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Payment Method",
+            text = "Pay with",
             color = DashitColors.TextPrimary,
             fontSize = 14.5.sp,
             fontWeight = FontWeight.Bold
         )
 
-        // COD Option
+        // The UPI apps on this phone: picking one opens it straight away at "Pay".
+        upiApps?.forEach { app ->
+            PaymentMethodRow(
+                title = app.name,
+                isSelected = selectedMethod == "upi:${app.packageName}",
+                onSelect = { onSelectMethod("upi:${app.packageName}") }
+            ) { UpiAppIcon(app) }
+        }
+
         PaymentMethodRow(
-            title = "Cash on Delivery (Pay at Doorstep)",
-            icon = Icons.Default.Payments,
+            title = "Cash on delivery",
             isSelected = selectedMethod == "cod",
             onSelect = { onSelectMethod("cod") }
-        )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Payments,
+                contentDescription = null,
+                tint = if (selectedMethod == "cod") DashitColors.BrandOrange else DashitColors.TextMuted,
+                modifier = Modifier.size(22.dp)
+            )
+        }
 
-        // Pay online: UPI, cards, netbanking and wallets through Razorpay
-        PaymentMethodRow(
-            title = "Pay online (UPI, cards, netbanking)",
-            icon = Icons.Default.AccountBalanceWallet,
-            isSelected = selectedMethod == "online",
-            onSelect = { onSelectMethod("online") }
+        if (upiApps != null && upiApps.isEmpty()) {
+            Text(
+                text = "To pay online, install a UPI app like Google Pay or PhonePe.",
+                color = DashitColors.TextMuted,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+/** The app's own icon; Razorpay's logo for it if the phone didn't give one. */
+@Composable
+private fun UpiAppIcon(app: OnlinePayment.UpiApp) {
+    val modifier = Modifier.size(28.dp).clip(RoundedCornerShape(7.dp))
+    val bitmap = remember(app.packageName) { app.icon?.asImageBitmap() }
+    when {
+        bitmap != null -> Image(bitmap = bitmap, contentDescription = null, modifier = modifier)
+        app.logoUrl != null -> coil.compose.AsyncImage(
+            model = app.logoUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = modifier
+        )
+        else -> Icon(
+            imageVector = Icons.Default.AccountBalanceWallet,
+            contentDescription = null,
+            tint = DashitColors.TextMuted,
+            modifier = Modifier.size(22.dp)
         )
     }
 }
@@ -537,9 +597,9 @@ private fun PaymentCard(
 @Composable
 private fun PaymentMethodRow(
     title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     isSelected: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    icon: @Composable () -> Unit
 ) {
     val shape = RoundedCornerShape(10.dp)
     Row(
@@ -553,22 +613,17 @@ private fun PaymentMethodRow(
                 shape
             )
             .clickable { onSelect() }
-            .padding(12.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (isSelected) DashitColors.BrandOrange else DashitColors.TextMuted,
-            modifier = Modifier.size(20.dp)
-        )
+        Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) { icon() }
 
         Text(
             text = title,
             color = DashitColors.TextPrimary,
-            fontSize = 13.5.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            fontSize = 14.sp,
+            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
             modifier = Modifier.weight(1f)
         )
 
@@ -610,7 +665,9 @@ private fun OrderTotalCard(total: Double) {
     }
 }
 
-/** The activity behind a Compose context, which Razorpay's checkout opens from. */
+private const val LAST_PAYMENT_KEY = "dashit_last_payment_method"
+
+/** The activity behind a Compose context, which the UPI app opens from. */
 private fun android.content.Context.findActivity(): android.app.Activity? {
     var current: android.content.Context? = this
     while (current is android.content.ContextWrapper) {

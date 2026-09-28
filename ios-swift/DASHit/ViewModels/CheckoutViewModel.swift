@@ -4,9 +4,28 @@ import SwiftUI
 @MainActor
 final class CheckoutViewModel: ObservableObject {
     @Published var selectedAddress: DeliveryAddress
-    /// "cod" (cash on delivery) or "online" (Razorpay: UPI, cards, netbanking).
-    @Published var paymentMethod: String = "cod"
+    /// "cod" (cash on delivery), or "upi:<shortcode>" for a UPI app on this
+    /// phone. The last choice is kept.
+    @Published var paymentMethod: String = UserDefaults.standard.string(forKey: CheckoutViewModel.lastPaymentKey) ?? "cod"
+    /// The UPI apps on this phone; nil until looked up.
+    @Published var upiApps: [OnlinePayment.UpiApp]?
     @Published var isSubmitting: Bool = false
+    @Published var progressText = "Placing Order..."
+
+    private static let lastPaymentKey = "dashit_last_payment_method"
+
+    var chosenApp: OnlinePayment.UpiApp? {
+        upiApps?.first { "upi:\($0.shortcode)" == paymentMethod }
+    }
+
+    func loadUpiApps() async {
+        let apps = await OnlinePayment.upiApps()
+        upiApps = apps
+        // The app used last time is gone: back to cash on delivery.
+        if paymentMethod.hasPrefix("upi:"), !apps.contains(where: { "upi:\($0.shortcode)" == paymentMethod }) {
+            paymentMethod = "cod"
+        }
+    }
     @Published var orderError: String?
     @Published var completedOrder: Order?
 
@@ -71,16 +90,22 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
 
+        let app = chosenApp
         isSubmitting = true
+        progressText = app.map { "Waiting for \($0.name)..." } ?? "Placing Order..."
+        UserDefaults.standard.set(paymentMethod, forKey: Self.lastPaymentKey)
         defer { isSubmitting = false }
 
-        // Paying online: the payment is taken and confirmed first, and only a
+        // Paying by UPI: the payment is taken and confirmed first, and only a
         // confirmed payment places the order.
         let code = Order.newCode()
         var receipt: PaymentReceipt?
-        if paymentMethod == "online" {
+        if let app {
             do {
-                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user)
+                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user, app: app) { [weak self] in
+                    self?.progressText = "Confirming payment..."
+                }
+                progressText = "Placing Order..."
             } catch {
                 orderError = (error as? LocalizedError)?.errorDescription ?? "The payment didn't go through."
                 if case OnlinePaymentError.cancelled = error {
