@@ -76,5 +76,11 @@ private val RESTRICTED_CATEGORIES = setOf("tobacco", "tobacco & smoking", "smoki
 
 private val RESTRICTED_KEYWORDS = listOf(
     "cigarette", "cigar", "tobacco", "bidi", "beedi", "hookah", "shisha", "vape",
-    "e-cigarette", "nicotine", "rolling paper", "gutkha", "paan masala", "snuff", "zarda"
+    "e-cigarette", "nicotine", "rolling paper", "gutkha", "paan masala", "snuff", "zarda",
+    // Brand names: a pack listed as just "Gold Flake Kings" is still tobacco.
+    "gold flake", "goldflake", "marlboro", "navy cut", "wills classic", "classic milds",
+    "classic ice burst", "classic regular", "benson & hedges", "benson and hedges", "four square", "capstan",
+    "davidoff", "dunhill", "red & white", "red and white", "berkeley", "india kings",
+    "flake excel", "cigarillo", "khaini", "pan masala", "rajnigandha", "pan bahar",
+    "kamla pasand", "vimal pan"
 )

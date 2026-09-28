@@ -373,10 +373,10 @@ struct StorefrontHomeView: View {
 
     /// Welcome banner with the brand's rider artwork: free delivery on orders
     /// of ₹299 or more, and nothing else.
+    /// The welcome line: plain type straight on the page, no box, so the feed
+    /// flows on from the search bar and categories.
     private var welcomeBanner: some View {
-        let shape = RoundedRectangle(cornerRadius: 22, style: .continuous)
-
-        return VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Rectangle()
                     .fill(Color.brandOrange)
@@ -384,30 +384,23 @@ struct StorefrontHomeView: View {
                 Text("WELCOME TO DASHIT")
                     .font(.system(size: 10.5, weight: .heavy))
                     .tracking(1.6)
-                    .foregroundColor(Color.white.opacity(0.75))
+                    .foregroundColor(.textMuted)
             }
-            Text("Free delivery\non orders ₹299+")
-                .font(.system(size: 23, weight: .heavy))
-                .foregroundColor(.white)
+            (Text("Free delivery on\norders above ")
+                + Text("₹\(Int(CartBillBreakdown.freeDeliveryThreshold))").foregroundColor(.brandAccent))
+                .font(.system(size: 24, weight: .heavy))
+                .foregroundColor(.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+            Text("Fresh groceries at your door in minutes.")
+                .font(.system(size: 13))
+                .foregroundColor(.textMuted)
+                .padding(.top, 6)
         }
-        .padding(18)
-        .padding(.trailing, 96)
-        .frame(maxWidth: .infinity, minHeight: 136, alignment: .leading)
-        .background(Color.midnight, in: shape)
-        .overlay(alignment: .bottomTrailing) {
-            if let rider = UIImage(named: "rider_front_right") {
-                Image(uiImage: rider)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 122)
-                    .offset(x: -10, y: 4)
-                    .accessibilityHidden(true)
-            }
-        }
-        .clipShape(shape)
-        .overlay(shape.strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
+        .padding(.top, 6)
+        .accessibilityElement(children: .combine)
     }
 
     private var categorySection: some View {

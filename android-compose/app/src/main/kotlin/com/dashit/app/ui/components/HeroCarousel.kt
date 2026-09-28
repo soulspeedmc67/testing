@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -171,83 +172,45 @@ fun HeroBanner(
     }
 }
 
+/**
+ * The welcome line: plain type straight on the page, no box, so the feed
+ * flows on from the search bar and categories. Same as the iOS app.
+ */
 @Composable
 fun WelcomeHeroBanner(
     modifier: Modifier = Modifier,
-    onTap: () -> Unit = {}
+    @Suppress("UNUSED_PARAMETER") onTap: () -> Unit = {}
 ) {
-    val view = LocalView.current
-    val bannerShape = RoundedCornerShape(20.dp)
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(bannerShape)
-            .background(
-                androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF5A3906),
-                        Color(0xFF382103),
-                        Color(0xFF221402)
-                    )
-                )
-            )
-            .border(
-                1.dp,
-                androidx.compose.ui.graphics.Brush.horizontalGradient(
-                    listOf(
-                        Color(0xFF8A5A0C).copy(alpha = 0.5f),
-                        Color(0xFFFFDF88).copy(alpha = 0.8f),
-                        Color(0xFF8A5A0C).copy(alpha = 0.5f)
-                    )
-                ),
-                bannerShape
-            )
-            .pressable(scale = 0.98f) {
-                HapticsManager.light(view)
-                onTap()
-            }
-            .padding(horizontal = 16.dp, vertical = 20.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+    val threshold = com.dashit.app.data.model.CartBillBreakdown.FREE_DELIVERY_THRESHOLD.toInt()
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(width = 14.dp, height = 2.dp).background(DashitColors.BrandOrange))
             Text(
-                text = "🛍️",
-                fontSize = 42.sp,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
-                Text(
-                    text = "✦ WELCOME ✦",
-                    color = Color(0xFFFFF1D6),
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.2.sp
-                )
-
-                Text(
-                    text = "Order now & enjoy FREE delivery",
-                    color = Color(0xFFFFE0A8),
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Text(
-                text = "🛒",
-                fontSize = 42.sp,
-                modifier = Modifier.padding(end = 4.dp)
+                text = "WELCOME TO DASHIT",
+                color = DashitColors.TextMuted,
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 1.6.sp
             )
         }
+        Text(
+            text = androidx.compose.ui.text.buildAnnotatedString {
+                append("Free delivery on\norders above ")
+                pushStyle(androidx.compose.ui.text.SpanStyle(color = DashitColors.BrandAccent))
+                append("₹$threshold")
+                pop()
+            },
+            color = DashitColors.TextPrimary,
+            fontSize = 24.sp,
+            lineHeight = 27.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Text(
+            text = "Fresh groceries at your door in minutes.",
+            color = DashitColors.TextMuted,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 6.dp)
+        )
     }
 }
