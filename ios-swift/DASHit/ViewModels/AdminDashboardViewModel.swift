@@ -191,28 +191,16 @@ public final class AdminDashboardViewModel: ObservableObject {
     public func startListeners() {
         isLoading = true
 
-        // 1. Products Realtime Listener
-        // Thousands of items: read them off the main thread so the dashboard
-        // doesn't freeze on every stock change.
-        productListener = db.collection("products").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let docs = snapshot?.documents, error == nil else { return }
+        // 1. Products: the same change-only sync as the shop (FirestoreService),
+        // so opening the dashboard doesn't re-read every item from the server.
+        productListener = FirestoreService.shared.listenProducts { [weak self] fetched in
+            // Empty means the read failed (or nothing is cached yet): keep what's shown.
+            guard let self = self, !fetched.isEmpty else { return }
             let deleted = self.deletedProductIds
-            DispatchQueue.global(qos: .userInitiated).async {
-                let decoder = Firestore.Decoder()
-                let list: [Product] = docs.compactMap { doc in
-                    var data = doc.data()
-                    if (data["active"] as? Bool) == false { return nil }
-                    let id = (data["id"] as? String) ?? doc.documentID
-                    if deleted.contains(id) { return nil }
-                    data["id"] = id
-                    data["distributor"] = Distributor.resolvedName(data["distributor"] as? String)
-                    return try? decoder.decode(Product.self, from: data)
-                }
-                Task { @MainActor in
-                    self.products = list
-                    self.isLoading = false
-                }
-            }
+            self.products = fetched
+                .filter { !deleted.contains($0.id) }
+                .map { $0.withDistributor(Distributor.resolvedName($0.distributor)) }
+            self.isLoading = false
         }
 
         // 2. Distributors Realtime Listener
@@ -620,9 +608,12 @@ public final class AdminDashboardViewModel: ObservableObject {
             )
         }
 
+        // updatedAt on every product change: the shop apps only download
+        // items changed since their last visit.
         db.collection("products").document(productId).setData([
             "stock": safeStock,
-            "inStock": safeStock > 0
+            "inStock": safeStock > 0,
+            "updatedAt": FieldValue.serverTimestamp()
         ], merge: true, completion: saveResult("The stock change") { [weak self] in
             if let previous { self?.replaceProduct(previous) }
         })
@@ -641,7 +632,8 @@ public final class AdminDashboardViewModel: ObservableObject {
 
         db.collection("products").document(productId).setData([
             "active": false,
-            "deletedAt": FieldValue.serverTimestamp()
+            "deletedAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
         ], merge: true, completion: saveResult("Deleting the item") { [weak self] in
             guard let self else { return }
             var set = self.deletedProductIds
@@ -727,6 +719,7 @@ public final class AdminDashboardViewModel: ObservableObject {
             var fresh = toDict(newProduct) ?? [:]
             fresh["active"] = true
             fresh["createdAt"] = FieldValue.serverTimestamp()
+            fresh["updatedAt"] = FieldValue.serverTimestamp()
             data = fresh
         }
 
@@ -859,7 +852,15 @@ public final class AdminDashboardViewModel: ObservableObject {
         while start < all.count {
             let chunk = all[start..<min(start + 400, all.count)]
             let batch = db.batch()
-            chunk.forEach { batch.deleteDocument(db.collection("products").document($0)) }
+            // Marked removed rather than erased, so shop apps that only fetch
+            // changes also learn the items are gone.
+            chunk.forEach {
+                batch.setData([
+                    "active": false,
+                    "deletedAt": FieldValue.serverTimestamp(),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ], forDocument: db.collection("products").document($0), merge: true)
+            }
             let restore = removed.filter { chunk.contains($0.id) }
             batch.commit(completion: saveResult("Deleting \(distributorName)'s items") { [weak self] in
                 guard let self else { return }
@@ -963,6 +964,7 @@ public final class AdminDashboardViewModel: ObservableObject {
                     var data = toDict(product) ?? [:]
                     data["active"] = true
                     data["createdAt"] = FieldValue.serverTimestamp()
+                    data["updatedAt"] = FieldValue.serverTimestamp()
                     if !item.brand.isEmpty { data["brand"] = item.brand }
                     batch.setData(data, forDocument: ref, merge: true)
                 }

@@ -11,42 +11,118 @@ final class FirestoreService {
     // MARK: - Products & Categories
 
     /// Live catalogue, as the web reads it: active products only, with the
-    /// document id standing in when a product has no id field. Tobacco and
-    /// other 18+ items are left out of the iOS app (App Store guideline 1.4.3).
+    /// document id standing in when a product has no id field. (The catalogue
+    /// store then leaves out tobacco and other 18+ items.)
     ///
-    /// The catalogue is thousands of documents, so they are read off the main
-    /// thread (reading them there froze scrolling on every stock change), and
-    /// a snapshot that changes nothing but metadata is skipped. `completion`
-    /// is called on the main thread, newest catalogue only.
+    /// Read from Firestore as little as possible: every document read is
+    /// billed and the free plan allows 50,000 a day, which reading all ~1,300
+    /// products on every app open used up within hours. So the app shows the
+    /// copy already on the phone (Firestore's own cache, free to read) and
+    /// only asks the server for products changed since the newest change it
+    /// has seen. Every product write sets `updatedAt`, and removals mark
+    /// `active: false`. The whole list is read on the first open and then once
+    /// a week, to catch anything missed.
+    ///
+    /// Decoding runs off the main thread (thousands of documents froze
+    /// scrolling there); `completion` is called on the main thread.
     func listenProducts(completion: @escaping ([Product]) -> Void) -> ListenerRegistration {
-        var generation = 0
-        var hasDelivered = false
-        return db.collection("products").addSnapshotListener { snapshot, error in
-            guard let snapshot, error == nil else {
-                completion([])
-                return
+        let sync = CatalogueSync()
+        let products = db.collection("products")
+        let registration = DeferredListener()
+        var catalogue: [String: Product] = [:] // by document id; touched on decodeQueue only
+
+        func deliver() {
+            let list = catalogue.keys.sorted().compactMap { catalogue[$0] }
+            DispatchQueue.main.async {
+                guard !registration.isRemoved else { return }
+                completion(list)
             }
-            if hasDelivered && snapshot.documentChanges.isEmpty { return }
-            generation += 1
-            let current = generation
-            let documents = snapshot.documents
-            Self.decodeQueue.async {
-                let decoder = Firestore.Decoder()
-                let products: [Product] = documents.compactMap { doc in
-                    var data = doc.data()
-                    if (data["active"] as? Bool) == false { return nil }
-                    if data["id"] == nil { data["id"] = doc.documentID }
-                    // 18+ items are dropped by the catalogue store, never shown.
-                    return try? decoder.decode(Product.self, from: data)
+        }
+
+        /// Applies documents to the catalogue and returns the newest `updatedAt` among them.
+        func apply(_ documents: [QueryDocumentSnapshot], removed: [String] = []) -> Date? {
+            let decoder = Firestore.Decoder()
+            var newest: Date?
+            for id in removed { catalogue[id] = nil }
+            for doc in documents {
+                var data = doc.data()
+                if let stamp = (data["updatedAt"] as? Timestamp)?.dateValue() {
+                    newest = max(newest ?? stamp, stamp)
                 }
-                DispatchQueue.main.async {
-                    // A newer snapshot is already on its way: drop this one.
-                    guard current == generation else { return }
+                if (data["active"] as? Bool) == false {
+                    catalogue[doc.documentID] = nil
+                    continue
+                }
+                if data["id"] == nil { data["id"] = doc.documentID }
+                catalogue[doc.documentID] = try? decoder.decode(Product.self, from: data)
+            }
+            return newest
+        }
+
+        func listenToEverything() {
+            var hasDelivered = false
+            registration.inner = products.addSnapshotListener { snapshot, error in
+                guard let snapshot, error == nil else {
+                    DispatchQueue.main.async { completion([]) }
+                    return
+                }
+                if hasDelivered && snapshot.documentChanges.isEmpty { return }
+                let documents = snapshot.documents
+                let fromServer = !snapshot.metadata.isFromCache
+                Self.decodeQueue.async {
+                    catalogue = [:]
+                    let newest = apply(documents)
+                    if fromServer {
+                        sync.markFullRead(newest: newest, count: catalogue.count)
+                    }
                     hasDelivered = true
-                    completion(products)
+                    deliver()
                 }
             }
         }
+
+        guard sync.canFetchChangesOnly else {
+            listenToEverything()
+            return registration
+        }
+
+        // 1. What this phone already has: free.
+        products.getDocuments(source: .cache) { snapshot, _ in
+            let cached = snapshot?.documents ?? []
+            Self.decodeQueue.async {
+                guard !registration.isRemoved else { return }
+                _ = apply(cached)
+                // The phone's copy went missing (cleared storage): read it all again.
+                guard catalogue.count >= sync.minimumExpectedCount else {
+                    catalogue = [:]
+                    DispatchQueue.main.async {
+                        if !registration.isRemoved { listenToEverything() }
+                    }
+                    return
+                }
+                deliver()
+                // 2. Then only what changed since, live.
+                DispatchQueue.main.async {
+                    guard !registration.isRemoved else { return }
+                    registration.inner = products
+                        .whereField("updatedAt", isGreaterThan: Timestamp(date: sync.syncedAt))
+                        .addSnapshotListener { snapshot, error in
+                            guard let snapshot, error == nil else { return }
+                            let changed = snapshot.documentChanges
+                            guard !changed.isEmpty else { return }
+                            let upserts = changed.filter { $0.type != .removed }.map(\.document)
+                            let removals = changed.filter { $0.type == .removed }.map(\.document.documentID)
+                            let fromServer = !snapshot.metadata.isFromCache
+                            Self.decodeQueue.async {
+                                let newest = apply(upserts, removed: removals)
+                                if fromServer { sync.markChanges(newest: newest, count: catalogue.count) }
+                                deliver()
+                            }
+                        }
+                }
+            }
+        }
+        return registration
     }
 
     private static let decodeQueue = DispatchQueue(label: "dashit.catalogue.decode", qos: .userInitiated)
@@ -341,3 +417,56 @@ enum OrderWriteError: LocalizedError {
         "The store did not confirm your order in time."
     }
 }
+
+/// When the catalogue was last read in full and the newest product change
+/// seen, kept on the phone so an app open only asks for what changed since.
+private final class CatalogueSync {
+    private static let syncedKey = "dashit_catalogue_synced_at"
+    private static let fullKey = "dashit_catalogue_full_at"
+    private static let countKey = "dashit_catalogue_count"
+    private static let fullReadEvery: TimeInterval = 7 * 24 * 3600
+
+    private let defaults = UserDefaults.standard
+
+    var syncedAt: Date { Date(timeIntervalSince1970: defaults.double(forKey: Self.syncedKey)) }
+
+    var canFetchChangesOnly: Bool {
+        let synced = defaults.double(forKey: Self.syncedKey)
+        let full = defaults.double(forKey: Self.fullKey)
+        return synced > 0 && full > 0 && Date().timeIntervalSince1970 - full < Self.fullReadEvery
+    }
+
+    /// Below this many products, the phone's copy is treated as missing.
+    var minimumExpectedCount: Int { max(1, Int(Double(defaults.integer(forKey: Self.countKey)) * 0.9)) }
+
+    func markFullRead(newest: Date?, count: Int) {
+        // Nothing has ever been edited: start from "now", less a margin for
+        // the phone's clock being ahead of the server's.
+        let synced = newest ?? Date().addingTimeInterval(-600)
+        defaults.set(synced.timeIntervalSince1970, forKey: Self.syncedKey)
+        defaults.set(Date().timeIntervalSince1970, forKey: Self.fullKey)
+        defaults.set(count, forKey: Self.countKey)
+    }
+
+    func markChanges(newest: Date?, count: Int) {
+        if let newest, newest.timeIntervalSince1970 > defaults.double(forKey: Self.syncedKey) {
+            defaults.set(newest.timeIntervalSince1970, forKey: Self.syncedKey)
+        }
+        defaults.set(count, forKey: Self.countKey)
+    }
+}
+
+/// A listener that can be handed back before the real one exists (it starts
+/// once the phone's cached copy has loaded).
+private final class DeferredListener: NSObject, ListenerRegistration {
+    var inner: ListenerRegistration? {
+        didSet { if isRemoved { inner?.remove() } }
+    }
+    private(set) var isRemoved = false
+
+    func remove() {
+        isRemoved = true
+        inner?.remove()
+    }
+}
+
