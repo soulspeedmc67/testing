@@ -101,7 +101,7 @@ class FirestoreRepository {
                         minAge = minAge,
                         inStock = inStock
                     )
-                }.filterNot { it.isAgeRestricted } // tobacco and 18+ items are sold on the website only
+                } // tobacco included: the storefront keeps it out of browsing
 
                 if (list.isNotEmpty()) {
                     delivered = true

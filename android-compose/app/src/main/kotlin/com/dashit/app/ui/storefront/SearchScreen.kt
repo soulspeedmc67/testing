@@ -90,6 +90,7 @@ import com.dashit.app.ui.components.QuantityStepper
 @Composable
 fun SearchScreen(
     products: List<Product>,
+    tobaccoProducts: List<Product>,
     categories: List<Category>,
     cartItems: List<CartItem>,
     onOpenProduct: (Product) -> Unit,
@@ -127,7 +128,7 @@ fun SearchScreen(
         if (clean.isEmpty()) return
         HapticsManager.light(view)
         // Only searches that found something are worth offering again.
-        if (ProductSearch.results(clean, products).isNotEmpty()) RecentSearches.record(clean)
+        if (ProductSearch.results(clean, products).isNotEmpty() || Tobacco.showsCard(clean, tobaccoProducts)) RecentSearches.record(clean)
         setText(clean)
         submitted = clean
         keyboard?.hide()
@@ -135,6 +136,18 @@ fun SearchScreen(
     }
 
     fun quantityOf(product: Product) = cartItems.filter { it.productId == product.id }.sumOf { it.qty }
+
+    // Tobacco: a card under tobacco searches, then the declaration, then the list.
+    var isDeclarationOpen by remember { mutableStateOf(false) }
+    var isTobaccoListOpen by remember { mutableStateOf(false) }
+    fun showsTobacco(term: String) = Tobacco.showsCard(term, tobaccoProducts)
+    fun openTobacco() {
+        keyboard?.hide()
+        focusManager.clearFocus()
+        RecentSearches.record(submitted ?: query)
+        if (Tobacco.isDeclared(context)) isTobaccoListOpen = true else isDeclarationOpen = true
+    }
+    val tobaccoList = Tobacco.matches(submitted ?: query, tobaccoProducts).ifEmpty { tobaccoProducts }
 
     Column(
         modifier = Modifier
@@ -270,12 +283,22 @@ fun SearchScreen(
                     val matches = ProductSearch.results(term, products)
                     if (matches.isEmpty()) {
                         item(key = "empty") { NoResults(term) }
+                        if (showsTobacco(term)) {
+                            item(key = "tobacco_card") {
+                                TobaccoSearchCard(onView = { openTobacco() }, modifier = Modifier.padding(top = 24.dp))
+                            }
+                        }
                         val popular = ProductSearch.popular(products)
                         if (popular.isNotEmpty()) {
                             item(key = "popular_title") { SectionTitle("Popular right now", top = 28.dp) }
                             popular.forEach { productRow(it, "") }
                         }
                     } else {
+                        if (showsTobacco(term)) {
+                            item(key = "tobacco_card") {
+                                TobaccoSearchCard(onView = { openTobacco() }, modifier = Modifier.padding(bottom = 14.dp))
+                            }
+                        }
                         item(key = "results_title") {
                             Text(
                                 text = "${matches.size} result${if (matches.size == 1) "" else "s"} for “$term”",
@@ -381,7 +404,7 @@ fun SearchScreen(
                     if (matches.isNotEmpty()) {
                         item(key = "products_title") { SectionTitle("Products", top = 16.dp) }
                         matches.take(8).forEach { productRow(it, query) }
-                    } else {
+                    } else if (!showsTobacco(query)) {
                         item(key = "no_match") {
                             Text(
                                 text = "No items match “$query” yet.",
@@ -391,9 +414,33 @@ fun SearchScreen(
                             )
                         }
                     }
+                    if (showsTobacco(query)) {
+                        item(key = "tobacco_card") {
+                            TobaccoSearchCard(onView = { openTobacco() }, modifier = Modifier.padding(top = 14.dp))
+                        }
+                    }
                 }
             }
         }
+    }
+
+    if (isDeclarationOpen) {
+        TobaccoDeclarationSheet(
+            onConfirm = {
+                isDeclarationOpen = false
+                isTobaccoListOpen = true
+            },
+            onDismiss = { isDeclarationOpen = false }
+        )
+    }
+    if (isTobaccoListOpen) {
+        TobaccoSectionSheet(
+            products = tobaccoList,
+            quantityOf = { quantityOf(it) },
+            onAdd = onAdd,
+            onDecrement = onDecrement,
+            onDismiss = { isTobaccoListOpen = false }
+        )
     }
 }
 

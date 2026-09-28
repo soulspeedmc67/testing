@@ -22,9 +22,9 @@ final class CartViewModel: ObservableObject {
     @Published var showMinOrderModal: Bool = false
     @Published var isCartSheetPresented: Bool = false
 
-    /// Set once the shopper declares they are 18+, for the rest of the session,
-    /// matching the web age gate (`src/context/AgeGateContext.jsx`).
-    @Published private(set) var isAgeConfirmed: Bool = false
+    /// Set once the shopper makes the tobacco declaration (18+, not near a
+    /// school, ID at the door), and kept on this device like the website's.
+    @Published private(set) var isAgeConfirmed: Bool = UserDefaults.standard.bool(forKey: Tobacco.declarationKey)
 
     /// The toast plays once per cart; emptying it (or placing the order) re-arms it.
     private var hasCelebratedFreeDelivery = false
@@ -63,11 +63,12 @@ final class CartViewModel: ObservableObject {
     // MARK: - Age gate
 
     func requiresAgeConfirmation(for product: Product) -> Bool {
-        product.ageRestricted == true && !isAgeConfirmed
+        product.isAgeRestricted && !isAgeConfirmed
     }
 
     func confirmAge() {
         isAgeConfirmed = true
+        UserDefaults.standard.set(true, forKey: Tobacco.declarationKey)
     }
 
     // MARK: - Mutations

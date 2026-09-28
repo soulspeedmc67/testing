@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,6 +86,7 @@ import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.DashitMotion
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
+import com.dashit.app.core.design.slideInFromLeft
 import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.DeliveryAddress
 import com.dashit.app.data.model.Order
@@ -140,6 +142,7 @@ fun StorefrontScreen(
     val categoryTiles by storefrontVm.categoryTiles.collectAsState()
     val rails by storefrontVm.rails.collectAsState()
     val filteredProducts by storefrontVm.filteredProducts.collectAsState()
+    val tobaccoProducts by storefrontVm.tobaccoProducts.collectAsState()
     val isBrowsing by storefrontVm.isBrowsing.collectAsState()
     val selectedCategory by storefrontVm.selectedCategory.collectAsState()
 
@@ -224,6 +227,7 @@ fun StorefrontScreen(
         } else if (isSearchOpen) {
             SearchScreen(
                 products = allProducts,
+                tobaccoProducts = tobaccoProducts,
                 categories = categories,
                 cartItems = cartItems,
                 onOpenProduct = { detailProduct = it },
@@ -313,17 +317,20 @@ fun StorefrontScreen(
 
                     // 3-Column Collage Grid in Rows of 3
                     val chunkedTiles = categoryTiles.chunked(3)
-                    items(chunkedTiles, key = { it.first().id }) { rowTiles ->
+                    itemsIndexed(chunkedTiles, key = { _, row -> row.first().id }) { rowIndex, rowTiles ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 5.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            rowTiles.forEach { tile ->
+                            rowTiles.forEachIndexed { column, tile ->
                                 CategoryCollageTile(
                                     tile = tile,
-                                    modifier = Modifier.weight(1f),
+                                    // Row by row, left to right, on the first look after launch.
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .slideInFromLeft("categoryTiles", rowIndex * 2 + column + 2),
                                     onTap = { storefrontVm.selectCategory(tile.name) }
                                 )
                             }
@@ -780,13 +787,15 @@ private fun CategoryTabsRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        items(allTabs, key = { it.id }) { cat ->
+        itemsIndexed(allTabs, key = { _, cat -> cat.id }) { index, cat ->
             val isSelected = if (cat.id == "all") selectedCategory == null else selectedCategory.equals(cat.name, ignoreCase = true)
             val icon = getCategoryIcon(cat.name)
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
+                    // Slide in from the left, one after another, on the first look after launch.
+                    .slideInFromLeft("categoryTabs", index, isReady = categories.isNotEmpty())
                     .pressable(scale = 0.92f) {
                         HapticsManager.selection(view)
                         if (cat.id == "all") {

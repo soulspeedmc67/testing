@@ -11,6 +11,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.scale
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.dp
 
 object DashitMotion {
     val HouseSpring = spring<Float>(
@@ -63,4 +72,61 @@ fun Modifier.pressable(
                 Modifier
             }
         )
+}
+
+
+/**
+ * Comes into focus out of a soft blur, sliding up a little, `index` steps
+ * after the first item: for the address sheet's text as it opens.
+ */
+fun Modifier.blurReveal(index: Int, blurRadius: Float = 8f): Modifier = composed {
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val progress by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(durationMillis = 450, delayMillis = 60 + 50 * index.coerceAtMost(8), easing = FastOutSlowInEasing),
+        label = "blurReveal"
+    )
+    this
+        .graphicsLayer {
+            alpha = progress
+            translationY = (1f - progress) * 10.dp.toPx()
+        }
+        .blur(((1f - progress) * blurRadius).dp, BlurredEdgeTreatment.Unbounded)
+}
+
+/** Remembers, for this launch only, which entrance animations have played. */
+object LaunchReveal {
+    private val played = mutableSetOf<String>()
+    fun hasPlayed(key: String) = key in played
+    fun markPlayed(key: String) { played += key }
+}
+
+/**
+ * Slides in from the left, `index` steps after the first item, the first time
+ * `key` is shown in this launch; already in place every time after that.
+ */
+fun Modifier.slideInFromLeft(key: String, index: Int, isReady: Boolean = true): Modifier = composed {
+    val alreadyPlayed = remember { LaunchReveal.hasPlayed(key) }
+    var shown by remember { mutableStateOf(alreadyPlayed) }
+    LaunchedEffect(isReady) {
+        if (isReady && !shown) {
+            // A beat after the layout lands, then each item a little after the one before.
+            kotlinx.coroutines.delay(120L + 45L * index.coerceAtMost(10))
+            LaunchReveal.markPlayed(key)
+            shown = true
+        }
+    }
+    val progress by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow),
+        label = "slideInFromLeft"
+    )
+    this.graphicsLayer {
+        alpha = progress.coerceIn(0f, 1f)
+        translationX = (1f - progress) * -36.dp.toPx()
+        scaleX = 0.9f + 0.1f * progress
+        scaleY = 0.9f + 0.1f * progress
+        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+    }
 }

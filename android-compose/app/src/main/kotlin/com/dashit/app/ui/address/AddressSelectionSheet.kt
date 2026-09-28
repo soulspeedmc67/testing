@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
+import com.dashit.app.core.design.blurReveal
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.DeliveryAddress
 import org.osmdroid.config.Configuration
@@ -185,7 +186,7 @@ fun AddressSelectionSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.blurReveal(0)) {
                         Text(
                             text = "Select delivery location",
                             color = Color.White,
@@ -409,12 +410,13 @@ fun AddressSelectionSheet(
                         color = DashitColors.TextMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.6.sp
+                        letterSpacing = 0.6.sp,
+                        modifier = Modifier.blurReveal(2)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    SAVED_ADDRESSES.forEach { saved ->
+                    SAVED_ADDRESSES.forEachIndexed { index, saved ->
                         val isSelected = currentAddress.nickname.equals(saved.nickname, ignoreCase = true)
 
                         Row(
@@ -458,7 +460,8 @@ fun AddressSelectionSheet(
                                 )
                             }
 
-                            Column(modifier = Modifier.weight(1f)) {
+                            // Each address comes into focus in turn, out of a soft blur.
+                                Column(modifier = Modifier.weight(1f).blurReveal(3 + index)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)

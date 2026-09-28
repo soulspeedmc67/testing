@@ -37,6 +37,9 @@ final class CatalogueStore: ObservableObject {
     @Published private(set) var products: [Product] = [] {
         didSet { rebuild() }
     }
+    /// Tobacco and other 18+ items. Never browsed: only the tobacco section
+    /// (reached from search, after the declaration) lists them.
+    @Published private(set) var tobaccoProducts: [Product] = []
     @Published private(set) var isLoading = true
     @Published private(set) var offers: [Offer] = CatalogueStore.defaultOffers
     /// The `categories` collection, when the rules let it be read.
@@ -66,7 +69,7 @@ final class CatalogueStore: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
             guard let self, self.products.isEmpty else { return }
             withAnimation(.easeOut(duration: 0.25)) {
-                self.products = CatalogSeed.products
+                self.products = CatalogSeed.products.filter { !$0.isAgeRestricted }
                 self.isLoading = false
             }
         }
@@ -197,8 +200,11 @@ final class CatalogueStore: ObservableObject {
     }
 
     private func startListeners() {
-        productListener = FirestoreService.shared.listenProducts { [weak self] fetched in
+        productListener = FirestoreService.shared.listenProducts { [weak self] everything in
             guard let self = self else { return }
+            let tobacco = everything.filter(\.isAgeRestricted)
+            if tobacco != self.tobaccoProducts { self.tobaccoProducts = tobacco }
+            let fetched = everything.filter { !$0.isAgeRestricted }
             // An empty answer is usually an empty offline cache: keep the
             // skeletons up until real products (or the fallback) arrive.
             guard !fetched.isEmpty else { return }
@@ -298,6 +304,7 @@ final class StorefrontViewModel: ObservableObject {
     /// Rotating search hints drawn from what the store actually sells.
     var searchHints: [String] { store.searchHints }
     var popularProducts: [Product] { store.popularProducts }
+    var tobaccoProducts: [Product] { store.tobaccoProducts }
     var searchEntries: [ProductSearch.Entry] { store.searchEntries }
 
     func products(inCategory name: String) -> [Product] {

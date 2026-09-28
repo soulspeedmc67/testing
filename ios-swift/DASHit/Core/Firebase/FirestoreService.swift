@@ -36,9 +36,8 @@ final class FirestoreService {
                     var data = doc.data()
                     if (data["active"] as? Bool) == false { return nil }
                     if data["id"] == nil { data["id"] = doc.documentID }
-                    guard let product = try? decoder.decode(Product.self, from: data),
-                          !product.isAgeRestricted else { return nil }
-                    return product
+                    // Tobacco included: the catalogue store keeps it out of browsing.
+                    return try? decoder.decode(Product.self, from: data)
                 }
                 DispatchQueue.main.async {
                     // A newer snapshot is already on its way: drop this one.

@@ -29,6 +29,10 @@ class StorefrontViewModel(
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
+    /** Tobacco and other 18+ items: never browsed, only listed in the tobacco section. */
+    private val _tobaccoProducts = MutableStateFlow<List<Product>>(emptyList())
+    val tobaccoProducts: StateFlow<List<Product>> = _tobaccoProducts.asStateFlow()
+
     private val _categories = MutableStateFlow<List<Category>>(CatalogSeed.topCategories)
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
 
@@ -85,7 +89,11 @@ class StorefrontViewModel(
 
     init {
         viewModelScope.launch {
-            repository.observeProducts().collect { _products.value = it }
+            repository.observeProducts().collect { everything ->
+                val (tobacco, browseable) = everything.partition { it.isAgeRestricted }
+                _tobaccoProducts.value = tobacco
+                _products.value = browseable
+            }
         }
         viewModelScope.launch {
             repository.observeCategories().collect { _categories.value = it }

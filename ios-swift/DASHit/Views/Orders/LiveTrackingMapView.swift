@@ -381,15 +381,16 @@ struct LiveTrackingMapView: View {
     }
 }
 
-/// Top of the received and packing screens: the DASHit tile with a smooth,
-/// never-ending animation, and what's happening in plain words. Received sends
-/// soft rings out from the tile; packing runs an orange arc around it. Driven
-/// by a timeline, so it never stutters or restarts when the order updates.
+/// Top of the received and packing screens: a line-art icon that keeps
+/// animating (a receipt filling in, then a box being packed), and what's
+/// happening in plain words. Driven by a timeline from when the screen opened,
+/// so it starts from the beginning and never stutters when the order updates.
 private struct OrderStageHero: View {
     let stage: DeliveryStage
     let canStillChange: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var openedAt = Date()
 
     private var title: String {
         switch stage {
@@ -415,18 +416,38 @@ private struct OrderStageHero: View {
         }
     }
 
+    private var iconKind: OrderStageIcon.Kind? {
+        switch stage {
+        case .placed: return .received
+        case .packing: return .packing
+        default: return nil
+        }
+    }
+
     var body: some View {
-        VStack(spacing: 18) {
-            ZStack {
-                if reduceMotion || stage == .cancelled {
-                    StageAnimation(stage: stage, time: 0)
-                } else {
-                    TimelineView(.animation) { context in
-                        StageAnimation(stage: stage, time: context.date.timeIntervalSinceReferenceDate)
+        VStack(spacing: 20) {
+            Group {
+                if let kind = iconKind {
+                    if reduceMotion {
+                        OrderStageIcon(kind: kind, time: OrderStageIcon.restingTime)
+                    } else {
+                        TimelineView(.animation) { context in
+                            OrderStageIcon(kind: kind, time: context.date.timeIntervalSince(openedAt))
+                        }
                     }
+                } else {
+                    Image("BrandTile")
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFill()
+                        .frame(width: 88, height: 88)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .saturation(0)
                 }
             }
-            .frame(width: 220, height: 220)
+            .frame(width: 168, height: 168)
+            .id(iconKind.map { "\($0)" } ?? "none")
+            .transition(.opacity.combined(with: .scale(scale: 0.92)))
             .accessibilityHidden(true)
 
             VStack(spacing: 8) {
@@ -445,58 +466,8 @@ private struct OrderStageHero: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-/// One frame of the hero animation at `time` seconds.
-private struct StageAnimation: View {
-    let stage: DeliveryStage
-    let time: Double
-
-    private let tileSize: CGFloat = 96
-
-    var body: some View {
-        // A slow breath for the tile itself: 1.5% bigger and 3pt up at the top.
-        let breath = sin(time * 1.7)
-        ZStack {
-            switch stage {
-            case .placed:
-                // Three rings leaving the tile one after another, fading as they grow.
-                ForEach(0..<3, id: \.self) { ring in
-                    let phase = (time / 2.6 + Double(ring) / 3).truncatingRemainder(dividingBy: 1)
-                    RoundedRectangle(cornerRadius: tileSize * 0.3 * (1 + phase * 0.9), style: .continuous)
-                        .strokeBorder(Color.brandOrange.opacity(0.55 * (1 - phase)), lineWidth: 2)
-                        .frame(width: tileSize * (1 + phase * 0.95), height: tileSize * (1 + phase * 0.95))
-                }
-            case .packing:
-                Circle()
-                    .stroke(Color.white.opacity(0.08), lineWidth: 5)
-                    .frame(width: tileSize + 64, height: tileSize + 64)
-                Circle()
-                    .trim(from: 0, to: 0.26 + 0.08 * sin(time * 1.3))
-                    .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .frame(width: tileSize + 64, height: tileSize + 64)
-                    .rotationEffect(.degrees(time * 150))
-                Circle()
-                    .trim(from: 0, to: 0.12)
-                    .stroke(Color.brandOrange.opacity(0.45), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                    .frame(width: tileSize + 40, height: tileSize + 40)
-                    .rotationEffect(.degrees(-time * 95))
-            default:
-                EmptyView()
-            }
-
-            Image("BrandTile")
-                .resizable()
-                .interpolation(.high)
-                .scaledToFill()
-                .frame(width: tileSize, height: tileSize)
-                .clipShape(RoundedRectangle(cornerRadius: tileSize * 0.27, style: .continuous))
-                .shadow(color: Color.brandOrange.opacity(stage == .cancelled ? 0 : 0.35), radius: 22, x: 0, y: 8)
-                .saturation(stage == .cancelled ? 0 : 1)
-                .scaleEffect(1 + 0.015 * breath)
-                .offset(y: -3 * breath)
-        }
+        .animation(.easeInOut(duration: 0.35), value: stage)
+        .onChange(of: stage) { _, _ in openedAt = Date() }
     }
 }
 

@@ -1,5 +1,7 @@
 package com.dashit.app.ui.cart
 
+import com.dashit.app.data.model.isAgeRestricted
+import com.dashit.app.ui.storefront.PlainPackArt
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -359,19 +361,23 @@ private fun CartLineRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Thumbnail Image
-        ShimmerImage(
-            model = ImageRequest.Builder(context)
-                .data(item.img)
-                .crossfade(true)
-                .build(),
-            contentDescription = item.name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(52.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(DashitColors.SurfaceMuted)
-        )
+        // Thumbnail: tobacco as a plain pack, never the brand photo
+        if (isAgeRestricted(item.name, item.cat)) {
+            PlainPackArt(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(10.dp)))
+        } else {
+            ShimmerImage(
+                model = ImageRequest.Builder(context)
+                    .data(item.img)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = item.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(DashitColors.SurfaceMuted)
+            )
+        }
 
         // Title, Unit, Price
         Column(

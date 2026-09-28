@@ -33,3 +33,76 @@ extension View {
             .presentationBackground(Color.surface)
     }
 }
+
+// MARK: - First look at the shop
+
+/// Plays the "categories slide in from the left" entrance once per app
+/// launch, the first time the categories are on screen. Coming back to the
+/// home screen later doesn't replay it. Only touched from the main thread.
+final class LaunchReveal {
+    static let shared = LaunchReveal()
+    private var played: Set<String> = []
+
+    private init() {}
+
+    func hasPlayed(_ key: String) -> Bool { played.contains(key) }
+    func markPlayed(_ key: String) { played.insert(key) }
+}
+
+private struct SlideInFromLeading: ViewModifier {
+    let index: Int
+    let isShown: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isShown ? 1 : 0)
+            .offset(x: isShown ? 0 : -36)
+            .scaleEffect(isShown ? 1 : 0.9, anchor: .leading)
+            .blur(radius: isShown ? 0 : 3)
+            .animation(
+                .spring(response: 0.55, dampingFraction: 0.82).delay(isShown ? 0.045 * Double(min(index, 10)) : 0),
+                value: isShown
+            )
+    }
+}
+
+extension View {
+    /// Slides in from the leading edge after the `index` items before it.
+    func slideInFromLeading(index: Int, isShown: Bool) -> some View {
+        modifier(SlideInFromLeading(index: index, isShown: isShown))
+    }
+
+    /// Runs the launch entrance for `key` once `isReady` is true: `isShown`
+    /// starts false the first time in this launch and flips to true straight
+    /// after the view is on screen; every later appearance starts shown.
+    func launchReveal(_ key: String, isReady: Bool, isShown: Binding<Bool>) -> some View {
+        modifier(LaunchRevealTrigger(key: key, isReady: isReady, isShown: isShown))
+    }
+}
+
+private struct LaunchRevealTrigger: ViewModifier {
+    let key: String
+    let isReady: Bool
+    @Binding var isShown: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { playIfReady() }
+            .onChange(of: isReady) { _, _ in playIfReady() }
+    }
+
+    private func playIfReady() {
+        guard !isShown else { return }
+        if reduceMotion || LaunchReveal.shared.hasPlayed(key) {
+            isShown = true
+            return
+        }
+        guard isReady else { return }
+        LaunchReveal.shared.markPlayed(key)
+        // A beat after the layout lands, so the slide is seen rather than skipped.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+            isShown = true
+        }
+    }
+}
