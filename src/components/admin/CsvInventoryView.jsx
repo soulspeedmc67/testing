@@ -17,6 +17,7 @@ import {
   Search,
   Loader2,
   Copy,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   buildImportPlan,
@@ -28,6 +29,8 @@ import {
 } from "../../lib/csvInventory";
 import { SELF_DISTRIBUTOR_NAME } from "../../lib/db";
 import StockSourceSheet from "./StockSourceSheet";
+import { NeedsPhotoSheet } from "./ProductPhotoSheets";
+import { isPlaceholderImage } from "../../lib/productPhotoMatch";
 
 const LAST_SOURCE_KEY = "dashit_last_stock_source";
 /* The check list only draws the rows in view. Every row has this fixed height,
@@ -75,6 +78,7 @@ export default function CsvInventoryView({
   distributors = [],
   onQuickAddDistributor,
   onApplyImport,
+  onStartPhotoSearch,
   darkMode = false,
 }) {
   const fileRef = useRef(null);
@@ -94,6 +98,28 @@ export default function CsvInventoryView({
   const [isSourceSheetOpen, setIsSourceSheetOpen] = useState(false);
   const [filter, setFilter] = useState("all");
   const [queryText, setQueryText] = useState("");
+  // Photos are looked up after the stock is saved, never in its way.
+  const [replacePhotos, setReplacePhotos] = useState(false);
+  const [isNeedsPhotoOpen, setIsNeedsPhotoOpen] = useState(false);
+
+  const catalogueById = useMemo(() => {
+    const map = new Map();
+    catalogue.forEach((p) => map.set(String(p.id || p.barcode), p));
+    return map;
+  }, [catalogue]);
+
+  // No photo first, then photos that are too small or look blank.
+  const needsPhoto = useMemo(() => {
+    const missing = [];
+    const weak = [];
+    catalogue.forEach((product) => {
+      if (isPlaceholderImage(product.img)) missing.push({ product, reason: "No photo" });
+      else if (product.photoQuality === "weak") {
+        weak.push({ product, reason: (product.photoIssues || []).join(", ") || "Photo isn't clear" });
+      }
+    });
+    return [...missing, ...weak];
+  }, [catalogue]);
 
   const isSaving = saveProgress !== null;
 
@@ -269,9 +295,28 @@ export default function CsvInventoryView({
          retry does not mean checking the whole file again. */
       if (res && res.success === false) return;
       resetImport();
+      startPhotoSearch(approvedItems, replacePhotos);
     } finally {
       setSaveProgress(null);
     }
+  };
+
+  /* In the background after the save: each product without a photo is looked
+     up on Open Food Facts. The page runs it (saving moves to Stock), and its
+     progress shows at the top of whichever tab is open. */
+  const startPhotoSearch = (items, replace) => {
+    // A photo link in the file always wins, even with "Replace photos" ticked.
+    const lookups = items
+      .filter((item) => !item.imgFromCsv)
+      .map((item) => ({
+        id: String(item.id),
+        name: item.name,
+        brand: item.brand,
+        unit: item.unit,
+        barcode: item.csvBarcode || item.id,
+        current: catalogueById.get(String(item.id)) || null,
+      }));
+    onStartPhotoSearch?.(lookups, replace);
   };
 
   const isSelf = source === SELF_DISTRIBUTOR_NAME;
@@ -314,6 +359,11 @@ export default function CsvInventoryView({
             Claude with your file or photo. It makes a CSV file, finds a photo for each item, and you
             import that file here.
           </p>
+          <p className={`text-xs ${subtle}`}>
+            Photos are added by themselves: put each item&apos;s barcode in the <strong>barcode</strong> column
+            and DASHit finds its photo after the stock is saved. A link in the <strong>image</strong> column is
+            used instead when you give one.
+          </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -326,6 +376,17 @@ export default function CsvInventoryView({
           >
             {promptCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{promptCopied ? "Copied" : "Copy AI prompt"}</span>
+          </button>
+          <button
+            onClick={() => setIsNeedsPhotoOpen(true)}
+            className={`flex items-center space-x-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-colors active:scale-95 cursor-pointer ${
+              darkMode
+                ? "border-zinc-800 text-zinc-300 hover:bg-zinc-900"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5" />
+            <span>Needs a photo ({needsPhoto.length.toLocaleString("en-IN")})</span>
           </button>
           <button
             onClick={() => downloadCsv("dashit-sample.csv", CSV_TEMPLATE)}
@@ -688,6 +749,15 @@ export default function CsvInventoryView({
                 </p>
               </div>
             )}
+            <label className={`flex items-center gap-2 mb-3 text-xs font-semibold cursor-pointer ${subtle}`}>
+              <input
+                type="checkbox"
+                checked={replacePhotos}
+                onChange={(e) => setReplacePhotos(e.target.checked)}
+                className="w-4 h-4 accent-[#FF5B00]"
+              />
+              Replace photos I added myself (otherwise they&apos;re kept)
+            </label>
             <button
               disabled={isSaving || isReading || !summary || summary.approved === 0}
               onClick={handleConfirm}
@@ -720,6 +790,12 @@ export default function CsvInventoryView({
         onAddDistributor={onQuickAddDistributor}
         onConfirm={handleSourceChanged}
         onClose={() => setIsSourceSheetOpen(false)}
+        darkMode={darkMode}
+      />
+      <NeedsPhotoSheet
+        open={isNeedsPhotoOpen}
+        onClose={() => setIsNeedsPhotoOpen(false)}
+        products={needsPhoto}
         darkMode={darkMode}
       />
     </div>

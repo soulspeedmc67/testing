@@ -151,6 +151,13 @@ export default function TermsAndConditionsPage() {
       {/* Footer */}
       <footer className="bg-[#061838] text-white border-t border-white/10 py-8 px-4 text-center text-xs text-slate-400">
         <p>© {new Date().getFullYear()} DASHIT Technologies. All rights reserved. Operating in Anantnag, Jammu &amp; Kashmir.</p>
+        <p className="mt-1">
+          Some product photos: Open Food Facts and Open Beauty Facts contributors,{" "}
+          <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer" className="underline">
+            CC BY-SA
+          </a>
+          .
+        </p>
       </footer>
     </div>
   );

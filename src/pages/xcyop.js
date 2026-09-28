@@ -36,7 +36,10 @@ import StoreControlsView from "../components/admin/StoreControlsView";
 import DistributorsView from "../components/admin/DistributorsView";
 
 import BarcodeScannerView from "../components/BarcodeScannerView";
-import { get4KPhotoSuggestions, findInIndianCatalog, STUDIO_4K_PHOTOS } from "../lib/barcodeCatalog";
+import { findInIndianCatalog } from "../lib/barcodeCatalog";
+import { findProductPhotos } from "../lib/productPhotoFinder";
+import PhotoSearchStatus from "../components/admin/PhotoSearchStatus";
+import { isPlaceholderImage } from "../lib/productPhotoMatch";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { watchAuth, getStaffRole, signInWithEmail, signOut } from "../lib/auth";
 import {
@@ -58,6 +61,8 @@ import {
   watchDistributors,
   upsertDistributor,
   deleteDistributor,
+  deleteDistributorProducts,
+  assignDefaultDistributor,
   ORDER_STATUS,
   ORDER_CHANGE_WINDOW_SECONDS
 } from "../lib/db";
@@ -86,7 +91,6 @@ const QUICK_TEMPLATES = [
     unit: "4 pcs",
     brand: "Local Kandur",
     badge: "Hot Fresh",
-    img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80",
     stock: 120,
   },
   {
@@ -97,7 +101,6 @@ const QUICK_TEMPLATES = [
     unit: "1 Litre",
     brand: "Amul",
     badge: "Daily Fresh",
-    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80",
     stock: 200,
   },
   {
@@ -108,7 +111,6 @@ const QUICK_TEMPLATES = [
     unit: "100g",
     brand: "Amul",
     badge: "Bestseller",
-    img: "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=600&auto=format&fit=crop&q=80",
     stock: 80,
   },
   {
@@ -119,7 +121,6 @@ const QUICK_TEMPLATES = [
     unit: "1 kg",
     brand: "Kashmir Orchards",
     badge: "Crisp Sweet",
-    img: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=600&auto=format&fit=crop&q=80",
     stock: 60,
   },
   {
@@ -130,7 +131,6 @@ const QUICK_TEMPLATES = [
     unit: "50g",
     brand: "Lay's",
     badge: "Crunchy",
-    img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80",
     stock: 150,
   },
   {
@@ -141,7 +141,6 @@ const QUICK_TEMPLATES = [
     unit: "280g",
     brand: "Nestle",
     badge: "Quick 2-Min",
-    img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=600&auto=format&fit=crop&q=80",
     stock: 100,
   },
   {
@@ -152,7 +151,6 @@ const QUICK_TEMPLATES = [
     unit: "750 ml",
     brand: "Coca-Cola",
     badge: "Chilled",
-    img: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&auto=format&fit=crop&q=80",
     stock: 90,
   },
   {
@@ -163,7 +161,6 @@ const QUICK_TEMPLATES = [
     unit: "1 kg",
     brand: "India Gate",
     badge: "Aromatic",
-    img: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80",
     stock: 50,
   },
   {
@@ -174,7 +171,6 @@ const QUICK_TEMPLATES = [
     unit: "1 kg",
     brand: "Tata",
     badge: "Purity",
-    img: "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=600&auto=format&fit=crop&q=80",
     stock: 100,
   },
   {
@@ -185,11 +181,12 @@ const QUICK_TEMPLATES = [
     unit: "75g",
     brand: "Dettol",
     badge: "100% Protection",
-    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=600&auto=format&fit=crop&q=80",
     stock: 75,
   }
 ];
 
+/* Pictures for offer banners only. Product photos are never stock pictures:
+   they come from Open Food Facts or the admin (see lib/productPhotoFinder). */
 const VISUAL_IMAGE_PALETTE = [
   { label: "Kashmiri Lavas", url: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80", cat: "Bakery" },
   { label: "Fresh Milk", url: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80", cat: "Dairy" },
@@ -519,7 +516,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     brand: "Local Kandur",
     badge: "Fresh",
     barcode: "",
-    img: VISUAL_IMAGE_PALETTE[0].url,
+    img: "",
     stock: 100,
   });
   const [isPublishingProduct, setIsPublishingProduct] = useState(false);
@@ -599,7 +596,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
   // Barcode Scanner & 4K Photo Suggestions
   const [showScanner, setShowScanner] = useState(false);
-  const [photo4KSuggestions, setPhoto4KSuggestions] = useState(get4KPhotoSuggestions("Bakery"));
+  // Real photos found for the scanned barcode (Open Food Facts), if any.
+  const [photo4KSuggestions, setPhoto4KSuggestions] = useState([]);
 
   // Batch Inward Restock State
   const [showBatchScanner, setShowBatchScanner] = useState(false);
@@ -991,7 +989,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       unit: productForm.unit || "1 pc",
       brand: productForm.brand.trim() || "Indian Brand",
       badge: productForm.badge.trim() || "Fresh",
-      img: productForm.img || VISUAL_IMAGE_PALETTE[0].url,
+      img: productForm.img || "",
+      // Where the photo came from, so a CSV import never replaces one set here.
+      imgSource: productForm.img ? productForm.imgSource || "manual" : undefined,
+      offBarcode: productForm.img ? productForm.offBarcode : undefined,
       stock: Number(productForm.stock) || 100,
       updatedAt: Date.now()
     };
@@ -1021,7 +1022,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         brand: "Local Kandur",
         badge: "Fresh",
         barcode: "",
-        img: VISUAL_IMAGE_PALETTE[0].url,
+        img: "",
         stock: 100,
       });
       setActiveTab("catalogue");
@@ -1090,7 +1091,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       const res = await searchOffByBarcode(scannedCode);
       if (res.success && res.products && res.products.length > 0) {
         const prod = res.products[0];
-        const suggestions = prod.photoSuggestions || get4KPhotoSuggestions(prod.cat || "Snacks");
+        const suggestions = prod.img ? [prod.img] : [];
         setProductForm((prev) => ({
           ...prev,
           barcode: scannedCode,
@@ -1100,12 +1101,14 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           unit: prod.unit || prev.unit,
           price: prod.price || prev.price || 40,
           originalPrice: prod.originalPrice || prod.price || prev.originalPrice || 45,
-          img: prod.img || suggestions[0] || prev.img,
+          img: prod.img || prev.img,
+          imgSource: prod.img ? "openfoodfacts" : prev.imgSource,
+          offBarcode: prod.img ? scannedCode : prev.offBarcode,
           badge: prod.badge || "Verified",
           stock: prod.stock || 100,
         }));
         setPhoto4KSuggestions(suggestions);
-        showToast(`Auto-filled "${prod.name}" with 4K studio photo.`);
+        showToast(prod.img ? `Filled in "${prod.name}" with its photo.` : `Filled in "${prod.name}". No photo found for it yet.`);
       } else {
         setProductForm((prev) => ({ ...prev, barcode: scannedCode }));
         showToast(`Barcode ${scannedCode} captured.`);
@@ -1194,7 +1197,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
             name: `Product ${clean}`,
             brand: "Custom",
             cat: "Snacks",
-            img: VISUAL_IMAGE_PALETTE[4].url,
+            img: "",
             currentStock: 0,
             qtyToAdd: 1,
             newStock: 1,
@@ -1206,7 +1209,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
               price: 40,
               originalPrice: 45,
               unit: "1 pc",
-              img: VISUAL_IMAGE_PALETTE[4].url,
+              img: "",
             },
           },
           ...prev,
@@ -1270,6 +1273,53 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         description: e.savedLocally
           ? `${distData.name} is saved here, but the shop's online list didn't accept it. Check you're signed in as the owner.`
           : e.message || "Please try again.",
+      });
+    }
+  };
+
+  // Photos for an import, found in the background after the stock is saved.
+  const [photoRun, setPhotoRun] = useState(null);
+  const startPhotoSearch = (lookups, replace) => {
+    setPhotoRun({ running: true, done: 0, total: 0, found: 0, results: [], lookups, replace });
+    findProductPhotos(lookups, {
+      replace,
+      onProgress: ({ done, total, found }) => setPhotoRun((run) => (run ? { ...run, done, total, found } : run)),
+    })
+      .then((outcome) =>
+        setPhotoRun({
+          running: false,
+          done: outcome.looked,
+          total: outcome.looked,
+          found: outcome.found,
+          results: outcome.results,
+          lookups,
+          replace,
+        })
+      )
+      .catch(() => setPhotoRun((run) => (run ? { ...run, running: false } : run)));
+  };
+  // Only the products Open Food Facts couldn't answer for (it was busy).
+  const retryPhotoSearch = () => {
+    if (!photoRun) return;
+    const failed = new Set(photoRun.results.filter((r) => r.status === "error").map((r) => r.id));
+    startPhotoSearch(photoRun.lookups.filter((l) => failed.has(l.id)), photoRun.replace);
+  };
+
+  // "Delete all" on a distributor: removes every item whose stock came from them.
+  const handleDeleteDistributorStock = async (name) => {
+    try {
+      const { count } = await deleteDistributorProducts(name, catalogue);
+      setCatalogue((prev) => prev.filter((p) => assignDefaultDistributor(p) !== name));
+      setToastMessage({
+        type: "success",
+        title: "Deleted",
+        description: `${count} ${count === 1 ? "item" : "items"} from ${name} removed from the shop.`,
+      });
+    } catch (e) {
+      setToastMessage({
+        type: "error",
+        title: "Couldn't delete",
+        description: e.message || "Please try again.",
       });
     }
   };
@@ -1427,10 +1477,12 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       brand: item.brand || "Indian Brand",
       badge: "Verified",
       barcode: item.id || item.barcode || "",
-      img: item.img || VISUAL_IMAGE_PALETTE[4].url,
+      img: item.img || "",
+      imgSource: item.img ? item.imgSource || "openfoodfacts" : undefined,
+      offBarcode: item.img ? item.offBarcode : undefined,
       stock: 100,
     });
-    setPhoto4KSuggestions(item.photoSuggestions || get4KPhotoSuggestions(item.cat || "Snacks"));
+    setPhoto4KSuggestions(item.img && !isPlaceholderImage(item.img) ? [item.img] : []);
     setActiveTab("add-product");
     showToast(`Loaded "${item.name}" into Add Product form.`);
   };
@@ -1471,6 +1523,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       toastMessage={toastMessage}
       onDismissToast={() => setToastMessage(null)}
     >
+      <PhotoSearchStatus run={photoRun} onDismiss={() => setPhotoRun(null)} onRetry={retryPhotoSearch} darkMode={darkMode} />
+
       {/* KPI METRICS OVERVIEW STRIP (Inspired by Metis Bootstrap Admin) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div
@@ -1603,6 +1657,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           catalogue={catalogue}
           onUpsertDistributor={handleUpsertDistributor}
           onDeleteDistributor={handleDeleteDistributor}
+          onDeleteDistributorStock={handleDeleteDistributorStock}
           onViewDistributorStock={handleViewDistributorStock}
           darkMode={darkMode}
         />
@@ -1619,7 +1674,6 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           isPublishing={isPublishingProduct}
           quickTemplates={QUICK_TEMPLATES}
           categories={CATEGORIES}
-          visualPalette={VISUAL_IMAGE_PALETTE}
           distributors={distributors}
           onQuickAddDistributor={handleQuickAddDistributor}
           darkMode={darkMode}
@@ -1662,6 +1716,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           distributors={distributors}
           onQuickAddDistributor={handleQuickAddDistributor}
           onApplyImport={handleApplyCsvImport}
+          onStartPhotoSearch={startPhotoSearch}
           darkMode={darkMode}
         />
       )}

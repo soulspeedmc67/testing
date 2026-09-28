@@ -31,6 +31,7 @@ import { useStoreDetails } from "../../lib/storeStatus";
 import { watchProducts } from "../../lib/db";
 import { useAgeGate } from "../../context/AgeGateContext";
 import { isAgeRestricted, hasConfirmedAge } from "../../lib/ageGate";
+import ProductImage from "../../components/ProductImage";
 
 export default function ProductDetailPage({ initialProduct }) {
   const router = useRouter();
@@ -379,16 +380,16 @@ export default function ProductDetailPage({ initialProduct }) {
       <main className="max-w-md md:max-w-3xl mx-auto px-4 mt-3 space-y-3.5">
         {/* Product Image Stage */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200/90 shadow-2xs relative dark:bg-surface-raised dark:border-line/90">
-          <div className="relative w-full aspect-square max-h-72 flex items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-slate-50/70 to-white">
-            <motion.img
+          <div className="relative w-full aspect-square max-h-72 overflow-hidden rounded-2xl bg-white">
+            <motion.div
               key={activeVariant.id || product.id}
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.25 }}
-              src={product.img}
-              alt={product.name}
-              className="max-h-64 max-w-full object-contain drop-shadow-sm"
-            />
+              className="absolute inset-0"
+            >
+              <ProductImage src={product.img} name={product.name} size="full" fill loading="eager" letterClassName="text-7xl" />
+            </motion.div>
 
             {/* Out of Stock overlay */}
             {product.stock !== undefined && Number(product.stock) <= 0 && (

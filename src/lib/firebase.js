@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   initializeFirestore,
   getFirestore,
+  connectFirestoreEmulator,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
@@ -9,6 +10,7 @@ import { isNative, isIOS } from "./platform";
 import {
   initializeAuth,
   getAuth,
+  connectAuthEmulator,
   indexedDBLocalPersistence,
   browserLocalPersistence,
   inMemoryPersistence,
@@ -62,6 +64,11 @@ export function getFirebaseApp() {
  * since SDK v9.22 and is what web and Android keep — it is deliberately not
  * restated here, and the two settings cannot both be passed.
  */
+/* Local development against `npm run fb:emulate` (firebase.json ports):
+   set NEXT_PUBLIC_FIREBASE_EMULATORS=1. Never set for a real build, so the
+   live site and apps always talk to the real project. */
+const USE_EMULATORS = process.env.NEXT_PUBLIC_FIREBASE_EMULATORS === "1";
+
 export function getDb() {
   const app = getFirebaseApp();
   if (!app) return null;
@@ -80,6 +87,7 @@ export function getDb() {
       }
     }
     cachedDb = initializeFirestore(app, firestoreSettings);
+    if (USE_EMULATORS) connectFirestoreEmulator(cachedDb, "127.0.0.1", 8080);
   } catch (e) {
     /* initializeFirestore throws if Firestore was already started for this app
        (a hot reload, or an earlier getFirestore call). The existing instance is
@@ -113,6 +121,7 @@ export function getFirebaseAuth() {
       authOptions.popupRedirectResolver = browserPopupRedirectResolver;
     }
     cachedAuth = initializeAuth(app, authOptions);
+    if (USE_EMULATORS) connectAuthEmulator(cachedAuth, "http://127.0.0.1:9099", { disableWarnings: true });
   } catch (e) {
     try {
       cachedAuth = getAuth(app);
