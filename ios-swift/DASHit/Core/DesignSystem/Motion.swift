@@ -49,6 +49,26 @@ final class LaunchReveal {
     func markPlayed(_ key: String) { played.insert(key) }
 }
 
+/// Whether the shop can be seen yet. The customer app covers its first
+/// seconds with the splash (and, on the very first launch, the welcome
+/// sign-in), so entrance animations wait for this instead of playing unseen.
+final class AppReveal: ObservableObject {
+    static let shared = AppReveal()
+
+    /// Set by an app that covers its first frames and calls `reveal()` when
+    /// they clear. Apps that don't (the admin app) play entrances straight away.
+    var coversLaunch = false
+    @Published private(set) var isRevealed = false
+
+    private init() {}
+
+    var canPlay: Bool { isRevealed || !coversLaunch }
+
+    func reveal() {
+        if !isRevealed { isRevealed = true }
+    }
+}
+
 private struct SlideInFromLeading: ViewModifier {
     let index: Int
     let isShown: Bool
@@ -56,11 +76,11 @@ private struct SlideInFromLeading: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(isShown ? 1 : 0)
-            .offset(x: isShown ? 0 : -36)
-            .scaleEffect(isShown ? 1 : 0.9, anchor: .leading)
-            .blur(radius: isShown ? 0 : 3)
+            .offset(x: isShown ? 0 : -56)
+            .scaleEffect(isShown ? 1 : 0.86, anchor: .leading)
+            .blur(radius: isShown ? 0 : 4)
             .animation(
-                .spring(response: 0.55, dampingFraction: 0.82).delay(isShown ? 0.045 * Double(min(index, 10)) : 0),
+                .spring(response: 0.6, dampingFraction: 0.8).delay(isShown ? 0.055 * Double(min(index, 10)) : 0),
                 value: isShown
             )
     }
@@ -85,11 +105,13 @@ private struct LaunchRevealTrigger: ViewModifier {
     let isReady: Bool
     @Binding var isShown: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var app = AppReveal.shared
 
     func body(content: Content) -> some View {
         content
             .onAppear { playIfReady() }
             .onChange(of: isReady) { _, _ in playIfReady() }
+            .onChange(of: app.isRevealed) { _, _ in playIfReady() }
     }
 
     private func playIfReady() {
@@ -98,7 +120,8 @@ private struct LaunchRevealTrigger: ViewModifier {
             isShown = true
             return
         }
-        guard isReady else { return }
+        // Wait until there's something to show and the splash has cleared.
+        guard isReady, app.canPlay else { return }
         LaunchReveal.shared.markPlayed(key)
         // A beat after the layout lands, so the slide is seen rather than skipped.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {

@@ -21,6 +21,8 @@ struct DASHitApp: App {
     init() {
         FirebaseManager.shared.configure()
         OrderNotifications.showWhileOpen()
+        // The splash covers the first seconds: entrances wait for it to clear.
+        AppReveal.shared.coversLaunch = true
         _isWelcomeAuthVisible = State(
             initialValue: !UserDefaults.standard.bool(forKey: Self.welcomeSeenKey) && !AuthService.shared.isAuthenticated
         )
@@ -42,6 +44,7 @@ struct DASHitApp: App {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                             isWelcomeAuthVisible = false
                         }
+                        AppReveal.shared.reveal()
                         StartupLocation.shared.askIfNeeded()
                     }
                     .transition(.move(edge: .bottom))
@@ -51,6 +54,8 @@ struct DASHitApp: App {
                     SplashView(
                         onReveal: {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { isAppSettled = true }
+                            // The welcome sign-in still covers the shop on a first launch.
+                            if !isWelcomeAuthVisible { AppReveal.shared.reveal() }
                         },
                         onFinish: {
                             isSplashVisible = false

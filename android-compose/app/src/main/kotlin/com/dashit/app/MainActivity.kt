@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dashit.app.ui.SplashOverlay
+import androidx.compose.runtime.LaunchedEffect
+import com.dashit.app.core.design.AppReveal
 import com.dashit.app.ui.auth.AuthScreen
 import com.dashit.app.core.design.DashitTheme
 import com.dashit.app.data.OrderNotifications
@@ -65,10 +67,17 @@ class MainActivity : ComponentActivity() {
         val prefs = getSharedPreferences("dashit_prefs", MODE_PRIVATE)
         val showWelcomeAtStart = !prefs.getBoolean(WELCOME_SEEN_KEY, false) && AuthRepository.user.value == null
 
+        // The splash covers the first seconds: entrances wait for it to clear.
+        AppReveal.coversLaunch = true
+
         setContent {
             DashitTheme {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 var showWelcomeAuth by rememberSaveable { mutableStateOf(showWelcomeAtStart) }
+                // Also covers a restore where neither is showing any more.
+                LaunchedEffect(showSplash, showWelcomeAuth) {
+                    if (!showSplash && !showWelcomeAuth) AppReveal.reveal()
+                }
                 // The app starts a touch zoomed in behind the splash and settles as it clears.
                 var isSettled by rememberSaveable { mutableStateOf(false) }
                 val appScale by animateFloatAsState(
@@ -92,11 +101,16 @@ class MainActivity : ComponentActivity() {
                         AuthScreen(isWelcome = true, onClose = {
                             prefs.edit().putBoolean(WELCOME_SEEN_KEY, true).apply()
                             showWelcomeAuth = false
+                            AppReveal.reveal()
                         })
                     }
                     if (showSplash) {
                         SplashOverlay(
-                            onReveal = { isSettled = true },
+                            onReveal = {
+                                isSettled = true
+                                // The welcome sign-in still covers the shop on a first launch.
+                                if (!showWelcomeAuth) AppReveal.reveal()
+                            },
                             onFinished = { showSplash = false }
                         )
                     }
