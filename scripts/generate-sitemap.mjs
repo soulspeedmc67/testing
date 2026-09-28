@@ -1,11 +1,6 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { ALL_PRODUCTS } from "../src/data/products.js";
-import { isAgeRestricted } from "../src/lib/ageGate.js";
-
-// Tobacco pages are noindex and must not be advertised (COTPA 2003 §5).
-const INDEXABLE_PRODUCTS = ALL_PRODUCTS.filter((p) => !isAgeRestricted(p));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,14 +14,9 @@ const STATIC_ROUTES = [
     changefreq: "daily",
   },
   {
-    path: "/shop/",
-    priority: "0.9",
-    changefreq: "daily",
-  },
-  {
-    path: "/categories/",
-    priority: "0.8",
-    changefreq: "weekly",
+    path: "/help/",
+    priority: "0.6",
+    changefreq: "monthly",
   },
   {
     path: "/privacy/",
@@ -53,7 +43,7 @@ function generateSitemapXml() {
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 `;
 
-  // 1. Static Pages
+  // The pages the website still has
   for (const route of STATIC_ROUTES) {
     const url = `${BASE_URL}${route.path}`;
     xml += `  <url>
@@ -65,28 +55,7 @@ function generateSitemapXml() {
 `;
   }
 
-  // 2. Product Pages
-  for (const product of INDEXABLE_PRODUCTS) {
-    const productUrl = `${BASE_URL}/product/${product.id}/`;
-    const escapedName = (product.name || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const escapedImg = (product.img || "").replace(/&/g, "&amp;");
-
-    xml += `  <url>
-    <loc>${productUrl}</loc>
-    <lastmod>${currentDate}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.8</priority>
-    ${
-      escapedImg
-        ? `<image:image>
-      <image:loc>${escapedImg}</image:loc>
-      <image:title>${escapedName}</image:title>
-    </image:image>`
-        : ""
-    }
-  </url>
-`;
-  }
+  // No product pages: ordering moved to the apps, and the web shop is gone.
 
   xml += `</urlset>\n`;
   return xml;
@@ -96,4 +65,4 @@ const sitemapContent = generateSitemapXml();
 const targetPath = path.resolve(__dirname, "../public/sitemap.xml");
 
 fs.writeFileSync(targetPath, sitemapContent, "utf8");
-console.log(`[SEO] Sitemap successfully written to ${targetPath} (${INDEXABLE_PRODUCTS.length + STATIC_ROUTES.length} URLs indexed)`);
+console.log(`[SEO] Sitemap successfully written to ${targetPath} (${STATIC_ROUTES.length} URLs indexed)`);

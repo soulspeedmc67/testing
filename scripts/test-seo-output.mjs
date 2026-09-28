@@ -34,26 +34,14 @@ assert(homeHtml.includes('"@type":"Organization"'), "Home Organization JSON-LD p
 assert(homeHtml.includes('"@type":"GroceryStore"'), "Home GroceryStore JSON-LD present");
 assert(homeHtml.includes('<link rel="manifest" href="/site.webmanifest"/>'), "Home manifest linked");
 
-// 2. Shop Page SEO
-const shopHtml = fs.readFileSync(path.join(OUT, "shop/index.html"), "utf8");
-assert(shopHtml.includes("<title>Online Grocery Store Anantnag — #1 Fastest Grocery Delivery"), "Shop title optimized");
-assert(shopHtml.includes('<link rel="canonical" href="https://dashit.co.in/shop/"/>'), "Shop canonical link present");
-assert(shopHtml.includes('"@type":"BreadcrumbList"'), "Shop BreadcrumbList JSON-LD present");
+// 2. The web shop is gone (ordering is in the apps): no shop pages are built
+for (const page of ["shop", "categories", "search", "cart", "checkout", "orders", "account", "product"]) {
+  assert(!fs.existsSync(path.join(OUT, page)), `No /${page}/ page in the build`);
+}
 
-// 3. Categories Page SEO
-const catHtml = fs.readFileSync(path.join(OUT, "categories/index.html"), "utf8");
-assert(catHtml.includes("— Grocery Categories"), "Categories title present");
-assert(catHtml.includes('<link rel="canonical" href="https://dashit.co.in/categories/"/>'), "Categories canonical link present");
-assert(catHtml.includes('"@type":"BreadcrumbList"'), "Categories BreadcrumbList JSON-LD present");
-
-// 4. Product SSG Page SEO
-const p1Html = fs.readFileSync(path.join(OUT, "product/1/index.html"), "utf8");
-assert(p1Html.includes("<title>Amul Gold Full Cream Milk — Buy Online in Anantnag"), "Product 1 title present");
-assert(p1Html.includes('<link rel="canonical" href="https://dashit.co.in/product/1/"/>'), "Product 1 canonical link present");
-assert(p1Html.includes('"@type":"Product"'), "Product 1 Product JSON-LD present");
-assert(p1Html.includes('"price":36') && p1Html.includes('"priceCurrency":"INR"'), "Product 1 price and currency in JSON-LD");
-assert(p1Html.includes('"availability":"https://schema.org/InStock"'), "Product 1 InStock schema");
-assert(p1Html.includes('property="og:type" content="product"'), "Product 1 og:type is product");
+// 3. Help page
+const helpHtml = fs.readFileSync(path.join(OUT, "help/index.html"), "utf8");
+assert(helpHtml.includes("<title>"), "Help page has a title");
 
 // 5. Legal Pages SEO
 const privHtml = fs.readFileSync(path.join(OUT, "privacy/index.html"), "utf8");
@@ -63,25 +51,10 @@ assert(termsHtml.includes('<link rel="canonical" href="https://dashit.co.in/term
 const delHtml = fs.readFileSync(path.join(OUT, "delete-account/index.html"), "utf8");
 assert(delHtml.includes('<link rel="canonical" href="https://dashit.co.in/delete-account/"/>'), "Delete account canonical link present");
 
-// 6. Robots Safeguards on Internal/Private Pages
-const searchHtml = fs.readFileSync(path.join(OUT, "search/index.html"), "utf8");
-assert(searchHtml.includes('content="noindex, follow"'), "Search page has noindex, follow");
-
-const cartHtml = fs.readFileSync(path.join(OUT, "cart/index.html"), "utf8");
-assert(cartHtml.includes('content="noindex, nofollow, noarchive"'), "Cart page has noindex, nofollow");
-
-const checkoutHtml = fs.readFileSync(path.join(OUT, "checkout/index.html"), "utf8");
-assert(checkoutHtml.includes('content="noindex, nofollow, noarchive"'), "Checkout page has noindex, nofollow");
-
-const ordersHtml = fs.readFileSync(path.join(OUT, "orders/index.html"), "utf8");
-assert(ordersHtml.includes('content="noindex, nofollow, noarchive"'), "Orders page has noindex, nofollow");
-
-const accountHtml = fs.readFileSync(path.join(OUT, "account/index.html"), "utf8");
-assert(accountHtml.includes('content="noindex, nofollow, noarchive"'), "Account page has noindex, nofollow");
-
 // 7. Sitemap & Robots
 const sitemap = fs.readFileSync(path.join(OUT, "sitemap.xml"), "utf8");
-assert(sitemap.includes("https://dashit.co.in/product/1/") && sitemap.includes("<image:image>"), "Sitemap includes products and images");
+assert(sitemap.includes("<loc>https://dashit.co.in/</loc>") && sitemap.includes("https://dashit.co.in/help/"), "Sitemap lists the home and help pages");
+assert(!sitemap.includes("/product/") && !sitemap.includes("/shop/"), "Sitemap has no shop or product pages");
 const robots = fs.readFileSync(path.join(OUT, "robots.txt"), "utf8");
 assert(robots.includes("Sitemap: https://dashit.co.in/sitemap.xml"), "Robots.txt points to sitemap");
 

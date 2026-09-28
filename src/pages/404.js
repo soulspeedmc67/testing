@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import SEO from "../components/SEO";
 import {
-  Search,
-  ShoppingBag,
+  Download,
   Home,
   MapPin,
   Heart,
@@ -13,30 +11,11 @@ import {
 } from "lucide-react";
 
 export default function Custom404() {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
-
-  const QUICK_CATEGORIES = [
-    { name: "Dairy & Milk", cat: "Dairy", emoji: "🥛" },
-    { name: "Kashmiri Bakery", cat: "Bakery", emoji: "🥖" },
-    { name: "Fresh Vegetables", cat: "Vegetables", emoji: "🥬" },
-    { name: "Munchies & Snacks", cat: "Snacks", emoji: "🍿" },
-    { name: "Cold Drinks", cat: "Drinks & Juices", emoji: "🥤" },
-    { name: "Cooking Staples", cat: "Atta, Rice & Dal", emoji: "🌾" },
-  ];
-
   return (
     <div className="min-h-screen bg-[#FFFDF9] text-slate-900 font-sans selection:bg-[#FF5B00] selection:text-white flex flex-col justify-between overflow-x-hidden dark:bg-[#0B0E14] dark:text-slate-100 transition-colors">
       <SEO
         title="404 — Page Not Found | DASHIT Anantnag"
-        description="The grocery item or page you requested could not be located on DASHIT. Browse fresh groceries and Kashmiri essentials with fastest delivery in Anantnag."
+        description="This page could not be found on DASHIT. Order fresh groceries and Kashmiri essentials in Anantnag from the DASHit app."
         noindex="follow"
       >
         <link
@@ -69,11 +48,8 @@ export default function Custom404() {
           </Link>
 
           <nav className="hidden sm:flex items-center space-x-6 text-xs font-bold text-slate-300 dark:text-slate-400">
-            <Link href="/shop" className="hover:text-white transition-colors">
-              Storefront
-            </Link>
-            <Link href="/categories" className="hover:text-white transition-colors">
-              Categories
+            <Link href="/help" className="hover:text-white transition-colors">
+              Help
             </Link>
             <div className="flex items-center space-x-1.5 text-slate-300 bg-white/5 border border-white/10 px-3 py-1 rounded-full">
               <MapPin className="w-3 h-3 text-[#FF5B00]" />
@@ -82,11 +58,11 @@ export default function Custom404() {
           </nav>
 
           <Link
-            href="/shop"
+            href="/#get-the-app"
             className="bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold px-3.5 sm:px-5 py-2 rounded-xl sm:rounded-full shadow-md shadow-[#FF5B00]/30 transition-all hover:scale-105 active:scale-95 flex items-center space-x-1.5"
           >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Open Shop</span>
+            <Download className="w-3.5 h-3.5" />
+            <span>Get the app</span>
           </Link>
         </header>
       </div>
@@ -140,58 +116,18 @@ export default function Custom404() {
             Oops! This page took a <span className="text-[#FF5B00]">wrong turn</span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed max-w-md mx-auto">
-            We searched from KP Road to Khanabal, but couldn&apos;t find this address. Don&apos;t worry — our delivery carts are stocked with fresh daily essentials ready for dispatch in Anantnag.
+            We searched from KP Road to Khanabal, but couldn&apos;t find this address. Ordering now happens in the DASHit app for iPhone and Android.
           </p>
-        </div>
-
-        {/* IN-PAGE SEARCH FORM */}
-        <form
-          onSubmit={handleSearch}
-          className="mt-6 w-full max-w-md bg-white dark:bg-[#12161F] border border-slate-200/90 dark:border-slate-800 rounded-2xl p-1.5 shadow-lg shadow-slate-200/40 dark:shadow-none flex items-center space-x-2 transition-all focus-within:border-[#FF5B00] focus-within:ring-2 focus-within:ring-[#FF5B00]/20"
-        >
-          <div className="pl-3 text-slate-400 dark:text-slate-500">
-            <Search className="w-4 h-4" />
-          </div>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search milk, fresh lavas, bakery, snacks..."
-            className="w-full bg-transparent text-xs sm:text-sm font-semibold text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none py-2"
-          />
-          <button
-            type="submit"
-            className="bg-[#FF5B00] hover:bg-[#E04E00] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors shrink-0"
-          >
-            Search
-          </button>
-        </form>
-
-        {/* POPULAR AISLES CHIPS */}
-        <div className="mt-5 sm:mt-6 flex flex-wrap items-center justify-center gap-2 max-w-lg">
-          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mr-1">
-            Popular:
-          </span>
-          {QUICK_CATEGORIES.map((item) => (
-            <Link
-              key={item.name}
-              href={`/shop?cat=${encodeURIComponent(item.cat)}`}
-              className="inline-flex items-center space-x-1.5 bg-white dark:bg-[#12161F] hover:bg-orange-50/70 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 hover:border-[#FF5B00]/40 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-[#FF5B00] transition-all shadow-xs active:scale-95"
-            >
-              <span>{item.emoji}</span>
-              <span>{item.name}</span>
-            </Link>
-          ))}
         </div>
 
         {/* PRIMARY CALL TO ACTION BUTTONS */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-xs sm:max-w-md">
           <Link
-            href="/shop"
+            href="/#get-the-app"
             className="w-full sm:w-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-full shadow-lg shadow-[#FF5B00]/30 hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 active:scale-95"
           >
-            <ShoppingBag className="w-4 h-4" />
-            <span>Go to Storefront</span>
+            <Download className="w-4 h-4" />
+            <span>Get the app</span>
           </Link>
           <Link
             href="/"

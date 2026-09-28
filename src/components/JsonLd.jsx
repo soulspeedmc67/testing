@@ -63,7 +63,6 @@ export function OrganizationJsonLd() {
     },
     contactPoint: {
       "@type": "ContactPoint",
-      telephone: "+91-6006990032",
       contactType: "customer service",
       email: "support@dashit.co.in",
       areaServed: "IN-JK",
@@ -85,7 +84,6 @@ export function GroceryStoreJsonLd() {
     name: "DASHIT #1 Grocery Store",
     image: `${SITE_URL}/art/landing-hero-groceries.jpg`,
     url: SITE_URL,
-    telephone: "+91-6006990032",
     priceRange: "₹",
     currenciesAccepted: "INR",
     paymentAccepted: "Cash, UPI, Credit Card, Debit Card, Net Banking",

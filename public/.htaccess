@@ -60,6 +60,10 @@ Options -Indexes
   RewriteCond %{HTTPS} !=on
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
+  # The shop moved to the apps. Old shop links (bookmarks, search results,
+  # shared product links) go to the home page, which points to the apps.
+  RewriteRule ^(shop|search|categories|product|cart|checkout|offers|orders|order-again|wishlist|tobacco|account|add-address|confirm-location|login|hero-3d-demo)(/.*)?$ / [R=302,L]
+
   # Serve existing files or directories directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
@@ -73,11 +77,6 @@ Options -Indexes
   # Clean URLs: try path/index.html
   RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
   RewriteRule ^(.*)/?$ /$1/index.html [L]
-
-  # Dynamic product fallback for non-prerendered custom catalog IDs
-  RewriteCond %{REQUEST_URI} ^/product/([^/]+)/?$
-  RewriteCond %{DOCUMENT_ROOT}/product/%1/index.html !-f
-  RewriteRule ^product/([^/]+)/?$ /product/[id]/index.html [L]
 
   # Clean URLs: try path.html
   RewriteCond %{DOCUMENT_ROOT}/$1.html -f
