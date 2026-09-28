@@ -1,8 +1,9 @@
 name: Build iOS IPA (GitHub Actions Cloud Mac)
 
+# The old Capacitor (web-wrapper) iPhone app. It shares the App Store ID
+# com.dashit.app with the native Swift app, so it only runs when started by
+# hand: a push must never put the old app on TestFlight.
 on:
-  push:
-    branches: [ main, native-android-compose, native-swift-ios ]
   workflow_dispatch:
 
 jobs:
@@ -48,7 +49,6 @@ jobs:
           NEXT_PUBLIC_AUTH_MODE: otp
           NEXT_PUBLIC_OTP_FIXED: "0"
           NEXT_PUBLIC_TRUECALLER_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_TRUECALLER_CLIENT_ID || 'yxekbcxiwocqnjm3ocnd2uk5kgqrzfooz1k635ezzrs' }}
-          NEXT_PUBLIC_TOBACCO_IOS: "on"
 
       - name: Ensure Web Assets for Capacitor
         run: |
@@ -137,14 +137,14 @@ jobs:
               -archivePath build/App.xcarchive \
               -skipMacroValidation \
               -skipPackagePluginValidation \
-              CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 200)) \
+              CURRENT_PROJECT_VERSION=$((GITHUB_RUN_NUMBER + 300)) \
               CODE_SIGN_STYLE=Manual \
               CODE_SIGN_IDENTITY="Apple Distribution" \
               PROVISIONING_PROFILE_SPECIFIER="DASHit AppStore Profile" \
               DEVELOPMENT_TEAM="8V873ZU49N"
 
             APP_PLIST="build/App.xcarchive/Products/Applications/App.app/Info.plist"
-            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $((GITHUB_RUN_NUMBER + 200))" "$APP_PLIST" 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $((GITHUB_RUN_NUMBER + 300))" "$APP_PLIST" 2>/dev/null || true
             /usr/libexec/PlistBuddy -c "Set :UIRequiresFullScreen true" "$APP_PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" "$APP_PLIST" || true
 
             xcodebuild -exportArchive \
