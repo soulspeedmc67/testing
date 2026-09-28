@@ -17,6 +17,7 @@ import {
   arrayUnion,
   writeBatch,
   increment,
+  Timestamp,
 } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -121,13 +122,25 @@ export function groupOrderItemsByDistributor(items = [], catalogue = []) {
     .sort((a, b) => rank(a.distributor) - rank(b.distributor) || a.distributor.localeCompare(b.distributor));
 }
 
-// Two-tier Catalogue Cache (Memory 5-min TTL + Persistent LocalStorage 30-min TTL)
-let memoryProductsCache = null;
-let memoryProductsCacheTime = 0;
-const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const LOCAL_CATALOGUE_CACHE_KEY = "dashit_cached_products";
-const LOCAL_CATALOGUE_TIME_KEY = "dashit_products_cached_at";
-const LOCAL_CATALOGUE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+// ---------------------------------------------------------------------------
+// The catalogue, read from Firestore as little as possible.
+//
+// Firestore bills every document read and the free plan allows 50,000 a day.
+// Reading all ~1,300 products on every visit used that up within hours. So
+// this browser keeps the catalogue (localStorage) along with the time of the
+// newest change it has seen, and a visit only asks for products changed since
+// then: usually none, or a handful. Every product write sets `updatedAt`, and
+// removals mark `active: false` instead of deleting, so a change-only query
+// sees them. The whole list is read only on a first visit, once a week to
+// catch anything missed, and never for search-engine bots.
+// ---------------------------------------------------------------------------
+
+const CATALOGUE_KEY = "dashit_catalogue_v2";
+const LEGACY_CATALOGUE_KEYS = ["dashit_cached_products", "dashit_products_cached_at"];
+const FULL_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+
+let memoryProductsCache = null; // enriched, shown products
+let catalogueState = null; // { items: { [id]: product }, syncedAt: ms, fullAt: ms }
 
 function enrichProducts(rawList = []) {
   let merged = rawList;
@@ -150,86 +163,136 @@ function enrichProducts(rawList = []) {
   }));
 }
 
+/** Search engines and link previews get the static pages, never Firestore. */
+function isLikelyBot() {
+  if (typeof navigator === "undefined") return false;
+  return /bot|crawl|spider|slurp|mediapartners|facebookexternalhit|whatsapp|telegram|lighthouse|pagespeed|headless/i.test(
+    navigator.userAgent || ""
+  );
+}
+
+function millisOf(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (typeof value.seconds === "number") return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6);
+  const n = typeof value === "number" ? value : Date.parse(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function readCatalogue() {
+  if (catalogueState) return catalogueState;
+  if (typeof window === "undefined") return null;
+  try {
+    LEGACY_CATALOGUE_KEYS.forEach((k) => localStorage.removeItem(k));
+    const parsed = JSON.parse(localStorage.getItem(CATALOGUE_KEY) || "null");
+    if (parsed && parsed.items && typeof parsed.items === "object") {
+      catalogueState = parsed;
+      return parsed;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function saveCatalogue(state) {
+  catalogueState = state;
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CATALOGUE_KEY, JSON.stringify(state));
+  } catch (e) {
+    // Too big for localStorage: kept in memory for this visit only.
+  }
+}
+
+/** Recent enough to only ask for changes since `syncedAt`. */
+function canFetchChangesOnly(state) {
+  return (
+    !!state &&
+    state.syncedAt > 0 &&
+    Object.keys(state.items).length > 0 &&
+    Date.now() - (state.fullAt || 0) < FULL_REFRESH_MS
+  );
+}
+
+function shownProducts(state) {
+  return Object.values(state?.items || {}).filter((p) => p.active !== false);
+}
+
+/** A catalogue built from a full read of the active products. */
+function fullState(docs) {
+  const items = {};
+  let newest = 0;
+  docs.forEach((d) => {
+    const data = { id: d.id, ...d.data() };
+    items[d.id] = data;
+    newest = Math.max(newest, millisOf(data.updatedAt));
+  });
+  // Nothing has ever been edited: start from "now", less a margin for this
+  // device's clock being ahead of the server's.
+  const syncedAt = newest > 0 ? newest : Date.now() - 10 * 60 * 1000;
+  return { items, syncedAt, fullAt: Date.now() };
+}
+
+/** Folds changed products into the catalogue; removed ones drop out. */
+function withChanges(state, changes) {
+  const items = { ...state.items };
+  let syncedAt = state.syncedAt || 0;
+  changes.forEach(({ type, doc: d }) => {
+    if (type === "removed") {
+      delete items[d.id];
+      return;
+    }
+    const data = { id: d.id, ...d.data() };
+    if (data.active === false) delete items[d.id];
+    else items[d.id] = data;
+    syncedAt = Math.max(syncedAt, millisOf(data.updatedAt));
+  });
+  return { ...state, items, syncedAt };
+}
+
 export function invalidateProductCache() {
+  // The stored catalogue stays: the change arrives through the live listener.
   memoryProductsCache = null;
-  memoryProductsCacheTime = 0;
   if (typeof window !== "undefined") {
-    try {
-      localStorage.removeItem(LOCAL_CATALOGUE_CACHE_KEY);
-      localStorage.removeItem(LOCAL_CATALOGUE_TIME_KEY);
-    } catch (e) {}
     window.dispatchEvent(new CustomEvent("dashit_products_updated"));
   }
 }
 
 export async function fetchProducts(forceRefresh = false) {
-  const now = Date.now();
-  if (!forceRefresh && memoryProductsCache && (now - memoryProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
-    return memoryProductsCache;
+  if (!forceRefresh && memoryProductsCache && sharedProductUnsub) {
+    return memoryProductsCache; // the live listener keeps it current
   }
-
-  // Check persistent LocalStorage cache before touching network
-  if (!forceRefresh && typeof window !== "undefined") {
-    try {
-      const cachedRaw = localStorage.getItem(LOCAL_CATALOGUE_CACHE_KEY);
-      const cachedTime = Number(localStorage.getItem(LOCAL_CATALOGUE_TIME_KEY)) || 0;
-      if (cachedRaw && (now - cachedTime < LOCAL_CATALOGUE_TTL_MS)) {
-        const parsed = JSON.parse(cachedRaw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Saved before the example distributors were removed: tidy on read.
-          parsed.forEach((p) => { p.distributor = assignDefaultDistributor(p); });
-          memoryProductsCache = parsed;
-          memoryProductsCacheTime = cachedTime;
-          return parsed;
-        }
-      }
-    } catch (e) {}
-  }
-
-  let firestoreList = [];
+  let state = readCatalogue();
   const db = getDb();
-  if (db) {
+  if (db && !isLikelyBot()) {
     try {
-      const snap = await getDocs(
-        query(collection(db, "products"), where("active", "==", true))
-      );
-      firestoreList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      if (canFetchChangesOnly(state)) {
+        const snap = await getDocs(
+          query(collection(db, "products"), where("updatedAt", ">", Timestamp.fromMillis(state.syncedAt)))
+        );
+        state = withChanges(state, snap.docs.map((d) => ({ type: "modified", doc: d })));
+      } else {
+        const snap = await getDocs(query(collection(db, "products"), where("active", "==", true)));
+        state = fullState(snap.docs);
+      }
+      saveCatalogue(state);
     } catch (e) {
       console.warn("fetchProducts Firestore warning:", e?.message);
     }
   }
-
-  const enriched = enrichProducts(firestoreList);
-  if (enriched.length > 0) {
-    memoryProductsCache = enriched;
-    memoryProductsCacheTime = now;
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(LOCAL_CATALOGUE_CACHE_KEY, JSON.stringify(enriched));
-        localStorage.setItem(LOCAL_CATALOGUE_TIME_KEY, String(now));
-      } catch (e) {}
-    }
-  }
+  const enriched = enrichProducts(shownProducts(state));
+  if (enriched.length > 0) memoryProductsCache = enriched;
   return enriched;
 }
 
-// Single shared Firestore onSnapshot listener for watchProducts
+// One shared Firestore listener for every component that watches the catalogue
 const productSubscribers = new Set();
 let sharedProductUnsub = null;
-let sharedCurrentLive = [];
 let sharedCleanupTimer = null;
+let localListenersAdded = false;
 
-function broadcastProducts(list) {
-  sharedCurrentLive = list;
-  const enriched = enrichProducts(list);
+function broadcastProducts() {
+  const enriched = enrichProducts(shownProducts(readCatalogue()));
   memoryProductsCache = enriched;
-  memoryProductsCacheTime = Date.now();
-  if (typeof window !== "undefined" && enriched.length > 0) {
-    try {
-      localStorage.setItem(LOCAL_CATALOGUE_CACHE_KEY, JSON.stringify(enriched));
-      localStorage.setItem(LOCAL_CATALOGUE_TIME_KEY, String(Date.now()));
-    } catch (e) {}
-  }
   productSubscribers.forEach((cb) => {
     try { cb(enriched); } catch (e) {}
   });
@@ -243,30 +306,39 @@ function startSharedProductWatcher() {
   if (sharedProductUnsub) return;
 
   const db = getDb();
-  if (db) {
+  if (db && !isLikelyBot()) {
     try {
-      sharedProductUnsub = onSnapshot(
-        query(collection(db, "products"), where("active", "==", true)),
-        (snap) => {
-          const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-          broadcastProducts(docs);
-        },
-        (err) => {
-          console.warn("watchProducts snapshot warning:", err?.message);
-          if (sharedCurrentLive.length > 0) {
-            broadcastProducts(sharedCurrentLive);
-          }
-        }
-      );
+      const stored = readCatalogue();
+      if (canFetchChangesOnly(stored)) {
+        // Only products changed since the last visit, then each change live.
+        sharedProductUnsub = onSnapshot(
+          query(collection(db, "products"), where("updatedAt", ">", Timestamp.fromMillis(stored.syncedAt))),
+          (snap) => {
+            saveCatalogue(withChanges(readCatalogue() || stored, snap.docChanges()));
+            broadcastProducts();
+          },
+          (err) => console.warn("watchProducts snapshot warning:", err?.message)
+        );
+      } else {
+        // First visit (or a week on): the whole list once, then changes.
+        sharedProductUnsub = onSnapshot(
+          query(collection(db, "products"), where("active", "==", true)),
+          (snap) => {
+            saveCatalogue(fullState(snap.docs));
+            broadcastProducts();
+          },
+          (err) => console.warn("watchProducts snapshot warning:", err?.message)
+        );
+      }
     } catch (e) {
       console.warn("watchProducts init warning:", e?.message);
     }
   }
 
-  if (typeof window !== "undefined") {
-    const localHandler = () => broadcastProducts(sharedCurrentLive);
-    window.addEventListener("dashit_products_updated", localHandler);
-    window.addEventListener("storage", localHandler);
+  if (typeof window !== "undefined" && !localListenersAdded) {
+    localListenersAdded = true;
+    window.addEventListener("dashit_products_updated", broadcastProducts);
+    window.addEventListener("storage", broadcastProducts);
   }
 }
 
@@ -274,35 +346,11 @@ function startSharedProductWatcher() {
 export function watchProducts(callback) {
   productSubscribers.add(callback);
 
-  // Immediate emit from memory cache or current live data
-  if (sharedCurrentLive.length > 0) {
-    callback(enrichProducts(sharedCurrentLive));
-  } else if (memoryProductsCache && memoryProductsCache.length > 0) {
-    callback(memoryProductsCache);
-  } else {
-    let immediateLoaded = false;
-    if (typeof window !== "undefined") {
-      try {
-        const cachedRaw = localStorage.getItem(LOCAL_CATALOGUE_CACHE_KEY);
-        if (cachedRaw) {
-          const parsed = JSON.parse(cachedRaw);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            memoryProductsCache = parsed;
-            memoryProductsCacheTime = Number(localStorage.getItem(LOCAL_CATALOGUE_TIME_KEY)) || Date.now();
-            callback(parsed);
-            immediateLoaded = true;
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (!immediateLoaded) {
-      fetchProducts().then((p) => {
-        if (productSubscribers.has(callback) && p?.length) {
-          callback(p);
-        }
-      });
-    }
+  // What this browser already has, straight away.
+  const stored = readCatalogue();
+  const immediate = memoryProductsCache || (stored ? enrichProducts(shownProducts(stored)) : null);
+  if (immediate && immediate.length > 0) {
+    callback(immediate);
   }
 
   startSharedProductWatcher();
@@ -386,9 +434,13 @@ export async function deleteProduct(productId) {
     return;
   }
   try {
-    // Soft delete then hard delete to ensure real-time query listeners and persistent index reflect removal
-    await setDoc(doc(db, "products", targetId), { active: false, deletedAt: serverTimestamp() }, { merge: true });
-    await deleteDoc(doc(db, "products", targetId));
+    // Marked removed rather than erased: shops that only fetch what changed
+    // since their last visit (see watchProducts) still learn it's gone.
+    await setDoc(
+      doc(db, "products", targetId),
+      { active: false, deletedAt: serverTimestamp(), updatedAt: serverTimestamp() },
+      { merge: true }
+    );
   } catch (e) {
     console.warn("deleteProduct Firestore warning:", e?.message);
   }
@@ -523,7 +575,14 @@ export async function deleteDistributorProducts(distributorName, catalogue = [])
   if (!db) return { success: true, count: ids.length };
   for (let i = 0; i < ids.length; i += 400) {
     const batch = writeBatch(db);
-    ids.slice(i, i + 400).forEach((id) => batch.delete(doc(db, "products", id)));
+    // Marked removed, not erased, so shops that only fetch changes see it.
+    ids.slice(i, i + 400).forEach((id) =>
+      batch.set(
+        doc(db, "products", id),
+        { active: false, deletedAt: serverTimestamp(), updatedAt: serverTimestamp() },
+        { merge: true }
+      )
+    );
     await batch.commit();
   }
   return { success: true, count: ids.length };

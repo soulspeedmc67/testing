@@ -91,6 +91,16 @@ public struct Product: Codable, Identifiable, Hashable {
         self.distributor = distributor
     }
     
+    /// The same product filed under `distributor`.
+    public func withDistributor(_ distributor: String?) -> Product {
+        Product(
+            id: id, name: name, unit: unit, price: price, originalPrice: originalPrice,
+            rating: rating, ratingCount: ratingCount, time: time, options: options, badge: badge,
+            img: img, cat: cat, variants: variants, ageRestricted: ageRestricted, minAge: minAge,
+            inStock: inStock, nutrition: nutrition, stock: stock, distributor: distributor
+        )
+    }
+
     /// Out of stock when the admin marks it so or the stock count hits zero.
     public var isAvailable: Bool { inStock != false && (stock ?? 1) > 0 }
     
