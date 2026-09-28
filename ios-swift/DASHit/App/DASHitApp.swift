@@ -20,6 +20,7 @@ struct DASHitApp: App {
     
     init() {
         FirebaseManager.shared.configure()
+        OrderNotifications.showWhileOpen()
         _isWelcomeAuthVisible = State(
             initialValue: !UserDefaults.standard.bool(forKey: Self.welcomeSeenKey) && !AuthService.shared.isAuthenticated
         )
@@ -41,6 +42,7 @@ struct DASHitApp: App {
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                             isWelcomeAuthVisible = false
                         }
+                        StartupLocation.shared.askIfNeeded()
                     }
                     .transition(.move(edge: .bottom))
                     .zIndex(0.5)
@@ -50,7 +52,13 @@ struct DASHitApp: App {
                         onReveal: {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { isAppSettled = true }
                         },
-                        onFinish: { isSplashVisible = false }
+                        onFinish: {
+                            isSplashVisible = false
+                            // With the welcome screen up, it asks once that closes.
+                            if !isWelcomeAuthVisible {
+                                StartupLocation.shared.askIfNeeded()
+                            }
+                        }
                     )
                     .zIndex(1)
                 }

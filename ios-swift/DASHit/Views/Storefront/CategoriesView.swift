@@ -21,7 +21,7 @@ struct CategoriesView: View {
 
     private var products: [Product] {
         guard let name = selectedTile?.name else { return [] }
-        return vm.products.filter { $0.cat.caseInsensitiveCompare(name) == .orderedSame }
+        return vm.products(inCategory: name)
     }
 
     var body: some View {

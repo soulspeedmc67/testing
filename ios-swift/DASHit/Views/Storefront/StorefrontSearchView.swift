@@ -115,7 +115,7 @@ struct StorefrontSearchView: View {
                 }
             }
 
-            let popular = ProductSearch.popular(in: vm.products)
+            let popular = vm.popularProducts
             if !popular.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     sectionTitle("Popular right now")
@@ -132,7 +132,7 @@ struct StorefrontSearchView: View {
     // MARK: - While typing
 
     private var suggestions: some View {
-        let matches = ProductSearch.results(for: query, in: vm.products)
+        let matches = ProductSearch.results(for: query, in: vm.searchEntries)
         let categories = ProductSearch.categories(for: query, in: vm.categories.map(\.name))
 
         return VStack(alignment: .leading, spacing: 4) {
@@ -178,7 +178,7 @@ struct StorefrontSearchView: View {
     @ViewBuilder
     private var results: some View {
         let term = submitted ?? trimmedQuery
-        let matches = ProductSearch.results(for: term, in: vm.products)
+        let matches = ProductSearch.results(for: term, in: vm.searchEntries)
 
         if matches.isEmpty {
             VStack(alignment: .leading, spacing: 28) {
@@ -197,7 +197,7 @@ struct StorefrontSearchView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 36)
 
-                let popular = ProductSearch.popular(in: vm.products)
+                let popular = vm.popularProducts
                 if !popular.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         sectionTitle("Popular right now")
@@ -362,7 +362,7 @@ struct StorefrontSearchView: View {
         guard !clean.isEmpty else { return }
         HapticsManager.shared.light()
         // Only searches that found something are worth offering again.
-        if !ProductSearch.results(for: clean, in: vm.products).isEmpty {
+        if !ProductSearch.results(for: clean, in: vm.searchEntries).isEmpty {
             recents.record(clean)
         }
         query = clean

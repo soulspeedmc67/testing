@@ -134,6 +134,8 @@ final class ActiveOrderStore: ObservableObject {
             order = nil
             return
         }
+        // An order is on its way through the shop: the moment notifications matter.
+        OrderNotifications.requestPermissionIfNeeded()
 
         trackingListener = FirestoreService.shared.listenDriverTracking(orderId: orderId) { [weak self] tracking in
             guard let self = self else { return }
@@ -149,6 +151,10 @@ final class ActiveOrderStore: ObservableObject {
             // A nil snapshot (cache miss, brief permission gap) keeps the last
             // known order on screen rather than blanking the tracker.
             guard let self = self, let order = order else { return }
+            // Tell the shopper when the order moves on (not on the first read).
+            if let previous = self.order?.status.stage, previous != order.status.stage, self.order?.id == order.id {
+                OrderNotifications.notifyStageChange(order)
+            }
             withAnimation(.dashitSpring) {
                 self.order = order
             }

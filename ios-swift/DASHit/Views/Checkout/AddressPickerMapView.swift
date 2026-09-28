@@ -12,7 +12,13 @@ struct AddressPickerMapView: View {
 
     var body: some View {
         NavigationStack {
-            AddressPinPicker(start: newAddressStart, onSaved: { dismiss() })
+            // A new address, or a first one: start where the shopper is (this is
+            // where iOS asks for location, when it's clear why).
+            AddressPinPicker(
+                start: newAddressStart,
+                locatesOnOpen: addsNewAddress || LocalStorage.shared.loadAddress() == nil,
+                onSaved: { dismiss() }
+            )
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Cancel") { dismiss() }
@@ -35,6 +41,8 @@ struct AddressPickerMapView: View {
 /// with the place picked there, or opened on the current address.
 struct AddressPinPicker: View {
     var onSaved: () -> Void
+    /// Moves the map to the shopper's location as soon as it opens.
+    var locatesOnOpen = false
 
     @StateObject private var locator = LocationProvider()
 
@@ -50,8 +58,9 @@ struct AddressPinPicker: View {
     @State private var selectedNickname: String
 
     /// With `start`, a new address at that place; without, the current one.
-    init(start: CLLocationCoordinate2D? = nil, startLine: String? = nil, onSaved: @escaping () -> Void) {
+    init(start: CLLocationCoordinate2D? = nil, startLine: String? = nil, locatesOnOpen: Bool = false, onSaved: @escaping () -> Void) {
         self.onSaved = onSaved
+        self.locatesOnOpen = locatesOnOpen
         let saved = start == nil ? LocalStorage.shared.loadAddress() : nil
         let origin = start ?? saved?.coordinate ?? DeliveryEta.hub
         _pinCoordinate = State(initialValue: origin)
@@ -78,6 +87,9 @@ struct AddressPinPicker: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.surface, for: .navigationBar)
         .onAppear {
+            if locatesOnOpen {
+                locator.requestCurrentLocation()
+            }
             if addressLine.isEmpty {
                 resolveAddress(for: pinCoordinate)
             }

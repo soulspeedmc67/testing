@@ -20,6 +20,17 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix as ComposeColorMatrix
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -280,10 +291,11 @@ private fun OrderStageScreen(
     onCancel: () -> Unit,
     onAddItems: () -> Unit
 ) {
+    // One calm, dark screen for received and packing, like the iOS app.
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(DashitColors.Surface)
+            .background(DashitColors.Midnight)
             .statusBarsPadding()
     ) {
         Row(
@@ -296,13 +308,22 @@ private fun OrderStageScreen(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(DashitColors.SurfaceRaised)
-                    .border(1.dp, DashitColors.Hairline, CircleShape)
+                    .background(Color.White.copy(alpha = 0.1f))
                     .pressable(scale = 0.9f) { onBack() }
                     .semantics { contentDescription = "Back" },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = DashitColors.TextPrimary, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            if (order != null) {
+                Text(
+                    "Order #${order.id.takeLast(6)}",
+                    color = Color.White.copy(alpha = 0.55f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.Monospace
+                )
             }
             Spacer(Modifier.weight(1f))
             if (order != null) {
@@ -331,7 +352,7 @@ private fun OrderStageScreen(
                 .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
                 .padding(top = 8.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
             if (order == null) {
                 Spacer(Modifier.height(40.dp))
@@ -353,56 +374,93 @@ private fun OrderStageScreen(
     }
 }
 
+/**
+ * The DASHit tile with a smooth, never-ending animation: received sends soft
+ * rings out from it, packing runs an orange arc around it. Every loop starts
+ * where the last one ended, so it never jumps.
+ */
 @Composable
 private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean) {
-    val tint = if (stage == OrderStatus.CANCELLED) DashitColors.Danger else DashitColors.BrandOrange
     val (title, subtitle) = when (stage) {
         OrderStatus.PLACED -> "Order received" to
-            if (canStillChange) "You can still add items or cancel. The store starts packing right after."
+            if (canStillChange) "You can still add items or cancel. Packing starts right after."
             else "The store is getting your items ready."
         OrderStatus.PACKING -> "Packing your order" to
-            "Your items are being picked and packed. You'll see the rider on the map as soon as it leaves the store."
+            "Your items are being picked and packed. The map opens as soon as a rider is on the way."
         OrderStatus.CANCELLED -> "Order cancelled" to "This order won't be delivered."
         else -> stage.headline(null) to ""
     }
-    val pulse = rememberInfiniteTransition(label = "stagePulse")
-    val scale by pulse.animateFloat(
-        initialValue = 0.94f,
-        targetValue = if (stage == OrderStatus.CANCELLED) 0.94f else 1.06f,
-        animationSpec = infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "stagePulseScale"
-    )
+    val moving = stage != OrderStatus.CANCELLED
+    val loop = rememberInfiniteTransition(label = "stageHero")
+    val ripple by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Restart), label = "ripple")
+    val spin by loop.animateFloat(0f, 360f, infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart), label = "spin")
+    val counterSpin by loop.animateFloat(360f, 0f, infiniteRepeatable(tween(3800, easing = LinearEasing), RepeatMode.Restart), label = "counterSpin")
+    val breathAngle by loop.animateFloat(0f, (2 * Math.PI).toFloat(), infiniteRepeatable(tween(3700, easing = LinearEasing), RepeatMode.Restart), label = "breath")
+    val breath = if (moving) kotlin.math.sin(breathAngle) else 0f
+    val orange = DashitColors.BrandOrange
 
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(modifier = Modifier.size(156.dp), contentAlignment = Alignment.Center) {
-            Box(
-                Modifier
-                    .size(148.dp)
-                    .graphicsLayer { scaleX = scale; scaleY = scale }
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = 0.10f))
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(modifier = Modifier.size(220.dp), contentAlignment = Alignment.Center) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val tile = 96.dp.toPx()
+                when (stage) {
+                    OrderStatus.PLACED -> for (ring in 0 until 3) {
+                        val phase = (ripple + ring / 3f) % 1f
+                        val size = tile * (1f + phase * 0.95f)
+                        drawRoundRect(
+                            color = orange.copy(alpha = 0.55f * (1f - phase)),
+                            topLeft = Offset((this.size.width - size) / 2f, (this.size.height - size) / 2f),
+                            size = Size(size, size),
+                            cornerRadius = CornerRadius(size * 0.3f, size * 0.3f),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+                    }
+                    OrderStatus.PACKING -> {
+                        val outer = tile + 64.dp.toPx()
+                        val inner = tile + 40.dp.toPx()
+                        val outerTopLeft = Offset((size.width - outer) / 2f, (size.height - outer) / 2f)
+                        val innerTopLeft = Offset((size.width - inner) / 2f, (size.height - inner) / 2f)
+                        drawCircle(Color.White.copy(alpha = 0.08f), radius = outer / 2f, style = Stroke(5.dp.toPx()))
+                        drawArc(
+                            color = orange, startAngle = spin, sweepAngle = 95f + 30f * kotlin.math.sin(breathAngle),
+                            useCenter = false, topLeft = outerTopLeft, size = Size(outer, outer),
+                            style = Stroke(5.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                        drawArc(
+                            color = orange.copy(alpha = 0.45f), startAngle = counterSpin, sweepAngle = 43f,
+                            useCenter = false, topLeft = innerTopLeft, size = Size(inner, inner),
+                            style = Stroke(3.dp.toPx(), cap = StrokeCap.Round)
+                        )
+                    }
+                    else -> Unit
+                }
+            }
+            Image(
+                painter = painterResource(R.drawable.brand_tile),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                colorFilter = if (moving) null else ColorFilter.colorMatrix(ComposeColorMatrix().apply { setToSaturation(0f) }),
+                modifier = Modifier
+                    .size(96.dp)
+                    .graphicsLayer {
+                        translationY = -3.dp.toPx() * breath
+                        scaleX = 1f + 0.015f * breath
+                        scaleY = 1f + 0.015f * breath
+                    }
+                    .shadow(if (moving) 18.dp else 0.dp, RoundedCornerShape(26.dp), ambientColor = orange, spotColor = orange)
+                    .clip(RoundedCornerShape(26.dp))
             )
-            Box(
-                Modifier
-                    .size(108.dp)
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = 0.16f))
-            )
-            Icon(stage.icon, contentDescription = null, tint = tint, modifier = Modifier.size(46.dp))
         }
-        Spacer(Modifier.height(14.dp))
-        Text(title, color = DashitColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+        Spacer(Modifier.height(18.dp))
+        Text(title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         if (subtitle.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 subtitle,
-                color = DashitColors.TextMuted,
-                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.65f),
+                fontSize = 15.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 12.dp)
+                modifier = Modifier.padding(horizontal = 24.dp)
             )
         }
     }
@@ -410,18 +468,18 @@ private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean) {
 
 @Composable
 private fun OrderItemsCard(order: Order) {
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(20.dp)
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(DashitColors.SurfaceRaised)
-            .border(1.dp, DashitColors.Hairline, shape)
-            .padding(14.dp)
+            .background(Color.White.copy(alpha = 0.06f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), shape)
+            .padding(16.dp)
     ) {
         Text(
             if (order.status == OrderStatus.PACKING) "Being packed" else "Your items",
-            color = DashitColors.TextPrimary,
+            color = Color.White,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 6.dp)
@@ -438,19 +496,19 @@ private fun OrderItemsCard(order: Order) {
                     modifier = Modifier
                         .size(42.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(DashitColors.SurfaceMuted)
+                        .background(Color.White)
                         .padding(3.dp)
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(item.name, color = DashitColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text("${item.unit} · ×${item.qty}", color = DashitColors.TextMuted, fontSize = 12.sp)
+                    Text(item.name, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text("${item.unit} · ×${item.qty}", color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp)
                 }
                 Spacer(Modifier.width(8.dp))
-                Text("₹${(item.price * item.qty).toInt()}", color = DashitColors.TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("₹${(item.price * item.qty).toInt()}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
             if (index < order.items.lastIndex) {
-                Box(Modifier.fillMaxWidth().height(1.dp).background(DashitColors.Hairline))
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
             }
         }
     }

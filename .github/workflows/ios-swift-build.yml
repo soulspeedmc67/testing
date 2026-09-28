@@ -78,6 +78,8 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
           # App Store profile for the admin app (com.dashit.admin).
           ADMIN_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_ADMIN_PROVISION_PROFILE_BASE64 }}
+          # App Store profile for the Live Activity widget (com.dashit.app.widgets).
+          WIDGET_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_WIDGET_PROVISION_PROFILE_BASE64 }}
           KEYCHAIN_PASSWORD: "dashit_keychain_pass"
         run: |
           if [ -z "$BUILD_CERTIFICATE_BASE64" ]; then
@@ -109,6 +111,13 @@ jobs:
             echo "Admin profile installed."
           else
             echo "No IOS_ADMIN_PROVISION_PROFILE_BASE64 secret: the admin IPA will be left unsigned."
+          fi
+
+          if [ -n "$WIDGET_PROVISION_PROFILE_BASE64" ]; then
+            echo -n "$WIDGET_PROVISION_PROFILE_BASE64" | base64 --decode -o $RUNNER_TEMP/widget_pp.mobileprovision
+            echo "Live Activity widget profile installed."
+          else
+            echo "No IOS_WIDGET_PROVISION_PROFILE_BASE64 secret: the Live Activity widget will be left out."
           fi
 
       - name: Build Xcode Archives
@@ -164,7 +173,25 @@ jobs:
             rm -rf Payload
             mkdir -p Payload
             cp -r "$ARCHIVE_NAME/Products/Applications/$APP_NAME.app" Payload/
-            rm -rf "Payload/$APP_NAME.app/PlugIns"
+
+            # The Live Activity (lock screen and Dynamic Island order tracker)
+            # lives in the widget extension. It ships only when there is a
+            # profile to sign it with; without one it has to be left out, or
+            # App Store Connect rejects the upload.
+            WIDGET_PP="$RUNNER_TEMP/widget_pp.mobileprovision"
+            if [ "$APP_NAME" = "DASHit" ] && [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -f "$WIDGET_PP" ] && [ -d "Payload/$APP_NAME.app/PlugIns" ]; then
+              security cms -D -i "$WIDGET_PP" > $RUNNER_TEMP/widget_profile.plist
+              /usr/libexec/PlistBuddy -x -c "Print :Entitlements" $RUNNER_TEMP/widget_profile.plist > $RUNNER_TEMP/widget_entitlements.plist
+              for appex in Payload/$APP_NAME.app/PlugIns/*.appex; do
+                [ -d "$appex" ] || continue
+                cp "$WIDGET_PP" "$appex/embedded.mobileprovision"
+                /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_VER}" "$appex/Info.plist" 2>/dev/null || true
+                codesign --force --sign "Apple Distribution" --entitlements $RUNNER_TEMP/widget_entitlements.plist --generate-entitlement-der "$appex"
+                echo "Signed $appex"
+              done
+            else
+              rm -rf "Payload/$APP_NAME.app/PlugIns"
+            fi
 
             if [ -n "$BUILD_CERTIFICATE_BASE64" ] && [ -f "$PP_PATH" ]; then
               cp "$PP_PATH" "Payload/$APP_NAME.app/embedded.mobileprovision"

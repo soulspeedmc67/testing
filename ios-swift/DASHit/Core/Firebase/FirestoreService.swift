@@ -13,25 +13,44 @@ final class FirestoreService {
     /// Live catalogue, as the web reads it: active products only, with the
     /// document id standing in when a product has no id field. Tobacco and
     /// other 18+ items are left out of the iOS app (App Store guideline 1.4.3).
+    ///
+    /// The catalogue is thousands of documents, so they are read off the main
+    /// thread (reading them there froze scrolling on every stock change), and
+    /// a snapshot that changes nothing but metadata is skipped. `completion`
+    /// is called on the main thread, newest catalogue only.
     func listenProducts(completion: @escaping ([Product]) -> Void) -> ListenerRegistration {
+        var generation = 0
+        var hasDelivered = false
         return db.collection("products").addSnapshotListener { snapshot, error in
-            guard let documents = snapshot?.documents, error == nil else {
+            guard let snapshot, error == nil else {
                 completion([])
                 return
             }
-
-            let decoder = Firestore.Decoder()
-            let products: [Product] = documents.compactMap { doc in
-                var data = doc.data()
-                if (data["active"] as? Bool) == false { return nil }
-                if data["id"] == nil { data["id"] = doc.documentID }
-                guard let product = try? decoder.decode(Product.self, from: data),
-                      !product.isAgeRestricted else { return nil }
-                return product
+            if hasDelivered && snapshot.documentChanges.isEmpty { return }
+            generation += 1
+            let current = generation
+            let documents = snapshot.documents
+            Self.decodeQueue.async {
+                let decoder = Firestore.Decoder()
+                let products: [Product] = documents.compactMap { doc in
+                    var data = doc.data()
+                    if (data["active"] as? Bool) == false { return nil }
+                    if data["id"] == nil { data["id"] = doc.documentID }
+                    guard let product = try? decoder.decode(Product.self, from: data),
+                          !product.isAgeRestricted else { return nil }
+                    return product
+                }
+                DispatchQueue.main.async {
+                    // A newer snapshot is already on its way: drop this one.
+                    guard current == generation else { return }
+                    hasDelivered = true
+                    completion(products)
+                }
             }
-            completion(products)
         }
     }
+
+    private static let decodeQueue = DispatchQueue(label: "dashit.catalogue.decode", qos: .userInitiated)
 
     /// `config/store`, which the admin console writes: open/closed, the reason
     /// shown while closed, and the high-demand flag.

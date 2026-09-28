@@ -192,23 +192,26 @@ public final class AdminDashboardViewModel: ObservableObject {
         isLoading = true
 
         // 1. Products Realtime Listener
+        // Thousands of items: read them off the main thread so the dashboard
+        // doesn't freeze on every stock change.
         productListener = db.collection("products").addSnapshotListener { [weak self] snapshot, error in
             guard let self = self, let docs = snapshot?.documents, error == nil else { return }
-            let decoder = Firestore.Decoder()
             let deleted = self.deletedProductIds
-
-            let list: [Product] = docs.compactMap { doc in
-                var data = doc.data()
-                if (data["active"] as? Bool) == false { return nil }
-                let id = (data["id"] as? String) ?? doc.documentID
-                if deleted.contains(id) { return nil }
-                data["id"] = id
-                data["distributor"] = Distributor.resolvedName(data["distributor"] as? String)
-                return try? decoder.decode(Product.self, from: data)
-            }
-            Task { @MainActor in
-                self.products = list
-                self.isLoading = false
+            DispatchQueue.global(qos: .userInitiated).async {
+                let decoder = Firestore.Decoder()
+                let list: [Product] = docs.compactMap { doc in
+                    var data = doc.data()
+                    if (data["active"] as? Bool) == false { return nil }
+                    let id = (data["id"] as? String) ?? doc.documentID
+                    if deleted.contains(id) { return nil }
+                    data["id"] = id
+                    data["distributor"] = Distributor.resolvedName(data["distributor"] as? String)
+                    return try? decoder.decode(Product.self, from: data)
+                }
+                Task { @MainActor in
+                    self.products = list
+                    self.isLoading = false
+                }
             }
         }
 
