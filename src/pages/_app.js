@@ -7,10 +7,6 @@ import { App as CapApp } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
 import '../styles/globals.css';
 import { StatusBar, Style } from '@capacitor/status-bar';
-import FloatingCartBar from '../components/FloatingCartBar';
-import BottomNav from '../components/BottomNav';
-import FlyingBadgeOverlay from '../components/FlyingBadgeOverlay';
-import FreeDeliveryToast from '../components/FreeDeliveryToast';
 import PremiumSplashScreen from '../components/PremiumSplashScreen';
 import { ScrollChromeProvider } from '../context/ScrollChromeContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
@@ -23,15 +19,6 @@ import { isNative } from '../lib/platform';
 import CookieConsentBanner from '../components/CookieConsentBanner';
 import { forceUnlockBodyScroll } from '../lib/useBodyScrollLock';
 
-/* Loaded on demand rather than with the app shell. This component is the only
-   thing in _app that reaches Firestore and Firebase Auth, and a static import
-   pulled the whole Firebase SDK into the chunk every page downloads before it
-   can render — including /privacy, /terms and the 404. It renders on /shop
-   alone, so the cost now falls only on the page that uses it. */
-const LiveOrderFloatingTracker = dynamic(
-  () => import('../components/LiveOrderFloatingTracker'),
-  { ssr: false }
-);
 import { EASE_OUT } from '../lib/motion';
 
 /**
@@ -462,11 +449,8 @@ export default function App({ Component, pageProps }) {
         >
           <Component {...pageProps} />
         </motion.div>
-        {!['/xcyop', '/driver', '/login', '/orders'].includes(router.pathname) && <LiveOrderFloatingTracker />}
-        <FloatingCartBar />
-        {!['/login', '/driver', '/xcyop', '/', '/privacy', '/terms'].includes(router.pathname) && <BottomNav />}
-        <FlyingBadgeOverlay />
-        <FreeDeliveryToast />
+        {/* No shop on the website any more (ordering is in the apps), so no
+            cart bar, bottom menu or live order tracker here. */}
         <CookieConsentBanner />
         </AgeGateProvider>
       </ScrollChromeProvider>

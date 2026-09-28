@@ -19,45 +19,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { stagger, fadeUp, inViewOnce, EASE_OUT } from "../lib/motion";
 import { ChevronRight, X, ArrowRight, Menu, Sun, Moon, Download, Clock, Leaf } from "lucide-react";
 
-const POPULAR_CATEGORIES = [
-  {
-    name: "Kashmiri Bakery",
-    desc: "Lavas, czot & roath",
-    img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=400&auto=format&fit=crop&q=80",
-    cat: "Bakery",
-  },
-  {
-    name: "Milk, Curd & Dairy",
-    desc: "Amul, paneer & curd",
-    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80",
-    cat: "Dairy",
-  },
-  {
-    name: "Fresh Vegetables",
-    desc: "Farm-crisp greens",
-    img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&auto=format&fit=crop&q=80",
-    cat: "Vegetables",
-  },
-  {
-    name: "Fresh Fruits",
-    desc: "Apples, bananas & citrus",
-    img: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&auto=format&fit=crop&q=80",
-    cat: "Fresh Fruits",
-  },
-  {
-    name: "Cold Drinks",
-    desc: "Colas, juices & ice tea",
-    img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=400&auto=format&fit=crop&q=80",
-    cat: "Drinks & Juices",
-  },
-  {
-    name: "Cooking Staples",
-    desc: "Atta, rice, dal & ghee",
-    img: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&auto=format&fit=crop&q=80",
-    cat: "Atta, Rice & Dal",
-  },
-];
-
 const DELIVERY_STEPS = [
   {
     n: "01",
@@ -101,7 +62,6 @@ export default function LandingPage() {
       (typeof window !== "undefined" && Boolean(window.__DASHIT_ROLE__));
     if (isApp) {
       setIsAppClient(true);
-      router.replace("/shop");
     }
   }, [router]);
 
@@ -186,11 +146,11 @@ export default function LandingPage() {
                 Features
               </a>
               <a
-                href="#web-store"
-                onClick={scrollToId("web-store")}
+                href="#how-it-works"
+                onClick={scrollToId("how-it-works")}
                 className="hover:text-[#061838] dark:hover:text-white transition-colors"
               >
-                Shop on web
+                How it works
               </a>
               <span className="text-slate-400 dark:text-slate-500 font-medium">
                 Anantnag · 192101
@@ -207,12 +167,13 @@ export default function LandingPage() {
                 {theme === "dark" ? <Sun className="w-[17px] h-[17px]" /> : <Moon className="w-[17px] h-[17px]" />}
               </button>
 
-              <Link
-                href="/shop"
+              <a
+                href="#get-the-app"
+                onClick={scrollToId("get-the-app")}
                 className="sm:hidden inline-flex items-center justify-center bg-[#FF5B00] hover:bg-[#E04E00] text-white text-[12.5px] font-bold px-3.5 h-9 rounded-xl shadow-xs transition-colors active:scale-95"
               >
-                Shop
-              </Link>
+                Get the app
+              </a>
 
               <a
                 href="#get-the-app"
@@ -266,14 +227,14 @@ export default function LandingPage() {
                   Features
                 </a>
                 <a
-                  href="#web-store"
+                  href="#how-it-works"
                   onClick={(e) => {
                     setMobileMenuOpen(false);
-                    scrollToId("web-store")(e);
+                    scrollToId("how-it-works")(e);
                   }}
                   className="py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300"
                 >
-                  Shop on web
+                  How it works
                 </a>
               </div>
             </motion.div>
@@ -435,95 +396,13 @@ export default function LandingPage() {
         <AppFeatureShowcase />
 
         {/* =============================================================== */}
-        {/* WEB STORE                                                       */}
+        {/* HOW AN ORDER REACHES YOU                                        */}
         {/* =============================================================== */}
-        <section id="web-store" className="mt-24 sm:mt-32 scroll-mt-24">
-          <motion.div
-            variants={fadeUp}
-            {...inViewOnce}
-            className="border-y border-slate-200 dark:border-slate-800 py-10 sm:py-12 flex flex-col md:flex-row md:items-center justify-between gap-7"
-          >
-            <div className="max-w-xl">
-              <Eyebrow>No phone nearby?</Eyebrow>
-              <h2 className="mt-4 text-2xl sm:text-[32px] font-black tracking-tight text-[#061838] dark:text-white leading-tight">
-                Shop the full catalogue in your browser
-              </h2>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Browse every aisle, build your cart and place an order from any computer.
-                Same catalogue, same prices, same riders.
-              </p>
-            </div>
-
-            <Link
-              href="/shop"
-              className="group shrink-0 inline-flex items-center gap-2 bg-[#061838] hover:bg-[#FF5B00] text-white text-sm font-bold px-6 h-12 rounded-xl transition-colors"
-            >
-              <span>Open the web store</span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </motion.div>
-
-          {/* Categories */}
-          <div className="mt-14">
-            <motion.div
-              variants={fadeUp}
-              {...inViewOnce}
-              className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4 mb-7"
-            >
-              <div>
-                <Eyebrow>Everyday aisles</Eyebrow>
-                <h3 className="mt-4 text-2xl sm:text-[30px] font-black tracking-tight text-[#061838] dark:text-white">
-                  Popular in Anantnag
-                </h3>
-              </div>
-              <Link
-                href="/categories"
-                className="shrink-0 text-[13px] font-bold text-[#FF5B00] hover:underline inline-flex items-center gap-1"
-              >
-                <span>All categories</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </motion.div>
-
-            <motion.div
-              variants={stagger(0.05)}
-              {...inViewOnce}
-              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4"
-            >
-              {POPULAR_CATEGORIES.map((cat) => (
-                <motion.div key={cat.cat} variants={fadeUp} className="h-full">
-                  <Link
-                    href={`/shop?cat=${encodeURIComponent(cat.cat)}`}
-                    className="group block rounded-2xl bg-white dark:bg-[#12161F] border border-slate-200/90 dark:border-slate-800 p-2.5 h-full transition-[border-color,transform,box-shadow] duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-[0_12px_28px_-18px_rgba(6,24,56,0.5)]"
-                  >
-                    <div className="w-full h-24 sm:h-[104px] rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
-                      <img
-                        src={cat.img}
-                        alt={cat.name}
-                        width={300}
-                        height={156}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover transition-transform duration-[600ms] ease-out group-hover:scale-[1.07]"
-                      />
-                    </div>
-                    <h4 className="mt-2.5 text-[12.5px] font-bold tracking-tight text-[#061838] dark:text-white leading-snug">
-                      {cat.name}
-                    </h4>
-                    <p className="mt-0.5 text-[10.5px] text-slate-500 dark:text-slate-400">
-                      {cat.desc}
-                    </p>
-                  </Link>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-
+        <section id="how-it-works" className="mt-24 sm:mt-32 scroll-mt-24">
           {/* How it works */}
           <motion.div
             variants={stagger(0.08)}
             {...inViewOnce}
-            className="mt-20 sm:mt-24"
           >
             <motion.h3
               variants={fadeUp}
@@ -576,8 +455,7 @@ export default function LandingPage() {
             </div>
 
             <nav className="flex flex-wrap items-center gap-x-7 gap-y-2 text-[13px] font-semibold text-slate-300">
-              <Link href="/shop" className="hover:text-white transition-colors">Web store</Link>
-              <Link href="/categories" className="hover:text-white transition-colors">Categories</Link>
+              <Link href="/help" className="hover:text-white transition-colors">Help</Link>
               <a
                 href="#get-the-app"
                 onClick={scrollToId("get-the-app")}
@@ -592,8 +470,7 @@ export default function LandingPage() {
 
           <div className="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11.5px] text-slate-400">
             <p>
-              © {new Date().getFullYear()} DASHIT Technologies · Anantnag 192101 · Helpline
-              +91 6006990032
+              © {new Date().getFullYear()} DASHIT Technologies · Anantnag 192101
             </p>
             <p>Built in Kashmir.</p>
           </div>

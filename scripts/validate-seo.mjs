@@ -58,7 +58,8 @@ check("public/.htaccess has sitemap, manifest MIME and rewrite rules", () => {
   const content = fs.readFileSync(p, "utf8");
   return content.includes("application/manifest+json") &&
          content.includes("sitemap.xml") &&
-         content.includes("RewriteRule ^product/([^/]+)/?$ /product/[id]/index.html [L]");
+         // old shop links are sent to the home page
+         /RewriteRule \^\(shop\|search\|categories\|product\|/.test(content);
 });
 
 console.log("\n=================== SEO ASSETS VALIDATION ===================");

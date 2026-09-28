@@ -11,7 +11,7 @@ export default function TermsAndConditionsPage() {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else {
-      router.push("/shop");
+      router.push("/");
     }
   };
 
