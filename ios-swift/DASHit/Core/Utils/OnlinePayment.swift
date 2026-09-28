@@ -66,6 +66,26 @@ final class OnlinePayment: NSObject {
     /// The apps most people here pay with, first; any others after, as found.
     private static let preferredOrder = ["google_pay", "phonepe", "paytm", "bhim", "cred", "amazonpay"]
 
+    /// UPI apps by Razorpay's shortcode, with the link that opens each one.
+    /// Checked directly as well as through the SDK, so an installed app is
+    /// never missed. (Every scheme is in LSApplicationQueriesSchemes.)
+    private static let knownApps: [(shortcode: String, name: String, link: String)] = [
+        ("google_pay", "Google Pay", "tez://upi/pay"),
+        ("phonepe", "PhonePe", "phonepe://pay"),
+        ("paytm", "Paytm", "paytmmp://upi/pay"),
+        ("bhim", "BHIM", "bhim://upi/pay"),
+        ("cred", "CRED", "credpay://upi/pay"),
+        ("amazonpay", "Amazon Pay", "amazonpay://upi/pay"),
+        ("mobikwik", "MobiKwik", "mobikwik://upi/pay"),
+        ("navi", "Navi", "navi://upi/pay"),
+        ("payzapp", "PayZapp", "payzapp://upi/pay"),
+        ("sbiyono", "SBI YONO", "sbiyono://upi/pay"),
+        ("bobupi", "BoB World", "bobupi://upi/pay"),
+        ("jupiter", "Jupiter", "jupiter://upi/pay"),
+        ("kiwi", "Kiwi", "kiwi://upi/pay"),
+        ("myjio", "MyJio", "myjio://upi/pay")
+    ]
+
     /// The UPI apps installed on this phone, best known first. Empty if there are none.
     @MainActor
     static func upiApps() async -> [UpiApp] {
@@ -81,12 +101,18 @@ final class OnlinePayment: NSObject {
             }
         }
         var seen = Set<String>()
-        return found
-            .compactMap { app -> UpiApp? in
-                guard let code = app["shortcode"] as? String, !code.isEmpty, seen.insert(code).inserted else { return nil }
-                return UpiApp(shortcode: code, name: (app["appName"] as? String) ?? code)
-            }
-            .sorted { rank($0.shortcode) < rank($1.shortcode) }
+        var apps = found.compactMap { app -> UpiApp? in
+            let code = (app["shortcode"] ?? app["appShortcode"] ?? app["app_shortcode"]) as? String
+            guard let code, !code.isEmpty, seen.insert(code).inserted else { return nil }
+            let name = (app["appName"] ?? app["app_name"] ?? app["name"]) as? String
+            return UpiApp(shortcode: code, name: name ?? knownApps.first { $0.shortcode == code }?.name ?? code)
+        }
+        for known in knownApps where !seen.contains(known.shortcode) {
+            guard let url = URL(string: known.link), UIApplication.shared.canOpenURL(url) else { continue }
+            seen.insert(known.shortcode)
+            apps.append(UpiApp(shortcode: known.shortcode, name: known.name))
+        }
+        return apps.sorted { rank($0.shortcode) < rank($1.shortcode) }
         #else
         return []
         #endif
