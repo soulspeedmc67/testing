@@ -1,5 +1,6 @@
 package com.dashit.app.ui.storefront
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -149,7 +150,17 @@ fun SearchScreen(
     }
     val tobaccoList = Tobacco.matches(submitted ?: query, tobaccoProducts).ifEmpty { tobaccoProducts }
 
-    Column(
+    BackHandler(enabled = isTobaccoListOpen) { isTobaccoListOpen = false }
+    if (isTobaccoListOpen) {
+        TobaccoScreen(
+            products = tobaccoList,
+            quantityOf = { quantityOf(it) },
+            onOpenProduct = onOpenProduct,
+            onAdd = onAdd,
+            onDecrement = onDecrement,
+            onBack = { isTobaccoListOpen = false }
+        )
+    } else Column(
         modifier = Modifier
             .fillMaxSize()
             .background(DashitColors.Surface)
@@ -433,15 +444,7 @@ fun SearchScreen(
             onDismiss = { isDeclarationOpen = false }
         )
     }
-    if (isTobaccoListOpen) {
-        TobaccoSectionSheet(
-            products = tobaccoList,
-            quantityOf = { quantityOf(it) },
-            onAdd = onAdd,
-            onDecrement = onDecrement,
-            onDismiss = { isTobaccoListOpen = false }
-        )
-    }
+
 }
 
 @Composable

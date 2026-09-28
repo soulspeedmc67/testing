@@ -1,108 +1,105 @@
 import SwiftUI
 
-/// The tobacco list, opened from search after the declaration: a health
-/// warning, then every tobacco item as a plain pack with its price.
+/// The tobacco list, opened from search after the declaration. Laid out like
+/// the other product screens: back button and title, then the same product
+/// cards in a grid (as plain packs), each opening the product details, and
+/// the cart bar at the bottom.
 struct TobaccoSectionView: View {
     let products: [Product]
+    /// The shopper wants the cart: this page closes first, then the cart opens.
+    var onGoToCart: () -> Void = {}
 
     @ObservedObject private var cart = CartViewModel.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var detailProduct: Product? = nil
+    @State private var opensCartAfterDetail = false
+
+    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Tobacco")
-                    .font(.system(size: 22, weight: .heavy))
-                    .foregroundColor(.textPrimary)
-                Spacer()
+            HStack(spacing: 4) {
                 Button {
                     dismiss()
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.textSecondary)
-                        .frame(width: 30, height: 30)
-                        .background(Color.surfaceMuted, in: Circle())
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .frame(width: 40, height: 50)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(PressableButtonStyle(scale: 0.85))
-                .accessibilityLabel("Close")
-            }
-            .padding(.leading, 20)
-            .padding(.trailing, 10)
-            .padding(.top, 18)
+                .accessibilityLabel("Back")
 
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.danger)
-                Text(Tobacco.healthWarning)
-                    .font(.system(size: 12.5, weight: .medium))
-                    .foregroundColor(.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
-            .padding(.bottom, 14)
-
-            Rectangle().fill(Color.hairline).frame(height: 1)
-
-            if products.isEmpty {
-                Text("Nothing here right now.")
-                    .font(.system(size: 14))
+                Text("Tobacco")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                Spacer()
+                Text("\(products.count) item\(products.count == 1 ? "" : "s")")
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.textMuted)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(products) { product in
-                            row(product)
-                            Rectangle().fill(Color.hairlineSoft).frame(height: 1).padding(.leading, 88)
+            }
+            .padding(.leading, 6)
+            .padding(.trailing, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 6)
+            .overlay(alignment: .bottom) {
+                Rectangle().fill(Color.hairline).frame(height: 1)
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.danger)
+                        Text(Tobacco.healthWarning)
+                            .font(.system(size: 12.5, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.top, 14)
+
+                    if products.isEmpty {
+                        Text("Nothing here right now.")
+                            .font(.system(size: 14))
+                            .foregroundColor(.textMuted)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 60)
+                    } else {
+                        LazyVGrid(columns: gridColumns, spacing: 10) {
+                            ForEach(products) { product in
+                                ProductCardView(
+                                    product: product,
+                                    onOpen: { detailProduct = product }
+                                )
+                            }
                         }
                     }
-                    .padding(.bottom, 24)
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
             }
         }
         .background(Color.surface.ignoresSafeArea())
-        .dashitSheet([.large])
-    }
-
-    private func row(_ product: Product) -> some View {
-        HStack(spacing: 14) {
-            PlainPackArt()
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(product.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.textPrimary)
-                    .lineLimit(2)
-                Text(product.unit)
-                    .font(.system(size: 12.5))
-                    .foregroundColor(.textMuted)
-                Text(CurrencyFormatter.format(product.price))
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.textPrimary)
-                    .padding(.top, 1)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            FloatingCartBarView {
+                onGoToCart()
+                dismiss()
             }
-            Spacer(minLength: 8)
-
-            QuantityStepper(
-                quantity: cart.quantity(for: product.id),
-                isEnabled: product.isAvailable,
-                onAdd: { cart.add(product: product) },
-                onIncrement: { cart.add(product: product) },
-                onDecrement: { cart.decrementLatest(productId: product.id) }
-            )
+            .padding(.bottom, 10)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
-        .opacity(product.isAvailable ? 1 : 0.55)
+        .sheet(item: $detailProduct, onDismiss: {
+            if opensCartAfterDetail {
+                opensCartAfterDetail = false
+                onGoToCart()
+                dismiss()
+            }
+        }) { product in
+            ProductDetailSheet(product: product, onGoToCart: {
+                opensCartAfterDetail = true
+                detailProduct = nil
+            })
+        }
     }
 }
 
@@ -153,12 +150,12 @@ struct TobaccoSearchCard: View {
 struct PlainPackArt: View {
     var body: some View {
         Canvas { ctx, size in
+            // The backdrop fills the whole frame; the pack sits in the middle.
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: 0xF1EEEA)))
             let s = min(size.width, size.height) / 400
             var c = ctx
             c.translateBy(x: (size.width - 400 * s) / 2, y: (size.height - 400 * s) / 2)
             c.scaleBy(x: s, y: s)
-
-            c.fill(Path(CGRect(x: 0, y: 0, width: 400, height: 400)), with: .color(Color(hex: 0xF1EEEA)))
             c.fill(Path(ellipseIn: CGRect(x: 111, y: 321, width: 184, height: 18)), with: .color(.black.opacity(0.08)))
 
             var side = Path()

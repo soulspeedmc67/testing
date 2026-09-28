@@ -1,5 +1,6 @@
 package com.dashit.app.ui.components
 
+import com.dashit.app.ui.storefront.PlainPackArt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -73,17 +74,22 @@ fun ProductCard(
                 .clip(imageShape)
                 .background(DashitColors.SurfaceMuted)
         ) {
-            ShimmerImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(product.img)
-                    .crossfade(200)
-                    .build(),
-                contentDescription = product.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .clip(imageShape)
-            )
+            // Tobacco is shown as a plain pack, never the brand photo.
+            if (product.isAgeRestricted) {
+                PlainPackArt(modifier = Modifier.matchParentSize().clip(imageShape))
+            } else {
+                ShimmerImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(product.img)
+                        .crossfade(200)
+                        .build(),
+                    contentDescription = product.name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .clip(imageShape)
+                )
+            }
 
             // Discount Badge (Top-Left)
             val discount = product.discountPercent
