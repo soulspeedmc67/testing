@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import FirebaseFirestore
+import Combine
 
 /// A "shop by category" tile: up to four product photos and the category size.
 struct CategoryTile: Identifiable {
@@ -24,18 +25,70 @@ struct ProductRail: Identifiable {
     let products: [Product]
 }
 
+/// The shop's catalogue, shared by every screen that shows products. There is
+/// one live listener for it, and everything the screens show (categories,
+/// tiles, rails, search index) is worked out once when the catalogue changes,
+/// not again on every redraw: with thousands of items, doing it per redraw was
+/// what made the app slow.
 @MainActor
-final class StorefrontViewModel: ObservableObject {
-    @Published var products: [Product] = []
-    /// The `categories` collection, when the rules let it be read.
-    @Published private var remoteCategories: [Category] = []
+final class CatalogueStore: ObservableObject {
+    static let shared = CatalogueStore()
 
-    /// Categories to show. The live catalogue files products under whatever
-    /// names the admin uses ("Staples", "Beverages", "Instant Food"…), and the
-    /// `categories` collection is not readable by customers, so the list is
-    /// built from the products themselves unless that collection is available.
-    var categories: [Category] {
-        remoteCategories.isEmpty ? Self.categories(from: products) : remoteCategories
+    @Published private(set) var products: [Product] = [] {
+        didSet { rebuild() }
+    }
+    @Published private(set) var isLoading = true
+    @Published private(set) var offers: [Offer] = CatalogueStore.defaultOffers
+    /// The `categories` collection, when the rules let it be read.
+    @Published private var remoteCategories: [Category] = [] {
+        didSet { rebuild() }
+    }
+
+    private(set) var categories: [Category] = []
+    private(set) var categoryTiles: [CategoryTile] = []
+    private(set) var topCategoryTiles: [CategoryTile] = []
+    private(set) var departments: [Department] = []
+    private(set) var rails: [ProductRail] = []
+    private(set) var searchHints: [String] = []
+    /// In-stock items shoppers rate most, for the search page.
+    private(set) var popularProducts: [Product] = []
+    private var productsByCategoryKey: [String: [Product]] = [:]
+    private var cachedSearchEntries: [ProductSearch.Entry]?
+
+    private var productListener: ListenerRegistration?
+    private var categoryListener: ListenerRegistration?
+    private var offerListener: ListenerRegistration?
+
+    private init() {
+        // The live catalogue comes first, with skeletons while it loads. The
+        // built-in catalogue only stands in if Firestore hasn't answered in a
+        // few seconds (no network and nothing cached yet).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self, self.products.isEmpty else { return }
+            withAnimation(.easeOut(duration: 0.25)) {
+                self.products = CatalogSeed.products
+                self.isLoading = false
+            }
+        }
+        startListeners()
+    }
+
+    /// Products filed under a category, looked up instead of searched for.
+    func products(inCategory name: String) -> [Product] {
+        productsByCategoryKey[Self.key(name)] ?? []
+    }
+
+    /// Everything search needs, prepared once per catalogue and only when
+    /// someone actually searches.
+    var searchEntries: [ProductSearch.Entry] {
+        if let cachedSearchEntries { return cachedSearchEntries }
+        let entries = ProductSearch.entries(for: products)
+        cachedSearchEntries = entries
+        return entries
+    }
+
+    private static func key(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespaces).lowercased()
     }
 
     /// Familiar aisles first, in store order; anything new follows, busiest first.
@@ -43,52 +96,212 @@ final class StorefrontViewModel: ObservableObject {
         "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
         "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
         "Instant Food", "Spices", "Chicken", "Home Care", "Kitchen Care"
-    ]
+    ].map { $0.lowercased() }
 
-    static func categories(from products: [Product]) -> [Category] {
-        var counts: [String: Int] = [:]
-        var names: [String] = []
+    /// One pass over the catalogue: group by category, then build the tiles,
+    /// rails, departments and hints from the groups.
+    private func rebuild() {
+        var groups: [String: [Product]] = [:]
+        var names: [String: String] = [:]
+        var firstSeen: [String] = []
         for product in products {
             let name = product.cat.trimmingCharacters(in: .whitespaces)
             guard !name.isEmpty else { continue }
-            if counts[name] == nil { names.append(name) }
-            counts[name, default: 0] += 1
+            let key = name.lowercased()
+            if groups[key] == nil {
+                firstSeen.append(key)
+                names[key] = name
+            }
+            groups[key, default: []].append(product)
         }
-        func rank(_ name: String) -> Int {
-            preferredOrder.firstIndex { $0.caseInsensitiveCompare(name) == .orderedSame } ?? Int.max
+        productsByCategoryKey = groups
+        cachedSearchEntries = nil
+
+        if remoteCategories.isEmpty {
+            func rank(_ key: String) -> Int { Self.preferredOrder.firstIndex(of: key) ?? Int.max }
+            let ordered = firstSeen.sorted { a, b in
+                let (ra, rb) = (rank(a), rank(b))
+                if ra != rb { return ra < rb }
+                return (groups[a]?.count ?? 0) > (groups[b]?.count ?? 0)
+            }
+            categories = ordered.enumerated().map { index, key in
+                Category(id: key.replacingOccurrences(of: " ", with: "-"), name: names[key] ?? key, icon: nil, sortOrder: index)
+            }
+        } else {
+            categories = remoteCategories
         }
-        let ordered = names.sorted { a, b in
-            let (ra, rb) = (rank(a), rank(b))
-            if ra != rb { return ra < rb }
-            return counts[a, default: 0] > counts[b, default: 0]
-        }
-        return ordered.enumerated().map { index, name in
-            Category(
-                id: name.lowercased().replacingOccurrences(of: " ", with: "-"),
-                name: name,
-                icon: nil,
-                sortOrder: index
+
+        let filled: [(category: Category, products: [Product])] = categories
+            .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+            .compactMap { (category: Category) -> (category: Category, products: [Product])? in
+                let list = groups[Self.key(category.name)] ?? []
+                return list.isEmpty ? nil : (category: category, products: list)
+            }
+
+        categoryTiles = filled.map { entry in
+            CategoryTile(
+                id: entry.category.id,
+                name: entry.category.name,
+                previewImages: entry.products.prefix(4).map(\.img),
+                productCount: entry.products.count
             )
         }
+        topCategoryTiles = Array(categoryTiles.sorted { $0.productCount > $1.productCount }.prefix(6))
+        rails = filled.map { entry in
+            ProductRail(id: entry.category.id, title: entry.category.name, products: Array(entry.products.prefix(12)))
+        }
+        departments = Self.departments(from: categoryTiles)
+
+        var seen = Set<String>()
+        var hints: [String] = []
+        for product in products where product.isAvailable {
+            let hint = product.name.lowercased().split(separator: " ").prefix(3).joined(separator: " ")
+            if seen.insert(hint).inserted { hints.append(hint) }
+            if hints.count == 8 { break }
+        }
+        searchHints = hints
+
+        popularProducts = Array(
+            products
+                .filter(\.isAvailable)
+                .sorted { (Int($0.ratingCount ?? "") ?? 0) > (Int($1.ratingCount ?? "") ?? 0) }
+                .prefix(6)
+        )
     }
-    @Published var offers: [Offer] = []
+
+    /// Categories grouped into store departments, Blinkit-style; anything that
+    /// fits none of them lands in "More to explore".
+    private static func departments(from tiles: [CategoryTile]) -> [Department] {
+        let groups: [(title: String, keys: [String])] = [
+            ("Fresh & Daily", ["dairy", "fruit", "vegetable", "egg", "chicken", "meat", "fish", "bread"]),
+            ("Grocery & Kitchen", ["staple", "grocery", "atta", "rice", "dal", "oil", "spice", "masala", "instant", "kitchen"]),
+            ("Snacks & Drinks", ["snack", "chip", "namkeen", "biscuit", "cookie", "bakery", "beverage", "drink", "juice", "sweet", "chocolate"]),
+            ("Home & Household", ["home", "clean", "household", "care"])
+        ]
+        var remaining = tiles
+        var result: [Department] = []
+        for group in groups {
+            let matched = remaining.filter { tile in
+                let name = tile.name.lowercased()
+                return group.keys.contains { name.contains($0) }
+            }
+            guard !matched.isEmpty else { continue }
+            let matchedIds = Set(matched.map(\.id))
+            remaining.removeAll { matchedIds.contains($0.id) }
+            result.append(Department(id: group.title, title: group.title, tiles: matched))
+        }
+        if !remaining.isEmpty {
+            result.append(Department(id: "more", title: "More to explore", tiles: remaining))
+        }
+        return result
+    }
+
+    private func startListeners() {
+        productListener = FirestoreService.shared.listenProducts { [weak self] fetched in
+            guard let self = self else { return }
+            // An empty answer is usually an empty offline cache: keep the
+            // skeletons up until real products (or the fallback) arrive.
+            guard !fetched.isEmpty else { return }
+            // The skeletons cross-fade into the catalogue on its first arrival.
+            if self.isLoading {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self.products = fetched
+                    self.isLoading = false
+                }
+            } else {
+                self.products = fetched
+            }
+        }
+
+        categoryListener = FirestoreService.shared.listenCategories { [weak self] fetched in
+            guard let self = self else { return }
+            if !fetched.isEmpty {
+                self.remoteCategories = fetched
+            }
+        }
+
+        offerListener = FirestoreService.shared.listenOffers { [weak self] fetched in
+            guard let self = self else { return }
+            if !fetched.isEmpty {
+                self.offers = fetched
+            }
+        }
+    }
+
+    /// The web's built-in deals (`DEFAULT_OFFERS` in src/lib/offers.js), shown
+    /// until the admin publishes offers in Firestore.
+    private static let defaultOffers: [Offer] = [
+        Offer(
+            id: "offer-snacks-01",
+            badge: "DASHIT EXCLUSIVE",
+            title: "Gourmet Snacks & Chilled Sips",
+            subtitle: "Artisanal crisps, premium chocolates & chilled sodas with fastest delivery.",
+            priceTag: "Starting ₹20",
+            category: "Snacks",
+            promoCode: "CRISP20",
+            discountPercent: 20,
+            expiresIn: "Ends in 3 hours",
+            img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80"
+        ),
+        Offer(
+            id: "offer-bakery-02",
+            badge: "FRESH FROM OVEN",
+            title: "Artisan Breads & Morning Bakes",
+            subtitle: "Authentic Kashmiri lavas, soft croissants & golden rolls delivered warm.",
+            priceTag: "Starting ₹30",
+            category: "Bakery",
+            promoCode: "BAKE15",
+            discountPercent: 15,
+            expiresIn: "Ends at 12:00 PM",
+            img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80"
+        ),
+        Offer(
+            id: "offer-dairy-03",
+            badge: "FARM TO DOORSTEP",
+            title: "Fresh Milk, Butter & Kashmiri Apples",
+            subtitle: "Chilled Amul dairy, creamy butter & crisp valley apples in minutes.",
+            priceTag: "Save up to 25%",
+            category: "Dairy",
+            promoCode: "FRESH25",
+            discountPercent: 25,
+            expiresIn: "Active Today",
+            img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80"
+        )
+    ]
+}
+
+/// One screen's view of the shared catalogue: its own picked category and
+/// search text on top of `CatalogueStore`.
+@MainActor
+final class StorefrontViewModel: ObservableObject {
+    private let store = CatalogueStore.shared
+    private var storeChanges: AnyCancellable?
+
     @Published var selectedCategory: String? = nil
     @Published var searchQuery: String = ""
-    @Published var isLoading: Bool = true
-
-    private var productListener: ListenerRegistration?
-    private var categoryListener: ListenerRegistration?
-    private var offerListener: ListenerRegistration?
 
     init() {
-        loadInitialData()
-        startRealtimeListeners()
+        storeChanges = store.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
-    deinit {
-        productListener?.remove()
-        categoryListener?.remove()
-        offerListener?.remove()
+    var products: [Product] { store.products }
+    var isLoading: Bool { store.isLoading }
+    var offers: [Offer] { store.offers }
+    var categories: [Category] { store.categories }
+    var categoryTiles: [CategoryTile] { store.categoryTiles }
+    /// The busiest categories, shown as collage tiles at the top of the feed.
+    var topCategoryTiles: [CategoryTile] { store.topCategoryTiles }
+    var departments: [Department] { store.departments }
+    var rails: [ProductRail] { store.rails }
+    /// Rotating search hints drawn from what the store actually sells.
+    var searchHints: [String] { store.searchHints }
+    var popularProducts: [Product] { store.popularProducts }
+    var searchEntries: [ProductSearch.Entry] { store.searchEntries }
+
+    func products(inCategory name: String) -> [Product] {
+        store.products(inCategory: name)
     }
 
     func selectCategory(_ category: String?) {
@@ -107,83 +320,12 @@ final class StorefrontViewModel: ObservableObject {
         selectedCategory == nil && searchQuery.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// Categories in display order, each with the products filed under it.
-    private var productsByCategory: [(category: Category, products: [Product])] {
-        categories
-            .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
-            .map { (category: Category) -> (category: Category, products: [Product]) in
-                (category: category, products: products.filter { $0.cat.caseInsensitiveCompare(category.name) == .orderedSame })
-            }
-            .filter { !$0.products.isEmpty }
-    }
-
-    var categoryTiles: [CategoryTile] {
-        productsByCategory.map { entry in
-            CategoryTile(
-                id: entry.category.id,
-                name: entry.category.name,
-                previewImages: entry.products.prefix(4).map(\.img),
-                productCount: entry.products.count
-            )
-        }
-    }
-
-    /// Rotating search hints drawn from what the store actually sells.
-    var searchHints: [String] {
-        var seen = Set<String>()
-        return products
-            .filter { $0.isAvailable }
-            .map { product -> String in
-                let words = product.name.lowercased().split(separator: " ").prefix(3)
-                return words.joined(separator: " ")
-            }
-            .filter { seen.insert($0).inserted }
-            .prefix(8)
-            .map { $0 }
-    }
-
-    /// The busiest categories, shown as collage tiles at the top of the feed.
-    var topCategoryTiles: [CategoryTile] {
-        Array(categoryTiles.sorted { $0.productCount > $1.productCount }.prefix(6))
-    }
-
-    /// Categories grouped into store departments, Blinkit-style; anything that
-    /// fits none of them lands in "More to explore".
-    var departments: [Department] {
-        let groups: [(title: String, keys: [String])] = [
-            ("Fresh & Daily", ["dairy", "fruit", "vegetable", "egg", "chicken", "meat", "fish", "bread"]),
-            ("Grocery & Kitchen", ["staple", "grocery", "atta", "rice", "dal", "oil", "spice", "masala", "instant", "kitchen"]),
-            ("Snacks & Drinks", ["snack", "chip", "namkeen", "biscuit", "cookie", "bakery", "beverage", "drink", "juice", "sweet", "chocolate"]),
-            ("Home & Household", ["home", "clean", "household", "care"])
-        ]
-        var remaining = categoryTiles
-        var result: [Department] = []
-        for group in groups {
-            let matched = remaining.filter { tile in
-                let name = tile.name.lowercased()
-                return group.keys.contains { name.contains($0) }
-            }
-            guard !matched.isEmpty else { continue }
-            remaining.removeAll { tile in matched.contains { $0.id == tile.id } }
-            result.append(Department(id: group.title, title: group.title, tiles: matched))
-        }
-        if !remaining.isEmpty {
-            result.append(Department(id: "more", title: "More to explore", tiles: remaining))
-        }
-        return result
-    }
-
-    var rails: [ProductRail] {
-        productsByCategory.map { entry in
-            ProductRail(id: entry.category.id, title: entry.category.name, products: Array(entry.products.prefix(12)))
-        }
-    }
-
     var filteredProducts: [Product] {
-        var list = products
-
+        var list: [Product]
         if let cat = selectedCategory, !cat.isEmpty {
-            list = list.filter { $0.cat.lowercased() == cat.lowercased() }
+            list = store.products(inCategory: cat)
+        } else {
+            list = store.products
         }
 
         if !searchQuery.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -196,96 +338,5 @@ final class StorefrontViewModel: ObservableObject {
         }
 
         return list
-    }
-
-    private func loadInitialData() {
-        // The live catalogue comes first, with skeletons while it loads. The
-        // built-in catalogue only stands in if Firestore hasn't answered in a
-        // few seconds (no network and nothing cached yet).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            guard let self, self.products.isEmpty else { return }
-            withAnimation(.easeOut(duration: 0.25)) {
-                self.products = CatalogSeed.products
-                self.isLoading = false
-            }
-        }
-
-        // Categories are derived from the products (see `categories`).
-
-        // The web's built-in deals (`DEFAULT_OFFERS` in src/lib/offers.js), shown
-        // until the admin publishes offers in Firestore.
-        self.offers = [
-            Offer(
-                id: "offer-snacks-01",
-                badge: "DASHIT EXCLUSIVE",
-                title: "Gourmet Snacks & Chilled Sips",
-                subtitle: "Artisanal crisps, premium chocolates & chilled sodas with fastest delivery.",
-                priceTag: "Starting ₹20",
-                category: "Snacks",
-                promoCode: "CRISP20",
-                discountPercent: 20,
-                expiresIn: "Ends in 3 hours",
-                img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80"
-            ),
-            Offer(
-                id: "offer-bakery-02",
-                badge: "FRESH FROM OVEN",
-                title: "Artisan Breads & Morning Bakes",
-                subtitle: "Authentic Kashmiri lavas, soft croissants & golden rolls delivered warm.",
-                priceTag: "Starting ₹30",
-                category: "Bakery",
-                promoCode: "BAKE15",
-                discountPercent: 15,
-                expiresIn: "Ends at 12:00 PM",
-                img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80"
-            ),
-            Offer(
-                id: "offer-dairy-03",
-                badge: "FARM TO DOORSTEP",
-                title: "Fresh Milk, Butter & Kashmiri Apples",
-                subtitle: "Chilled Amul dairy, creamy butter & crisp valley apples in minutes.",
-                priceTag: "Save up to 25%",
-                category: "Dairy",
-                promoCode: "FRESH25",
-                discountPercent: 25,
-                expiresIn: "Active Today",
-                img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80"
-            )
-        ]
-    }
-
-    private func startRealtimeListeners() {
-        // Real-time products
-        productListener = FirestoreService.shared.listenProducts { [weak self] fetched in
-            guard let self = self else { return }
-            // An empty answer is usually an empty offline cache: keep the
-            // skeletons up until real products (or the fallback) arrive.
-            guard !fetched.isEmpty else { return }
-            // The skeletons cross-fade into the catalogue on its first arrival.
-            if self.isLoading {
-                withAnimation(.easeOut(duration: 0.25)) {
-                    self.products = fetched
-                    self.isLoading = false
-                }
-            } else {
-                self.products = fetched
-            }
-        }
-
-        // Real-time categories
-        categoryListener = FirestoreService.shared.listenCategories { [weak self] fetched in
-            guard let self = self else { return }
-            if !fetched.isEmpty {
-                self.remoteCategories = fetched
-            }
-        }
-
-        // Real-time offers
-        offerListener = FirestoreService.shared.listenOffers { [weak self] fetched in
-            guard let self = self else { return }
-            if !fetched.isEmpty {
-                self.offers = fetched
-            }
-        }
     }
 }

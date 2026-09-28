@@ -11,23 +11,48 @@ enum ProductSearch {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// A product with its search text already folded, so typing doesn't
+    /// re-fold thousands of names on every key press.
+    struct Entry {
+        let product: Product
+        let name: String
+        let category: String
+        let badge: String
+        let popularity: Int
+    }
+
+    static func entries(for products: [Product]) -> [Entry] {
+        products.map { product in
+            Entry(
+                product: product,
+                name: normalized(product.name),
+                category: normalized(product.cat),
+                badge: normalized(product.badge ?? ""),
+                popularity: popularity(product)
+            )
+        }
+    }
+
     /// Products matching `query`, best match first.
     static func results(for query: String, in products: [Product]) -> [Product] {
+        results(for: query, in: entries(for: products))
+    }
+
+    static func results(for query: String, in entries: [Entry]) -> [Product] {
         let q = normalized(query)
         guard !q.isEmpty else { return [] }
         let words = q.split(whereSeparator: \.isWhitespace).map(String.init)
-        return products
-            .compactMap { product -> (product: Product, rank: Int)? in
-                rank(product, query: q, words: words).map { (product: product, rank: $0) }
+        return entries
+            .compactMap { entry -> (entry: Entry, rank: Int)? in
+                rank(entry, query: q, words: words).map { (entry: entry, rank: $0) }
             }
             .sorted { a, b in
                 if a.rank != b.rank { return a.rank < b.rank }
-                if a.product.isAvailable != b.product.isAvailable { return a.product.isAvailable }
-                let (pa, pb) = (popularity(a.product), popularity(b.product))
-                if pa != pb { return pa > pb }
-                return a.product.name.localizedCaseInsensitiveCompare(b.product.name) == .orderedAscending
+                if a.entry.product.isAvailable != b.entry.product.isAvailable { return a.entry.product.isAvailable }
+                if a.entry.popularity != b.entry.popularity { return a.entry.popularity > b.entry.popularity }
+                return a.entry.name < b.entry.name
             }
-            .map(\.product)
+            .map(\.entry.product)
     }
 
     /// Category names the text points at, closest first.
@@ -46,16 +71,6 @@ enum ProductSearch {
             .map(\.name)
     }
 
-    /// In-stock items shoppers rate most, for the empty search page.
-    static func popular(in products: [Product], limit: Int = 6) -> [Product] {
-        Array(
-            products
-                .filter(\.isAvailable)
-                .sorted { popularity($0) > popularity($1) }
-                .prefix(limit)
-        )
-    }
-
     /// `text` with the part matching `query` in bold.
     static func highlighted(_ text: String, matching query: String) -> Text {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -70,10 +85,10 @@ enum ProductSearch {
     }
 
     /// Lower is better; nil when a typed word matches nothing.
-    private static func rank(_ product: Product, query: String, words queryWords: [String]) -> Int? {
-        let name = normalized(product.name)
-        let cat = normalized(product.cat)
-        let badge = normalized(product.badge ?? "")
+    private static func rank(_ entry: Entry, query: String, words queryWords: [String]) -> Int? {
+        let name = entry.name
+        let cat = entry.category
+        let badge = entry.badge
         for word in queryWords where !(name.contains(word) || cat.contains(word) || badge.contains(word)) {
             return nil
         }

@@ -55,33 +55,45 @@ struct LiveTrackingMapView: View {
 
     // MARK: - Received and packing
 
+    /// One calm, dark screen for "received" and "packing": the DASHit tile
+    /// animating in the middle, what's happening in a line, then the order.
     private func stageScreen(_ order: Order?) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: { dismiss() }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.textPrimary)
+                        .foregroundColor(.white)
                         .frame(width: 42, height: 42)
-                        .background(Color.surfaceRaised, in: Circle())
-                        .overlay(Circle().strokeBorder(Color.hairline, lineWidth: 1))
+                        .background(Color.white.opacity(0.1), in: Circle())
                 }
                 .buttonStyle(PressableButtonStyle(scale: 0.9))
                 .accessibilityLabel("Back")
 
                 Spacer()
 
+                if let order {
+                    Text("Order #\(order.id.suffix(6))")
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundColor(Color.white.opacity(0.55))
+                }
+
+                Spacer()
+
                 if vm.isModificationWindowActive, let order {
                     countdownPill(order)
+                } else {
+                    Color.clear.frame(width: 42, height: 42)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
 
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: 22) {
                     if let order {
                         OrderStageHero(stage: order.status.stage, canStillChange: vm.isModificationWindowActive)
+                            .padding(.top, 6)
                         orderCard(order)
                         itemsList(order)
                     } else {
@@ -90,11 +102,11 @@ struct LiveTrackingMapView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
                 .padding(.bottom, 28)
             }
         }
-        .background(Color.surface.ignoresSafeArea())
+        .background(Color.midnight.ignoresSafeArea())
+        .environment(\.colorScheme, .dark)
     }
 
     private func countdownPill(_ order: Order) -> some View {
@@ -126,7 +138,7 @@ struct LiveTrackingMapView: View {
                         }
                     }
                     .frame(width: 42, height: 42)
-                    .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .accessibilityHidden(true)
 
@@ -146,12 +158,13 @@ struct LiveTrackingMapView: View {
                 }
                 .padding(.vertical, 8)
                 if index < order.items.count - 1 {
-                    Rectangle().fill(Color.hairline).frame(height: 1)
+                    Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
                 }
             }
         }
-        .padding(14)
-        .dashitCard(cornerRadius: 16)
+        .padding(16)
+        .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.white.opacity(0.08), lineWidth: 1))
     }
 
     // MARK: - Out for delivery
@@ -368,22 +381,15 @@ struct LiveTrackingMapView: View {
     }
 }
 
-/// Top of the received and packing screens: what's happening now, in words.
+/// Top of the received and packing screens: the DASHit tile with a smooth,
+/// never-ending animation, and what's happening in plain words. Received sends
+/// soft rings out from the tile; packing runs an orange arc around it. Driven
+/// by a timeline, so it never stutters or restarts when the order updates.
 private struct OrderStageHero: View {
     let stage: DeliveryStage
     let canStillChange: Bool
 
-    @State private var isPulsing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private var symbol: String {
-        switch stage {
-        case .placed: return "bag.fill"
-        case .packing: return "shippingbox.fill"
-        case .cancelled: return "xmark"
-        default: return "checkmark"
-        }
-    }
 
     private var title: String {
         switch stage {
@@ -398,10 +404,10 @@ private struct OrderStageHero: View {
         switch stage {
         case .placed:
             return canStillChange
-                ? "You can still add items or cancel. The store starts packing right after."
+                ? "You can still add items or cancel. Packing starts right after."
                 : "The store is getting your items ready."
         case .packing:
-            return "Your items are being picked and packed. You'll see the rider on the map as soon as it leaves the store."
+            return "Your items are being picked and packed. The map opens as soon as a rider is on the way."
         case .cancelled:
             return "This order won't be delivered."
         default:
@@ -409,47 +415,87 @@ private struct OrderStageHero: View {
         }
     }
 
-    private var tint: Color { stage == .cancelled ? .danger : .brandOrange }
-
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 18) {
             ZStack {
-                Circle()
-                    .fill(tint.opacity(0.10))
-                    .frame(width: 148, height: 148)
-                    .scaleEffect(isPulsing ? 1.06 : 0.94)
-                    .opacity(isPulsing ? 0.6 : 1)
-                Circle()
-                    .fill(tint.opacity(0.16))
-                    .frame(width: 108, height: 108)
-                Image(systemName: symbol)
-                    .font(.system(size: 42, weight: .semibold))
-                    .foregroundColor(tint)
-                    .contentTransition(.symbolEffect(.replace))
+                if reduceMotion || stage == .cancelled {
+                    StageAnimation(stage: stage, time: 0)
+                } else {
+                    TimelineView(.animation) { context in
+                        StageAnimation(stage: stage, time: context.date.timeIntervalSinceReferenceDate)
+                    }
+                }
             }
-            .frame(height: 156)
+            .frame(width: 220, height: 220)
             .accessibilityHidden(true)
 
-            Text(title)
-                .font(.system(size: 24, weight: .heavy))
-                .foregroundColor(.textPrimary)
-                .contentTransition(.opacity)
-            if !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.system(size: 14))
-                    .foregroundColor(.textMuted)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 12)
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 26, weight: .heavy))
+                    .foregroundColor(.white)
+                    .contentTransition(.opacity)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(.system(size: 15))
+                        .foregroundColor(Color.white.opacity(0.65))
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 24)
+                }
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 8)
-        .onAppear {
-            guard !reduceMotion, stage != .cancelled else { return }
-            withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
-                isPulsing = true
+    }
+}
+
+/// One frame of the hero animation at `time` seconds.
+private struct StageAnimation: View {
+    let stage: DeliveryStage
+    let time: Double
+
+    private let tileSize: CGFloat = 96
+
+    var body: some View {
+        // A slow breath for the tile itself: 1.5% bigger and 3pt up at the top.
+        let breath = sin(time * 1.7)
+        ZStack {
+            switch stage {
+            case .placed:
+                // Three rings leaving the tile one after another, fading as they grow.
+                ForEach(0..<3, id: \.self) { ring in
+                    let phase = (time / 2.6 + Double(ring) / 3).truncatingRemainder(dividingBy: 1)
+                    RoundedRectangle(cornerRadius: tileSize * 0.3 * (1 + phase * 0.9), style: .continuous)
+                        .strokeBorder(Color.brandOrange.opacity(0.55 * (1 - phase)), lineWidth: 2)
+                        .frame(width: tileSize * (1 + phase * 0.95), height: tileSize * (1 + phase * 0.95))
+                }
+            case .packing:
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 5)
+                    .frame(width: tileSize + 64, height: tileSize + 64)
+                Circle()
+                    .trim(from: 0, to: 0.26 + 0.08 * sin(time * 1.3))
+                    .stroke(Color.brandOrange, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .frame(width: tileSize + 64, height: tileSize + 64)
+                    .rotationEffect(.degrees(time * 150))
+                Circle()
+                    .trim(from: 0, to: 0.12)
+                    .stroke(Color.brandOrange.opacity(0.45), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .frame(width: tileSize + 40, height: tileSize + 40)
+                    .rotationEffect(.degrees(-time * 95))
+            default:
+                EmptyView()
             }
+
+            Image("BrandTile")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFill()
+                .frame(width: tileSize, height: tileSize)
+                .clipShape(RoundedRectangle(cornerRadius: tileSize * 0.27, style: .continuous))
+                .shadow(color: Color.brandOrange.opacity(stage == .cancelled ? 0 : 0.35), radius: 22, x: 0, y: 8)
+                .saturation(stage == .cancelled ? 0 : 1)
+                .scaleEffect(1 + 0.015 * breath)
+                .offset(y: -3 * breath)
         }
     }
 }

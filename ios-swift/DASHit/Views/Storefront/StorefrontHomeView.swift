@@ -173,7 +173,7 @@ struct StorefrontHomeView: View {
             VoiceSearchSheet { phrase in
                 let clean = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !clean.isEmpty else { return }
-                if !ProductSearch.results(for: clean, in: vm.products).isEmpty {
+                if !ProductSearch.results(for: clean, in: vm.searchEntries).isEmpty {
                     RecentSearches.shared.record(clean)
                 }
                 searchText = clean
