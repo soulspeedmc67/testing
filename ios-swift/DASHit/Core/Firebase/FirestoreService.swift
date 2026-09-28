@@ -36,7 +36,7 @@ final class FirestoreService {
                     var data = doc.data()
                     if (data["active"] as? Bool) == false { return nil }
                     if data["id"] == nil { data["id"] = doc.documentID }
-                    // Tobacco included: the catalogue store keeps it out of browsing.
+                    // 18+ items are dropped by the catalogue store, never shown.
                     return try? decoder.decode(Product.self, from: data)
                 }
                 DispatchQueue.main.async {

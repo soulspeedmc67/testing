@@ -78,23 +78,18 @@ struct ProductDetailSheet: View {
         Color.surfaceRaised
             .frame(height: 168)
             .overlay {
-                if product.isAgeRestricted {
-                    // Tobacco is shown as a plain pack, never the brand photo.
-                    PlainPackArt()
-                } else {
-                    AsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        case .failure:
-                            Image(systemName: "photo")
-                                .font(.system(size: 28))
-                                .foregroundColor(.textFaint)
-                        default:
-                            ShimmerView()
-                        }
+                AsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        Image(systemName: "photo")
+                            .font(.system(size: 28))
+                            .foregroundColor(.textFaint)
+                    default:
+                        ShimmerView()
                     }
                 }
             }

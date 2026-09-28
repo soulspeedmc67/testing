@@ -287,9 +287,9 @@ fun StorefrontScreen(
 
             // 3. Main Feed Content
             if (isBrowsing) {
-                // Welcome Festive Banner (matching reference screenshot)
+                // Welcome line, straight on the page
                 item(key = "welcome_hero_banner") {
-                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                    Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 2.dp)) {
                         WelcomeHeroBanner(
                             onTap = {
                                 if (offers.isNotEmpty()) {

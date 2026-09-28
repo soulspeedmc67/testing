@@ -214,7 +214,6 @@ export default function SearchPage() {
         {showTobaccoPrompt && (
           <TobaccoSearchBanner
             query={query.trim()}
-            matches={tobaccoHits}
             showNoResults={showPopularInstead}
             onViewItems={openTobaccoSection}
           />
