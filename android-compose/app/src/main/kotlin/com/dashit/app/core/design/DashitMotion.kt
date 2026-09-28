@@ -95,6 +95,24 @@ fun Modifier.blurReveal(index: Int, blurRadius: Float = 8f): Modifier = composed
         .blur(((1f - progress) * blurRadius).dp, BlurredEdgeTreatment.Unbounded)
 }
 
+/**
+ * Whether the shop can be seen yet. The app covers its first seconds with the
+ * splash (and, on the very first launch, the welcome sign-in), so entrance
+ * animations wait for this instead of playing unseen underneath.
+ */
+object AppReveal {
+    /** Set by an activity that covers its first frames and calls [reveal] when they clear. */
+    var coversLaunch = false
+    var isRevealed by mutableStateOf(false)
+        private set
+
+    val canPlay: Boolean get() = isRevealed || !coversLaunch
+
+    fun reveal() {
+        isRevealed = true
+    }
+}
+
 /** Remembers, for this launch only, which entrance animations have played. */
 object LaunchReveal {
     private val played = mutableSetOf<String>()
@@ -109,10 +127,12 @@ object LaunchReveal {
 fun Modifier.slideInFromLeft(key: String, index: Int, isReady: Boolean = true): Modifier = composed {
     val alreadyPlayed = remember { LaunchReveal.hasPlayed(key) }
     var shown by remember { mutableStateOf(alreadyPlayed) }
-    LaunchedEffect(isReady) {
-        if (isReady && !shown) {
+    val canPlay = AppReveal.canPlay
+    LaunchedEffect(isReady, canPlay) {
+        // Waits for something to show and for the splash to clear.
+        if (isReady && canPlay && !shown) {
             // A beat after the layout lands, then each item a little after the one before.
-            kotlinx.coroutines.delay(120L + 45L * index.coerceAtMost(10))
+            kotlinx.coroutines.delay(120L + 55L * index.coerceAtMost(10))
             LaunchReveal.markPlayed(key)
             shown = true
         }
@@ -124,9 +144,9 @@ fun Modifier.slideInFromLeft(key: String, index: Int, isReady: Boolean = true): 
     )
     this.graphicsLayer {
         alpha = progress.coerceIn(0f, 1f)
-        translationX = (1f - progress) * -36.dp.toPx()
-        scaleX = 0.9f + 0.1f * progress
-        scaleY = 0.9f + 0.1f * progress
+        translationX = (1f - progress) * -56.dp.toPx()
+        scaleX = 0.86f + 0.14f * progress
+        scaleY = 0.86f + 0.14f * progress
         transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
     }
 }
