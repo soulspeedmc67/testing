@@ -17,6 +17,9 @@ struct StorefrontSearchView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var recents = RecentSearches.shared
     @FocusState private var isFieldFocused: Bool
+    @State private var isTobaccoDeclarationOpen = false
+    @State private var isTobaccoSectionOpen = false
+    @State private var opensTobaccoAfterDeclaration = false
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
 
@@ -55,6 +58,44 @@ struct StorefrontSearchView: View {
             if !isShowingResults {
                 DispatchQueue.main.async { isFieldFocused = true }
             }
+        }
+        .sheet(isPresented: $isTobaccoDeclarationOpen, onDismiss: {
+            // The list rises once the declaration has gone, not on top of it.
+            if opensTobaccoAfterDeclaration {
+                opensTobaccoAfterDeclaration = false
+                isTobaccoSectionOpen = true
+            }
+        }) {
+            TobaccoDeclarationSheet {
+                cart.confirmAge()
+                opensTobaccoAfterDeclaration = true
+            }
+        }
+        .sheet(isPresented: $isTobaccoSectionOpen) {
+            TobaccoSectionView(products: tobaccoList)
+        }
+    }
+
+    // MARK: - Tobacco
+
+    /// The tobacco items for the current search, direct matches first.
+    private var tobaccoList: [Product] {
+        let term = submitted ?? trimmedQuery
+        let list = Tobacco.matches(for: term, in: vm.tobaccoProducts)
+        return list.isEmpty ? vm.tobaccoProducts : list
+    }
+
+    private func showsTobaccoCard(for term: String) -> Bool {
+        Tobacco.showsCard(for: term, in: vm.tobaccoProducts)
+    }
+
+    private func openTobacco() {
+        isFieldFocused = false
+        recents.record(submitted ?? trimmedQuery)
+        if cart.isAgeConfirmed {
+            isTobaccoSectionOpen = true
+        } else {
+            isTobaccoDeclarationOpen = true
         }
     }
 
@@ -162,11 +203,16 @@ struct StorefrontSearchView: View {
                 ForEach(matches.prefix(8)) { product in
                     productRow(product, highlighting: trimmedQuery)
                 }
-            } else {
+            } else if !showsTobaccoCard(for: trimmedQuery) {
                 Text("No items match “\(trimmedQuery)” yet.")
                     .font(.system(size: 13))
                     .foregroundColor(.textMuted)
                     .padding(.top, 10)
+            }
+
+            if showsTobaccoCard(for: trimmedQuery) {
+                TobaccoSearchCard(onView: openTobacco)
+                    .padding(.top, 14)
             }
         }
         .padding(.horizontal, 16)
@@ -197,6 +243,10 @@ struct StorefrontSearchView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 36)
 
+                if showsTobaccoCard(for: term) {
+                    TobaccoSearchCard(onView: openTobacco)
+                }
+
                 let popular = vm.popularProducts
                 if !popular.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
@@ -210,6 +260,11 @@ struct StorefrontSearchView: View {
             .padding(.horizontal, 16)
         } else {
             VStack(alignment: .leading, spacing: 12) {
+                if showsTobaccoCard(for: term) {
+                    TobaccoSearchCard(onView: openTobacco)
+                        .padding(.top, 14)
+                }
+
                 Text("\(matches.count) result\(matches.count == 1 ? "" : "s") for “\(term)”")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.textSecondary)
@@ -362,7 +417,7 @@ struct StorefrontSearchView: View {
         guard !clean.isEmpty else { return }
         HapticsManager.shared.light()
         // Only searches that found something are worth offering again.
-        if !ProductSearch.results(for: clean, in: vm.searchEntries).isEmpty {
+        if !ProductSearch.results(for: clean, in: vm.searchEntries).isEmpty || showsTobaccoCard(for: clean) {
             recents.record(clean)
         }
         query = clean

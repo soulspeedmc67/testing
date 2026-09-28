@@ -34,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.rememberScrollState
@@ -375,9 +376,9 @@ private fun OrderStageScreen(
 }
 
 /**
- * The DASHit tile with a smooth, never-ending animation: received sends soft
- * rings out from it, packing runs an orange arc around it. Every loop starts
- * where the last one ended, so it never jumps.
+ * Top of the received and packing screens: a line-art icon that keeps
+ * animating (a receipt filling in, then a box being packed) and what's
+ * happening in plain words. Same icon and timing as the iOS app.
  */
 @Composable
 private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean) {
@@ -390,68 +391,31 @@ private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean) {
         OrderStatus.CANCELLED -> "Order cancelled" to "This order won't be delivered."
         else -> stage.headline(null) to ""
     }
-    val moving = stage != OrderStatus.CANCELLED
-    val loop = rememberInfiniteTransition(label = "stageHero")
-    val ripple by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Restart), label = "ripple")
-    val spin by loop.animateFloat(0f, 360f, infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart), label = "spin")
-    val counterSpin by loop.animateFloat(360f, 0f, infiniteRepeatable(tween(3800, easing = LinearEasing), RepeatMode.Restart), label = "counterSpin")
-    val breathAngle by loop.animateFloat(0f, (2 * Math.PI).toFloat(), infiniteRepeatable(tween(3700, easing = LinearEasing), RepeatMode.Restart), label = "breath")
-    val breath = if (moving) kotlin.math.sin(breathAngle) else 0f
-    val orange = DashitColors.BrandOrange
+    val iconKind = when (stage) {
+        OrderStatus.PLACED -> StageIconKind.RECEIVED
+        OrderStatus.PACKING -> StageIconKind.PACKING
+        else -> null
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(modifier = Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val tile = 96.dp.toPx()
-                when (stage) {
-                    OrderStatus.PLACED -> for (ring in 0 until 3) {
-                        val phase = (ripple + ring / 3f) % 1f
-                        val size = tile * (1f + phase * 0.95f)
-                        drawRoundRect(
-                            color = orange.copy(alpha = 0.55f * (1f - phase)),
-                            topLeft = Offset((this.size.width - size) / 2f, (this.size.height - size) / 2f),
-                            size = Size(size, size),
-                            cornerRadius = CornerRadius(size * 0.3f, size * 0.3f),
-                            style = Stroke(width = 2.dp.toPx())
+        Box(modifier = Modifier.size(168.dp), contentAlignment = Alignment.Center) {
+            Crossfade(targetState = iconKind, animationSpec = tween(350), label = "stageIcon") { kind ->
+                if (kind != null) {
+                    OrderStageIcon(kind = kind, modifier = Modifier.fillMaxSize())
+                } else {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(R.drawable.brand_tile),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            colorFilter = ColorFilter.colorMatrix(ComposeColorMatrix().apply { setToSaturation(0f) }),
+                            modifier = Modifier.size(88.dp).clip(RoundedCornerShape(24.dp))
                         )
                     }
-                    OrderStatus.PACKING -> {
-                        val outer = tile + 64.dp.toPx()
-                        val inner = tile + 40.dp.toPx()
-                        val outerTopLeft = Offset((size.width - outer) / 2f, (size.height - outer) / 2f)
-                        val innerTopLeft = Offset((size.width - inner) / 2f, (size.height - inner) / 2f)
-                        drawCircle(Color.White.copy(alpha = 0.08f), radius = outer / 2f, style = Stroke(5.dp.toPx()))
-                        drawArc(
-                            color = orange, startAngle = spin, sweepAngle = 95f + 30f * kotlin.math.sin(breathAngle),
-                            useCenter = false, topLeft = outerTopLeft, size = Size(outer, outer),
-                            style = Stroke(5.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                        drawArc(
-                            color = orange.copy(alpha = 0.45f), startAngle = counterSpin, sweepAngle = 43f,
-                            useCenter = false, topLeft = innerTopLeft, size = Size(inner, inner),
-                            style = Stroke(3.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    }
-                    else -> Unit
                 }
             }
-            Image(
-                painter = painterResource(R.drawable.brand_tile),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                colorFilter = if (moving) null else ColorFilter.colorMatrix(ComposeColorMatrix().apply { setToSaturation(0f) }),
-                modifier = Modifier
-                    .size(96.dp)
-                    .graphicsLayer {
-                        translationY = -3.dp.toPx() * breath
-                        scaleX = 1f + 0.015f * breath
-                        scaleY = 1f + 0.015f * breath
-                    }
-                    .shadow(if (moving) 18.dp else 0.dp, RoundedCornerShape(26.dp), ambientColor = orange, spotColor = orange)
-                    .clip(RoundedCornerShape(26.dp))
-            )
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(20.dp))
         Text(title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
         if (subtitle.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))

@@ -1,56 +1,64 @@
 import SwiftUI
 
-/// Statutory 18+ declaration shown before an age-restricted item can enter the
-/// cart. Mirrors the web age gate (`src/context/AgeGateContext.jsx`): confirming
-/// once covers the rest of the session.
-struct AgeGateSheet: View {
-    let product: Product
+/// "Please make sure…": the declaration before any tobacco is listed or added
+/// to the cart, in the website's words (`TobaccoDeclarationSheet.jsx`).
+/// Confirming is remembered on this device.
+struct TobaccoDeclarationSheet: View {
     let onConfirm: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
-        VStack(spacing: 0) {
-            Text("18+")
-                .font(.system(size: 22, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .frame(width: 60, height: 60)
-                .background(Circle().fill(Color.danger))
-                .padding(.top, 28)
-                .accessibilityHidden(true)
-
-            Text("Are you 18 or older?")
-                .font(.system(size: 20, weight: .bold))
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Please make sure…")
+                .font(.system(size: 22, weight: .heavy))
                 .foregroundColor(.textPrimary)
-                .padding(.top, 14)
+                .padding(.horizontal, 20)
+                .padding(.top, 26)
+                .padding(.bottom, 16)
 
-            (Text(product.name).bold().foregroundColor(.textPrimary)
-                + Text(" is an age-restricted item under statutory laws.").foregroundColor(.textSecondary))
-                .font(.system(size: 14))
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 6)
-                .padding(.horizontal, 28)
+            Rectangle().fill(Color.hairline).frame(height: 1)
 
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "person.text.rectangle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.caution)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Government photo ID required on delivery")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-                    Text("Our rider is legally required to check a government photo ID. Orders without age proof can't be handed over.")
-                        .font(.system(size: 12))
-                        .foregroundColor(.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(Array(Tobacco.declarations.enumerated()), id: \.offset) { _, item in
+                    HStack(alignment: .top, spacing: 14) {
+                        Image(systemName: item.symbol)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(item.isRule ? .danger : .textSecondary)
+                            .frame(width: 38, height: 38)
+                            .background(Color.surfaceMuted, in: Circle())
+                        Text(item.text)
+                            .font(.system(size: 14))
+                            .foregroundColor(.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 2)
+                    }
                 }
-                Spacer(minLength: 0)
             }
-            .padding(14)
-            .dashitCard(cornerRadius: 16)
             .padding(.horizontal, 20)
             .padding(.top, 20)
+
+            Text("Orders that break these rules are cancelled, and we are bound to report the account.")
+                .font(.system(size: 12.5))
+                .foregroundColor(.textMuted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+
+            Button {
+                openURL(Tobacco.termsURL)
+            } label: {
+                Text("Read terms and conditions")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.brandAccent)
+                    .underline()
+                    .frame(minHeight: 36)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+
+            Spacer(minLength: 12)
 
             VStack(spacing: 6) {
                 Button {
@@ -58,7 +66,7 @@ struct AgeGateSheet: View {
                     onConfirm()
                     dismiss()
                 } label: {
-                    Text("I'm 18 or older — Confirm")
+                    Text("Yes, I confirm")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -71,7 +79,7 @@ struct AgeGateSheet: View {
                     HapticsManager.shared.light()
                     dismiss()
                 } label: {
-                    Text("I'm under 18 (Cancel)")
+                    Text("Cancel")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.textMuted)
                         .frame(maxWidth: .infinity)
@@ -81,10 +89,19 @@ struct AgeGateSheet: View {
                 .buttonStyle(.pressable)
             }
             .padding(.horizontal, 20)
-            .padding(.top, 22)
-
-            Spacer(minLength: 8)
+            .padding(.bottom, 8)
         }
-        .dashitSheet([.height(500), .large])
+        .dashitSheet([.height(560), .large])
+    }
+}
+
+/// The declaration when an age-restricted item is added straight from a card.
+/// Kept as its own name so the existing screens don't change.
+struct AgeGateSheet: View {
+    let product: Product
+    let onConfirm: () -> Void
+
+    var body: some View {
+        TobaccoDeclarationSheet(onConfirm: onConfirm)
     }
 }

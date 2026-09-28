@@ -338,15 +338,22 @@ private struct CartLineRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: URL(string: item.img)) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else if phase.error == nil && !item.img.isEmpty {
-                    ShimmerView()
+            Group {
+                if Product.isAgeRestricted(name: item.name, cat: item.cat) {
+                    // Tobacco is shown as a plain pack, never the brand photo.
+                    PlainPackArt()
                 } else {
-                    Color.surfaceMuted
+                    AsyncImage(url: URL(string: item.img)) { phase in
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        } else if phase.error == nil && !item.img.isEmpty {
+                            ShimmerView()
+                        } else {
+                            Color.surfaceMuted
+                        }
+                    }
                 }
             }
             .frame(width: 52, height: 52)

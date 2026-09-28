@@ -16,6 +16,8 @@ struct StorefrontHomeView: View {
     @State private var ageGateProduct: Product? = nil
     @ObservedObject private var addressBook = AddressBook.shared
     @State private var addressAnchor = ScreenAnchor()
+    /// False only until the launch entrance of the category tiles has played.
+    @State private var areTilesRevealed = LaunchReveal.shared.hasPlayed("categoryTiles")
     @FocusState private var isSearchFocused: Bool
     @State private var isVoiceSearchOpen = false
     /// The full-page search, laid over the feed so the product and cart
@@ -226,20 +228,25 @@ struct StorefrontHomeView: View {
                     Image(systemName: "mappin")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(.brandAccent)
-                    Text((address?.nickname ?? "Home").uppercased())
-                        .font(.system(size: 13, weight: .heavy))
-                        .foregroundColor(.textPrimary)
-                    Text("·")
-                        .foregroundColor(.textFaint)
-                    Text(addressLine)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.textSecondary)
-                        .lineLimit(1)
-                        .contentTransition(.opacity)
+                    // A newly picked address comes into focus out of a blur.
+                    HStack(spacing: 5) {
+                        Text((address?.nickname ?? "Home").uppercased())
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundColor(.textPrimary)
+                        Text("·")
+                            .foregroundColor(.textFaint)
+                        Text(addressLine)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                            .lineLimit(1)
+                    }
+                    .id(addressKey)
+                    .transition(.blurReplace)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.textMuted)
                 }
+                .animation(.smooth(duration: 0.45), value: addressKey)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.pressable)
@@ -310,6 +317,8 @@ struct StorefrontHomeView: View {
             .background(Color.surfaceRaised.opacity(0.75), in: Capsule())
             .overlay(Capsule().strokeBorder(Color.hairline, lineWidth: 1))
     }
+
+    private var addressKey: String { "\(address?.nickname ?? "")|\(addressLine)" }
 
     private var addressLine: String {
         guard let street = address?.street, !street.isEmpty else { return "Lal Chowk, Anantnag" }
@@ -408,14 +417,17 @@ struct StorefrontHomeView: View {
             sectionTitle("Shop by category")
 
             LazyVGrid(columns: tileColumns, spacing: 12) {
-                ForEach(vm.topCategoryTiles) { tile in
+                ForEach(Array(vm.topCategoryTiles.enumerated()), id: \.element.id) { index, tile in
                     CategoryCollageTile(tile: tile) {
                         vm.selectCategory(tile.name)
                     }
+                    // Row by row, left to right, on the first look after launch.
+                    .slideInFromLeading(index: (index / 3) * 2 + index % 3 + 2, isShown: areTilesRevealed)
                 }
             }
             .padding(.horizontal, 16)
         }
+        .launchReveal("categoryTiles", isReady: !vm.topCategoryTiles.isEmpty, isShown: $areTilesRevealed)
     }
 
     /// A department grid: four compact category cards per row.

@@ -38,16 +38,12 @@ data class Product(
     /**
      * Tobacco and other 18+ items, detected the same way as the web
      * (`src/lib/ageGate.js`): the flag, the category, or a keyword in the name,
-     * since staff and CSV imports can add an item without the flag. The app
-     * never lists these: Google Play doesn't allow selling tobacco through an app.
+     * since staff and CSV imports can add an item without the flag. They are
+     * kept out of browsing and only listed in the tobacco section, which Google
+     * Play allows in grocery delivery apps with an age check (see `Tobacco`).
      */
     val isAgeRestricted: Boolean
-        get() {
-            if (ageRestricted == true || (minAge ?: 0) >= 18) return true
-            if (cat.lowercase() in RESTRICTED_CATEGORIES) return true
-            val haystack = "$cat $name".lowercase()
-            return RESTRICTED_KEYWORDS.any { haystack.contains(it) }
-        }
+        get() = ageRestricted == true || (minAge ?: 0) >= 18 || isAgeRestricted(name, cat)
 
     val discountPercent: Int?
         get() {
@@ -67,6 +63,13 @@ data class Product(
 fun shopCategory(raw: String): String = when (raw.trim().lowercase()) {
     "chips", "chip", "namkeen", "chips & namkeen", "chips and namkeen", "snack", "snacks & namkeen" -> "Snacks"
     else -> raw.trim()
+}
+
+/** The category and keyword part of the check, for cart lines that only carry a name and category. */
+fun isAgeRestricted(name: String, cat: String): Boolean {
+    if (cat.lowercase() in RESTRICTED_CATEGORIES) return true
+    val haystack = "$cat $name".lowercase()
+    return RESTRICTED_KEYWORDS.any { haystack.contains(it) }
 }
 
 private val RESTRICTED_CATEGORIES = setOf("tobacco", "tobacco & smoking", "smoking")

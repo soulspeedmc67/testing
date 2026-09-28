@@ -96,15 +96,20 @@ public struct Product: Codable, Identifiable, Hashable {
     
     /// Tobacco and other 18+ items, detected the same way as the web
     /// (`src/lib/ageGate.js`): the flag, the category, or a keyword in the name,
-    /// since staff and CSV imports can add an item without the flag. The iOS
-    /// app never lists these: App Store guideline 1.4.3 doesn't allow selling
-    /// tobacco through an app.
+    /// since staff and CSV imports can add an item without the flag. They are
+    /// kept out of browsing and only listed in the tobacco section (`Tobacco`).
     public var isAgeRestricted: Bool {
         if ageRestricted == true || (minAge ?? 0) >= 18 { return true }
+        return Self.isAgeRestricted(name: name, cat: cat)
+    }
+
+    /// The category and keyword part of the check, for cart and order lines
+    /// that only carry a name and category.
+    public static func isAgeRestricted(name: String, cat: String) -> Bool {
         let restrictedCategories = ["tobacco", "tobacco & smoking", "smoking"]
         if restrictedCategories.contains(cat.lowercased()) { return true }
         let haystack = "\(cat) \(name)".lowercased()
-        return Self.restrictedKeywords.contains { haystack.contains($0) }
+        return restrictedKeywords.contains { haystack.contains($0) }
     }
 
     /// One name per aisle: chips and namkeen are filed under Snacks, so the

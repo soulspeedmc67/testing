@@ -123,7 +123,6 @@ struct AddressMenuPopup: View {
                 .staggered(2, isShown: isShown)
 
             savedList(room: listRoom)
-                .staggered(3, isShown: isShown)
         }
         .padding(.bottom, 10)
         .background(Color.surfaceOverlay, in: cardShape)
@@ -187,6 +186,7 @@ struct AddressMenuPopup: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
+            .staggered(3, isShown: isShown)
         } else if Self.rowHeight * CGFloat(book.saved.count) <= listHeight {
             VStack(spacing: 0) {
                 savedRows
@@ -203,8 +203,10 @@ struct AddressMenuPopup: View {
     }
 
     private var savedRows: some View {
-        ForEach(book.saved) { address in
+        // Each address comes into focus in turn, out of a soft blur.
+        ForEach(Array(book.saved.enumerated()), id: \.element.id) { index, address in
             savedRow(address)
+                .staggered(3 + min(index, 6), isShown: isShown, blur: 8)
         }
     }
 
@@ -290,10 +292,12 @@ struct AddressMenuPopup: View {
 }
 
 private extension View {
-    /// Rows settle in one after another as the menu opens.
-    func staggered(_ index: Int, isShown: Bool) -> some View {
+    /// Rows settle in one after another as the menu opens, sharpening out of
+    /// a soft blur as they arrive.
+    func staggered(_ index: Int, isShown: Bool, blur: CGFloat = 5) -> some View {
         opacity(isShown ? 1 : 0)
+            .blur(radius: isShown ? 0 : blur)
             .offset(y: isShown ? 0 : 10)
-            .animation(.spring(response: 0.4, dampingFraction: 0.85).delay(isShown ? 0.04 * Double(index) + 0.05 : 0), value: isShown)
+            .animation(.easeOut(duration: 0.45).delay(isShown ? 0.05 * Double(index) + 0.06 : 0), value: isShown)
     }
 }
