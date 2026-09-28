@@ -218,8 +218,20 @@ class OrderRepository(
     // MARK: - Writes
 
     /** Writes the order in the web schema and waits for the store to have it. */
-    suspend fun placeOrder(order: Order, customer: UserProfile, distanceKm: Double?) {
-        writeOrder(order, customer, distanceKm)
+    suspend fun placeOrder(
+        order: Order,
+        customer: UserProfile,
+        distanceKm: Double?,
+        payment: com.dashit.app.data.OnlinePayment.Receipt? = null
+    ) {
+        try {
+            writeOrder(order, customer, distanceKm, payment)
+        } catch (e: Exception) {
+            if (payment == null) throw e
+            // Already paid: one more try before giving up on the order.
+            kotlinx.coroutines.delay(2000)
+            writeOrder(order, customer, distanceKm, payment)
+        }
         setActiveOrderId(order.id)
     }
 
@@ -299,7 +311,12 @@ class OrderRepository(
         return replacement
     }
 
-    private suspend fun writeOrder(order: Order, customer: UserProfile, distanceKm: Double?) {
+    private suspend fun writeOrder(
+        order: Order,
+        customer: UserProfile,
+        distanceKm: Double?,
+        payment: com.dashit.app.data.OnlinePayment.Receipt? = null
+    ) {
         val placedAt = isoNow()
         val dateLabel = SimpleDateFormat("d MMM, h:mm a", Locale.ENGLISH).format(Date(order.createdAt))
         val savings = order.items.sumOf { maxOf(0.0, (it.originalPrice ?: it.price) - it.price) * it.qty } + order.discount
@@ -351,6 +368,13 @@ class OrderRepository(
             "platform" to "android"
         )
         distanceKm?.let { payload["distanceKm"] = it }
+        // Paid online: what Razorpay confirmed, so the store can match it up.
+        payment?.let {
+            payload["razorpayOrderId"] = it.razorpayOrderId
+            payload["razorpayPaymentId"] = it.razorpayPaymentId
+            it.amountPaidPaise?.let { paise -> payload["amountPaid"] = paise / 100.0 }
+            payload["paidAt"] = FieldValue.serverTimestamp()
+        }
         order.couponCode?.let { payload["couponCode"] = it }
         order.replacesOrderId?.let { payload["replacesOrderId"] = it }
         order.modifyWindowEndsAt?.let { payload["modifyWindowEndsAt"] = Timestamp(Date(it)) }

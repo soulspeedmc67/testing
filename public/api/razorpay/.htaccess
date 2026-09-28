@@ -1,0 +1,5 @@
+# Only create-order.php and verify-payment.php are called directly; the shared
+# helper is included by them and never served on its own.
+<Files "_razorpay.php">
+  Require all denied
+</Files>

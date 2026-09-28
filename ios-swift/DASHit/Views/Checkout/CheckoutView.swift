@@ -93,6 +93,33 @@ struct CheckoutView: View {
                                 .background(vm.paymentMethod == "cod" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
                                 .cornerRadius(10)
                             }
+
+                            // Pay online: UPI, cards, netbanking and wallets through Razorpay
+                            if OnlinePayment.isAvailable {
+                                Button(action: {
+                                    vm.paymentMethod = "online"
+                                    HapticsManager.shared.selection()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "creditcard.fill")
+                                            .foregroundColor(.brandAccent)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Pay online")
+                                                .font(.dashitBody)
+                                                .foregroundColor(.textPrimary)
+                                            Text("UPI, cards, netbanking")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.textMuted)
+                                        }
+                                        Spacer()
+                                        Image(systemName: vm.paymentMethod == "online" ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(vm.paymentMethod == "online" ? .brandOrange : .gray)
+                                    }
+                                    .padding(12)
+                                    .background(vm.paymentMethod == "online" ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
+                                    .cornerRadius(10)
+                                }
+                            }
                         }
                         .padding(14)
                         .background(Color.surfaceRaised)
@@ -163,7 +190,9 @@ struct CheckoutView: View {
                                     .tint(.white)
                                     .padding(.trailing, 8)
                             }
-                            Text(vm.isSubmitting ? "Placing Order..." : "Place Order • \(CurrencyFormatter.format(cart.bill.grandTotal))")
+                            Text(vm.isSubmitting
+                                 ? (vm.paymentMethod == "online" ? "Waiting for payment..." : "Placing Order...")
+                                 : (vm.paymentMethod == "online" ? "Pay" : "Place Order") + " • \(CurrencyFormatter.format(cart.bill.grandTotal))")
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.white)
                         }
