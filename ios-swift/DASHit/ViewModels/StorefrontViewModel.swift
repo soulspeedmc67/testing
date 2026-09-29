@@ -318,6 +318,9 @@ final class StorefrontViewModel: ObservableObject {
     var searchHints: [String] { store.searchHints }
     var popularProducts: [Product] { store.popularProducts }
     var searchEntries: [ProductSearch.Entry] { store.searchEntries }
+    #if TOBACCO_SECTION
+    var tobaccoProducts: [Product] { store.tobaccoProducts }
+    #endif
 
     func products(inCategory name: String) -> [Product] {
         store.products(inCategory: name)
