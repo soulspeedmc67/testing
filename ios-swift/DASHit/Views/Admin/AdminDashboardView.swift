@@ -1294,6 +1294,8 @@ struct AddProductSheetView: View {
     /// Stock items that look like the scanned pack. Most stock came in without
     /// barcodes, so a scan alone can't tell it's already in the shop.
     @State private var possibleMatches: [Product] = []
+    /// A barcode no database has, so the owner can look it up on the web.
+    @State private var unknownBarcode: String?
 
     private var priceValue: Double? {
         Double(price.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
@@ -1337,6 +1339,11 @@ struct AddProductSheetView: View {
                             Text(scanStatus)
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
+                        }
+                    }
+                    if let unknownBarcode, let search = URL(string: "https://www.google.com/search?q=\(unknownBarcode)") {
+                        Link(destination: search) {
+                            Label("Search the web for \(unknownBarcode)", systemImage: "safari")
                         }
                     }
                     if !possibleMatches.isEmpty {
@@ -1449,7 +1456,7 @@ struct AddProductSheetView: View {
                             // Ready for the next item.
                             withAnimation { lastSaved = cleanName }
                             name = ""; unit = ""; price = ""; originalPrice = ""; stock = ""; badge = ""; img = ""
-                            scannedBarcode = nil; matchedProduct = nil; scanStatus = nil; possibleMatches = []
+                            scannedBarcode = nil; matchedProduct = nil; scanStatus = nil; possibleMatches = []; unknownBarcode = nil
                         } else {
                             dismiss()
                         }
@@ -1493,37 +1500,45 @@ extension AddProductSheetView {
             }
         }
         let known = matchedProduct.map { "“\($0.name)” is already in your shop. " } ?? ""
-        scanStatus = "\(known)Looking it up…"
+        scanStatus = "\(known)Looking up \(code)…"
         possibleMatches = []
+        unknownBarcode = nil
         isLookingUp = true
         #if ADMIN_APP_TARGET
         Task {
             defer { isLookingUp = false }
-            do {
-                guard let pack = try await PackLookup.find(barcode: code) else {
+            let outcome = await PackLookup.find(barcode: code)
+            guard let pack = outcome.pack else {
+                switch outcome {
+                case .notAPackBarcode:
+                    scanStatus = "That read “\(code)”, which isn't the maker's barcode. Scan the barcode with 13 digits under the stripes."
+                case .busy:
+                    scanStatus = known + "The product database is busy right now (\(code)). Scan again in a minute."
+                case .offline:
+                    scanStatus = known + "No internet. Connect and scan again."
+                default:
+                    unknownBarcode = code
                     scanStatus = known + (ProductPhotoRule.isRealPhoto(img)
-                        ? "Change what you need and save."
-                        : "This pack isn't in the free product database yet. Type its details and paste a photo link.")
-                    return
+                        ? "\(code) isn't in the free product databases, so nothing changed. Change what you need and save."
+                        : "\(code) isn't in the free product databases yet. Type its details and paste a photo link.")
                 }
-                if name.trimmingCharacters(in: .whitespaces).isEmpty {
-                    let brandShown = pack.brand.isEmpty || pack.name.localizedCaseInsensitiveContains(pack.brand)
-                    name = brandShown ? pack.name : "\(pack.brand) \(pack.name)"
-                }
-                if unit.trimmingCharacters(in: .whitespaces).isEmpty { unit = pack.unit }
-                if ProductPhotoRule.isRealPhoto(img) {
-                    scanStatus = known + "Found it. The photo you already have was kept."
-                } else if !pack.photo.isEmpty {
-                    img = pack.photo
-                    scanStatus = known + "Found it. Photo added. Check it's the right pack."
-                } else {
-                    scanStatus = known + "Found it, but it has no photo yet. Paste a photo link."
-                }
-                if editingProduct == nil && matchedProduct == nil {
-                    possibleMatches = Self.likelySame(as: "\(pack.brand) \(pack.name)", in: vm.products)
-                }
-            } catch {
-                scanStatus = "Couldn't look it up. Check the internet and scan again."
+                return
+            }
+            if name.trimmingCharacters(in: .whitespaces).isEmpty {
+                let brandShown = pack.brand.isEmpty || pack.name.localizedCaseInsensitiveContains(pack.brand)
+                name = brandShown ? pack.name : "\(pack.brand) \(pack.name)"
+            }
+            if unit.trimmingCharacters(in: .whitespaces).isEmpty { unit = pack.unit }
+            if ProductPhotoRule.isRealPhoto(img) {
+                scanStatus = known + "Found it. The photo you already have was kept."
+            } else if !pack.photo.isEmpty {
+                img = pack.photo
+                scanStatus = known + "Found it. Photo added. Check it's the right pack."
+            } else {
+                scanStatus = known + "Found it, but it has no photo yet. Paste a photo link."
+            }
+            if editingProduct == nil && matchedProduct == nil {
+                possibleMatches = Self.likelySame(as: "\(pack.brand) \(pack.name)", in: vm.products)
             }
         }
         #endif
