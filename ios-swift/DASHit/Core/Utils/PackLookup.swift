@@ -4,8 +4,8 @@ import Foundation
 /// Looks a scanned barcode up in the free, open product databases: Open Food
 /// Facts, Open Beauty Facts (toothpaste, soap and the like) and Open Products
 /// Facts (cleaners, stationery and everything else), the same records the web
-/// console uses. Photos are saved as links to the database's own copy, never
-/// uploaded. They are CC BY-SA, credited on the Terms page.
+/// console uses. DASHit saves a link to the database's own copy of a photo and
+/// never stores one itself. They are CC BY-SA, credited on the Terms page.
 enum PackLookup {
     struct Pack: Equatable {
         let barcode: String
@@ -14,6 +14,8 @@ enum PackLookup {
         let unit: String
         /// The front photo, full size, or "" when the record has none.
         let photo: String
+        /// The database that has it (one of `sites`), so a photo is added there.
+        let site: String
     }
 
     enum Outcome: Equatable {
@@ -34,7 +36,7 @@ enum PackLookup {
     }
 
     /// In order of preference when more than one has the barcode.
-    private static let sites = [
+    static let sites = [
         "https://world.openfoodfacts.org",
         "https://world.openbeautyfacts.org",
         "https://world.openproductsfacts.org",
@@ -91,13 +93,20 @@ enum PackLookup {
             }
             if status == 429 || status >= 500 { continue }
             // 404 is how they say they don't know the barcode.
-            guard status == 200, let pack = parse(data, code: code) else { return .notFound }
+            guard status == 200, let pack = parse(data, code: code, site: site) else { return .notFound }
             return .found(pack)
         }
         return .busy
     }
 
-    private static func parse(_ data: Data, code: String) -> Pack? {
+    /// The front photo one database has for this barcode, if any: used to
+    /// read back a photo just added.
+    static func frontPhoto(barcode: String, site: String) async -> String? {
+        guard let pack = await fetch(barcode, from: site).pack, !pack.photo.isEmpty else { return nil }
+        return pack.photo
+    }
+
+    private static func parse(_ data: Data, code: String, site: String) -> Pack? {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               (json["status"] as? Int) == 1,
               let product = json["product"] as? [String: Any] else { return nil }
@@ -108,12 +117,12 @@ enum PackLookup {
         let brand = ((product["brands"] as? String) ?? "")
             .split(separator: ",").first.map { $0.trimmingCharacters(in: .whitespaces) } ?? ""
         let unit = ((product["quantity"] as? String) ?? "").trimmingCharacters(in: .whitespaces)
-        let photo = frontPhoto(product)
+        let photo = selectedFront(product)
         guard !name.isEmpty || !photo.isEmpty else { return nil }
-        return Pack(barcode: code, name: name, brand: brand, unit: unit, photo: photo)
+        return Pack(barcode: code, name: name, brand: brand, unit: unit, photo: photo, site: site)
     }
 
-    private static func frontPhoto(_ product: [String: Any]) -> String {
+    private static func selectedFront(_ product: [String: Any]) -> String {
         let selected = product["selected_images"] as? [String: Any]
         let display = (selected?["front"] as? [String: Any])?["display"] as? [String: String] ?? [:]
         if let url = languages.lazy.compactMap({ display[$0] }).first ?? display.values.sorted().first {

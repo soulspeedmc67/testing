@@ -1296,6 +1296,11 @@ struct AddProductSheetView: View {
     @State private var possibleMatches: [Product] = []
     /// A barcode no database has, so the owner can look it up on the web.
     @State private var unknownBarcode: String?
+    /// The pack barcode last looked up, and which database has it (nil: none
+    /// does), so the owner can add their own photo of it to Open Food Facts.
+    @State private var lookedUpBarcode: String?
+    @State private var packSite: String?
+    @State private var isAddingToOpenFacts = false
 
     private var priceValue: Double? {
         Double(price.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
@@ -1333,12 +1338,36 @@ struct AddProductSheetView: View {
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .disabled(isLookingUp)
+                    // On this always-there row, so the sheet stays put when the new photo hides its own button.
+                    .sheet(isPresented: $isAddingToOpenFacts) {
+                        if let lookedUpBarcode {
+                            AddToOpenFactsSheet(
+                                barcode: lookedUpBarcode,
+                                existingSite: packSite,
+                                name: name,
+                                brand: "",
+                                unit: unit,
+                                category: cat
+                            ) { link in
+                                img = link
+                                unknownBarcode = nil
+                                scanStatus = "Added to Open Food Facts. The photo is now on this item; save to keep it."
+                            }
+                        }
+                    }
                     if let scanStatus {
                         HStack(spacing: 10) {
                             if isLookingUp { ProgressView() }
                             Text(scanStatus)
                                 .font(.system(size: 14))
                                 .foregroundColor(.secondary)
+                        }
+                    }
+                    if let lookedUpBarcode, !isLookingUp, !ProductPhotoRule.isRealPhoto(img) {
+                        Button {
+                            isAddingToOpenFacts = true
+                        } label: {
+                            Label("Take a photo and add it to Open Food Facts", systemImage: "camera")
                         }
                     }
                     if let unknownBarcode, let search = URL(string: "https://www.google.com/search?q=\(unknownBarcode)") {
@@ -1457,6 +1486,7 @@ struct AddProductSheetView: View {
                             withAnimation { lastSaved = cleanName }
                             name = ""; unit = ""; price = ""; originalPrice = ""; stock = ""; badge = ""; img = ""
                             scannedBarcode = nil; matchedProduct = nil; scanStatus = nil; possibleMatches = []; unknownBarcode = nil
+                            lookedUpBarcode = nil; packSite = nil
                         } else {
                             dismiss()
                         }
@@ -1503,11 +1533,19 @@ extension AddProductSheetView {
         scanStatus = "\(known)Looking up \(code)…"
         possibleMatches = []
         unknownBarcode = nil
+        lookedUpBarcode = nil
+        packSite = nil
         isLookingUp = true
         #if ADMIN_APP_TARGET
         Task {
             defer { isLookingUp = false }
             let outcome = await PackLookup.find(barcode: code)
+            // Only a definite answer allows adding a photo: while a database is
+            // busy it isn't known whether the pack is already there.
+            if outcome == .notFound || outcome.pack != nil {
+                lookedUpBarcode = code
+                packSite = outcome.pack?.site
+            }
             guard let pack = outcome.pack else {
                 switch outcome {
                 case .notAPackBarcode:
@@ -1520,7 +1558,7 @@ extension AddProductSheetView {
                     unknownBarcode = code
                     scanStatus = known + (ProductPhotoRule.isRealPhoto(img)
                         ? "\(code) isn't in the free product databases, so nothing changed. Change what you need and save."
-                        : "\(code) isn't in the free product databases yet. Type its details and paste a photo link.")
+                        : "\(code) isn't in the free product databases yet. Add your own photo of it below, or type its details and paste a photo link.")
                 }
                 return
             }
@@ -1535,7 +1573,7 @@ extension AddProductSheetView {
                 img = pack.photo
                 scanStatus = known + "Found it. Photo added. Check it's the right pack."
             } else {
-                scanStatus = known + "Found it, but it has no photo yet. Paste a photo link."
+                scanStatus = known + "Found it, but it has no photo yet. Add your own photo below, or paste a photo link."
             }
             if editingProduct == nil && matchedProduct == nil {
                 possibleMatches = Self.likelySame(as: "\(pack.brand) \(pack.name)", in: vm.products)
