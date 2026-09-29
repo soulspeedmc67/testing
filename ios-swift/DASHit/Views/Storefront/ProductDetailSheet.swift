@@ -78,20 +78,16 @@ struct ProductDetailSheet: View {
         Color.surfaceRaised
             .frame(height: 168)
             .overlay {
-                CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        Image(systemName: "photo")
-                            .font(.system(size: 28))
-                            .foregroundColor(.textFaint)
-                    default:
-                        ShimmerView()
-                    }
+                #if TOBACCO_SECTION
+                // Tobacco shows a plain pack, never brand art.
+                if product.isAgeRestricted {
+                    PlainPackArt()
+                } else {
+                    productPhoto
                 }
+                #else
+                productPhoto
+                #endif
             }
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(alignment: .topLeading) {
@@ -105,6 +101,23 @@ struct ProductDetailSheet: View {
                         .padding(10)
                 }
             }
+    }
+
+    private var productPhoto: some View {
+        CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
+            switch phase {
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFill()
+            case .failure:
+                Image(systemName: "photo")
+                    .font(.system(size: 28))
+                    .foregroundColor(.textFaint)
+            default:
+                ShimmerView()
+            }
+        }
     }
 
     private var titleBlock: some View {

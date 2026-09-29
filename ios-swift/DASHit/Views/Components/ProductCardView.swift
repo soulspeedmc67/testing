@@ -79,24 +79,37 @@ struct ProductCardView: View {
         Color.surfaceMuted
             .aspectRatio(1, contentMode: .fit)
             .overlay {
-                CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        // No photo (or a broken link): the name's first letter, like the website.
-                        Text(String(product.name.first { $0.isLetter || $0.isNumber } ?? "?").uppercased())
-                            .font(.system(size: 30, weight: .black))
-                            .foregroundColor(.textFaint)
-                    default:
-                        ShimmerView()
-                    }
+                #if TOBACCO_SECTION
+                // Tobacco shows a plain pack, never brand art.
+                if product.isAgeRestricted {
+                    PlainPackArt()
+                } else {
+                    productPhoto
                 }
+                #else
+                productPhoto
+                #endif
             }
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .opacity(product.isAvailable ? 1 : 0.45)
+    }
+
+    private var productPhoto: some View {
+        CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+            switch phase {
+            case .success(let image):
+                image
+                    .resizable()
+                    .scaledToFill()
+            case .failure:
+                // No photo (or a broken link): the name's first letter, like the website.
+                Text(String(product.name.first { $0.isLetter || $0.isNumber } ?? "?").uppercased())
+                    .font(.system(size: 30, weight: .black))
+                    .foregroundColor(.textFaint)
+            default:
+                ShimmerView()
+            }
+        }
     }
 
     @ViewBuilder

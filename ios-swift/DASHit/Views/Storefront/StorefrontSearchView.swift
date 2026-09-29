@@ -17,6 +17,10 @@ struct StorefrontSearchView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var recents = RecentSearches.shared
     @FocusState private var isFieldFocused: Bool
+    #if TOBACCO_SECTION
+    @State private var isTobaccoDeclarationOpen = false
+    @State private var isTobaccoListOpen = false
+    #endif
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
 
@@ -24,6 +28,31 @@ struct StorefrontSearchView: View {
     private var isShowingResults: Bool { submitted != nil && submitted == trimmedQuery && !trimmedQuery.isEmpty }
 
     var body: some View {
+        #if TOBACCO_SECTION
+        Group {
+            if isTobaccoListOpen {
+                TobaccoListView(
+                    products: tobaccoList,
+                    onOpenProduct: onOpenProduct,
+                    onRequestAgeConfirmation: onRequestAgeConfirmation,
+                    onBack: { isTobaccoListOpen = false }
+                )
+            } else {
+                searchPage
+            }
+        }
+        .sheet(isPresented: $isTobaccoDeclarationOpen) {
+            TobaccoDeclarationSheet {
+                cart.confirmAge()
+                isTobaccoListOpen = true
+            }
+        }
+        #else
+        searchPage
+        #endif
+    }
+
+    private var searchPage: some View {
         VStack(spacing: 0) {
             searchBar
 
@@ -144,6 +173,8 @@ struct StorefrontSearchView: View {
                 run(query)
             }
 
+            tobaccoCard(for: trimmedQuery)
+
             ForEach(categories, id: \.self) { name in
                 termRow(
                     icon: "square.grid.2x2",
@@ -197,6 +228,8 @@ struct StorefrontSearchView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 36)
 
+                tobaccoCard(for: term)
+
                 let popular = vm.popularProducts
                 if !popular.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
@@ -214,6 +247,8 @@ struct StorefrontSearchView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.textSecondary)
                     .padding(.top, 14)
+
+                tobaccoCard(for: term)
 
                 LazyVGrid(columns: gridColumns, spacing: 10) {
                     ForEach(matches) { product in
@@ -354,6 +389,37 @@ struct StorefrontSearchView: View {
         .overlay(shape.strokeBorder(Color.hairline, lineWidth: 1))
         .accessibilityHidden(true)
     }
+
+    // MARK: - Tobacco
+
+    /// "Looking for tobacco products?" under a tobacco search, when the
+    /// cigarette section is built in; nothing otherwise.
+    @ViewBuilder
+    private func tobaccoCard(for term: String) -> some View {
+        #if TOBACCO_SECTION
+        if Tobacco.showsCard(term, in: vm.tobaccoProducts) {
+            TobaccoSearchCard { openTobacco() }
+                .padding(.vertical, 6)
+        }
+        #endif
+    }
+
+    #if TOBACCO_SECTION
+    /// The list asks for the declaration first, once per device.
+    private func openTobacco() {
+        isFieldFocused = false
+        if cart.isAgeConfirmed {
+            isTobaccoListOpen = true
+        } else {
+            isTobaccoDeclarationOpen = true
+        }
+    }
+
+    private var tobaccoList: [Product] {
+        let matched = Tobacco.matches(submitted ?? trimmedQuery, in: vm.tobaccoProducts)
+        return matched.isEmpty ? vm.tobaccoProducts : matched
+    }
+    #endif
 
     // MARK: - Actions
 
