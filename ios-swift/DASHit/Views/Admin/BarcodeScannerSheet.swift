@@ -232,7 +232,7 @@ private final class BarcodeCamera: NSObject, AVCaptureMetadataOutputObjectsDeleg
 
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
         guard !reported,
-              let code = metadataObjects.compactMap({ ($0 as? AVMachineReadableCodeObject)?.stringValue }).first,
+              let code = metadataObjects.compactMap({ ($0 as? AVMetadataMachineReadableCodeObject)?.stringValue }).first,
               !code.isEmpty else { return }
         reported = true
         stop()
