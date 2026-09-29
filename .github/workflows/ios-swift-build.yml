@@ -13,6 +13,10 @@ on:
         description: "Build and sign the IPAs only; don't upload them to TestFlight"
         type: boolean
         default: false
+      tobacco_ios:
+        description: "Build the cigarette section into the iPhone shop app (App Store guideline 1.4.3: a build with it can't pass App Store review)"
+        type: boolean
+        default: false
 
 jobs:
   build-native-swift-ios:
@@ -127,6 +131,15 @@ jobs:
       - name: Build Xcode Archives
         run: |
           cd ios-swift
+          # The cigarette section is compiled in only when this run asks for it
+          # (see ios-swift/DASHit/Core/Utils/Tobacco.swift). Pushes never do.
+          SHOP_FLAGS=()
+          if [ "${{ inputs.tobacco_ios }}" = "true" ]; then
+            echo "Cigarette section: ON (this build can't pass App Store review)"
+            SHOP_FLAGS+=('SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) TOBACCO_SECTION')
+          else
+            echo "Cigarette section: off"
+          fi
           echo "=== Building DASHit Customer App Archive ==="
           xcodebuild archive \
             -project DASHit.xcodeproj \
@@ -141,7 +154,8 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            ENABLE_USER_SCRIPT_SANDBOXING=NO
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            "${SHOP_FLAGS[@]}"
 
           echo "=== Building DASHit Admin Console App Archive ==="
           xcodebuild archive \

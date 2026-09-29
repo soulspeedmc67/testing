@@ -38,6 +38,11 @@ final class CatalogueStore: ObservableObject {
         didSet { rebuild() }
     }
     @Published private(set) var isLoading = true
+    #if TOBACCO_SECTION
+    /// Tobacco and other 18+ items: never browsed, only listed in the tobacco
+    /// section after the declaration (see Tobacco.swift).
+    @Published private(set) var tobaccoProducts: [Product] = []
+    #endif
     @Published private(set) var offers: [Offer] = CatalogueStore.defaultOffers
     /// The `categories` collection, when the rules let it be read.
     @Published private var remoteCategories: [Category] = [] {
@@ -206,8 +211,12 @@ final class CatalogueStore: ObservableObject {
     private func startListeners() {
         productListener = FirestoreService.shared.listenProducts { [weak self] everything in
             guard let self = self else { return }
-            // Tobacco and other 18+ items are never shown in the iPhone app:
-            // App Store guideline 1.4.3 doesn't allow selling tobacco in an app.
+            // Tobacco and other 18+ items are never browsed in the iPhone app
+            // (App Store guideline 1.4.3). Only a build with the cigarette
+            // section switched on keeps them, for that section alone.
+            #if TOBACCO_SECTION
+            self.tobaccoProducts = everything.filter { $0.isAgeRestricted }
+            #endif
             let fetched = everything.filter { !$0.isAgeRestricted }
             // An empty answer is usually an empty offline cache: keep the
             // skeletons up until real products (or the fallback) arrive.

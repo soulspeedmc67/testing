@@ -95,7 +95,8 @@ final class CartViewModel: ObservableObject {
                 unit: variant?.unit ?? product.unit,
                 price: variant?.price ?? product.price,
                 originalPrice: variant?.originalPrice ?? product.originalPrice,
-                img: product.img,
+                // An 18+ item keeps no brand photo in the cart, orders or tracking.
+                img: product.isAgeRestricted ? "" : product.img,
                 cat: product.cat,
                 qty: 1,
                 maxQuantity: product.stock
