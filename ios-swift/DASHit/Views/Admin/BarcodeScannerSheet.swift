@@ -212,8 +212,10 @@ private final class BarcodeCamera: NSObject, AVCaptureMetadataOutputObjectsDeleg
         }
         session.addOutput(output)
         output.setMetadataObjectsDelegate(self, queue: DispatchQueue.main)
-        // EAN-13/8 and UPC are on almost every pack; Code 128 on some local ones.
-        let wanted: [AVMetadataObject.ObjectType] = [.ean13, .ean8, .upce, .code128]
+        // Only the maker's barcode (EAN-13/8, UPC): the product databases are keyed
+        // by it. Shop price stickers and batch labels (Code 128) are ignored, so
+        // the camera can't grab one of those first.
+        let wanted: [AVMetadataObject.ObjectType] = [.ean13, .ean8, .upce]
         output.metadataObjectTypes = wanted.filter { output.availableMetadataObjectTypes.contains($0) }
         session.commitConfiguration()
 
