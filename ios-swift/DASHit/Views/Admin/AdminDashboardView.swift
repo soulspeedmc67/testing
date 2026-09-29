@@ -1285,12 +1285,25 @@ struct AddProductSheetView: View {
     @State private var stock: String = ""
     @State private var badge: String = ""
     @State private var lastSaved: String?
+    // Barcode scanning: the code read, the shop item it already belongs to, and what the lookup found.
+    @State private var isScannerOpen = false
+    @State private var scannedBarcode: String?
+    @State private var matchedProduct: Product?
+    @State private var scanStatus: String?
+    @State private var isLookingUp = false
+    /// Stock items that look like the scanned pack. Most stock came in without
+    /// barcodes, so a scan alone can't tell it's already in the shop.
+    @State private var possibleMatches: [Product] = []
 
     private var priceValue: Double? {
         Double(price.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
     }
+    /// The item already in the shop that this form changes, if any.
+    private var existingItem: Product? { editingProduct ?? matchedProduct }
     private var canSave: Bool {
+        // The listing rule: a new item goes on the app only with a real photo.
         !name.trimmingCharacters(in: .whitespaces).isEmpty && priceValue != nil
+            && (existingItem != nil || ProductPhotoRule.isRealPhoto(img))
     }
 
     private static func amount(_ value: Double) -> String {
@@ -1309,6 +1322,48 @@ struct AddProductSheetView: View {
                             .font(.system(size: 15, weight: .semibold))
                     }
                 }
+                #if ADMIN_APP_TARGET
+                Section {
+                    Button {
+                        isScannerOpen = true
+                    } label: {
+                        Label(editingProduct == nil ? "Scan the barcode" : "Scan the pack for its photo", systemImage: "barcode.viewfinder")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                    .disabled(isLookingUp)
+                    if let scanStatus {
+                        HStack(spacing: 10) {
+                            if isLookingUp { ProgressView() }
+                            Text(scanStatus)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    if !possibleMatches.isEmpty {
+                        Text("Already in your stock? Tap it to put this photo on it instead of adding a new item.")
+                            .font(.system(size: 14, weight: .semibold))
+                        ForEach(possibleMatches) { product in
+                            Button {
+                                useExisting(product)
+                            } label: {
+                                HStack {
+                                    Text(product.name)
+                                        .foregroundColor(.primary)
+                                        .lineLimit(2)
+                                    Spacer()
+                                    Text("Use this")
+                                        .font(.system(size: 14, weight: .semibold))
+                                }
+                            }
+                        }
+                    }
+                } footer: {
+                    Text(editingProduct == nil
+                         ? "Point the camera at the barcode on the pack. The name, size and photo are filled in for you."
+                         : "Adds the photo of this pack, if the item doesn't have one yet.")
+                }
+                #endif
+
                 Section("About the item") {
                     TextField("Name, e.g. Amul Taaza Milk", text: $name)
                     TextField("Pack size, e.g. 1 kg or 500 ml", text: $unit)
@@ -1334,7 +1389,7 @@ struct AddProductSheetView: View {
                     TextField("Label on the item, e.g. Fresh (optional)", text: $badge)
                 }
 
-                Section("Photo (optional)") {
+                Section {
                     TextField("Photo link, starting with https://", text: $img)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -1346,22 +1401,23 @@ struct AddProductSheetView: View {
                             }
                         }
                     }
+                } header: {
+                    Text(existingItem == nil ? "Photo" : "Photo (optional)")
+                } footer: {
+                    if existingItem == nil {
+                        Text("Every item on the app needs a photo of the pack. Scan the barcode to find one, or paste a link.")
+                    }
                 }
+            }
+            .barcodeScanner(isPresented: $isScannerOpen) { code in
+                handleScan(code)
             }
             .navigationTitle(isEmbedded ? AdminTab.addProduct.rawValue : (editingProduct != nil ? "Edit item" : "Add an item"))
             .navigationBarTitleDisplayMode(isEmbedded ? .large : .inline)
             .onAppear {
                 // Editing starts from the item's current details, not the new-item defaults.
                 guard let p = editingProduct else { return }
-                name = p.name
-                unit = p.unit
-                price = Self.amount(p.price)
-                originalPrice = p.originalPrice.map(Self.amount) ?? ""
-                cat = p.cat
-                distributor = Distributor.resolvedName(p.distributor)
-                img = p.img
-                stock = p.stock.map { String($0) } ?? ""
-                badge = p.badge ?? ""
+                fill(from: p)
             }
             .toolbar {
                 if !isEmbedded {
@@ -1374,10 +1430,11 @@ struct AddProductSheetView: View {
                         guard let pVal = priceValue else { return }
                         let origVal = Double(originalPrice.trimmingCharacters(in: .whitespaces))
                         // A blank count leaves an existing item's stock as it is.
-                        let sVal = Int(stock.trimmingCharacters(in: .whitespaces)) ?? (editingProduct == nil ? 0 : editingProduct?.stock)
+                        let sVal = Int(stock.trimmingCharacters(in: .whitespaces)) ?? (existingItem == nil ? 0 : existingItem?.stock)
                         let cleanName = name.trimmingCharacters(in: .whitespaces)
                         vm.saveProduct(
-                            id: editingProduct?.id,
+                            // A scanned new item is saved under its barcode, like the web console does.
+                            id: existingItem?.id ?? scannedBarcode,
                             name: cleanName,
                             unit: unit.isEmpty ? "1 pc" : unit,
                             price: pVal,
@@ -1392,6 +1449,7 @@ struct AddProductSheetView: View {
                             // Ready for the next item.
                             withAnimation { lastSaved = cleanName }
                             name = ""; unit = ""; price = ""; originalPrice = ""; stock = ""; badge = ""; img = ""
+                            scannedBarcode = nil; matchedProduct = nil; scanStatus = nil; possibleMatches = []
                         } else {
                             dismiss()
                         }
@@ -1401,6 +1459,125 @@ struct AddProductSheetView: View {
                 }
             }
         }
+    }
+}
+
+extension AddProductSheetView {
+    /// Starts the form from an item already in the shop.
+    private func fill(from p: Product) {
+        name = p.name
+        unit = p.unit
+        price = Self.amount(p.price)
+        originalPrice = p.originalPrice.map(Self.amount) ?? ""
+        cat = p.cat
+        distributor = Distributor.resolvedName(p.distributor)
+        img = p.img
+        stock = p.stock.map { String($0) } ?? ""
+        badge = p.badge ?? ""
+    }
+
+    /// A barcode was read: open the item if the shop already has it, then
+    /// fill in what's still empty (and the photo) from the product database.
+    private func handleScan(_ raw: String) {
+        let code = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else { return }
+        if editingProduct == nil {
+            if let existing = vm.products.first(where: { $0.id == code }) {
+                matchedProduct = existing
+                scannedBarcode = nil
+                fill(from: existing)
+            } else {
+                matchedProduct = nil
+                // Only a pack barcode (all digits) becomes the new item's id; anything else could break the database path.
+                scannedBarcode = code.range(of: #"^\d{8,14}$"#, options: .regularExpression) != nil ? code : nil
+            }
+        }
+        let known = matchedProduct.map { "“\($0.name)” is already in your shop. " } ?? ""
+        scanStatus = "\(known)Looking it up…"
+        possibleMatches = []
+        isLookingUp = true
+        #if ADMIN_APP_TARGET
+        Task {
+            defer { isLookingUp = false }
+            do {
+                guard let pack = try await PackLookup.find(barcode: code) else {
+                    scanStatus = known + (ProductPhotoRule.isRealPhoto(img)
+                        ? "Change what you need and save."
+                        : "This pack isn't in the free product database yet. Type its details and paste a photo link.")
+                    return
+                }
+                if name.trimmingCharacters(in: .whitespaces).isEmpty {
+                    let brandShown = pack.brand.isEmpty || pack.name.localizedCaseInsensitiveContains(pack.brand)
+                    name = brandShown ? pack.name : "\(pack.brand) \(pack.name)"
+                }
+                if unit.trimmingCharacters(in: .whitespaces).isEmpty { unit = pack.unit }
+                if ProductPhotoRule.isRealPhoto(img) {
+                    scanStatus = known + "Found it. The photo you already have was kept."
+                } else if !pack.photo.isEmpty {
+                    img = pack.photo
+                    scanStatus = known + "Found it. Photo added. Check it's the right pack."
+                } else {
+                    scanStatus = known + "Found it, but it has no photo yet. Paste a photo link."
+                }
+                if editingProduct == nil && matchedProduct == nil {
+                    possibleMatches = Self.likelySame(as: "\(pack.brand) \(pack.name)", in: vm.products)
+                }
+            } catch {
+                scanStatus = "Couldn't look it up. Check the internet and scan again."
+            }
+        }
+        #endif
+    }
+}
+
+extension AddProductSheetView {
+    /// Switches the form to an item already in stock, keeping the photo the
+    /// scan just found when that item has none.
+    private func useExisting(_ product: Product) {
+        let foundPhoto = img
+        matchedProduct = product
+        scannedBarcode = nil
+        possibleMatches = []
+        fill(from: product)
+        if !ProductPhotoRule.isRealPhoto(img) && ProductPhotoRule.isRealPhoto(foundPhoto) {
+            img = foundPhoto
+        }
+        scanStatus = "Changing “\(product.name)”. Check the photo and save."
+    }
+
+    /// Up to three stock items sharing at least two words with the pack's
+    /// brand and name (or its one word), most shared words first.
+    private static func likelySame(as packName: String, in products: [Product]) -> [Product] {
+        let packWords = words(packName).filter { $0.count >= 3 && $0.rangeOfCharacter(from: .decimalDigits) == nil }
+        guard !packWords.isEmpty else { return [] }
+        let needed = min(2, packWords.count)
+        return products
+            .compactMap { product -> (Product, Int)? in
+                let shared = packWords.intersection(words(product.name)).count
+                return shared >= needed ? (product, shared) : nil
+            }
+            .sorted { $0.1 > $1.1 }
+            .prefix(3)
+            .map { $0.0 }
+    }
+
+    private static func words(_ text: String) -> Set<String> {
+        Set(ProductSearch.normalized(text)
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty })
+    }
+}
+
+/// Which photo links count as a real photo of the item, the same rule as the
+/// web console: a web link that isn't a stock picture.
+enum ProductPhotoRule {
+    private static let stockPhotoHosts = ["unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com"]
+
+    static func isRealPhoto(_ link: String) -> Bool {
+        guard let url = URL(string: link.trimmingCharacters(in: .whitespacesAndNewlines)),
+              let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+              let host = url.host?.lowercased(), !host.isEmpty else { return false }
+        return !stockPhotoHosts.contains { host == $0 || host.hasSuffix(".\($0)") }
     }
 }
 

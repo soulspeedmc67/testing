@@ -661,7 +661,8 @@ public final class AdminDashboardViewModel: ObservableObject {
         let prodId = id ?? "prod_\(Date().timeIntervalSince1970)"
         let existing = products.first(where: { $0.id == prodId })
         let cleanBadge = badge?.isEmpty == false ? badge : nil
-        let image = img.isEmpty ? "https://images.unsplash.com/photo-1542838132-92c53300491e?w=600" : img
+        // Never a stock picture: an item without a photo stays without one (it shows its first letter).
+        let image = img.trimmingCharacters(in: .whitespacesAndNewlines)
 
         // An edit keeps what the form doesn't show (rating, variants, nutrition,
         // age limit); only a brand-new item takes the defaults.
