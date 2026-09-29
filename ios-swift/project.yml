@@ -177,6 +177,7 @@ targets:
         CADisableMinimumFrameDurationOnPhone: true
         ITSAppUsesNonExemptEncryption: false
         NSLocationWhenInUseUsageDescription: "DASHit Admin uses your location to show the delivery area and riders on the map."
+        NSCameraUsageDescription: "DASHit Admin uses the camera to read the barcode on a pack, so the item's name and photo can be filled in for you."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dashit.admin
