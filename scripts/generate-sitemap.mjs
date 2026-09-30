@@ -29,6 +29,11 @@ const STATIC_ROUTES = [
     changefreq: "monthly",
   },
   {
+    path: "/complaints/",
+    priority: "0.4",
+    changefreq: "monthly",
+  },
+  {
     path: "/delete-account/",
     priority: "0.5",
     changefreq: "monthly",

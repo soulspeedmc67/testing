@@ -465,6 +465,7 @@ export default function LandingPage() {
               </a>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
+              <Link href="/complaints" className="hover:text-white transition-colors">Complaints</Link>
             </nav>
           </div>
 

@@ -44,3 +44,6 @@ playstore-final/
 playstore-screenshots/
 scripts/__pycache__/
 __pycache__/
+pipeline/__pycache__/
+# Scraped catalogues, downloaded photos and backups: local only (GBs).
+/data/

@@ -18,6 +18,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,6 +74,7 @@ object SupportContact {
     const val WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order"
     const val PRIVACY_URL = "https://dashit.co.in/privacy/"
     const val TERMS_URL = "https://dashit.co.in/terms/"
+    const val COMPLAINTS_URL = "https://dashit.co.in/complaints/"
 
     fun email(context: Context) = start(
         context,
@@ -123,6 +126,7 @@ private val QUESTIONS = listOf(
 )
 
 /** Help & support: WhatsApp or email the store, and common questions. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HelpSupportScreen(onBack: () -> Unit) {
     val view = LocalView.current
@@ -269,25 +273,25 @@ fun HelpSupportScreen(onBack: () -> Unit) {
                 }
             }
 
-            Row(
+            // Wraps to a second line on narrow phones or with large text instead of squeezing.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
+                horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    "Privacy Policy",
-                    color = DashitColors.TextMuted,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.pressable { uriHandler.openUri(SupportContact.PRIVACY_URL) }
-                )
-                Spacer(Modifier.size(20.dp))
-                Text(
-                    "Terms & Conditions",
-                    color = DashitColors.TextMuted,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.pressable { uriHandler.openUri(SupportContact.TERMS_URL) }
-                )
+                listOf(
+                    "Privacy Policy" to SupportContact.PRIVACY_URL,
+                    "Terms & Conditions" to SupportContact.TERMS_URL,
+                    "Complaints" to SupportContact.COMPLAINTS_URL
+                ).forEach { (label, url) ->
+                    Text(
+                        label,
+                        color = DashitColors.TextMuted,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.pressable { uriHandler.openUri(url) }
+                    )
+                }
             }
             Spacer(Modifier.height(24.dp))
         }

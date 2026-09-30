@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.SupportAgent
@@ -158,6 +159,11 @@ fun ProfileScreen(
                     OptionRow(Icons.Filled.Description, "Terms & Conditions", external = true) {
                         HapticsManager.light(view)
                         uriHandler.openUri(SupportContact.TERMS_URL)
+                    }
+                    RowDivider()
+                    OptionRow(Icons.Filled.Feedback, "Complaints & Copyright", external = true) {
+                        HapticsManager.light(view)
+                        uriHandler.openUri(SupportContact.COMPLAINTS_URL)
                     }
                 }
 

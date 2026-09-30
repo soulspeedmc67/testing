@@ -159,6 +159,20 @@ export default function TermsAndConditionsPage() {
               </div>
             </div>
           </section>
+
+          {/* Section 8 */}
+          <section id="complaints" className="space-y-3 scroll-mt-24">
+            <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">8. Complaints &amp; Copyright</h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
+              To raise a complaint with our Grievance Officer, Azan Mir (owner), or to report a product photo or other material you own
+              the rights to, see our{" "}
+              <a href="/complaints/" className="text-[#FF5B00] font-bold underline">
+                Complaints &amp; Copyright
+              </a>{" "}
+              page. We reply within 48 hours, and material that turns out to be used without permission is removed or
+              replaced within 36 hours of confirming the complaint.
+            </p>
+          </section>
         </div>
       </main>
 

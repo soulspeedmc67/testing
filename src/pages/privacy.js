@@ -151,7 +151,12 @@ export default function PrivacyPolicyPage() {
           <section className="space-y-3">
             <h2 className="text-lg sm:text-xl font-bold text-[#061838] dark:text-content">7. Contact &amp; Grievance Redressal</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed dark:text-content-secondary">
-              For privacy queries, data requests, or grievances, contact our dedicated support team:
+              For privacy queries, data requests, or grievances, contact our dedicated support team. Our Grievance
+              Officer is Azan Mir, the owner of DASHIT, reachable at support@dashit.co.in — see{" "}
+              <a href="/complaints/" className="text-[#FF5B00] font-bold underline">
+                Complaints &amp; Copyright
+              </a>
+              .
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
               <div className="flex items-center space-x-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 dark:bg-surface-raised dark:border-line-soft">

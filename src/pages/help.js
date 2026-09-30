@@ -192,6 +192,9 @@ export default function HelpPage() {
           <button type="button" onClick={() => router.push("/terms")} className="hover:text-[#FF5B00] cursor-pointer">
             Terms &amp; Conditions
           </button>
+          <button type="button" onClick={() => router.push("/complaints")} className="hover:text-[#FF5B00] cursor-pointer">
+            Complaints
+          </button>
         </div>
       </main>
     </div>

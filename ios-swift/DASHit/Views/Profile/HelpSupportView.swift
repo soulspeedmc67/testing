@@ -10,6 +10,7 @@ enum SupportContact {
     static let emailURL = URL(string: "mailto:support@dashit.co.in?subject=DASHit%20app%20help")!
     static let privacyURL = URL(string: "https://dashit.co.in/privacy/")!
     static let termsURL = URL(string: "https://dashit.co.in/terms/")!
+    static let complaintsURL = URL(string: "https://dashit.co.in/complaints/")!
 }
 
 /// A web page shown in Safari's in-app browser, so the shopper never leaves DASHit.
@@ -26,7 +27,7 @@ struct SafariView: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}
 }
 
-/// A page opened from a row: Privacy Policy or Terms & Conditions.
+/// A page opened from a row: Privacy Policy, Terms & Conditions or Complaints.
 struct LegalPage: Identifiable {
     let title: String
     let url: URL
@@ -34,6 +35,7 @@ struct LegalPage: Identifiable {
 
     static let privacy = LegalPage(title: "Privacy Policy", url: SupportContact.privacyURL)
     static let terms = LegalPage(title: "Terms & Conditions", url: SupportContact.termsURL)
+    static let complaints = LegalPage(title: "Complaints & Copyright", url: SupportContact.complaintsURL)
 }
 
 /// Help & support: call, WhatsApp or email the store, and answers to the
@@ -125,6 +127,7 @@ struct HelpSupportView: View {
                 HStack(spacing: 16) {
                     Button("Privacy Policy") { legalPage = .privacy }
                     Button("Terms & Conditions") { legalPage = .terms }
+                    Button("Complaints") { legalPage = .complaints }
                 }
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.textMuted)

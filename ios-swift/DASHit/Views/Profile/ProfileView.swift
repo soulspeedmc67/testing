@@ -49,6 +49,10 @@ struct ProfileView: View {
                         row(icon: "doc.text.fill", title: "Terms & Conditions") {
                             legalPage = .terms
                         }
+                        rowDivider
+                        row(icon: "exclamationmark.bubble.fill", title: "Complaints & Copyright") {
+                            legalPage = .complaints
+                        }
                     }
 
                     AppearanceSetting()
