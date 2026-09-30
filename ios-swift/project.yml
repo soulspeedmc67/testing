@@ -31,6 +31,8 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseAppCheck
       - package: Razorpay
         product: RazorpayCustomUI
       - sdk: SwiftUI.framework
@@ -142,6 +144,8 @@ targets:
         product: FirebaseAuth
       - package: Firebase
         product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseAppCheck
       # Linked so the shared sources build the same way in both apps (the
       # admin app never opens a payment).
       - package: Razorpay

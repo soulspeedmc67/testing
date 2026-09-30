@@ -49,10 +49,21 @@ emulator, 23/23 cases):
 creates `payments/{id}` in Firestore, *then* `firestore.rules`. Rules first
 would refuse every online-paid order.
 
+**App Check is in the code, in monitor mode until turned on in the console.**
+Android: Play Integrity (release) / debug provider (debug builds print a
+debug token to logcat), in `DashitApp.kt`. iOS: DeviceCheck (not App Attest,
+which would need a new provisioning profile) / debug provider on the
+simulator, in `FirebaseManager.swift`. Web staff pages: reCAPTCHA v3, only
+when `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` is set. Enforce in the console only
+after its metrics show nearly all requests verified; the PHP endpoints don't
+check App Check tokens yet.
+
 Still open (need the owner's consoles or a bigger change): budget alerts,
-App Check, API-key restrictions, Phone sign-in off, server-side order pricing
-(prices and totals are still whatever the app sends), and the hard-coded owner
-email in the rules not checking `email_verified`.
+App Check registration and enforcement, API-key restrictions, Phone sign-in
+off, the website FTP login on soulspeedmc67/testing (deploys fail with 530),
+server-side order pricing (prices and totals are still whatever the app
+sends), and the hard-coded owner email in the rules not checking
+`email_verified`.
 
 ## 0. Where the work stopped (read this first)
 

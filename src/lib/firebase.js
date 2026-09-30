@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import {
   initializeFirestore,
   getFirestore,
@@ -48,7 +49,31 @@ export function getFirebaseApp() {
   if (!isFirebaseConfigured) return null;
   if (cachedApp) return cachedApp;
   cachedApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  startAppCheck(cachedApp);
   return cachedApp;
+}
+
+/* App Check: each Firestore and sign-in request carries a reCAPTCHA-backed
+   token showing it came from this site, not from a script holding the public
+   config above. Only the staff pages (/xcyop, /driver) load Firebase, so the
+   public pages never load reCAPTCHA. Needs a reCAPTCHA v3 site key registered
+   under Firebase console > App Check; without one this does nothing. On
+   localhost it prints a debug token to the console to add there instead. */
+const APP_CHECK_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
+
+function startAppCheck(app) {
+  if (!APP_CHECK_SITE_KEY || USE_EMULATORS) return;
+  try {
+    if (window.location.hostname === "localhost") {
+      window.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn("App Check did not start:", err?.message);
+  }
 }
 
 /**
