@@ -92,7 +92,7 @@ struct LiveTrackingMapView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     if let order {
-                        OrderStageHero(stage: order.status.stage, canStillChange: vm.isModificationWindowActive)
+                        OrderStageHero(stage: order.status.stage, canStillChange: vm.isModificationWindowActive, canAddItems: !order.isPaidOnline)
                             .padding(.top, 6)
                         orderCard(order)
                         itemsList(order)
@@ -323,14 +323,15 @@ struct LiveTrackingMapView: View {
         .shadow(color: .floatingShadow, radius: 18, x: 0, y: 8)
     }
 
-    /// While the order can still change: add more items or cancel.
+    /// While the order can still change: add more items or cancel. A paid
+    /// order can only be cancelled.
     private func changeWindowRow(_ order: Order) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Forgot something?")
+                Text(order.isPaidOnline ? "Changed your mind?" : "Forgot something?")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.white)
-                Text("Add or cancel before packing")
+                Text(order.isPaidOnline ? "Cancel before packing" : "Add or cancel before packing")
                     .font(.system(size: 12))
                     .foregroundColor(Color.white.opacity(0.6))
                     .lineLimit(1)
@@ -351,20 +352,22 @@ struct LiveTrackingMapView: View {
             }
             .buttonStyle(.pressable)
             .disabled(isCancelling)
-            Button {
-                HapticsManager.shared.light()
-                isAddItemsOpen = true
-            } label: {
-                Label("Add items", systemImage: "plus")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(Color.brandOrange, in: Capsule())
+            if !order.isPaidOnline {
+                Button {
+                    HapticsManager.shared.light()
+                    isAddItemsOpen = true
+                } label: {
+                    Label("Add items", systemImage: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(Color.brandOrange, in: Capsule())
+                }
+                .buttonStyle(.pressable)
             }
-            .buttonStyle(.pressable)
         }
         .padding(12)
         .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -388,6 +391,7 @@ struct LiveTrackingMapView: View {
 private struct OrderStageHero: View {
     let stage: DeliveryStage
     let canStillChange: Bool
+    let canAddItems: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var openedAt = Date()
@@ -404,9 +408,10 @@ private struct OrderStageHero: View {
     private var subtitle: String {
         switch stage {
         case .placed:
-            return canStillChange
+            if !canStillChange { return "The store is getting your items ready." }
+            return canAddItems
                 ? "You can still add items or cancel. Packing starts right after."
-                : "The store is getting your items ready."
+                : "You can still cancel. Packing starts right after."
         case .packing:
             return "Your items are being picked and packed. The map opens as soon as a rider is on the way."
         case .cancelled:

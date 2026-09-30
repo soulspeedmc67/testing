@@ -18,6 +18,10 @@ android {
         versionCode 100
         versionName "1.2.0"
 
+        // The sign-in server next to the website (public/api/auth/). A test build
+        // can use another: ./gradlew installDebug -PsignInServer=http://127.0.0.1:8099/api/auth/
+        buildConfigField "String", "SIGN_IN_SERVER", "\"${project.findProperty('signInServer') ?: 'https://dashit.co.in/api/auth/'}\""
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary true
@@ -47,6 +51,7 @@ android {
 
     buildFeatures {
         compose true
+        buildConfig true
     }
 
     packaging {

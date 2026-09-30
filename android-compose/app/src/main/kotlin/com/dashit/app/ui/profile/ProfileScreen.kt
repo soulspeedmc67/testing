@@ -24,7 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.OpenInNew
@@ -59,7 +58,7 @@ import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.UserProfile
 import com.dashit.app.ui.auth.AuthMode
 import com.dashit.app.ui.auth.AuthScreen
-import com.dashit.app.ui.auth.PhoneConfirmSheet
+import com.dashit.app.ui.auth.PhoneSignInSheet
 import com.dashit.app.ui.orders.IosActionSheet
 import com.dashit.app.ui.orders.SheetAction
 import kotlinx.coroutines.launch
@@ -83,7 +82,8 @@ fun ProfileScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
-    var isChangingNumber by remember { mutableStateOf(false) }
+    // Deleting needs a fresh code to the account's number first.
+    var isConfirmingDelete by remember { mutableStateOf(false) }
     var isHelpOpen by remember { mutableStateOf(false) }
     var authMode by remember { mutableStateOf<AuthMode?>(null) }
     var isDeleting by remember { mutableStateOf(false) }
@@ -124,11 +124,6 @@ fun ProfileScreen(
                 if (user != null) {
                     AccountHeader(user)
                     Section("Account") {
-                        OptionRow(Icons.Filled.Phone, "Delivery number", detail = "+91 ${user.mobile}") {
-                            HapticsManager.light(view)
-                            isChangingNumber = true
-                        }
-                        RowDivider()
                         OptionRow(Icons.Filled.LocationOn, "Delivery address", subtitle = addressSummary) {
                             HapticsManager.light(view)
                             onOpenAddress()
@@ -244,19 +239,8 @@ fun ProfileScreen(
             actions = listOf(
                 SheetAction("Delete everything", isDestructive = true) {
                     showDeleteDialog = false
-                    isDeleting = true
                     deleteError = null
-                    scope.launch {
-                        try {
-                            AuthRepository.deleteAccount()
-                            HapticsManager.success(view)
-                        } catch (e: Exception) {
-                            HapticsManager.error(view)
-                            deleteError = "We couldn't delete your account right now. Check your connection and try again."
-                        } finally {
-                            isDeleting = false
-                        }
-                    }
+                    isConfirmingDelete = true
                 }
             ),
             cancelLabel = "Keep my account",
@@ -264,11 +248,27 @@ fun ProfileScreen(
         )
     }
 
-    // Changing the number re-confirms it on the same account.
-    if (isChangingNumber) {
-        PhoneConfirmSheet(
-            onSignedIn = { isChangingNumber = false },
-            onDismiss = { isChangingNumber = false }
+    // The number is the account, so it can't be changed here: another number
+    // is another account. Deleting asks for a code to the account's number.
+    if (isConfirmingDelete && user != null) {
+        PhoneSignInSheet(
+            confirmMobile = user.mobile,
+            onSignedIn = {
+                isConfirmingDelete = false
+                isDeleting = true
+                scope.launch {
+                    try {
+                        AuthRepository.deleteAccount()
+                        HapticsManager.success(view)
+                    } catch (e: Exception) {
+                        HapticsManager.error(view)
+                        deleteError = "We couldn't delete your account right now. Check your connection and try again."
+                    } finally {
+                        isDeleting = false
+                    }
+                }
+            },
+            onDismiss = { isConfirmingDelete = false }
         )
     }
 }

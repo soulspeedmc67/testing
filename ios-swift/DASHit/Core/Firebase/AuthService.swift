@@ -2,15 +2,16 @@ import Foundation
 import FirebaseAuth
 
 /// Sign-in for the customer app, sharing Firebase Auth and `users/{uid}` with
-/// the web app (`src/lib/auth.js`):
-/// - Phone: the shopper confirms their number and gets an anonymous Firebase
-///   session (the Spark plan has no SMS), exactly as the web does.
-/// - Email: the web's email + password accounts, with email verification.
-/// - Apple: Sign in with Apple, exchanged for a Firebase credential.
-/// Every path ends with a profile that has a delivery phone number.
+/// the Android app. Shoppers sign in with their phone number only: the
+/// sign-in server next to the website (dashit.co.in/api/auth/, PHP on
+/// Hostinger) sends a 6-digit code to the number on WhatsApp and swaps the
+/// right code for a Firebase custom token. One number is one account
+/// ("ph-91XXXXXXXXXX") on any phone, and the token carries the number, which
+/// the Firestore rules check. Same flow as Android (`AuthRepository.kt`).
 @MainActor
 final class AuthService: ObservableObject {
     static let shared = AuthService()
+    private static let server = URL(string: "https://dashit.co.in/api/auth/")!
 
     @Published var currentUser: UserProfile?
     @Published var isAuthenticated: Bool = false
@@ -21,30 +22,32 @@ final class AuthService: ObservableObject {
         checkCurrentSession()
     }
 
-    /// The signed-in Firebase uid. Orders must carry exactly this as userId.
+    /// Accounts the sign-in server made. Sessions from before sign-in codes
+    /// (anonymous, email or Apple) read as signed out, so those shoppers sign
+    /// in again with a code. They aren't signed out of Firebase here: the
+    /// admin app builds this file too, and its staff sign in with email.
+    static func isNumberAccount(_ uid: String) -> Bool {
+        uid.hasPrefix("ph-")
+    }
+
+    /// The signed-in shopper's Firebase uid. Orders must carry exactly this as userId.
     var firebaseUID: String? {
-        Auth.auth().currentUser?.uid
+        guard let uid = Auth.auth().currentUser?.uid, Self.isNumberAccount(uid) else { return nil }
+        return uid
     }
 
-    /// Signed in with Apple or email but no delivery number yet.
-    var needsPhoneNumber: Bool {
-        isAuthenticated && (currentUser?.mobile.isEmpty ?? true)
-    }
-
-    /// A phone or email account without a name yet. Sign in with Apple
-    /// accounts keep what Apple shared: asking again breaks App Review rules.
+    /// Signed in, but the account has no name yet: the rider asks for it at the door.
     var needsName: Bool {
-        isAuthenticated && !isAppleAccount
-            && (currentUser?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        isAuthenticated && (currentUser?.name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
     }
 
     /// Signed in with everything an order needs: a number and a name.
     var isReadyToOrder: Bool {
-        isAuthenticated && !needsPhoneNumber && !needsName
+        isAuthenticated && !needsName
     }
 
     func checkCurrentSession() {
-        if Auth.auth().currentUser != nil, let cachedProfile = LocalStorage.shared.loadUserProfile() {
+        if let uid = firebaseUID, let cachedProfile = LocalStorage.shared.loadUserProfile(), cachedProfile.id == uid {
             self.currentUser = cachedProfile
             self.isAuthenticated = true
         } else {
@@ -62,39 +65,32 @@ final class AuthService: ObservableObject {
 
     // MARK: - Phone
 
-    /// Signs in with a number the shopper has confirmed on screen. `name`,
-    /// from the sign-up form, fills an account that has none yet.
-    func signIn(withConfirmedMobile mobile: String, name: String? = nil) async throws {
-        guard let clean = Self.normalizedMobile(mobile) else { throw AuthError.invalidMobile }
+    /// Sends a 6-digit code to the number on WhatsApp. Returns the seconds
+    /// before another can be sent.
+    @discardableResult
+    func sendCode(to mobile: String) async throws -> Int {
+        guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
+        return try await run {
+            let sent: CodeSent = try await self.post("send-code.php", body: ["mobile": clean])
+            return sent.resend_after ?? 30
+        }
+    }
+
+    /// Checks the code and signs in to the number's account. `name`, from the
+    /// sign-up form, fills an account that has none yet. Also confirms it's
+    /// really the shopper before their account is deleted: Firebase only
+    /// deletes an account that signed in moments ago.
+    func signIn(mobile: String, code: String, name: String? = nil) async throws {
+        guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
         let trimmedName = name?.trimmingCharacters(in: .whitespaces)
         try await run {
-            let uid: String
-            if let existing = Auth.auth().currentUser {
-                uid = existing.uid
-            } else {
-                uid = try await Auth.auth().signInAnonymously().user.uid
-            }
+            let verified: CodeVerified = try await self.post("verify-code.php", body: ["mobile": clean, "code": code])
+            let uid = try await Auth.auth().signIn(withCustomToken: verified.token).user.uid
             let profile = try await FirestoreService.shared.ensureUserProfile(
                 uid: uid,
                 mobile: clean,
                 name: (trimmedName?.isEmpty ?? true) ? nil : trimmedName
             )
-            if profile.mobile != clean {
-                try await FirestoreService.shared.updateUserMobile(uid: uid, mobile: clean)
-            }
-            var updated = profile
-            updated.mobile = clean
-            self.finishSignIn(with: updated)
-        }
-    }
-
-    /// Adds or changes the delivery number on an existing account.
-    func updateMobile(_ mobile: String) async throws {
-        guard let clean = Self.normalizedMobile(mobile) else { throw AuthError.invalidMobile }
-        guard let uid = firebaseUID, var profile = currentUser else { throw AuthError.notSignedIn }
-        try await run {
-            try await FirestoreService.shared.updateUserMobile(uid: uid, mobile: clean)
-            profile.mobile = clean
             self.finishSignIn(with: profile)
         }
     }
@@ -102,68 +98,11 @@ final class AuthService: ObservableObject {
     /// Adds the shopper's name to an account that has none.
     func updateName(_ name: String) async throws {
         let clean = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !clean.isEmpty else { throw AuthError.missingName }
-        guard let uid = firebaseUID, var profile = currentUser else { throw AuthError.notSignedIn }
+        guard !clean.isEmpty else { throw fail(.missingName) }
+        guard let uid = firebaseUID, var profile = currentUser else { throw fail(.notSignedIn) }
         try await run {
             try await FirestoreService.shared.updateUserName(uid: uid, name: clean)
             profile.name = clean
-            self.finishSignIn(with: profile)
-        }
-    }
-
-    // MARK: - Email
-
-    func signIn(email: String, password: String) async throws {
-        let cleanEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !cleanEmail.isEmpty, !password.isEmpty else { throw AuthError.missingCredentials }
-        try await run {
-            let user = try await Auth.auth().signIn(withEmail: cleanEmail, password: password).user
-            let profile = try await FirestoreService.shared.ensureUserProfile(
-                uid: user.uid,
-                mobile: "",
-                name: user.displayName ?? String(cleanEmail.split(separator: "@").first ?? ""),
-                email: cleanEmail
-            )
-            self.finishSignIn(with: profile)
-        }
-    }
-
-    func createAccount(email: String, password: String, name: String, mobile: String) async throws {
-        let cleanEmail = email.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AuthError.missingName }
-        guard !cleanEmail.isEmpty, !password.isEmpty else { throw AuthError.missingCredentials }
-        guard password.count >= 6 else { throw AuthError.weakPassword }
-        guard let cleanMobile = Self.normalizedMobile(mobile) else { throw AuthError.invalidMobile }
-        try await run {
-            let user = try await Auth.auth().createUser(withEmail: cleanEmail, password: password).user
-            // Same as the web: a verification mail goes out, but the account
-            // works straight away.
-            try? await user.sendEmailVerification()
-            let trimmedName = name.trimmingCharacters(in: .whitespaces)
-            let profile = try await FirestoreService.shared.ensureUserProfile(
-                uid: user.uid,
-                mobile: cleanMobile,
-                name: trimmedName.isEmpty ? String(cleanEmail.split(separator: "@").first ?? "") : trimmedName,
-                email: cleanEmail
-            )
-            self.finishSignIn(with: profile)
-        }
-    }
-
-    // MARK: - Apple
-
-    func signInWithApple(idToken: String, rawNonce: String, fullName: PersonNameComponents?, email: String?) async throws {
-        try await run {
-            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idToken, rawNonce: rawNonce)
-            let user = try await Auth.auth().signIn(with: credential).user
-            // Apple shares the name and email only on the very first sign-in.
-            let name = fullName.map { PersonNameComponentsFormatter.localizedString(from: $0, style: .default) }
-            let profile = try await FirestoreService.shared.ensureUserProfile(
-                uid: user.uid,
-                mobile: "",
-                name: (name?.isEmpty ?? true) ? user.displayName : name,
-                email: email ?? user.email
-            )
             self.finishSignIn(with: profile)
         }
     }
@@ -178,32 +117,9 @@ final class AuthService: ObservableObject {
         HapticsManager.shared.light()
     }
 
-    /// Whether this account came from Sign in with Apple. Deleting it then
-    /// needs a fresh Apple confirmation, so its Apple tokens can be revoked.
-    var isAppleAccount: Bool {
-        Auth.auth().currentUser?.providerData.contains { $0.providerID == "apple.com" } ?? false
-    }
-
-    /// Deletes a Sign in with Apple account. The fresh Apple credential signs
-    /// in again (Firebase only deletes after a recent login), then the app's
-    /// Apple tokens are revoked, as Apple requires, before the usual deletion.
-    func deleteAppleAccount(idToken: String, rawNonce: String, authorizationCode: String) async throws {
-        guard let user = Auth.auth().currentUser else { return }
-        let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idToken, rawNonce: rawNonce)
-        _ = try await user.reauthenticate(with: credential)
-        do {
-            try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
-        } catch {
-            // Revocation needs the Apple key set up in Firebase; the account
-            // and its data are still deleted if Apple refuses.
-            #if DEBUG
-            print("⚠️ [Auth] Apple token revocation failed: \(error)")
-            #endif
-        }
-        try await deleteAccount()
-    }
-
-    /// Delete user account (App Store 5.1.1(v) Requirement)
+    /// Delete user account (App Store 5.1.1(v) Requirement). Call it straight
+    /// after `signIn` with a fresh code: Firebase refuses to delete an account
+    /// that signed in long ago.
     func deleteAccount() async throws {
         guard let user = Auth.auth().currentUser else { return }
         let uid = user.uid
@@ -233,65 +149,104 @@ final class AuthService: ObservableObject {
         HapticsManager.shared.success()
     }
 
-    /// Runs a sign-in step with the spinner on, turning Firebase errors into
-    /// the same plain messages the web shows.
-    private func run(_ work: () async throws -> Void) async throws {
+    /// Shows the error's message and hands it back, for a check that fails
+    /// before any work starts.
+    private func fail(_ error: AuthError) -> AuthError {
+        errorMessage = error.errorDescription
+        HapticsManager.shared.warning()
+        return error
+    }
+
+    /// Runs a sign-in step with the spinner on, turning server and Firebase
+    /// errors into plain messages.
+    private func run<T>(_ work: () async throws -> T) async throws -> T {
         isAuthenticating = true
         errorMessage = nil
         defer { isAuthenticating = false }
         do {
-            try await work()
+            return try await work()
         } catch let error as AuthError {
-            errorMessage = error.errorDescription
-            HapticsManager.shared.warning()
-            throw error
+            throw fail(error)
         } catch {
-            let friendly = AuthError.from(firebase: error)
-            errorMessage = friendly.errorDescription
-            HapticsManager.shared.warning()
-            throw friendly
+            throw fail(AuthError.from(firebase: error))
         }
+    }
+
+    // MARK: - Sign-in server
+
+    private struct CodeSent: Decodable {
+        let resend_after: Int?
+    }
+
+    private struct CodeVerified: Decodable {
+        let token: String
+    }
+
+    private struct ServerError: Decodable {
+        let error: String?
+        let retry_after: Int?
+    }
+
+    /// POSTs JSON to the sign-in server; its `error` message becomes the thrown AuthError's.
+    private func post<T: Decodable>(_ path: String, body: [String: Any]) async throws -> T {
+        var request = URLRequest(url: Self.server.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 25
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw AuthError.network
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status), let decoded = try? JSONDecoder().decode(T.self, from: data) else {
+            let reply = try? JSONDecoder().decode(ServerError.self, from: data)
+            throw AuthError.server(
+                reply?.error ?? "Signing in isn't working right now. Please try again.",
+                retryAfter: reply?.retry_after
+            )
+        }
+        return decoded
     }
 }
 
 enum AuthError: LocalizedError {
     case invalidMobile
     case missingName
-    case missingCredentials
-    case weakPassword
     case notSignedIn
-    case wrongCredentials
-    case invalidEmail
-    case emailInUse
-    case providerDisabled
     case network
+    case signInFailed
+    /// The sign-in server's own message, and how long it asked to wait, if it did.
+    case server(String, retryAfter: Int?)
     case other(String)
 
     var errorDescription: String? {
         switch self {
         case .invalidMobile:
             return "Enter a valid 10-digit mobile number."
-        case .missingCredentials:
-            return "Please enter both your email and password."
-        case .weakPassword:
-            return "Password must be at least 6 characters."
         case .notSignedIn:
             return "Please sign in first."
         case .missingName:
             return "Please enter your name."
-        case .wrongCredentials:
-            return "Invalid email or password. Please check and try again."
-        case .invalidEmail:
-            return "Please enter a valid email address."
-        case .emailInUse:
-            return "An account with this email already exists. Try signing in instead."
-        case .providerDisabled:
-            return "This sign-in option isn't switched on for DASHit yet. Please use another one."
         case .network:
             return "No connection. Check your internet and try again."
+        case .signInFailed:
+            return "We couldn't sign you in. Ask for a new code and try again."
+        case .server(let message, _):
+            return message
         case .other(let message):
             return message
         }
+    }
+
+    /// Seconds the sign-in server asked to wait before the next code.
+    var retryAfter: Int? {
+        if case .server(_, let wait) = self { return wait }
+        return nil
     }
 
     /// Firebase Auth error codes (FIRAuthErrorCode) mapped to plain language.
@@ -301,12 +256,9 @@ enum AuthError: LocalizedError {
             return .other(error.localizedDescription)
         }
         switch nsError.code {
-        case 17004, 17009, 17011: return .wrongCredentials
-        case 17008: return .invalidEmail
-        case 17007: return .emailInUse
-        case 17026: return .weakPassword
-        case 17006: return .providerDisabled
+        case 17000, 17002: return .signInFailed // invalid or mismatched custom token
         case 17020: return .network
+        case 17014: return .other("For your safety, confirm with a new code and try again.")
         default: return .other(error.localizedDescription)
         }
     }

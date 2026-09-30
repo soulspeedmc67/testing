@@ -15,6 +15,7 @@ enum OrderUpdater {
         case nothingAdded
         case notSignedIn
         case storeStartedPacking
+        case alreadyPaid
         case network
 
         var errorDescription: String? {
@@ -27,6 +28,8 @@ enum OrderUpdater {
                 return "Please sign in again to change this order."
             case .storeStartedPacking:
                 return "The store has already started packing, so this order can't be changed now."
+            case .alreadyPaid:
+                return "This order is already paid, so items can't be added to it. Place a new order for anything else."
             case .network:
                 return "We couldn't reach the store. Check your connection and try again."
             }
@@ -36,6 +39,7 @@ enum OrderUpdater {
     /// Returns the order that now stands in for `order`, with `additions` merged in.
     static func addItems(_ additions: [CartItem], to order: Order) async throws -> Order {
         guard order.modifySecondsRemaining() > 0 else { throw UpdateError.windowClosed }
+        guard !order.isPaidOnline else { throw UpdateError.alreadyPaid }
         let additions = additions.filter { $0.qty > 0 }
         guard !additions.isEmpty else { throw UpdateError.nothingAdded }
         guard let user = AuthService.shared.currentUser,

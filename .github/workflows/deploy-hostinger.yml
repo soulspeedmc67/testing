@@ -67,7 +67,7 @@ jobs:
       # shell without the pages that matter.
       - name: Verify the export looks complete
         run: |
-          for page in index.html xcyop/index.html driver/index.html help/index.html api/razorpay/create-order.php api/razorpay/verify-payment.php api/razorpay/payment-status.php; do
+          for page in index.html xcyop/index.html driver/index.html help/index.html api/_http.php api/_firebase.php api/.htaccess api/razorpay/create-order.php api/razorpay/verify-payment.php api/razorpay/payment-status.php api/auth/send-code.php api/auth/verify-code.php; do
             if [ ! -f "out/$page" ]; then
               echo "::error::Missing $page in the static export — refusing to deploy"
               exit 1

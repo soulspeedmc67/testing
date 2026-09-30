@@ -1,0 +1,6 @@
+# Shared helpers (_http.php, razorpay/_razorpay.php, auth/_sign-in.php) are
+# included by the endpoints and never served on their own. This also covers
+# every folder below this one.
+<FilesMatch "^_">
+  Require all denied
+</FilesMatch>

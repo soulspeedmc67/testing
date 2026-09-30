@@ -213,6 +213,14 @@ extension Order {
 extension Order {
     static let modifyWindowSeconds: TimeInterval = 30
 
+    /// Paid before delivery, which the store and rider screens read as
+    /// "collect nothing at the door". Items can't be added to it: nobody
+    /// would pay for them.
+    var isPaidOnline: Bool {
+        paymentMethod.range(of: "online|upi|card|prepaid", options: [.regularExpression, .caseInsensitive]) != nil
+            || ["paid", "completed", "captured"].contains(paymentStatus.lowercased())
+    }
+
     /// When the window to add items or cancel closes: 30 seconds after the
     /// server stamped the order (web `getRemainingCancellationSeconds`), or the
     /// original order's deadline for an order that replaced it.

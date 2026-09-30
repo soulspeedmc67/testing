@@ -416,7 +416,7 @@ fun CheckoutSheet(
     }
 
     if (isSignInOpen) {
-        com.dashit.app.ui.auth.PhoneConfirmSheet(
+        com.dashit.app.ui.auth.PhoneSignInSheet(
             onSignedIn = { profile ->
                 isSignInOpen = false
                 placeOrder(profile)

@@ -360,7 +360,7 @@ private fun OrderStageScreen(
                 TrackingCardSkeleton()
             } else {
                 val seconds = rememberModifySecondsRemaining(order)
-                OrderStageHero(stage = order.status, canStillChange = seconds > 0)
+                OrderStageHero(stage = order.status, canStillChange = seconds > 0, canAddItems = !order.isPaidOnline)
                 OrderCard(
                     order = order,
                     rider = null,
@@ -381,11 +381,13 @@ private fun OrderStageScreen(
  * happening in plain words. Same icon and timing as the iOS app.
  */
 @Composable
-private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean) {
+private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean, canAddItems: Boolean) {
     val (title, subtitle) = when (stage) {
-        OrderStatus.PLACED -> "Order received" to
-            if (canStillChange) "You can still add items or cancel. Packing starts right after."
-            else "The store is getting your items ready."
+        OrderStatus.PLACED -> "Order received" to when {
+            canStillChange && canAddItems -> "You can still add items or cancel. Packing starts right after."
+            canStillChange -> "You can still cancel. Packing starts right after."
+            else -> "The store is getting your items ready."
+        }
         OrderStatus.PACKING -> "Packing your order" to
             "Your items are being picked and packed. The map opens as soon as a rider is on the way."
         OrderStatus.CANCELLED -> "Order cancelled" to "This order won't be delivered."
@@ -531,7 +533,11 @@ private fun OrderCard(
         if (!stage.isFinished && !code.isNullOrEmpty()) DeliveryCodeRow(code)
 
         AnimatedVisibility(visible = seconds > 0, enter = fadeIn() + expandVertically(), exit = fadeOut() + shrinkVertically()) {
-            ChangeWindowRow(isCancelling = isCancelling, onCancel = onCancel, onAddItems = onAddItems)
+            ChangeWindowRow(
+                isCancelling = isCancelling,
+                onCancel = onCancel,
+                onAddItems = onAddItems.takeUnless { order.isPaidOnline }
+            )
         }
         cancelError?.let { Text(it, color = DashitColors.Danger, fontSize = 12.5.sp) }
 
@@ -550,9 +556,9 @@ private fun OrderCard(
     }
 }
 
-/** While the order can still change: add more items or cancel. */
+/** While the order can still change: add more items or cancel. A paid order can only be cancelled. */
 @Composable
-private fun ChangeWindowRow(isCancelling: Boolean, onCancel: () -> Unit, onAddItems: () -> Unit) {
+private fun ChangeWindowRow(isCancelling: Boolean, onCancel: () -> Unit, onAddItems: (() -> Unit)?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -563,8 +569,14 @@ private fun ChangeWindowRow(isCancelling: Boolean, onCancel: () -> Unit, onAddIt
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Forgot something?", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-            Text("Add or cancel before packing", color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (onAddItems != null) "Forgot something?" else "Changed your mind?",
+                color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1
+            )
+            Text(
+                if (onAddItems != null) "Add or cancel before packing" else "Cancel before packing",
+                color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis
+            )
         }
         Text(
             if (isCancelling) "…" else "Cancel",
@@ -578,18 +590,20 @@ private fun ChangeWindowRow(isCancelling: Boolean, onCancel: () -> Unit, onAddIt
                 .pressable(scale = 0.95f) { if (!isCancelling) onCancel() }
                 .padding(horizontal = 12.dp, vertical = 8.dp)
         )
-        Row(
-            modifier = Modifier
-                .height(34.dp)
-                .clip(CircleShape)
-                .background(DashitColors.BrandOrange)
-                .pressable(scale = 0.95f, onClick = onAddItems)
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-            Text("Add items", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        if (onAddItems != null) {
+            Row(
+                modifier = Modifier
+                    .height(34.dp)
+                    .clip(CircleShape)
+                    .background(DashitColors.BrandOrange)
+                    .pressable(scale = 0.95f, onClick = onAddItems)
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                Text("Add items", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
         }
     }
 }

@@ -13,39 +13,7 @@
  *   <?php return ['key_id' => 'rzp_test_...', 'key_secret' => '...'];
  */
 
-function dashit_respond(int $status, array $data): void
-{
-    http_response_code($status);
-    header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: no-store');
-    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    exit;
-}
-
-/** POST only. The apps call these natively; the site origin is allowed too. */
-function dashit_only_post(): void
-{
-    header('Access-Control-Allow-Origin: https://dashit.co.in');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-    if ($method === 'OPTIONS') {
-        http_response_code(204);
-        exit;
-    }
-    if ($method !== 'POST') {
-        dashit_respond(405, ['error' => 'Use POST.']);
-    }
-}
-
-function dashit_json_body(): array
-{
-    $data = json_decode(file_get_contents('php://input') ?: '', true);
-    if (!is_array($data)) {
-        dashit_respond(400, ['error' => 'Send a JSON body.']);
-    }
-    return $data;
-}
+require_once __DIR__ . '/../_firebase.php';
 
 function dashit_razorpay_credentials(): array
 {
@@ -86,4 +54,30 @@ function dashit_razorpay_request(string $method, string $path, ?array $body, arr
     curl_close($curl);
     $decoded = $raw === false ? null : json_decode($raw, true);
     return [$status, is_array($decoded) ? $decoded : []];
+}
+
+/**
+ * Records a payment Razorpay has confirmed at payments/{razorpay order id} in
+ * Firestore, with the service account. firestore.rules only accept an order
+ * marked "Paid online" when this record exists for that order and covers its
+ * total, and no app can write here, so the word "online" on an order can't be
+ * typed in by hand. $order is Razorpay's order; its receipt is the DASHit
+ * order code the app sent to create-order.php.
+ */
+function dashit_record_payment(array $order, string $paymentId): bool
+{
+    $account = dashit_firebase_service_account();
+    $orderId = (string) ($order['id'] ?? '');
+    if ($account === null || !preg_match('/^order_[A-Za-z0-9]{6,40}$/', $orderId)) {
+        return false;
+    }
+    return dashit_firestore_set($account, "payments/$orderId", [
+        'razorpayOrderId' => $orderId,
+        'razorpayPaymentId' => $paymentId,
+        'receipt' => (string) ($order['receipt'] ?? ''),
+        'amount' => (int) ($order['amount'] ?? 0),
+        'amountPaid' => (int) ($order['amount_paid'] ?? 0),
+        'status' => (string) ($order['status'] ?? ''),
+        'verifiedAt' => new DateTimeImmutable(),
+    ]);
 }

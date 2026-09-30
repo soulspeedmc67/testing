@@ -50,6 +50,7 @@ class OrderRepository(
         class WindowClosed : OrderError("The 30 seconds are up and the store is packing your order.")
         class NothingAdded : OrderError("Add at least one item first.")
         class StoreStartedPacking : OrderError("The store has already started packing, so this order can't be changed now.")
+        class AlreadyPaid : OrderError("This order is already paid, so items can't be added to it. Place a new order for anything else.")
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -261,6 +262,7 @@ class OrderRepository(
      */
     suspend fun addItems(additions: List<CartItem>, order: Order): Order {
         if (order.modifySecondsRemaining() <= 0) throw OrderError.WindowClosed()
+        if (order.isPaidOnline) throw OrderError.AlreadyPaid()
         val added = additions.filter { it.qty > 0 }
         if (added.isEmpty()) throw OrderError.NothingAdded()
         val customer = AuthRepository.user.value

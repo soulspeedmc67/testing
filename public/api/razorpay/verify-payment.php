@@ -7,11 +7,13 @@
  * The signature is HMAC-SHA256(order_id + "|" + payment_id, key secret);
  * only a match means Razorpay really took this payment for this order. The
  * order's own figures are then read back from Razorpay, so the app records
- * what was actually paid rather than what it expected.
+ * what was actually paid rather than what it expected, and saved to
+ * payments/{order id} in Firestore (see dashit_record_payment).
  */
 require __DIR__ . '/_razorpay.php';
 
 dashit_only_post();
+dashit_rate_limit('razorpay-verify-payment', 60);
 $body = dashit_json_body();
 
 $orderId = trim((string) ($body['razorpay_order_id'] ?? ''));
@@ -28,6 +30,12 @@ if (!hash_equals($expected, $signature)) {
 }
 
 [$status, $order] = dashit_razorpay_request('GET', '/v1/orders/' . rawurlencode($orderId), null, $credentials);
+// Without Razorpay's own figures, and the record the order is checked
+// against, there is nothing to confirm with. The app then asks
+// payment-status.php, which tries again.
+if ($status !== 200 || !dashit_record_payment($order, $paymentId)) {
+    dashit_respond(502, ['verified' => false, 'error' => "Couldn't confirm the payment right now."]);
+}
 
 dashit_respond(200, [
     'verified' => true,

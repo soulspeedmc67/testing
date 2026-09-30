@@ -58,9 +58,47 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    /* A customer who signed in with their number: the sign-in server
+       (public/api/auth/) only issues a token after a code sent to that number
+       on WhatsApp, and the token carries the number as the `mobile` claim. */
+    function hasVerifiedMobile() {
+      return isSignedIn() && 'mobile' in request.auth.token;
+    }
+
     /** Restricts a write to a known set of fields. */
     function onlyChanges(allowed) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    /* Every total an order carries agrees. The store's screens read
+       totalAmount, total or finalTotal depending on the screen, so they
+       must not be able to say different things. */
+    function totalsAgree(order) {
+      return order.total is number
+        && order.total >= 0
+        && order.get('totalAmount', order.total) == order.total
+        && order.get('finalTotal', order.total) == order.total;
+    }
+
+    /* The store and rider screens read any payment method that mentions
+       online, UPI, card or prepaid as "paid online: collect nothing at the
+       door". */
+    function saysPaidOnline(order) {
+      return order.get('paymentMethod', '').lower().matches('.*(online|upi|card|prepaid).*')
+        || order.get('paymentStatus', '') in ['paid', 'completed', 'captured'];
+    }
+
+    /* A paid-online order must point at a payment the server confirmed with
+       Razorpay: payments/{razorpay order id}, which only the PHP endpoints in
+       public/api/razorpay/ write (with the service account; no app can). The
+       payment has to be for this order and for at least its total, so one
+       payment can't stand behind a second order or a bigger one. */
+    function paymentCovers(orderId, order) {
+      let payment = get(/databases/$(database)/documents/payments/$(order.razorpayOrderId)).data;
+      return order.get('razorpayOrderId', '') is string
+        && order.get('razorpayOrderId', '').matches('order_[A-Za-z0-9]{6,40}')
+        && payment.receipt == orderId
+        && payment.amount >= order.total * 100 - 1;
     }
 
     // ---- Catalogue: world-readable, staff-writable ------------------------
@@ -74,6 +112,12 @@ service cloud.firestore {
     }
 
     match /offers/{offerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // The shelves the apps group products under (both apps listen here).
+    match /categories/{categoryId} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -94,10 +138,18 @@ service cloud.firestore {
     // Riders are excluded: everything a rider needs to complete a drop (name,
     // phone, address, delivery code) is already copied onto the order, so there
     // is no reason for a rider handset to be able to enumerate every customer.
+    // A number-signed-in account can only give its own verified number, so a
+    // profile's number is always one its owner proved they hold.
     match /users/{uid} {
+      function keepsVerifiedMobile() {
+        return !hasVerifiedMobile()
+          || !('mobile' in request.resource.data)
+          || request.resource.data.mobile == request.auth.token.mobile;
+      }
+
       allow read: if isOwner(uid) || isAdmin();
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
+      allow create: if isOwner(uid) && keepsVerifiedMobile();
+      allow update: if isOwner(uid) && keepsVerifiedMobile();
       allow delete: if isOwner(uid);
 
       match /addresses/{addressId} {
@@ -120,13 +172,23 @@ service cloud.firestore {
       /* A customer may only create an order in its initial state, attributed to
          themselves, never pre-assigned to a driver, never pre-marked delivered,
          and never pre-flagged as stock-deducted. createdAt must be the server's
-         clock so the 30-second cancellation window cannot be backdated. */
-      allow create: if isSignedIn()
+         clock so the 30-second cancellation window cannot be backdated.
+         Customers must have signed in with their number; the verified-number
+         test comes first so it short-circuits before isStaff()'s read.
+         An order that says it was paid online must be backed by a payment the
+         server confirmed (paymentCovers); that check costs a read, so it only
+         runs for those orders. */
+      allow create: if (hasVerifiedMobile() || isStaff())
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'Placed'
         && request.resource.data.driverId == null
         && request.resource.data.createdAt == request.time
-        && !('inventoryDeducted' in request.resource.data);
+        && !('inventoryDeducted' in request.resource.data)
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 100
+        && totalsAgree(request.resource.data)
+        && (!saysPaidOnline(request.resource.data) || paymentCovers(orderId, request.resource.data));
 
       /* Customers may only cancel, only their own order, only while it is still
          'Placed' (once a rider is carrying it, cancellation goes through the
@@ -190,6 +252,14 @@ service cloud.firestore {
         // Only the rider it describes may write their own position.
         allow write: if isOwner(driverId) && isDriver();
       }
+    }
+
+    // ---- Payments the server confirmed with Razorpay --------------------
+    // Written only by public/api/razorpay/ with the service account, which
+    // these rules don't apply to. Orders are checked against them above.
+    match /payments/{razorpayOrderId} {
+      allow read: if isStaff();
+      allow write: if false;
     }
 
     // ---- Staff: readable only by the person it describes -------------------

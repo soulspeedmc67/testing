@@ -107,6 +107,14 @@ data class Order(
 ) {
     val itemCount: Int get() = items.sumOf { it.qty }
 
+    /**
+     * Paid before delivery, which the store and rider screens read as "collect
+     * nothing at the door". Items can't be added to it: nobody would pay for them.
+     */
+    val isPaidOnline: Boolean
+        get() = Regex("online|upi|card|prepaid", RegexOption.IGNORE_CASE).containsMatchIn(paymentMethod) ||
+            paymentStatus.lowercase() in setOf("paid", "completed", "captured")
+
     val modifyWindowEnd: Long get() = modifyWindowEndsAt ?: (createdAt + MODIFY_WINDOW_MS)
 
     /** Seconds left to add items or cancel: only while the store hasn't started. */

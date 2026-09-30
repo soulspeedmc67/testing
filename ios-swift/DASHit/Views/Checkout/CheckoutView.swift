@@ -208,8 +208,8 @@ struct CheckoutView: View {
             .fullScreenCover(isPresented: $isAuthModalOpen) {
                 AuthView { isAuthModalOpen = false }
             }
-            // Close once signed in with a delivery number (Apple and email
-            // accounts add theirs in the same sheet first).
+            // Close once signed in with a number and a name (a new account
+            // gives its name in the same sheet first).
             .onChange(of: auth.isReadyToOrder) { _, isReady in
                 if isReady {
                     isAuthModalOpen = false
