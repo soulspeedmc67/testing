@@ -56,6 +56,9 @@ jobs:
           NEXT_PUBLIC_AUTH_MODE: otp
           NEXT_PUBLIC_OTP_FIXED: "0"
           NEXT_PUBLIC_TRUECALLER_CLIENT_ID: ${{ secrets.NEXT_PUBLIC_TRUECALLER_CLIENT_ID || 'yxekbcxiwocqnjm3ocnd2uk5kgqrzfooz1k635ezzrs' }}
+          # reCAPTCHA v3 site key for App Check on the staff pages (public, like
+          # the Firebase config). App Check stays off on the web until it's set.
+          NEXT_PUBLIC_RECAPTCHA_SITE_KEY: ${{ vars.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || secrets.NEXT_PUBLIC_RECAPTCHA_SITE_KEY }}
 
       # `next build` writes out/, but the Apache rules live in public/ and are
       # only copied by the export:zip script. Do it here too, otherwise the
