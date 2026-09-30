@@ -151,9 +151,14 @@ struct DeleteAccountView: View {
         errorMessage = nil
         Task {
             do {
-                let wait = try await auth.sendCode(to: mobile)
-                resendAt = Date().addingTimeInterval(TimeInterval(wait))
+                let request = try await auth.sendCode(to: mobile)
                 code = ""
+                // Codes off on the sign-in server: typing DELETE was the confirmation.
+                guard request.codeNeeded else {
+                    deleteAccount()
+                    return
+                }
+                resendAt = Date().addingTimeInterval(TimeInterval(request.resendAfter))
                 isCodeSent = true
             } catch {
                 // The server's message is on screen; keep the countdown honest.

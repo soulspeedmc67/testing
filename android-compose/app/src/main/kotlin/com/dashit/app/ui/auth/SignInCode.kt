@@ -145,6 +145,30 @@ fun SignInCodeStep(
     }
 }
 
+/**
+ * Sign-in without a code (the sign-in server has codes off): the number, big,
+ * to confirm, and "Change number". The caller puts its "Yes, continue" button
+ * under it.
+ */
+@Composable
+fun ConfirmNumberStep(mobile: String, onChangeNumber: (() -> Unit)?, enabled: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Is this your number?", color = DashitColors.TextSecondary, fontSize = 15.sp)
+        Text(formattedMobile(mobile), color = DashitColors.TextPrimary, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+        if (onChangeNumber != null) {
+            Text(
+                "Change number",
+                color = DashitColors.TextSecondary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .pressable { if (enabled) onChangeNumber() }
+                    .padding(vertical = 8.dp)
+            )
+        }
+    }
+}
+
 /** "Resend code in 0:24", then a tappable "Resend code". */
 @Composable
 private fun ResendCode(resendAtMillis: Long, enabled: Boolean, onResend: () -> Unit) {

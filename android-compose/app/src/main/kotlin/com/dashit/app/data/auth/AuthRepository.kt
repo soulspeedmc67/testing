@@ -85,10 +85,18 @@ object AuthRepository {
         }
     }
 
-    /** Sends a 6-digit code to the number on WhatsApp. Returns the seconds before another can be sent. */
-    suspend fun sendCode(rawMobile: String): Int {
+    /** What sendCode did: a code went out ([codeNeeded]), or the shopper only confirms the number. */
+    data class CodeRequest(val codeNeeded: Boolean, val resendAfterSeconds: Int)
+
+    /**
+     * Sends a 6-digit code to the number on WhatsApp, when the sign-in server
+     * has codes on. With codes off nothing is sent: the shopper confirms
+     * "Is this your number?" and [signIn] is called with no code.
+     */
+    suspend fun sendCode(rawMobile: String): CodeRequest {
         val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
-        return post("send-code.php", JSONObject().put("mobile", mobile)).optInt("resend_after", 30)
+        val reply = post("send-code.php", JSONObject().put("mobile", mobile))
+        return CodeRequest(reply.optBoolean("code_needed", true), reply.optInt("resend_after", 30))
     }
 
     /**

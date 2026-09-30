@@ -70,6 +70,9 @@ function dashit_sign_in_config(): array
         'review_code' => $pick('SIGN_IN_REVIEW_CODE', 'review_code'),
         // Caps what a flood of requests can cost in WhatsApp messages.
         'daily_limit' => (int) $pick('SIGN_IN_DAILY_LIMIT', 'daily_limit', '500'),
+        // Off: the shopper only confirms "Is this your number?" and no code is
+        // sent. On ('1'): a WhatsApp code is sent and must be typed in.
+        'ask_for_code' => $pick('SIGN_IN_ASK_FOR_CODE', 'ask_for_code', '0') === '1',
     ];
 }
 

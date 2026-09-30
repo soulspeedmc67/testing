@@ -124,3 +124,28 @@ private struct ResendCodeButton: View {
         }
     }
 }
+
+/// Sign-in without a code (codes off on the sign-in server): the number, big,
+/// to confirm, and "Change number". The caller puts "Yes, continue" under it.
+struct ConfirmNumberEntry: View {
+    let mobile: String
+    var onChangeNumber: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Is this your number?")
+                .font(.system(size: 15))
+                .foregroundColor(.textSecondary)
+            Text("+91 \(mobile.prefix(5)) \(mobile.suffix(5))")
+                .font(.system(size: 26, weight: .bold))
+                .foregroundColor(.textPrimary)
+            if let onChangeNumber {
+                Button("Change number", action: onChangeNumber)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.textSecondary)
+                    .frame(minHeight: 44)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}

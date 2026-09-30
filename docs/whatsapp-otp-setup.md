@@ -7,6 +7,17 @@ in. The iPhone app also offers Sign in with Apple and the Android app Sign in
 with Google (see "Apple and Google" below); both open the same number's
 account. There is no email or password sign-in for customers.
 
+## Codes on or off
+
+**Right now codes are off (owner's choice, 2026-09-30):** the apps only ask
+"Is this your number?" and sign in without a code, and no WhatsApp message is
+sent. That means anyone who types someone else's number opens that person's
+account (their orders and saved addresses). To switch codes on once WhatsApp
+is set up, add this to `dashit-secrets/sign-in.php`; the apps follow the
+server, so no app update is needed:
+
+    'ask_for_code' => '1',
+
 ## How it works
 
 ```

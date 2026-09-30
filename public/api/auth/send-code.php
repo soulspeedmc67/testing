@@ -1,11 +1,14 @@
 <?php
 /*
  * POST { "mobile": "9876543210" }
- *   -> 200 { "sent": true, "resend_after": 30, "expires_in": 600 }
+ *   -> 200 { "sent": true, "code_needed": true, "resend_after": 30, "expires_in": 600 }
+ *   -> 200 { "sent": false, "code_needed": false }  codes are off: the app asks
+ *          "Is this your number?" and calls verify-code.php without a code
  *   -> 429 { "error", "retry_after" }  asked too often
  *
- * Sends a 6-digit sign-in code to the number on WhatsApp. verify-code.php
- * turns the right code into a Firebase sign-in. See _sign-in.php.
+ * Sends a 6-digit sign-in code to the number on WhatsApp, when codes are on
+ * ('ask_for_code' in the secrets file). verify-code.php turns the right code
+ * into a Firebase sign-in. See _sign-in.php.
  */
 require __DIR__ . '/_sign-in.php';
 
@@ -18,6 +21,10 @@ if ($mobile === null) {
 }
 
 $config = dashit_sign_in_config();
+if (!$config['ask_for_code']) {
+    dashit_rate_limit('confirm-number', 30);
+    dashit_respond(200, ['sent' => false, 'code_needed' => false]);
+}
 $isReview = dashit_is_review_mobile($config, $mobile);
 if (!$isReview && ($config['whatsapp_token'] === '' || $config['whatsapp_phone_number_id'] === '')) {
     error_log('DASHit sign-in: the WhatsApp token or phone number id is missing from dashit-secrets/sign-in.php.');
@@ -96,4 +103,4 @@ if (!$isReview) {
     }
 }
 
-dashit_respond(200, ['sent' => true, 'resend_after' => DASHIT_RESEND_AFTER, 'expires_in' => DASHIT_CODE_LIFETIME]);
+dashit_respond(200, ['sent' => true, 'code_needed' => true, 'resend_after' => DASHIT_RESEND_AFTER, 'expires_in' => DASHIT_CODE_LIFETIME]);
