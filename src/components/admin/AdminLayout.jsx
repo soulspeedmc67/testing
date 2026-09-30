@@ -27,6 +27,7 @@ import {
   Truck,
   Building2,
   Images,
+  LayoutGrid,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -123,6 +124,11 @@ export default function AdminLayout({
           id: "photo-review",
           label: "Check photos",
           icon: Images,
+        },
+        {
+          id: "shelf-fix",
+          label: "Fix shelves",
+          icon: LayoutGrid,
         },
         {
           id: "enricher",

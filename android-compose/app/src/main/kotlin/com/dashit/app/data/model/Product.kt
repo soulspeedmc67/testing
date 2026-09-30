@@ -55,8 +55,9 @@ data class Product(
     val displayPrice: String
         get() = "₹${price.toInt()}"
 
+    /** The MRP, struck through, only when it's really higher than the price. */
     val displayOriginalPrice: String?
-        get() = originalPrice?.let { "₹${it.toInt()}" }
+        get() = originalPrice?.takeIf { it > price }?.let { "₹${it.toInt()}" }
 }
 
 /** One name per aisle: chips and namkeen are filed under Snacks, as on iOS. */
@@ -66,7 +67,7 @@ fun shopCategory(raw: String): String = when (raw.trim().lowercase()) {
 }
 
 /** Prepend Hostinger CDN domain if path is a catalog relative path */
-fun productImageUrl(raw: String): String = com.dashit.app.data.ProductPhotos.displayUrl(raw)
+fun productImageUrl(raw: String): String = com.dashit.app.data.ProductPhotos.absoluteUrl(raw)
 
 /** The category and keyword part of the check, for cart lines that only carry a name and category. */
 fun isAgeRestricted(name: String, cat: String): Boolean {

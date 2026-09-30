@@ -62,8 +62,8 @@ fun CategoryCollageTile(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(cardShape)
-                    .background(Color(0xFF222631))
-                    .border(1.dp, Color(0xFF2F3544), cardShape)
+                    .background(DashitColors.SurfaceMuted)
+                    .border(1.dp, DashitColors.Hairline, cardShape)
                     .padding(5.dp)
             ) {
                 if (tile.previewImages.size >= 4) {
@@ -101,13 +101,13 @@ fun CategoryCollageTile(
                     modifier = Modifier
                         .offset(y = 9.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF141720))
-                        .border(1.dp, Color(0xFF384054), CircleShape)
+                        .background(DashitColors.SurfaceRaised)
+                        .border(1.dp, DashitColors.HairlineStrong, CircleShape)
                         .padding(horizontal = 7.dp, vertical = 2.dp)
                 ) {
                     Text(
                         text = "+$extraCount more",
-                        color = Color(0xFFCBD5E1),
+                        color = DashitColors.TextSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )

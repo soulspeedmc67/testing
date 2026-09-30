@@ -1,5 +1,10 @@
 package com.dashit.app.ui.sheet
 
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import com.dashit.app.ui.storefront.PlainPackArt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,16 +71,23 @@ fun ProductDetailSheet(
     onDismiss: () -> Unit,
     onAdd: (Product, ProductVariant?) -> Unit,
     onIncrement: (Product, ProductVariant?) -> Unit,
-    onDecrement: (Product) -> Unit
+    onDecrement: (Product) -> Unit,
+    /** "Similar products" under the details; tapping one opens it here. */
+    similar: List<Product> = emptyList(),
+    quantityOf: (Product) -> Int = { 0 },
+    onOpenProduct: (Product) -> Unit = {}
 ) {
     if (product == null) return
+    val scroll = rememberScrollState()
+    // A similar product opened here starts at its photo.
+    LaunchedEffect(product.id) { scroll.animateScrollTo(0) }
 
     val view = LocalView.current
     val variants = product.variants ?: emptyList()
     var selectedVariant by remember(product.id) { mutableStateOf(variants.firstOrNull()) }
 
     val activePrice = selectedVariant?.price ?: product.price
-    val activeOriginalPrice = selectedVariant?.originalPrice ?: product.originalPrice
+    val activeOriginalPrice = (selectedVariant?.originalPrice ?: product.originalPrice)?.takeIf { it > activePrice }
     val activeUnit = selectedVariant?.unit ?: product.unit
 
     BackHandler {
@@ -97,24 +109,25 @@ fun ProductDetailSheet(
             )
         }
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        // Full height: a product page, not a small pop-up.
+        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().statusBarsPadding()) {
             Column(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxSize()
             ) {
                 // Scrollable Content
                 Column(
                     modifier = Modifier
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
+                        .weight(1f)
+                        .verticalScroll(scroll)
                         .padding(horizontal = 20.dp)
                 ) {
                     // Large Hero Image
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(200.dp)
+                            .aspectRatio(1f)
                             .clip(RoundedCornerShape(20.dp))
-                            .background(DashitColors.SurfaceRaised)
+                            .background(Color.White)
                     ) {
                         // Tobacco is shown as a plain pack, never the brand photo.
                         if (product.isAgeRestricted) {
@@ -122,12 +135,14 @@ fun ProductDetailSheet(
                         } else {
                             ShimmerImage(
                                 model = ImageRequest.Builder(LocalContext.current)
-                                    .data(product.img)
+                                    .data(com.dashit.app.data.ProductPhotos.fullSize(product.img))
                                     .crossfade(250)
                                     .build(),
                                 contentDescription = product.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.matchParentSize()
+                                // The whole pack on white, never cropped.
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.matchParentSize().padding(24.dp),
+                                letterFallbackFor = product.name
                             )
                         }
 
@@ -199,8 +214,8 @@ fun ProductDetailSheet(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Rating row
-                    Row(
+                    // Rating row: only a real rating, never a made-up one.
+                    if (product.rating != null) Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -211,16 +226,14 @@ fun ProductDetailSheet(
                             modifier = Modifier.padding(bottom = 1.dp)
                         )
                         Text(
-                            text = product.rating ?: "4.8",
+                            text = product.rating,
                             color = DashitColors.TextPrimary,
                             fontSize = 13.5.sp,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            text = "(${product.ratingCount ?: "120"} ratings)",
-                            color = DashitColors.TextMuted,
-                            fontSize = 13.5.sp
-                        )
+                        product.ratingCount?.let { count ->
+                            Text(text = "($count ratings)", color = DashitColors.TextMuted, fontSize = 13.5.sp)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
@@ -345,6 +358,29 @@ fun ProductDetailSheet(
                         SpecRow(label = "Category", value = product.cat)
                         HorizontalDivider(color = DashitColors.HairlineSoft, thickness = 1.dp)
                         SpecRow(label = "Sold by", value = "DASHit Express Hub, Anantnag")
+                    }
+
+                    if (similar.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(28.dp))
+                        Text("Similar products", color = DashitColors.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        similar.chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                row.forEach { item ->
+                                    com.dashit.app.ui.components.ProductCard(
+                                        product = item,
+                                        quantity = quantityOf(item),
+                                        modifier = Modifier.weight(1f),
+                                        onOpen = { onOpenProduct(item) },
+                                        onAdd = { onAdd(item, null) },
+                                        onIncrement = { onIncrement(item, null) },
+                                        onDecrement = { onDecrement(item) }
+                                    )
+                                }
+                                repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(30.dp))

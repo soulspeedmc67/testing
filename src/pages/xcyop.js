@@ -36,6 +36,7 @@ import CsvInventoryView from "../components/admin/CsvInventoryView";
 import CatalogPickerView from "../components/admin/CatalogPickerView";
 import CatalogEnricherView from "../components/admin/CatalogEnricherView";
 import PhotoReviewView from "../components/admin/PhotoReviewView";
+import ShelfFixView from "../components/admin/ShelfFixView";
 import StoreControlsView from "../components/admin/StoreControlsView";
 import DistributorsView from "../components/admin/DistributorsView";
 
@@ -1738,6 +1739,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       )}
 
       {activeTab === "photo-review" && <PhotoReviewView catalogue={catalogue} showToast={showToast} />}
+
+      {activeTab === "shelf-fix" && <ShelfFixView catalogue={catalogue} showToast={showToast} />}
 
       {activeTab === "catalog-pick" && (
         <CatalogPickerView

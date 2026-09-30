@@ -1,5 +1,10 @@
 package com.dashit.app.ui.auth
 
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.RepeatMode
@@ -359,37 +364,48 @@ fun AuthScreen(
                 }
             }
 
-            Image(
-                painter = painterResource(R.drawable.auth_scooter),
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(artHeight)
-                    .padding(top = 8.dp)
-                    .graphicsLayer { translationY = float * this.density }
-            )
+            // While typing, the picture and headline step aside so the whole
+            // form (number, Continue, Google) sits above the keyboard.
+            AnimatedVisibility(
+                visible = !isKeyboardUp,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column {
+                    Image(
+                        painter = painterResource(R.drawable.auth_scooter),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(artHeight)
+                            .padding(top = 8.dp)
+                            .graphicsLayer { translationY = float * this.density }
+                    )
 
-            Text(
-                text = "Groceries delivered\nin minutes",
-                color = Color.White,
-                fontSize = 30.sp,
-                lineHeight = 35.sp,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 22.dp, start = 24.dp, end = 24.dp)
-            )
-            Text(
-                text = "Anantnag's everyday essentials, at your door.",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 15.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, start = 24.dp, end = 24.dp, bottom = 28.dp)
-            )
+                    Text(
+                        text = "Groceries delivered\nin minutes",
+                        color = Color.White,
+                        fontSize = 30.sp,
+                        lineHeight = 35.sp,
+                        fontWeight = FontWeight.Black,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 22.dp, start = 24.dp, end = 24.dp)
+                    )
+                    Text(
+                        text = "Anantnag's everyday essentials, at your door.",
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 15.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp, start = 24.dp, end = 24.dp, bottom = 28.dp)
+                    )
+                }
+            }
+            if (isKeyboardUp) Spacer(Modifier.height(12.dp))
 
             // Form
             Column(

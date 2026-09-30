@@ -146,7 +146,9 @@ class StorefrontViewModel(
         val preferredOrder = listOf(
             "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
             "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
-            "Instant Food", "Spices", "Chicken", "Home Care", "Kitchen Care"
+            "Instant Food", "Sweets & Chocolates", "Ice Cream", "Dry Fruits", "Sauces & Spreads",
+            "Spices", "Chicken", "Meat & Fish", "Home Care", "Kitchen Care", "Personal Care",
+            "Baby Care", "Health & Wellness", "Pet Care", "Stationery", "Toys & Games", "Electronics"
         )
         val counts = products.map { it.cat.trim() }.filter { it.isNotEmpty() }.groupingBy { it }.eachCount()
         // Familiar shelves in store order, then the rest busiest first; "Others" last.

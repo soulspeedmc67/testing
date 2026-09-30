@@ -471,14 +471,16 @@ struct StorefrontHomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
             } else {
-                LazyVGrid(columns: gridColumns, spacing: 10) {
-                    ForEach(products) { product in
-                        ProductCardView(
-                            product: product,
-                            onOpen: { detailProduct = product },
-                            onRequestAgeConfirmation: { ageGateProduct = product }
-                        )
-                    }
+                PagedProductGrid(
+                    products: products,
+                    listKey: "\(vm.selectedCategory ?? "")|\(vm.searchQuery)",
+                    columns: gridColumns
+                ) { product in
+                    ProductCardView(
+                        product: product,
+                        onOpen: { detailProduct = product },
+                        onRequestAgeConfirmation: { ageGateProduct = product }
+                    )
                 }
             }
         }

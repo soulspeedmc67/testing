@@ -50,6 +50,9 @@ struct AuthView: View {
     @State private var resendAt = Date.distantPast
     @State private var legalPage: LegalPage? = nil
     @State private var isFloating = false
+    /// While typing, the picture and headline step aside so the whole form
+    /// sits above the keyboard and nobody has to close it to go on.
+    @State private var isKeyboardUp = false
     @FocusState private var isMobileFocused: Bool
 
     private var isSignUp: Bool { initialMode == .signUp }
@@ -67,7 +70,12 @@ struct AuthView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     topBar
-                    hero(artHeight: max(170, min(280, geo.size.height * 0.3)))
+                    if !isKeyboardUp {
+                        hero(artHeight: max(170, min(280, geo.size.height * 0.3)))
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    } else {
+                        Spacer().frame(height: 12)
+                    }
                     panel
                 }
             }
@@ -78,6 +86,12 @@ struct AuthView: View {
         .onAppear {
             auth.errorMessage = nil
             isFloating = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { isKeyboardUp = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { isKeyboardUp = false }
         }
         .onChange(of: isReady) { _, ready in
             if ready { onClose() }
