@@ -6,6 +6,25 @@
 
 ---
 
+## Complaints & Copyright page — added (Sep 30, 2026)
+- `src/pages/complaints.js` → `/complaints/`: grievance officer (support@dashit.co.in),
+  copyright/trademark notice-and-takedown steps, 48 h reply / 36 h removal.
+  Linked from the home footer, `/help`, Terms §8, the sitemap, both apps'
+  Help & Support footers and Profile → Legal (iOS `ProfileView`, Android `ProfileScreen`).
+- Grievance officer: Azan Mir (owner), via support@dashit.co.in — named on
+  `/complaints/`, Terms §8 and Privacy §7.
+- Android verified on the Pixel. iOS not built yet; web not deployed yet.
+
+## Blinkit photos and catalogue — not used (Sep 30, 2026)
+- No Blinkit photos or catalogue data are used anywhere in the app or build.
+  The local archive (8.4 GB, gitignored via `/data/`; renamed by another tool
+  from `data/products/blinkit/` to `data/products/catalog/`) is kept on disk at
+  the owner's request — don't delete or move it.
+- Removed: the uncommitted wiring that pointed the storefront at local Blinkit
+  photos (saved in `data/backup/blinkit-photo-bank-wiring.patch`), and a
+  names-only product-list feature built and then dropped at the owner's request
+  (saved in `data/backup/catalog-work/`).
+
 ## Tobacco section (Blinkit-style) — added
 - Tobacco (`isAgeRestricted` in `src/lib/ageGate.js`) is **hidden from all
   browsing**: shop, categories, search results, offers, checkout upsells,
