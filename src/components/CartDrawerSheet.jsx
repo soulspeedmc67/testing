@@ -6,6 +6,7 @@ import VaulDrawer from "./ui/VaulDrawer";
 import { EmptyCartState } from "./ui/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStoreDetails } from "../lib/storeStatus";
+import ProductImage from "./ProductImage";
 
 export default function CartDrawerSheet({
   isOpen,
@@ -98,10 +99,11 @@ export default function CartDrawerSheet({
                     className="pt-2.5 flex items-center justify-between first:pt-0"
                   >
                     <div className="flex items-center space-x-2.5">
-                      <img
+                      <ProductImage
                         src={item.img}
-                        alt={item.name}
-                        className="w-10 h-10 object-contain bg-slate-50 p-1 rounded-xl border border-slate-100 dark:bg-surface-raised dark:border-line-soft"
+                        name={item.name}
+                        className="w-10 h-10 rounded-xl border border-slate-100 dark:border-line-soft shrink-0"
+                        letterClassName="text-base"
                       />
                       <div>
                         <h4 className="font-bold text-xs text-slate-900 line-clamp-1 dark:text-content">{item.name}</h4>

@@ -531,8 +531,13 @@ export function removeProductPhoto(id, rejectedUrl = "") {
 
 /** A photo the admin chose (camera, gallery or a link). Imports never replace it. */
 export function setManualProductPhoto(id, url, { weak = false, issues = [] } = {}) {
-  return writeProductFields([
-    {
+  return setManualProductPhotos([{ id, url, weak, issues }]);
+}
+
+/** Many at once, from a filled-in "photos to add" file: `[{ id, url, weak, issues }]`. Only photo fields change. */
+export function setManualProductPhotos(photos = []) {
+  return writeProductFields(
+    photos.map(({ id, url, weak = false, issues = [] }) => ({
       id,
       fields: {
         img: url,
@@ -541,8 +546,16 @@ export function setManualProductPhoto(id, url, { weak = false, issues = [] } = {
         photoIssues: issues,
         photoRejected: false,
       },
-    },
-  ]);
+    }))
+  );
+}
+
+/**
+ * "Check photos": the owner said none of the suggested photos is this item.
+ * Saved on the item so it isn't asked again, on this or any other device.
+ */
+export function skipProductPhotoSuggestions(ids = []) {
+  return writeProductFields(ids.map((id) => ({ id, fields: { photoSuggestionsSkipped: true } })));
 }
 
 /**

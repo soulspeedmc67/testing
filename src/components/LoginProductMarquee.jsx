@@ -1,15 +1,17 @@
+import { productImageUrl } from "./ProductImage";
+
 const ROW1 = [
-  { img: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=150&auto=format&fit=crop&q=80", bg: "bg-sky-100/70" },
-  { img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150&auto=format&fit=crop&q=80", bg: "bg-orange-100/70" },
-  { img: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=150&auto=format&fit=crop&q=80", bg: "bg-amber-100/70" },
-  { img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=150&auto=format&fit=crop&q=80", bg: "bg-rose-100/70" },
+  { img: "/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp", bg: "bg-sky-100/70" },
+  { img: "/products/catalog/munchies/dsh_064717045ec8.webp", bg: "bg-orange-100/70" },
+  { img: "/products/catalog/sweet_tooth/dsh_40fb79d7a4ed.webp", bg: "bg-amber-100/70" },
+  { img: "/products/catalog/vegetables_fruits/dsh_30b889a20ff7.webp", bg: "bg-rose-100/70" },
 ];
 
 const ROW2 = [
-  { img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=150&auto=format&fit=crop&q=80", bg: "bg-yellow-100/70" },
-  { img: "https://images.unsplash.com/photo-1549007994-cb92caebd54b?w=150&auto=format&fit=crop&q=80", bg: "bg-purple-100/70" },
-  { img: "https://images.unsplash.com/photo-1612927601601-6638404737ce?w=150&auto=format&fit=crop&q=80", bg: "bg-orange-100/70" },
-  { img: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=150&auto=format&fit=crop&q=80", bg: "bg-[#fef3c7]" },
+  { img: "/products/catalog/cold_drinks_juices/dsh_56ad109de49a.webp", bg: "bg-yellow-100/70" },
+  { img: "/products/catalog/munchies/dsh_ecf9c2f21047.webp", bg: "bg-purple-100/70" },
+  { img: "/products/catalog/bakery_biscuits/dsh_253f1bbc3708.webp", bg: "bg-orange-100/70" },
+  { img: "/products/catalog/dairy_breakfast/dsh_c937440a65c6.webp", bg: "bg-[#fef3c7]" },
 ];
 
 export default function LoginProductMarquee() {
@@ -22,7 +24,7 @@ export default function LoginProductMarquee() {
             key={idx}
             className={`${item.bg} h-20 w-20 shrink-0 rounded-3xl p-3 flex items-center justify-center border border-white shadow-sm`}
           >
-            <img src={item.img} alt="Product" className="h-14 w-14 object-contain rounded-xl" />
+            <img src={productImageUrl(item.img)} alt="Product" className="h-14 w-14 object-contain rounded-xl" />
           </div>
         ))}
       </div>
@@ -34,7 +36,7 @@ export default function LoginProductMarquee() {
             key={idx}
             className={`${item.bg} h-20 w-20 shrink-0 rounded-3xl p-3 flex items-center justify-center border border-white shadow-sm`}
           >
-            <img src={item.img} alt="Product" className="h-14 w-14 object-contain rounded-xl" />
+            <img src={productImageUrl(item.img)} alt="Product" className="h-14 w-14 object-contain rounded-xl" />
           </div>
         ))}
       </div>

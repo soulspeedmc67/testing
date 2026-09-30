@@ -27,6 +27,69 @@ export function isPlaceholderImage(url) {
 }
 
 /**
+ * The listing rule: items with a real photo are shown before items without
+ * one, everywhere a shopper browses. Order inside each group is kept, so any
+ * sort done before or after still decides the order among equals.
+ */
+export function photosFirst(list = []) {
+  const withPhoto = [];
+  const without = [];
+  for (const p of list || []) (isPlaceholderImage(p?.img) ? without : withPhoto).push(p);
+  return without.length === 0 ? withPhoto : withPhoto.concat(without);
+}
+
+/**
+ * The "Needs a photo" list: `[{ product, reason }]`, items with no photo
+ * first (most stock first, since those sell), then photos that are too small
+ * or look blank.
+ */
+export function photoGaps(catalogue = []) {
+  const missing = [];
+  const weak = [];
+  for (const product of catalogue || []) {
+    if (isPlaceholderImage(product.img)) missing.push({ product, reason: "No photo" });
+    else if (product.photoQuality === "weak") {
+      weak.push({ product, reason: (product.photoIssues || []).join(", ") || "Photo isn't clear" });
+    }
+  }
+  missing.sort((a, b) => (Number(b.product.stock) || 0) - (Number(a.product.stock) || 0));
+  return [...missing, ...weak];
+}
+
+/**
+ * Reads a filled-in "photos to add" file: `rows` are parsed CSV rows (the
+ * first is the header). Needs a `barcode` (or `id`) column and an `image`
+ * column; every other column is ignored, so nothing but photos can change.
+ * Links are returned as written; the caller cleans them up and checks they
+ * open. Returns `{ links: [{ id, url }], skipped, error }`.
+ */
+export function parsePhotoLinks(rows = []) {
+  if (!rows.length) return { links: [], skipped: 0, error: "The file is empty." };
+  const header = rows[0].map((h) => String(h || "").trim().toLowerCase());
+  const idCol = header.findIndex((h) => h === "barcode" || h === "id");
+  const imgCol = header.findIndex((h) => ["image", "img", "photo", "image link", "photo link"].includes(h));
+  if (idCol === -1 || imgCol === -1) {
+    return { links: [], skipped: 0, error: "The file needs a barcode column and an image column." };
+  }
+  const links = [];
+  const seen = new Set();
+  let skipped = 0;
+  for (const row of rows.slice(1)) {
+    // A leading ' is what the export adds to stop spreadsheets running a cell as a formula.
+    const id = String(row[idCol] || "").trim().replace(/^'/, "");
+    const url = String(row[imgCol] || "").trim();
+    if (!id || !url) continue;
+    if (isPlaceholderImage(url) || seen.has(id)) {
+      skipped += 1;
+      continue;
+    }
+    seen.add(id);
+    links.push({ id, url });
+  }
+  return { links, skipped, error: "" };
+}
+
+/**
  * Whether an import should look this product's photo up. Photos the admin set
  * (by hand, or through the CSV's image column) and photos already found are
  * kept, and so is a removal: a photo marked wrong is not fetched again. Only

@@ -15,8 +15,8 @@ android {
         targetSdk 36
         // Well above the old web-wrapper app (android/, same app ID, up to 6), so
         // this native app always installs over it and never the other way round.
-        versionCode 100
-        versionName "1.2.0"
+        versionCode 101
+        versionName "1.2.1"
 
         // The sign-in server next to the website (public/api/auth/). A test build
         // can use another: ./gradlew installDebug -PsignInServer=http://127.0.0.1:8099/api/auth/

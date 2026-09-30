@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useDeferredValue, useMemo, useRef, useState } from "react";
 import {
   Camera,
   Check,
@@ -13,6 +13,9 @@ import {
 } from "lucide-react";
 import ProductImage from "../ProductImage";
 import { Truck } from "lucide-react";
+import { catalogPhotoUrl, loadCatalog, searchCatalog } from "../../lib/productCatalog";
+import { findPhotoFor } from "../../lib/productPhotoFinder";
+import { isPlaceholderImage } from "../../lib/productPhotoMatch";
 
 export default function AddProductView({
   productForm,
@@ -29,6 +32,89 @@ export default function AddProductView({
 }) {
   const [showNewDistributorInput, setShowNewDistributorInput] = useState(false);
   const [newDistributorName, setNewDistributorName] = useState("");
+
+  /* Names from the product list (lib/productCatalog). The list downloads the
+     first time the name box is focused; until then, or if it can't load, the
+     box is a plain text box. */
+  const [catalog, setCatalog] = useState(null);
+  const [isNameOpen, setIsNameOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const typedName = useDeferredValue(productForm.name);
+  const suggestions = useMemo(
+    () => (isNameOpen && catalog ? searchCatalog(catalog, typedName, 6) : []),
+    [catalog, typedName, isNameOpen]
+  );
+  const showSuggestions = suggestions.length > 0;
+
+  const openCatalog = () => {
+    if (!catalog) loadCatalog().then(setCatalog).catch(() => {});
+  };
+
+  // A photo for a picked name, from Open Food Facts; offered, never put in by itself.
+  const [namePhoto, setNamePhoto] = useState({ status: "idle", img: "", offBarcode: "" });
+  const photoLookup = useRef(0);
+  const forgetNamePhoto = () => {
+    photoLookup.current += 1;
+    setNamePhoto({ status: "idle", img: "", offBarcode: "" });
+  };
+
+  const pickSuggestion = async (item) => {
+    setIsNameOpen(false);
+    setActiveIndex(-1);
+    const catalogImg = catalogPhotoUrl(item.img);
+    setProductForm((p) => ({
+      ...p,
+      name: item.name,
+      cat: categories.includes(item.shelf) ? item.shelf : p.cat,
+      brand: item.brand || p.brand,
+      unit: item.unit || p.unit,
+      img: catalogImg || (isPlaceholderImage(p.img) ? "" : p.img),
+      imgSource: catalogImg ? "catalog" : p.imgSource,
+    }));
+    forgetNamePhoto();
+
+    // If catalog already provided the authentic self-hosted photo, no need for external lookup
+    if (catalogImg) {
+      setNamePhoto({ status: "found", img: catalogImg, offBarcode: "" });
+      return;
+    }
+
+    // A photo already chosen or scanned stays; only an empty form gets one looked up.
+    if (!isPlaceholderImage(productForm.img)) return;
+    const lookup = photoLookup.current;
+    setNamePhoto({ status: "looking", img: "", offBarcode: "" });
+    let found = null;
+    try {
+      found = await findPhotoFor({ name: item.name, brand: item.brand, unit: item.unit });
+    } catch {
+      found = null;
+    }
+    if (lookup !== photoLookup.current) return;
+    setNamePhoto(
+      found?.status === "found"
+        ? { status: "found", img: found.img, offBarcode: found.offBarcode || "" }
+        : { status: "missing", img: "", offBarcode: "" }
+    );
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === "ArrowDown" && suggestions.length) {
+      e.preventDefault();
+      setIsNameOpen(true);
+      setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp" && suggestions.length) {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, -1));
+    } else if (e.key === "Enter" && showSuggestions && activeIndex >= 0) {
+      // Picks the highlighted name instead of sending the form.
+      e.preventDefault();
+      pickSuggestion(suggestions[activeIndex]);
+    } else if (e.key === "Escape" && showSuggestions) {
+      setIsNameOpen(false);
+      setActiveIndex(-1);
+    }
+  };
+
   /* One definition for every box on this form: the styling used to be pasted
      onto each input, which is how they drifted apart in the first place. */
   const labelCls =
@@ -175,8 +261,8 @@ export default function AddProductView({
             <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-bold">Only the starred boxes are needed</span>
           </div>
 
-          {/* Item name */}
-          <div>
+          {/* Item name, with names from the product list as you type */}
+          <div className="relative">
             <label htmlFor="add-name" className={labelCls}>
               Item name *
             </label>
@@ -185,11 +271,106 @@ export default function AddProductView({
               type="text"
               required
               autoComplete="off"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={showSuggestions}
+              aria-controls="add-name-list"
+              aria-activedescendant={showSuggestions && activeIndex >= 0 ? `add-name-opt-${activeIndex}` : undefined}
               value={productForm.name}
-              onChange={(e) => setProductForm((p) => ({ ...p, name: e.target.value }))}
+              onFocus={() => {
+                openCatalog();
+                setIsNameOpen(true);
+              }}
+              onBlur={() => setIsNameOpen(false)}
+              onChange={(e) => {
+                setProductForm((p) => ({ ...p, name: e.target.value }));
+                setIsNameOpen(true);
+                setActiveIndex(-1);
+                forgetNamePhoto();
+              }}
+              onKeyDown={handleNameKeyDown}
               placeholder="Amul Taaza Toned Milk"
               className={fieldCls}
             />
+
+            {showSuggestions && (
+              <ul
+                id="add-name-list"
+                role="listbox"
+                aria-label="Names from the product list"
+                // Keeps focus in the box so a tap picks the name instead of closing the list.
+                onMouseDown={(e) => e.preventDefault()}
+                className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-72 overflow-y-auto rounded-xl border py-1 shadow-lg ${
+                  darkMode ? "bg-[#1A1D26] border-zinc-700" : "bg-white border-slate-200"
+                }`}
+              >
+                {suggestions.map((item, idx) => (
+                  <li
+                    key={item.index}
+                    id={`add-name-opt-${idx}`}
+                    role="option"
+                    aria-selected={idx === activeIndex}
+                    onClick={() => pickSuggestion(item)}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                    className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer ${
+                      idx === activeIndex ? (darkMode ? "bg-zinc-800" : "bg-slate-100") : ""
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-zinc-800 border border-slate-200/50 dark:border-zinc-700/50 overflow-hidden shrink-0 flex items-center justify-center">
+                      <ProductImage src={item.img} name={item.name} size="small" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold text-slate-900 dark:text-white truncate">{item.name}</span>
+                      <span className="block text-[10.5px] text-slate-500 dark:text-zinc-400 truncate">
+                        {item.shelf} · {item.aisle}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {namePhoto.status === "looking" && (
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1">Looking for a photo of this item…</p>
+            )}
+            {namePhoto.status === "missing" && (
+              <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1">
+                No photo found for this name. Scan the barcode, or paste a photo link below.
+              </p>
+            )}
+            {namePhoto.status === "found" && (
+              <div
+                className={`mt-2 flex items-center gap-3 rounded-xl border p-2 ${
+                  darkMode ? "border-zinc-700" : "border-slate-200"
+                }`}
+              >
+                <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-700 shrink-0">
+                  <ProductImage src={namePhoto.img} name={productForm.name} />
+                </div>
+                <p className="flex-1 min-w-0 text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
+                  Photo found on Open Food Facts
+                </p>
+                {productForm.img === namePhoto.img ? (
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-zinc-400 shrink-0">
+                    <Check className="w-3.5 h-3.5" /> In use
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setProductForm((p) => ({ ...p, img: namePhoto.img, imgSource: "openfoodfacts", offBarcode: namePhoto.offBarcode }))
+                    }
+                    className={`px-3 py-1.5 rounded-lg border text-[11px] font-bold shrink-0 cursor-pointer ${
+                      darkMode
+                        ? "border-zinc-600 text-zinc-100 hover:bg-zinc-800"
+                        : "border-slate-300 text-slate-800 hover:bg-slate-50"
+                    }`}
+                  >
+                    Use this photo
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Only the boxes needed to sell something stay in the open: shelf,
@@ -266,6 +447,25 @@ export default function AddProductView({
                 className={fieldCls}
               />
             </div>
+          </div>
+
+          {/* The listing rule: nothing goes on the app without a photo. */}
+          <div>
+            <label htmlFor="add-img" className={labelCls}>
+              Photo link *
+            </label>
+            <input
+              id="add-img"
+              type="url"
+              required
+              value={productForm.img}
+              onChange={(e) => setProductForm((p) => ({ ...p, img: e.target.value, imgSource: "manual" }))}
+              placeholder="Paste a photo link, or scan the barcode to find one"
+              className={`${fieldCls} font-mono`}
+            />
+            <p className="text-[10px] text-slate-500 dark:text-zinc-400 mt-1">
+              Every item on the app needs a photo of the pack.
+            </p>
           </div>
 
           {/* Who the item came from */}
@@ -402,19 +602,6 @@ export default function AddProductView({
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="add-img" className={labelCls}>
-                  Photo link
-                </label>
-                <input
-                  id="add-img"
-                  type="url"
-                  value={productForm.img}
-                  onChange={(e) => setProductForm((p) => ({ ...p, img: e.target.value, imgSource: "manual" }))}
-                  placeholder="Paste a photo link, or scan the barcode to find one"
-                  className={`${fieldCls} font-mono`}
-                />
-              </div>
             </div>
           </details>
 

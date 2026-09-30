@@ -22,12 +22,20 @@ object ProductPhotos {
     private val offFullSize = Regex("\\.full\\.(jpg|jpeg|png|webp)$", RegexOption.IGNORE_CASE)
 
     /**
-     * Open Food Facts links point at the full original (~700 KB); the same
-     * photo at 400px (~30 KB) is plenty on a phone and loads far faster.
+     * Resolves product photo URLs:
+     * 1. Relative catalog paths (e.g. /products/catalog/...) map directly to Hostinger production CDN (https://dashit.co.in).
+     * 2. Open Food Facts links point at the full original (~700 KB); the same
+     *    photo at 400px (~30 KB) is plenty on a phone and loads far faster.
      */
     fun displayUrl(url: String): String {
-        if (!url.contains("openfoodfacts.org") && !url.contains("openbeautyfacts.org")) return url
-        return url.replace(offFullSize) { ".400." + it.groupValues[1] }
+        if (url.isBlank()) return url
+        val trimmed = url.trim()
+        if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            val path = if (trimmed.startsWith("/")) trimmed else "/$trimmed"
+            return "https://dashit.co.in$path"
+        }
+        if (!trimmed.contains("openfoodfacts.org") && !trimmed.contains("openbeautyfacts.org")) return trimmed
+        return trimmed.replace(offFullSize) { ".400." + it.groupValues[1] }
     }
 
     /** The app-wide image loader: 300 MB of saved photos, cache headers ignored. */
@@ -48,7 +56,7 @@ object ProductPhotos {
     fun prefetch(context: Context, urls: List<String>) {
         if (!isUnmetered(context)) return
         val loader = context.imageLoader
-        urls.filter { it.startsWith("http") }.distinct().take(300).forEach { url ->
+        urls.map { displayUrl(it) }.filter { it.startsWith("http") }.distinct().take(300).forEach { url ->
             loader.enqueue(
                 ImageRequest.Builder(context)
                     .data(url)
@@ -69,8 +77,8 @@ object ProductPhotos {
         override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
             val data = chain.request.data
             if (data is String) {
-                val smaller = displayUrl(data)
-                if (smaller != data) return chain.proceed(chain.request.newBuilder().data(smaller).build())
+                val resolved = displayUrl(data)
+                if (resolved != data) return chain.proceed(chain.request.newBuilder().data(resolved).build())
             }
             return chain.proceed(chain.request)
         }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { animate } from "animejs";
+import { productImageUrl } from "./ProductImage";
 
 let globalTriggerFly = null;
 
@@ -62,7 +63,7 @@ export default function FlyingBadgeOverlay() {
       flyer.style.transformOrigin = "center center";
 
       const img = document.createElement("img");
-      img.src = imgUrl;
+      img.src = productImageUrl(imgUrl);
       img.alt = "";
       img.style.width = "100%";
       img.style.height = "100%";

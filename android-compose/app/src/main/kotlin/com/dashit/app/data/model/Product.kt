@@ -65,6 +65,9 @@ fun shopCategory(raw: String): String = when (raw.trim().lowercase()) {
     else -> raw.trim()
 }
 
+/** Prepend Hostinger CDN domain if path is a catalog relative path */
+fun productImageUrl(raw: String): String = com.dashit.app.data.ProductPhotos.displayUrl(raw)
+
 /** The category and keyword part of the check, for cart lines that only carry a name and category. */
 fun isAgeRestricted(name: String, cat: String): Boolean {
     if (cat.lowercase() in RESTRICTED_CATEGORIES) return true

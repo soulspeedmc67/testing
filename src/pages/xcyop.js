@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import {
   ShieldAlert,
   Mail,
@@ -32,6 +33,9 @@ import CatalogueView from "../components/admin/CatalogueView";
 import OffersView from "../components/admin/OffersView";
 import ImporterView from "../components/admin/ImporterView";
 import CsvInventoryView from "../components/admin/CsvInventoryView";
+import CatalogPickerView from "../components/admin/CatalogPickerView";
+import CatalogEnricherView from "../components/admin/CatalogEnricherView";
+import PhotoReviewView from "../components/admin/PhotoReviewView";
 import StoreControlsView from "../components/admin/StoreControlsView";
 import DistributorsView from "../components/admin/DistributorsView";
 
@@ -424,10 +428,17 @@ function getOrderTimestampMs(order) {
 }
 
 function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
-  // Tabs: "orders" | "inventory" | "add-product" | "batch-inward" | "catalogue" | "csv" | "offers" | "importer" | "settings"
+  const router = useRouter();
+  // Tabs: "orders" | "inventory" | "add-product" | "batch-inward" | "catalogue" | "csv" | "catalog-pick" | "offers" | "importer" | "enricher" | "settings"
   const [activeTab, setActiveTab] = useState("orders");
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    if (router.query && router.query.tab) {
+      setActiveTab(String(router.query.tab));
+    }
+  }, [router.query?.tab]);
 
   // Logout Handler
   const handleAdminSignOut = async () => {
@@ -975,6 +986,11 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       alert("Please enter a valid price.");
       return;
     }
+    // The listing rule: nothing goes on the app without a photo.
+    if (isPlaceholderImage(productForm.img)) {
+      alert("Add a photo first. Scan the barcode to find one, or paste a link to a photo of the pack.");
+      return;
+    }
 
     setIsPublishingProduct(true);
     const prodId = productForm.barcode || `prod-${Date.now()}`;
@@ -989,10 +1005,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       unit: productForm.unit || "1 pc",
       brand: productForm.brand.trim() || "Indian Brand",
       badge: productForm.badge.trim() || "Fresh",
-      img: productForm.img || "",
+      img: productForm.img,
       // Where the photo came from, so a CSV import never replaces one set here.
-      imgSource: productForm.img ? productForm.imgSource || "manual" : undefined,
-      offBarcode: productForm.img ? productForm.offBarcode : undefined,
+      imgSource: productForm.imgSource || "manual",
+      offBarcode: productForm.offBarcode || undefined,
       stock: Number(productForm.stock) || 100,
       updatedAt: Date.now()
     };
@@ -1718,6 +1734,31 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onApplyImport={handleApplyCsvImport}
           onStartPhotoSearch={startPhotoSearch}
           darkMode={darkMode}
+        />
+      )}
+
+      {activeTab === "photo-review" && <PhotoReviewView catalogue={catalogue} showToast={showToast} />}
+
+      {activeTab === "catalog-pick" && (
+        <CatalogPickerView
+          catalogue={catalogue}
+          darkMode={darkMode}
+          onOpenCsvImport={() => setActiveTab("csv")}
+        />
+      )}
+
+      {activeTab === "enricher" && (
+        <CatalogEnricherView
+          onSyncProductsToCatalog={async (syncedProducts) => {
+            if (!Array.isArray(syncedProducts) || syncedProducts.length === 0) return;
+            for (const prod of syncedProducts) {
+              await upsertProduct(prod);
+            }
+            showToast(`Synced ${syncedProducts.length} enriched products into store catalog.`);
+            loadCatalogue();
+          }}
+          darkMode={darkMode}
+          showToast={showToast}
         />
       )}
 

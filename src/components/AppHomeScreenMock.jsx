@@ -21,21 +21,23 @@ const CATEGORY_RAIL = [
   { label: "Vegetables", Icon: Carrot },
 ];
 
+import { productImageUrl } from "./ProductImage";
+
 const ESSENTIAL_RAILS = [
   {
     title: "Fresh Vegetables",
     priceText: "From ₹20",
-    img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=280&auto=format&fit=crop&q=80",
+    img: "/products/catalog/vegetables_fruits/dsh_3815336e8e85.webp",
   },
   {
     title: "Milk, Curd & Eggs",
     priceText: "From ₹35",
-    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=280&auto=format&fit=crop&q=80",
+    img: "/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp",
   },
   {
     title: "Fresh Fruits",
     priceText: "From ₹45",
-    img: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=280&auto=format&fit=crop&q=80",
+    img: "/products/catalog/vegetables_fruits/dsh_30b889a20ff7.webp",
   },
 ];
 
@@ -198,7 +200,7 @@ export default function AppHomeScreenMock() {
             >
               <div className="w-full h-[66px] rounded-xl overflow-hidden bg-slate-100">
                 <img
-                  src={item.img}
+                  src={productImageUrl(item.img)}
                   alt=""
                   loading="lazy"
                   decoding="async"

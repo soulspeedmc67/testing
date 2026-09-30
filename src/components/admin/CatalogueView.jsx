@@ -8,8 +8,17 @@ import {
   Layers,
   Boxes,
   Download,
+  Image as ImageIcon,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { generateCsvString, triggerCsvDownload, CATALOGUE_CSV_COLUMNS } from "../../lib/csvExport";
+import { photoGaps } from "../../lib/productPhotoMatch";
+import { NeedsPhotoSheet } from "./ProductPhotoSheets";
+import ProductImage from "../ProductImage";
+import { loadCatalog, photoFromCatalog } from "../../lib/productCatalog";
+import { opensAsPhoto } from "../../lib/photoQuality";
+import { setManualProductPhotos } from "../../lib/db";
 
 export default function CatalogueView({
   catalogue = [],
@@ -19,6 +28,54 @@ export default function CatalogueView({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [isNeedsPhotoOpen, setIsNeedsPhotoOpen] = useState(false);
+  const [isAutoResolving, setIsAutoResolving] = useState(false);
+  const [autoResolveMsg, setAutoResolveMsg] = useState("");
+
+  // The listing rule: items without a photo sit at the back of the app until they get one.
+  const needsPhoto = useMemo(() => photoGaps(catalogue), [catalogue]);
+  const withPhoto = catalogue.length - needsPhoto.filter((r) => r.reason === "No photo").length;
+  const coverage = catalogue.length ? Math.floor((withPhoto / catalogue.length) * 100) : 100;
+
+  const handleAutoResolvePhotos = async () => {
+    if (isAutoResolving || needsPhoto.length === 0) return;
+    setIsAutoResolving(true);
+    setAutoResolveMsg("");
+    try {
+      const catalog = await loadCatalog().catch(() => null);
+      if (!catalog) throw new Error("the product list didn't load");
+      // Only the same product's photo (photoFromCatalog), never a lookalike,
+      // and only one that really opens: some catalogue photos aren't on the
+      // website yet.
+      const found = [];
+      for (const item of needsPhoto) {
+        const prod = item.product;
+        const photo = photoFromCatalog(catalog, prod.name);
+        if (photo) found.push({ id: String(prod.id || prod.barcode), url: photo.img });
+      }
+      const updates = [];
+      let next = 0;
+      await Promise.all(
+        Array.from({ length: 8 }, async () => {
+          while (next < found.length) {
+            const item = found[next++];
+            if (await opensAsPhoto(item.url)) updates.push({ ...item, weak: false, issues: [] });
+          }
+        })
+      );
+
+      if (updates.length > 0) {
+        await setManualProductPhotos(updates);
+        setAutoResolveMsg(`Added the exact product's photo to ${updates.length} items.`);
+      } else {
+        setAutoResolveMsg("No exact matches in the product list. Add these photos by hand.");
+      }
+    } catch (e) {
+      setAutoResolveMsg(`Couldn't add photos: ${e?.message || "something went wrong"}.`);
+    } finally {
+      setIsAutoResolving(false);
+    }
+  };
 
   const handleExportCsv = () => {
     const csvContent = generateCsvString(filteredCatalogue, CATALOGUE_CSV_COLUMNS);
@@ -107,6 +164,49 @@ export default function CatalogueView({
           </div>
         </div>
 
+        {/* Photo coverage: every item on the app should have one. */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-xs font-bold text-slate-700 dark:text-zinc-200">
+              {withPhoto.toLocaleString("en-IN")} of {catalogue.length.toLocaleString("en-IN")} items have a photo
+            </p>
+            <div className="mt-1.5 h-1.5 rounded-full bg-slate-100 dark:bg-zinc-800 overflow-hidden">
+              <div className="h-full rounded-full bg-[#FF5B00]" style={{ width: `${coverage}%` }} />
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1.5">
+              Items without a photo show after the ones with a photo on the app.
+            </p>
+          </div>
+          {needsPhoto.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAutoResolvePhotos}
+                disabled={isAutoResolving}
+                className="bg-[#FF5B00] hover:bg-[#E04E00] text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 active:scale-95 disabled:opacity-50"
+              >
+                {isAutoResolving ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 stroke-[2.5]" />
+                )}
+                <span>Auto-fill photos ({needsPhoto.length.toLocaleString("en-IN")})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsNeedsPhotoOpen(true)}
+                className="bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-zinc-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 active:scale-95"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-[#FF5B00]" />
+                <span>Review list</span>
+              </button>
+            </div>
+          )}
+        </div>
+        {autoResolveMsg && (
+          <p className="text-xs font-bold text-[#FF5B00] mt-1">{autoResolveMsg}</p>
+        )}
+
         {/* Category Filters */}
         <div className="flex items-center space-x-1 overflow-x-auto scrollbar-none pt-1">
           {categories.map((cat) => (
@@ -146,11 +246,7 @@ export default function CatalogueView({
               >
                 <div className="space-y-2.5">
                   <div className="aspect-square rounded-xl overflow-hidden bg-slate-100 dark:bg-zinc-800 relative border border-slate-200/50 dark:border-zinc-750">
-                    <img
-                      src={p.img}
-                      alt={p.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <ProductImage src={p.img} name={p.name} fill letterClassName="text-4xl" />
                     {p.badge && (
                       <span className="absolute top-2 left-2 bg-[#FF5B00] text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-md shadow-xs">
                         {p.badge}
@@ -205,6 +301,15 @@ export default function CatalogueView({
           })
         )}
       </div>
+
+      <NeedsPhotoSheet
+        open={isNeedsPhotoOpen}
+        onClose={() => setIsNeedsPhotoOpen(false)}
+        products={needsPhoto}
+        onAutoResolve={handleAutoResolvePhotos}
+        isAutoResolving={isAutoResolving}
+        darkMode={darkMode}
+      />
     </div>
   );
 }
