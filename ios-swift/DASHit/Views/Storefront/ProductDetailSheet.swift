@@ -1,11 +1,21 @@
 import SwiftUI
 
-/// Product sheet: image, price, size selector, statutory notice for 18+ items,
-/// nutrition callouts when the product carries them, and a sticky add bar.
+/// The product page, full height: a large photo on white, price, size
+/// selector, statutory notice for 18+ items, nutrition callouts when the
+/// product carries them, details, "Similar products" to open in place, and a
+/// sticky add bar.
 struct ProductDetailSheet: View {
-    let product: Product
+    @State private var product: Product
     /// Closes the sheet and opens the cart; offered once the item is in it.
     var onGoToCart: (() -> Void)? = nil
+
+    init(product: Product, onGoToCart: (() -> Void)? = nil) {
+        _product = State(initialValue: product)
+        self.onGoToCart = onGoToCart
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var catalogue = CatalogueStore.shared
 
     @ObservedObject private var cart = CartViewModel.shared
     @State private var selectedVariantID: String? = nil
@@ -31,10 +41,20 @@ struct ProductDetailSheet: View {
         return Int(((original - price) / original * 100).rounded())
     }
 
+    /// Up to nine others from the same shelf, ones with a photo first.
+    private var similar: [Product] {
+        let others = catalogue.products(inCategory: product.cat)
+            .filter { $0.id != product.id && !$0.isAgeRestricted && $0.isAvailable }
+        let withPhoto = others.filter { !$0.img.isEmpty }
+        return Array((withPhoto + others.filter { $0.img.isEmpty }).prefix(9))
+    }
+
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 heroImage
+                    .id("productTop")
                 titleBlock
                     .padding(.top, 14)
                 priceBlock
@@ -53,6 +73,10 @@ struct ProductDetailSheet: View {
                 }
                 detailsList
                     .padding(.top, 22)
+                if !similar.isEmpty {
+                    similarProducts(proxy)
+                        .padding(.top, 28)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 14)
@@ -60,6 +84,23 @@ struct ProductDetailSheet: View {
             .animation(.dashitSpring, value: selectedVariantID)
         }
         .scrollIndicators(.hidden)
+        }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                HapticsManager.shared.light()
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.textSecondary)
+                    .frame(width: 34, height: 34)
+                    .background(Color.surfaceMuted, in: Circle())
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Close")
+            .padding(.top, 14)
+            .padding(.trailing, 14)
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             purchaseBar
         }
@@ -69,14 +110,34 @@ struct ProductDetailSheet: View {
                 cart.add(product: product, variant: selectedVariant)
             }
         }
-        .dashitSheet([.medium, .fraction(0.85)])
+        .dashitSheet([.large])
     }
 
     // MARK: - Sections
 
+    private func similarProducts(_ proxy: ScrollViewProxy) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Similar products")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(.textPrimary)
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3), spacing: 10) {
+                ForEach(similar) { item in
+                    ProductCardView(product: item, onOpen: {
+                        HapticsManager.shared.selection()
+                        product = item
+                        selectedVariantID = nil
+                        withAnimation(.dashitSpring) { proxy.scrollTo("productTop", anchor: .top) }
+                    })
+                }
+            }
+        }
+    }
+
     private var heroImage: some View {
-        Color.surfaceRaised
-            .frame(height: 168)
+        Color.white
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 30)
             .overlay {
                 #if TOBACCO_SECTION
                 // Tobacco shows a plain pack, never brand art.
@@ -104,12 +165,14 @@ struct ProductDetailSheet: View {
     }
 
     private var productPhoto: some View {
-        CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
+        CachedAsyncImage(url: URL(string: ProductPhotoStore.fullSize(product.img)), transaction: Transaction(animation: .easeOut(duration: 0.25))) { phase in
             switch phase {
             case .success(let image):
+                // The whole pack on white, never cropped.
                 image
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
+                    .padding(24)
             case .failure:
                 Image(systemName: "photo")
                     .font(.system(size: 28))

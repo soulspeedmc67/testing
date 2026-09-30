@@ -310,7 +310,7 @@ private fun OrderCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF202636))
+                            .background(DashitColors.SurfaceMuted)
                             .border(1.dp, DashitColors.Hairline, RoundedCornerShape(10.dp))
                             .pressable(scale = 0.94f) { onTrackOrder() }
                             .padding(horizontal = 10.dp, vertical = 7.dp),

@@ -198,7 +198,7 @@ fun SearchScreen(
                     .weight(1f)
                     .height(48.dp)
                     .clip(fieldShape)
-                    .background(Color(0xFF181C26))
+                    .background(DashitColors.SurfaceRaised)
                     .border(
                         1.dp,
                         if (isFocused) DashitColors.BrandOrange.copy(alpha = 0.7f) else DashitColors.Hairline,

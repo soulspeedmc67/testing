@@ -44,7 +44,16 @@ final class ProductPhotoStore: @unchecked Sendable {
     /// 1. Relative catalog paths (e.g. /products/catalog/...) map directly to Hostinger production CDN.
     /// 2. Open Food Facts original links map to the fast, lightweight 400px derivative.
     static func displayURL(_ url: URL) -> URL {
-        let text = url.absoluteString
+        var text = url.absoluteString
+        // The product page asks for the full photo; cards get the small copy.
+        if text.hasSuffix(fullSizeMark) {
+            text.removeLast(fullSizeMark.count)
+            return absolute(text)
+        }
+        let resolved = absolute(text).absoluteString
+        if resolved.contains(catalogPath) {
+            return URL(string: resolved.replacingOccurrences(of: catalogPath, with: thumbPath)) ?? url
+        }
         if url.scheme == nil || (!text.hasPrefix("http://") && !text.hasPrefix("https://")) {
             let path = text.hasPrefix("/") ? text : "/\(text)"
             if let hostingerURL = URL(string: "https://dashit.co.in\(path)") {
@@ -56,6 +65,22 @@ final class ProductPhotoStore: @unchecked Sendable {
         else { return url }
         let smaller = text.replacingCharacters(in: range, with: ".400" + String(text[range].dropFirst(5)))
         return URL(string: smaller) ?? url
+    }
+
+    private static let catalogPath = "dashit.co.in/products/catalog/"
+    private static let thumbPath = "dashit.co.in/products/thumbs/"
+    private static let fullSizeMark = "#full"
+
+    /// A photo at full size (the product page); elsewhere catalogue photos
+    /// load as their 400px copy (~10 KB instead of ~100 KB).
+    static func fullSize(_ url: String) -> String {
+        url.isEmpty ? url : url + fullSizeMark
+    }
+
+    private static func absolute(_ text: String) -> URL {
+        if text.hasPrefix("http://") || text.hasPrefix("https://") { return URL(string: text) ?? URL(fileURLWithPath: "/") }
+        let path = text.hasPrefix("/") ? text : "/\(text)"
+        return URL(string: "https://dashit.co.in\(path)") ?? URL(fileURLWithPath: "/")
     }
 
     /// Already decoded this session: no waiting at all.
@@ -105,7 +130,14 @@ final class ProductPhotoStore: @unchecked Sendable {
             return image
         }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
-              Self.isOK(response), let image = Self.decode(data) else { return nil }
+              Self.isOK(response), let image = Self.decode(data) else {
+            // No small copy yet (a photo picked after the thumbnails were made): the full one.
+            let text = url.absoluteString
+            if text.contains(Self.thumbPath), let full = URL(string: text.replacingOccurrences(of: Self.thumbPath, with: Self.catalogPath)) {
+                return await load(full)
+            }
+            return nil
+        }
         try? data.write(to: file, options: .atomic)
         remember(image, for: url)
         return image

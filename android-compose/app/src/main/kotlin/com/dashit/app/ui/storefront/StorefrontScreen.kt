@@ -1,5 +1,10 @@
 package com.dashit.app.ui.storefront
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.lazy.rememberLazyListState
 import com.dashit.app.ui.components.HomeFeedSkeleton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -246,7 +251,14 @@ fun StorefrontScreen(
         } else {
             when (activeTab) {
                 NavigationTab.HOME -> {
+                    val homeList = rememberLazyListState()
+                    // The search bar only needs room for the status bar once it
+                    // sticks to the top; above that the header already has it.
+                    val searchPinned by remember { derivedStateOf { homeList.firstVisibleItemIndex > 0 } }
+                    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                    val searchTopInset by animateDpAsState(if (searchPinned) statusBarTop else 0.dp, label = "search_inset")
                     LazyColumn(
+                        state = homeList,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 140.dp)
                     ) {
@@ -271,8 +283,7 @@ fun StorefrontScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(DashitColors.Surface)
-                        .statusBarsPadding()
-                        .padding(top = 4.dp, bottom = 8.dp)
+                        .padding(top = searchTopInset + 4.dp, bottom = 8.dp)
                 ) {
                     // Search Bar
                     SearchBarField(
@@ -556,7 +567,16 @@ fun StorefrontScreen(
                 onDismiss = { detailProduct = null },
                 onAdd = { prod, variant -> cartVm.add(prod, variant) },
                 onIncrement = { prod, variant -> cartVm.add(prod, variant) },
-                onDecrement = { prod -> cartVm.decrementLatest(prod.id) }
+                onDecrement = { prod -> cartVm.decrementLatest(prod.id) },
+                similar = remember(detailProduct, allProducts) {
+                    val current = detailProduct!!
+                    allProducts
+                        .filter { it.cat.equals(current.cat, true) && it.id != current.id && !it.isAgeRestricted }
+                        .sortedBy { it.img.isBlank() }
+                        .take(9)
+                },
+                quantityOf = { p -> cartItems.filter { it.productId == p.id }.sumOf { it.qty } },
+                onOpenProduct = { detailProduct = it }
             )
         }
 
@@ -737,7 +757,7 @@ private fun SearchBarField(
             .padding(horizontal = 16.dp)
             .height(48.dp)
             .clip(searchShape)
-            .background(Color(0xFF181C26))
+            .background(DashitColors.SurfaceRaised)
             .border(1.dp, DashitColors.Hairline, searchShape)
             .clickable(onClickLabel = "Search products") { onOpen() }
             .padding(horizontal = 14.dp),

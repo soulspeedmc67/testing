@@ -57,7 +57,7 @@ fun BottomNavBar(
             .padding(horizontal = 44.dp)
             .shadow(16.dp, barShape, ambientColor = Color.Black, spotColor = Color.Black)
             .clip(barShape)
-            .background(Color(0xFF161820))
+            .background(DashitColors.SurfaceRaised)
             .border(1.dp, DashitColors.Hairline, barShape)
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .height(56.dp),
@@ -89,7 +89,7 @@ fun BottomNavBar(
 
                 Text(
                     text = tab.title,
-                    color = if (isSelected) Color.White else DashitColors.TextMuted,
+                    color = if (isSelected) DashitColors.TextPrimary else DashitColors.TextMuted,
                     fontSize = 11.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )

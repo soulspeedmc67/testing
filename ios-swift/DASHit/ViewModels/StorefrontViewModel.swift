@@ -100,7 +100,9 @@ final class CatalogueStore: ObservableObject {
     private static let preferredOrder = [
         "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
         "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
-        "Instant Food", "Spices", "Chicken", "Home Care", "Kitchen Care"
+        "Instant Food", "Sweets & Chocolates", "Ice Cream", "Dry Fruits", "Sauces & Spreads",
+        "Spices", "Chicken", "Meat & Fish", "Home Care", "Kitchen Care", "Personal Care",
+        "Baby Care", "Health & Wellness", "Pet Care", "Stationery", "Toys & Games", "Electronics"
     ].map { $0.lowercased() }
 
     /// One pass over the catalogue: group by category, then build the tiles,
@@ -327,12 +329,11 @@ final class StorefrontViewModel: ObservableObject {
     }
 
     func selectCategory(_ category: String?) {
-        withAnimation(.dashitSpring) {
-            if self.selectedCategory == category {
-                self.selectedCategory = nil
-            } else {
-                self.selectedCategory = category
-            }
+        // No animation: the product grid under it can hold thousands of items.
+        if self.selectedCategory == category {
+            self.selectedCategory = nil
+        } else {
+            self.selectedCategory = category
         }
         HapticsManager.shared.selection()
     }

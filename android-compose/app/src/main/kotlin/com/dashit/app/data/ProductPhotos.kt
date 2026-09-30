@@ -8,6 +8,7 @@ import coil.disk.DiskCache
 import coil.imageLoader
 import coil.intercept.Interceptor
 import coil.request.CachePolicy
+import coil.request.ErrorResult
 import coil.request.ImageRequest
 import coil.request.ImageResult
 
@@ -29,13 +30,32 @@ object ProductPhotos {
      */
     fun displayUrl(url: String): String {
         if (url.isBlank()) return url
+        if (url.endsWith(FULL_SIZE)) return url.removeSuffix(FULL_SIZE)
         val trimmed = url.trim()
         if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
             val path = if (trimmed.startsWith("/")) trimmed else "/$trimmed"
             return "https://dashit.co.in$path"
         }
+        // Catalogue photos: the 400px copy (~10 KB instead of ~100 KB).
+        if (trimmed.contains(CATALOG_PATH)) return trimmed.replace(CATALOG_PATH, THUMB_PATH)
         if (!trimmed.contains("openfoodfacts.org") && !trimmed.contains("openbeautyfacts.org")) return trimmed
         return trimmed.replace(offFullSize) { ".400." + it.groupValues[1] }
+    }
+
+    private const val CATALOG_PATH = "dashit.co.in/products/catalog/"
+    private const val THUMB_PATH = "dashit.co.in/products/thumbs/"
+    private const val FULL_SIZE = "#full"
+
+    /** A photo at full size (the product page), where a card gets the small copy. */
+    fun fullSize(url: String): String = if (url.isBlank()) url else displayUrlKeepingSize(url) + FULL_SIZE
+
+    /** A full address for a stored photo link, keeping its size (what a product saves). */
+    fun absoluteUrl(url: String): String = if (url.isBlank()) url else displayUrlKeepingSize(url)
+
+    private fun displayUrlKeepingSize(url: String): String {
+        val trimmed = url.trim()
+        if (trimmed.startsWith("http")) return trimmed
+        return "https://dashit.co.in" + (if (trimmed.startsWith("/")) trimmed else "/$trimmed")
     }
 
     /** The app-wide image loader: 300 MB of saved photos, cache headers ignored. */
@@ -78,7 +98,14 @@ object ProductPhotos {
             val data = chain.request.data
             if (data is String) {
                 val resolved = displayUrl(data)
-                if (resolved != data) return chain.proceed(chain.request.newBuilder().data(resolved).build())
+                if (resolved != data || data.contains(THUMB_PATH)) {
+                    val result = chain.proceed(chain.request.newBuilder().data(resolved).build())
+                    // No small copy yet (a photo picked after the thumbnails were made): the full one.
+                    if (result is ErrorResult && resolved.contains(THUMB_PATH)) {
+                        return chain.proceed(chain.request.newBuilder().data(resolved.replace(THUMB_PATH, CATALOG_PATH)).build())
+                    }
+                    return result
+                }
             }
             return chain.proceed(chain.request)
         }

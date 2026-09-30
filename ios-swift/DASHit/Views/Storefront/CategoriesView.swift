@@ -106,9 +106,7 @@ struct CategoriesView: View {
         return Button {
             guard !isSelected else { return }
             HapticsManager.shared.selection()
-            withAnimation(.dashitSpring) {
-                selectedCategoryID = tile.id
-            }
+            selectedCategoryID = tile.id
         } label: {
             VStack(spacing: 6) {
                 Color.surfaceMuted
@@ -178,14 +176,12 @@ struct CategoriesView: View {
                         }
                         .id("top")
 
-                        LazyVGrid(columns: gridColumns, spacing: 10) {
-                            ForEach(products) { product in
-                                ProductCardView(
-                                    product: product,
-                                    onOpen: { detailProduct = product },
-                                    onRequestAgeConfirmation: { ageGateProduct = product }
-                                )
-                            }
+                        PagedProductGrid(products: products, listKey: selectedTile?.id ?? "", columns: gridColumns) { product in
+                            ProductCardView(
+                                product: product,
+                                onOpen: { detailProduct = product },
+                                onRequestAgeConfirmation: { ageGateProduct = product }
+                            )
                         }
                     }
                     .padding(12)

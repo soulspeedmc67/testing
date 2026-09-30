@@ -550,6 +550,11 @@ export function setManualProductPhotos(photos = []) {
   );
 }
 
+/** "Fix shelves": moves items to another shelf, `[{ id, cat }]`. Only `cat` changes. */
+export function setProductShelves(moves = []) {
+  return writeProductFields(moves.map(({ id, cat }) => ({ id, fields: { cat } })));
+}
+
 /**
  * "Check photos": the owner said none of the suggested photos is this item.
  * Saved on the item so it isn't asked again, on this or any other device.
