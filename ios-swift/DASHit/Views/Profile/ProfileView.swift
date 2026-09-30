@@ -7,7 +7,6 @@ struct ProfileView: View {
     @ObservedObject private var addressBook = AddressBook.shared
     @Environment(\.openURL) private var openURL
     @State private var isDeleteAccountOpen = false
-    @State private var isEditingPhone = false
     @State private var isAddressPickerOpen = false
     @State private var isSignOutConfirmOpen = false
     @State private var authMode: AuthView.Mode? = nil
@@ -20,16 +19,10 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     if auth.isAuthenticated, let user = auth.currentUser {
-                        if auth.needsPhoneNumber || isEditingPhone {
-                            phoneCard(currentMobile: user.mobile)
-                        }
+                        // The number is the account (shown in the header), so
+                        // it isn't edited here: another number is another account.
                         accountHeader(user)
                         section("Account") {
-                            row(icon: "phone.fill", title: user.mobile.isEmpty ? "Add delivery number" : "Delivery number",
-                                detail: user.mobile.isEmpty ? nil : "+91 \(user.mobile)") {
-                                isEditingPhone = true
-                            }
-                            rowDivider
                             row(icon: "mappin.circle.fill", title: "Delivery address",
                                 detail: addressBook.current?.nickname) {
                                 isAddressPickerOpen = true
@@ -71,7 +64,6 @@ struct ProfileView: View {
                 }
                 .padding(16)
                 .animation(.dashitSpring, value: auth.isAuthenticated)
-                .animation(.dashitSpring, value: isEditingPhone)
             }
             .background(Color.surface.ignoresSafeArea())
             .navigationTitle("Profile")
@@ -240,34 +232,6 @@ struct ProfileView: View {
         }
         .padding(14)
         .contentShape(Rectangle())
-    }
-
-    /// Apple and email accounts can arrive without a phone; deliveries need one.
-    private func phoneCard(currentMobile: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(currentMobile.isEmpty ? "Add your delivery number" : "Change your delivery number")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(.textPrimary)
-                Spacer()
-                if !auth.needsPhoneNumber {
-                    Button("Cancel") { isEditingPhone = false }
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.textMuted)
-                }
-            }
-            PhoneNumberConfirmationFlow(
-                title: "Mobile number",
-                confirmTitle: "Save number",
-                initialMobile: currentMobile
-            ) { mobile in
-                try await auth.updateMobile(mobile)
-                isEditingPhone = false
-            }
-        }
-        .padding(16)
-        .background(Color.surfaceRaised, in: cardShape)
-        .overlay(cardShape.strokeBorder(Color.brandOrange.opacity(0.5), lineWidth: 1))
     }
 
     private var signOutAndDelete: some View {

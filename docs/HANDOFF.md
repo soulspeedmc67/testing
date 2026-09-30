@@ -25,6 +25,35 @@
   Build-time env: `NEXT_PUBLIC_TOBACCO_SECTION=off` (off everywhere),
   `NEXT_PUBLIC_TOBACCO_IOS=on` (enable in iOS app; App Review risk).
 
+## 0a. Security audit (2026-09-30, after the Blaze upgrade)
+
+Changed in code (tested: PHP in a php:8.2 container, rules in the Firestore
+emulator, 23/23 cases):
+- **Paid-online orders need a server-recorded payment.** The admin and rider
+  screens read any `paymentMethod` with online/UPI/card/prepaid as "collect
+  nothing at the door", and the rules used to let a customer write that word
+  freely. Now `verify-payment.php` / `payment-status.php` write
+  `payments/{razorpay order id}` (service account, via Firestore REST in
+  `public/api/_firebase.php`), and `firestore.rules` only accept such an order
+  when that record's `receipt` is the order id and its `amount` covers the
+  total. Totals fields must agree; 1–100 line items.
+- **Add items is gone for paid orders** in both apps (it made a replacement
+  order still marked paid, with the extra items never paid for).
+- **Rate limits on every PHP endpoint** (`dashit_rate_limit` in `_http.php`,
+  per network, IPv6 counted per /64): create-order 30/h, verify-payment 60/h,
+  payment-status 120/h, verify-code 60/h; sign-in codes now also cap at
+  10 per number per day.
+- `categories` gets a public-read rule (both apps listen there; it was denied).
+
+**Deploy order matters:** website (PHP) first, check one real online payment
+creates `payments/{id}` in Firestore, *then* `firestore.rules`. Rules first
+would refuse every online-paid order.
+
+Still open (need the owner's consoles or a bigger change): budget alerts,
+App Check, API-key restrictions, Phone sign-in off, server-side order pricing
+(prices and totals are still whatever the app sends), and the hard-coded owner
+email in the rules not checking `email_verified`.
+
 ## 0. Where the work stopped (read this first)
 
 **The admin dashboard is now fully migrated to Firestore and access-gated.**
@@ -51,13 +80,14 @@ migrated, since they still call it.
 ### Decisions the user made (do not re-litigate)
 | Question | Decision |
 |---|---|
-| Auth | OTP generated in code + Firebase **anonymous** sign-in |
+| Auth | Customers: number + WhatsApp code → Firebase custom token (§2). Staff: email |
 | Roles | `staff/{uid}` collection checked in security rules |
 | Admin app | Separate **web-only** build (not yet done) |
-| Plan | **Spark (free)** — no Cloud Functions, no paid SMS |
+| Plan | **Blaze** since 2026-09-30 (was Spark). Still no paid SMS; keep costs capped (§0a) |
 
-The user was explicit: **no paid services.** Do not propose Blaze, paid SMS, or
-Cloud Functions as the default path.
+The project is on Blaze now, so Cloud Functions are possible, but the owner's
+worry is surprise bills: anything added must stay inside the free tiers and be
+rate limited. Paid SMS is still out.
 
 ### Files created this session
 | File | Purpose |
@@ -92,31 +122,41 @@ All real-time events now use Firestore `watchOrder` and `watchOrderTracking`.
 
 ---
 
-## 2. How auth works now (and what it does NOT do)
+## 2. How auth works now
 
-`AUTH_MODE` defaults to `"otp"`:
-1. `issueCode()` in `src/lib/auth.js` generates a random 4-digit code on device.
-2. The code is held in memory with a 5-min TTL and a 5-attempt cap.
-3. On success, `signInAnonymously()` gives a real `request.auth.uid`.
-4. `users/{uid}` is created via `ensureUserProfile()`.
+**Customers (iOS `ios-swift/`, Android `android-compose/`) sign in with their
+phone number only** (owner's decision, 2026-09-29): number → 6-digit code on
+WhatsApp → signed in. No email, password, Apple or Google for customers.
 
-**The anonymous uid is the load-bearing part.** `firestore.rules` key all
-ownership off `request.auth.uid`, so anonymous auth is what makes the rules work
-at zero cost. Do not remove it thinking it is decorative.
+1. The app POSTs the number to `public/api/auth/send-code.php` (PHP on the
+   Hostinger site, beside the Razorpay endpoints). It sends the code with the
+   `dashit_auth_otp` WhatsApp authentication template.
+2. The app POSTs number + code to `verify-code.php`, which returns a Firebase
+   **custom token** signed with the project's service-account key, for uid
+   `ph-91XXXXXXXXXX` with the claim `mobile`. The app calls
+   `signInWithCustomToken`. One number = one account on any phone.
+3. `firestore.rules`: a `users/{uid}` profile can only carry its token's
+   `mobile`, and only `mobile`-claim accounts (or staff) can create orders.
+4. Sessions that aren't `ph-` accounts (old anonymous confirm-your-number,
+   email, Apple) read as signed out in the customer apps. Android signs them
+   out; iOS doesn't, because the admin app compiles the same `AuthService`.
+5. Deleting an account asks for a fresh code first (Firebase only deletes
+   recently signed-in accounts).
 
-**The OTP proves nothing about phone ownership** — the code is generated on the
-same device that displays it. It is a number-entry confirmation and a stand-in,
-not a security control. Data isolation comes from the rules, not the OTP.
+Secrets live outside the website folder on Hostinger
+(`domains/dashit.co.in/dashit-secrets/sign-in.php` and
+`firebase-service-account.json`). Setup, App Review demo number, and
+local testing are in `docs/whatsapp-otp-setup.md`. Each WhatsApp code is a paid
+Meta message; the server caps sends per number, per network address and per
+day.
 
-To make it real later: change **only** `issueCode()` to call a backend that sends
-SMS, and stop returning `devCode`/`devOtp` to the client. The login screen hides
-the on-screen code automatically when `devOtp` stops coming back.
+**Staff** (web `/xcyop` admin, `/driver`, iOS admin app) are unchanged: email
+sign-in, or the driver console's on-screen code + anonymous session. Keep
+Anonymous sign-in enabled in Firebase for the driver console.
 
-`AUTH_MODE=phone` still exists for real Firebase Phone Auth if billing is ever
-enabled. Untested — the user declined paid SMS.
-
-VERIFIED end-to-end in the browser: random code (not `1234`), wrong code rejects
-with "Incorrect code", correct code advances to profile setup.
+The web storefront no longer has customer sign-in at all (the site is a
+download page), so `AUTH_MODE` in `src/lib/auth.js` only affects the driver
+console.
 
 ---
 

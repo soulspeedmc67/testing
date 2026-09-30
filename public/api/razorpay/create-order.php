@@ -10,6 +10,7 @@
 require __DIR__ . '/_razorpay.php';
 
 dashit_only_post();
+dashit_rate_limit('razorpay-create-order', 30);
 $body = dashit_json_body();
 
 $amount = $body['amount'] ?? null;

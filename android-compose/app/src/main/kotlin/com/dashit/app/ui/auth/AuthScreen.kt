@@ -15,13 +15,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -39,11 +42,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,7 +73,6 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withLink
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -77,10 +82,16 @@ import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.ui.profile.SupportContact
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 /** LogIn and SignUp share one screen; SignUp also asks for a name. */
 enum class AuthMode { LogIn, SignUp }
+
+/** The number, then the WhatsApp code, then a name if the account has none. */
+private enum class AuthStep { Number, Code, Name }
 
 private val HeroTop = Color(0xFF0D2F6E)
 private val HeroBottom = Color(0xFF040F24)
@@ -90,13 +101,14 @@ private val ButtonEnd = Color(0xFFFF4D00)
 /**
  * Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
  * one headline, and a phone number with a Continue button. Same screen as
- * the iOS AuthView and the web login. Sign-in is the confirm-your-number
- * flow (the Spark plan has no SMS); opened from "Sign up" it also asks for
+ * the iOS AuthView. The number is the account: a 6-digit code goes to it on
+ * WhatsApp and signs the shopper in. Opened from "Sign up" it also asks for
  * a name.
  *
  * Shown once on first launch with "Skip" (browsing never needs an account)
  * and from Profile. Calls [onClose] once signed in or dismissed.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AuthScreen(
     initialMode: AuthMode = AuthMode.LogIn,
@@ -109,17 +121,75 @@ fun AuthScreen(
 
     var name by remember { mutableStateOf("") }
     var digits by remember { mutableStateOf("") }
-    var isConfirming by remember { mutableStateOf(false) }
+    var code by remember { mutableStateOf("") }
+    var step by remember { mutableStateOf(AuthStep.Number) }
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    // Signed in with a number, but the account has no name yet: ask before closing.
-    var needsName by remember { mutableStateOf(false) }
+    // The number the last code went to, and when another may be sent.
+    var sentTo by remember { mutableStateOf<String?>(null) }
+    var resendAt by remember { mutableLongStateOf(0L) }
     val valid = AuthRepository.normalizedMobile(digits) != null
     // Signing up needs a name as well as the number.
     val canContinue = valid && (!isSignUp || name.isNotBlank())
 
-    BackHandler(enabled = !isSigningIn && !needsName) {
-        if (isConfirming) isConfirming = false else onClose()
+    // Signed in but nameless: the name step can't be skipped with Back.
+    BackHandler(enabled = !isSigningIn && step != AuthStep.Name) {
+        if (step == AuthStep.Code) {
+            step = AuthStep.Number
+            error = null
+        } else {
+            onClose()
+        }
+    }
+
+    fun sendCode() {
+        if (!valid || isSigningIn) return
+        // Back from "Change number" with the same number: the code sent still works.
+        if (sentTo == digits && System.currentTimeMillis() < resendAt) {
+            step = AuthStep.Code
+            return
+        }
+        isSigningIn = true
+        error = null
+        scope.launch {
+            try {
+                val wait = AuthRepository.sendCode(digits)
+                sentTo = digits
+                resendAt = System.currentTimeMillis() + wait * 1_000L
+                code = ""
+                step = AuthStep.Code
+            } catch (e: AuthRepository.SignInException) {
+                HapticsManager.error(view)
+                error = e.message
+                e.retryAfterSeconds?.let { resendAt = System.currentTimeMillis() + it * 1_000L }
+            } finally {
+                isSigningIn = false
+            }
+        }
+    }
+
+    fun verify(entered: String) {
+        val mobile = sentTo ?: return
+        if (entered.length != SIGN_IN_CODE_LENGTH || isSigningIn) return
+        isSigningIn = true
+        error = null
+        scope.launch {
+            try {
+                val profile = AuthRepository.signIn(mobile, entered, name.trim().takeIf { isSignUp })
+                if (profile.name.isNullOrBlank()) {
+                    step = AuthStep.Name
+                } else {
+                    HapticsManager.success(view)
+                    onClose()
+                }
+            } catch (e: Exception) {
+                HapticsManager.error(view)
+                error = e.message
+                code = ""
+            } finally {
+                isSigningIn = false
+            }
+        }
     }
 
     fun saveName() {
@@ -146,28 +216,6 @@ fun AuthScreen(
         animationSpec = infiniteRepeatable(tween(2800), RepeatMode.Reverse),
         label = "auth_float_y"
     )
-
-    fun submit() {
-        if (!valid || isSigningIn) return
-        isSigningIn = true
-        error = null
-        scope.launch {
-            try {
-                val profile = AuthRepository.signInWithConfirmedMobile(digits, name.trim().takeIf { isSignUp })
-                if (profile.name.isNullOrBlank()) {
-                    needsName = true
-                } else {
-                    HapticsManager.success(view)
-                    onClose()
-                }
-            } catch (e: Exception) {
-                HapticsManager.error(view)
-                error = e.message
-            } finally {
-                isSigningIn = false
-            }
-        }
-    }
 
     BoxWithConstraints(
         modifier = Modifier
@@ -210,17 +258,34 @@ fun AuthScreen(
                 .background(DashitColors.SurfaceRaised)
         )
 
+        // While the keyboard is up, keep the whole form above it (field,
+        // button and any error), not just the text cursor Compose would show.
+        val scroll = rememberScrollState()
+        val isKeyboardUp = WindowInsets.isImeVisible
+        LaunchedEffect(isKeyboardUp) {
+            if (isKeyboardUp) snapshotFlow { scroll.maxValue }.collect { max ->
+                // Compose's own keep-the-cursor-visible scroll can interrupt
+                // this one while the keyboard slides in; the next change retries.
+                try {
+                    scroll.scrollTo(max)
+                } catch (e: CancellationException) {
+                    currentCoroutineContext().ensureActive()
+                }
+            }
+        }
+
+        // Below the status bar, so scrolled content never runs under its icons.
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
                 .imePadding()
+                .verticalScroll(scroll)
         ) {
             // Skip / close, as plain text
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
                     .padding(start = 20.dp, end = 8.dp, top = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -302,14 +367,14 @@ fun AuthScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 SectionTitle(
-                    when {
-                        needsName -> "What's your name?"
-                        isSignUp -> "Create your account"
-                        else -> "Log in or sign up"
+                    when (step) {
+                        AuthStep.Name -> "What's your name?"
+                        AuthStep.Code -> "Enter the code"
+                        AuthStep.Number -> if (isSignUp) "Create your account" else "Log in or sign up"
                     }
                 )
 
-                if (needsName) {
+                if (step == AuthStep.Name) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         AuthField(
                             value = name,
@@ -319,9 +384,9 @@ fun AuthScreen(
                         )
                         AuthButton("Save and continue", enabled = name.isNotBlank() && !isSigningIn, isBusy = isSigningIn, onClick = ::saveName)
                     }
-                } else AnimatedContent(targetState = isConfirming, label = "auth_step") { confirming ->
+                } else AnimatedContent(targetState = step, label = "auth_step") { current ->
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (!confirming) {
+                        if (current == AuthStep.Number) {
                             if (isSignUp) {
                                 AuthField(
                                     value = name,
@@ -340,45 +405,37 @@ fun AuthScreen(
                                     error = null
                                 }
                             )
-                            AuthButton("Continue", enabled = canContinue, isBusy = false) {
+                            Text(
+                                "We'll send a code to this number on WhatsApp.",
+                                color = DashitColors.TextMuted,
+                                fontSize = 13.sp
+                            )
+                            AuthButton("Continue", enabled = canContinue, isBusy = isSigningIn) {
                                 HapticsManager.light(view)
-                                isConfirming = true
+                                sendCode()
                             }
                         } else {
-                            Text(
-                                text = buildAnnotatedString {
-                                    append("We'll use ")
-                                    withStyle(SpanStyle(color = DashitColors.TextPrimary, fontWeight = FontWeight.Bold)) {
-                                        append("+91 ${digits.take(5)} ${digits.drop(5)}")
-                                    }
-                                    append(" for your deliveries. Is that right?")
+                            SignInCodeStep(
+                                mobile = sentTo ?: digits,
+                                code = code,
+                                onCodeChange = { code = it; error = null },
+                                onComplete = { verify(it) },
+                                resendAtMillis = resendAt,
+                                onResend = {
+                                    HapticsManager.light(view)
+                                    sendCode()
                                 },
-                                color = DashitColors.TextSecondary,
-                                fontSize = 15.sp,
-                                lineHeight = 21.sp
-                            )
-                            AuthButton(
-                                if (isSignUp) "Yes, create my account" else "Yes, continue",
+                                onChangeNumber = {
+                                    HapticsManager.light(view)
+                                    step = AuthStep.Number
+                                    error = null
+                                },
                                 enabled = !isSigningIn,
-                                isBusy = isSigningIn,
-                                onClick = ::submit
+                                boxColor = DashitColors.Surface
                             )
-                            Text(
-                                "Change number",
-                                color = DashitColors.TextSecondary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .pressable {
-                                        if (!isSigningIn) {
-                                            HapticsManager.light(view)
-                                            isConfirming = false
-                                        }
-                                    }
-                                    .padding(vertical = 6.dp)
-                            )
+                            AuthButton("Verify", enabled = code.length == SIGN_IN_CODE_LENGTH, isBusy = isSigningIn) {
+                                verify(code)
+                            }
                         }
                     }
                 }

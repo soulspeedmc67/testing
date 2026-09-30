@@ -1,10 +1,10 @@
 import SwiftUI
-import AuthenticationServices
 
 /// Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
-/// one headline, and a phone number with a Continue button. Sign in with
-/// Apple and email sit below. Same screen as Android's AuthScreen and the web
-/// login. Opened from "Sign up" it also asks for a name.
+/// one headline, and a phone number with a Continue button. The number is the
+/// account: a 6-digit code goes to it on WhatsApp and signs the shopper in.
+/// Same screen as Android's AuthScreen. Opened from "Sign up" it also asks
+/// for a name.
 ///
 /// Shown once when the app is first opened (with "Skip", so browsing never
 /// needs an account) and whenever something needs the shopper signed in.
@@ -30,11 +30,20 @@ struct AuthView: View {
 
     @ObservedObject private var auth = AuthService.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The number, then the code sent to it. A nameless account then asks
+    /// for a name (`auth.needsName`).
+    private enum Step {
+        case number
+        case code
+    }
+
     @State private var name = ""
     @State private var mobile = ""
-    @State private var isConfirming = false
-    @State private var usesEmail = false
-    @State private var emailCreatesAccount = false
+    @State private var code = ""
+    @State private var step: Step = .number
+    /// The number the last code went to, and when another may be sent.
+    @State private var sentTo: String? = nil
+    @State private var resendAt = Date.distantPast
     @State private var legalPage: LegalPage? = nil
     @State private var isFloating = false
     @FocusState private var isMobileFocused: Bool
@@ -58,7 +67,6 @@ struct AuthView: View {
         }
         .background(backdrop.ignoresSafeArea())
         .onAppear {
-            emailCreatesAccount = isSignUp
             auth.errorMessage = nil
             isFloating = true
         }
@@ -162,26 +170,29 @@ struct AuthView: View {
 
     private var panel: some View {
         VStack(spacing: 16) {
-            if auth.needsPhoneNumber {
-                sectionTitle("Add your delivery number")
-                phoneStep(confirmTitle: "Yes, save it") { try await auth.updateMobile($0) }
-            } else if auth.needsName {
+            if auth.needsName {
                 sectionTitle("What's your name?")
                 nameStep
-            } else if usesEmail {
-                sectionTitle(emailCreatesAccount ? "Create your account" : "Log in with email")
-                EmailSignInForm(isCreating: emailCreatesAccount)
-                Button(emailCreatesAccount ? "Have an account? Log in" : "New to DASHit? Create an account") {
-                    HapticsManager.shared.selection()
-                    withAnimation(.dashitSpring) { emailCreatesAccount.toggle() }
+            } else if step == .code, let sentTo {
+                sectionTitle("Enter the code")
+                SignInCodeEntry(
+                    mobile: sentTo,
+                    code: $code,
+                    resendAt: resendAt,
+                    onChangeNumber: {
+                        auth.errorMessage = nil
+                        withAnimation(.dashitSpring) { step = .number }
+                        isMobileFocused = true
+                    },
+                    onResend: sendCode,
+                    onComplete: verify
+                )
+                primaryButton("Verify", enabled: code.count == SignInCodeEntry.length && !auth.isAuthenticating) {
+                    verify(code)
                 }
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.textSecondary)
             } else {
                 sectionTitle(isSignUp ? "Create your account" : "Log in or sign up")
-                phoneStep(confirmTitle: isSignUp ? "Yes, create my account" : "Yes, continue") { digits in
-                    try await auth.signIn(withConfirmedMobile: digits, name: isSignUp ? trimmedName : nil)
-                }
+                numberStep
             }
 
             if let message = auth.errorMessage {
@@ -190,10 +201,6 @@ struct AuthView: View {
                     .foregroundColor(.danger)
                     .multilineTextAlignment(.center)
                     .transition(.opacity)
-            }
-
-            if !auth.isAuthenticated && !isConfirming {
-                otherOptions
             }
 
             legalLine
@@ -207,14 +214,12 @@ struct AuthView: View {
                 .fill(Color.surfaceRaised)
                 .ignoresSafeArea(edges: .bottom)
         )
-        .animation(.dashitSpring, value: isConfirming)
-        .animation(.dashitSpring, value: usesEmail)
+        .animation(.dashitSpring, value: step)
         .animation(.dashitSpring, value: auth.errorMessage)
-        .animation(.dashitSpring, value: auth.needsPhoneNumber)
         .animation(.dashitSpring, value: auth.needsName)
     }
 
-    /// Phone and email accounts must have a name: the rider asks for it at the door.
+    /// Every account must have a name: the rider asks for it at the door.
     private var nameStep: some View {
         VStack(spacing: 12) {
             TextField("", text: $name, prompt: Text("Your name").foregroundColor(.textFaint))
@@ -242,94 +247,79 @@ struct AuthView: View {
         }
     }
 
-    /// Number, then "We'll use +91 … Is that right?" (no code is sent: the
-    /// Spark plan has no SMS; the confirmed number goes on the order).
-    @ViewBuilder
-    private func phoneStep(confirmTitle: String, onConfirm: @escaping (String) async throws -> Void) -> some View {
+    /// The number (and, signing up, a name), then Continue sends the code.
+    private var numberStep: some View {
         VStack(spacing: 12) {
-            if !isConfirming {
-                if isSignUp && !auth.isAuthenticated {
-                    TextField("", text: $name, prompt: Text("Your name").foregroundColor(.textFaint))
-                        .textContentType(.name)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                        .modifier(AuthFieldStyle())
-                }
-                HStack(spacing: 12) {
-                    Text("+91")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-                    Rectangle()
-                        .fill(Color.hairlineStrong)
-                        .frame(width: 1, height: 24)
-                    TextField("", text: $mobile, prompt: Text("Enter mobile number").foregroundColor(.textFaint))
-                        .keyboardType(.numberPad)
-                        .textContentType(.telephoneNumber)
-                        .focused($isMobileFocused)
-                        .onChange(of: mobile) { _, value in
-                            let digits = String(value.filter(\.isNumber).prefix(10))
-                            if digits != value { mobile = digits }
-                        }
-                }
-                .modifier(AuthFieldStyle())
+            if isSignUp {
+                TextField("", text: $name, prompt: Text("Your name").foregroundColor(.textFaint))
+                    .textContentType(.name)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .modifier(AuthFieldStyle())
+            }
+            HStack(spacing: 12) {
+                Text("+91")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                Rectangle()
+                    .fill(Color.hairlineStrong)
+                    .frame(width: 1, height: 24)
+                TextField("", text: $mobile, prompt: Text("Enter mobile number").foregroundColor(.textFaint))
+                    .keyboardType(.numberPad)
+                    .textContentType(.telephoneNumber)
+                    .focused($isMobileFocused)
+                    .onChange(of: mobile) { _, value in
+                        let digits = String(value.filter(\.isNumber).prefix(10))
+                        if digits != value { mobile = digits }
+                    }
+            }
+            .modifier(AuthFieldStyle())
 
-                // Signing up needs a name as well as the number.
-                primaryButton("Continue", enabled: validMobile != nil && (!isSignUp || auth.isAuthenticated || !trimmedName.isEmpty)) {
-                    isMobileFocused = false
-                    HapticsManager.shared.light()
-                    withAnimation(.dashitSpring) { isConfirming = true }
-                }
-            } else {
-                (Text("We'll use ")
-                    + Text(formattedMobile).foregroundColor(.textPrimary).bold()
-                    + Text(" for your deliveries. Is that right?"))
-                    .font(.system(size: 15))
-                    .foregroundColor(.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+            Text("We'll send a code to this number on WhatsApp.")
+                .font(.system(size: 13))
+                .foregroundColor(.textMuted)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                primaryButton(confirmTitle, enabled: validMobile != nil && !auth.isAuthenticating) {
-                    guard let digits = validMobile else { return }
-                    Task { try? await onConfirm(digits) }
-                }
-
-                Button("Change number") {
-                    HapticsManager.shared.light()
-                    withAnimation(.dashitSpring) { isConfirming = false }
-                    isMobileFocused = true
-                }
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.textSecondary)
-                .disabled(auth.isAuthenticating)
-                .padding(.vertical, 4)
+            // Signing up needs a name as well as the number.
+            primaryButton("Continue", enabled: validMobile != nil && (!isSignUp || !trimmedName.isEmpty) && !auth.isAuthenticating) {
+                isMobileFocused = false
+                HapticsManager.shared.light()
+                sendCode()
             }
         }
     }
 
-    private var formattedMobile: String {
-        guard let digits = validMobile else { return mobile }
-        return "+91 \(digits.prefix(5)) \(digits.suffix(5))"
+    private func sendCode() {
+        guard let digits = validMobile, !auth.isAuthenticating else { return }
+        // Back from "Change number" with the same number: the code sent still works.
+        if sentTo == digits, Date() < resendAt {
+            withAnimation(.dashitSpring) { step = .code }
+            return
+        }
+        Task {
+            do {
+                let wait = try await auth.sendCode(to: digits)
+                sentTo = digits
+                resendAt = Date().addingTimeInterval(TimeInterval(wait))
+                code = ""
+                withAnimation(.dashitSpring) { step = .code }
+            } catch {
+                // The message is on screen; keep the countdown honest.
+                if let wait = (error as? AuthError)?.retryAfter {
+                    resendAt = Date().addingTimeInterval(TimeInterval(wait))
+                }
+            }
+        }
     }
 
-    /// Apple, and email or phone, under a plain "or".
-    private var otherOptions: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 10) {
-                Rectangle().fill(Color.hairline).frame(height: 1)
-                Text("or")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.textFaint)
-                Rectangle().fill(Color.hairline).frame(height: 1)
+    private func verify(_ entered: String) {
+        guard let sentTo, entered.count == SignInCodeEntry.length, !auth.isAuthenticating else { return }
+        Task {
+            do {
+                try await auth.signIn(mobile: sentTo, code: entered, name: isSignUp ? trimmedName : nil)
+            } catch {
+                code = "" // the message is on screen; ready for another try
             }
-            AppleSignInButton(label: isSignUp ? .signUp : .continue)
-            Button(usesEmail ? "Continue with phone number" : "Continue with email") {
-                HapticsManager.shared.selection()
-                auth.errorMessage = nil
-                withAnimation(.dashitSpring) { usesEmail.toggle() }
-            }
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(.textPrimary)
-            .padding(.vertical, 6)
         }
     }
 

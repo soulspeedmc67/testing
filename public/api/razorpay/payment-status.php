@@ -14,6 +14,7 @@
 require __DIR__ . '/_razorpay.php';
 
 dashit_only_post();
+dashit_rate_limit('razorpay-payment-status', 120);
 $body = dashit_json_body();
 
 $orderId = trim((string) ($body['razorpay_order_id'] ?? ''));
@@ -43,6 +44,9 @@ if (($order['status'] ?? '') === 'paid' || (int) ($order['amount_paid'] ?? 0) > 
 
 if ($captured === null) {
     dashit_respond(200, ['paid' => false, 'status' => $order['status'] ?? null]);
+}
+if (!dashit_record_payment($order, (string) ($captured['id'] ?? ''))) {
+    dashit_respond(502, ['paid' => false, 'error' => 'Couldn\'t check the payment right now.']);
 }
 
 dashit_respond(200, [
