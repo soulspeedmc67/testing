@@ -8,6 +8,10 @@
  * token for the number's account, which the app signs in with. A code works
  * once, for 10 minutes, and stops after 5 wrong tries. See _sign-in.php.
  *
+ * With codes off ('ask_for_code' in the secrets file), no code is needed:
+ * the shopper only confirmed "Is this your number?" in the app. Anyone can
+ * then open any number's account, so turn codes on once WhatsApp is set up.
+ *
  * With id_token (the app just signed in with Apple or Google, and that
  * Apple ID or Google account isn't tied to a number yet), the right code
  * also ties it to this number, so next time it signs straight in.
@@ -24,8 +28,10 @@ $mobile = dashit_normalized_mobile($body['mobile'] ?? null);
 if ($mobile === null) {
     dashit_respond(400, ['error' => 'Enter a valid 10-digit mobile number.']);
 }
+$config = dashit_sign_in_config();
+$askForCode = $config['ask_for_code'];
 $code = is_string($body['code'] ?? null) ? preg_replace('/\D/', '', $body['code']) : '';
-if (strlen($code) !== 6) {
+if ($askForCode && strlen($code) !== 6) {
     dashit_respond(400, ['error' => 'Enter the 6-digit code from WhatsApp.']);
 }
 
@@ -42,7 +48,7 @@ if (isset($body['id_token'])) {
 }
 $now = time();
 
-$result = dashit_with_store(function (string $dir) use ($mobile, $code, $now) {
+$result = !$askForCode ? 'right' : dashit_with_store(function (string $dir) use ($mobile, $code, $now) {
     $path = dashit_record_path($dir, 'number', $mobile);
     $number = dashit_read_record($path);
     $pending = $number['code'] ?? null;

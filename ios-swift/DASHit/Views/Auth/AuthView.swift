@@ -37,6 +37,8 @@ struct AuthView: View {
     private enum Step {
         case number
         case code
+        /// Codes are off on the sign-in server: "Is this your number?"
+        case confirm
     }
 
     @State private var name = ""
@@ -197,6 +199,17 @@ struct AuthView: View {
                 primaryButton("Verify", enabled: code.count == SignInCodeEntry.length && !auth.isAuthenticating) {
                     verify(code)
                 }
+            } else if step == .confirm, let sentTo {
+                sectionTitle("Confirm your number")
+                ConfirmNumberEntry(mobile: sentTo) {
+                    auth.errorMessage = nil
+                    withAnimation(.dashitSpring) { step = .number }
+                    isMobileFocused = true
+                }
+                primaryButton("Yes, continue", enabled: !auth.isAuthenticating) {
+                    HapticsManager.shared.light()
+                    verify("")
+                }
             } else if isConfirmingForApple {
                 sectionTitle("Confirm your number")
                 Text("Your Apple ID is connected. Confirm your number with a WhatsApp code once; after that, Apple signs you straight in.")
@@ -313,7 +326,7 @@ struct AuthView: View {
             }
             .modifier(AuthFieldStyle())
 
-            Text("We'll send a code to this number on WhatsApp.")
+            Text("Your number is your DASHit account.")
                 .font(.system(size: 13))
                 .foregroundColor(.textMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -336,11 +349,15 @@ struct AuthView: View {
         }
         Task {
             do {
-                let wait = try await auth.sendCode(to: digits)
+                let request = try await auth.sendCode(to: digits)
                 sentTo = digits
-                resendAt = Date().addingTimeInterval(TimeInterval(wait))
                 code = ""
-                withAnimation(.dashitSpring) { step = .code }
+                if request.codeNeeded {
+                    resendAt = Date().addingTimeInterval(TimeInterval(request.resendAfter))
+                    withAnimation(.dashitSpring) { step = .code }
+                } else {
+                    withAnimation(.dashitSpring) { step = .confirm }
+                }
             } catch {
                 // The message is on screen; keep the countdown honest.
                 if let wait = (error as? AuthError)?.retryAfter {
@@ -351,7 +368,8 @@ struct AuthView: View {
     }
 
     private func verify(_ entered: String) {
-        guard let sentTo, entered.count == SignInCodeEntry.length, !auth.isAuthenticating else { return }
+        // An empty code is "Yes, that's my number" when codes are off.
+        guard let sentTo, entered.isEmpty || entered.count == SignInCodeEntry.length, !auth.isAuthenticating else { return }
         Task {
             do {
                 try await auth.signIn(mobile: sentTo, code: entered, name: asksName ? trimmedName : nil)

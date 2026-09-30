@@ -200,8 +200,9 @@ class FirestoreRepository {
         )
     }
 
+    /** Shelves set in Firestore's `categories`; empty when there are none (the store then makes one per product category). */
     fun observeCategories(): Flow<List<Category>> = callbackFlow {
-        trySend(CatalogSeed.categories)
+        trySend(emptyList())
 
         val db = firestore
         if (db == null) {
@@ -213,7 +214,7 @@ class FirestoreRepository {
         try {
             listener = db.collection("categories").addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null || snapshot.isEmpty) {
-                    trySend(CatalogSeed.categories)
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
 
@@ -232,11 +233,11 @@ class FirestoreRepository {
                     // "Chips" and "Snacks" both become Snacks: show it once.
                     trySend(list.distinctBy { it.name.lowercase() })
                 } else {
-                    trySend(CatalogSeed.categories)
+                    trySend(emptyList())
                 }
             }
         } catch (_: Exception) {
-            trySend(CatalogSeed.categories)
+            trySend(emptyList())
         }
 
         awaitClose { listener?.remove() }

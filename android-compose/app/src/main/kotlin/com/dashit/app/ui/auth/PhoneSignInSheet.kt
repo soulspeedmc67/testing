@@ -55,7 +55,7 @@ import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.UserProfile
 import kotlinx.coroutines.launch
 
-private enum class SheetStep { Number, Code, Name }
+private enum class SheetStep { Number, Code, Confirm, Name }
 
 /**
  * Number sign-in in a bottom sheet, with the same steps as the sign-in
@@ -102,11 +102,15 @@ fun PhoneSignInSheet(
         error = null
         scope.launch {
             try {
-                val wait = AuthRepository.sendCode(digits)
+                val request = AuthRepository.sendCode(digits)
                 sentTo = digits
-                resendAt = System.currentTimeMillis() + wait * 1_000L
                 code = ""
-                step = SheetStep.Code
+                if (request.codeNeeded) {
+                    resendAt = System.currentTimeMillis() + request.resendAfterSeconds * 1_000L
+                    step = SheetStep.Code
+                } else {
+                    step = SheetStep.Confirm
+                }
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
@@ -119,7 +123,8 @@ fun PhoneSignInSheet(
 
     fun verify(entered: String) {
         val mobile = sentTo ?: return
-        if (entered.length != SIGN_IN_CODE_LENGTH || isBusy) return
+        // An empty code is "Yes, that's my number" when codes are off.
+        if ((entered.isNotEmpty() && entered.length != SIGN_IN_CODE_LENGTH) || isBusy) return
         isBusy = true
         error = null
         scope.launch {
@@ -248,6 +253,23 @@ fun PhoneSignInSheet(
                         error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
                         PrimaryButton(if (isConfirming) "Confirm" else "Verify", enabled = code.length == SIGN_IN_CODE_LENGTH, isBusy = isBusy) {
                             verify(code)
+                        }
+                    }
+
+                    SheetStep.Confirm -> {
+                        Heading("Confirm your number", null)
+                        ConfirmNumberStep(
+                            mobile = sentTo ?: digits,
+                            onChangeNumber = if (isConfirming) null else ({
+                                HapticsManager.light(view)
+                                step = SheetStep.Number
+                                error = null
+                            }),
+                            enabled = !isBusy
+                        )
+                        error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
+                        PrimaryButton(if (isConfirming) "Yes, confirm" else "Yes, continue", enabled = true, isBusy = isBusy) {
+                            verify("")
                         }
                     }
 

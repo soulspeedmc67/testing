@@ -74,14 +74,22 @@ final class AuthService: ObservableObject {
 
     // MARK: - Phone
 
-    /// Sends a 6-digit code to the number on WhatsApp. Returns the seconds
-    /// before another can be sent.
+    /// What `sendCode` did: a code went out, or (codes off on the sign-in
+    /// server) the shopper only confirms "Is this your number?".
+    struct CodeRequest {
+        let codeNeeded: Bool
+        let resendAfter: Int
+    }
+
+    /// Sends a 6-digit code to the number on WhatsApp when the sign-in server
+    /// has codes on. With codes off nothing is sent, and `signIn` is called
+    /// with an empty code once the shopper confirms the number.
     @discardableResult
-    func sendCode(to mobile: String) async throws -> Int {
+    func sendCode(to mobile: String) async throws -> CodeRequest {
         guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
         return try await run {
             let sent: CodeSent = try await self.post("send-code.php", body: ["mobile": clean])
-            return sent.resend_after ?? 30
+            return CodeRequest(codeNeeded: sent.code_needed ?? true, resendAfter: sent.resend_after ?? 30)
         }
     }
 
@@ -247,6 +255,7 @@ final class AuthService: ObservableObject {
     // MARK: - Sign-in server
 
     private struct CodeSent: Decodable {
+        let code_needed: Bool?
         let resend_after: Int?
     }
 

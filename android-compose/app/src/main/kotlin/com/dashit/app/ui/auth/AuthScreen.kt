@@ -93,7 +93,7 @@ import kotlinx.coroutines.launch
 enum class AuthMode { LogIn, SignUp }
 
 /** The number, then the WhatsApp code, then a name if the account has none. */
-private enum class AuthStep { Number, Code, Name }
+private enum class AuthStep { Number, Code, Confirm, Name }
 
 private val HeroTop = Color(0xFF0D2F6E)
 private val HeroBottom = Color(0xFF040F24)
@@ -142,7 +142,7 @@ fun AuthScreen(
 
     // Signed in but nameless: the name step can't be skipped with Back.
     BackHandler(enabled = !isSigningIn && step != AuthStep.Name) {
-        if (step == AuthStep.Code) {
+        if (step == AuthStep.Code || step == AuthStep.Confirm) {
             step = AuthStep.Number
             error = null
         } else {
@@ -161,11 +161,15 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                val wait = AuthRepository.sendCode(digits)
+                val request = AuthRepository.sendCode(digits)
                 sentTo = digits
-                resendAt = System.currentTimeMillis() + wait * 1_000L
                 code = ""
-                step = AuthStep.Code
+                if (request.codeNeeded) {
+                    resendAt = System.currentTimeMillis() + request.resendAfterSeconds * 1_000L
+                    step = AuthStep.Code
+                } else {
+                    step = AuthStep.Confirm
+                }
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
@@ -178,7 +182,8 @@ fun AuthScreen(
 
     fun verify(entered: String) {
         val mobile = sentTo ?: return
-        if (entered.length != SIGN_IN_CODE_LENGTH || isSigningIn) return
+        // An empty code is "Yes, that's my number" when codes are off.
+        if ((entered.isNotEmpty() && entered.length != SIGN_IN_CODE_LENGTH) || isSigningIn) return
         isSigningIn = true
         error = null
         scope.launch {
@@ -401,6 +406,7 @@ fun AuthScreen(
                     when (step) {
                         AuthStep.Name -> "What's your name?"
                         AuthStep.Code -> "Enter the code"
+                        AuthStep.Confirm -> "Confirm your number"
                         AuthStep.Number -> when {
                             confirmingForGoogle -> "Confirm your number"
                             isSignUp -> "Create your account"
@@ -451,7 +457,7 @@ fun AuthScreen(
                                 }
                             )
                             Text(
-                                "We'll send a code to this number on WhatsApp.",
+                                "Your number is your DASHit account.",
                                 color = DashitColors.TextMuted,
                                 fontSize = 13.sp
                             )
@@ -479,6 +485,20 @@ fun AuthScreen(
                             } else {
                                 OrDivider()
                                 GoogleButton(enabled = !isSigningIn, onClick = ::signInWithGoogle)
+                            }
+                        } else if (current == AuthStep.Confirm) {
+                            ConfirmNumberStep(
+                                mobile = sentTo ?: digits,
+                                onChangeNumber = {
+                                    HapticsManager.light(view)
+                                    step = AuthStep.Number
+                                    error = null
+                                },
+                                enabled = !isSigningIn
+                            )
+                            AuthButton("Yes, continue", enabled = true, isBusy = isSigningIn) {
+                                HapticsManager.light(view)
+                                verify("")
                             }
                         } else {
                             SignInCodeStep(
