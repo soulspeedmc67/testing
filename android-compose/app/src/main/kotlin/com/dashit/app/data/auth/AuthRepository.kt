@@ -2,9 +2,18 @@ package com.dashit.app.data.auth
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import com.dashit.app.BuildConfig
+import com.dashit.app.R
 import com.dashit.app.data.model.UserProfile
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -20,12 +29,16 @@ import java.net.URL
 
 /**
  * Sign-in for the customer app, sharing Firebase Auth and `users/{uid}` with
- * the iOS app. Shoppers sign in with their phone number only: the sign-in
- * server next to the website (dashit.co.in/api/auth/, PHP on Hostinger) sends
- * a 6-digit code to the number on WhatsApp and swaps the right code for a
- * Firebase custom token. One number is one account ("ph-91XXXXXXXXXX") on any
- * phone, and the token carries the number, which the Firestore rules check.
- * Orders are written under that uid. Same flow as iOS (`AuthService.swift`).
+ * the iOS app. The number is the account: the sign-in server next to the
+ * website (dashit.co.in/api/auth/, PHP on Hostinger) sends a 6-digit code to
+ * it on WhatsApp and swaps the right code for a Firebase custom token. One
+ * number is one account ("ph-91XXXXXXXXXX") on any phone, and the number
+ * travels in the sign-in, which the Firestore rules check. Orders are written
+ * under that uid. Same flow as iOS (`AuthService.swift`).
+ *
+ * Sign in with Google opens the same account: the first time, the shopper
+ * confirms their number with a code once and the server ties the Google
+ * account to it; after that Google signs straight in.
  */
 object AuthRepository {
     private const val SERVER = BuildConfig.SIGN_IN_SERVER
@@ -40,6 +53,12 @@ object AuthRepository {
     val user: StateFlow<UserProfile?> = _user.asStateFlow()
 
     val uid: String? get() = auth.currentUser?.uid
+
+    private val _confirmingNumberForGoogle = MutableStateFlow(false)
+    /** Signed in with a Google account that isn't tied to a number yet: the shopper confirms one with a code, once. */
+    val isConfirmingNumberForGoogle: StateFlow<Boolean> = _confirmingNumberForGoogle.asStateFlow()
+    /** The name on the Google account, for a profile that has none. */
+    private var googleName: String? = null
 
     /** A sign-in step failed; the message is ready to show. */
     class SignInException(message: String, val retryAfterSeconds: Int? = null) : Exception(message)
@@ -80,12 +99,21 @@ object AuthRepository {
      */
     suspend fun signIn(rawMobile: String, code: String, name: String? = null): UserProfile {
         val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
-        val token = post("verify-code.php", JSONObject().put("mobile", mobile).put("code", code)).optString("token")
+        val body = JSONObject().put("mobile", mobile).put("code", code)
+        // Just signed in with Google: the server ties that Google account to this number.
+        val google = auth.currentUser?.takeIf { _confirmingNumberForGoogle.value && !it.uid.startsWith("ph-") }
+        if (google != null) {
+            val idToken = runCatching { google.getIdToken(false).await().token }.getOrNull() ?: throw SignInException(OFFLINE)
+            body.put("id_token", idToken)
+        }
+        val token = post("verify-code.php", body).optString("token")
         try {
             require(token.isNotBlank())
             val uid = auth.signInWithCustomToken(token).await().user?.uid
                 ?: throw IllegalStateException("Sign-in failed")
-            val profile = ensureUserProfile(uid, mobile, name?.trim()?.takeIf { it.isNotEmpty() })
+            val profile = ensureUserProfile(uid, mobile, name?.trim()?.takeIf { it.isNotEmpty() } ?: googleName)
+            _confirmingNumberForGoogle.value = false
+            googleName = null
             save(profile)
             return profile
         } catch (e: Exception) {
@@ -93,8 +121,58 @@ object AuthRepository {
         }
     }
 
+    /**
+     * Signs in with Google (the "Sign in with Google" sheet; [activity] shows
+     * it). A Google account already tied to a number opens that number's
+     * account and returns it. A new one returns null and asks for the number
+     * once ([isConfirmingNumberForGoogle]). Null too if the sheet was closed.
+     */
+    suspend fun signInWithGoogle(activity: Context): UserProfile? {
+        val failed = "Google sign-in didn't complete. Please try again."
+        val option = GetSignInWithGoogleOption.Builder(activity.getString(R.string.default_web_client_id)).build()
+        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
+        val credential = try {
+            CredentialManager.create(activity).getCredential(activity, request).credential
+        } catch (e: GetCredentialCancellationException) {
+            return null
+        } catch (e: GetCredentialException) {
+            throw SignInException(failed)
+        }
+        if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            throw SignInException(failed)
+        }
+        val google = runCatching { GoogleIdTokenCredential.createFrom(credential.data) }.getOrNull()
+            ?: throw SignInException(failed)
+        val user = runCatching {
+            auth.signInWithCredential(GoogleAuthProvider.getCredential(google.idToken, null)).await().user
+        }.getOrNull() ?: throw SignInException(OFFLINE)
+        val name = google.displayName?.trim()?.takeIf { it.isNotEmpty() }
+        if (!user.uid.startsWith("ph-")) {
+            googleName = name
+            _confirmingNumberForGoogle.value = true
+            return null
+        }
+        val profile = try {
+            ensureUserProfile(user.uid, user.uid.removePrefix("ph-91"), name)
+        } catch (e: Exception) {
+            throw SignInException("We couldn't sign you in. Check your connection and try again.")
+        }
+        save(profile)
+        return profile
+    }
+
+    /** Back to the number on its own, after Google asked for one. */
+    fun cancelGoogleSignIn() {
+        if (!_confirmingNumberForGoogle.value) return
+        auth.signOut()
+        _confirmingNumberForGoogle.value = false
+        googleName = null
+    }
+
     fun signOut() {
         auth.signOut()
+        _confirmingNumberForGoogle.value = false
+        googleName = null
         prefs?.edit()?.clear()?.apply()
         _user.value = null
     }

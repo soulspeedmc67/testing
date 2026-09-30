@@ -3,7 +3,9 @@ import SwiftUI
 /// App Store Guideline 5.1.1(v) Compliant Account & Data Deletion. After
 /// typing DELETE, the shopper confirms with a code sent to their number on
 /// WhatsApp: Firebase only deletes an account that signed in moments ago, and
-/// the code keeps anyone else holding the phone from deleting it.
+/// the code keeps anyone else holding the phone from deleting it. An account
+/// that also signs in with Apple then confirms with Apple once, so DASHit's
+/// Apple tokens are revoked, as Apple requires.
 struct DeleteAccountView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var auth = AuthService.shared
@@ -13,6 +15,8 @@ struct DeleteAccountView: View {
     @State private var code = ""
     @State private var isCodeSent = false
     @State private var resendAt = Date.distantPast
+    /// Code confirmed; waiting for Apple's confirmation to revoke its tokens.
+    @State private var needsAppleConfirmation = false
 
     private var mobile: String { auth.currentUser?.mobile ?? "" }
     private var isBusy: Bool { isDeleting || auth.isAuthenticating }
@@ -75,6 +79,26 @@ struct DeleteAccountView: View {
                         .transition(.opacity)
                     }
 
+                    if needsAppleConfirmation {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Confirm with Apple to finish. This also removes DASHit's access to your Apple ID.")
+                                .font(.dashitCaption)
+                                .foregroundColor(.textMuted)
+                            AppleRevokeButton(
+                                onCode: { code in
+                                    Task {
+                                        isDeleting = true
+                                        await auth.revokeApple(authorizationCode: code)
+                                        await finishDeleting()
+                                    }
+                                },
+                                onError: { errorMessage = $0 }
+                            )
+                            .disabled(isBusy)
+                        }
+                        .transition(.opacity)
+                    }
+
                     if let err = errorMessage ?? auth.errorMessage {
                         Text(err)
                             .font(.dashitCaption)
@@ -102,9 +126,12 @@ struct DeleteAccountView: View {
                     .disabled(!canContinue || isBusy)
                     .padding(.top, 8)
                     .padding(.bottom, 16)
+                    .opacity(needsAppleConfirmation ? 0 : 1)
+                    .allowsHitTesting(!needsAppleConfirmation)
                 }
                 .padding(.horizontal, 20)
                 .animation(.dashitSpring, value: isCodeSent)
+                .animation(.dashitSpring, value: needsAppleConfirmation)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(Color.surface.ignoresSafeArea())
@@ -147,14 +174,22 @@ struct DeleteAccountView: View {
                 code = "" // auth.errorMessage says why
                 return
             }
-            isDeleting = true
-            do {
-                try await auth.deleteAccount()
-                dismiss()
-            } catch {
-                isDeleting = false
-                errorMessage = error.localizedDescription
+            if auth.isAppleAccount {
+                needsAppleConfirmation = true
+                return
             }
+            isDeleting = true
+            await finishDeleting()
+        }
+    }
+
+    private func finishDeleting() async {
+        do {
+            try await auth.deleteAccount()
+            dismiss()
+        } catch {
+            isDeleting = false
+            errorMessage = error.localizedDescription
         }
     }
 }

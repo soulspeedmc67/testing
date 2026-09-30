@@ -1,12 +1,16 @@
 <?php
 /*
- * POST { "mobile": "9876543210", "code": "123456" }
+ * POST { "mobile": "9876543210", "code": "123456", "id_token"?: "<Firebase ID token>" }
  *   -> 200 { "token": "<Firebase custom token>", "uid": "ph-919876543210" }
  *   -> 400 { "error" }  a wrong, used or expired code
  *
  * Checks the code send-code.php sent. The right code returns a Firebase custom
  * token for the number's account, which the app signs in with. A code works
  * once, for 10 minutes, and stops after 5 wrong tries. See _sign-in.php.
+ *
+ * With id_token (the app just signed in with Apple or Google, and that
+ * Apple ID or Google account isn't tied to a number yet), the right code
+ * also ties it to this number, so next time it signs straight in.
  */
 require __DIR__ . '/_sign-in.php';
 
@@ -27,6 +31,15 @@ if (strlen($code) !== 6) {
 
 // Loaded before the code is used up, so a missing key doesn't waste it.
 $account = dashit_service_account();
+
+// Checked before the code is used up too.
+$provider = null;
+if (isset($body['id_token'])) {
+    $provider = is_string($body['id_token']) ? dashit_provider_sign_in($account, $body['id_token']) : null;
+    if ($provider === null) {
+        dashit_respond(400, ['error' => 'Your Apple or Google sign-in has run out. Please sign in with it again.']);
+    }
+}
 $now = time();
 
 $result = dashit_with_store(function (string $dir) use ($mobile, $code, $now) {
@@ -64,6 +77,13 @@ if ($result !== 'right') {
         'locked' => 'Too many wrong tries. Ask for a new code.',
         'wrong' => "That code isn't right. Check WhatsApp and try again.",
     ][$result]]);
+}
+
+if ($provider !== null) {
+    $problem = dashit_link_sign_in_provider($account, $provider[0], $provider[1], $mobile);
+    if ($problem !== null) {
+        dashit_respond(502, ['error' => $problem]);
+    }
 }
 
 $uid = dashit_uid_for($mobile);

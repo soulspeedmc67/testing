@@ -43,6 +43,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.LocalView
@@ -116,8 +118,14 @@ fun AuthScreen(
     onClose: () -> Unit
 ) {
     val view = LocalView.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isSignUp = initialMode == AuthMode.SignUp
+    // Just signed in with a new Google account: the number is confirmed once.
+    val confirmingForGoogle by AuthRepository.isConfirmingNumberForGoogle.collectAsState()
+    // Signing up asks for a name, unless Google is confirming the number
+    // (Google shares one, and the name step asks if it doesn't).
+    val asksName = isSignUp && !confirmingForGoogle
 
     var name by remember { mutableStateOf("") }
     var digits by remember { mutableStateOf("") }
@@ -130,7 +138,7 @@ fun AuthScreen(
     var resendAt by remember { mutableLongStateOf(0L) }
     val valid = AuthRepository.normalizedMobile(digits) != null
     // Signing up needs a name as well as the number.
-    val canContinue = valid && (!isSignUp || name.isNotBlank())
+    val canContinue = valid && (!asksName || name.isNotBlank())
 
     // Signed in but nameless: the name step can't be skipped with Back.
     BackHandler(enabled = !isSigningIn && step != AuthStep.Name) {
@@ -175,7 +183,7 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                val profile = AuthRepository.signIn(mobile, entered, name.trim().takeIf { isSignUp })
+                val profile = AuthRepository.signIn(mobile, entered, name.trim().takeIf { asksName })
                 if (profile.name.isNullOrBlank()) {
                     step = AuthStep.Name
                 } else {
@@ -186,6 +194,29 @@ fun AuthScreen(
                 HapticsManager.error(view)
                 error = e.message
                 code = ""
+            } finally {
+                isSigningIn = false
+            }
+        }
+    }
+
+    fun signInWithGoogle() {
+        if (isSigningIn) return
+        isSigningIn = true
+        error = null
+        scope.launch {
+            try {
+                // Null: the sheet was closed, or the number is confirmed next.
+                val profile = AuthRepository.signInWithGoogle(context) ?: return@launch
+                if (profile.name.isNullOrBlank()) {
+                    step = AuthStep.Name
+                } else {
+                    HapticsManager.success(view)
+                    onClose()
+                }
+            } catch (e: AuthRepository.SignInException) {
+                HapticsManager.error(view)
+                error = e.message
             } finally {
                 isSigningIn = false
             }
@@ -370,7 +401,11 @@ fun AuthScreen(
                     when (step) {
                         AuthStep.Name -> "What's your name?"
                         AuthStep.Code -> "Enter the code"
-                        AuthStep.Number -> if (isSignUp) "Create your account" else "Log in or sign up"
+                        AuthStep.Number -> when {
+                            confirmingForGoogle -> "Confirm your number"
+                            isSignUp -> "Create your account"
+                            else -> "Log in or sign up"
+                        }
                     }
                 )
 
@@ -387,7 +422,17 @@ fun AuthScreen(
                 } else AnimatedContent(targetState = step, label = "auth_step") { current ->
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         if (current == AuthStep.Number) {
-                            if (isSignUp) {
+                            if (confirmingForGoogle) {
+                                Text(
+                                    "Your Google account is connected. Confirm your number with a WhatsApp code once; after that, Google signs you straight in.",
+                                    color = DashitColors.TextSecondary,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            if (asksName) {
                                 AuthField(
                                     value = name,
                                     placeholder = "Your name",
@@ -413,6 +458,27 @@ fun AuthScreen(
                             AuthButton("Continue", enabled = canContinue, isBusy = isSigningIn) {
                                 HapticsManager.light(view)
                                 sendCode()
+                            }
+                            if (confirmingForGoogle) {
+                                Text(
+                                    "Cancel",
+                                    color = DashitColors.TextSecondary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .pressable(scale = 0.97f) {
+                                            HapticsManager.light(view)
+                                            error = null
+                                            AuthRepository.cancelGoogleSignIn()
+                                        }
+                                        .padding(vertical = 12.dp)
+                                )
+                            } else {
+                                OrDivider()
+                                GoogleButton(enabled = !isSigningIn, onClick = ::signInWithGoogle)
                             }
                         } else {
                             SignInCodeStep(
@@ -461,6 +527,40 @@ fun AuthScreen(
                 )
             }
         }
+    }
+}
+
+/** "———  or  ———" between the number and Google. */
+@Composable
+private fun OrDivider() {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.weight(1f).height(1.dp).background(DashitColors.Hairline))
+        Text("or", color = DashitColors.TextFaint, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Box(Modifier.weight(1f).height(1.dp).background(DashitColors.Hairline))
+    }
+}
+
+/**
+ * "Continue with Google" in Google's light button style (white, grey
+ * outline, the four-colour G), the counterpart of iOS's white Apple button
+ * on this dark panel.
+ */
+@Composable
+private fun GoogleButton(enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFF747775), RoundedCornerShape(14.dp))
+            .pressable(scale = 0.98f) { if (enabled) onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Image(painterResource(R.drawable.ic_google_g), contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text("Continue with Google", color = Color(0xFF1F1F1F), fontSize = 16.sp, fontWeight = FontWeight.Medium)
     }
 }
 

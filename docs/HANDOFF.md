@@ -155,8 +155,14 @@ All real-time events now use Firestore `watchOrder` and `watchOrderTracking`.
 ## 2. How auth works now
 
 **Customers (iOS `ios-swift/`, Android `android-compose/`) sign in with their
-phone number only** (owner's decision, 2026-09-29): number → 6-digit code on
-WhatsApp → signed in. No email, password, Apple or Google for customers.
+phone number**: number → 6-digit code on WhatsApp → signed in. On 2026-09-30
+the owner asked for **Sign in with Apple (iOS) and Google (Android)** back
+(they had been removed for number-only sign-in the day before). The first
+Apple/Google sign-in confirms a number with a code once; `verify-code.php`
+then moves that identity onto the `ph-91…` account and sets a lasting
+`mobile` claim, so later Apple/Google sign-ins land on the same account and
+can order. Setup: `docs/whatsapp-otp-setup.md` §8. No email or password for
+customers.
 
 1. The app POSTs the number to `public/api/auth/send-code.php` (PHP on the
    Hostinger site, beside the Razorpay endpoints). It sends the code with the
