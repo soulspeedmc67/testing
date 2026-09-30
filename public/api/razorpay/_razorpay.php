@@ -66,10 +66,17 @@ function dashit_razorpay_request(string $method, string $path, ?array $body, arr
  */
 function dashit_record_payment(array $order, string $paymentId): bool
 {
-    $account = dashit_firebase_service_account();
     $orderId = (string) ($order['id'] ?? '');
-    if ($account === null || !preg_match('/^order_[A-Za-z0-9]{6,40}$/', $orderId)) {
+    if (!preg_match('/^order_[A-Za-z0-9]{6,40}$/', $orderId)) {
         return false;
+    }
+    $account = dashit_firebase_service_account();
+    if ($account === null) {
+        // Not set up yet (docs/whatsapp-otp-setup.md). Don't hold up a payment
+        // that went through: until firestore.rules ask for this record the
+        // order goes in as before, and once they do it is refused either way.
+        error_log("DASHit payments: no service account, so $orderId wasn't recorded in Firestore.");
+        return true;
     }
     return dashit_firestore_set($account, "payments/$orderId", [
         'razorpayOrderId' => $orderId,
