@@ -3,7 +3,9 @@ import SwiftUI
 /// Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
 /// one headline, and a phone number with a Continue button. The number is the
 /// account: a 6-digit code goes to it on WhatsApp and signs the shopper in.
-/// Same screen as Android's AuthScreen. Opened from "Sign up" it also asks
+/// "Continue with Apple" sits under it; a new Apple ID confirms a number the
+/// same way once, then signs straight in. Same screen as Android's
+/// AuthScreen (which has Google instead). Opened from "Sign up" it also asks
 /// for a name.
 ///
 /// Shown once when the app is first opened (with "Skip", so browsing never
@@ -49,6 +51,11 @@ struct AuthView: View {
     @FocusState private var isMobileFocused: Bool
 
     private var isSignUp: Bool { initialMode == .signUp }
+    /// Just signed in with a new Apple ID: the number is confirmed once.
+    private var isConfirmingForApple: Bool { auth.isConfirmingNumberForApple }
+    /// Signing up asks for a name, unless Apple is confirming the number
+    /// (Apple shares one, and the name step asks if it didn't).
+    private var asksName: Bool { isSignUp && !isConfirmingForApple }
     private var isReady: Bool { auth.isReadyToOrder }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var validMobile: String? { AuthService.normalizedMobile(mobile) }
@@ -190,9 +197,27 @@ struct AuthView: View {
                 primaryButton("Verify", enabled: code.count == SignInCodeEntry.length && !auth.isAuthenticating) {
                     verify(code)
                 }
+            } else if isConfirmingForApple {
+                sectionTitle("Confirm your number")
+                Text("Your Apple ID is connected. Confirm your number with a WhatsApp code once; after that, Apple signs you straight in.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                numberStep
+                Button("Cancel") {
+                    HapticsManager.shared.selection()
+                    auth.errorMessage = nil
+                    auth.cancelAppleSignIn()
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.textSecondary)
+                .frame(minHeight: 44)
             } else {
                 sectionTitle(isSignUp ? "Create your account" : "Log in or sign up")
                 numberStep
+                orDivider
+                AppleSignInButton(label: isSignUp ? .signUp : .continue)
             }
 
             if let message = auth.errorMessage {
@@ -217,6 +242,19 @@ struct AuthView: View {
         .animation(.dashitSpring, value: step)
         .animation(.dashitSpring, value: auth.errorMessage)
         .animation(.dashitSpring, value: auth.needsName)
+        .animation(.dashitSpring, value: auth.isConfirmingNumberForApple)
+    }
+
+    /// "———  or  ———" between the number and Apple.
+    private var orDivider: some View {
+        HStack(spacing: 10) {
+            Rectangle().fill(Color.hairline).frame(height: 1)
+            Text("or")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.textFaint)
+            Rectangle().fill(Color.hairline).frame(height: 1)
+        }
+        .padding(.vertical, 2)
     }
 
     /// Every account must have a name: the rider asks for it at the door.
@@ -250,7 +288,7 @@ struct AuthView: View {
     /// The number (and, signing up, a name), then Continue sends the code.
     private var numberStep: some View {
         VStack(spacing: 12) {
-            if isSignUp {
+            if asksName {
                 TextField("", text: $name, prompt: Text("Your name").foregroundColor(.textFaint))
                     .textContentType(.name)
                     .textInputAutocapitalization(.words)
@@ -281,7 +319,7 @@ struct AuthView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             // Signing up needs a name as well as the number.
-            primaryButton("Continue", enabled: validMobile != nil && (!isSignUp || !trimmedName.isEmpty) && !auth.isAuthenticating) {
+            primaryButton("Continue", enabled: validMobile != nil && (!asksName || !trimmedName.isEmpty) && !auth.isAuthenticating) {
                 isMobileFocused = false
                 HapticsManager.shared.light()
                 sendCode()
@@ -316,7 +354,7 @@ struct AuthView: View {
         guard let sentTo, entered.count == SignInCodeEntry.length, !auth.isAuthenticating else { return }
         Task {
             do {
-                try await auth.signIn(mobile: sentTo, code: entered, name: isSignUp ? trimmedName : nil)
+                try await auth.signIn(mobile: sentTo, code: entered, name: asksName ? trimmedName : nil)
             } catch {
                 code = "" // the message is on screen; ready for another try
             }

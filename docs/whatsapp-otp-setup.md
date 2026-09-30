@@ -1,9 +1,11 @@
 # Sign-in with a WhatsApp code — setup
 
-Customers sign in to the DASHit iPhone and Android apps with their phone number
-only. The app sends the number to the sign-in server, the server sends a
+Customers sign in to the DASHit iPhone and Android apps with their phone
+number. The app sends the number to the sign-in server, the server sends a
 6-digit code to that number on WhatsApp, and the right code signs the customer
-in. There is no email, password, Apple or Google sign-in for customers.
+in. The iPhone app also offers Sign in with Apple and the Android app Sign in
+with Google (see "Apple and Google" below); both open the same number's
+account. There is no email or password sign-in for customers.
 
 ## How it works
 
@@ -138,6 +140,35 @@ npx firebase-tools deploy --only firestore:rules --project dashit-1ecba
 
 Keep **Anonymous** sign-in switched on in Firebase Authentication: the driver
 console still uses it.
+
+### 8. Apple and Google
+
+The first time someone uses Sign in with Apple (iPhone) or Google (Android),
+the app asks for their number and a WhatsApp code once. `verify-code.php`
+then moves that Apple ID or Google account onto the number's account
+(`ph-91…`) with the Firebase Auth admin API and saves the number on it as a
+lasting `mobile` claim, so the rules let it place orders. After that, Apple or
+Google signs straight in with no code. A different Google account or Apple ID
+confirmed with the same number replaces the old one.
+
+To switch them on:
+
+1. Firebase console → Authentication → Sign-in method: enable **Apple** and
+   **Google**.
+2. Android: Firebase console → Project settings → the `com.dashit.app` app →
+   add the **SHA-1** of every key that signs the app: the Play Console app
+   signing key (Play Console → Test and release → App integrity), the upload
+   key, and any debug key you test with (`keytool -list -v -keystore
+   ~/.android/debug.keystore -storepass android`). Download the new
+   `google-services.json` into `android-compose/app/`.
+3. iPhone, for deleting accounts (App Store 5.1.1(v)): Apple has to be told
+   when an account goes. In the Apple provider's settings in Firebase, fill in
+   the **Team ID**, a **Key ID** and its **private key** (Apple Developer →
+   Keys → a key with Sign in with Apple enabled). Without them the account is
+   still deleted, but its Apple sign-in isn't revoked.
+
+The service account needs no new role: the Firebase Admin SDK account can
+already manage users.
 
 ## Testing on a computer
 

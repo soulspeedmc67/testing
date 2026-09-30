@@ -2,12 +2,16 @@ import Foundation
 import FirebaseAuth
 
 /// Sign-in for the customer app, sharing Firebase Auth and `users/{uid}` with
-/// the Android app. Shoppers sign in with their phone number only: the
-/// sign-in server next to the website (dashit.co.in/api/auth/, PHP on
-/// Hostinger) sends a 6-digit code to the number on WhatsApp and swaps the
-/// right code for a Firebase custom token. One number is one account
-/// ("ph-91XXXXXXXXXX") on any phone, and the token carries the number, which
-/// the Firestore rules check. Same flow as Android (`AuthRepository.kt`).
+/// the Android app. The number is the account: the sign-in server next to the
+/// website (dashit.co.in/api/auth/, PHP on Hostinger) sends a 6-digit code to
+/// it on WhatsApp and swaps the right code for a Firebase custom token. One
+/// number is one account ("ph-91XXXXXXXXXX") on any phone, and the number
+/// travels in the sign-in, which the Firestore rules check. Same flow as
+/// Android (`AuthRepository.kt`).
+///
+/// Sign in with Apple opens the same account: the first time, the shopper
+/// confirms their number with a code once and the server ties the Apple ID to
+/// it; after that Apple signs straight in.
 @MainActor
 final class AuthService: ObservableObject {
     static let shared = AuthService()
@@ -17,6 +21,11 @@ final class AuthService: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var isAuthenticating: Bool = false
     @Published var errorMessage: String?
+    /// Signed in with an Apple ID that isn't tied to a number yet: the
+    /// shopper confirms their number with a code once, and `signIn` ties them.
+    @Published private(set) var isConfirmingNumberForApple = false
+    /// The name Apple shared (it does so only the very first time).
+    private var appleName: String?
 
     private init() {
         checkCurrentSession()
@@ -84,14 +93,75 @@ final class AuthService: ObservableObject {
         guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
         let trimmedName = name?.trimmingCharacters(in: .whitespaces)
         try await run {
-            let verified: CodeVerified = try await self.post("verify-code.php", body: ["mobile": clean, "code": code])
+            var body: [String: Any] = ["mobile": clean, "code": code]
+            // Just signed in with Apple: the server ties that Apple ID to this number.
+            if self.isConfirmingNumberForApple, let apple = Auth.auth().currentUser, !Self.isNumberAccount(apple.uid) {
+                body["id_token"] = try await apple.getIDToken()
+            }
+            let verified: CodeVerified = try await self.post("verify-code.php", body: body)
             let uid = try await Auth.auth().signIn(withCustomToken: verified.token).user.uid
             let profile = try await FirestoreService.shared.ensureUserProfile(
                 uid: uid,
                 mobile: clean,
-                name: (trimmedName?.isEmpty ?? true) ? nil : trimmedName
+                name: (trimmedName?.isEmpty ?? true) ? self.appleName : trimmedName
+            )
+            self.isConfirmingNumberForApple = false
+            self.appleName = nil
+            self.finishSignIn(with: profile)
+        }
+    }
+
+    // MARK: - Apple
+
+    /// Signs in with Apple. An Apple ID already tied to a number opens that
+    /// number's account; a new one asks for the number once
+    /// (`isConfirmingNumberForApple`).
+    func signInWithApple(idToken: String, rawNonce: String, fullName: PersonNameComponents?) async throws {
+        try await run {
+            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idToken, rawNonce: rawNonce)
+            let user = try await Auth.auth().signIn(with: credential).user
+            // Apple shares the name only on the very first sign-in.
+            let shared = fullName.map { PersonNameComponentsFormatter.localizedString(from: $0, style: .default) }
+            let trimmed = shared?.trimmingCharacters(in: .whitespaces)
+            let name = (trimmed?.isEmpty ?? true) ? nil : trimmed
+            guard Self.isNumberAccount(user.uid) else {
+                self.appleName = name
+                self.isConfirmingNumberForApple = true
+                return
+            }
+            let profile = try await FirestoreService.shared.ensureUserProfile(
+                uid: user.uid,
+                mobile: String(user.uid.dropFirst("ph-91".count)),
+                name: name
             )
             self.finishSignIn(with: profile)
+        }
+    }
+
+    /// Back to the number on its own, after Sign in with Apple asked for one.
+    func cancelAppleSignIn() {
+        guard isConfirmingNumberForApple else { return }
+        try? Auth.auth().signOut()
+        isConfirmingNumberForApple = false
+        appleName = nil
+    }
+
+    /// Whether this account also signs in with an Apple ID. Deleting it then
+    /// revokes DASHit's Apple tokens, as Apple requires.
+    var isAppleAccount: Bool {
+        Auth.auth().currentUser?.providerData.contains { $0.providerID == "apple.com" } ?? false
+    }
+
+    /// Revokes DASHit's Apple tokens with the code from a fresh Apple
+    /// confirmation. Needs the Apple key set up in Firebase; the account and
+    /// its data are still deleted if Apple refuses.
+    func revokeApple(authorizationCode: String) async {
+        do {
+            try await Auth.auth().revokeToken(withAuthorizationCode: authorizationCode)
+        } catch {
+            #if DEBUG
+            print("⚠️ [Auth] Apple token revocation failed: \(error)")
+            #endif
         }
     }
 
@@ -111,6 +181,8 @@ final class AuthService: ObservableObject {
 
     func signOut() {
         try? Auth.auth().signOut()
+        isConfirmingNumberForApple = false
+        appleName = nil
         LocalStorage.shared.clearUserProfile()
         self.currentUser = nil
         self.isAuthenticated = false
@@ -257,6 +329,7 @@ enum AuthError: LocalizedError {
         }
         switch nsError.code {
         case 17000, 17002: return .signInFailed // invalid or mismatched custom token
+        case 17004: return .other("Sign in with Apple didn't complete. Please try again.") // invalid credential
         case 17020: return .network
         case 17014: return .other("For your safety, confirm with a new code and try again.")
         default: return .other(error.localizedDescription)

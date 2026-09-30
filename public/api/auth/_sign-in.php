@@ -132,6 +132,99 @@ function dashit_firebase_custom_token(array $account, string $uid, array $claims
     return $token;
 }
 
+/** Sign-in providers that can be tied to a number, besides the number itself. */
+const DASHIT_LINKABLE_PROVIDERS = ['apple.com', 'google.com'];
+
+/**
+ * The Apple or Google sign-in behind a Firebase ID token the app sent along
+ * with a code, or null (logged) if it isn't one: [provider id, uid, claims].
+ */
+function dashit_provider_sign_in(array $account, string $idToken): ?array
+{
+    $claims = dashit_verify_id_token($account, $idToken);
+    $provider = $claims['firebase']['sign_in_provider'] ?? null;
+    if ($claims === null || !in_array($provider, DASHIT_LINKABLE_PROVIDERS, true) || str_starts_with($claims['sub'], 'ph-')) {
+        return null;
+    }
+    return [$provider, $claims['sub'], $claims];
+}
+
+/**
+ * Ties an Apple or Google sign-in to the number's account, once the number's
+ * code was right. Signing in with Firebase made that Apple ID or Google
+ * account its own new account ($fromUid); the identity is moved off it onto
+ * "ph-91<number>", so from then on Apple or Google signs straight in to the
+ * number's account. The number is also saved on that account as a lasting
+ * `mobile` claim: a custom token's claims only last for that one session,
+ * and firestore.rules need the number in every session that places orders.
+ *
+ * Returns null once done, or a message for the shopper.
+ */
+function dashit_link_sign_in_provider(array $account, string $provider, string $fromUid, string $mobile): ?string
+{
+    $failed = "We couldn't connect your account just now. Please try again.";
+    $uid = dashit_uid_for($mobile);
+
+    [$status, $found] = dashit_auth_admin($account, 'accounts:lookup', ['localId' => [$fromUid]]);
+    $from = $found['users'][0] ?? null;
+    $identities = $from['providerUserInfo'] ?? [];
+    // Only ever take the identity off an account that is nothing but that
+    // Apple ID or Google account, never off a staff or email account.
+    if ($status !== 200 || !is_array($from) || count($identities) !== 1
+        || ($identities[0]['providerId'] ?? '') !== $provider || empty($identities[0]['rawId'])
+        || !empty($from['passwordHash']) || !empty($from['phoneNumber'])) {
+        error_log("DASHit sign-in: $fromUid isn't a plain $provider account, so it wasn't tied to a number.");
+        return $failed;
+    }
+    $identity = $identities[0];
+
+    // A day-old account made by this sign-in is just removed; an older one
+    // (from before sign-in codes, maybe with old orders) only gives up the identity.
+    $madeRecently = (int) ($from['createdAt'] ?? 0) > (time() - 86400) * 1000;
+    [$status] = $madeRecently
+        ? dashit_auth_admin($account, 'accounts:delete', ['localId' => $fromUid])
+        : dashit_auth_admin($account, 'accounts:update', ['localId' => $fromUid, 'deleteProvider' => [$provider]]);
+    if ($status !== 200) {
+        return $failed;
+    }
+
+    [$status, $found] = dashit_auth_admin($account, 'accounts:lookup', ['localId' => [$uid]]);
+    $number = $found['users'][0] ?? null;
+    if ($status !== 200) {
+        return $failed;
+    }
+    if ($number === null) {
+        [$status] = dashit_auth_admin($account, 'accounts', ['localId' => $uid]);
+        if ($status !== 200) {
+            return $failed;
+        }
+    } else {
+        // Signing in with a different Apple ID or Google account than last
+        // time: the new one replaces it (they proved the number just now).
+        foreach ($number['providerUserInfo'] ?? [] as $existing) {
+            if (($existing['providerId'] ?? '') === $provider && ($existing['rawId'] ?? '') !== $identity['rawId']) {
+                [$status] = dashit_auth_admin($account, 'accounts:update', ['localId' => $uid, 'deleteProvider' => [$provider]]);
+                if ($status !== 200) {
+                    return $failed;
+                }
+            }
+        }
+    }
+
+    $link = array_filter([
+        'providerId' => $provider,
+        'rawId' => $identity['rawId'],
+        'email' => $identity['email'] ?? null,
+        'displayName' => $identity['displayName'] ?? null,
+    ]);
+    [$status] = dashit_auth_admin($account, 'accounts:update', [
+        'localId' => $uid,
+        'customAttributes' => json_encode(['mobile' => $mobile]),
+        'linkProviderUserInfo' => $link,
+    ]);
+    return $status === 200 ? null : $failed;
+}
+
 function dashit_code_hash(string $code, string $salt): string
 {
     return hash_hmac('sha256', $code, $salt);
