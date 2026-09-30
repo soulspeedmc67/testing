@@ -4,41 +4,43 @@ import { Tag, ArrowRight } from "lucide-react";
 import { hapticLight } from "../lib/haptics";
 import { stagger, scaleIn, inViewOnce, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 
+import ProductImage from "./ProductImage";
+
 export const SIX_PACK_CATEGORIES = [
   {
     id: "home-care",
     name: "Home Care",
-    img: "https://images.unsplash.com/photo-1584813470613-5b1c1cad3d69?w=250&auto=format&fit=crop&q=80",
+    img: "/products/catalog/cleaning_essentials/dsh_ecbb246d3258.webp",
     cat: "Home Care"
   },
   {
     id: "kitchen-care",
     name: "Kitchen Care",
-    img: "https://images.unsplash.com/photo-1615397349754-cfa2066a298e?w=250&auto=format&fit=crop&q=80",
+    img: "/products/catalog/cleaning_essentials/dsh_7a53cc7827e8.webp",
     cat: "Kitchen Care"
   },
   {
     id: "vegetables",
     name: "Vegetables",
-    img: "https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=250&auto=format&fit=crop&q=80",
+    img: "/products/catalog/vegetables_fruits/dsh_3815336e8e85.webp",
     cat: "Vegetables"
   },
   {
     id: "fresh-fruits",
     name: "Fresh Fruits",
-    img: "https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=250&auto=format&fit=crop&q=80",
+    img: "/products/catalog/vegetables_fruits/dsh_30b889a20ff7.webp",
     cat: "Fresh Fruits"
   },
   {
     id: "chicken",
     name: "Chicken",
-    img: "https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=250&auto=format&fit=crop&q=80",
+    img: "/products/catalog/chicken_meat_fish/dsh_6377ab70ba0c.webp",
     cat: "Chicken"
   },
   {
     id: "dairy",
     name: "Dairy",
-    img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=250&auto=format&fit=crop&q=80",
+    img: "/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp",
     cat: "Dairy"
   },
 ];
@@ -99,12 +101,11 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
         >
           {/* Imagery leads, a single label reads underneath — nothing else competes */}
           <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white dark:from-surface-muted dark:to-surface-raised rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 dark:border-line-soft">
-            <img
+            <ProductImage
               src={item.img}
-              alt={item.name}
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover"
+              name={item.name}
+              fill
+              letterClassName="text-xl"
             />
           </div>
 

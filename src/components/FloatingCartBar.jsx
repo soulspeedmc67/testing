@@ -6,6 +6,7 @@ import AnimatedCounter from "./AnimatedCounter";
 import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticMedium } from "../lib/haptics";
 import { useStoredJson } from "../lib/useStoredJson";
+import { productImageUrl } from "./ProductImage";
 
 /* Stable identity so an empty cart does not produce a new array each render. */
 const EMPTY_CART = [];
@@ -159,7 +160,7 @@ export default function FloatingCartBar() {
               >
                 {item.image || item.img ? (
                   <img
-                    src={item.image || item.img}
+                    src={productImageUrl(item.image || item.img)}
                     alt={item.name}
                     className="w-full h-full object-cover"
                   />

@@ -3,12 +3,17 @@ import { isPlaceholderImage } from "../lib/productPhotoMatch";
 
 /**
  * Open Food Facts keeps each photo as the full original (~0.7 MB) and smaller
- * copies at the same path; a card only needs the 400px one.
+ * copies at the same path; a card only needs the 400px one. Catalogue photos
+ * saved as a path ("/products/catalog/…") live on the website, and load from
+ * there in the apps and on every host.
  */
 export function productImageUrl(url, size = "small") {
   const value = String(url || "");
   if (size === "small" && /images\.open(food|beauty)facts\.org/.test(value)) {
     return value.replace(/\.full\.(jpg|jpeg|png|webp)$/i, ".400.$1");
+  }
+  if (/^\/?products\/catalog\//.test(value)) {
+    return `https://dashit.co.in/${value.replace(/^\//, "")}`;
   }
   return value;
 }

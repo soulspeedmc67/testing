@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, Search, Trash2, X } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { FileDown, Loader2, Search, Trash2, Upload, X, Sparkles } from "lucide-react";
 import AdminSheet from "./AdminSheet";
 import ProductImage from "../ProductImage";
-import { removeProductPhoto, setManualProductPhoto } from "../../lib/db";
+import { removeProductPhoto, setManualProductPhoto, setManualProductPhotos } from "../../lib/db";
 import { checkPhoto, opensAsPhoto } from "../../lib/photoQuality";
-import { normaliseImageUrl } from "../../lib/csvInventory";
+import { downloadCsv, normaliseImageUrl, parseCsv, photoListToCsv } from "../../lib/csvInventory";
+import { parsePhotoLinks } from "../../lib/productPhotoMatch";
 
 function SheetHeader({ id, title, subtitle, onClose, subtle }) {
   return (
@@ -181,7 +182,7 @@ function NeedsPhotoRow({ product, reason, darkMode, subtle }) {
  * "Needs a photo": products with no photo, or one that's too small or looks
  * blank. Shown a page at a time, with a search box for big catalogues.
  */
-export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, darkMode = false }) {
+export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, onAutoResolve, isAutoResolving = false, darkMode = false }) {
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(40);
   const subtle = darkMode ? "text-zinc-400" : "text-slate-500";
@@ -192,13 +193,86 @@ export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, darkM
   useEffect(() => {
     if (open) setRows(products);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, products]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? rows.filter((p) => String(p.product.name || "").toLowerCase().includes(q)) : rows;
   }, [rows, query]);
   const missingCount = products.filter((p) => p.reason === "No photo").length;
+
+  /* Many items at once: download the list, fill in its image column, upload it
+     back. Only photos change; every link is checked before it's saved. */
+  const fileInputRef = useRef(null);
+  const [bulk, setBulk] = useState(null); // { busy, message }
+
+  const downloadList = () => {
+    downloadCsv(`dashit-photos-to-add-${products.length}.csv`, photoListToCsv(products.map((r) => r.product)));
+  };
+
+  const uploadList = async (file) => {
+    if (!file) return;
+    const { links, skipped, error } = parsePhotoLinks(parseCsv(await file.text()));
+    if (error) {
+      setBulk({ busy: false, message: error });
+      return;
+    }
+    const onList = new Set(products.map((r) => String(r.product.id || r.product.barcode)));
+    const todo = links
+      .filter((l) => onList.has(l.id))
+      .map((l) => ({ id: l.id, url: normaliseImageUrl(l.url) }))
+      .filter((l) => l.url);
+    const notOnList = links.length - todo.length;
+    if (todo.length === 0) {
+      setBulk({ busy: false, message: "No photo links found in that file for items on this list." });
+      return;
+    }
+
+    let checked = 0;
+    let broken = 0;
+    const saved = new Set();
+    const pending = [];
+    const flush = async () => {
+      const batch = pending.splice(0);
+      if (batch.length === 0) return;
+      await setManualProductPhotos(batch);
+      batch.forEach((p) => saved.add(p.id));
+    };
+    setBulk({ busy: true, message: `Checking links… 0 of ${todo.length}` });
+    try {
+      let next = 0;
+      const lane = async () => {
+        while (next < todo.length) {
+          const item = todo[next];
+          next += 1;
+          if (await opensAsPhoto(item.url)) {
+            const quality = await checkPhoto(item.url);
+            pending.push({ ...item, weak: quality.weak, issues: quality.reasons });
+            if (pending.length >= 200) await flush();
+          } else {
+            broken += 1;
+          }
+          checked += 1;
+          setBulk({ busy: true, message: `Checking links… ${checked} of ${todo.length}` });
+        }
+      };
+      await Promise.all(Array.from({ length: 8 }, lane));
+      await flush();
+    } catch {
+      setBulk({ busy: false, message: `Saved ${saved.size} photos, then the connection dropped. Upload the same file again to finish.` });
+      return;
+    }
+    setRows((prev) => prev.filter((r) => !saved.has(String(r.product.id || r.product.barcode))));
+    const notes = [
+      broken && `${broken} links didn't open a photo`,
+      skipped + notOnList && `${skipped + notOnList} rows skipped`,
+    ].filter(Boolean);
+    setBulk({ busy: false, message: `Saved ${saved.size} photos.${notes.length ? ` ${notes.join(", ")}.` : ""}` });
+  };
+
+  const secondaryBtn = `flex-1 flex items-center justify-center gap-1.5 text-xs font-bold px-3 py-2.5 rounded-xl border cursor-pointer disabled:opacity-50 ${
+    darkMode ? "border-zinc-700 text-zinc-200" : "border-slate-200 text-slate-700"
+  }`;
 
   return (
     <AdminSheet open={open} onClose={onClose} labelledBy="needs-photo-title" darkMode={darkMode}>
@@ -209,21 +283,68 @@ export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, darkM
         onClose={onClose}
         subtle={subtle}
       />
+      {onAutoResolve && products.length > 0 && (
+        <div className="px-5 pb-3">
+          <button
+            type="button"
+            onClick={onAutoResolve}
+            disabled={isAutoResolving}
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl bg-[#FF5B00] hover:bg-[#E04E00] text-white cursor-pointer active:scale-[0.99] transition-transform disabled:opacity-50"
+          >
+            {isAutoResolving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            Auto-fill photos from catalog ({products.length.toLocaleString("en-IN")})
+          </button>
+          <p className={`mt-1.5 text-[11px] text-center ${subtle}`}>
+            Matches against DASHit's 47,800+ grocery packshots and saves them to your store catalogue.
+          </p>
+        </div>
+      )}
       {onFindAll && missingCount > 0 && (
         <div className="px-5 pb-3">
           <button
             type="button"
             onClick={onFindAll}
-            className="w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl bg-[#FF5B00] text-white cursor-pointer active:scale-[0.99] transition-transform"
+            className="w-full flex items-center justify-center gap-2 text-sm font-bold py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-200 cursor-pointer active:scale-[0.99] transition-transform"
           >
             <Search className="w-4 h-4" />
-            Find photos automatically ({missingCount.toLocaleString("en-IN")})
+            Find photos on Open Food Facts ({missingCount.toLocaleString("en-IN")})
           </button>
           <p className={`mt-1.5 text-[11px] text-center ${subtle}`}>
             Looks each item up on Open Food Facts by barcode, then by name. Keep this page open; it runs at the top.
           </p>
         </div>
       )}
+      <div className="px-5 pb-3">
+        <div className="flex gap-2">
+          <button type="button" onClick={downloadList} disabled={products.length === 0} className={secondaryBtn}>
+            <FileDown className="w-3.5 h-3.5" />
+            <span>Download list</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={bulk?.busy || products.length === 0}
+            className={secondaryBtn}
+          >
+            {bulk?.busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            <span>Upload filled list</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            className="hidden"
+            onChange={(e) => {
+              uploadList(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </div>
+        <p className={`text-xs mt-2 ${subtle}`} aria-live="polite">
+          {bulk?.message ||
+            "For many items: download the list, put a photo link in the image column, and upload it here. Only photos change."}
+        </p>
+      </div>
       <div className="px-5 pb-2">
         <input
           type="search"

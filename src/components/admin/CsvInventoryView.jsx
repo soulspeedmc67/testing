@@ -28,9 +28,11 @@ import {
   AI_IMPORT_PROMPT,
 } from "../../lib/csvInventory";
 import { SELF_DISTRIBUTOR_NAME } from "../../lib/db";
+import { loadCatalog, fillFromCatalog } from "../../lib/productCatalog";
 import StockSourceSheet from "./StockSourceSheet";
 import { NeedsPhotoSheet } from "./ProductPhotoSheets";
-import { isPlaceholderImage } from "../../lib/productPhotoMatch";
+import { photoGaps } from "../../lib/productPhotoMatch";
+import ProductImage from "../ProductImage";
 
 const LAST_SOURCE_KEY = "dashit_last_stock_source";
 /* The check list only draws the rows in view. Every row has this fixed height,
@@ -109,17 +111,7 @@ export default function CsvInventoryView({
   }, [catalogue]);
 
   // No photo first, then photos that are too small or look blank.
-  const needsPhoto = useMemo(() => {
-    const missing = [];
-    const weak = [];
-    catalogue.forEach((product) => {
-      if (isPlaceholderImage(product.img)) missing.push({ product, reason: "No photo" });
-      else if (product.photoQuality === "weak") {
-        weak.push({ product, reason: (product.photoIssues || []).join(", ") || "Photo isn't clear" });
-      }
-    });
-    return [...missing, ...weak];
-  }, [catalogue]);
+  const needsPhoto = useMemo(() => photoGaps(catalogue), [catalogue]);
 
   const isSaving = saveProgress !== null;
 
@@ -150,6 +142,19 @@ export default function CsvInventoryView({
         const next = buildImportPlan(text, catalogue, mode, from);
         setPlan(next);
         setExcluded(new Set());
+        /* Items that need a shelf or a photo get them filled from the product
+           list once it has loaded. The preview shows them straight away and the
+           guess lands a moment later — only if this plan is still on screen. */
+        const needsCatalog = next.items.some(
+          (item) => (!item.catFromCsv && item.action === "new") || !item.img
+        );
+        if (needsCatalog) {
+          loadCatalog()
+            .then((list) =>
+              setPlan((current) => (current === next ? { ...next, items: fillFromCatalog(next.items, list) } : current))
+            )
+            .catch(() => {});
+        }
       } catch (e) {
         setReadError(`Couldn't read this file: ${e?.message || "unknown problem"}.`);
       } finally {
@@ -1049,8 +1054,9 @@ function VirtualRows({ items, renderRow, resetKey }) {
 }
 
 const ImportRow = React.memo(function ImportRow({ item, included, onToggle, darkMode, subtle }) {
+  const shelf = item.catFromCatalog ? `${item.cat} (guessed)` : item.cat;
   const details = [
-    `${item.cat} · ${item.unit} · ₹${item.price}`,
+    `${shelf} · ${item.unit} · ₹${item.price}`,
     item.mergedRows ? `${item.mergedRows.length} rows added together` : null,
     item.changes.length > 0 ? item.changes.join(" · ") : null,
     item.blocked ? item.blockReason : null,
@@ -1074,20 +1080,26 @@ const ImportRow = React.memo(function ImportRow({ item, included, onToggle, dark
         className="w-4 h-4 accent-emerald-500 shrink-0"
       />
 
-      <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-          item.action === "new" ? "bg-sky-500/15 text-sky-500" : "bg-emerald-500/15 text-emerald-500"
-        }`}
-        title={item.action === "new" ? "New item" : "More stock"}
-      >
-        {item.action === "new" ? <PackagePlus className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
-      </div>
+      {item.img ? (
+        <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-zinc-800 bg-white relative">
+          <ProductImage src={item.img} name={item.name} size="small" fill />
+        </div>
+      ) : (
+        <div
+          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+            item.action === "new" ? "bg-sky-500/15 text-sky-500" : "bg-emerald-500/15 text-emerald-500"
+          }`}
+          title={item.action === "new" ? "New item" : "More stock"}
+        >
+          {item.action === "new" ? <PackagePlus className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+        </div>
+      )}
 
       <div className="min-w-0 flex-1">
         <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{item.name}</p>
         <p className={`text-[11px] leading-snug truncate ${subtle}`}>
           <span>
-            {item.cat} · {item.unit} · ₹{item.price}
+            {shelf} · {item.unit} · ₹{item.price}
           </span>
           {item.mergedRows && (
             <span className="text-sky-500 font-semibold"> · {item.mergedRows.length} rows added together</span>

@@ -10,6 +10,7 @@ import {
   Sparkles,
   Barcode,
   FileSpreadsheet,
+  ListChecks,
   Store,
   Sun,
   Moon,
@@ -24,7 +25,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Truck,
-  Building2
+  Building2,
+  Images,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -118,6 +120,16 @@ export default function AdminLayout({
       group: "Bulk tools",
       items: [
         {
+          id: "photo-review",
+          label: "Check photos",
+          icon: Images,
+        },
+        {
+          id: "enricher",
+          label: "Auto Image Enricher",
+          icon: Sparkles,
+        },
+        {
           id: "batch-inward",
           label: "Add many at once",
           icon: ArrowDownToLine,
@@ -126,6 +138,11 @@ export default function AdminLayout({
           id: "csv",
           label: "Import CSV",
           icon: FileSpreadsheet,
+        },
+        {
+          id: "catalog-pick",
+          label: "Pick from product list",
+          icon: ListChecks,
         },
         {
           id: "importer",

@@ -12,6 +12,7 @@ import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.Offer
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.model.ProductVariant
+import com.dashit.app.data.model.productImageUrl
 import com.dashit.app.data.model.shopCategory
 import com.google.firebase.FirebaseApp
 import com.google.firebase.firestore.FirebaseFirestore
@@ -155,8 +156,11 @@ class FirestoreRepository {
         val price = (data["price"] as? Number)?.toDouble() ?: 0.0
         val originalPrice = (data["originalPrice"] as? Number)?.toDouble() ?: (data["mrp"] as? Number)?.toDouble()
         val unit = (data["unit"] as? String) ?: (data["weight"] as? String) ?: ""
-        val img = (data["img"] as? String) ?: (data["image"] as? String) ?: ""
         val cat = shopCategory((data["cat"] as? String) ?: (data["category"] as? String) ?: "Other")
+        val rawImg = (data["img"] as? String) ?: (data["image"] as? String) ?: ""
+        // No photo shows the card's plain tile: a guessed photo could be a
+        // different product, and shoppers order what they see.
+        val img = if (rawImg.isNotBlank() && !isStockPhoto(rawImg)) productImageUrl(rawImg) else ""
         val rating = (data["rating"] as? String) ?: "4.8"
         val ratingCount = (data["ratingCount"] as? String) ?: "120"
         val time = (data["time"] as? String) ?: "8 mins"
@@ -267,7 +271,7 @@ class FirestoreRepository {
                     val promoCode = (data["promoCode"] as? String) ?: ""
                     val discountPercent = (data["discountPercent"] as? Number)?.toInt() ?: 0
                     val expiresIn = (data["expiresIn"] as? String) ?: "Valid today"
-                    val img = (data["img"] as? String) ?: ""
+                    val img = productImageUrl((data["img"] as? String) ?: "")
 
                     Offer(
                         id = id,
@@ -338,3 +342,12 @@ private class CatalogueSync(private val prefs: SharedPreferences) {
     }
 }
 
+/**
+ * Stock pictures (Unsplash and the like) aren't the product, so they count as
+ * no photo, as on the web (`isPlaceholderImage` in src/lib/productPhotoMatch.js).
+ */
+private fun isStockPhoto(url: String): Boolean {
+    val host = runCatching { java.net.URI(url.trim()).host?.lowercase() }.getOrNull() ?: return url.contains("placeholder")
+    return listOf("unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com")
+        .any { host == it || host.endsWith(".$it") }
+}

@@ -1,5 +1,6 @@
 import { isAgeRestricted } from "./ageGate";
 import { isNative, isIOS } from "./platform";
+import { photosFirst } from "./productPhotoMatch";
 
 /**
  * The tobacco section, modelled on how Blinkit sells cigarettes:
@@ -43,9 +44,9 @@ export function isTobaccoSectionEnabled() {
   return true;
 }
 
-/** Everything a shopper may see while browsing — tobacco removed. */
+/** Everything a shopper may see while browsing — tobacco removed, items with a photo first. */
 export function browseable(list = []) {
-  return (list || []).filter((p) => !isAgeRestricted(p));
+  return photosFirst((list || []).filter((p) => !isAgeRestricted(p)));
 }
 
 /** The section's own listing, with brand imagery swapped for plain packs. */

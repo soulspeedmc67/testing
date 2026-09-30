@@ -35,6 +35,10 @@ async function runPool(items, limit, worker) {
 }
 
 /** One product: `{ status: "found" | "missing" | "error", img, offBarcode, via, weak, issues }`. */
+export async function findPhotoFor(item) {
+  return findOne(item);
+}
+
 async function findOne(item) {
   const row = { name: item.name, brand: item.brand, unit: item.unit };
   let record = null;

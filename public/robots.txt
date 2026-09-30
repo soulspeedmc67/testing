@@ -25,3 +25,18 @@ Disallow: /login/
 # Internal search filtering (prevents crawler bloat and duplicate keyword URLs)
 Disallow: /search/
 Disallow: /search?*
+
+# Product media & catalog assets (prevents competitor crawlers & scraper bots)
+Disallow: /products/
+Disallow: /catalog/
+
+# Block aggressive commercial scrapers & bots entirely
+User-agent: Scrapy
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: DotBot
+User-agent: MJ12bot
+User-agent: BLEXBot
+User-agent: PetalBot
+User-agent: DataForSeoBot
+Disallow: /

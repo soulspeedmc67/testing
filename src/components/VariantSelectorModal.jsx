@@ -4,6 +4,7 @@ import { hapticMedium, hapticLight } from "../lib/haptics";
 import { triggerFlyToCart } from "./FlyingBadgeOverlay";
 import { SPRING_SNAPPY, SPRING_BOUNCY } from "../lib/motion";
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
+import ProductImage from "./ProductImage";
 
 /** Stable cart id for a given product + size, shared by add and qty updates. */
 export const variantCartId = (product, variant) =>
@@ -88,11 +89,14 @@ export default function VariantSelectorModal({
           {/* Header Row — sticks while the variant list scrolls under it */}
           <div className="flex items-start justify-between sticky -top-5 -mx-5 px-5 -mt-5 pt-5 pb-3 bg-white z-10 dark:bg-surface">
             <div className="flex items-center space-x-3">
-              <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0 dark:bg-surface-raised dark:border-line-soft">
-                <img
+              <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 p-1 flex items-center justify-center shrink-0 dark:bg-surface-raised dark:border-line-soft overflow-hidden relative">
+                <ProductImage
                   src={product.img}
-                  alt={product.name}
-                  className="max-h-full max-w-full object-contain"
+                  name={product.name}
+                  cat={product.cat}
+                  brand={product.brand}
+                  fill
+                  letterClassName="text-xl"
                 />
               </div>
               <div>

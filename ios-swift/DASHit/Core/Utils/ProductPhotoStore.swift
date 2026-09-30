@@ -40,10 +40,17 @@ final class ProductPhotoStore: @unchecked Sendable {
         DispatchQueue.global(qos: .utility).async { Self.trim(folder) }
     }
 
-    /// Open Food Facts links point at the full original (~700 KB); the same
-    /// photo at 400px (~30 KB) is plenty on a phone and loads far faster.
+    /// Resolves product photo URLs:
+    /// 1. Relative catalog paths (e.g. /products/catalog/...) map directly to Hostinger production CDN.
+    /// 2. Open Food Facts original links map to the fast, lightweight 400px derivative.
     static func displayURL(_ url: URL) -> URL {
         let text = url.absoluteString
+        if url.scheme == nil || (!text.hasPrefix("http://") && !text.hasPrefix("https://")) {
+            let path = text.hasPrefix("/") ? text : "/\(text)"
+            if let hostingerURL = URL(string: "https://dashit.co.in\(path)") {
+                return hostingerURL
+            }
+        }
         guard text.contains("openfoodfacts.org") || text.contains("openbeautyfacts.org"),
               let range = text.range(of: #"\.full\.(jpg|jpeg|png|webp)$"#, options: [.regularExpression, .caseInsensitive])
         else { return url }

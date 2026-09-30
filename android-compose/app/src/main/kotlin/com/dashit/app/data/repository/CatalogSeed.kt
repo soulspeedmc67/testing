@@ -20,10 +20,10 @@ object CatalogSeed {
             id = "snacks",
             name = "Snacks",
             previewImages = listOf(
-                "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1621447504864-d8686e12698c?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1600952841320-db92ec4047ca?w=300&auto=format&fit=crop&q=80"
+                "https://dashit.co.in/products/catalog/munchies/dsh_064717045ec8.webp",
+                "https://dashit.co.in/products/catalog/munchies/dsh_ecf9c2f21047.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_40fb79d7a4ed.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_54ca4c385433.webp"
             ),
             productCount = 521
         ),
@@ -31,10 +31,10 @@ object CatalogSeed {
             id = "drinks_juices",
             name = "Drinks & Juices",
             previewImages = listOf(
-                "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1629203851122-3726ecdf080e?w=300&auto=format&fit=crop&q=80"
+                "https://dashit.co.in/products/catalog/cold_drinks_juices/dsh_56ad109de49a.webp",
+                "https://dashit.co.in/products/catalog/cold_drinks_juices/dsh_ef508213e913.webp",
+                "https://dashit.co.in/products/catalog/cold_drinks_juices/dsh_ce15e2d5a6a8.webp",
+                "https://dashit.co.in/products/catalog/cold_drinks_juices/dsh_37452daf08a3.webp"
             ),
             productCount = 244
         ),
@@ -42,10 +42,10 @@ object CatalogSeed {
             id = "ice_creams",
             name = "Ice Creams & More",
             previewImages = listOf(
-                "https://images.unsplash.com/photo-1501443762994-82bd5dace89a?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1570197788417-0e82375c9371?w=300&auto=format&fit=crop&q=80"
+                "https://dashit.co.in/products/catalog/ice_creams_more/dsh_566cbff635c0.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_40fb79d7a4ed.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_54ca4c385433.webp",
+                "https://dashit.co.in/products/catalog/ice_creams_more/dsh_566cbff635c0.webp"
             ),
             productCount = 55
         ),
@@ -53,10 +53,10 @@ object CatalogSeed {
             id = "vegetables_fruits",
             name = "Vegetables & Fruits",
             previewImages = listOf(
-                "https://images.unsplash.com/photo-1518977956812-cd3dbadaaf31?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1525385133512-2f3bdd039054?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1600335895229-6e75511892c8?w=300&auto=format&fit=crop&q=80"
+                "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_8e568c988aab.webp",
+                "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_7bfb522cb6a2.webp",
+                "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_82097f132679.webp",
+                "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_eedf977f633d.webp"
             ),
             productCount = 155
         ),
@@ -64,10 +64,10 @@ object CatalogSeed {
             id = "dairy_bread_eggs",
             name = "Dairy, Bread & Eggs",
             previewImages = listOf(
-                "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&auto=format&fit=crop&q=80"
+                "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp",
+                "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_6d2dfca99aa3.webp",
+                "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_99300ca80e75.webp",
+                "https://dashit.co.in/products/catalog/bakery_biscuits/dsh_4d49d5656aa9.webp"
             ),
             productCount = 27
         ),
@@ -75,10 +75,10 @@ object CatalogSeed {
             id = "sweets_chocolates",
             name = "Sweets & Chocolates",
             previewImages = listOf(
-                "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1582293041079-7814c2f12063?w=300&auto=format&fit=crop&q=80",
-                "https://images.unsplash.com/photo-1511381939415-e44015466834?w=300&auto=format&fit=crop&q=80"
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_40fb79d7a4ed.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_54ca4c385433.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_40fb79d7a4ed.webp",
+                "https://dashit.co.in/products/catalog/sweet_tooth/dsh_54ca4c385433.webp"
             ),
             productCount = 269
         )
@@ -109,7 +109,7 @@ object CatalogSeed {
             promoCode = "CRISP20",
             discountPercent = 20,
             expiresIn = "Ends in 3 hours",
-            img = "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80"
+            img = "https://dashit.co.in/products/catalog/munchies/dsh_064717045ec8.webp"
         ),
         Offer(
             id = "offer_2",
@@ -121,7 +121,7 @@ object CatalogSeed {
             promoCode = "DAIRY15",
             discountPercent = 15,
             expiresIn = "Valid today",
-            img = "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80"
+            img = "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp"
         )
     )
 
@@ -138,7 +138,7 @@ object CatalogSeed {
             time = "8 mins",
             options = "2 sizes",
             badge = "Full Cream",
-            img = "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp",
             cat = "Dairy",
             variants = listOf(
                 ProductVariant(id = "1-500ml", unit = "500 ml", price = 36.0, originalPrice = 38.0),
@@ -156,7 +156,7 @@ object CatalogSeed {
             time = "8 mins",
             options = "2 sizes",
             badge = "Bestseller",
-            img = "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Dairy",
             variants = listOf(
                 ProductVariant(id = "3-390g", unit = "390 g", price = 35.0, originalPrice = 38.0),
@@ -173,7 +173,7 @@ object CatalogSeed {
             ratingCount = "226",
             time = "8 mins",
             badge = "Bestseller",
-            img = "https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Dairy"
         ),
         Product(
@@ -186,7 +186,7 @@ object CatalogSeed {
             ratingCount = "178",
             time = "8 mins",
             badge = "Fresh",
-            img = "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Dairy"
         ),
         Product(
@@ -199,7 +199,7 @@ object CatalogSeed {
             ratingCount = "144",
             time = "8 mins",
             badge = "Breakfast",
-            img = "https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_c59f288321f7.webp",
             cat = "Dairy"
         ),
 
@@ -215,7 +215,7 @@ object CatalogSeed {
             time = "8 mins",
             options = "3 sizes",
             badge = "Snacks",
-            img = "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/munchies/dsh_5ef943762b26.webp",
             cat = "Snacks",
             variants = listOf(
                 ProductVariant(id = "5-50g", unit = "50 g", price = 20.0, originalPrice = 20.0),
@@ -233,7 +233,7 @@ object CatalogSeed {
             ratingCount = "357",
             time = "8 mins",
             badge = "Chocolate",
-            img = "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Snacks"
         ),
         Product(
@@ -246,7 +246,7 @@ object CatalogSeed {
             ratingCount = "512",
             time = "8 mins",
             badge = "Indulgence",
-            img = "https://images.unsplash.com/photo-1548907040-4baa42d10919?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Snacks"
         ),
 
@@ -261,7 +261,7 @@ object CatalogSeed {
             ratingCount = "521",
             time = "8 mins",
             badge = "Daily Staple",
-            img = "https://images.unsplash.com/photo-1518977956812-cd3dbadaaf31?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_8e568c988aab.webp",
             cat = "Vegetables"
         ),
         Product(
@@ -274,7 +274,7 @@ object CatalogSeed {
             ratingCount = "487",
             time = "8 mins",
             badge = "Daily Staple",
-            img = "https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_7a8a5e64d740.webp",
             cat = "Vegetables"
         ),
         Product(
@@ -287,7 +287,7 @@ object CatalogSeed {
             ratingCount = "398",
             time = "8 mins",
             badge = "Farm Fresh",
-            img = "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_7bfb522cb6a2.webp",
             cat = "Vegetables"
         ),
         Product(
@@ -300,7 +300,7 @@ object CatalogSeed {
             ratingCount = "176",
             time = "8 mins",
             badge = "Local Favourite",
-            img = "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_39094237541e.webp",
             cat = "Vegetables"
         ),
         Product(
@@ -313,7 +313,7 @@ object CatalogSeed {
             ratingCount = "132",
             time = "8 mins",
             badge = "Farm Fresh",
-            img = "https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_42e04aa0efe6.webp",
             cat = "Vegetables"
         ),
         Product(
@@ -326,7 +326,7 @@ object CatalogSeed {
             ratingCount = "214",
             time = "8 mins",
             badge = "Tadka Pack",
-            img = "https://images.unsplash.com/photo-1600335895229-6e75511892c8?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Vegetables"
         ),
 
@@ -341,7 +341,7 @@ object CatalogSeed {
             ratingCount = "167",
             time = "8 mins",
             badge = "Orchard Fresh",
-            img = "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_82097f132679.webp",
             cat = "Fresh Fruits"
         ),
         Product(
@@ -354,7 +354,7 @@ object CatalogSeed {
             ratingCount = "289",
             time = "8 mins",
             badge = "Everyday",
-            img = "https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_eedf977f633d.webp",
             cat = "Fresh Fruits"
         ),
         Product(
@@ -367,7 +367,7 @@ object CatalogSeed {
             ratingCount = "163",
             time = "8 mins",
             badge = "Juicy",
-            img = "https://images.unsplash.com/photo-1547514701-42782101795e?w=400&auto=format&fit=crop&q=80",
+            img = "https://dashit.co.in/products/catalog/vegetables_fruits/dsh_bb213bd74c7a.webp",
             cat = "Fresh Fruits"
         ),
 
@@ -382,7 +382,7 @@ object CatalogSeed {
             ratingCount = "298",
             time = "8 mins",
             badge = "Energy",
-            img = "https://images.unsplash.com/photo-1622543925917-763c34d1a86e?w=400&auto=format&fit=crop&q=80",
+            img = "",
             cat = "Drinks"
         )
     )

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { hapticLight, hapticMedium, hapticSuccess, hapticHeavy } from "../lib/haptics";
 import { SPRING_SNAPPY } from "../lib/motion";
+import { productImageUrl } from "./ProductImage";
 
 export default function ModifyOrderModal({
   isOpen,
@@ -244,7 +245,7 @@ export default function ModifyOrderModal({
                       >
                         <div className="flex items-center space-x-2.5 min-w-0">
                           <img
-                            src={item.img || item.image || "/dashit-logo-centered.png"}
+                            src={productImageUrl(item.img || item.image || "/dashit-logo-centered.png")}
                             alt={item.name}
                             className="w-11 h-11 object-contain bg-slate-50 rounded-xl p-1 shrink-0 border border-slate-100 dark:bg-white/5 dark:border-white/10"
                           />
@@ -369,7 +370,7 @@ export default function ModifyOrderModal({
                     >
                       <div className="flex items-center space-x-2 min-w-0">
                         <img
-                          src={prod.img || prod.image || "/dashit-logo-centered.png"}
+                          src={productImageUrl(prod.img || prod.image || "/dashit-logo-centered.png")}
                           alt={prod.name}
                           className="w-9 h-9 object-contain bg-white rounded-lg p-0.5 shrink-0 border border-slate-100 dark:bg-white/10 dark:border-white/5"
                         />

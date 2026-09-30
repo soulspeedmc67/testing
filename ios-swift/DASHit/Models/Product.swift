@@ -125,6 +125,15 @@ public struct Product: Codable, Identifiable, Hashable {
 
     /// One name per aisle: chips and namkeen are filed under Snacks, so the
     /// shop never shows a "Snacks" and a "Chips" category side by side.
+    /// Stock pictures (Unsplash and the like) aren't the product, so they
+    /// count as no photo and the card shows its plain tile, as on the web
+    /// (`isPlaceholderImage` in src/lib/productPhotoMatch.js).
+    public static func realPhoto(_ url: String) -> String {
+        let stockHosts = ["unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com"]
+        guard let host = URL(string: url)?.host?.lowercased() else { return url }
+        return stockHosts.contains { host == $0 || host.hasSuffix("." + $0) } ? "" : url
+    }
+
     public static func shopCategory(_ raw: String) -> String {
         let key = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         switch key {
@@ -183,7 +192,7 @@ extension Product {
             time: c.flexibleString(.time) ?? "8 mins",
             options: c.flexibleString(.options),
             badge: c.flexibleString(.badge),
-            img: c.flexibleString(.img) ?? c.flexibleString(.image) ?? c.flexibleString(.imageUrl) ?? "",
+            img: Self.realPhoto(c.flexibleString(.img) ?? c.flexibleString(.image) ?? c.flexibleString(.imageUrl) ?? ""),
             cat: Self.shopCategory(c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "Other"),
             variants: try? c.decode([ProductVariant].self, forKey: .variants),
             ageRestricted: (try? c.decode(Bool.self, forKey: .ageRestricted)) ?? false,

@@ -7,6 +7,7 @@
  * of "quantity" all resolve to the same canonical product shape.
  */
 
+
 export const CANONICAL_FIELDS = [
   "barcode",
   "name",
@@ -128,6 +129,7 @@ const HEADER_ALIASES = {
 export function normaliseImageUrl(raw) {
   let link = String(raw || "").trim();
   if (!link) return "";
+  if (link.startsWith("/")) return link;
   if (link.startsWith("//")) link = `https:${link}`;
   let url;
   try {
@@ -459,22 +461,30 @@ export function buildImportPlan(raw, existingProducts = [], stockMode = "add", d
 
     seen.set(resolvedId, items.length);
 
-    items.push({
-      row: rowNo,
-      action: match ? "restock" : "new",
-      include: rowErrors.length === 0,
-      blocked: rowErrors.length > 0,
-      blockReason: rowErrors.join(" "),
-      id: resolvedId,
-      name: name || (match ? match.name : barcode),
-      cat: record.cat || (match ? match.cat : "Grocery"),
-      distributor: assignedDistributor || "",
-      unit: record.unit || (match ? match.unit : "1 pc"),
-      brand: record.brand || (match ? match.brand : ""),
-      badge: record.badge || (match ? match.badge : "Fresh"),
-      img: normaliseImageUrl(record.img) || (match ? match.img : ""),
-      // A photo link in the file always wins; otherwise one is looked up by barcode.
-      imgFromCsv: Boolean(normaliseImageUrl(record.img)),
+      const csvImg = normaliseImageUrl(record.img);
+      // No photo in the file: the preview fills in the same product's photo
+      // from the product list, if it has one (productCatalog.fillFromCatalog).
+      const finalImg = csvImg || (match ? match.img : "");
+
+      items.push({
+        row: rowNo,
+        action: match ? "restock" : "new",
+        include: rowErrors.length === 0,
+        blocked: rowErrors.length > 0,
+        blockReason: rowErrors.join(" "),
+        id: resolvedId,
+        name: name || (match ? match.name : barcode),
+        cat: record.cat || (match ? match.cat : "Grocery"),
+        // Without one, a new item's shelf is guessed from the product list afterwards.
+        catFromCsv: Boolean(record.cat),
+        distributor: assignedDistributor || "",
+        unit: record.unit || (match ? match.unit : "1 pc"),
+        brand: record.brand || (match ? match.brand : ""),
+        badge: record.badge || (match ? match.badge : "Fresh"),
+        img: finalImg,
+        imgSource: csvImg ? "csv" : match ? match.imgSource : "",
+        // A photo link in the file always wins; otherwise one is looked up by barcode.
+        imgFromCsv: Boolean(csvImg),
       csvBarcode: barcode,
       price: price !== null ? price : match ? Number(match.price) || 0 : 0,
       originalPrice:
@@ -520,7 +530,7 @@ export function planToStockUpdates(items, stockMode = "add", defaultDistributor 
         brand: item.brand || undefined,
         badge: item.badge || undefined,
         img: item.img || undefined,
-        imgSource: item.imgFromCsv ? "csv" : undefined,
+        imgSource: item.img ? (item.imgFromCsv ? "csv" : item.imgSource || "catalog") : undefined,
         photoRejected: item.imgFromCsv ? false : undefined,
         price: item.price,
         originalPrice: item.originalPrice || item.price,
@@ -561,6 +571,50 @@ export function productsToCsv(products = []) {
   const header = EXPORT_COLUMNS.map(([label]) => label).join(",");
   const body = products
     .map((p) => EXPORT_COLUMNS.map(([, get]) => csvCell(get(p))).join(","))
+    .join("\n");
+  return `${header}\n${body}\n`;
+}
+
+/* "Photos to add": the items still without a photo, for whoever fills in the
+   image column. Uploading it back changes photos only — no stock, price or
+   distributor — so it is safe to hand to a helper or a photo service. */
+const PHOTO_LIST_COLUMNS = [
+  ["barcode", (p) => p.id || p.barcode],
+  ["name", (p) => p.name],
+  ["brand", (p) => p.brand || ""],
+  ["unit", (p) => p.unit || ""],
+  ["category", (p) => p.cat || ""],
+  ["image", () => ""],
+];
+
+export function photoListToCsv(products = []) {
+  const header = PHOTO_LIST_COLUMNS.map(([label]) => label).join(",");
+  const body = products
+    .map((p) => PHOTO_LIST_COLUMNS.map(([, get]) => csvCell(get(p))).join(","))
+    .join("\n");
+  return `${header}\n${body}\n`;
+}
+
+/* "Pick from the product list": names chosen from the catalogue with their
+   shelf, brand and any pack size in the name, in the Import CSV layout. The
+   owner fills in quantity and price for what they stock and deletes the rest;
+   photos are found by the import as usual. */
+const STARTER_COLUMNS = [
+  ["barcode", () => ""],
+  ["name", (p) => p.name],
+  ["category", (p) => p.shelf],
+  ["quantity", () => ""],
+  ["price", () => ""],
+  ["mrp", () => ""],
+  ["unit", (p) => p.unit || ""],
+  ["brand", (p) => p.brand || ""],
+  ["image", (p) => p.img || ""],
+];
+
+export function catalogStarterCsv(items = []) {
+  const header = STARTER_COLUMNS.map(([label]) => label).join(",");
+  const body = items
+    .map((p) => STARTER_COLUMNS.map(([, get]) => csvCell(get(p))).join(","))
     .join("\n");
   return `${header}\n${body}\n`;
 }
