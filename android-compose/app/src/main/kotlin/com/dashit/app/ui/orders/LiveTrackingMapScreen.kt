@@ -631,7 +631,10 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?) {
     var isRoadRoute by remember { mutableStateOf(false) }
 
     val destination = order?.deliveryAddress?.let { GeoPoint(it.latitude, it.longitude) }
-    val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) }
+    // The rider's phone shares its position once the delivery starts. Until it does,
+    // the rider waits at the store (while the order is packed or on its way), facing the door.
+    val atStore = order?.status == OrderStatus.PACKING || order?.status == OrderStatus.OUT_FOR_DELIVERY
+    val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
     // The way the rider comes: from the rider while riding, from the hub before.
     val routeStart = riderPoint?.takeIf { order?.status == OrderStatus.OUT_FOR_DELIVERY } ?: HUB
 
