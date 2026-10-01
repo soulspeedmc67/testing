@@ -205,7 +205,8 @@ service cloud.firestore {
       /* Customers may only cancel, only their own order, only while it is still
          'Placed' (once a rider is carrying it, cancellation goes through the
          store), and may change nothing else — not the total, not the address.
-         Drivers may move an order they hold, or claim an unassigned one.
+         Drivers may only update orders already assigned to them and move them
+         towards delivery, with delivery code verification when completing.
          Admins may edit freely. */
       allow update: if isAdmin()
         || (
@@ -217,17 +218,19 @@ service cloud.firestore {
         )
         || (
           isDriver()
-          // `!('driverId' in ...)` covers orders written before the field
-          // existed, which would otherwise be unclaimable by any rider.
+          && resource.data.driverId == request.auth.uid
+          && request.resource.data.driverId == resource.data.driverId
+          && request.resource.data.driverName == resource.data.driverName
+          && resource.data.status in ['Placed', 'Packed', 'Packing', 'Out for Delivery']
+          && request.resource.data.status in ['Out for Delivery', 'Delivered']
           && (
-            !('driverId' in resource.data)
-            || resource.data.driverId == null
-            || resource.data.driverId == request.auth.uid
+            request.resource.data.status != 'Delivered'
+            || !('otp' in resource.data && resource.data.otp != null)
+            || string(request.resource.data.get('deliveryCode', request.resource.data.get('enteredOtp', ''))) == string(resource.data.otp)
           )
-          && request.resource.data.driverId == request.auth.uid
           && onlyChanges([
-               'status', 'statusHistory', 'driverId', 'driverName',
-               'updatedAt', 'deliveredAt', 'inventoryDeducted'
+               'status', 'statusHistory', 'updatedAt', 'deliveredAt',
+               'inventoryDeducted', 'deliveryCode', 'enteredOtp'
              ])
         );
 
@@ -275,11 +278,22 @@ service cloud.firestore {
     }
 
     // ---- Staff: readable only by the person it describes -------------------
-    // Clients read their own doc to discover their role. Nobody writes here;
-    // staff are provisioned from the Firebase console.
+    // Clients read their own doc to discover their role and approval. Drivers
+    // self-register on sign-up (waiting for the owner); updates and deletions
+    // are admin-only.
     match /staff/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if false;
+      // A rider can sign up, but only as a driver waiting for approval: the
+      // account is inactive, so it reads nothing (isStaff needs active == true)
+      // until the owner turns it on, which only an admin can do.
+      allow create: if isOwner(uid)
+        && request.resource.data.role == 'driver'
+        && request.resource.data.active == false
+        && request.resource.data.keys().hasOnly([
+             'role', 'active', 'status', 'name', 'displayName', 'phone', 'email',
+             'vehicle', 'nameSetByRider', 'createdAt', 'updatedAt'
+           ]);
+      allow update, delete: if isAdmin();
     }
 
     // Anything not matched above is denied.

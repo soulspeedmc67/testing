@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { motion, MotionConfig } from 'framer-motion';
 import { App as CapApp } from '@capacitor/app';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { Bike } from 'lucide-react';
 import '../styles/globals.css';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import PremiumSplashScreen from '../components/PremiumSplashScreen';
@@ -65,14 +66,24 @@ function SystemChromeSync({ showSplash, pathname }) {
           return;
         }
 
+        const isDriver = pathname === '/driver' || detectIsDriverApp();
+        if (isDriver) {
+          await setDeviceSystemBars({
+            topColor: '#0F172A',
+            topDarkIcons: false,
+            bottomColor: '#0F172A',
+            bottomDarkIcons: false,
+          });
+          return;
+        }
+
         const isHome = pathname === '/' || pathname === '/shop' || pathname === '';
         const isSearch = pathname === '/search';
-        const isDriver = pathname === '/driver';
 
-        /* In light mode Search and Driver invert to the midnight brand colour,
+        /* In light mode Search inverts to the midnight brand colour,
            which needs light icons. In dark mode every surface is already dark,
            so the inversion is a no-op and the icon polarity is uniform. */
-        const isInverted = isSearch || isDriver;
+        const isInverted = isSearch;
         const topColor = isHome
           ? chrome.homeTop
           : isInverted
@@ -113,12 +124,27 @@ const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
+ * Synchronous detector for dedicated Driver APK or /driver route.
+ */
+export function detectIsDriverApp() {
+  if (typeof window === "undefined") return false;
+  if (window.__DASHIT_ROLE__ === "driver") return true;
+  if (window.AndroidFlavor && typeof window.AndroidFlavor.isDriver === "function" && window.AndroidFlavor.isDriver()) return true;
+  if (window.AndroidFlavor && typeof window.AndroidFlavor.getFlavor === "function" && window.AndroidFlavor.getFlavor() === "driver") return true;
+  if (window.location.pathname.startsWith("/driver")) return true;
+  return false;
+}
+
+/**
  * Whether this load should skip the splash: internal consoles or returning
  * sessions that already saw the launch animation never show it.
  */
 function shouldSkipSplash() {
   if (typeof window === "undefined") return false;
-  if (['/xcyop', '/driver'].includes(window.location.pathname)) return true;
+  // The launch animation belongs to the installed apps: a website visitor
+  // should see the page, not wait behind a splash.
+  if (!isNative()) return true;
+  if (detectIsDriverApp() || ['/xcyop', '/driver'].includes(window.location.pathname)) return true;
   try {
     return !!sessionStorage.getItem("dashit_splash_seen");
   } catch (e) {
@@ -130,14 +156,25 @@ export default function App({ Component, pageProps }) {
   const router = useRouter();
   const currentPathRef = useRef(router.pathname);
 
-  /* Both start true on client and server to preserve hydration parity.
-     useIsomorphicLayoutEffect checks shouldSkipSplash() immediately before
-     browser paint, cleanly skipping the splash for returning visits or internal
-     consoles without flash or layout shift. */
+  /* These start the same on the server and the client, so hydration matches
+     (a first render that asked `window` made the two disagree). The layout
+     effect below sets them right before the first paint: no splash for the
+     driver app, internal consoles, returning visits or the plain website. */
+  const [isDriverApp, setIsDriverApp] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [splashHolding, setSplashHolding] = useState(true);
 
   useIsomorphicLayoutEffect(() => {
+    const isDrv = detectIsDriverApp();
+    if (isDrv) {
+      setIsDriverApp(true);
+      setShowSplash(false);
+      setSplashHolding(false);
+      if (router.pathname !== "/driver") {
+        router.replace("/driver");
+      }
+      return;
+    }
     if (shouldSkipSplash()) {
       setShowSplash(false);
       setSplashHolding(false);
@@ -215,7 +252,9 @@ export default function App({ Component, pageProps }) {
             router.replace("/xcyop");
           }
         } else if (role === "driver") {
+          setIsDriverApp(true);
           setShowSplash(false);
+          setSplashHolding(false);
           if (router.pathname !== "/driver") {
             router.replace("/driver");
           }
@@ -413,7 +452,12 @@ export default function App({ Component, pageProps }) {
       <ScrollChromeProvider>
         <AgeGateProvider>
         <SystemChromeSync showSplash={showSplash} pathname={router.pathname} />
-        {showSplash && (
+        {isDriverApp && (
+          <Head>
+            <title>DASHit Driver</title>
+          </Head>
+        )}
+        {showSplash && !isDriverApp && (
           <PremiumSplashScreen
             // Fires as the splash starts clearing, so the screen behind settles
             // during the handoff rather than after it
@@ -427,31 +471,40 @@ export default function App({ Component, pageProps }) {
             }}
           />
         )}
-        <motion.div
-          key={router.pathname}
-          initial={splashHolding ? { opacity: 0 } : false}
-          animate={{ opacity: splashHolding ? 0 : 1 }}
-          transition={
-            splashHolding || isRevealing
-              ? { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
-              : { duration: 0.15, ease: EASE_OUT }
-          }
-          onAnimationComplete={() => {
-            if (isRevealing) setIsRevealing(false);
-          }}
-          className={
-            router.pathname === '/xcyop'
-              /* Only the desktop console is viewport-locked; on a phone the
-                 admin page scrolls like any other page. */
-              ? "w-full min-h-screen relative lg:h-screen lg:h-[100dvh] lg:overflow-hidden"
-              : "w-full min-h-screen relative"
-          }
-        >
-          <Component {...pageProps} />
-        </motion.div>
+        {isDriverApp && router.pathname !== '/driver' ? (
+          <div className="w-full min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white select-none">
+            <div className="w-20 h-20 rounded-3xl bg-[#FF5B00] flex items-center justify-center shadow-2xl animate-pulse">
+              <Bike className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="mt-4 text-2xl font-black font-mono tracking-wider text-slate-100">DASHit Driver</h1>
+          </div>
+        ) : (
+          <motion.div
+            key={router.pathname}
+            initial={splashHolding ? { opacity: 0 } : false}
+            animate={{ opacity: splashHolding ? 0 : 1 }}
+            transition={
+              splashHolding || isRevealing
+                ? { duration: 0.45, ease: [0.16, 1, 0.3, 1] }
+                : { duration: 0.15, ease: EASE_OUT }
+            }
+            onAnimationComplete={() => {
+              if (isRevealing) setIsRevealing(false);
+            }}
+            className={
+              router.pathname === '/xcyop'
+                /* Only the desktop console is viewport-locked; on a phone the
+                   admin page scrolls like any other page. */
+                ? "w-full min-h-screen relative lg:h-screen lg:h-[100dvh] lg:overflow-hidden"
+                : "w-full min-h-screen relative"
+            }
+          >
+            <Component {...pageProps} />
+          </motion.div>
+        )}
         {/* No shop on the website any more (ordering is in the apps), so no
             cart bar, bottom menu or live order tracker here. */}
-        <CookieConsentBanner />
+        {!isDriverApp && <CookieConsentBanner />}
         </AgeGateProvider>
       </ScrollChromeProvider>
       </ThemeProvider>

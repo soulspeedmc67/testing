@@ -11,7 +11,7 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
 } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { getFirebaseAuth, getDb, AUTH_MODE, DEV_OTP } from "./firebase";
 
 /**
@@ -745,6 +745,28 @@ export async function getStaffRole(uid) {
   return null;
 }
 
+/**
+ * Where a rider stands: "approved" (the owner turned them on), "pending"
+ * (signed up, waiting for the owner), "off" (the owner turned them off) or
+ * "none" (no staff record yet). The rider can read their own staff record.
+ */
+export async function getDriverStatus(uid) {
+  if (!uid) return "none";
+  const role = await getStaffRole(uid);
+  if (role) return "approved";
+  const db = getDb();
+  if (!db) return "none";
+  try {
+    const snap = await getDoc(doc(db, "staff", uid));
+    if (!snap.exists()) return "none";
+    const data = snap.data() || {};
+    if (data.role !== "driver") return "none";
+    return data.status === "pending" ? "pending" : "off";
+  } catch (e) {
+    return "none";
+  }
+}
+
 /** Subscribes to auth changes. Returns an unsubscribe fn. */
 export function watchAuth(callback) {
   const auth = getFirebaseAuth();
@@ -761,4 +783,125 @@ export async function signOut() {
   } catch (e) {}
   const auth = getFirebaseAuth();
   if (auth) await fbSignOut(auth);
+}
+
+/** Ensures a newly signed in or created driver has a staff document in Firestore. */
+export async function ensureDriverStaffDoc(uid, phone, email, name = "") {
+  if (!uid) return;
+  const db = getDb();
+  const givenName = String(name || "").trim();
+  const hasRealName = givenName !== "" && !/^Rider \d{4}$/.test(givenName);
+  const riderName = hasRealName ? givenName : `Rider ${phone.slice(-4)}`;
+
+  if (db) {
+    try {
+      const staffRef = doc(db, "staff", uid);
+      const snap = await getDoc(staffRef);
+      if (!snap.exists()) {
+        await setDoc(staffRef, {
+          name: riderName,
+          displayName: riderName,
+          phone: phone,
+          email: email || `${phone}@riders.dashit.co.in`,
+          role: "driver",
+          vehicle: "Scooter",
+          // A new rider can't use the app until the owner approves them: no
+          // access to orders or customers while inactive (see firestore.rules).
+          active: false,
+          status: "pending",
+          nameSetByRider: hasRealName,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        return;
+      }
+      const data = snap.data() || {};
+      if (!data.role) {
+        // Repair older riders whose staff doc never got a role. Rules make staff
+        // updates admin-only, so this usually throws and the server fallback below runs.
+        // Never approves: that is the owner's tap.
+        await updateDoc(staffRef, { role: "driver", active: false, status: "pending", updatedAt: serverTimestamp() });
+      }
+      if (hasRealName && data.nameSetByRider !== true) {
+        await updateDoc(staffRef, {
+          name: givenName,
+          displayName: givenName,
+          nameSetByRider: true,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      return;
+    } catch (e) {
+      console.warn("Client staff doc write note:", e?.message);
+    }
+  }
+
+  // Fallback to server endpoint via service account
+  try {
+    const auth = getFirebaseAuth();
+    const token = await auth?.currentUser?.getIdToken?.(true);
+    await fetch("/api/staff/add-driver.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "self-register",
+        uid,
+        phone,
+        name: hasRealName ? givenName : "",
+        id_token: token,
+      }),
+    });
+  } catch (apiErr) {
+    console.warn("Backend self-register note:", apiErr?.message);
+  }
+}
+
+/**
+ * Signs in an existing driver or automatically registers a new driver account.
+ * When a rider enters their phone and 4-digit PIN on the driver app/APK,
+ * this function registers them as a driver waiting for the owner's approval
+ * (active: false, status "pending"); the owner approves them in the admin.
+ */
+// Firebase Auth needs 6+ character passwords, so the rider's 4-digit PIN is
+// prefixed. Must match $riderPassword in public/api/staff/add-driver.php.
+const RIDER_PASSWORD_PREFIX = "DASHit-";
+
+export async function registerOrSignInDriver(phone, pin, riderName = "") {
+  const cleanPhone = String(phone || "").replace(/\D/g, "").slice(-10);
+  if (cleanPhone.length !== 10) {
+    return { success: false, message: "Please enter a valid 10-digit mobile number" };
+  }
+  const cleanPin = String(pin || "").trim();
+  if (cleanPin.length !== 4) {
+    return { success: false, message: "Please enter a 4-digit PIN" };
+  }
+
+  const email = `${cleanPhone}@riders.dashit.co.in`;
+  const cleanName = String(riderName || "").trim() || `Rider ${cleanPhone.slice(-4)}`;
+
+  // 1. Attempt sign-in first
+  const signInRes = await signInWithEmail(email, RIDER_PASSWORD_PREFIX + cleanPin, cleanPhone);
+  if (signInRes.success && signInRes.user) {
+    await ensureDriverStaffDoc(signInRes.user.uid, cleanPhone, email, cleanName);
+    return { success: true, user: signInRes.user, isNew: false };
+  }
+
+  // 2. If sign-in failed, check if account already exists
+  // In Firebase Auth, if sign in fails with invalid credentials, try signing up
+  const signUpRes = await signUpWithEmail(email, RIDER_PASSWORD_PREFIX + cleanPin, cleanName, cleanPhone);
+  if (signUpRes.success && signUpRes.user) {
+    await ensureDriverStaffDoc(signUpRes.user.uid, cleanPhone, email, cleanName);
+    return { success: true, user: signUpRes.user, isNew: true };
+  }
+
+  // 3. If sign-up failed with 'email-already-in-use', that means the account exists but the PIN was wrong!
+  if (signUpRes.code === "auth/email-already-in-use") {
+    return { success: false, code: "auth/wrong-pin", message: "Wrong PIN" };
+  }
+
+  return {
+    success: false,
+    code: signInRes.code || signUpRes.code,
+    message: signInRes.message || signUpRes.message || "Authentication failed",
+  };
 }

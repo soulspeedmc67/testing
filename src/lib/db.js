@@ -1185,6 +1185,7 @@ export async function createOrder(orderData, explicitUid = null) {
     orderId: code,
     userId: uid || "anonymous",
     status: ORDER_STATUS.PLACED,
+    otp: sanitized.otp ? String(sanitized.otp) : String(Math.floor(1000 + Math.random() * 9000)),
     driverId: null, // Strictly null on creation as required by rules
     driverName: "",
     statusHistory: [
@@ -1931,7 +1932,7 @@ export function retireFinishedOrder(orderId, status) {
   }
 }
 
-export async function updateOrderStatus(orderId, status) {
+export async function updateOrderStatus(orderId, status, extraFields = {}) {
   // 1. Always update local storage and broadcast first so UI reflects change immediately
   if (typeof window !== "undefined") {
     try {
@@ -1941,6 +1942,10 @@ export async function updateOrderStatus(orderId, status) {
         if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
           ord.status = status;
           ord.updatedAt = new Date().toISOString();
+          if (status === ORDER_STATUS.DELIVERED) {
+            ord.deliveredAt = new Date().toISOString();
+          }
+          Object.assign(ord, extraFields);
           localStorage.setItem("dashit_active_order", JSON.stringify(ord));
         }
       }
@@ -1949,23 +1954,23 @@ export async function updateOrderStatus(orderId, status) {
         const list = JSON.parse(historyStr);
         const updatedList = list.map((o) =>
           String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
-            ? { ...o, status, updatedAt: new Date().toISOString() }
+            ? { ...o, status, updatedAt: new Date().toISOString(), ...(status === ORDER_STATUS.DELIVERED ? { deliveredAt: new Date().toISOString() } : {}), ...extraFields }
             : o
         );
         localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
       }
       window.dispatchEvent(
-        new CustomEvent("dashit_orders_updated", { detail: { orderId, status } })
+        new CustomEvent("dashit_orders_updated", { detail: { orderId, status, ...extraFields } })
       );
       window.dispatchEvent(
-        new CustomEvent("dashit_order_updated", { detail: { orderId, status } })
+        new CustomEvent("dashit_order_updated", { detail: { orderId, status, ...extraFields } })
       );
       window.dispatchEvent(new Event("storage"));
 
       if (window.BroadcastChannel) {
         try {
           const bc = new BroadcastChannel("dashit_orders_channel");
-          bc.postMessage({ type: "ORDER_STATUS_UPDATED", orderId, status });
+          bc.postMessage({ type: "ORDER_STATUS_UPDATED", orderId, status, ...extraFields });
         } catch (e) {}
       }
     } catch (e) {}
@@ -1975,11 +1980,16 @@ export async function updateOrderStatus(orderId, status) {
   if (!db) return { success: true, localUpdated: true };
 
   try {
-    await updateDoc(doc(db, "orders", String(orderId)), {
+    const payload = {
       status,
       updatedAt: serverTimestamp(),
       statusHistory: arrayUnion({ status, at: new Date().toISOString() }),
-    });
+      ...extraFields,
+    };
+    if (status === ORDER_STATUS.DELIVERED && !payload.deliveredAt) {
+      payload.deliveredAt = serverTimestamp();
+    }
+    await updateDoc(doc(db, "orders", String(orderId)), payload);
     return { success: true, firestoreSynced: true };
   } catch (err) {
     console.warn("Firestore updateOrderStatus sync note:", err?.message || err);
@@ -2177,14 +2187,19 @@ export async function claimOrder(orderId, driverId, driverName) {
 
 /** Admin-only: assign a specific driver to an order. */
 export async function assignDriver(orderId, driverId, driverName) {
+  const isUnassigning = !driverId;
+  const targetDriverId = isUnassigning ? null : String(driverId);
+  const targetDriverName = isUnassigning ? "" : (driverName || "");
+
   if (typeof window !== "undefined") {
     try {
       const active = localStorage.getItem("dashit_active_order");
       if (active) {
         const ord = JSON.parse(active);
         if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
-          ord.driverId = driverId;
-          ord.driverName = driverName || "";
+          ord.driverId = targetDriverId;
+          ord.driverName = targetDriverName;
+          ord.assignedAt = isUnassigning ? null : new Date().toISOString();
           localStorage.setItem("dashit_active_order", JSON.stringify(ord));
         }
       }
@@ -2193,7 +2208,7 @@ export async function assignDriver(orderId, driverId, driverName) {
         const list = JSON.parse(historyStr);
         const updatedList = list.map((o) =>
           String(o.orderId) === String(orderId) || String(o.id) === String(orderId)
-            ? { ...o, driverId, driverName: driverName || "" }
+            ? { ...o, driverId: targetDriverId, driverName: targetDriverName, assignedAt: isUnassigning ? null : new Date().toISOString() }
             : o
         );
         localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
@@ -2206,8 +2221,9 @@ export async function assignDriver(orderId, driverId, driverName) {
 
   try {
     await updateDoc(doc(db, "orders", String(orderId)), {
-      driverId,
-      driverName: driverName || "",
+      driverId: targetDriverId,
+      driverName: targetDriverName,
+      assignedAt: isUnassigning ? null : serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
     return { success: true, firestoreSynced: true };
@@ -2277,13 +2293,17 @@ export function watchDrivers(callback) {
         (snap) => {
           const staffDrivers = snap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
-            .filter((d) => d.active !== false)
             .map((d) => ({
               id: d.id,
               name: d.name || d.displayName || d.email?.split("@")[0] || "Rider",
               phone: d.phone || "",
               vehicle: d.vehicle || "Scooter",
               email: d.email || "",
+              photo: d.photo || d.photoUrl || "",
+              photoUrl: d.photoUrl || d.photo || "",
+              active: d.active !== false,
+              // "pending": signed up in the driver app, waiting for the owner's approval.
+              status: d.status || "",
             }));
           callback(staffDrivers);
         },
