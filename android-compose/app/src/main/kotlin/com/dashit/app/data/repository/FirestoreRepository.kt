@@ -7,6 +7,7 @@ import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.Source
 import java.util.Date
+import java.util.concurrent.Executors
 import kotlin.math.max
 import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.Offer
@@ -58,6 +59,10 @@ class FirestoreRepository {
         val products = db.collection("products")
         val catalogue = HashMap<String, Product>() // by document id
         var closed = false
+        // Firestore answers on the main thread by default, and reading ~4,600
+        // products there froze scrolling. One background thread does it all,
+        // so the catalogue is only ever touched from one place.
+        val worker = Executors.newSingleThreadExecutor()
 
         // The built-in catalogue only stands in if Firestore hasn't answered in
         // a few seconds (no network and nothing cached yet) or fails outright.
@@ -90,7 +95,7 @@ class FirestoreRepository {
         }
 
         fun listenToEverything() {
-            listener = products.addSnapshotListener { snapshot, error ->
+            listener = products.addSnapshotListener(worker) { snapshot, error ->
                 if (closed) return@addSnapshotListener
                 if (error != null) {
                     fallback.cancel()
@@ -111,7 +116,7 @@ class FirestoreRepository {
                 listenToEverything()
             } else {
                 // 1. What this phone already has: free.
-                products.get(Source.CACHE).addOnCompleteListener { task ->
+                products.get(Source.CACHE).addOnCompleteListener(worker) { task ->
                     if (closed) return@addOnCompleteListener
                     apply(if (task.isSuccessful) task.result?.documents.orEmpty() else emptyList())
                     // The phone's copy went missing (cleared storage): read it all again.
@@ -124,7 +129,7 @@ class FirestoreRepository {
                     // 2. Then only what changed since, live.
                     listener = products
                         .whereGreaterThan("updatedAt", Timestamp(Date(sync.syncedAt)))
-                        .addSnapshotListener { snapshot, error ->
+                        .addSnapshotListener(worker) { snapshot, error ->
                             if (closed || error != null || snapshot == null) return@addSnapshotListener
                             val changes = snapshot.documentChanges
                             if (changes.isEmpty()) return@addSnapshotListener
@@ -146,6 +151,7 @@ class FirestoreRepository {
             closed = true
             fallback.cancel()
             listener?.remove()
+            worker.shutdown()
         }
     }
 

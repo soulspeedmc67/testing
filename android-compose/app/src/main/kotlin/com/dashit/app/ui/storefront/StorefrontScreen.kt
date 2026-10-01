@@ -155,11 +155,16 @@ fun StorefrontScreen(
         )
     }
     val filteredProducts by storefrontVm.filteredProducts.collectAsState()
+    val filteredProductRows = remember(filteredProducts) { filteredProducts.chunked(3) }
     val tobaccoProducts by storefrontVm.tobaccoProducts.collectAsState()
     val isBrowsing by storefrontVm.isBrowsing.collectAsState()
     val selectedCategory by storefrontVm.selectedCategory.collectAsState()
 
     val cartItems by cartVm.items.collectAsState()
+    // How many of each item are in the cart, worked out once per cart change, not once per card.
+    val cartQty = remember(cartItems) {
+        cartItems.groupingBy { it.productId }.fold(0) { total, item -> total + item.qty }
+    }
     val bill by cartVm.bill.collectAsState()
     val activeOrder by OrderRepository.shared.activeOrder.collectAsState()
     val liveTracking by OrderRepository.shared.liveTracking.collectAsState()
@@ -405,7 +410,7 @@ fun StorefrontScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(rail.products, key = { it.id }) { product ->
-                                val qty = cartItems.filter { it.productId == product.id }.sumOf { it.qty }
+                                val qty = cartQty[product.id] ?: 0
                                 ProductCard(
                                     product = product,
                                     quantity = qty,
@@ -445,7 +450,7 @@ fun StorefrontScreen(
                     }
                 }
 
-                val chunkedProducts = filteredProducts.chunked(3)
+                val chunkedProducts = filteredProductRows
                 items(chunkedProducts, key = { it.first().id }) { rowProducts ->
                     Row(
                         modifier = Modifier
@@ -454,7 +459,7 @@ fun StorefrontScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowProducts.forEach { product ->
-                            val qty = cartItems.filter { it.productId == product.id }.sumOf { it.qty }
+                            val qty = cartQty[product.id] ?: 0
                             ProductCard(
                                 product = product,
                                 quantity = qty,
@@ -575,7 +580,7 @@ fun StorefrontScreen(
                         .sortedBy { it.img.isBlank() }
                         .take(9)
                 },
-                quantityOf = { p -> cartItems.filter { it.productId == p.id }.sumOf { it.qty } },
+                quantityOf = { p -> cartQty[p.id] ?: 0 },
                 onOpenProduct = { detailProduct = it }
             )
         }

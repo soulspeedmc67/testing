@@ -2,16 +2,20 @@ package com.dashit.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dashit.app.data.CleanPhotos
 import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.CategoryTile
 import com.dashit.app.data.model.Offer
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.repository.FirestoreRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,8 +29,25 @@ class StorefrontViewModel(
     private val repository: FirestoreRepository = FirestoreRepository()
 ) : ViewModel() {
 
-    private val _products = MutableStateFlow<List<Product>>(emptyList())
-    val products: StateFlow<List<Product>> = _products.asStateFlow()
+    /** Every browseable product as it arrives, before sorting. */
+    private val _rawProducts = MutableStateFlow<List<Product>>(emptyList())
+
+    /**
+     * Browseable products, items with a clean white photo first, then other
+     * photos, then items without one. Sorted and grouped off the main thread:
+     * with ~4,600 items, doing it on the main thread dropped frames each time
+     * the catalogue or a stock level changed.
+     */
+    val products: StateFlow<List<Product>> = _rawProducts.combine(CleanPhotos.names) { prods, clean ->
+        prods.sortedBy { CleanPhotos.rank(it.img, clean) }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** The same products by shelf (lower-case shelf name), in the order above. */
+    private val byShelf: StateFlow<Map<String, List<Product>>> = products.map { prods ->
+        prods.groupBy { it.cat.trim().lowercase() }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     /** Tobacco and other 18+ items: never browsed, only listed in the tobacco section. */
     private val _tobaccoProducts = MutableStateFlow<List<Product>>(emptyList())
@@ -41,9 +62,10 @@ class StorefrontViewModel(
      * a fixed list left ~4,100 of 4,651 items on none: the shop's categories
      * are "Others", "Personal Care", "Staples" and so on.)
      */
-    val categories: StateFlow<List<Category>> = _remoteCategories.combine(_products) { remote, prods ->
-        remote.ifEmpty { deriveCategories(prods) }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val categories: StateFlow<List<Category>> = _remoteCategories.combine(byShelf) { remote, shelves ->
+        remote.ifEmpty { deriveCategories(shelves) }
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _offers = MutableStateFlow<List<Offer>>(emptyList())
     val offers: StateFlow<List<Offer>> = _offers.asStateFlow()
@@ -59,46 +81,36 @@ class StorefrontViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     /** A tile per shelf with items, showing up to four of its own photos. */
-    val categoryTiles: StateFlow<List<CategoryTile>> = categories.combine(_products) { cats, prods ->
+    val categoryTiles: StateFlow<List<CategoryTile>> = categories.combine(byShelf) { cats, shelves ->
         cats.mapNotNull { cat ->
-            val items = prods.filter { it.cat.equals(cat.name, ignoreCase = true) }
+            val items = shelves[cat.name.trim().lowercase()].orEmpty()
             if (items.isEmpty()) return@mapNotNull null
             CategoryTile(
                 id = cat.id,
                 name = cat.name,
-                previewImages = items.map { it.img }.filter { it.isNotBlank() }.distinct().take(4),
+                previewImages = items.asSequence().map { it.img }.filter { it.isNotBlank() }.distinct().take(4).toList(),
                 productCount = items.size
             )
         }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
-    val rails: StateFlow<List<ProductRail>> = _products.combine(categories) { prods, cats ->
-        val effectiveCats = if (cats.isNotEmpty()) cats else deriveCategories(prods)
-        effectiveCats.mapNotNull { cat ->
-            val matching = prods.filter { it.cat.equals(cat.name, ignoreCase = true) }
+    val rails: StateFlow<List<ProductRail>> = categories.combine(byShelf) { cats, shelves ->
+        cats.mapNotNull { cat ->
+            val matching = shelves[cat.name.trim().lowercase()].orEmpty()
             if (matching.isEmpty()) null
-            else ProductRail(
-                id = cat.id,
-                title = cat.name,
-                products = matching.take(12)
-            )
+            else ProductRail(id = cat.id, title = cat.name, products = matching.take(12))
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val filteredProducts: StateFlow<List<Product>> = combine(_products, _selectedCategory, _searchQuery) { prods, cat, query ->
-        var list = prods
-        if (!cat.isNullOrBlank()) {
-            val filter = cat.lowercase()
-            list = list.filter { p ->
-                p.cat.lowercase() == filter ||
-                (filter == "snacks" && (p.name.contains("chips", true) || p.name.contains("namkeen", true))) ||
-                (filter.contains("drinks") && (p.cat.equals("Drinks", true) || p.name.contains("drink", true) || p.name.contains("bull", true))) ||
-                (filter.contains("ice cream") && (p.cat.equals("Dairy", true) || p.name.contains("cream", true) || p.name.contains("amul", true))) ||
-                (filter.contains("vegetables") && (p.cat.equals("Vegetables", true) || p.cat.equals("Fresh Fruits", true))) ||
-                (filter.contains("dairy") && p.cat.equals("Dairy", true)) ||
-                (filter.contains("sweets") && (p.name.contains("chocolate", true) || p.name.contains("munch", true) || p.name.contains("silk", true)))
-            }
-        }
+    /**
+     * A shelf lists exactly the items filed on it. (It used to pull in items
+     * by name too, which put Amul butter on Ice Cream and Dairy Silk on every
+     * "Sweets" shelf.)
+     */
+    val filteredProducts: StateFlow<List<Product>> = combine(products, byShelf, _selectedCategory, _searchQuery) { prods, shelves, cat, query ->
+        var list = if (cat.isNullOrBlank()) prods else shelves[cat.trim().lowercase()].orEmpty()
         if (query.trim().isNotEmpty()) {
             val q = query.trim().lowercase()
             list = list.filter {
@@ -106,16 +118,18 @@ class StorefrontViewModel(
             }
         }
         list
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
         viewModelScope.launch {
-            repository.observeProducts().collect { everything ->
-                val (tobacco, browseable) = everything.partition { it.isAgeRestricted }
-                _tobaccoProducts.value = tobacco
-                // Items with a photo first, everywhere they're listed.
-                _products.value = browseable.sortedBy { it.img.isBlank() }
-            }
+            repository.observeProducts()
+                .map { everything -> everything.partition { it.isAgeRestricted } }
+                .flowOn(Dispatchers.Default)
+                .collect { (tobacco, browseable) ->
+                    _tobaccoProducts.value = tobacco
+                    _rawProducts.value = browseable
+                }
         }
         viewModelScope.launch {
             repository.observeCategories().collect { _remoteCategories.value = it }
@@ -142,7 +156,7 @@ class StorefrontViewModel(
         _searchQuery.value = ""
     }
 
-    private fun deriveCategories(products: List<Product>): List<Category> {
+    private fun deriveCategories(shelves: Map<String, List<Product>>): List<Category> {
         val preferredOrder = listOf(
             "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
             "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
@@ -150,7 +164,9 @@ class StorefrontViewModel(
             "Spices", "Chicken", "Meat & Fish", "Home Care", "Kitchen Care", "Personal Care",
             "Baby Care", "Health & Wellness", "Pet Care", "Stationery", "Toys & Games", "Electronics"
         )
-        val counts = products.map { it.cat.trim() }.filter { it.isNotEmpty() }.groupingBy { it }.eachCount()
+        // The shelf's name as its first item spells it; how many items it has.
+        val counts = shelves.filterKeys { it.isNotEmpty() }
+            .map { (_, items) -> items.first().cat.trim() to items.size }.toMap()
         // Familiar shelves in store order, then the rest busiest first; "Others" last.
         fun rank(name: String): Int = when {
             name.equals("Others", true) || name.equals("Other", true) -> Int.MAX_VALUE

@@ -60,6 +60,11 @@ final class CatalogueStore: ObservableObject {
     private var productsByCategoryKey: [String: [Product]] = [:]
     private var cachedSearchEntries: [ProductSearch.Entry]?
 
+    /// Names of photos on a clean white background (see CleanPhotos.swift).
+    private var cleanPhotos: Set<String> = []
+    /// The catalogue as it arrived, before sorting.
+    private var arrived: [Product] = []
+
     private var productListener: ListenerRegistration?
     private var categoryListener: ListenerRegistration?
     private var offerListener: ListenerRegistration?
@@ -76,6 +81,21 @@ final class CatalogueStore: ObservableObject {
             }
         }
         startListeners()
+        CleanPhotos.load { [weak self] names in
+            guard let self, names != self.cleanPhotos else { return }
+            self.cleanPhotos = names
+            if !self.arrived.isEmpty { self.products = self.photoOrder(self.arrived) }
+        }
+    }
+
+    /// Items with a clean white photo first, then other photos, then none;
+    /// otherwise in the order they came.
+    private func photoOrder(_ list: [Product]) -> [Product] {
+        let clean = cleanPhotos
+        return list.enumerated()
+            .map { (rank: CleanPhotos.rank($0.element.img, in: clean), index: $0.offset, product: $0.element) }
+            .sorted { $0.rank != $1.rank ? $0.rank < $1.rank : $0.index < $1.index }
+            .map(\.product)
     }
 
     /// Products filed under a category, looked up instead of searched for.
@@ -223,14 +243,16 @@ final class CatalogueStore: ObservableObject {
             // An empty answer is usually an empty offline cache: keep the
             // skeletons up until real products (or the fallback) arrive.
             guard !fetched.isEmpty else { return }
+            self.arrived = fetched
+            let ordered = self.photoOrder(fetched)
             // The skeletons cross-fade into the catalogue on its first arrival.
             if self.isLoading {
                 withAnimation(.easeOut(duration: 0.25)) {
-                    self.products = fetched
+                    self.products = ordered
                     self.isLoading = false
                 }
             } else {
-                self.products = fetched
+                self.products = ordered
             }
         }
 

@@ -67,7 +67,9 @@ fun Modifier.shimmer(): Modifier = composed {
     }
     if (animationsOff) return@composed this
 
-    val frameTime by produceState(0L) {
+    // Read only while drawing, so each frame redraws the highlight without
+    // recomposing the card underneath (which made scrolling stutter).
+    val frameTime = produceState(0L) {
         while (true) withFrameMillis { value = it }
     }
     var rootX by remember { mutableFloatStateOf(0f) }
@@ -78,7 +80,7 @@ fun Modifier.shimmer(): Modifier = composed {
         .drawWithContent {
             drawContent()
             val band = ShimmerBand.toPx()
-            val progress = (frameTime % SHIMMER_PERIOD_MS) / SHIMMER_PERIOD_MS.toFloat()
+            val progress = (frameTime.value % SHIMMER_PERIOD_MS) / SHIMMER_PERIOD_MS.toFloat()
             val start = -band + progress * (ShimmerSweep.toPx() + band) - rootX
             drawRect(
                 brush = Brush.horizontalGradient(

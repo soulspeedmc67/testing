@@ -569,7 +569,7 @@ private fun OsmPinPickerView(
                 factory = { ctx ->
                     val config = Configuration.getInstance()
                     config.load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-                    config.userAgentValue = "DASHit-App/1.0 (https://dashit.in; support@dashit.in)"
+                    config.userAgentValue = "DASHit-App/1.0 (https://dashit.co.in)"
                     val basePath = File(ctx.cacheDir, "osmdroid").apply { mkdirs() }
                     val tileCache = File(basePath, "tiles").apply { mkdirs() }
                     config.osmdroidBasePath = basePath

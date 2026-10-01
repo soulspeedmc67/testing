@@ -19,6 +19,7 @@ import com.google.firebase.appcheck.FirebaseAppCheck
 class DashitApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.dashit.app.data.CleanPhotos.load(this)
         // Without google-services.json there's no Firebase and the app runs on
         // its built-in catalogue; nothing to protect then.
         if (FirebaseApp.getApps(this).isEmpty()) return
