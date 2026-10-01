@@ -327,7 +327,7 @@ export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, onAut
             className={secondaryBtn}
           >
             {bulk?.busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            <span>Upload filled list</span>
+            <span>Upload photo list (CSV)</span>
           </button>
           <input
             ref={fileInputRef}
