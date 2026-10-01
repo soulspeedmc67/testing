@@ -30,6 +30,11 @@ if ($mobile === null) {
 }
 $config = dashit_sign_in_config();
 $askForCode = $config['ask_for_code'];
+// The apps sign in with Google or Apple now. With codes off this endpoint
+// would sign anyone in as any number, so it stays shut until codes are on.
+if (!$askForCode) {
+    dashit_respond(403, ['error' => 'Signing in with a number is switched off. Please use Google or Apple.']);
+}
 $code = is_string($body['code'] ?? null) ? preg_replace('/\D/', '', $body['code']) : '';
 if ($askForCode && strlen($code) !== 6) {
     dashit_respond(400, ['error' => 'Enter the 6-digit code from WhatsApp.']);

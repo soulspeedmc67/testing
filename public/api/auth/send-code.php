@@ -22,8 +22,9 @@ if ($mobile === null) {
 
 $config = dashit_sign_in_config();
 if (!$config['ask_for_code']) {
+    // Number sign-in is off (the apps use Google or Apple); see verify-code.php.
     dashit_rate_limit('confirm-number', 30);
-    dashit_respond(200, ['sent' => false, 'code_needed' => false]);
+    dashit_respond(403, ['error' => 'Signing in with a number is switched off. Please use Google or Apple.']);
 }
 $isReview = dashit_is_review_mobile($config, $mobile);
 if (!$isReview && ($config['whatsapp_token'] === '' || $config['whatsapp_phone_number_id'] === '')) {
