@@ -98,3 +98,27 @@ docker run --rm -p 8099:8099 -v "$PWD/public:/app/public:ro" \
   -e OTP_DATA_DIR=/tmp/otp -e RATE_LIMIT_DIR=/tmp/rate \
   php:8.3-cli php -S 0.0.0.0:8099 -t /app/public
 ```
+
+## 5. Push notifications (orders)
+
+`public/api/push/` sends order notifications through Firebase Cloud Messaging
+(free). The apps hand their push token to `register.php`; after an order
+changes, whoever changed it calls `notify.php`, which reads the order and sends
+the matching message once per status. Tokens live in `pushTokens/`, sent marks
+in `pushSent/`; `firestore.rules` give apps no access to either.
+
+Android needs nothing more. iPhone needs Apple's push key, once:
+
+1. developer.apple.com → Certificates, Identifiers & Profiles → **Keys** → `+`,
+   tick **Apple Push Notifications service (APNs)**, download the `.p8` file
+   (only downloadable once) and note its **Key ID**. Your Team ID is
+   `8V873ZU49N`.
+2. Firebase console → Project settings → **Cloud Messaging** → under each iOS
+   app (`com.dashit.app` and `com.dashit.admin`) → APNs Authentication Key →
+   Upload: the `.p8`, the Key ID and the Team ID.
+3. developer.apple.com → **Identifiers** → `com.dashit.app` → tick **Push
+   Notifications** → Save. Then **Profiles** → the App Store profile for
+   `com.dashit.app` → Edit → Save (regenerates it) → Download. Put it in the
+   GitHub secret `IOS_PROVISION_PROFILE_BASE64` on soulspeedmc67/testing
+   (`base64 -i profile.mobileprovision | pbcopy`). The admin app's profile
+   already includes push.
