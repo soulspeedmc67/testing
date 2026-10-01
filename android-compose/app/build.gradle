@@ -38,6 +38,17 @@ android {
             applicationIdSuffix ""
             debuggable true
         }
+        // Local speed tests only: optimised like release, signed with the
+        // debug key, never uploaded. Debug builds run Compose several times
+        // slower than what shoppers get, so they can't judge smoothness.
+        profile {
+            initWith release
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
+        }
+    }
+    sourceSets {
+        profile { kotlin.srcDirs += 'src/release/kotlin' }
     }
 
     compileOptions {

@@ -65,6 +65,10 @@ fun CategoriesScreen(
     val categoryTiles by storefrontVm.categoryTiles.collectAsState()
     val allProducts by storefrontVm.products.collectAsState()
     val cartItems by cartVm.items.collectAsState()
+    // How many of each item are in the cart, worked out once per cart change, not once per card.
+    val cartQty = remember(cartItems) {
+        cartItems.groupingBy { it.productId }.fold(0) { total, item -> total + item.qty }
+    }
 
     var selectedTileId by remember(categoryTiles) {
         mutableStateOf(categoryTiles.firstOrNull()?.id ?: "")
@@ -187,7 +191,7 @@ fun CategoriesScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(filteredProducts, key = { it.id }) { product ->
-                            val qty = cartItems.filter { it.productId == product.id }.sumOf { it.qty }
+                            val qty = cartQty[product.id] ?: 0
                             ProductCard(
                                 product = product,
                                 quantity = qty,

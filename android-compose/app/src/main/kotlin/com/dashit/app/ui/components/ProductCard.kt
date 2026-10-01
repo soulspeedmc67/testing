@@ -78,11 +78,12 @@ fun ProductCard(
             if (product.isAgeRestricted) {
                 PlainPackArt(modifier = Modifier.matchParentSize().clip(imageShape))
             } else {
+                val context = LocalContext.current
+                val request = remember(product.img) {
+                    ImageRequest.Builder(context).data(product.img).crossfade(200).build()
+                }
                 ShimmerImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(product.img)
-                        .crossfade(200)
-                        .build(),
+                    model = request,
                     contentDescription = product.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier

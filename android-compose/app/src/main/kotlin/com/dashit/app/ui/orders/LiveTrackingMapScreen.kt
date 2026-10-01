@@ -673,7 +673,7 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?) {
         factory = { ctx ->
             val config = Configuration.getInstance()
             config.load(ctx, ctx.getSharedPreferences("osmdroid", Context.MODE_PRIVATE))
-            config.userAgentValue = "DASHit-App/1.0 (https://dashit.in; support@dashit.in)"
+            config.userAgentValue = "DASHit-App/1.0 (https://dashit.co.in)"
             val basePath = File(ctx.cacheDir, "osmdroid").apply { mkdirs() }
             config.osmdroidBasePath = basePath
             config.osmdroidTileCache = File(basePath, "tiles").apply { mkdirs() }
@@ -792,7 +792,7 @@ private suspend fun fetchRoadRoute(from: GeoPoint, to: GeoPoint): List<GeoPoint>
         val connection = (url.openConnection() as HttpURLConnection).apply {
             connectTimeout = 6000
             readTimeout = 6000
-            setRequestProperty("User-Agent", "DASHit-App/1.0 (https://dashit.in; support@dashit.in)")
+            setRequestProperty("User-Agent", "DASHit-App/1.0 (https://dashit.co.in)")
         }
         connection.inputStream.bufferedReader().use { reader ->
             val json = JSONObject(reader.readText())
