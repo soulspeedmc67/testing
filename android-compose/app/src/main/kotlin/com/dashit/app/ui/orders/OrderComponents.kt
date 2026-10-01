@@ -194,12 +194,28 @@ fun OrderStatusPill(
                 if (!stage.isFinished) LiveDot()
                 Text(
                     text = subtitle,
-                    color = DashitColors.TextSecondary,
+                    color = PillSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+        }
+
+        // The code the rider asks for at the door, where it can't be missed.
+        val code = order.otp?.takeIf { it.isNotBlank() && !stage.isFinished }
+        if (code != null) {
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.1f))
+                    .padding(horizontal = 9.dp, vertical = 4.dp)
+                    .semantics { contentDescription = "Delivery code ${code.toCharArray().joinToString(" ")}" },
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("OTP", color = PillSecondary, fontSize = 8.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, lineHeight = 10.sp)
+                Text(code, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp, lineHeight = 17.sp)
             }
         }
 
@@ -216,7 +232,7 @@ fun OrderStatusPill(
                     .semantics { contentDescription = "Dismiss" },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.Close, contentDescription = null, tint = DashitColors.TextSecondary, modifier = Modifier.size(15.dp))
+                Icon(Icons.Filled.Close, contentDescription = null, tint = PillSecondary, modifier = Modifier.size(15.dp))
             }
         } else if (stage == OrderStatus.OUT_FOR_DELIVERY) {
             // Minutes to the door, only once a rider has the order.
@@ -242,11 +258,14 @@ fun OrderStatusPill(
                     .background(Color.White.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = DashitColors.TextSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = PillSecondary, modifier = Modifier.size(20.dp))
             }
         }
     }
 }
+
+/** The pill is always the dark tracker panel, in light mode too. */
+private val PillSecondary = Color(0xFFC7C7CC)
 
 /** The small green "live" dot that pulses beside the status line. */
 @Composable

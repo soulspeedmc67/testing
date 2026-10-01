@@ -57,7 +57,7 @@ import com.dashit.app.core.design.DashitColors
 private const val SHIMMER_PERIOD_MS = 1600L
 private val ShimmerBand = 180.dp
 private val ShimmerSweep = 520.dp
-private val ShimmerHighlight = Color.White.copy(alpha = 0.06f)
+private val ShimmerHighlight get() = Color.White.copy(alpha = if (DashitColors.isDark) 0.06f else 0.55f)
 
 /** Sweeps the skeleton highlight across this view's shapes. */
 fun Modifier.shimmer(): Modifier = composed {

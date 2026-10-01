@@ -26,8 +26,9 @@ extension Color {
     /// Chips, steppers, image wells and quiet fills.
     static let surfaceMuted = Color.adaptive(light: 0xF0F2F5, dark: 0x222228)
     /// Top of the home header's warm backdrop: the web header's peach in light,
-    /// a deep ember glow in dark. Fades into `surface`.
-    static let headerGlow = Color.adaptive(light: 0xFFE3CC, dark: 0x2A1405)
+    /// a warm amber-gold glow in dark (as on Android; the earlier near-black
+    /// ember read as dull). Fades into `surface`.
+    static let headerGlow = Color.adaptive(light: 0xFFE3CC, dark: 0x6E4708)
     /// The live order card is the web tracker's plain black panel in both themes.
     static let trackerCard = Color(hex: 0x16171B)
 

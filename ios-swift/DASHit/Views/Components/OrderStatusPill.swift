@@ -33,6 +33,12 @@ struct OrderStatusPill: View {
         return stage.subtitle(etaMinutes: etaMinutes, itemCount: itemCount)
     }
 
+    /// Shown until the order is delivered or cancelled.
+    private var deliveryCode: String? {
+        guard !stage.isFinished, let code = order.otp?.trimmingCharacters(in: .whitespaces), !code.isEmpty else { return nil }
+        return code
+    }
+
     var body: some View {
         HStack(spacing: 11) {
             ring
@@ -62,6 +68,27 @@ struct OrderStatusPill: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .clipped()
+
+            // The code the rider asks for at the door, where it can't be missed.
+            if let code = deliveryCode {
+                VStack(spacing: 0) {
+                    Text("OTP")
+                        .font(.system(size: 8.5, weight: .heavy))
+                        .tracking(1)
+                        .foregroundColor(.textSecondary)
+                    Text(code)
+                        .font(.system(size: 15, weight: .heavy, design: .rounded))
+                        .tracking(1.5)
+                        .monospacedDigit()
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Delivery code \(code.map(String.init).joined(separator: " "))")
+                .transition(.scale.combined(with: .opacity))
+            }
 
             trailing
         }

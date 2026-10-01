@@ -245,7 +245,7 @@ struct LiveTrackingMapView: View {
 
             // Live rider, drawn with the branded rider artwork
             if let rider = vm.riderLocation {
-                Annotation("Delivery partner", coordinate: rider.coordinate, anchor: .center) {
+                Annotation("Delivery partner", coordinate: vm.riderOnRoad ?? rider.coordinate, anchor: .center) {
                     RiderMapMarker(
                         tracking: rider,
                         destination: vm.activeOrder?.deliveryAddress.coordinate

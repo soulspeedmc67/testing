@@ -29,6 +29,12 @@ final class LiveTrackingViewModel: ObservableObject {
     /// False while `routePath` is only the straight line, shown until a
     /// router answers.
     @Published var isRoadRoute = false
+    /// Where to draw the rider: on the road when the phone's fix is within a few
+    /// metres of it (GPS wanders off the road; the rider doesn't), else the fix.
+    /// Keeps the rider on the drawn route instead of beside it.
+    @Published private(set) var riderOnRoad: CLLocationCoordinate2D?
+    /// How far off the road a fix can be and still count as on it.
+    private static let snapMeters = 45.0
 
     private var orderListener: ListenerRegistration?
     private var trackingListener: ListenerRegistration?
@@ -157,14 +163,18 @@ final class LiveTrackingViewModel: ObservableObject {
         guard let order = activeOrder, !order.status.stage.isFinished else {
             routeTask?.cancel()
             routePath = []
+            riderOnRoad = nil
             fullRoute = []
             remainingMeters = nil
             isRoadRoute = false
             return
         }
-        let onTheWay = order.status.stage == .onTheWay
+        // Once the rider's phone shares a position, the road runs from the rider
+        // (a route from the store while the rider was elsewhere put the rider
+        // and the road in different places).
         let rider = riderLocation?.coordinate
-        let start = (onTheWay ? rider : nil) ?? DeliveryEta.hub
+        let onTheWay = rider != nil
+        let start = rider ?? DeliveryEta.hub
         let destination = order.deliveryAddress.coordinate
 
         showAhead(of: rider, onTheWay: onTheWay)
@@ -177,7 +187,7 @@ final class LiveTrackingViewModel: ObservableObject {
         } else if !isRoadRoute {
             needsFetch = sinceFetch > 12
         } else if let on = RouteGeometry.nearest(fullRoute, to: start) {
-            needsFetch = on.meters > 90 && sinceFetch > 8
+            needsFetch = on.meters > Self.snapMeters && sinceFetch > 6
         } else {
             needsFetch = true
         }
@@ -193,7 +203,7 @@ final class LiveTrackingViewModel: ObservableObject {
                 self.fullRoute = path
                 self.isRoadRoute = true
                 self.totalMeters = max(self.totalMeters ?? 0, RouteGeometry.length(path))
-                self.showAhead(of: self.riderLocation?.coordinate, onTheWay: self.activeOrder?.status.stage == .onTheWay)
+                self.showAhead(of: self.riderLocation?.coordinate, onTheWay: self.riderLocation != nil)
                 self.frameOnce(RoadRouter.boundingRect(of: self.routePath))
                 return
             }
@@ -215,8 +225,15 @@ final class LiveTrackingViewModel: ObservableObject {
     /// Draws only the road still ahead of the rider, and keeps the distance left.
     private func showAhead(of rider: CLLocationCoordinate2D?, onTheWay: Bool) {
         var ahead = fullRoute
-        if isRoadRoute, onTheWay, let rider { ahead = RouteGeometry.trim(fullRoute, to: rider) }
+        var drawnAt = rider
+        if isRoadRoute, onTheWay, let rider {
+            ahead = RouteGeometry.trim(fullRoute, to: rider)
+            if let on = RouteGeometry.nearest(fullRoute, to: rider), on.meters <= Self.snapMeters {
+                drawnAt = on.point
+            }
+        }
         routePath = ahead
+        withAnimation(.easeInOut(duration: 1.0)) { riderOnRoad = drawnAt }
         let length = RouteGeometry.length(ahead)
         // A straight line stands in as the crow flies, so add the bends.
         remainingMeters = ahead.count >= 2 ? length * (isRoadRoute ? 1 : 1.3) : nil

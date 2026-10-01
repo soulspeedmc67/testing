@@ -70,6 +70,7 @@ object OnlinePayment {
         orderCode: String,
         amountRupees: Double,
         customer: UserProfile,
+        option: PayOption? = null,
         onConfirming: () -> Unit = {}
     ): Receipt {
         val paise = Math.round(amountRupees * 100).toInt()
@@ -106,6 +107,11 @@ object OnlinePayment {
                     .put("timeout", 600)
                     .put("send_sms_hash", true)
                     .put("remember_customer", false)
+                // The way to pay picked in the checkout: Razorpay shows only that.
+                option?.let { picked ->
+                    options.put("config", picked.checkoutConfig())
+                    options.getJSONObject("prefill").put("method", picked.method)
+                }
                 checkout.open(activity, options)
             }
         } catch (e: Exception) {

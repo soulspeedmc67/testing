@@ -4,24 +4,25 @@ import SwiftUI
 @MainActor
 final class CheckoutViewModel: ObservableObject {
     @Published var selectedAddress: DeliveryAddress
-    /// "online" (Razorpay's checkout: UPI, cards, netbanking, wallets, EMI, Pay Later)
-    /// or "cod" (cash on delivery). The last choice is kept; the older per-UPI-app
-    /// choices ("upi:...") count as online.
-    @Published var paymentMethod: String = {
-        guard let saved = UserDefaults.standard.string(forKey: CheckoutViewModel.lastPaymentKey) else { return "cod" }
-        return saved == "cod" ? "cod" : "online"
-    }()
+    /// Every way to pay online on this phone (see `PayOption`).
+    let payOptions: [PayOption]
+    /// "cod", or the id of a way to pay online picked here (a UPI app, any UPI,
+    /// card, netbanking, wallet, EMI, Pay Later); Razorpay then opens on just
+    /// that. The last choice is kept.
+    @Published var paymentMethod: String = "cod"
     @Published var isSubmitting: Bool = false
     @Published var progressText = "Placing Order..."
 
     private static let lastPaymentKey = "dashit_last_payment_method"
 
-    var paysOnline: Bool { paymentMethod == "online" && OnlinePayment.isAvailable }
+    var paysOnline: Bool { paymentMethod != "cod" && OnlinePayment.isAvailable }
+    var payOption: PayOption? { payOptions.first { $0.id == paymentMethod } }
 
     @Published var orderError: String?
     @Published var completedOrder: Order?
 
     init() {
+        payOptions = PayOption.all
         self.selectedAddress = LocalStorage.shared.loadAddress() ?? DeliveryAddress(
             nickname: "Home",
             street: "Court Road, Lal Chowk",
@@ -31,6 +32,11 @@ final class CheckoutViewModel: ObservableObject {
             latitude: 33.7311,
             longitude: 75.1487
         )
+        let saved = UserDefaults.standard.string(forKey: Self.lastPaymentKey)
+        if let saved, saved != "cod" {
+            // The older "online" choice, or an app since removed: the first UPI way.
+            paymentMethod = payOptions.contains { $0.id == saved } ? saved : (payOptions.first?.id ?? "cod")
+        }
     }
 
     /// ETA and serviceability for the selected address (web deliveryEta.js).
@@ -93,7 +99,7 @@ final class CheckoutViewModel: ObservableObject {
         var receipt: PaymentReceipt?
         if paysOnline {
             do {
-                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user) { [weak self] in
+                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user, option: payOption) { [weak self] in
                     self?.progressText = "Confirming payment..."
                 }
                 progressText = "Placing Order..."

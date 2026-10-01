@@ -9,6 +9,9 @@ import SwiftUI
 /// catalogue loaded underneath. Same timings and curves as the Android
 /// `SplashOverlay`.
 struct SplashView: View {
+    /// Called once the logo has built itself: the app can start drawing
+    /// underneath now without competing with the opening animation.
+    var onLogoBuilt: () -> Void = {}
     /// Called as the backdrop starts to clear, so the app can settle into place.
     var onReveal: () -> Void
     /// Called once nothing of the splash is left on screen.
@@ -123,6 +126,7 @@ struct SplashView: View {
                 pieceVisible = Array(repeating: true, count: 4)
                 letterVisible = Array(repeating: true, count: 6)
             }
+            onLogoBuilt()
             try? await Task.sleep(for: .milliseconds(900))
             onReveal()
             withAnimation(.easeOut(duration: 0.3)) {
@@ -151,6 +155,7 @@ struct SplashView: View {
 
         // 2. It tucks left, and the letters pop in from its side in a wave.
         try? await Task.sleep(for: .milliseconds(720))
+        onLogoBuilt()
         withAnimation(Self.easeInOut(0.56)) {
             isTucked = true
         }

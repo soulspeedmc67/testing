@@ -32,7 +32,11 @@ private fun colorScheme(dark: Boolean) = if (dark) {
 
 @Composable
 fun DashitTheme(
-    darkTheme: Boolean = true, // Light mode is ready (DashitColors) but switched off for now
+    darkTheme: Boolean = when (ThemePreference.mode) {
+        ThemePreference.Mode.SYSTEM -> isSystemInDarkTheme()
+        ThemePreference.Mode.LIGHT -> false
+        ThemePreference.Mode.DARK -> true
+    },
     content: @Composable () -> Unit
 ) {
     // Set before anything reads a colour, so the first frame is right.

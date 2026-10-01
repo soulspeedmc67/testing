@@ -35,7 +35,6 @@ import {
 import confetti from "canvas-confetti";
 import {
   watchDriverOrders,
-  pushDriverLocation,
   pushDriverTelemetryToQueue,
   updateOrderStatus,
   ORDER_STATUS
@@ -55,7 +54,21 @@ import { DRIVER_LANGUAGES, DRIVER_STRINGS } from "../lib/driverTranslations";
 
 // Lal Chowk Dark Store Hub default coordinates
 const DARK_STORE_HUB = { latitude: 33.735832, longitude: 75.143614 };
-const TELEMETRY_PUSH_INTERVAL_MS = 10000;
+/** Longest gap between position updates, even standing still. */
+const TELEMETRY_PUSH_INTERVAL_MS = 20000;
+/** Shortest gap while riding. */
+const TELEMETRY_MIN_INTERVAL_MS = 4000;
+
+/** Straight-line metres between two { latitude, longitude } points. */
+function metresBetween(a, b) {
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 6371000 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
 
 class SoundAlerts {
   constructor() {
@@ -640,6 +653,7 @@ export default function DashItDriverApp() {
   // 6. GPS Tracking - ALWAYS ON when onDuty is true, silently broadcasting telemetry in background
   const [currentCoords, setCurrentCoords] = useState(DARK_STORE_HUB);
   const lastPushTimestampRef = useRef(0);
+  const lastPushedCoordsRef = useRef(null);
   const watchPositionIdRef = useRef(null);
 
   const startGps = useCallback(() => {
@@ -653,18 +667,27 @@ export default function DashItDriverApp() {
           longitude: pos.coords.longitude,
           heading: pos.coords.heading || 0,
           speed: pos.coords.speed || 0,
+          accuracy: Math.round(pos.coords.accuracy || 0),
         };
         setCurrentCoords(coords);
 
+        /* Customers see the rider move, so fixes go out often while riding, and
+           rarely while standing still (each one is a billed Firestore write).
+           A rough fix (worse than 60 m, e.g. indoors) waits for a better one,
+           unless nothing has gone out for a while. */
         const now = Date.now();
-        if (now - lastPushTimestampRef.current >= TELEMETRY_PUSH_INTERVAL_MS && user?.uid) {
+        const since = now - lastPushTimestampRef.current;
+        const last = lastPushedCoordsRef.current;
+        const moved = last ? metresBetween(last, coords) : Infinity;
+        const precise = !coords.accuracy || coords.accuracy <= 60;
+        const due =
+          (precise && moved >= 12 && since >= TELEMETRY_MIN_INTERVAL_MS) ||
+          since >= TELEMETRY_PUSH_INTERVAL_MS;
+        if (due && user?.uid) {
           lastPushTimestampRef.current = now;
+          lastPushedCoordsRef.current = coords;
           const activeOrderIds = assignedOrders.map((o) => o.orderId || o.id).filter(Boolean);
-          if (activeOrderIds.length > 0) {
-            for (const oId of activeOrderIds) {
-              await pushDriverLocation(oId, coords).catch(() => {});
-            }
-          }
+          // One write per order (the queue fan-out) plus the rider's own document.
           await pushDriverTelemetryToQueue(user.uid, activeOrderIds, coords).catch(() => {});
         }
       },

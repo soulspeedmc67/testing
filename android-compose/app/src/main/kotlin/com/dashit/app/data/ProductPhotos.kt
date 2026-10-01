@@ -39,7 +39,8 @@ object ProductPhotos {
         }
         // Catalogue photos: the 400px copy (~10 KB instead of ~100 KB).
         if (trimmed.contains(CATALOG_PATH)) return trimmed.replace(CATALOG_PATH, THUMB_PATH)
-        if (!trimmed.contains("openfoodfacts.org") && !trimmed.contains("openbeautyfacts.org")) return trimmed
+        // Open Food Facts serves the same photos from .org and .net.
+        if (!trimmed.contains("openfoodfacts.") && !trimmed.contains("openbeautyfacts.")) return trimmed
         return trimmed.replace(offFullSize) { ".400." + it.groupValues[1] }
     }
 
@@ -59,10 +60,28 @@ object ProductPhotos {
         return "https://dashit.co.in" + (if (trimmed.startsWith("/")) trimmed else "/$trimmed")
     }
 
-    /** The app-wide image loader: 300 MB of saved photos, cache headers ignored. */
+    /**
+     * The app-wide image loader: 300 MB of saved photos, cache headers ignored.
+     * Downloads run many at a time: the default network client allows only 5
+     * per server, so a screen of 30 products waited in line for its photos.
+     */
     fun imageLoader(context: Context): ImageLoader =
         ImageLoader.Builder(context)
             .components { add(SmallerOpenFoodFactsPhotos()) }
+            .okHttpClient {
+                okhttp3.OkHttpClient.Builder()
+                    .dispatcher(okhttp3.Dispatcher().apply {
+                        maxRequests = 64
+                        maxRequestsPerHost = 24
+                    })
+                    .connectionPool(okhttp3.ConnectionPool(12, 5, java.util.concurrent.TimeUnit.MINUTES))
+                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+            }
+            .memoryCache {
+                coil.memory.MemoryCache.Builder(context).maxSizePercent(0.3).build()
+            }
             .respectCacheHeaders(false)
             .diskCache {
                 DiskCache.Builder()

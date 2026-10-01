@@ -96,6 +96,7 @@ final class OnlinePayment: NSObject {
         orderCode: String,
         amountRupees: Double,
         customer: UserProfile,
+        option: PayOption? = nil,
         onConfirming: @escaping @MainActor () -> Void = {}
     ) async throws -> PaymentReceipt {
         guard Self.isAvailable else { throw OnlinePaymentError.unavailable }
@@ -104,7 +105,7 @@ final class OnlinePayment: NSObject {
         let token = try await AuthService.shared.idToken()
         let order: CreatedOrder = try await post("create-order.php", body: ["amount": paise, "receipt": orderCode, "id_token": token])
 
-        let outcome = await authorize(order, orderCode: orderCode, customer: customer)
+        let outcome = await authorize(order, orderCode: orderCode, customer: customer, option: option)
         release()
         onConfirming()
 
@@ -152,16 +153,17 @@ final class OnlinePayment: NSObject {
 
     /// Opens Razorpay's checkout and waits for its answer.
     @MainActor
-    private func authorize(_ order: CreatedOrder, orderCode: String, customer: UserProfile) async -> Outcome {
+    private func authorize(_ order: CreatedOrder, orderCode: String, customer: UserProfile, option: PayOption?) async -> Outcome {
         #if canImport(Razorpay)
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
             let checkout = RazorpayCheckout.initWithKey(order.key_id, andDelegateWithData: self)
             self.checkout = checkout
             var prefill: [String: Any] = [:]
+            if let option { prefill["method"] = option.method }
             if !customer.mobile.isEmpty { prefill["contact"] = "+91\(customer.mobile)" }
             if let email = customer.email, !email.isEmpty { prefill["email"] = email }
-            let options: [String: Any] = [
+            var options: [String: Any] = [
                 "amount": order.amount,
                 "currency": order.currency,
                 "order_id": order.order_id,
@@ -174,11 +176,34 @@ final class OnlinePayment: NSObject {
                 "retry": ["enabled": true, "max_count": 3],
                 "timeout": 600
             ]
-            checkout.open(options)
+            // The way to pay picked in the checkout: Razorpay shows only that.
+            if let option { options["config"] = option.checkoutConfig }
+            // Shown from whatever is on screen now. Opening from the window's root
+            // (the SDK's default) does nothing while the checkout sheet is up,
+            // since the root is already presenting it: the payment never appeared.
+            if let top = Self.topViewController() {
+                checkout.open(options, displayController: top)
+            } else {
+                checkout.open(options)
+            }
         }
         #else
         return .failed(code: 0, description: "Razorpay SDK missing")
         #endif
+    }
+
+    /// The view controller at the front: the last one presented over the key window's root.
+    @MainActor
+    private static func topViewController() -> UIViewController? {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }
+        var top = window?.rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
+            top = presented
+        }
+        return top
     }
 
     private func finish(_ outcome: Outcome) {

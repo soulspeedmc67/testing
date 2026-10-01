@@ -2,6 +2,18 @@ package com.dashit.app.ui.checkout
 
 import androidx.compose.ui.platform.LocalContext
 import com.dashit.app.data.OnlinePayment
+import com.dashit.app.data.PayOption
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -88,13 +100,24 @@ fun CheckoutSheet(
     val bill by cartVm.bill.collectAsState()
     val items by cartVm.items.collectAsState()
 
-    // "online" (Razorpay's checkout: UPI, cards, netbanking, wallets, EMI, Pay Later) or "cod".
-    // The last choice is kept; the older per-UPI-app choices ("upi:...") count as online.
+    // "cod", or a way to pay online picked here (a UPI app, any UPI, card,
+    // netbanking, wallet, EMI, Pay Later); Razorpay then opens on just that.
+    // The last choice is kept.
     val prefs = remember { context.getSharedPreferences("dashit_prefs", android.content.Context.MODE_PRIVATE) }
+    val payOptions = remember { PayOption.all(context) }
     var paymentMethod by remember {
-        mutableStateOf(prefs.getString(LAST_PAYMENT_KEY, null)?.let { if (it == "cod") "cod" else "online" } ?: "cod")
+        val saved = prefs.getString(LAST_PAYMENT_KEY, null)
+        mutableStateOf(
+            when {
+                saved == null || saved == "cod" -> "cod"
+                payOptions.any { it.id == saved } -> saved
+                // The older "online" choice, or an app since removed: the first UPI way.
+                else -> payOptions.first().id
+            }
+        )
     }
-    val paysOnline = paymentMethod == "online"
+    val paysOnline = paymentMethod != "cod"
+    val payOption = payOptions.firstOrNull { it.id == paymentMethod }
     var isSubmitting by remember { mutableStateOf(false) }
     var progressText by remember { mutableStateOf("Placing order...") }
     var orderSuccess by remember { mutableStateOf(false) }
@@ -154,7 +177,7 @@ fun CheckoutSheet(
                 val activity = context.findActivity()
                 try {
                     if (activity == null) throw OnlinePayment.PaymentException("Online payment isn't available right now. Choose cash on delivery.")
-                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer) {
+                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer, payOption) {
                         progressText = "Confirming payment..."
                     }
                     progressText = "Placing order..."
@@ -315,6 +338,7 @@ fun CheckoutSheet(
 
                     // 3. Payment Method Card
                     PaymentCard(
+                        options = payOptions,
                         selectedMethod = paymentMethod,
                         onSelectMethod = {
                             HapticsManager.selection(view)
@@ -508,12 +532,23 @@ private fun GuaranteeCard() {
     }
 }
 
+/**
+ * Pay online or cash. "Pay online" opens out into every way to pay online
+ * that Razorpay takes in India: the UPI apps on this phone (Google Pay,
+ * PhonePe, Paytm...), any UPI app or UPI ID, cards, netbanking, wallets, EMI
+ * and Pay Later. Closed, it says which one is picked.
+ */
 @Composable
 private fun PaymentCard(
+    options: List<PayOption>,
     selectedMethod: String,
     onSelectMethod: (String) -> Unit
 ) {
     val cardShape = RoundedCornerShape(14.dp)
+    val paysOnline = selectedMethod != "cod"
+    val picked = options.firstOrNull { it.id == selectedMethod }
+    var isOnlineOpen by remember { mutableStateOf(false) }
+    val chevron by animateFloatAsState(if (isOnlineOpen) 180f else 0f, label = "pay_chevron")
 
     Column(
         modifier = Modifier
@@ -531,25 +566,103 @@ private fun PaymentCard(
             fontWeight = FontWeight.Bold
         )
 
-        // Razorpay's checkout opens at "Pay" with every way to pay it supports.
-        PaymentMethodRow(
-            title = "Pay online",
-            subtitle = "UPI, cards, netbanking, wallets, EMI, Pay Later",
-            isSelected = selectedMethod == "online",
-            onSelect = { onSelectMethod("online") }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (paysOnline) DashitColors.BrandOrange.copy(alpha = 0.10f) else DashitColors.SurfaceMuted)
+                .border(1.dp, if (paysOnline) DashitColors.BrandOrange.copy(alpha = 0.4f) else Color.Transparent, RoundedCornerShape(12.dp))
+                .animateContentSize(spring(dampingRatio = 0.9f, stiffness = 500f))
         ) {
-            Icon(
-                imageVector = Icons.Default.AccountBalanceWallet,
-                contentDescription = null,
-                tint = if (selectedMethod == "online") DashitColors.BrandOrange else DashitColors.TextMuted,
-                modifier = Modifier.size(22.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        isOnlineOpen = !isOnlineOpen
+                        if (!paysOnline) onSelectMethod(options.first().id)
+                    }
+                    .padding(horizontal = 12.dp, vertical = 11.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                    if (paysOnline && picked?.icon != null) {
+                        AppIcon(picked)
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = if (paysOnline) DashitColors.BrandOrange else DashitColors.TextMuted,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "Pay online",
+                        color = DashitColors.TextPrimary,
+                        fontSize = 14.sp,
+                        fontWeight = if (paysOnline) FontWeight.SemiBold else FontWeight.Medium
+                    )
+                    Text(
+                        text = if (paysOnline && picked != null) picked.title else "UPI, cards, netbanking, wallets, EMI, Pay Later",
+                        color = if (paysOnline) DashitColors.BrandAccent else DashitColors.TextMuted,
+                        fontSize = 11.5.sp,
+                        fontWeight = if (paysOnline) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1
+                    )
+                }
+                Text(
+                    text = if (isOnlineOpen) "Done" else "Change",
+                    color = DashitColors.BrandAccent,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = DashitColors.TextMuted,
+                    modifier = Modifier.size(20.dp).graphicsLayer { rotationZ = chevron }
+                )
+            }
+
+            if (isOnlineOpen) {
+                Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val upiApps = options.filter { it.upiApp != null }
+                    if (upiApps.isNotEmpty()) {
+                        SectionLabel("UPI APPS ON THIS PHONE")
+                        // App tiles, three to a row.
+                        upiApps.chunked(3).forEach { row ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                row.forEach { app ->
+                                    UpiAppTile(app, selected = selectedMethod == app.id, modifier = Modifier.weight(1f)) {
+                                        onSelectMethod(app.id)
+                                        isOnlineOpen = false
+                                    }
+                                }
+                                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                            }
+                        }
+                    }
+                    SectionLabel("MORE WAYS TO PAY")
+                    options.filter { it.upiApp == null }.forEach { option ->
+                        OnlineOptionRow(option, selected = selectedMethod == option.id) {
+                            onSelectMethod(option.id)
+                            isOnlineOpen = false
+                        }
+                    }
+                }
+            }
         }
 
         PaymentMethodRow(
             title = "Cash on delivery",
+            subtitle = "Pay cash or UPI to the rider at your door",
             isSelected = selectedMethod == "cod",
-            onSelect = { onSelectMethod("cod") }
+            onSelect = {
+                isOnlineOpen = false
+                onSelectMethod("cod")
+            }
         ) {
             Icon(
                 imageVector = Icons.Default.Payments,
@@ -558,6 +671,99 @@ private fun PaymentCard(
                 modifier = Modifier.size(22.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        color = DashitColors.TextMuted,
+        fontSize = 10.5.sp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = 0.8.sp,
+        modifier = Modifier.padding(start = 4.dp, top = 6.dp, bottom = 2.dp)
+    )
+}
+
+@Composable
+private fun AppIcon(option: PayOption, size: androidx.compose.ui.unit.Dp = 26.dp) {
+    val bitmap = remember(option.id) {
+        option.icon?.let { runCatching { it.toBitmap(96, 96).asImageBitmap() }.getOrNull() }
+    }
+    if (bitmap != null) {
+        Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(size).clip(RoundedCornerShape(7.dp)))
+    }
+}
+
+@Composable
+private fun UpiAppTile(option: PayOption, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val view = LocalView.current
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(DashitColors.SurfaceRaised)
+            .border(1.5.dp, if (selected) DashitColors.BrandOrange else DashitColors.Hairline, RoundedCornerShape(12.dp))
+            .pressable(scale = 0.95f) {
+                HapticsManager.selection(view)
+                onClick()
+            }
+            .padding(vertical = 10.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        AppIcon(option, size = 30.dp)
+        Text(
+            text = option.title,
+            color = DashitColors.TextPrimary,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun OnlineOptionRow(option: PayOption, selected: Boolean, onClick: () -> Unit) {
+    val view = LocalView.current
+    val icon = when (option.method) {
+        "card" -> Icons.Default.CreditCard
+        "netbanking" -> Icons.Default.AccountBalance
+        "wallet" -> Icons.Default.AccountBalanceWallet
+        "emi" -> Icons.Default.CalendarMonth
+        "paylater" -> Icons.Default.Schedule
+        else -> Icons.Default.QrCode2
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(DashitColors.SurfaceRaised)
+            .border(1.5.dp, if (selected) DashitColors.BrandOrange else DashitColors.Hairline, RoundedCornerShape(12.dp))
+            .clickable {
+                HapticsManager.selection(view)
+                onClick()
+            }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
+            Modifier.size(32.dp).clip(CircleShape).background(DashitColors.BrandOrange.copy(alpha = 0.12f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = DashitColors.BrandAccent, modifier = Modifier.size(17.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(option.title, color = DashitColors.TextPrimary, fontSize = 13.5.sp, fontWeight = FontWeight.SemiBold)
+            Text(option.subtitle, color = DashitColors.TextMuted, fontSize = 11.sp, maxLines = 1)
+        }
+        Icon(
+            imageVector = if (selected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (selected) DashitColors.BrandOrange else DashitColors.TextFaint,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
