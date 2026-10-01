@@ -81,8 +81,9 @@ struct StorefrontSearchView: View {
         }
         .onAppear {
             // Straight into typing, unless this opened on a finished search (voice).
+            // Once the page has faded in, so the keyboard doesn't rise in the middle of it.
             if !isShowingResults {
-                DispatchQueue.main.async { isFieldFocused = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { isFieldFocused = true }
             }
         }
     }
