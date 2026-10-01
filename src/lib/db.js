@@ -1990,6 +1990,7 @@ export async function updateOrderStatus(orderId, status, extraFields = {}) {
       payload.deliveredAt = serverTimestamp();
     }
     await updateDoc(doc(db, "orders", String(orderId)), payload);
+    requestOrderPush(orderId);
     return { success: true, firestoreSynced: true };
   } catch (err) {
     console.warn("Firestore updateOrderStatus sync note:", err?.message || err);
@@ -2095,6 +2096,7 @@ export async function updateOrderContent(orderId, updatedFields = {}) {
       updatedAt: serverTimestamp(),
     };
     await updateDoc(doc(db, "orders", targetId), payload);
+    if (payload.status) requestOrderPush(targetId);
     return { success: true, firestoreSynced: true };
   } catch (err) {
     console.warn("Firestore updateOrderContent sync note:", err?.message || err);
@@ -2171,6 +2173,7 @@ export async function claimOrder(orderId, driverId, driverName) {
 
     // Transaction succeeded: apply local updates safely
     applyLocalClaim();
+    requestOrderPush(orderId);
     return { success: true, firestoreSynced: true };
   } catch (err) {
     if (err?.message === "ORDER_ALREADY_CLAIMED") {
@@ -2352,6 +2355,32 @@ export function watchDrivers(callback) {
   };
 }
 
+
+/* ------------------------------------------------------- push notifications */
+
+/**
+ * Asks the DASHit server to send the push for this order's current status
+ * (public/api/push/notify.php): "packing", "on the way", "delivered" to the
+ * shopper, "new order" to the store. The server reads the order itself and
+ * sends each status once, so calling this after every change is safe.
+ * Fire and forget: a missed push never blocks the store or the rider.
+ */
+export function requestOrderPush(orderId) {
+  if (typeof window === "undefined" || !orderId) return;
+  const auth = getFirebaseAuth();
+  const user = auth?.currentUser;
+  if (!user) return;
+  user
+    .getIdToken()
+    .then((idToken) =>
+      fetch("https://dashit.co.in/api/push/notify.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_token: idToken, orderId: String(orderId) }),
+      })
+    )
+    .catch((e) => console.warn("Order notification request failed:", e?.message));
+}
 
 /* ------------------------------------------------------------ live tracking */
 

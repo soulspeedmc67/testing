@@ -50,7 +50,8 @@ function dashit_signed_jwt(array $account, array $payload): ?string
  */
 function dashit_google_access_token(array $account): ?string
 {
-    $scope = 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit';
+    // Firestore, Firebase Auth admin, and push notifications (FCM).
+    $scope = 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/firebase.messaging';
     $cache = dashit_private_dir('dashit-data') . '/google-token.json';
     $saved = is_file($cache) ? json_decode((string) file_get_contents($cache), true) : null;
     if (is_array($saved) && ($saved['for'] ?? '') === $account['client_email'] && ($saved['scope'] ?? '') === $scope
@@ -359,4 +360,118 @@ function dashit_verify_id_token(array $account, string $jwt): ?array
         OPENSSL_ALGO_SHA256
     );
     return $valid === 1 ? $claims : null;
+}
+
+/** The Firestore REST base for a document path ("orders/ABC"), or null without a token. Returns [url, token]. */
+function dashit_firestore_endpoint(array $account, string $path = ''): ?array
+{
+    $project = (string) ($account['project_id'] ?? '');
+    $emulator = getenv('FIRESTORE_EMULATOR_HOST');
+    $token = $project === '' ? null : ($emulator ? 'owner' : dashit_google_access_token($account));
+    if ($token === null) {
+        return null;
+    }
+    $url = ($emulator ? "http://$emulator" : 'https://firestore.googleapis.com')
+        . '/v1/projects/' . rawurlencode($project) . '/databases/(default)/documents'
+        . ($path === '' ? '' : '/' . implode('/', array_map('rawurlencode', explode('/', $path))));
+    return [$url, $token];
+}
+
+/** A Firestore REST value as a plain PHP value (strings, numbers, booleans, maps, lists). */
+function dashit_firestore_plain(array $value)
+{
+    if (array_key_exists('stringValue', $value)) return $value['stringValue'];
+    if (array_key_exists('integerValue', $value)) return (int) $value['integerValue'];
+    if (array_key_exists('doubleValue', $value)) return (float) $value['doubleValue'];
+    if (array_key_exists('booleanValue', $value)) return (bool) $value['booleanValue'];
+    if (array_key_exists('timestampValue', $value)) return $value['timestampValue'];
+    if (isset($value['mapValue'])) {
+        $out = [];
+        foreach ($value['mapValue']['fields'] ?? [] as $k => $v) $out[$k] = dashit_firestore_plain($v);
+        return $out;
+    }
+    if (isset($value['arrayValue'])) {
+        return array_map('dashit_firestore_plain', $value['arrayValue']['values'] ?? []);
+    }
+    return null;
+}
+
+function dashit_firestore_request(string $method, string $url, string $token, ?array $body = null): array
+{
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer $token", 'Content-Type: application/json'],
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 20,
+    ]);
+    if ($body !== null) {
+        curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($body));
+    }
+    $raw = curl_exec($curl);
+    $status = $raw === false ? 0 : (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    curl_close($curl);
+    $reply = $raw === false ? null : json_decode($raw, true);
+    return [$status, is_array($reply) ? $reply : []];
+}
+
+/** The document at $path as plain fields, or null if it isn't there (or can't be read). */
+function dashit_firestore_get(array $account, string $path): ?array
+{
+    $endpoint = dashit_firestore_endpoint($account, $path);
+    if ($endpoint === null) return null;
+    [$status, $reply] = dashit_firestore_request('GET', $endpoint[0], $endpoint[1]);
+    if ($status !== 200) return null;
+    $out = [];
+    foreach ($reply['fields'] ?? [] as $k => $v) $out[$k] = dashit_firestore_plain($v);
+    return $out;
+}
+
+/** Documents of $collection whose $field equals $value: [[id, fields], ...] (at most $limit). */
+function dashit_firestore_where(array $account, string $collection, string $field, $value, int $limit = 50): array
+{
+    $endpoint = dashit_firestore_endpoint($account);
+    if ($endpoint === null) return [];
+    [$status, $reply] = dashit_firestore_request('POST', $endpoint[0] . ':runQuery', $endpoint[1], [
+        'structuredQuery' => [
+            'from' => [['collectionId' => $collection]],
+            'where' => ['fieldFilter' => [
+                'field' => ['fieldPath' => $field],
+                'op' => 'EQUAL',
+                'value' => dashit_firestore_value($value),
+            ]],
+            'limit' => $limit,
+        ],
+    ]);
+    if ($status !== 200) return [];
+    $out = [];
+    foreach ($reply as $row) {
+        if (!isset($row['document'])) continue;
+        $fields = [];
+        foreach ($row['document']['fields'] ?? [] as $k => $v) $fields[$k] = dashit_firestore_plain($v);
+        $out[] = [basename($row['document']['name']), $fields];
+    }
+    return $out;
+}
+
+function dashit_firestore_delete(array $account, string $path): void
+{
+    $endpoint = dashit_firestore_endpoint($account, $path);
+    if ($endpoint !== null) dashit_firestore_request('DELETE', $endpoint[0], $endpoint[1]);
+}
+
+/**
+ * Whether $uid is staff (an active staff/{uid}, or the owner): [isStaff, role].
+ * Same test as firestore.rules.
+ */
+function dashit_staff_role(array $account, array $claims): array
+{
+    $uid = (string) ($claims['sub'] ?? '');
+    $isOwner = $uid === 'DOf5enic8SXBZTupGJbxDrNdrOt2'
+        || (($claims['email'] ?? '') === 'm4k3ditz@gmail.com' && ($claims['email_verified'] ?? false) === true);
+    if ($isOwner) return [true, 'admin'];
+    $staff = $uid === '' ? null : dashit_firestore_get($account, "staff/$uid");
+    if (!is_array($staff) || ($staff['active'] ?? false) !== true) return [false, null];
+    return [true, (string) ($staff['role'] ?? '')];
 }

@@ -6,6 +6,7 @@ import FirebaseCore
 #if !ADMIN_APP_TARGET
 @main
 struct DASHitApp: App {
+    @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var pushDelegate
     @StateObject private var auth = AuthService.shared
     @StateObject private var cart = CartViewModel.shared
     /// The animated splash that takes over from the static launch screen.

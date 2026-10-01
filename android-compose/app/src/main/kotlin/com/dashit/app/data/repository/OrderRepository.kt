@@ -234,6 +234,8 @@ class OrderRepository(
             writeOrder(order, customer, distanceKm, payment)
         }
         setActiveOrderId(order.id)
+        // "Order placed" to the shopper's phones, "New order" to the store.
+        com.dashit.app.data.Push.orderChanged(order.id)
     }
 
     suspend fun cancelOrder(orderId: String, reason: String = "Customer cancelled") {
@@ -310,6 +312,8 @@ class OrderRepository(
             throw OrderError.StoreStartedPacking()
         }
         setActiveOrderId(replacement.id)
+        // The store hears the order changed (the server says so, not "new order").
+        com.dashit.app.data.Push.orderChanged(replacement.id)
         return replacement
     }
 

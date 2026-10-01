@@ -38,7 +38,7 @@ object OrderNotifications {
             "Order updates",
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "When your order is delivered"
+            description = "Your order's progress: placed, packed, on the way, delivered"
         }
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
     }
@@ -61,7 +61,8 @@ object OrderNotifications {
     }
 
     fun notifyDelivered(context: Context, order: Order) {
-        if (needsPermission(context)) return
+        // The server's push covers this once the phone is registered.
+        if (needsPermission(context) || Push.isActive) return
         val units = order.itemCount
         val open = PendingIntent.getActivity(
             context,
@@ -80,9 +81,36 @@ object OrderNotifications {
             .setContentIntent(open)
             .build()
         try {
-            NotificationManagerCompat.from(context).notify(order.id.hashCode(), notification)
+            // Same tag and id as the push for this order, so the two never both show.
+            NotificationManagerCompat.from(context).notify(order.id, 0, notification)
         } catch (_: SecurityException) {
             // Permission withdrawn between the check and the post.
+        }
+    }
+
+    /** A push that arrived while the app is open (the system only shows them itself when it isn't). */
+    fun show(context: Context, title: String, text: String, orderId: String?) {
+        if (needsPermission(context)) return
+        val open = PendingIntent.getActivity(
+            context,
+            (orderId ?: "dashit").hashCode(),
+            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_dashit)
+            .setColor(0xFFFF5B00.toInt())
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(orderId ?: "dashit", 0, notification)
+        } catch (_: SecurityException) {
         }
     }
 }

@@ -201,6 +201,9 @@ struct AdminSignInView: View {
 #if ADMIN_APP_TARGET
 @main
 struct DASHitAdminApp: App {
+    /// New-order alerts by push (see Push.swift).
+    @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var pushDelegate
+
     init() {
         FirebaseManager.shared.configure()
         URLCache.shared = URLCache(memoryCapacity: 64 * 1024 * 1024, diskCapacity: 256 * 1024 * 1024)
