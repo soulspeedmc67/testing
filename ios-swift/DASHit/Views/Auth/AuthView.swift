@@ -56,6 +56,9 @@ struct AuthView: View {
                     }
                     panel
                 }
+                // Fills the space above the keyboard, so the panel runs right
+                // down to it with no backdrop showing in between.
+                .frame(minHeight: geo.size.height, alignment: .top)
             }
             .scrollBounceBehavior(.basedOnSize)
             .scrollDismissesKeyboard(.interactively)
@@ -203,7 +206,7 @@ struct AuthView: View {
         .padding(.horizontal, 24)
         .padding(.top, 26)
         .padding(.bottom, 28)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
             UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous)
                 .fill(Color.surfaceRaised)

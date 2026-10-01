@@ -86,6 +86,9 @@ struct SplashView: View {
                 .scaleEffect(isTucked ? Self.tuckedLogoScale : 1)
                 .offset(x: isTucked ? Self.tuckedLogoX : 0)
             }
+            // Flattened once, so fading the lockup is one layer's opacity, not a
+            // blend for each of its ten overlapping images.
+            .compositingGroup()
             .scaleEffect(lockupScale)
             .opacity(lockupOpacity)
         }
@@ -103,11 +106,8 @@ struct SplashView: View {
             .resizable()
             .interpolation(.high)
             .frame(width: Self.wordSize.width, height: Self.wordSize.height)
-            .mask(alignment: .leading) {
-                Rectangle()
-                    .frame(width: to - from)
-                    .offset(x: from)
-            }
+            // A plain rectangular clip: far cheaper per frame than a mask layer.
+            .clipShape(LetterClip(from: from, to: to))
             .opacity(letterVisible[index] ? 1 : 0)
             .offset(x: letterSettled[index] ? 0 : -14, y: letterSettled[index] ? 0 : 7)
     }
@@ -177,5 +177,15 @@ struct SplashView: View {
         onReveal()
         try? await Task.sleep(for: .milliseconds(400))
         onFinish()
+    }
+}
+
+/// The vertical strip of a wordmark image between two x positions.
+private struct LetterClip: Shape {
+    let from: CGFloat
+    let to: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        Path(CGRect(x: from, y: rect.minY, width: to - from, height: rect.height))
     }
 }

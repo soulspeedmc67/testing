@@ -111,6 +111,9 @@ struct StorefrontHomeView: View {
                 }
                 .drivesTabBarVisibility(in: "homeScroll")
             }
+            // A new scroll view per picked category, so it always opens at the
+            // top: the old offset, kept over a new and shorter list, showed blank.
+            .id(vm.selectedCategory ?? "")
             .coordinateSpace(.named("homeScroll"))
             .scrollDismissesKeyboard(.immediately)
             // Paints the status bar: the header's glow at rest, the page colour
@@ -152,7 +155,7 @@ struct StorefrontHomeView: View {
                     onVoiceSearch: { isVoiceSearchOpen = true },
                     onClose: closeSearch
                 )
-                .transition(.opacity.combined(with: .offset(y: 12)))
+                .transition(.opacity)
             }
         }
         .onChange(of: isSearchOpen) { _, isOpen in
@@ -361,11 +364,11 @@ struct StorefrontHomeView: View {
     }
 
     private func openSearch() {
-        withAnimation(.dashitSnappy) { isSearchOpen = true }
+        withAnimation(.easeOut(duration: 0.22)) { isSearchOpen = true }
     }
 
     private func closeSearch() {
-        withAnimation(.dashitSnappy) { isSearchOpen = false }
+        withAnimation(.easeOut(duration: 0.2)) { isSearchOpen = false }
         searchText = ""
         submittedSearch = nil
     }
@@ -449,10 +452,12 @@ struct StorefrontHomeView: View {
 
     /// Puts the top of the results just under the pinned search bar.
     private func showFromTop(_ proxy: ScrollViewProxy) {
-        // After the new list has been laid out, so its height is known.
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        // At once, so a stale offset never shows a blank page...
+        withTransaction(transaction) { proxy.scrollTo("top", anchor: .top) }
+        // ...then, after the new list has been laid out, to just under the search bar.
         DispatchQueue.main.async {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
             withTransaction(transaction) {
                 proxy.scrollTo(vm.isBrowsing ? "categories" : "results", anchor: UnitPoint(x: 0.5, y: 0.16))
             }
