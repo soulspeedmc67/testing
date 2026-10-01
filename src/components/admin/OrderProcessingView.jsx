@@ -1679,6 +1679,7 @@ export default function OrderProcessingView({
 
       <OrderDetailDrawer
         order={activeOrder}
+        orders={orders}
         catalogue={catalogue}
         isOpen={Boolean(selectedOrderId)}
         onClose={() => setSelectedOrderId(null)}

@@ -22,11 +22,12 @@ import {
 } from "lucide-react";
 import PrintPackingSlip from "./PrintPackingSlip";
 import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor } from "../../lib/db";
-import { getDriverRoster, watchAllDrivers, addDriverToRoster, removeDriverFromRoster } from "../../lib/drivers";
+import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
 import { orderAddress } from "../../lib/orderReceipt";
 
 export default function OrderDetailDrawer({
   order,
+  orders = [],
   isOpen,
   onClose,
   onUpdateStatus,
@@ -37,9 +38,7 @@ export default function OrderDetailDrawer({
   const [showPrintSlip, setShowPrintSlip] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
   const [isAssigning, setIsAssigning] = useState(false);
-  const [isAddingDriver, setIsAddingDriver] = useState(false);
-  const [customDriverName, setCustomDriverName] = useState("");
-  const [customDriverPhone, setCustomDriverPhone] = useState("");
+  const [isChangingDriver, setIsChangingDriver] = useState(false);
 
   const [liveGraceSeconds, setLiveGraceSeconds] = useState(0);
 
@@ -163,18 +162,22 @@ export default function OrderDetailDrawer({
 
   const assignedDriverName = order?.driverName || "";
   const assignedDriverId = order?.driverId || "";
-  const matchedDriver = driverRoster.find(
+  const matchedDriver = (driverRoster || []).find(
     (d) =>
-      (assignedDriverName && d.name.toLowerCase() === assignedDriverName.toLowerCase()) ||
-      (assignedDriverId && d.id === assignedDriverId)
+      (assignedDriverId && d.id === assignedDriverId) ||
+      (assignedDriverName && d.name && d.name.toLowerCase() === assignedDriverName.toLowerCase())
   );
   const assignedDriverPhone = matchedDriver?.phone || "";
+
+  const driverLoads = useMemo(() => getDriverActiveOrderCounts(orders), [orders]);
+  const activeDrivers = useMemo(() => (driverRoster || []).filter((d) => d && d.id && d.active !== false), [driverRoster]);
 
   const handleAssignDriver = async (drv) => {
     if (!drv || !onAssignDriver) return;
     setIsAssigning(true);
     try {
       await onAssignDriver(orderId, drv.id, drv.name);
+      setIsChangingDriver(false);
     } finally {
       setIsAssigning(false);
     }
@@ -185,35 +188,10 @@ export default function OrderDetailDrawer({
     setIsAssigning(true);
     try {
       await onAssignDriver(orderId, null, "");
+      setIsChangingDriver(false);
     } finally {
       setIsAssigning(false);
     }
-  };
-
-  const handleAddAndAssign = async (e) => {
-    e.preventDefault();
-    const cleanName = customDriverName.trim();
-    if (!cleanName) return;
-    const newDrv = addDriverToRoster({ name: cleanName, phone: customDriverPhone });
-    if (newDrv) {
-      setDriverRoster(getDriverRoster());
-    }
-    setCustomDriverName("");
-    setCustomDriverPhone("");
-    setIsAddingDriver(false);
-    if (newDrv && onAssignDriver) {
-      setIsAssigning(true);
-      try {
-        await onAssignDriver(orderId, newDrv.id, newDrv.name);
-      } finally {
-        setIsAssigning(false);
-      }
-    }
-  };
-
-  const handleRemoveFromRoster = (drvId) => {
-    const nextRoster = removeDriverFromRoster(drvId);
-    setDriverRoster(nextRoster);
   };
 
   // Next status progression helper
@@ -453,7 +431,7 @@ export default function OrderDetailDrawer({
                 )}
               </div>
 
-              {assignedDriverName ? (
+              {assignedDriverName && !isChangingDriver ? (
                 /* Assigned Driver Card */
                 <div className="space-y-2.5">
                   <div
@@ -462,9 +440,17 @@ export default function OrderDetailDrawer({
                     )}
                   >
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full bg-[#FF5B00]/15 text-[#FF5B00] flex items-center justify-center font-black text-xs shrink-0">
-                        {assignedDriverName.charAt(0).toUpperCase()}
-                      </div>
+                      {matchedDriver?.photo ? (
+                        <img
+                          src={matchedDriver.photo}
+                          alt={assignedDriverName}
+                          className="w-9 h-9 rounded-full object-cover shrink-0 border border-[#FF5B00]/30"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full bg-[#FF5B00]/15 text-[#FF5B00] flex items-center justify-center font-black text-xs shrink-0">
+                          {assignedDriverName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <span className="font-black text-xs text-slate-900 dark:text-white block">
                           {assignedDriverName}
@@ -474,8 +460,8 @@ export default function OrderDetailDrawer({
                             +91 {assignedDriverPhone}
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400">
-                            Partner ID: {assignedDriverId || "Assigned"}
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            Partner ID: {assignedDriverId.slice(-6)}
                           </span>
                         )}
                       </div>
@@ -504,11 +490,18 @@ export default function OrderDetailDrawer({
                       )}
                       <button
                         type="button"
+                        onClick={() => setIsChangingDriver(true)}
+                        className="text-[11px] font-bold text-amber-600 hover:text-amber-700 hover:underline px-2 py-1 cursor-pointer"
+                      >
+                        Change rider
+                      </button>
+                      <button
+                        type="button"
                         onClick={handleUnassignDriver}
                         disabled={isAssigning}
                         className="text-[11px] font-bold text-rose-500 hover:text-rose-700 hover:underline px-2 py-1 cursor-pointer"
                       >
-                        Unassign
+                        Take back
                       </button>
                     </div>
                   </div>
@@ -526,92 +519,84 @@ export default function OrderDetailDrawer({
                   )}
                 </div>
               ) : (
-                /* Unassigned: Quick Driver Select Chips + Add New Driver Form */
+                /* Unassigned OR Changing Rider: Clear "Give to rider" Choice with Real Active Riders */
                 <div className="space-y-3">
-                  <p className="text-[11.5px] text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">
-                    Select a driver from your team or add a new driver to assign this order:
-                  </p>
-
-                  <div className="flex flex-wrap gap-2">
-                    {driverRoster.map((drv) => (
-                      <div
-                        key={drv.id}
-                        className="inline-flex items-center rounded-xl border overflow-hidden shadow-2xs group"
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11.5px] text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">
+                      {isChangingDriver ? "Choose another rider to reassign:" : "Tap a rider to give this order:"}
+                    </p>
+                    {isChangingDriver && (
+                      <button
+                        type="button"
+                        onClick={() => setIsChangingDriver(false)}
+                        className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
                       >
-                        <button
-                          type="button"
-                          onClick={() => handleAssignDriver(drv)}
-                          disabled={isAssigning}
-                          className={"py-2 px-3 text-xs font-black transition-all flex items-center space-x-1.5 cursor-pointer " + (
-                            darkMode
-                              ? "bg-[#1A1D26] hover:bg-zinc-800 text-zinc-100 border-zinc-700"
-                              : "bg-slate-50 hover:bg-slate-100 text-slate-800 border-slate-200"
-                          )}
-                        >
-                          <Truck className="w-3.5 h-3.5 text-[#FF5B00]" />
-                          <span>{drv.name}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFromRoster(drv.id)}
-                          title="Remove from fleet list"
-                          className="px-1.5 py-2 text-slate-400 hover:text-rose-500 bg-slate-100 dark:bg-zinc-800/80 transition-colors cursor-pointer"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingDriver((prev) => !prev)}
-                      className="py-2 px-3 rounded-xl border border-dashed text-xs font-bold text-[#FF5B00] hover:bg-[#FF5B00]/10 transition-all flex items-center space-x-1 cursor-pointer"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" />
-                      <span>{isAddingDriver ? "Cancel" : "Add Driver"}</span>
-                    </button>
+                        Cancel
+                      </button>
+                    )}
                   </div>
 
-                  {/* Add New Driver Form */}
-                  {isAddingDriver && (
-                    <form
-                      onSubmit={handleAddAndAssign}
-                      className={"p-3 rounded-xl border space-y-2.5 " + (
-                        darkMode ? "bg-[#1A1D26] border-zinc-700" : "bg-slate-50 border-slate-200"
-                      )}
-                    >
-                      <span className="text-[11px] font-black uppercase text-slate-700 dark:text-zinc-300 block">
-                        Add Driver to Team &amp; Assign
-                      </span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          required
-                          value={customDriverName}
-                          onChange={(e) => setCustomDriverName(e.target.value)}
-                          placeholder="Driver Name (e.g. Tariq)"
-                          style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                          className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-[#FF5B00]"
-                        />
-                        <input
-                          type="tel"
-                          inputMode="numeric"
-                          maxLength={10}
-                          value={customDriverPhone}
-                          onChange={(e) => setCustomDriverPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                          placeholder="10-digit mobile"
-                          style={{ color: "#0f172a", WebkitTextFillColor: "#0f172a", backgroundColor: "#ffffff" }}
-                          className="w-full bg-white border border-slate-300 text-slate-900 font-semibold text-xs rounded-lg px-2.5 py-2 focus:outline-none focus:border-[#FF5B00]"
-                        />
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={!customDriverName.trim() || isAssigning}
-                        className="w-full py-2 px-3 rounded-lg bg-[#FF5B00] hover:bg-[#E04E00] disabled:opacity-50 text-white font-black text-xs transition-all cursor-pointer"
-                      >
-                        {isAssigning ? "Assigning…" : "Save to Team & Assign"}
-                      </button>
-                    </form>
+                  {activeDrivers.length === 0 ? (
+                    <div className="p-4 rounded-xl border border-dashed text-center text-xs text-slate-400">
+                      No active riders found. Add riders in the Drivers tab.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {activeDrivers.map((drv) => {
+                        const activeCount = driverLoads[drv.id] || 0;
+                        const isCurrentAssigned = drv.id === assignedDriverId;
+
+                        return (
+                          <button
+                            key={drv.id}
+                            type="button"
+                            onClick={() => handleAssignDriver(drv)}
+                            disabled={isAssigning || isCurrentAssigned}
+                            className={"p-2.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer " + (
+                              isCurrentAssigned
+                                ? "opacity-40 cursor-not-allowed bg-slate-100 dark:bg-zinc-800/40 border-slate-200"
+                                : darkMode
+                                ? "bg-[#1A1D26] hover:bg-zinc-800 text-zinc-100 border-zinc-700 hover:border-[#FF5B00]/50"
+                                : "bg-slate-50 hover:bg-slate-100 text-slate-900 border-slate-200 hover:border-[#FF5B00]/50"
+                            )}
+                          >
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              {drv.photo ? (
+                                <img
+                                  src={drv.photo}
+                                  alt={drv.name}
+                                  className="w-7 h-7 rounded-full object-cover shrink-0"
+                                />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-[#FF5B00]/15 text-[#FF5B00] font-black text-xs flex items-center justify-center shrink-0">
+                                  {drv.name.charAt(0).toUpperCase()}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <span className="font-bold text-xs block truncate">
+                                  {drv.name}
+                                </span>
+                                {drv.phone && (
+                                  <span className="text-[10px] text-slate-400 font-mono block">
+                                    {drv.phone}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <span
+                              className={"text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ml-1 " + (
+                                activeCount === 0
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              )}
+                            >
+                              {activeCount === 0 ? "0 orders" : `${activeCount} active`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               )}
