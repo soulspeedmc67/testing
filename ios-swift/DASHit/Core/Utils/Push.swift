@@ -54,7 +54,14 @@ final class Push: NSObject {
     func register(token: String? = nil) {
         Task {
             guard let user = Auth.auth().currentUser, !user.isAnonymous else { return }
-            guard let fcm = try? await (token.map { $0 } ?? Messaging.messaging().token()) else { return }
+            let fcm: String
+            if let token {
+                fcm = token
+            } else if let fetched = try? await Messaging.messaging().token() {
+                fcm = fetched
+            } else {
+                return
+            }
             let key = "\(user.uid)|\(fcm)"
             guard key != lastRegistered, let idToken = try? await user.getIDToken() else { return }
             if await post("register.php", ["id_token": idToken, "token": fcm, "platform": "ios", "app": Self.app]) {
