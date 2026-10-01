@@ -6,6 +6,36 @@
 
 ---
 
+## Oct 1, 2026: tracking, payments, sign-in and security pass
+
+- **Live tracking** (both apps): the route already ridden is trimmed away
+  (nearest point on the polyline), the remaining distance and the ETA are worked
+  out from what is left (`RouteProgress.kt`, `RouteGeometry.swift` +
+  `LiveTrackingViewModel`). Not yet tested against a live order with rider GPS.
+- **Android**: bottom nav hides on scroll down (`NestedScrollConnection` in
+  `StorefrontScreen.kt`); search opens as an `AnimatedVisibility` overlay;
+  category lists open at the top. **iOS**: categories open at the top
+  (`showFromTop`), the catalogue is derived off the main thread and applied after
+  the splash clears (`CatalogueDerive`, `CatalogueStore.commit`).
+- **Product photos**: the photo host returns intermittent 404s for
+  `/products/catalog/*` originals (about 45 % in a test). Both apps retry, then
+  fall back to the thumbnail. Worth a look at the Hostinger side.
+- **Razorpay**: Standard Checkout on both apps (Android `com.razorpay:checkout`,
+  iOS SPM `RazorpayCheckout`), every method Razorpay offers (UPI, cards,
+  netbanking, wallets, EMI, Pay Later). Server is in TEST mode until live keys go
+  in `dashit-secrets/razorpay.php`. `create-order.php` now needs the shopper's
+  Firebase ID token. **iOS has never been compiled locally**; the GitHub Actions
+  build is the only compile check.
+- **Sign-in**: WhatsApp codes and the "Is this your number?" step are gone; the
+  number is confirmed with a 2Factor SMS code (§2, `docs/server-setup.md`). Waiting
+  on the owner's 2Factor API key; until then numbers are saved unverified.
+- **Google sign-in on Android** works once the signing key's SHA-1 is registered
+  in Firebase (the machine's debug key and the original are; add the Play App
+  Signing key when on Google Play).
+- **Security audit**: `docs/SECURITY_AUDIT.md` lists what was fixed and what the
+  owner still has to do (budget alert, App Check, API key restrictions,
+  Cloudflare, disable Anonymous sign-in).
+
 ## Complaints & Copyright page — added (Sep 30, 2026)
 - `src/pages/complaints.js` → `/complaints/`: grievance officer (support@dashit.co.in),
   copyright/trademark notice-and-takedown steps, 48 h reply / 36 h removal.
