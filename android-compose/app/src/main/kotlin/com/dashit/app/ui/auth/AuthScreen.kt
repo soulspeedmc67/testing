@@ -97,8 +97,8 @@ import kotlinx.coroutines.launch
 /** LogIn and SignUp share one screen; SignUp also asks for a name. */
 enum class AuthMode { LogIn, SignUp }
 
-/** The number, then the WhatsApp code, then a name if the account has none. */
-private enum class AuthStep { Number, Code, Confirm, Name }
+/** Google first; then the number the rider can call; then a name if Google gave none. */
+private enum class AuthStep { Google, Number, Name }
 
 private val HeroTop = Color(0xFF0D2F6E)
 private val HeroBottom = Color(0xFF040F24)
@@ -107,10 +107,10 @@ private val ButtonEnd = Color(0xFFFF4D00)
 
 /**
  * Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
- * one headline, and a phone number with a Continue button. Same screen as
- * the iOS AuthView. The number is the account: a 6-digit code goes to it on
- * WhatsApp and signs the shopper in. Opened from "Sign up" it also asks for
- * a name.
+ * one headline and "Continue with Google". The Google account is the account:
+ * orders and addresses are kept under it. Right after, the shopper gives a
+ * mobile number once, so the delivery person can call them (not verified, no
+ * code). Same screen as the iOS AuthView, which uses Sign in with Apple.
  *
  * Shown once on first launch with "Skip" (browsing never needs an account)
  * and from Profile. Calls [onClose] once signed in or dismissed.
@@ -125,90 +125,38 @@ fun AuthScreen(
     val view = LocalView.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val isSignUp = initialMode == AuthMode.SignUp
-    // Just signed in with a new Google account: the number is confirmed once.
-    val confirmingForGoogle by AuthRepository.isConfirmingNumberForGoogle.collectAsState()
-    // Signing up asks for a name, unless Google is confirming the number
-    // (Google shares one, and the name step asks if it doesn't).
-    val asksName = isSignUp && !confirmingForGoogle
 
+    // Signed in already but missing the number (or name): pick up where it stopped.
+    val signedIn = AuthRepository.user.value
     var name by remember { mutableStateOf("") }
     var digits by remember { mutableStateOf("") }
-    var code by remember { mutableStateOf("") }
-    var step by remember { mutableStateOf(AuthStep.Number) }
+    var step by remember {
+        mutableStateOf(
+            when {
+                signedIn == null -> AuthStep.Google
+                signedIn.mobile.isBlank() -> AuthStep.Number
+                signedIn.name.isNullOrBlank() -> AuthStep.Name
+                else -> AuthStep.Google
+            }
+        )
+    }
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    // The number the last code went to, and when another may be sent.
-    var sentTo by remember { mutableStateOf<String?>(null) }
-    var resendAt by remember { mutableLongStateOf(0L) }
     val valid = AuthRepository.normalizedMobile(digits) != null
-    // Signing up needs a name as well as the number.
-    val canContinue = valid && (!asksName || name.isNotBlank())
 
-    // Signed in but nameless: the name step can't be skipped with Back.
-    BackHandler(enabled = !isSigningIn && step != AuthStep.Name) {
-        if (step == AuthStep.Code || step == AuthStep.Confirm) {
-            step = AuthStep.Number
-            error = null
-        } else {
-            onClose()
-        }
-    }
-
-    fun sendCode() {
-        if (!valid || isSigningIn) return
-        // Back from "Change number" with the same number: the code sent still works.
-        if (sentTo == digits && System.currentTimeMillis() < resendAt) {
-            step = AuthStep.Code
-            return
-        }
-        isSigningIn = true
-        error = null
-        scope.launch {
-            try {
-                val request = AuthRepository.sendCode(digits)
-                sentTo = digits
-                code = ""
-                if (request.codeNeeded) {
-                    resendAt = System.currentTimeMillis() + request.resendAfterSeconds * 1_000L
-                    step = AuthStep.Code
-                } else {
-                    step = AuthStep.Confirm
-                }
-            } catch (e: AuthRepository.SignInException) {
-                HapticsManager.error(view)
-                error = e.message
-                e.retryAfterSeconds?.let { resendAt = System.currentTimeMillis() + it * 1_000L }
-            } finally {
-                isSigningIn = false
+    /** After each step: the next thing the account still needs, or done. */
+    fun next(profile: com.dashit.app.data.model.UserProfile) {
+        when {
+            profile.mobile.isBlank() -> step = AuthStep.Number
+            profile.name.isNullOrBlank() -> step = AuthStep.Name
+            else -> {
+                HapticsManager.success(view)
+                onClose()
             }
         }
     }
 
-    fun verify(entered: String) {
-        val mobile = sentTo ?: return
-        // An empty code is "Yes, that's my number" when codes are off.
-        if ((entered.isNotEmpty() && entered.length != SIGN_IN_CODE_LENGTH) || isSigningIn) return
-        isSigningIn = true
-        error = null
-        scope.launch {
-            try {
-                val profile = AuthRepository.signIn(mobile, entered, name.trim().takeIf { asksName })
-                if (profile.name.isNullOrBlank()) {
-                    step = AuthStep.Name
-                } else {
-                    HapticsManager.success(view)
-                    onClose()
-                }
-            } catch (e: Exception) {
-                HapticsManager.error(view)
-                error = e.message
-                code = ""
-            } finally {
-                isSigningIn = false
-            }
-        }
-    }
+    BackHandler(enabled = !isSigningIn) { onClose() }
 
     fun signInWithGoogle() {
         if (isSigningIn) return
@@ -216,14 +164,24 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                // Null: the sheet was closed, or the number is confirmed next.
-                val profile = AuthRepository.signInWithGoogle(context) ?: return@launch
-                if (profile.name.isNullOrBlank()) {
-                    step = AuthStep.Name
-                } else {
-                    HapticsManager.success(view)
-                    onClose()
-                }
+                // Null: the Google sheet was closed.
+                next(AuthRepository.signInWithGoogle(context) ?: return@launch)
+            } catch (e: AuthRepository.SignInException) {
+                HapticsManager.error(view)
+                error = e.message
+            } finally {
+                isSigningIn = false
+            }
+        }
+    }
+
+    fun saveMobile() {
+        if (!valid || isSigningIn) return
+        isSigningIn = true
+        error = null
+        scope.launch {
+            try {
+                next(AuthRepository.saveMobile(digits))
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
@@ -420,123 +378,58 @@ fun AuthScreen(
             ) {
                 SectionTitle(
                     when (step) {
+                        AuthStep.Google -> "Log in or sign up"
+                        AuthStep.Number -> "Your mobile number"
                         AuthStep.Name -> "What's your name?"
-                        AuthStep.Code -> "Enter the code"
-                        AuthStep.Confirm -> "Confirm your number"
-                        AuthStep.Number -> when {
-                            confirmingForGoogle -> "Confirm your number"
-                            isSignUp -> "Create your account"
-                            else -> "Log in or sign up"
-                        }
                     }
                 )
 
-                if (step == AuthStep.Name) {
+                AnimatedContent(targetState = step, label = "auth_step") { current ->
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        AuthField(
-                            value = name,
-                            placeholder = "Your name",
-                            keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                            onChange = { name = it.take(60); error = null }
-                        )
-                        AuthButton("Save and continue", enabled = name.isNotBlank() && !isSigningIn, isBusy = isSigningIn, onClick = ::saveName)
-                    }
-                } else AnimatedContent(targetState = step, label = "auth_step") { current ->
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (current == AuthStep.Number) {
-                            if (confirmingForGoogle) {
+                        when (current) {
+                            AuthStep.Google -> {
                                 Text(
-                                    "Your Google account is connected. Confirm your number with a WhatsApp code once; after that, Google signs you straight in.",
+                                    "Your Google account keeps your orders and addresses, on any phone.",
                                     color = DashitColors.TextSecondary,
                                     fontSize = 14.sp,
                                     lineHeight = 20.sp,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.fillMaxWidth()
                                 )
+                                GoogleButton(enabled = !isSigningIn, onClick = ::signInWithGoogle)
                             }
-                            if (asksName) {
+                            AuthStep.Number -> {
+                                Text(
+                                    "So the delivery person can call you. We only call about your order.",
+                                    color = DashitColors.TextSecondary,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                AuthField(
+                                    value = digits,
+                                    placeholder = "Enter mobile number",
+                                    prefix = "+91",
+                                    keyboard = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                                    onChange = { value ->
+                                        digits = value.filter { it.isDigit() }.take(10)
+                                        error = null
+                                    }
+                                )
+                                AuthButton("Save and continue", enabled = valid && !isSigningIn, isBusy = isSigningIn) {
+                                    HapticsManager.light(view)
+                                    saveMobile()
+                                }
+                            }
+                            AuthStep.Name -> {
                                 AuthField(
                                     value = name,
                                     placeholder = "Your name",
                                     keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                                    onChange = { name = it.take(60) }
+                                    onChange = { name = it.take(60); error = null }
                                 )
-                            }
-                            AuthField(
-                                value = digits,
-                                placeholder = "Enter mobile number",
-                                prefix = "+91",
-                                keyboard = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                                onChange = { value ->
-                                    digits = value.filter { it.isDigit() }.take(10)
-                                    error = null
-                                }
-                            )
-                            Text(
-                                "Your number is your DASHit account.",
-                                color = DashitColors.TextMuted,
-                                fontSize = 13.sp
-                            )
-                            AuthButton("Continue", enabled = canContinue, isBusy = isSigningIn) {
-                                HapticsManager.light(view)
-                                sendCode()
-                            }
-                            if (confirmingForGoogle) {
-                                Text(
-                                    "Cancel",
-                                    color = DashitColors.TextSecondary,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .pressable(scale = 0.97f) {
-                                            HapticsManager.light(view)
-                                            error = null
-                                            AuthRepository.cancelGoogleSignIn()
-                                        }
-                                        .padding(vertical = 12.dp)
-                                )
-                            } else {
-                                OrDivider()
-                                GoogleButton(enabled = !isSigningIn, onClick = ::signInWithGoogle)
-                            }
-                        } else if (current == AuthStep.Confirm) {
-                            ConfirmNumberStep(
-                                mobile = sentTo ?: digits,
-                                onChangeNumber = {
-                                    HapticsManager.light(view)
-                                    step = AuthStep.Number
-                                    error = null
-                                },
-                                enabled = !isSigningIn
-                            )
-                            AuthButton("Yes, continue", enabled = true, isBusy = isSigningIn) {
-                                HapticsManager.light(view)
-                                verify("")
-                            }
-                        } else {
-                            SignInCodeStep(
-                                mobile = sentTo ?: digits,
-                                code = code,
-                                onCodeChange = { code = it; error = null },
-                                onComplete = { verify(it) },
-                                resendAtMillis = resendAt,
-                                onResend = {
-                                    HapticsManager.light(view)
-                                    sendCode()
-                                },
-                                onChangeNumber = {
-                                    HapticsManager.light(view)
-                                    step = AuthStep.Number
-                                    error = null
-                                },
-                                enabled = !isSigningIn,
-                                boxColor = DashitColors.Surface
-                            )
-                            AuthButton("Verify", enabled = code.length == SIGN_IN_CODE_LENGTH, isBusy = isSigningIn) {
-                                verify(code)
+                                AuthButton("Save and continue", enabled = name.isNotBlank() && !isSigningIn, isBusy = isSigningIn, onClick = ::saveName)
                             }
                         }
                     }
@@ -566,23 +459,13 @@ fun AuthScreen(
     }
 }
 
-/** "———  or  ———" between the number and Google. */
-@Composable
-private fun OrDivider() {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.weight(1f).height(1.dp).background(DashitColors.Hairline))
-        Text("or", color = DashitColors.TextFaint, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-        Box(Modifier.weight(1f).height(1.dp).background(DashitColors.Hairline))
-    }
-}
-
 /**
  * "Continue with Google" in Google's light button style (white, grey
  * outline, the four-colour G), the counterpart of iOS's white Apple button
  * on this dark panel.
  */
 @Composable
-private fun GoogleButton(enabled: Boolean, onClick: () -> Unit) {
+internal fun GoogleButton(enabled: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

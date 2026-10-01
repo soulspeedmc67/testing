@@ -191,6 +191,9 @@ struct CategoriesView: View {
                 }
             }
             .coordinateSpace(.named("categoriesScroll"))
+            // A new scroll view per shelf, so every shelf opens at its first item
+            // instead of at the old shelf's scroll position (past a shorter list's end).
+            .id(selectedTile?.id ?? "")
             .onChange(of: selectedCategoryID) { _, _ in
                 proxy.scrollTo("top", anchor: .top)
             }

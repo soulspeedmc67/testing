@@ -15,8 +15,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -42,28 +40,39 @@ private const val TUCKED_LOGO_SCALE = 0.5f
 private val WordWidth = 158.dp
 private val WordHeight = 34.dp
 private const val WORD_X = 29.3f
+/**
+ * The logo's four shapes (each the full logo-sized image, so they line up
+ * where they are drawn) and where each flies in from, in dp, and when (ms).
+ */
+private class LogoPiece(val res: Int, val fromX: Float, val fromY: Float, val delay: Int)
+private val LOGO_PIECES = listOf(
+    LogoPiece(R.drawable.splash_logo_top, 0f, -34f, 0),
+    LogoPiece(R.drawable.splash_logo_bottom, 0f, 34f, 60),
+    LogoPiece(R.drawable.splash_logo_arc, 40f, 0f, 140),
+    LogoPiece(R.drawable.splash_logo_bar, -72f, 0f, 220)
+)
 /** Where each letter of the wordmark image starts (d, a, s, h, i, t), cut in the gaps. */
 private val LETTER_CUTS = floatArrayOf(0f, 0.1862f, 0.3936f, 0.5727f, 0.7713f, 0.8652f, 1f)
 
 /**
  * Takes over from the plain midnight system splash and hands over to the app,
- * exactly as the iOS `SplashView` does: the logo sharpens out of a blur, then
- * shrinks and tucks left while the letters of "dashit" pop in from its side
- * one after another, each sliding and settling as it sharpens, in a gentle
- * wave; the lockup lifts away in a blur and the backdrop clears onto the app.
- * (Blur needs Android 12+; older phones get the same motion without it.)
+ * exactly as the iOS `SplashView` does: the logo builds itself, its four
+ * shapes flying in and snapping together, then it shrinks and tucks left
+ * while the letters of "dashit" pop in from its side one after another, each
+ * sliding and settling, in a gentle wave; the lockup lifts away and the
+ * backdrop clears onto the app. No blur anywhere: blurring is the costly kind
+ * of effect and stuttered while the catalogue was loading underneath.
  */
 @Composable
 fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
     val context = LocalContext.current
-    val logoAlpha = remember { Animatable(0f) }
-    val logoBlur = remember { Animatable(14f) }
-    val logoRevealScale = remember { Animatable(0.86f) }
+    val pieceMove = remember { List(LOGO_PIECES.size) { Animatable(0f) } } // 0 → 1: fly into place
+    val pieceShow = remember { List(LOGO_PIECES.size) { Animatable(0f) } } // 0 → 1: fade in
+    val logoRevealScale = remember { Animatable(0.9f) }
     val tuck = remember { Animatable(0f) } // 0 → 1 moves the logo into the lockup
     val letterSettle = remember { List(6) { Animatable(0f) } } // 0 → 1: slide and rise into place
     val letterShow = remember { List(6) { Animatable(0f) } } // 0 → 1: fade in and sharpen
     val lockupScale = remember { Animatable(1f) }
-    val lockupBlur = remember { Animatable(0f) }
     val lockupAlpha = remember { Animatable(1f) }
     val backdropAlpha = remember { Animatable(1f) }
 
@@ -74,11 +83,11 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
         if (reduceMotion) {
             // The finished lockup, faded in and out.
             tuck.snapTo(1f)
-            logoBlur.snapTo(0f)
             logoRevealScale.snapTo(1f)
+            pieceMove.forEach { it.snapTo(1f) }
             letterSettle.forEach { it.snapTo(1f) }
             coroutineScope {
-                launch { logoAlpha.animateTo(1f, tween(300)) }
+                pieceShow.forEach { launch { it.animateTo(1f, tween(300)) } }
                 letterShow.forEach { launch { it.animateTo(1f, tween(300)) } }
             }
             delay(600)
@@ -92,18 +101,20 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
         }
 
         coroutineScope {
-            // 1. The logo sharpens out of a blur.
+            // 1. The logo builds itself: its shapes fly in one after another.
             launch {
                 delay(120)
                 coroutineScope {
-                    launch { logoAlpha.animateTo(1f, tween(520, easing = EaseOut)) }
-                    launch { logoBlur.animateTo(0f, tween(520, easing = EaseOut)) }
-                    launch { logoRevealScale.animateTo(1f, tween(520, easing = EaseOut)) }
+                    launch { logoRevealScale.animateTo(1f, tween(700, easing = EaseOut)) }
+                    LOGO_PIECES.forEachIndexed { index, piece ->
+                        launch { pieceMove[index].animateTo(1f, tween(460, delayMillis = piece.delay, easing = Pop)) }
+                        launch { pieceShow[index].animateTo(1f, tween(240, delayMillis = piece.delay, easing = EaseOut)) }
+                    }
                 }
             }
             // 2. It tucks left, and the letters pop in from its side in a wave.
             launch {
-                delay(760)
+                delay(840)
                 coroutineScope {
                     launch { tuck.animateTo(1f, tween(560, easing = EaseInOut)) }
                     for (index in 0 until 6) {
@@ -115,10 +126,9 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
             }
             // 3. The lockup lifts away and the backdrop clears onto the app.
             launch {
-                delay(1820)
+                delay(1900)
                 coroutineScope {
                     launch { lockupScale.animateTo(1.08f, tween(320, easing = EaseIn)) }
-                    launch { lockupBlur.animateTo(8f, tween(320, easing = EaseIn)) }
                     launch { lockupAlpha.animateTo(0f, tween(320, easing = EaseIn)) }
                     launch { backdropAlpha.animateTo(0f, tween(380, delayMillis = 80, easing = EaseOut)) }
                     launch {
@@ -146,7 +156,6 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                     scaleY = lockupScale.value
                     alpha = lockupAlpha.value
                 }
-                .blur(lockupBlur.value.dp, BlurredEdgeTreatment.Unbounded)
         ) {
             // Each letter is the wordmark image cut to that letter, so it can move on its own.
             for (index in 0 until 6) {
@@ -164,7 +173,6 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                             translationY = (7f * (1f - settle.value)).dp.toPx()
                             alpha = show.value
                         }
-                        .blur((7f * (1f - show.value)).dp, BlurredEdgeTreatment.Unbounded)
                         .drawWithContent {
                             clipRect(
                                 left = size.width * LETTER_CUTS[index],
@@ -177,9 +185,8 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                         }
                 )
             }
-            Image(
-                painter = painterResource(R.drawable.splash_logo),
-                contentDescription = null,
+            // The logo: its four shapes, moved together as one.
+            Box(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(LogoSize)
@@ -190,10 +197,24 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                         scaleX = scale
                         scaleY = scale
                         translationX = (TUCKED_LOGO_X * t).dp.toPx()
-                        alpha = logoAlpha.value
                     }
-                    .blur(logoBlur.value.dp, BlurredEdgeTreatment.Unbounded)
-            )
+            ) {
+                LOGO_PIECES.forEachIndexed { index, piece ->
+                    val move = pieceMove[index]
+                    val show = pieceShow[index]
+                    Image(
+                        painter = painterResource(piece.res),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .matchParentSize()
+                            .graphicsLayer {
+                                translationX = (piece.fromX * (1f - move.value)).dp.toPx()
+                                translationY = (piece.fromY * (1f - move.value)).dp.toPx()
+                                alpha = show.value
+                            }
+                    )
+                }
+            }
         }
     }
 }

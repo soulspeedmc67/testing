@@ -363,7 +363,14 @@ final class FirestoreService {
         }
     }
 
-    func ensureUserProfile(uid: String, mobile: String, name: String? = nil, email: String? = nil) async throws -> UserProfile {
+    func ensureUserProfile(
+        uid: String,
+        mobile: String,
+        name: String? = nil,
+        email: String? = nil,
+        provider: String? = nil,
+        installID: String? = nil
+    ) async throws -> UserProfile {
         let docRef = db.collection("users").document(uid)
         let snapshot = try await docRef.getDocument()
 
@@ -371,6 +378,7 @@ final class FirestoreService {
         if data["id"] == nil { data["id"] = uid }
         if snapshot.exists, var profile = try? Firestore.Decoder().decode(UserProfile.self, from: data) {
             var patch: [String: Any] = ["lastLoginAt": FieldValue.serverTimestamp()]
+            Self.addDevice(to: &patch, provider: provider, installID: installID)
             if profile.mobile.isEmpty, !mobile.isEmpty {
                 profile.mobile = mobile
                 patch["mobile"] = mobile
@@ -393,15 +401,24 @@ final class FirestoreService {
             "createdAt": FieldValue.serverTimestamp(),
             "lastLoginAt": FieldValue.serverTimestamp()
         ]
+        Self.addDevice(to: &fields, provider: provider, installID: installID)
         if let name, !name.isEmpty { fields["name"] = name }
         if let email, !email.isEmpty { fields["email"] = email }
         try await docRef.setData(fields, merge: true)
         return UserProfile(id: uid, mobile: mobile, name: name, email: email)
     }
 
+    /// Notes which phone signed in: a map of random install ids (never a hardware id).
+    private static func addDevice(to fields: inout [String: Any], provider: String?, installID: String?) {
+        if let provider { fields["provider"] = provider }
+        if let installID {
+            fields["devices"] = [installID: ["platform": "ios", "lastSeenAt": FieldValue.serverTimestamp()]]
+        }
+    }
+
     func updateUserMobile(uid: String, mobile: String) async throws {
         try await db.collection("users").document(uid).setData(
-            ["mobile": mobile, "updatedAt": FieldValue.serverTimestamp()],
+            ["mobile": mobile, "mobileVerified": false, "updatedAt": FieldValue.serverTimestamp()],
             merge: true
         )
     }

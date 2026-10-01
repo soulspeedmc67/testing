@@ -71,6 +71,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -159,6 +160,7 @@ fun StorefrontScreen(
     val tobaccoProducts by storefrontVm.tobaccoProducts.collectAsState()
     val isBrowsing by storefrontVm.isBrowsing.collectAsState()
     val selectedCategory by storefrontVm.selectedCategory.collectAsState()
+    val searchQuery by storefrontVm.searchQuery.collectAsState()
 
     val cartItems by cartVm.items.collectAsState()
     // How many of each item are in the cart, worked out once per cart change, not once per card.
@@ -257,6 +259,20 @@ fun StorefrontScreen(
             when (activeTab) {
                 NavigationTab.HOME -> {
                     val homeList = rememberLazyListState()
+                    // Opening a category, search or "all" shows its list from the
+                    // top. The scroll position of the page before it stayed, which
+                    // left the new list scrolled past its end: a blank screen.
+                    // (Items 0 and 1 are the header and the pinned search bar.)
+                    val showingKey = selectedCategory to searchQuery
+                    var shownBefore by remember { mutableStateOf<Pair<String?, String>?>(null) }
+                    LaunchedEffect(showingKey) {
+                        if (shownBefore != null && shownBefore != showingKey) {
+                            // After the new list has been laid out, so its length is known.
+                            withFrameNanos { }
+                            homeList.scrollToItem(2)
+                        }
+                        shownBefore = showingKey
+                    }
                     // The search bar only needs room for the status bar once it
                     // sticks to the top; above that the header already has it.
                     val searchPinned by remember { derivedStateOf { homeList.firstVisibleItemIndex > 0 } }

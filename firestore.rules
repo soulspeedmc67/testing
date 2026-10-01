@@ -65,6 +65,18 @@ service cloud.firestore {
       return isSignedIn() && 'mobile' in request.auth.token;
     }
 
+    /* A shopper: signed in with their Google or Apple account (the account the
+       apps use), or with an older number account (see hasVerifiedMobile). An
+       anonymous or email-only session is not a shopper. The mobile number the
+       shopper gives for the rider to call is collected, not verified, so it
+       proves nothing; the account does. */
+    function isCustomerLogin() {
+      return isSignedIn() && (
+        'mobile' in request.auth.token
+        || request.auth.token.firebase.sign_in_provider in ['google.com', 'apple.com']
+      );
+    }
+
     /** Restricts a write to a known set of fields. */
     function onlyChanges(allowed) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
@@ -173,12 +185,12 @@ service cloud.firestore {
          themselves, never pre-assigned to a driver, never pre-marked delivered,
          and never pre-flagged as stock-deducted. createdAt must be the server's
          clock so the 30-second cancellation window cannot be backdated.
-         Customers must have signed in with their number; the verified-number
-         test comes first so it short-circuits before isStaff()'s read.
+         Customers must have signed in with Google or Apple (or an older number
+         account); that test comes first so it short-circuits before isStaff()'s read.
          An order that says it was paid online must be backed by a payment the
          server confirmed (paymentCovers); that check costs a read, so it only
          runs for those orders. */
-      allow create: if (hasVerifiedMobile() || isStaff())
+      allow create: if (isCustomerLogin() || isStaff())
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'Placed'
         && request.resource.data.driverId == null

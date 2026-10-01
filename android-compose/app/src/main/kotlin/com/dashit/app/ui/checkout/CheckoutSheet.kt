@@ -371,8 +371,8 @@ fun CheckoutSheet(
                                 .pressable(scale = 0.98f) {
                                     if (!isSubmitting) {
                                         val customer = signedInUser
-                                        if (customer == null || customer.name.isNullOrBlank()) {
-                                            // Orders need a signed-in shopper with a name: confirm the number (and name) first.
+                                        if (customer == null || customer.name.isNullOrBlank() || customer.mobile.isBlank()) {
+                                            // Orders need a signed-in shopper with a name and a number the rider can call.
                                             HapticsManager.light(view)
                                             isSignInOpen = true
                                         } else {
@@ -416,7 +416,7 @@ fun CheckoutSheet(
     }
 
     if (isSignInOpen) {
-        com.dashit.app.ui.auth.PhoneSignInSheet(
+        com.dashit.app.ui.auth.SignInSheet(
             onSignedIn = { profile ->
                 isSignInOpen = false
                 placeOrder(profile)

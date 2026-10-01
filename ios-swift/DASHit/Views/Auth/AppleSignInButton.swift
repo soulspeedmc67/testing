@@ -16,7 +16,7 @@ struct AppleSignInButton: View {
         SignInWithAppleButton(label) { request in
             let nonce = AppleNonce.random()
             appleNonce = nonce
-            request.requestedScopes = [.fullName]
+            request.requestedScopes = [.fullName, .email]
             request.nonce = AppleNonce.sha256(nonce)
         } onCompletion: { result in
             switch result {
@@ -46,28 +46,36 @@ struct AppleSignInButton: View {
     }
 }
 
-/// One more Apple confirmation before an account with an Apple ID is deleted:
-/// its authorization code lets DASHit revoke its Apple tokens (App Store
-/// 5.1.1(v)). Hands the code back; a cancelled sheet is not an error.
+/// One more Apple sign-in before an account is deleted: Firebase only deletes
+/// an account that signed in moments ago, and the authorization code lets
+/// DASHit revoke its Apple tokens (App Store 5.1.1(v)). Hands back what both
+/// need; a cancelled sheet is not an error.
 struct AppleRevokeButton: View {
-    let onCode: (String) -> Void
+    let onConfirmed: (_ idToken: String, _ rawNonce: String, _ authorizationCode: String) -> Void
     let onError: (String) -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var appleNonce: String? = nil
 
     var body: some View {
         SignInWithAppleButton(.continue) { request in
+            let nonce = AppleNonce.random()
+            appleNonce = nonce
             request.requestedScopes = []
+            request.nonce = AppleNonce.sha256(nonce)
         } onCompletion: { result in
             switch result {
             case .success(let authorization):
                 guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                      let tokenData = credential.identityToken,
+                      let token = String(data: tokenData, encoding: .utf8),
                       let codeData = credential.authorizationCode,
-                      let code = String(data: codeData, encoding: .utf8) else {
+                      let code = String(data: codeData, encoding: .utf8),
+                      let nonce = appleNonce else {
                     onError("Apple didn't confirm the request. Please try again.")
                     return
                 }
-                onCode(code)
+                onConfirmed(token, nonce, code)
             case .failure(let error):
                 if (error as? ASAuthorizationError)?.code != .canceled {
                     onError("Apple didn't confirm the request. Please try again.")

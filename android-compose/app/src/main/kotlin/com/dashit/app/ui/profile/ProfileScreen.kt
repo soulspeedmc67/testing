@@ -59,7 +59,7 @@ import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.UserProfile
 import com.dashit.app.ui.auth.AuthMode
 import com.dashit.app.ui.auth.AuthScreen
-import com.dashit.app.ui.auth.PhoneSignInSheet
+import com.dashit.app.ui.auth.SignInSheet
 import com.dashit.app.ui.orders.IosActionSheet
 import com.dashit.app.ui.orders.SheetAction
 import kotlinx.coroutines.launch
@@ -254,11 +254,10 @@ fun ProfileScreen(
         )
     }
 
-    // The number is the account, so it can't be changed here: another number
-    // is another account. Deleting asks for a code to the account's number.
+    // Deleting asks for Google again: Firebase only deletes a fresh sign-in.
     if (isConfirmingDelete && user != null) {
-        PhoneSignInSheet(
-            confirmMobile = user.mobile,
+        SignInSheet(
+            confirmItsYou = true,
             onSignedIn = {
                 isConfirmingDelete = false
                 isDeleting = true
@@ -305,7 +304,7 @@ private fun AccountHeader(user: UserProfile) {
                 fontSize = 19.sp,
                 fontWeight = FontWeight.Bold
             )
-            Text("+91 ${user.mobile}", color = DashitColors.TextMuted, fontSize = 13.5.sp)
+            if (user.mobile.isNotBlank()) Text("+91 ${user.mobile}", color = DashitColors.TextMuted, fontSize = 13.5.sp)
             if (!user.email.isNullOrEmpty()) {
                 Text(user.email.orEmpty(), color = DashitColors.TextMuted, fontSize = 12.sp)
             }

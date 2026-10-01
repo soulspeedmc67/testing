@@ -87,6 +87,7 @@ struct StorefrontHomeView: View {
                             }
                         } else {
                             resultsGrid
+                                .id("results")
                                 .padding(.top, 16)
                         }
 
@@ -125,6 +126,13 @@ struct StorefrontHomeView: View {
                     .padding(.bottom, 10)
                     .followsTabBar()
                 }
+            }
+            // A picked category, or a search, starts at the top of its list. The
+            // page before it stayed scrolled, which left the new list scrolled
+            // past its end: a blank screen to scroll back from.
+            .onChange(of: vm.selectedCategory) { _, _ in showFromTop(proxy) }
+            .onChange(of: vm.isBrowsing) { _, browsing in
+                if !browsing { showFromTop(proxy) }
             }
             .task {
                 #if DEBUG
@@ -438,6 +446,18 @@ struct StorefrontHomeView: View {
     }
 
     // MARK: - Filtered results
+
+    /// Puts the top of the results just under the pinned search bar.
+    private func showFromTop(_ proxy: ScrollViewProxy) {
+        // After the new list has been laid out, so its height is known.
+        DispatchQueue.main.async {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction) {
+                proxy.scrollTo(vm.isBrowsing ? "categories" : "results", anchor: UnitPoint(x: 0.5, y: 0.16))
+            }
+        }
+    }
 
     private var resultsGrid: some View {
         let products = vm.filteredProducts
