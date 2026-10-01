@@ -110,11 +110,14 @@ fun OrderStatusPill(
     tracking: DriverLiveTracking?,
     onOpen: () -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Minutes left worked out from the road still to ride (see RouteProgress). */
+    routeEtaMinutes: Int? = null
 ) {
     val view = LocalView.current
     val stage = order.status
-    val eta = tracking?.etaMinutes ?: order.etaMinutes ?: 8
+    // The road left beats the rider phone's own guess, which ran far off.
+    val eta = routeEtaMinutes ?: order.etaMinutes ?: 8
     val progress by animateFloatAsState(
         targetValue = if (stage == OrderStatus.CANCELLED) 1f else stage.progress(tracking?.progress).toFloat(),
         animationSpec = tween(600),
@@ -128,10 +131,8 @@ fun OrderStatusPill(
         },
         label = "pill_accent"
     )
-    // While riding, the driver app's own line beats the checkout estimate.
-    val subtitle = tracking?.statusText?.takeIf { stage == OrderStatus.OUT_FOR_DELIVERY && it.isNotBlank() }
-        ?: stage.subtitle(eta, order.itemCount)
-    val headline = stage.headline(order.driverName)
+    val subtitle = stage.subtitle(eta, order.itemCount)
+    val headline = stage.pillHeadline
 
     Row(
         modifier = modifier

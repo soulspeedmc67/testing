@@ -42,6 +42,16 @@ enum class OrderStatus(val title: String, val rawValue: String) {
         CANCELLED -> "Order cancelled"
     }
 
+    /** Short, for the order pill: no names, nothing that gets cut off. */
+    val pillHeadline: String
+        get() = when (this) {
+            PLACED -> "Order placed"
+            PACKING -> "Packing your order"
+            OUT_FOR_DELIVERY -> "On the way"
+            DELIVERED -> "Delivered"
+            CANCELLED -> "Cancelled"
+        }
+
     fun subtitle(etaMinutes: Int, itemCount: Int): String = when (this) {
         PLACED -> "Hub is picking fresh items"
         PACKING -> if (itemCount > 0) "Packing $itemCount item${if (itemCount == 1) "" else "s"} at the hub" else "Items are packed & sealed"

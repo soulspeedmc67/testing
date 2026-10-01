@@ -334,7 +334,7 @@ fun CheckoutSheet(
                     AddressCard(address = address)
 
                     // 2. Delivery Time Guarantee Card
-                    GuaranteeCard()
+                    GuaranteeCard(address)
 
                     // 3. Payment Method Card
                     PaymentCard(
@@ -497,7 +497,9 @@ private fun AddressCard(address: DeliveryAddress) {
 }
 
 @Composable
-private fun GuaranteeCard() {
+private fun GuaranteeCard(address: DeliveryAddress) {
+    val quote = remember(address.latitude, address.longitude) { DeliveryEta.quote(address.latitude, address.longitude) }
+    val eta = StoreStatus.etaMinutes(quote)
     val cardShape = RoundedCornerShape(14.dp)
     Row(
         modifier = Modifier
@@ -518,13 +520,13 @@ private fun GuaranteeCard() {
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = "Delivery in 8 minutes",
+                text = eta?.let { "Delivery in $it minutes" } ?: "Outside our delivery area",
                 color = DashitColors.TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "1.2 km · Fulfilled from DASHit Anantnag Dark Store",
+                text = "${quote.shortDistanceText} · From the DASHit store in Anantnag",
                 color = DashitColors.TextMuted,
                 fontSize = 11.5.sp
             )

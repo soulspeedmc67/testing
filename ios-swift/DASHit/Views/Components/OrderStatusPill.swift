@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 /// The live order, docked in a pill above the tab bar: the stage glyph in a
 /// progress ring, the live status and the ETA. Status changes roll through it
@@ -13,7 +14,24 @@ struct OrderStatusPill: View {
 
     private var stage: DeliveryStage { order.status.stage }
     private var itemCount: Int { order.items.reduce(0) { $0 + $1.qty } }
-    private var etaMinutes: Int { tracking?.etaMinutes ?? order.etaMinutes ?? 8 }
+    /// From how far the rider really is (road ≈ 1.3× the straight line, ~20 km/h
+    /// in town), not the rider phone's own guess, which ran far off.
+    private var etaMinutes: Int {
+        guard let tracking else { return order.etaMinutes ?? 8 }
+        let door = order.deliveryAddress.coordinate
+        let metres = DeliveryEta.haversineKm(from: tracking.coordinate, to: door) * 1000 * 1.3
+        return max(1, Int((metres / 5.5 / 60).rounded(.up)))
+    }
+
+    /// Short, so nothing is cut off: no rider name here.
+    private var headline: String {
+        switch stage {
+        case .onTheWay: return "On the way"
+        case .delivered: return "Delivered"
+        case .cancelled: return "Cancelled"
+        default: return stage.headline(riderName: nil)
+        }
+    }
     private var progress: Double { stage.progress(live: tracking?.progress) }
 
     private var accent: Color {
@@ -24,13 +42,8 @@ struct OrderStatusPill: View {
         }
     }
 
-    /// While riding, the driver app's own line ("Arriving in ~6 mins") beats
-    /// the checkout estimate.
     private var subtitle: String {
-        if stage == .onTheWay, let line = tracking?.statusText, !line.isEmpty {
-            return line
-        }
-        return stage.subtitle(etaMinutes: etaMinutes, itemCount: itemCount)
+        stage.subtitle(etaMinutes: etaMinutes, itemCount: itemCount)
     }
 
     /// Shown until the order is delivered or cancelled.
@@ -44,7 +57,7 @@ struct OrderStatusPill: View {
             ring
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(stage.headline(riderName: order.driverName))
+                Text(headline)
                     .font(.system(size: 14.5, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
@@ -114,7 +127,7 @@ struct OrderStatusPill: View {
         .animation(.easeInOut(duration: 0.6), value: progress)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("\(stage.headline(riderName: order.driverName)). \(subtitle)")
+        .accessibilityLabel("\(headline). \(subtitle)")
         .accessibilityHint("Opens live tracking")
         .accessibilityActions {
             if stage.isFinished {
