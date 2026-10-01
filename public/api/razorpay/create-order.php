@@ -1,17 +1,21 @@
 <?php
 /*
- * POST { "amount": <paise>, "receipt": "<DASHit order code>" }
+ * POST { "amount": <paise>, "receipt": "<DASHit order code>", "id_token": "<Firebase ID token>" }
  *   -> 200 { "order_id", "amount", "currency", "key_id" }
+ *   -> 401 when the caller isn't a signed-in shopper
  *
  * Creates the Razorpay order the app then opens checkout for. The key id is
  * handed back so the apps hold no Razorpay key at all (test and live keys
- * switch here, on the server).
+ * switch here, on the server). Only a signed-in shopper can start a payment,
+ * and the order is stamped with who asked (notes.dashit_uid), which the
+ * payment record and firestore.rules then check.
  */
 require __DIR__ . '/_razorpay.php';
 
 dashit_only_post();
 dashit_rate_limit('razorpay-create-order', 30);
 $body = dashit_json_body();
+[, $claims] = dashit_require_shopper($body);
 
 $amount = $body['amount'] ?? null;
 if (!(is_int($amount) || (is_string($amount) && ctype_digit($amount)))) {
@@ -35,7 +39,7 @@ $credentials = dashit_razorpay_credentials();
     'amount' => $amount,
     'currency' => 'INR',
     'receipt' => $receipt,
-    'notes' => ['dashit_order' => $receipt],
+    'notes' => ['dashit_order' => $receipt, 'dashit_uid' => (string) $claims['sub']],
 ], $credentials);
 
 if ($status === 401) {

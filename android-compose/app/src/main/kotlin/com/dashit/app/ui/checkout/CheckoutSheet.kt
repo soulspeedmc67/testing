@@ -88,17 +88,13 @@ fun CheckoutSheet(
     val bill by cartVm.bill.collectAsState()
     val items by cartVm.items.collectAsState()
 
-    // "cod", or "upi:<package>" for a UPI app on this phone. The last choice is kept.
+    // "online" (Razorpay's checkout: UPI, cards, netbanking, wallets, EMI, Pay Later) or "cod".
+    // The last choice is kept; the older per-UPI-app choices ("upi:...") count as online.
     val prefs = remember { context.getSharedPreferences("dashit_prefs", android.content.Context.MODE_PRIVATE) }
-    var paymentMethod by remember { mutableStateOf(prefs.getString(LAST_PAYMENT_KEY, null) ?: "cod") }
-    var upiApps by remember { mutableStateOf<List<OnlinePayment.UpiApp>?>(null) }
-    LaunchedEffect(Unit) {
-        val apps = OnlinePayment.upiApps(context)
-        upiApps = apps
-        // The app used last time was uninstalled: back to cash on delivery.
-        if (paymentMethod.startsWith("upi:") && apps.none { "upi:${it.packageName}" == paymentMethod }) paymentMethod = "cod"
+    var paymentMethod by remember {
+        mutableStateOf(prefs.getString(LAST_PAYMENT_KEY, null)?.let { if (it == "cod") "cod" else "online" } ?: "cod")
     }
-    val chosenApp = upiApps?.firstOrNull { "upi:${it.packageName}" == paymentMethod }
+    val paysOnline = paymentMethod == "online"
     var isSubmitting by remember { mutableStateOf(false) }
     var progressText by remember { mutableStateOf("Placing order...") }
     var orderSuccess by remember { mutableStateOf(false) }
@@ -129,8 +125,6 @@ fun CheckoutSheet(
         }
         val eta = StoreStatus.etaMinutes(quote) ?: 8
         val code = Order.newCode()
-        val app = chosenApp
-        val paysOnline = app != null
         val order = Order(
             id = code,
             userId = customer.id,
@@ -147,20 +141,20 @@ fun CheckoutSheet(
             couponCode = coupon?.takeIf { bill.couponDiscount > 0 || it.waivesDelivery == true }?.code
         )
         isSubmitting = true
-        progressText = if (app != null) "Waiting for ${app.name}..." else "Placing order..."
+        progressText = if (paysOnline) "Opening payment..." else "Placing order..."
         prefs.edit().putString(LAST_PAYMENT_KEY, paymentMethod).apply()
         HapticsManager.medium(view)
         // Not tied to this sheet: once money is taken, the order is placed
         // even if the sheet or the screen goes away meanwhile.
         OnlinePayment.scope.launch {
-            // Paying by UPI: the payment is taken and confirmed first, and only
+            // Paying online: the payment is taken and confirmed first, and only
             // a confirmed payment places the order.
             var receipt: OnlinePayment.Receipt? = null
-            if (app != null) {
+            if (paysOnline) {
                 val activity = context.findActivity()
                 try {
                     if (activity == null) throw OnlinePayment.PaymentException("Online payment isn't available right now. Choose cash on delivery.")
-                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer, app) {
+                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer) {
                         progressText = "Confirming payment..."
                     }
                     progressText = "Placing order..."
@@ -321,7 +315,6 @@ fun CheckoutSheet(
 
                     // 3. Payment Method Card
                     PaymentCard(
-                        upiApps = upiApps,
                         selectedMethod = paymentMethod,
                         onSelectMethod = {
                             HapticsManager.selection(view)
@@ -401,8 +394,7 @@ fun CheckoutSheet(
                                 }
                             } else {
                                 Text(
-                                    text = chosenApp?.let { "Pay ₹${bill.grandTotal.toInt()} with ${it.name}" }
-                                        ?: "Place Order • ₹${bill.grandTotal.toInt()}",
+                                    text = if (paysOnline) "Pay ₹${bill.grandTotal.toInt()}" else "Place Order • ₹${bill.grandTotal.toInt()}",
                                     color = Color.White,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
@@ -518,7 +510,6 @@ private fun GuaranteeCard() {
 
 @Composable
 private fun PaymentCard(
-    upiApps: List<OnlinePayment.UpiApp>?,
     selectedMethod: String,
     onSelectMethod: (String) -> Unit
 ) {
@@ -540,13 +531,19 @@ private fun PaymentCard(
             fontWeight = FontWeight.Bold
         )
 
-        // The UPI apps on this phone: picking one opens it straight away at "Pay".
-        upiApps?.forEach { app ->
-            PaymentMethodRow(
-                title = app.name,
-                isSelected = selectedMethod == "upi:${app.packageName}",
-                onSelect = { onSelectMethod("upi:${app.packageName}") }
-            ) { UpiAppIcon(app) }
+        // Razorpay's checkout opens at "Pay" with every way to pay it supports.
+        PaymentMethodRow(
+            title = "Pay online",
+            subtitle = "UPI, cards, netbanking, wallets, EMI, Pay Later",
+            isSelected = selectedMethod == "online",
+            onSelect = { onSelectMethod("online") }
+        ) {
+            Icon(
+                imageVector = Icons.Default.AccountBalanceWallet,
+                contentDescription = null,
+                tint = if (selectedMethod == "online") DashitColors.BrandOrange else DashitColors.TextMuted,
+                modifier = Modifier.size(22.dp)
+            )
         }
 
         PaymentMethodRow(
@@ -561,42 +558,13 @@ private fun PaymentCard(
                 modifier = Modifier.size(22.dp)
             )
         }
-
-        if (upiApps != null && upiApps.isEmpty()) {
-            Text(
-                text = "To pay online, install a UPI app like Google Pay or PhonePe.",
-                color = DashitColors.TextMuted,
-                fontSize = 12.sp
-            )
-        }
-    }
-}
-
-/** The app's own icon; Razorpay's logo for it if the phone didn't give one. */
-@Composable
-private fun UpiAppIcon(app: OnlinePayment.UpiApp) {
-    val modifier = Modifier.size(28.dp).clip(RoundedCornerShape(7.dp))
-    val bitmap = remember(app.packageName) { app.icon?.asImageBitmap() }
-    when {
-        bitmap != null -> Image(bitmap = bitmap, contentDescription = null, modifier = modifier)
-        app.logoUrl != null -> coil.compose.AsyncImage(
-            model = app.logoUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = modifier
-        )
-        else -> Icon(
-            imageVector = Icons.Default.AccountBalanceWallet,
-            contentDescription = null,
-            tint = DashitColors.TextMuted,
-            modifier = Modifier.size(22.dp)
-        )
     }
 }
 
 @Composable
 private fun PaymentMethodRow(
     title: String,
+    subtitle: String? = null,
     isSelected: Boolean,
     onSelect: () -> Unit,
     icon: @Composable () -> Unit
@@ -619,13 +587,17 @@ private fun PaymentMethodRow(
     ) {
         Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) { icon() }
 
-        Text(
-            text = title,
-            color = DashitColors.TextPrimary,
-            fontSize = 14.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                color = DashitColors.TextPrimary,
+                fontSize = 14.sp,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+            )
+            if (subtitle != null) {
+                Text(text = subtitle, color = DashitColors.TextMuted, fontSize = 11.5.sp)
+            }
+        }
 
         Icon(
             imageVector = if (isSelected) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,

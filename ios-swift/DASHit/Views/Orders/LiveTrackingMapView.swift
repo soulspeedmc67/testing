@@ -284,21 +284,21 @@ struct LiveTrackingMapView: View {
                 Spacer()
                 // The arrival time only once a rider has the order and is on the way.
                 if stage == .onTheWay {
-                    Text("ETA \(vm.riderLocation?.etaMinutes ?? order.etaMinutes ?? 8) MINS")
+                    Text("ETA \(vm.etaMinutes ?? vm.riderLocation?.etaMinutes ?? order.etaMinutes ?? 8) MINS")
                         .font(.dashitHeadline)
                         .foregroundColor(.brandAccent)
                         .contentTransition(.numericText())
                 }
             }
 
-            if stage == .onTheWay, let line = vm.riderLocation?.statusText ?? vm.riderLocation?.distanceFormatted {
+            if stage == .onTheWay, let line = vm.distanceLine ?? vm.riderLocation?.statusText ?? vm.riderLocation?.distanceFormatted {
                 Text(line)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(Color.white.opacity(0.75))
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            OrderProgressRail(stage: stage, progress: stage.progress(live: vm.riderLocation?.progress))
+            OrderProgressRail(stage: stage, progress: stage.progress(live: vm.progressPercent ?? vm.riderLocation?.progress))
 
             if !stage.isFinished, let code = order.otp, !code.isEmpty {
                 DeliveryCodeRow(code: code)

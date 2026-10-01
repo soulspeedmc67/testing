@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "391742831837-e4sd7jdapbefkho1eh05k2r266pgiqt0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dashit.app",
+            "certificate_hash": "ca06a22e18b19064478e5ae66cfee99a6e564126"
+          }
+        },
+        {
+          "client_id": "391742831837-qumo204m72gteinaj8l1sbo4knlr92k5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dashit.app",
+            "certificate_hash": "2d0da7afafeb3271bea0bd3c8d511bbf4b3f8cf4"
+          }
+        },
+        {
           "client_id": "391742831837-6f1p9j22s60ar9fpc9sm0j2gkd5c0t9s.apps.googleusercontent.com",
           "client_type": 3
         }

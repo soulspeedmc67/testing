@@ -109,7 +109,96 @@ final class AuthService: ObservableObject {
         }
     }
 
-    /// Saves the number the rider can call (not verified), or changes it.
+    // MARK: - Number check (2Factor)
+
+    /// What asking for a code did: `configured` is false while the server has no
+    /// 2Factor key yet, in which case nothing was sent and the number is simply
+    /// saved (`saveMobile`); otherwise a code was texted and `ticket` goes back
+    /// with it to `verifyOtp`.
+    struct OtpRequest {
+        let configured: Bool
+        let ticket: String?
+        let resendAfter: Int
+    }
+
+    private static let server = URL(string: "https://dashit.co.in/api/auth/")!
+
+    private struct OtpSent: Decodable {
+        let configured: Bool?
+        let ticket: String?
+        let resend_after: Int?
+    }
+
+    private struct Verified: Decodable {
+        let verified: Bool?
+    }
+
+    private struct ServerError: Decodable {
+        let error: String?
+        let retry_after: Int?
+    }
+
+    /// Texts a code to the number through the server (2Factor).
+    func requestOtp(to mobile: String) async throws -> OtpRequest {
+        guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
+        return try await run {
+            let token = try await self.idToken()
+            let sent: OtpSent
+            do {
+                sent = try await self.post("send-otp.php", body: ["mobile": clean, "id_token": token])
+            } catch AuthError.endpointMissing {
+                // A site that hasn't been updated yet has no code endpoint: just save the number.
+                return OtpRequest(configured: false, ticket: nil, resendAfter: 0)
+            }
+            return OtpRequest(configured: sent.configured ?? false, ticket: sent.ticket, resendAfter: sent.resend_after ?? 30)
+        }
+    }
+
+    /// Checks the code; the server marks the number verified on the profile.
+    func verifyOtp(mobile: String, code: String, ticket: String) async throws {
+        guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
+        guard var profile = currentUser else { throw fail(.notSignedIn) }
+        try await run {
+            let token = try await self.idToken()
+            let _: Verified = try await self.post("verify-otp.php", body: [
+                "mobile": clean, "otp": code, "ticket": ticket, "id_token": token
+            ])
+            profile.mobile = clean
+            self.finishSignIn(with: profile)
+        }
+    }
+
+    /// The signed-in shopper's Firebase ID token: what the server checks to know who is asking.
+    func idToken() async throws -> String {
+        guard let user = Auth.auth().currentUser else { throw AuthError.notSignedIn }
+        return try await user.getIDToken()
+    }
+
+    /// POSTs JSON to the sign-in server; its `error` message becomes the thrown AuthError's.
+    private func post<T: Decodable>(_ path: String, body: [String: Any]) async throws -> T {
+        var request = URLRequest(url: Self.server.appendingPathComponent(path))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.timeoutInterval = 25
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw AuthError.network
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status), let decoded = try? JSONDecoder().decode(T.self, from: data) else {
+            if status == 404 { throw AuthError.endpointMissing }
+            let reply = try? JSONDecoder().decode(ServerError.self, from: data)
+            throw AuthError.server(reply?.error ?? "That didn't work. Please try again.", retryAfter: reply?.retry_after)
+        }
+        return decoded
+    }
+
+    /// Saves the number the rider can call (not verified by a code), or changes it.
     func saveMobile(_ raw: String) async throws {
         guard let clean = Self.normalizedMobile(raw) else { throw fail(.invalidMobile) }
         guard let uid = firebaseUID, var profile = currentUser else { throw fail(.notSignedIn) }
@@ -233,6 +322,10 @@ enum AuthError: LocalizedError {
     case notSignedIn
     case network
     case signInFailed
+    /// The server's own message, and how long it asked to wait, if it did.
+    case server(String, retryAfter: Int?)
+    /// The server has no such endpoint (yet): a newer app than the site.
+    case endpointMissing
     case other(String)
 
     var errorDescription: String? {
@@ -247,9 +340,19 @@ enum AuthError: LocalizedError {
             return "No connection. Check your internet and try again."
         case .signInFailed:
             return "We couldn't sign you in. Please try again."
+        case .server(let message, _):
+            return message
+        case .endpointMissing:
+            return "That didn't work. Please try again."
         case .other(let message):
             return message
         }
+    }
+
+    /// Seconds the server asked to wait before another code.
+    var retryAfter: Int? {
+        if case .server(_, let wait) = self { return wait }
+        return nil
     }
 
     /// Firebase Auth error codes (FIRAuthErrorCode) mapped to plain language.

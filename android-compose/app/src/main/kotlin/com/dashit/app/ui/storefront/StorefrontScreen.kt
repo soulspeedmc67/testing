@@ -1,6 +1,14 @@
 package com.dashit.app.ui.storefront
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.derivedStateOf
@@ -226,10 +234,34 @@ fun StorefrontScreen(
         }
     }
 
+    // The floating tab bar slides away while scrolling down and returns on the
+    // way back up, as on iPhone. Every list under this Box feeds it.
+    var isDockShown by remember { mutableStateOf(true) }
+    val hideDistance = with(LocalDensity.current) { 28.dp.toPx() }
+    val dockScroll = remember(hideDistance) {
+        object : NestedScrollConnection {
+            private var travelled = 0f
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val dy = available.y
+                if (dy == 0f) return Offset.Zero
+                // A change of direction starts the count again.
+                if ((dy < 0f) != (travelled < 0f)) travelled = 0f
+                travelled += dy
+                if (travelled <= -hideDistance && isDockShown) isDockShown = false
+                if (travelled >= hideDistance / 2 && !isDockShown) isDockShown = true
+                return Offset.Zero
+            }
+        }
+    }
+    LaunchedEffect(activeTab, isSearchOpen, trackingOrderId, isProfileOpen) { isDockShown = true }
+    // Bottom clearance for what floats above the bar: it drops to the screen's edge when the bar is away.
+    val dockInset by animateDpAsState(if (isDockShown) 76.dp else 14.dp, label = "dock_inset")
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DashitColors.Surface)
+            .nestedScroll(dockScroll)
     ) {
         if (isProfileOpen) {
             ProfileScreen(
@@ -244,17 +276,6 @@ fun StorefrontScreen(
                 products = allProducts,
                 onBack = { trackingOrderId = null }
             )
-        } else if (isSearchOpen) {
-            SearchScreen(
-                products = allProducts,
-                tobaccoProducts = tobaccoProducts,
-                categories = categories,
-                cartItems = cartItems,
-                onOpenProduct = { detailProduct = it },
-                onAdd = { cartVm.add(it) },
-                onDecrement = { cartVm.decrementLatest(it.id) },
-                onClose = { isSearchOpen = false }
-            )
         } else {
             when (activeTab) {
                 NavigationTab.HOME -> {
@@ -262,14 +283,14 @@ fun StorefrontScreen(
                     // Opening a category, search or "all" shows its list from the
                     // top. The scroll position of the page before it stayed, which
                     // left the new list scrolled past its end: a blank screen.
-                    // (Items 0 and 1 are the header and the pinned search bar.)
+                    // Item 1 is the pinned search bar, so the list starts right under it.
                     val showingKey = selectedCategory to searchQuery
                     var shownBefore by remember { mutableStateOf<Pair<String?, String>?>(null) }
                     LaunchedEffect(showingKey) {
                         if (shownBefore != null && shownBefore != showingKey) {
                             // After the new list has been laid out, so its length is known.
                             withFrameNanos { }
-                            homeList.scrollToItem(2)
+                            homeList.scrollToItem(1)
                         }
                         shownBefore = showingKey
                     }
@@ -511,6 +532,34 @@ fun StorefrontScreen(
     }
 }
 
+        // Search fades and rises in over the page, which stays where it was (so
+        // closing search returns to the same place in the feed).
+        AnimatedVisibility(
+            visible = isSearchOpen && !isProfileOpen && trackingOrderId == null,
+            enter = fadeIn(tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
+                slideInVertically(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 18 },
+            exit = fadeOut(tween(150)) + slideOutVertically(tween(180)) { it / 24 }
+        ) {
+            // Opaque and swallowing touches, so nothing underneath reacts.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(DashitColors.Surface)
+                    .pointerInput(Unit) { detectTapGestures { } }
+            ) {
+                SearchScreen(
+                    products = allProducts,
+                    tobaccoProducts = tobaccoProducts,
+                    categories = categories,
+                    cartItems = cartItems,
+                    onOpenProduct = { detailProduct = it },
+                    onAdd = { cartVm.add(it) },
+                    onDecrement = { cartVm.decrementLatest(it.id) },
+                    onClose = { isSearchOpen = false }
+                )
+            }
+        }
+
         // The live order, docked above the tab bar like the iOS app; the cart bar stacks on top.
         AnimatedVisibility(
             visible = activeOrder != null && trackingOrderId == null && !isProfileOpen && !isSearchOpen,
@@ -519,7 +568,7 @@ fun StorefrontScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .navigationBarsPadding()
-                .padding(bottom = 76.dp)
+                .padding(bottom = dockInset)
                 .padding(horizontal = 24.dp)
                 .widthIn(max = 360.dp)
         ) {
@@ -544,8 +593,8 @@ fun StorefrontScreen(
                 .padding(
                     bottom = when {
                         isSearchOpen -> 16.dp
-                        activeOrder != null && trackingOrderId == null -> 144.dp
-                        else -> 76.dp
+                        activeOrder != null && trackingOrderId == null -> dockInset + 68.dp
+                        else -> dockInset
                     }
                 )
                 .navigationBarsPadding()
@@ -561,11 +610,15 @@ fun StorefrontScreen(
         }
 
         // Floating Bottom Navigation Bar
-        if (!isSearchOpen) {
+        AnimatedVisibility(
+            visible = !isSearchOpen && isDockShown,
+            enter = slideInVertically(tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it } + fadeIn(tween(200)),
+            exit = slideOutVertically(tween(220, easing = androidx.compose.animation.core.FastOutLinearInEasing)) { it } + fadeOut(tween(160)),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             BottomNavBar(
                 selectedTab = activeTab,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
                     .padding(bottom = 6.dp)
                     .navigationBarsPadding(),
                 onTabSelected = { activeTab = it }

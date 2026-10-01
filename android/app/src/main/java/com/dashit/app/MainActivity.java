@@ -76,21 +76,33 @@ public class MainActivity extends BridgeActivity {
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
         
         boolean isNightMode = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDriver = getPackageName().contains("driver");
         
-        int appBgColor = isNightMode ? Color.parseColor("#14171F") : Color.parseColor("#FFE8D6");
+        int appBgColor;
+        int navBgColor;
+        if (isDriver) {
+            appBgColor = Color.parseColor("#0F172A");
+            navBgColor = Color.parseColor("#0F172A");
+        } else {
+            appBgColor = isNightMode ? Color.parseColor("#14171F") : Color.parseColor("#FFE8D6");
+            navBgColor = isNightMode ? Color.parseColor("#14171F") : Color.parseColor("#FFFFFF");
+        }
         window.setStatusBarColor(appBgColor);
-        
-        int navBgColor = isNightMode ? Color.parseColor("#14171F") : Color.parseColor("#FFFFFF");
         window.setNavigationBarColor(navBgColor);
         
         WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, window.getDecorView());
         if (insetsController != null) {
-            insetsController.setAppearanceLightStatusBars(!isNightMode);
-            insetsController.setAppearanceLightNavigationBars(!isNightMode);
+            if (isDriver) {
+                insetsController.setAppearanceLightStatusBars(false);
+                insetsController.setAppearanceLightNavigationBars(false);
+            } else {
+                insetsController.setAppearanceLightStatusBars(!isNightMode);
+                insetsController.setAppearanceLightNavigationBars(!isNightMode);
+            }
         }
 
         int initFlags = 0;
-        if (!isNightMode) {
+        if (!isDriver && !isNightMode) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 initFlags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -113,7 +125,7 @@ public class MainActivity extends BridgeActivity {
         if (this.bridge != null && this.bridge.getWebView() != null) {
             android.webkit.WebView webView = this.bridge.getWebView();
             android.webkit.WebView.setWebContentsDebuggingEnabled(true);
-            webView.setBackgroundColor(isNightMode ? Color.parseColor("#14171F") : Color.parseColor("#FFFFFF"));
+            webView.setBackgroundColor(isDriver ? Color.parseColor("#0F172A") : (isNightMode ? Color.parseColor("#14171F") : Color.parseColor("#FFFFFF")));
             webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
             webView.setVerticalScrollBarEnabled(false);
             webView.setHorizontalScrollBarEnabled(false);
@@ -146,21 +158,23 @@ public class MainActivity extends BridgeActivity {
                             }
 
                             WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(win, win.getDecorView());
+                            boolean lightStatus = isDriver ? false : topDarkIcons;
+                            boolean lightNav = isDriver ? false : bottomDarkIcons;
                             if (controller != null) {
-                                controller.setAppearanceLightStatusBars(topDarkIcons);
-                                controller.setAppearanceLightNavigationBars(bottomDarkIcons);
+                                controller.setAppearanceLightStatusBars(lightStatus);
+                                controller.setAppearanceLightNavigationBars(lightNav);
                             }
 
                             int flags = win.getDecorView().getSystemUiVisibility();
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                if (topDarkIcons) {
+                                if (lightStatus) {
                                     flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                                 } else {
                                     flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
                                 }
                             }
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                if (bottomDarkIcons) {
+                                if (lightNav) {
                                     flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
                                 } else {
                                     flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;

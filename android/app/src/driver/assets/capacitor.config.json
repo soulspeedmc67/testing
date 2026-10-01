@@ -1,0 +1,17 @@
+{
+	"appId": "com.dashit.driver",
+	"appName": "DASHit Driver",
+	"webDir": "out",
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 1500,
+			"launchAutoHide": true,
+			"backgroundColor": "#0F172A",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"showSpinner": false,
+			"splashFullScreen": true,
+			"splashImmersive": false
+		}
+	}
+}

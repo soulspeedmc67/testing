@@ -55,7 +55,7 @@ import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.UserProfile
 import kotlinx.coroutines.launch
 
-private enum class SheetStep { Google, Number, Name }
+private enum class SheetStep { Google, Number, Code, Name }
 
 /**
  * Sign-in in a bottom sheet with the same steps as the sign-in screen: Google,
@@ -90,6 +90,9 @@ fun SignInSheet(
     var isBusy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val valid = AuthRepository.normalizedMobile(digits) != null
+    var code by remember { mutableStateOf("") }
+    var otpTicket by remember { mutableStateOf<String?>(null) }
+    var resendAt by remember { mutableStateOf(0L) }
     val numberFocus = remember { FocusRequester() }
     val nameFocus = remember { FocusRequester() }
 
@@ -119,6 +122,46 @@ fun SignInSheet(
             }
         }
     }
+
+    /** Texts a code if the server checks numbers; until it does, just saves the number. */
+    fun saveMobile() {
+        if (!valid || isBusy) return
+        isBusy = true
+        error = null
+        scope.launch {
+            try {
+                val request = AuthRepository.requestOtp(digits)
+                if (!request.configured) {
+                    next(AuthRepository.saveMobile(digits))
+                } else {
+                    otpTicket = request.ticket
+                    code = ""
+                    resendAt = System.currentTimeMillis() + request.resendAfterSeconds * 1_000L
+                    step = SheetStep.Code
+                }
+            } catch (e: Exception) {
+                HapticsManager.error(view)
+                error = e.message
+                (e as? AuthRepository.SignInException)?.retryAfterSeconds?.let { resendAt = System.currentTimeMillis() + it * 1_000L }
+            } finally {
+                isBusy = false
+            }
+        }
+    }
+
+    fun verifyCode(entered: String) {
+        val ticket = otpTicket ?: return
+        if (entered.length != OTP_LENGTH || isBusy) return
+        run {
+            try {
+                AuthRepository.verifyOtp(digits, entered, ticket)
+            } catch (e: Exception) {
+                code = ""
+                throw e
+            }
+        }
+    }
+
 
     ModalBottomSheet(
         onDismissRequest = { if (!isBusy) onDismiss() },
@@ -187,9 +230,31 @@ fun SignInSheet(
                         }
                         LaunchedEffect(Unit) { runCatching { numberFocus.requestFocus() } }
                         error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
-                        PrimaryButton("Save and continue", enabled = valid, isBusy = isBusy) {
+                        PrimaryButton("Continue", enabled = valid, isBusy = isBusy) {
                             HapticsManager.light(view)
-                            run { AuthRepository.saveMobile(digits) }
+                            saveMobile()
+                        }
+                    }
+
+                    SheetStep.Code -> {
+                        Heading("Enter the code", null)
+                        OtpEntry(
+                            mobile = digits,
+                            code = code,
+                            onCodeChange = { code = it; error = null },
+                            onComplete = ::verifyCode,
+                            resendAtMillis = resendAt,
+                            onResend = { saveMobile() },
+                            onChangeNumber = {
+                                step = SheetStep.Number
+                                error = null
+                            },
+                            enabled = !isBusy,
+                            boxColor = DashitColors.SurfaceRaised
+                        )
+                        error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
+                        PrimaryButton("Verify", enabled = code.length == OTP_LENGTH, isBusy = isBusy) {
+                            verifyCode(code)
                         }
                     }
 

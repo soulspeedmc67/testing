@@ -3,7 +3,8 @@ import SwiftUI
 /// Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
 /// one headline and "Continue with Apple". The Apple ID is the account: orders
 /// and addresses are kept under it. Right after, the shopper gives a mobile
-/// number once, so the rider can call them (not verified, no code). Same
+/// number once, so the rider can call them. When the server checks numbers, a
+/// code is texted to it first (2Factor); until then the number is just saved. Same
 /// screen as Android's AuthScreen (which has Google instead).
 ///
 /// Shown once when the app is first opened (with "Skip", so browsing never
@@ -32,6 +33,11 @@ struct AuthView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var name = ""
     @State private var mobile = ""
+    /// The code texted to the number, when the server checks numbers.
+    @State private var code = ""
+    @State private var otpTicket: String? = nil
+    @State private var resendAt = Date.distantPast
+    @State private var isCodeStep = false
     @State private var legalPage: LegalPage? = nil
     @State private var isFloating = false
     /// While typing, the picture and headline step aside so the whole form
@@ -177,7 +183,10 @@ struct AuthView: View {
 
     private var panel: some View {
         VStack(spacing: 16) {
-            if auth.needsMobile {
+            if auth.needsMobile && isCodeStep {
+                sectionTitle("Enter the code")
+                codeStep
+            } else if auth.needsMobile {
                 sectionTitle("Your mobile number")
                 mobileStep
             } else if auth.needsName {
@@ -271,10 +280,78 @@ struct AuthView: View {
             }
             .modifier(AuthFieldStyle())
 
-            primaryButton("Save and continue", enabled: validMobile != nil && !auth.isAuthenticating) {
+            primaryButton("Continue", enabled: validMobile != nil && !auth.isAuthenticating) {
                 isMobileFocused = false
                 HapticsManager.shared.light()
-                Task { try? await auth.saveMobile(mobile) }
+                Task { await continueWithNumber() }
+            }
+        }
+    }
+
+    /// The code from the text message. Verifies as soon as the sixth digit is in.
+    private var codeStep: some View {
+        VStack(spacing: 12) {
+            Text("We sent a code to +91 \(validMobile ?? mobile).")
+                .font(.system(size: 14))
+                .foregroundColor(.textSecondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            OtpCodeBoxes(code: $code, onComplete: verify)
+            HStack {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let left = max(0, Int(resendAt.timeIntervalSince(context.date).rounded(.up)))
+                    Button(left > 0 ? "Send again in \(left)s" : "Send again") {
+                        HapticsManager.shared.light()
+                        Task { await continueWithNumber() }
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(left > 0 ? .textMuted : .brandOrange)
+                    .disabled(left > 0 || auth.isAuthenticating)
+                }
+                Spacer()
+                Button("Change number") {
+                    HapticsManager.shared.light()
+                    auth.errorMessage = nil
+                    withAnimation(.dashitSpring) { isCodeStep = false }
+                    isMobileFocused = true
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.textSecondary)
+            }
+            primaryButton("Verify", enabled: code.count == OtpCodeBoxes.length && !auth.isAuthenticating) {
+                verify(code)
+            }
+        }
+    }
+
+    /// Texts a code if the server checks numbers; until it does, just saves the number.
+    private func continueWithNumber() async {
+        guard let digits = validMobile else { return }
+        do {
+            let request = try await auth.requestOtp(to: digits)
+            guard request.configured else {
+                try await auth.saveMobile(digits)
+                return
+            }
+            otpTicket = request.ticket
+            code = ""
+            resendAt = Date().addingTimeInterval(TimeInterval(request.resendAfter))
+            withAnimation(.dashitSpring) { isCodeStep = true }
+        } catch {
+            // The message is on screen; keep the countdown honest.
+            if let wait = (error as? AuthError)?.retryAfter {
+                resendAt = Date().addingTimeInterval(TimeInterval(wait))
+            }
+        }
+    }
+
+    private func verify(_ entered: String) {
+        guard let digits = validMobile, let ticket = otpTicket,
+              entered.count == OtpCodeBoxes.length, !auth.isAuthenticating else { return }
+        Task {
+            do {
+                try await auth.verifyOtp(mobile: digits, code: entered, ticket: ticket)
+            } catch {
+                code = "" // the message is on screen; ready for another try
             }
         }
     }

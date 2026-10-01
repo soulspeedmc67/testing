@@ -123,7 +123,7 @@ final class ProductPhotoStore: @unchecked Sendable {
 
     // MARK: - Loading
 
-    private func load(_ url: URL) async -> UIImage? {
+    private func load(_ url: URL, attempt: Int = 0) async -> UIImage? {
         let file = fileURL(for: url)
         if let data = try? Data(contentsOf: file), let image = Self.decode(data) {
             remember(image, for: url)
@@ -131,10 +131,22 @@ final class ProductPhotoStore: @unchecked Sendable {
         }
         guard let (data, response) = try? await URLSession.shared.data(from: url),
               Self.isOK(response), let image = Self.decode(data) else {
-            // No small copy yet (a photo picked after the thumbnails were made): the full one.
             let text = url.absoluteString
-            if text.contains(Self.thumbPath), let full = URL(string: text.replacingOccurrences(of: Self.thumbPath, with: Self.catalogPath)) {
-                return await load(full)
+            // No small copy yet (a photo picked after the thumbnails were made): the full one.
+            if attempt == 0, text.contains(Self.thumbPath),
+               let full = URL(string: text.replacingOccurrences(of: Self.thumbPath, with: Self.catalogPath)) {
+                return await load(full, attempt: 1)
+            }
+            // The host sometimes answers a full-size photo with "not found" and then
+            // serves it a moment later: ask again, then settle for the small copy.
+            if text.contains(Self.catalogPath) {
+                if attempt < 3 {
+                    try? await Task.sleep(for: .milliseconds(350))
+                    return await load(url, attempt: attempt + 1)
+                }
+                if attempt == 3, let small = URL(string: text.replacingOccurrences(of: Self.catalogPath, with: Self.thumbPath)) {
+                    return await load(small, attempt: 4)
+                }
             }
             return nil
         }

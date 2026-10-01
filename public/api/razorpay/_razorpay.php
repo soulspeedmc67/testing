@@ -72,7 +72,7 @@ function dashit_record_payment(array $order, string $paymentId): bool
     }
     $account = dashit_firebase_service_account();
     if ($account === null) {
-        // Not set up yet (docs/whatsapp-otp-setup.md). Don't hold up a payment
+        // Not set up yet (docs/server-setup.md). Don't hold up a payment
         // that went through: until firestore.rules ask for this record the
         // order goes in as before, and once they do it is refused either way.
         error_log("DASHit payments: no service account, so $orderId wasn't recorded in Firestore.");
@@ -82,6 +82,8 @@ function dashit_record_payment(array $order, string $paymentId): bool
         'razorpayOrderId' => $orderId,
         'razorpayPaymentId' => $paymentId,
         'receipt' => (string) ($order['receipt'] ?? ''),
+        // Who started the payment; firestore.rules only let that shopper use it.
+        'uid' => (string) ($order['notes']['dashit_uid'] ?? ''),
         'amount' => (int) ($order['amount'] ?? 0),
         'amountPaid' => (int) ($order['amount_paid'] ?? 0),
         'status' => (string) ($order['status'] ?? ''),

@@ -24,6 +24,8 @@ final class LiveTrackingViewModel: ObservableObject {
     /// The way the rider takes to the door along the roads (from the rider, or
     /// from the hub until a rider is assigned).
     @Published var routePath: [CLLocationCoordinate2D] = []
+    /// Metres of road still to ride, from the rider's place on the road to the door.
+    @Published private(set) var remainingMeters: Double?
     /// False while `routePath` is only the straight line, shown until a
     /// router answers.
     @Published var isRoadRoute = false
@@ -33,7 +35,11 @@ final class LiveTrackingViewModel: ObservableObject {
     private var countdownTimer: Timer?
     private var hasCenteredOnAddress = false
     private var hasFramedRoute = false
-    private var lastRouteOrigin: CLLocationCoordinate2D?
+    /// The whole road as last fetched; `routePath` is what is still ahead of the rider.
+    private var fullRoute: [CLLocationCoordinate2D] = []
+    private var routedTo: CLLocationCoordinate2D?
+    private var routeFetchedAt = Date.distantPast
+    private var totalMeters: Double?
     private var routeTask: Task<Void, Never>?
 
     func startTracking(orderId: String, initialOrder: Order? = nil) {
@@ -138,63 +144,106 @@ final class LiveTrackingViewModel: ObservableObject {
     func switchTo(order replacement: Order) {
         activeOrder = replacement
         hasFramedRoute = false
-        lastRouteOrigin = nil
+        fullRoute = []
+        routedTo = nil
+        totalMeters = nil
         startTracking(orderId: replacement.id, initialOrder: replacement)
     }
 
-    /// Re-routes when the rider has moved more than ~60 m since the last route,
-    /// so a stream of GPS ticks does not flood the routers with requests.
+    /// The road is fetched once, then only trimmed as the rider moves, so the
+    /// part already ridden disappears at every GPS tick. It is fetched again
+    /// only when the rider leaves the road (a detour) or the first try failed.
     private func updateRoute() {
         guard let order = activeOrder, !order.status.stage.isFinished else {
             routeTask?.cancel()
             routePath = []
+            fullRoute = []
+            remainingMeters = nil
             isRoadRoute = false
             return
         }
-        let origin = riderLocation?.coordinate ?? DeliveryEta.hub
+        let onTheWay = order.status.stage == .onTheWay
+        let rider = riderLocation?.coordinate
+        let start = (onTheWay ? rider : nil) ?? DeliveryEta.hub
         let destination = order.deliveryAddress.coordinate
-        if let last = lastRouteOrigin, !routePath.isEmpty {
-            let moved = CLLocation(latitude: last.latitude, longitude: last.longitude)
-                .distance(from: CLLocation(latitude: origin.latitude, longitude: origin.longitude))
-            if moved < 60 { return }
+
+        showAhead(of: rider, onTheWay: onTheWay)
+
+        let sameDoor = routedTo.map { $0.latitude == destination.latitude && $0.longitude == destination.longitude } ?? false
+        let sinceFetch = Date().timeIntervalSince(routeFetchedAt)
+        let needsFetch: Bool
+        if fullRoute.count < 2 || !sameDoor {
+            needsFetch = true
+        } else if !isRoadRoute {
+            needsFetch = sinceFetch > 12
+        } else if let on = RouteGeometry.nearest(fullRoute, to: start) {
+            needsFetch = on.meters > 90 && sinceFetch > 8
+        } else {
+            needsFetch = true
         }
-        lastRouteOrigin = origin
+        guard needsFetch else { return }
+
+        routeFetchedAt = Date()
+        routedTo = destination
         routeTask?.cancel()
         routeTask = Task { [weak self] in
-            let path = await RoadRouter.path(from: origin, to: destination)
-            guard !Task.isCancelled,
-                  let routed = self?.apply(path, origin: origin, destination: destination),
-                  !routed else { return }
+            let path = await RoadRouter.path(from: start, to: destination)
+            guard !Task.isCancelled, let self else { return }
+            if let path, path.count > 1 {
+                self.fullRoute = path
+                self.isRoadRoute = true
+                self.totalMeters = max(self.totalMeters ?? 0, RouteGeometry.length(path))
+                self.showAhead(of: self.riderLocation?.coordinate, onTheWay: self.activeOrder?.status.stage == .onTheWay)
+                self.frameOnce(RoadRouter.boundingRect(of: self.routePath))
+                return
+            }
+            // No road yet: the straight line stands in, but never over a road found earlier.
+            if !self.isRoadRoute {
+                self.fullRoute = [start, destination]
+                self.showAhead(of: self.riderLocation?.coordinate, onTheWay: false)
+                self.frameOnce(RoadRouter.boundingRect(of: self.routePath))
+            }
             // A cold start or a patchy connection must not leave the ride
             // unrouted, so ask again shortly. `self` stays weak across the
             // wait, so closing the screen still releases this model.
             try? await Task.sleep(for: .seconds(12))
             guard !Task.isCancelled else { return }
-            self?.retryRoute()
+            self.updateRoute()
         }
     }
 
-    /// Shows a routed path; true when it was one. Without one the straight
-    /// line stands in, but never over a road line from an earlier fix.
-    private func apply(_ path: [CLLocationCoordinate2D]?, origin: CLLocationCoordinate2D, destination: CLLocationCoordinate2D) -> Bool {
-        if let path {
-            withAnimation(.easeInOut(duration: 0.4)) {
-                routePath = path
-                isRoadRoute = true
-            }
-            frameOnce(RoadRouter.boundingRect(of: path))
-            return true
-        }
-        if !isRoadRoute {
-            routePath = [origin, destination]
-            frameOnce(RoadRouter.boundingRect(of: routePath))
-        }
-        return false
+    /// Draws only the road still ahead of the rider, and keeps the distance left.
+    private func showAhead(of rider: CLLocationCoordinate2D?, onTheWay: Bool) {
+        var ahead = fullRoute
+        if isRoadRoute, onTheWay, let rider { ahead = RouteGeometry.trim(fullRoute, to: rider) }
+        routePath = ahead
+        let length = RouteGeometry.length(ahead)
+        // A straight line stands in as the crow flies, so add the bends.
+        remainingMeters = ahead.count >= 2 ? length * (isRoadRoute ? 1 : 1.3) : nil
     }
 
-    private func retryRoute() {
-        lastRouteOrigin = nil
-        updateRoute()
+    /// Whole minutes left (at least 1), from the road left and the rider's pace.
+    var etaMinutes: Int? {
+        guard let left = remainingMeters else { return nil }
+        // A town average of ~20 km/h, nudged by how fast the rider is moving right now.
+        let average = 5.5
+        var speed = average
+        if let now = riderLocation?.speed, now > 2 { speed = 0.6 * average + 0.4 * min(now, 12) }
+        return max(1, Int((left / speed / 60).rounded(.up)))
+    }
+
+    /// "650 m away", "1.2 km away" or "Arriving now".
+    var distanceLine: String? {
+        guard let left = remainingMeters else { return nil }
+        if left < 40 { return "Arriving now" }
+        if left < 1000 { return "\(Int((left / 10).rounded()) * 10) m away" }
+        return String(format: "%.1f km away", left / 1000)
+    }
+
+    /// 0–100, how much of the ride is behind the rider.
+    var progressPercent: Double? {
+        guard let total = totalMeters, total > 0, let left = remainingMeters else { return nil }
+        return min(max((1 - left / total) * 100, 0), 100)
     }
 
     /// Fits the whole ride on screen the first time a route arrives, leaving

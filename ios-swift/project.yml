@@ -8,8 +8,7 @@ packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk.git
     from: 10.28.0
-  # Online payments (Razorpay Custom UI SDK): the shopper picks a UPI app in
-  # our own checkout and it opens straight away, with no Razorpay sheet.
+  # Online payments: Razorpay's checkout, with every method Razorpay supports in India.
   Razorpay:
     url: https://github.com/razorpay/razorpay-pod
     exactVersion: 1.5.8
@@ -34,7 +33,7 @@ targets:
       - package: Firebase
         product: FirebaseAppCheck
       - package: Razorpay
-        product: RazorpayCustomUI
+        product: RazorpayCheckout
       - sdk: SwiftUI.framework
       - sdk: MapKit.framework
       - sdk: PassKit.framework
@@ -149,7 +148,7 @@ targets:
       # Linked so the shared sources build the same way in both apps (the
       # admin app never opens a payment).
       - package: Razorpay
-        product: RazorpayCustomUI
+        product: RazorpayCheckout
       - sdk: SwiftUI.framework
       - sdk: MapKit.framework
       - sdk: PassKit.framework

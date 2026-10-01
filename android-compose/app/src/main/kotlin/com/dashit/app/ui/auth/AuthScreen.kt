@@ -97,8 +97,8 @@ import kotlinx.coroutines.launch
 /** LogIn and SignUp share one screen; SignUp also asks for a name. */
 enum class AuthMode { LogIn, SignUp }
 
-/** Google first; then the number the rider can call; then a name if Google gave none. */
-private enum class AuthStep { Google, Number, Name }
+/** Google first; then the number the rider can call (and its text-message code); then a name if Google gave none. */
+private enum class AuthStep { Google, Number, Code, Name }
 
 private val HeroTop = Color(0xFF0D2F6E)
 private val HeroBottom = Color(0xFF040F24)
@@ -143,6 +143,10 @@ fun AuthScreen(
     var isSigningIn by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val valid = AuthRepository.normalizedMobile(digits) != null
+    // The code texted to the number, when the server checks numbers.
+    var code by remember { mutableStateOf("") }
+    var otpTicket by remember { mutableStateOf<String?>(null) }
+    var resendAt by remember { mutableStateOf(0L) }
 
     /** After each step: the next thing the account still needs, or done. */
     fun next(profile: com.dashit.app.data.model.UserProfile) {
@@ -156,7 +160,14 @@ fun AuthScreen(
         }
     }
 
-    BackHandler(enabled = !isSigningIn) { onClose() }
+    BackHandler(enabled = !isSigningIn) {
+        if (step == AuthStep.Code) {
+            step = AuthStep.Number
+            error = null
+        } else {
+            onClose()
+        }
+    }
 
     fun signInWithGoogle() {
         if (isSigningIn) return
@@ -175,16 +186,44 @@ fun AuthScreen(
         }
     }
 
+    /** Texts a code if the server checks numbers; until it does, just saves the number. */
     fun saveMobile() {
         if (!valid || isSigningIn) return
         isSigningIn = true
         error = null
         scope.launch {
             try {
-                next(AuthRepository.saveMobile(digits))
+                val request = AuthRepository.requestOtp(digits)
+                if (!request.configured) {
+                    next(AuthRepository.saveMobile(digits))
+                } else {
+                    otpTicket = request.ticket
+                    code = ""
+                    resendAt = System.currentTimeMillis() + request.resendAfterSeconds * 1_000L
+                    step = AuthStep.Code
+                }
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
+                e.retryAfterSeconds?.let { resendAt = System.currentTimeMillis() + it * 1_000L }
+            } finally {
+                isSigningIn = false
+            }
+        }
+    }
+
+    fun verifyCode(entered: String) {
+        val ticket = otpTicket ?: return
+        if (entered.length != OTP_LENGTH || isSigningIn) return
+        isSigningIn = true
+        error = null
+        scope.launch {
+            try {
+                next(AuthRepository.verifyOtp(digits, entered, ticket))
+            } catch (e: AuthRepository.SignInException) {
+                HapticsManager.error(view)
+                error = e.message
+                code = ""
             } finally {
                 isSigningIn = false
             }
@@ -380,6 +419,7 @@ fun AuthScreen(
                     when (step) {
                         AuthStep.Google -> "Log in or sign up"
                         AuthStep.Number -> "Your mobile number"
+                        AuthStep.Code -> "Enter the code"
                         AuthStep.Name -> "What's your name?"
                     }
                 )
@@ -420,6 +460,24 @@ fun AuthScreen(
                                 AuthButton("Save and continue", enabled = valid && !isSigningIn, isBusy = isSigningIn) {
                                     HapticsManager.light(view)
                                     saveMobile()
+                                }
+                            }
+                            AuthStep.Code -> {
+                                OtpEntry(
+                                    mobile = digits,
+                                    code = code,
+                                    onCodeChange = { code = it; error = null },
+                                    onComplete = ::verifyCode,
+                                    resendAtMillis = resendAt,
+                                    onResend = { saveMobile() },
+                                    onChangeNumber = {
+                                        step = AuthStep.Number
+                                        error = null
+                                    },
+                                    enabled = !isSigningIn
+                                )
+                                AuthButton("Verify", enabled = code.length == OTP_LENGTH && !isSigningIn, isBusy = isSigningIn) {
+                                    verifyCode(code)
                                 }
                             }
                             AuthStep.Name -> {

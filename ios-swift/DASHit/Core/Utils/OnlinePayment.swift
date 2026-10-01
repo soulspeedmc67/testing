@@ -1,8 +1,7 @@
 import Foundation
 import UIKit
-import WebKit
-#if canImport(RazorpayCustomUI)
-import RazorpayCustomUI
+#if canImport(Razorpay)
+import Razorpay
 #endif
 
 /// What a confirmed online payment leaves behind, saved on the order.
@@ -27,17 +26,17 @@ enum OnlinePaymentError: LocalizedError {
     }
 }
 
-/// UPI payments inside our own checkout, the way Blinkit and Zomato do it:
-/// the shopper picks Google Pay, PhonePe or Paytm in the checkout, that app
-/// opens straight away, and they come back to a placed order. No Razorpay sheet.
+/// Online payments through Razorpay's own checkout, which offers every way to
+/// pay that Razorpay supports in India: UPI (apps on the phone, or a UPI ID),
+/// debit and credit cards, netbanking, wallets, EMI and Pay Later. Which ones
+/// show is set in the Razorpay dashboard (Settings, Payment Methods), not here.
 ///
-/// Razorpay's Custom UI SDK does the talking to Razorpay. The app holds no
-/// Razorpay key: the small server next to the website (dashit.co.in/api/
-/// razorpay/, PHP on Hostinger) creates the Razorpay order and hands back the
-/// key id, and afterwards checks Razorpay's signature. Only a confirmed payment
-/// places an order, and a payment Razorpay took is never left without one:
-/// whenever the result is unclear (the shopper backed out of the UPI app, or
-/// came back before it answered), the server asks Razorpay whether it was paid.
+/// The app holds no Razorpay key: the small server next to the website
+/// (dashit.co.in/api/razorpay/, PHP on Hostinger) creates the Razorpay order and
+/// hands back the key id, and afterwards checks Razorpay's signature. Only a
+/// confirmed payment places an order, and a payment Razorpay took is never left
+/// without one: whenever the result is unclear (the shopper backed out, or the
+/// result got lost), the server asks Razorpay whether it was paid.
 ///
 /// Same flow as the Android app (`OnlinePayment.kt`).
 final class OnlinePayment: NSObject {
@@ -47,79 +46,11 @@ final class OnlinePayment: NSObject {
 
     /// False in builds without the Razorpay SDK.
     static var isAvailable: Bool {
-        #if canImport(RazorpayCustomUI)
+        #if canImport(Razorpay)
         return true
         #else
         return false
         #endif
-    }
-
-    /// A UPI app on this phone. `shortcode` is how Razorpay names it.
-    struct UpiApp: Identifiable, Hashable {
-        let shortcode: String
-        let name: String
-        var id: String { shortcode }
-        /// Razorpay's logo for the app (iOS can't read other apps' icons).
-        var logoURL: URL? { URL(string: "https://cdn.razorpay.com/app/\(shortcode).png") }
-    }
-
-    /// The apps most people here pay with, first; any others after, as found.
-    private static let preferredOrder = ["google_pay", "phonepe", "paytm", "bhim", "cred", "amazonpay"]
-
-    /// UPI apps by Razorpay's shortcode, with the link that opens each one.
-    /// Checked directly as well as through the SDK, so an installed app is
-    /// never missed. (Every scheme is in LSApplicationQueriesSchemes.)
-    private static let knownApps: [(shortcode: String, name: String, link: String)] = [
-        ("google_pay", "Google Pay", "tez://upi/pay"),
-        ("phonepe", "PhonePe", "phonepe://pay"),
-        ("paytm", "Paytm", "paytmmp://upi/pay"),
-        ("bhim", "BHIM", "bhim://upi/pay"),
-        ("cred", "CRED", "credpay://upi/pay"),
-        ("amazonpay", "Amazon Pay", "amazonpay://upi/pay"),
-        ("mobikwik", "MobiKwik", "mobikwik://upi/pay"),
-        ("navi", "Navi", "navi://upi/pay"),
-        ("payzapp", "PayZapp", "payzapp://upi/pay"),
-        ("sbiyono", "SBI YONO", "sbiyono://upi/pay"),
-        ("bobupi", "BoB World", "bobupi://upi/pay"),
-        ("jupiter", "Jupiter", "jupiter://upi/pay"),
-        ("kiwi", "Kiwi", "kiwi://upi/pay"),
-        ("myjio", "MyJio", "myjio://upi/pay")
-    ]
-
-    /// The UPI apps installed on this phone, best known first. Empty if there are none.
-    @MainActor
-    static func upiApps() async -> [UpiApp] {
-        #if canImport(RazorpayCustomUI)
-        let found: [[AnyHashable: Any]] = await withCheckedContinuation { continuation in
-            let once = Once()
-            Razorpay.RazorpayCheckout.getAppsWhichSupportUpi { apps in
-                if once.claim() { continuation.resume(returning: apps) }
-            }
-            // Never leave the checkout waiting on the lookup.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                if once.claim() { continuation.resume(returning: []) }
-            }
-        }
-        var seen = Set<String>()
-        var apps = found.compactMap { app -> UpiApp? in
-            let code = (app["shortcode"] ?? app["appShortcode"] ?? app["app_shortcode"]) as? String
-            guard let code, !code.isEmpty, seen.insert(code).inserted else { return nil }
-            let name = (app["appName"] ?? app["app_name"] ?? app["name"]) as? String
-            return UpiApp(shortcode: code, name: name ?? knownApps.first { $0.shortcode == code }?.name ?? code)
-        }
-        for known in knownApps where !seen.contains(known.shortcode) {
-            guard let url = URL(string: known.link), UIApplication.shared.canOpenURL(url) else { continue }
-            seen.insert(known.shortcode)
-            apps.append(UpiApp(shortcode: known.shortcode, name: known.name))
-        }
-        return apps.sorted { rank($0.shortcode) < rank($1.shortcode) }
-        #else
-        return []
-        #endif
-    }
-
-    private static func rank(_ shortcode: String) -> Int {
-        preferredOrder.firstIndex(of: shortcode) ?? Int.max
     }
 
     // MARK: - Paying
@@ -127,8 +58,6 @@ final class OnlinePayment: NSObject {
     private enum Outcome {
         case paid([AnyHashable: Any])
         case failed(code: Int32, description: String)
-        /// Back in the app with no word from Razorpay yet.
-        case noAnswer
     }
 
     private struct CreatedOrder: Decodable {
@@ -154,37 +83,28 @@ final class OnlinePayment: NSObject {
     }
 
     private var continuation: CheckedContinuation<Outcome, Never>?
-    private var webView: WKWebView?
-    private var observers: [NSObjectProtocol] = []
-    private var leftForUpiApp = false
-    /// Counts returns to the app, so a wait started on one return is dropped
-    /// if the shopper goes back to the UPI app meanwhile.
-    private var returns = 0
-    #if canImport(RazorpayCustomUI)
-    // `Razorpay.` because RazorpayCustom has a class of the same name.
-    private var checkout: Razorpay.RazorpayCheckout?
+    #if canImport(Razorpay)
+    private var checkout: RazorpayCheckout?
     #endif
 
-    /// How long to wait, once the shopper is back, for Razorpay to report.
-    private static let answerGrace: TimeInterval = 30
-
     /// Takes payment for the order `orderCode` (its DASHit code, sent to
-    /// Razorpay as the receipt) through `app`. Throws `.cancelled` if the
-    /// shopper backs out without paying. `onConfirming` fires once the
+    /// Razorpay as the receipt) in Razorpay's checkout. Throws `.cancelled` if
+    /// the shopper backs out without paying. `onConfirming` fires once the
     /// shopper is back and the payment is being checked.
     @MainActor
     func pay(
         orderCode: String,
         amountRupees: Double,
         customer: UserProfile,
-        app: UpiApp,
         onConfirming: @escaping @MainActor () -> Void = {}
     ) async throws -> PaymentReceipt {
         guard Self.isAvailable else { throw OnlinePaymentError.unavailable }
         let paise = Int((amountRupees * 100).rounded())
-        let order: CreatedOrder = try await post("create-order.php", body: ["amount": paise, "receipt": orderCode])
+        // The server only starts a payment for a signed-in shopper, so it needs their token.
+        let token = try await AuthService.shared.idToken()
+        let order: CreatedOrder = try await post("create-order.php", body: ["amount": paise, "receipt": orderCode, "id_token": token])
 
-        let outcome = await authorize(order, orderCode: orderCode, customer: customer, app: app)
+        let outcome = await authorize(order, orderCode: orderCode, customer: customer)
         release()
         onConfirming()
 
@@ -207,14 +127,11 @@ final class OnlinePayment: NSObject {
 
         switch outcome {
         case .failed(let code, let description):
-            // Code 2 is the shopper cancelling; backing out of the UPI app comes
-            // back as an error whose reason says so.
-            if code == 2 || description.contains("payment_cancelled") || description.localizedCaseInsensitiveContains("cancel") {
+            // Code 2 is the shopper closing the checkout without paying.
+            if code == 2 || description.localizedCaseInsensitiveContains("cancel") {
                 throw OnlinePaymentError.cancelled
             }
             throw OnlinePaymentError.failed("The payment didn't go through. Nothing was charged.")
-        case .noAnswer:
-            throw OnlinePaymentError.cancelled
         case .paid:
             throw OnlinePaymentError.failed("This payment couldn't be confirmed, so the order wasn't placed. If money was taken, message us on WhatsApp.")
         }
@@ -233,61 +150,35 @@ final class OnlinePayment: NSObject {
         return nil
     }
 
+    /// Opens Razorpay's checkout and waits for its answer.
     @MainActor
-    private func authorize(_ order: CreatedOrder, orderCode: String, customer: UserProfile, app: UpiApp) async -> Outcome {
-        #if canImport(RazorpayCustomUI)
-        guard let window = Self.keyWindow() else { return .failed(code: 0, description: "No window") }
+    private func authorize(_ order: CreatedOrder, orderCode: String, customer: UserProfile) async -> Outcome {
+        #if canImport(Razorpay)
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
-            self.leftForUpiApp = false
-
-            // The SDK needs a web view of its own to talk to Razorpay. It sits
-            // behind everything, never seen: the shopper only sees their UPI app.
-            let web = WKWebView(frame: window.bounds)
-            web.navigationDelegate = self
-            web.isUserInteractionEnabled = false
-            window.insertSubview(web, at: 0)
-            self.webView = web
-
-            let checkout = Razorpay.RazorpayCheckout.initWithKey(order.key_id, andDelegate: self, withPaymentWebView: web)
+            let checkout = RazorpayCheckout.initWithKey(order.key_id, andDelegateWithData: self)
             self.checkout = checkout
-            self.watchForReturn()
-
-            let email = customer.email.flatMap { $0.isEmpty ? nil : $0 } ?? "void@razorpay.com"
-            checkout.authorize([
+            var prefill: [String: Any] = [:]
+            if !customer.mobile.isEmpty { prefill["contact"] = "+91\(customer.mobile)" }
+            if let email = customer.email, !email.isEmpty { prefill["email"] = email }
+            let options: [String: Any] = [
                 "amount": order.amount,
                 "currency": order.currency,
                 "order_id": order.order_id,
+                "name": "DASHit",
                 "description": "Order \(orderCode)",
-                "contact": customer.mobile,
-                "email": email,
-                "method": "upi",
-                "_[flow]": "intent",
-                "upi_app_package_name": app.shortcode
-            ])
+                "image": "https://dashit.co.in/dashit-app-icon.png",
+                "prefill": prefill,
+                "theme": ["color": "#FF5B00"],
+                // A failed attempt (wrong PIN, bank declined) can be tried again, or with another method.
+                "retry": ["enabled": true, "max_count": 3],
+                "timeout": 600
+            ]
+            checkout.open(options)
         }
         #else
         return .failed(code: 0, description: "Razorpay SDK missing")
         #endif
-    }
-
-    /// Notes when the UPI app takes over, and once the shopper is back gives
-    /// Razorpay a little while to report before asking the server instead.
-    private func watchForReturn() {
-        let center = NotificationCenter.default
-        observers.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            self.leftForUpiApp = true
-            self.returns += 1
-        })
-        observers.append(center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            guard let self, self.leftForUpiApp else { return }
-            let thisReturn = self.returns
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.answerGrace) { [weak self] in
-                guard let self, self.returns == thisReturn else { return }
-                self.finish(.noAnswer)
-            }
-        })
     }
 
     private func finish(_ outcome: Outcome) {
@@ -298,22 +189,9 @@ final class OnlinePayment: NSObject {
 
     @MainActor
     private func release() {
-        observers.forEach { NotificationCenter.default.removeObserver($0) }
-        observers = []
-        #if canImport(RazorpayCustomUI)
-        checkout?.close()
+        #if canImport(Razorpay)
         checkout = nil
         #endif
-        webView?.stopLoading()
-        webView?.navigationDelegate = nil
-        webView?.removeFromSuperview()
-        webView = nil
-    }
-
-    @MainActor
-    private static func keyWindow() -> UIWindow? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        return scenes.flatMap(\.windows).first { $0.isKeyWindow } ?? scenes.first?.windows.first
     }
 
     // MARK: - Server
@@ -341,56 +219,15 @@ final class OnlinePayment: NSObject {
     }
 }
 
-/// Lets exactly one of several callbacks through.
-private final class Once: @unchecked Sendable {
-    private let lock = NSLock()
-    private var claimed = false
-
-    func claim() -> Bool {
-        lock.withLock {
-            if claimed { return false }
-            claimed = true
-            return true
-        }
-    }
-}
-
-extension OnlinePayment: WKNavigationDelegate {
-    // The SDK follows its web view's progress; hand every step on to it.
-    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
-        #if canImport(RazorpayCustomUI)
-        checkout?.webView(webView, didCommit: navigation)
-        #endif
-    }
-
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        #if canImport(RazorpayCustomUI)
-        checkout?.webView(webView, didFinish: navigation)
-        #endif
-    }
-
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        #if canImport(RazorpayCustomUI)
-        checkout?.webView(webView, didFail: navigation, withError: error)
-        #endif
-    }
-
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        #if canImport(RazorpayCustomUI)
-        checkout?.webView(webView, didFailProvisionalNavigation: navigation, withError: error)
-        #endif
-    }
-}
-
-#if canImport(RazorpayCustomUI)
-extension OnlinePayment: RazorpayPaymentCompletionProtocol {
-    func onPaymentSuccess(_ payment_id: String, andData response: [AnyHashable: Any]) {
-        var data = response
+#if canImport(Razorpay)
+extension OnlinePayment: RazorpayPaymentCompletionProtocolWithData {
+    func onPaymentSuccess(_ payment_id: String, andData response: [AnyHashable: Any]?) {
+        var data = response ?? [:]
         data["razorpay_payment_id"] = data["razorpay_payment_id"] ?? payment_id
         DispatchQueue.main.async { self.finish(.paid(data)) }
     }
 
-    func onPaymentError(_ code: Int32, description str: String, andData response: [AnyHashable: Any]) {
+    func onPaymentError(_ code: Int32, description str: String, andData response: [AnyHashable: Any]?) {
         DispatchQueue.main.async { self.finish(.failed(code: code, description: str)) }
     }
 }

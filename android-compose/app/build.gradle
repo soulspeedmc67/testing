@@ -91,14 +91,9 @@ dependencies {
 
     // Async Image loading with caching
     implementation 'io.coil-kt:coil-compose:2.7.0'
-    // Online payments: Razorpay's Custom UI SDK. The shopper picks their UPI
-    // app in our own checkout and it opens straight away, with no Razorpay sheet.
-    implementation 'com.razorpay:customui:3.9.22'
-    constraints {
-        // customui asks for "LATEST" of these; pinned so a build never changes under us.
-        implementation('com.razorpay:customui-core') { version { strictly '3.10.16' } }
-        implementation('com.razorpay:otp-assist') { version { strictly '1.0.4' } }
-    }
+    // Online payments: Razorpay's checkout, which offers every method Razorpay
+    // supports in India (UPI, cards, netbanking, wallets, EMI, Pay Later).
+    implementation 'com.razorpay:checkout:1.6.41'
 
     // Firebase Firestore & Auth
     def firebaseBom = platform('com.google.firebase:firebase-bom:33.7.0')
