@@ -614,9 +614,11 @@ fun StorefrontScreen(
         ) {
             val order = activeOrder
             if (order != null) {
+                val pillRoute = com.dashit.app.ui.orders.rememberRouteProgress(order, liveTracking?.takeIf { order.status == OrderStatus.OUT_FOR_DELIVERY })
                 OrderStatusPill(
                     order = order,
                     tracking = liveTracking,
+                    routeEtaMinutes = pillRoute.etaMinutes(liveTracking?.speed),
                     onOpen = { trackingOrderId = order.id },
                     onDismiss = { OrderRepository.shared.retireActiveOrder() }
                 )
@@ -849,8 +851,18 @@ private fun StorefrontHeader(
 
                 Spacer(modifier = Modifier.height(2.dp))
 
+                // From the address, the store's switch and high demand, as on the iPhone app.
+                val quote = remember(address.latitude, address.longitude) {
+                    com.dashit.app.data.DeliveryEta.quote(address.latitude, address.longitude)
+                }
+                val store by com.dashit.app.data.StoreStatus.state.collectAsState()
+                val eta = remember(quote, store) { com.dashit.app.data.StoreStatus.etaMinutes(quote) }
                 Text(
-                    text = "8 minutes",
+                    text = when {
+                        !store.isOpen -> "Closed now"
+                        eta == null -> "Not here yet"
+                        else -> "$eta minutes"
+                    },
                     color = headline,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Black,
