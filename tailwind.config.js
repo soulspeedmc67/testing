@@ -72,6 +72,8 @@ module.exports = {
         },
       },
       fontFamily: {
+        // Headlines on the marketing page; falls back to the body face, then the system's.
+        display: ['Outfit', 'Plus Jakarta Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         sans: [
           'Plus Jakarta Sans',
           '-apple-system',

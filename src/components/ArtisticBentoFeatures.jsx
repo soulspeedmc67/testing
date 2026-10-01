@@ -1,7 +1,7 @@
 import React from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { Navigation, RotateCcw, Tag, Check, Sparkles } from "lucide-react";
+import { Navigation, RotateCcw, Tag, Check } from "lucide-react";
 import { stagger, fadeUp, inViewOnce } from "../lib/motion";
 
 // Client-rendered Real Anantnag Map (zero API key, zero SSR hydration issues)
@@ -142,11 +142,37 @@ function LocalPricingCard() {
   );
 }
 
+const FEATURES = [
+  {
+    n: "01",
+    label: "Live route",
+    title: "Watch the rider come to you",
+    body: "From the moment your bag leaves the store, the map moves with the rider. Live on the order screen, no refreshing.",
+    Icon: Navigation,
+    Visual: LiveDeliveryMapPreview,
+  },
+  {
+    n: "02",
+    label: "Morning regulars",
+    title: "Reorder in one tap",
+    body: "Your morning batch of bread, milk and eggs is saved and sent again with a single tap, without building the cart from scratch.",
+    Icon: RotateCcw,
+    Visual: QuickReorderCard,
+  },
+  {
+    n: "03",
+    label: "Local prices",
+    title: "The shop's price, nothing added",
+    body: "What you pay in the app is what the shop charges in Anantnag. No surge pricing, no hidden fees, and a status update at every stage.",
+    Icon: Tag,
+    Visual: LocalPricingCard,
+  },
+];
+
 export default function AppFeatureShowcase() {
   return (
-    <section id="app-features" className="mt-24 sm:mt-32 scroll-mt-24">
+    <section id="app-features" className="mt-8 sm:mt-12 scroll-mt-24">
       <motion.div variants={stagger(0.08)} {...inViewOnce}>
-        {/* Section Header */}
         <motion.div variants={fadeUp} className="max-w-2xl">
           <span className="inline-flex items-center gap-2.5">
             <span className="w-6 h-px bg-[#FF5B00]" />
@@ -154,99 +180,60 @@ export default function AppFeatureShowcase() {
               Why the app
             </span>
           </span>
-          <h2 className="mt-5 text-3xl sm:text-[40px] font-black tracking-[-0.03em] leading-[1.1] text-[#061838] dark:text-white">
+          <h2 className="mt-5 font-display text-[32px] sm:text-[44px] font-extrabold tracking-[-0.03em] leading-[1.06] text-[#061838] dark:text-white [text-wrap:balance]">
             Built for how Anantnag actually shops
           </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="mt-5 max-w-xl text-[15.5px] leading-[1.7] text-slate-600 dark:text-slate-400 [text-wrap:pretty]">
             The app is quicker than the browser, remembers your regulars, and tells you
             where your order is without you asking.
           </p>
         </motion.div>
-
-        {/* 3 Powerful, Balanced Feature Sections */}
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Section 1: Live Road Tracking */}
-          <motion.div
-            variants={fadeUp}
-            className="rounded-3xl bg-white dark:bg-[#12161F] border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 flex flex-col justify-between shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700"
-          >
-            <div className="mb-6">
-              <div className="flex items-center justify-between">
-                <span className="w-10 h-10 rounded-2xl bg-[#061838] dark:bg-[#1B2231] text-white flex items-center justify-center shadow-xs">
-                  <Navigation className="w-[18px] h-[18px] stroke-[2.2] text-[#FF5B00]" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  01 · Live Route
-                </span>
-              </div>
-
-              <h3 className="mt-5 text-lg sm:text-xl font-black tracking-tight text-[#061838] dark:text-white">
-                Watch the rider come to you
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-400">
-                From the moment your bag leaves the store, the map moves with the rider —
-                live on the order screen, no refreshing.
-              </p>
-            </div>
-
-            <LiveDeliveryMapPreview />
-          </motion.div>
-
-          {/* Section 2: 1-Tap Reorder */}
-          <motion.div
-            variants={fadeUp}
-            className="rounded-3xl bg-white dark:bg-[#12161F] border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 flex flex-col justify-between shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700"
-          >
-            <div className="mb-6">
-              <div className="flex items-center justify-between">
-                <span className="w-10 h-10 rounded-2xl bg-orange-500/10 text-[#FF5B00] dark:bg-orange-500/15 flex items-center justify-center">
-                  <RotateCcw className="w-[18px] h-[18px] stroke-[2.2]" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  02 · Morning Regulars
-                </span>
-              </div>
-
-              <h3 className="mt-5 text-lg sm:text-xl font-black tracking-tight text-[#061838] dark:text-white">
-                Reorder in one tap
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-400">
-                Your morning batch — lavas, milk, eggs — saved and re-sent with a single tap,
-                without building the cart again.
-              </p>
-            </div>
-
-            <QuickReorderCard />
-          </motion.div>
-
-          {/* Section 3: Local Prices, No Markup */}
-          <motion.div
-            variants={fadeUp}
-            className="rounded-3xl bg-white dark:bg-[#12161F] border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 flex flex-col justify-between shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-slate-700"
-          >
-            <div className="mb-6">
-              <div className="flex items-center justify-between">
-                <span className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-[#1B2231] text-[#061838] dark:text-white flex items-center justify-center">
-                  <Tag className="w-[18px] h-[18px] stroke-[2.2]" />
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  03 · Local Guarantee
-                </span>
-              </div>
-
-              <h3 className="mt-5 text-lg sm:text-xl font-black tracking-tight text-[#061838] dark:text-white">
-                Local prices, no markup
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-slate-600 dark:text-slate-400">
-                What you pay in the app is what the shop charges in Anantnag. No surge pricing,
-                no hidden fees, and live stage updates.
-              </p>
-            </div>
-
-            <LocalPricingCard />
-          </motion.div>
-        </div>
       </motion.div>
+
+      <div className="mt-14 sm:mt-20 space-y-16 sm:space-y-24">
+        {FEATURES.map(({ n, label, title, body, Icon, Visual }, index) => {
+          const flipped = index % 2 === 1;
+          return (
+            <motion.div
+              key={n}
+              variants={stagger(0.1)}
+              {...inViewOnce}
+              className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center"
+            >
+              <motion.div
+                variants={fadeUp}
+                className={`lg:col-span-5 ${flipped ? "lg:order-2" : ""}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="w-10 h-10 rounded-xl bg-[#061838] dark:bg-[#1B2231] flex items-center justify-center">
+                    <Icon className="w-[18px] h-[18px] stroke-[2.2] text-[#FF5B00]" aria-hidden="true" />
+                  </span>
+                  <span className="text-[12px] font-semibold tabular-nums text-slate-500 dark:text-slate-400">
+                    {n} · {label}
+                  </span>
+                </div>
+                <h3 className="mt-5 font-display text-[26px] sm:text-[34px] font-bold tracking-[-0.025em] leading-[1.1] text-[#061838] dark:text-white [text-wrap:balance]">
+                  {title}
+                </h3>
+                <p className="mt-4 max-w-md text-[15px] leading-[1.7] text-slate-600 dark:text-slate-400 [text-wrap:pretty]">
+                  {body}
+                </p>
+              </motion.div>
+
+              <motion.div
+                variants={fadeUp}
+                className={`lg:col-span-7 ${flipped ? "lg:order-1" : ""}`}
+              >
+                <div className="rounded-[1.75rem] bg-[#F3EEE3] dark:bg-[#10151E] p-5 sm:p-10 flex items-center justify-center">
+                  <div className="w-full max-w-md">
+                    <Visual />
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })}
+      </div>
     </section>
   );
 }
