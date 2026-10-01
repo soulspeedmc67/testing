@@ -763,19 +763,30 @@ export default function DashItDriverApp() {
 
   // Open Turn-by-Turn Navigation in external Google Maps app
   const handleOpenNavigation = () => {
-    if (!activeOrder) return;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentCoords.latitude},${currentCoords.longitude}&destination=${targetLat},${targetLng}&travelmode=driving`;
-    if (typeof window !== "undefined") {
-      window.open(url, "_system") || (window.location.href = url);
+    if (!activeOrder || typeof window === "undefined") return;
+    // In the rider app (Android), straight into Google Maps' turn-by-turn; the
+    // app hands any non-web link to the phone, like tel: for calls.
+    const isAndroidApp = window.Capacitor?.getPlatform?.() === "android";
+    if (isAndroidApp) {
+      window.location.href = `google.navigation:q=${targetLat},${targetLng}&mode=d`;
+      return;
     }
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${targetLat},${targetLng}&travelmode=driving`;
+    window.open(url, "_blank", "noopener") || (window.location.href = url);
   };
 
   // Call Customer
   const handleCallCustomer = () => {
-    const phone = activeOrder?.customerPhone || activeOrder?.userAddress?.phone || "";
-    if (phone) {
-      window.location.href = `tel:${phone}`;
+    // The shop apps save the number as `mobile`; older orders used the others.
+    const raw = String(
+      activeOrder?.mobile || activeOrder?.customerPhone || activeOrder?.phone || activeOrder?.userAddress?.phone || ""
+    ).replace(/[^\d+]/g, "");
+    if (!raw) {
+      speak(strings.noPhone || "No phone number on this order");
+      return;
     }
+    const phone = raw.startsWith("+") ? raw : raw.length === 10 ? `+91${raw}` : raw;
+    window.location.href = `tel:${phone}`;
   };
 
   // Listen Address Aloud
@@ -861,7 +872,12 @@ export default function DashItDriverApp() {
   const isCOD = activeOrder && isCashOnDelivery(activeOrder);
   const orderTotal = activeOrder?.totalAmount || activeOrder?.total || 0;
   const bagCount = activeOrder?.items?.length || 1;
-  const areaName = activeOrder?.userAddress?.area || activeOrder?.userAddress?.city || "Anantnag";
+  // The first part of the address ("Court Road"), as riders know the town by its areas.
+  const areaName =
+    activeOrder?.userAddress?.area ||
+    (activeOrder?.location?.address || "").split(",").map((p) => p.trim()).find((p) => p && !/^\d+$/.test(p) && !/anantnag/i.test(p)) ||
+    activeOrder?.userAddress?.city ||
+    "Anantnag";
 
   function isCashOnDelivery(ord) {
     if (!ord) return true;
@@ -1363,7 +1379,9 @@ export default function DashItDriverApp() {
         <iframe
           title="Delivery Route Map"
           src={googleMapsEmbedUrl}
-          className="w-full h-full border-0 select-none"
+          // Pinned to the box: a percentage height doesn't fill a flex-sized box,
+          // so the map stayed at the browser's default iframe height.
+          className="absolute inset-0 w-full h-full border-0 select-none"
           loading="lazy"
           allowFullScreen
           referrerPolicy="no-referrer"
