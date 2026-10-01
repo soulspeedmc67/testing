@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// Takes over from the plain midnight launch screen and hands over to the app.
-/// The logo sharpens out of a blur, then shrinks and tucks to the left while
-/// the letters of "dashit" pop in from its side one after another, each
-/// sliding and settling as it sharpens, in a gentle wave. The lockup then
-/// lifts away in a blur and the backdrop clears onto the app. Same timings and
-/// curves as the Android `SplashOverlay`.
+/// The logo builds itself, its four shapes flying in and snapping together,
+/// then shrinks and tucks to the left while the letters of "dashit" pop in
+/// from its side one after another, each sliding and settling, in a gentle
+/// wave. The lockup then lifts away and the backdrop clears onto the app. No
+/// blur anywhere: it is the costly kind of effect and stuttered while the
+/// catalogue loaded underneath. Same timings and curves as the Android
+/// `SplashOverlay`.
 struct SplashView: View {
     /// Called as the backdrop starts to clear, so the app can settle into place.
     var onReveal: () -> Void
@@ -15,16 +17,15 @@ struct SplashView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // 1. Reveal
-    @State private var logoOpacity: Double = 0
-    @State private var logoBlur: CGFloat = 14
-    @State private var logoRevealScale: CGFloat = 0.86
+    @State private var pieceMoved = Array(repeating: false, count: 4)
+    @State private var pieceVisible = Array(repeating: false, count: 4)
+    @State private var logoRevealScale: CGFloat = 0.9
     // 2. Tuck, then the letters' wave
     @State private var isTucked = false
     @State private var letterSettled = Array(repeating: false, count: 6)
     @State private var letterVisible = Array(repeating: false, count: 6)
     // 3. Exit
     @State private var lockupScale: CGFloat = 1
-    @State private var lockupBlur: CGFloat = 0
     @State private var lockupOpacity: Double = 1
     @State private var backdropOpacity: Double = 1
 
@@ -34,6 +35,14 @@ struct SplashView: View {
     private static let tuckedLogoScale: CGFloat = 0.5
     private static let wordSize = CGSize(width: 158, height: 34)
     private static let wordX: CGFloat = 29.3
+    /// The logo's four shapes (each the full logo-sized image, so they line up
+    /// where they are drawn), where each flies in from, and when (seconds).
+    private static let logoPieces: [(image: String, from: CGSize, delay: Double)] = [
+        ("SplashLogoTop", CGSize(width: 0, height: -34), 0),
+        ("SplashLogoBottom", CGSize(width: 0, height: 34), 0.06),
+        ("SplashLogoArc", CGSize(width: 40, height: 0), 0.14),
+        ("SplashLogoBar", CGSize(width: -72, height: 0), 0.22)
+    ]
     /// Where each letter of the wordmark image starts, as a fraction of its
     /// width (d, a, s, h, i, t), cut in the gaps between the letters.
     private static let letterCuts: [CGFloat] = [0, 0.1862, 0.3936, 0.5727, 0.7713, 0.8652, 1]
@@ -58,18 +67,26 @@ struct SplashView: View {
                 .frame(width: Self.wordSize.width, height: Self.wordSize.height)
                 .offset(x: Self.wordX)
 
-                Image("SplashLogo")
-                    .resizable()
-                    .interpolation(.high)
-                    .frame(width: Self.logoSize, height: Self.logoSize)
-                    .blur(radius: logoBlur)
-                    .scaleEffect(logoRevealScale)
-                    .opacity(logoOpacity)
-                    .scaleEffect(isTucked ? Self.tuckedLogoScale : 1)
-                    .offset(x: isTucked ? Self.tuckedLogoX : 0)
+                // The logo: its four shapes, moved together as one.
+                ZStack {
+                    ForEach(0..<Self.logoPieces.count, id: \.self) { index in
+                        let piece = Self.logoPieces[index]
+                        Image(piece.image)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: Self.logoSize, height: Self.logoSize)
+                            .offset(
+                                x: pieceMoved[index] ? 0 : piece.from.width,
+                                y: pieceMoved[index] ? 0 : piece.from.height
+                            )
+                            .opacity(pieceVisible[index] ? 1 : 0)
+                    }
+                }
+                .scaleEffect(logoRevealScale)
+                .scaleEffect(isTucked ? Self.tuckedLogoScale : 1)
+                .offset(x: isTucked ? Self.tuckedLogoX : 0)
             }
             .scaleEffect(lockupScale)
-            .blur(radius: lockupBlur)
             .opacity(lockupOpacity)
         }
         .ignoresSafeArea()
@@ -91,7 +108,6 @@ struct SplashView: View {
                     .frame(width: to - from)
                     .offset(x: from)
             }
-            .blur(radius: letterVisible[index] ? 0 : 7)
             .opacity(letterVisible[index] ? 1 : 0)
             .offset(x: letterSettled[index] ? 0 : -14, y: letterSettled[index] ? 0 : 7)
     }
@@ -100,11 +116,11 @@ struct SplashView: View {
         guard !reduceMotion else {
             // The finished lockup, faded in and out.
             isTucked = true
-            logoBlur = 0
             logoRevealScale = 1
+            pieceMoved = Array(repeating: true, count: 4)
             letterSettled = Array(repeating: true, count: 6)
             withAnimation(.easeOut(duration: 0.3)) {
-                logoOpacity = 1
+                pieceVisible = Array(repeating: true, count: 4)
                 letterVisible = Array(repeating: true, count: 6)
             }
             try? await Task.sleep(for: .milliseconds(900))
@@ -118,16 +134,23 @@ struct SplashView: View {
             return
         }
 
-        // 1. The logo sharpens out of a blur.
+        // 1. The logo builds itself: its shapes fly in one after another.
         try? await Task.sleep(for: .milliseconds(120))
-        withAnimation(Self.easeOut(0.52)) {
-            logoOpacity = 1
-            logoBlur = 0
+        withAnimation(Self.easeOut(0.7)) {
             logoRevealScale = 1
+        }
+        for index in 0..<Self.logoPieces.count {
+            let delay = Self.logoPieces[index].delay
+            withAnimation(Self.pop(0.46).delay(delay)) {
+                pieceMoved[index] = true
+            }
+            withAnimation(Self.easeOut(0.24).delay(delay)) {
+                pieceVisible[index] = true
+            }
         }
 
         // 2. It tucks left, and the letters pop in from its side in a wave.
-        try? await Task.sleep(for: .milliseconds(640))
+        try? await Task.sleep(for: .milliseconds(720))
         withAnimation(Self.easeInOut(0.56)) {
             isTucked = true
         }
@@ -145,7 +168,6 @@ struct SplashView: View {
         try? await Task.sleep(for: .milliseconds(1060))
         withAnimation(Self.easeIn(0.32)) {
             lockupScale = 1.08
-            lockupBlur = 8
             lockupOpacity = 0
         }
         withAnimation(Self.easeOut(0.38).delay(0.08)) {
