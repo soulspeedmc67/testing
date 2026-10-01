@@ -4,6 +4,7 @@
  * the Firebase CLI login on this machine (npx firebase-tools login).
  *
  *   node scripts/apply-shelf-fixes.mjs                     # move them
+ *   node scripts/apply-shelf-fixes.mjs public/catalog/shelf-fixes-v2.json
  *   node scripts/apply-shelf-fixes.mjs --undo data/shelf-moves-<date>.json
  *
  * Only `cat` (and `updatedAt`, so the apps fetch it) changes. The old shelves are saved to data/shelf-moves-<date>.json
@@ -33,9 +34,10 @@ async function accessToken() {
 const undoAt = process.argv.indexOf("--undo");
 const moves = undoAt > 0
   ? JSON.parse(readFileSync(process.argv[undoAt + 1], "utf8")).map((m) => ({ id: m.id, to: m.from }))
-  : JSON.parse(readFileSync("public/catalog/shelf-fixes-v1.json", "utf8")).moves;
+  : JSON.parse(readFileSync(process.argv[2] || "public/catalog/shelf-fixes-v1.json", "utf8")).moves;
 if (undoAt < 0) {
-  const file = `data/shelf-moves-${new Date().toISOString().slice(0, 10)}.json`;
+  const list = (process.argv[2] || "shelf-fixes-v1").split("/").pop().replace(".json", "");
+  const file = `data/shelf-moves-${new Date().toISOString().slice(0, 10)}-${list}.json`;
   writeFileSync(file, JSON.stringify(moves));
   console.log(`old shelves saved to ${file}`);
 }
