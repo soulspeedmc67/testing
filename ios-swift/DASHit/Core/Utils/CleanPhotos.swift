@@ -38,8 +38,10 @@ enum CleanPhotos {
     /// 0 clean white photo, 1 other photo, 2 no photo.
     static func rank(_ img: String, in clean: Set<String>) -> Int {
         if img.isEmpty { return 2 }
-        let file = img.split(separator: "/").last.map(String.init) ?? img
-        let name = file.split(separator: "#").first.flatMap { $0.split(separator: ".").first }.map(String.init) ?? file
-        return clean.contains(name) ? 0 : 1
+        var name: Substring = img[...]
+        if let slash = name.lastIndex(of: "/") { name = name[name.index(after: slash)...] }
+        if let dot = name.firstIndex(of: ".") { name = name[..<dot] }
+        if let mark = name.firstIndex(of: "#") { name = name[..<mark] }
+        return clean.contains(String(name)) ? 0 : 1
     }
 }

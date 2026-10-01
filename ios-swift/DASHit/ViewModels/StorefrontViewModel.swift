@@ -92,10 +92,12 @@ final class CatalogueStore: ObservableObject {
     /// otherwise in the order they came.
     private func photoOrder(_ list: [Product]) -> [Product] {
         let clean = cleanPhotos
-        return list.enumerated()
-            .map { (rank: CleanPhotos.rank($0.element.img, in: clean), index: $0.offset, product: $0.element) }
-            .sorted { $0.rank != $1.rank ? $0.rank < $1.rank : $0.index < $1.index }
-            .map(\.product)
+        var buckets: [[Product]] = [[], [], []]
+        for product in list {
+            let rank: Int = CleanPhotos.rank(product.img, in: clean)
+            buckets[rank].append(product)
+        }
+        return buckets[0] + buckets[1] + buckets[2]
     }
 
     /// Products filed under a category, looked up instead of searched for.
