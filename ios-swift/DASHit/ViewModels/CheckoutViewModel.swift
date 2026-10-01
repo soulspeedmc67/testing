@@ -4,28 +4,20 @@ import SwiftUI
 @MainActor
 final class CheckoutViewModel: ObservableObject {
     @Published var selectedAddress: DeliveryAddress
-    /// "cod" (cash on delivery), or "upi:<shortcode>" for a UPI app on this
-    /// phone. The last choice is kept.
-    @Published var paymentMethod: String = UserDefaults.standard.string(forKey: CheckoutViewModel.lastPaymentKey) ?? "cod"
-    /// The UPI apps on this phone; nil until looked up.
-    @Published var upiApps: [OnlinePayment.UpiApp]?
+    /// "online" (Razorpay's checkout: UPI, cards, netbanking, wallets, EMI, Pay Later)
+    /// or "cod" (cash on delivery). The last choice is kept; the older per-UPI-app
+    /// choices ("upi:...") count as online.
+    @Published var paymentMethod: String = {
+        guard let saved = UserDefaults.standard.string(forKey: CheckoutViewModel.lastPaymentKey) else { return "cod" }
+        return saved == "cod" ? "cod" : "online"
+    }()
     @Published var isSubmitting: Bool = false
     @Published var progressText = "Placing Order..."
 
     private static let lastPaymentKey = "dashit_last_payment_method"
 
-    var chosenApp: OnlinePayment.UpiApp? {
-        upiApps?.first { "upi:\($0.shortcode)" == paymentMethod }
-    }
+    var paysOnline: Bool { paymentMethod == "online" && OnlinePayment.isAvailable }
 
-    func loadUpiApps() async {
-        let apps = await OnlinePayment.upiApps()
-        upiApps = apps
-        // The app used last time is gone: back to cash on delivery.
-        if paymentMethod.hasPrefix("upi:"), !apps.contains(where: { "upi:\($0.shortcode)" == paymentMethod }) {
-            paymentMethod = "cod"
-        }
-    }
     @Published var orderError: String?
     @Published var completedOrder: Order?
 
@@ -90,19 +82,18 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
 
-        let app = chosenApp
         isSubmitting = true
-        progressText = app.map { "Waiting for \($0.name)..." } ?? "Placing Order..."
+        progressText = paysOnline ? "Opening payment..." : "Placing Order..."
         UserDefaults.standard.set(paymentMethod, forKey: Self.lastPaymentKey)
         defer { isSubmitting = false }
 
-        // Paying by UPI: the payment is taken and confirmed first, and only a
+        // Paying online: the payment is taken and confirmed first, and only a
         // confirmed payment places the order.
         let code = Order.newCode()
         var receipt: PaymentReceipt?
-        if let app {
+        if paysOnline {
             do {
-                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user, app: app) { [weak self] in
+                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user) { [weak self] in
                     self?.progressText = "Confirming payment..."
                 }
                 progressText = "Placing Order..."

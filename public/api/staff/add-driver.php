@@ -23,12 +23,13 @@
 
 require_once __DIR__ . '/../_firebase.php';
 
-// Support CORS for origin and allow Authorization header
-if (isset($_SERVER['HTTP_ORIGIN'])) {
-    header("Access-Control-Allow-Origin: {$_SERVER['HTTP_ORIGIN']}");
-} else {
-    header('Access-Control-Allow-Origin: https://dashit.co.in');
-}
+// Only the website (and the local dev server) may call this from a browser page.
+// The apps are not browsers and don't send an Origin. Never echo the caller's
+// Origin back: that would let any site's script use an admin's signed-in session.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = ['https://dashit.co.in', 'https://www.dashit.co.in', 'http://localhost:3000'];
+header('Vary: Origin');
+header('Access-Control-Allow-Origin: ' . (in_array($origin, $allowedOrigins, true) ? $origin : 'https://dashit.co.in'));
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
@@ -76,6 +77,10 @@ if ($claims === null || empty($claims['sub'])) {
 
 $callerUid = (string) $claims['sub'];
 $callerEmail = (string) ($claims['email'] ?? '');
+// Anonymous sessions can be opened by anyone from a script; they never get a staff record.
+if (($claims['firebase']['sign_in_provider'] ?? '') === 'anonymous') {
+    dashit_respond(403, ['error' => 'Please sign in with your own account.']);
+}
 
 // 3. Verify caller is admin
 function dashit_fetch_firestore_doc(array $account, string $path): ?array
@@ -139,9 +144,10 @@ function dashit_staff_patch(array $account, string $path, array $fields): bool
     return $status >= 200 && $status < 300;
 }
 
+// The owner's e-mail only counts once it is verified (same rule as firestore.rules).
 $isRootAdmin = (
     $callerUid === 'DOf5enic8SXBZTupGJbxDrNdrOt2' ||
-    $callerEmail === 'm4k3ditz@gmail.com'
+    ($callerEmail === 'm4k3ditz@gmail.com' && ($claims['email_verified'] ?? false) === true)
 );
 
 // 4. Handle Actions

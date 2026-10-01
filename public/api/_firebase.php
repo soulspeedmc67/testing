@@ -166,6 +166,49 @@ function dashit_firestore_set(array $account, string $path, array $fields): bool
 }
 
 /**
+ * Changes only the named fields of the document at $path (creating it if
+ * missing), leaving the rest alone. Returns false, logged, if Firestore didn't take it.
+ */
+function dashit_firestore_merge(array $account, string $path, array $fields): bool
+{
+    $project = (string) ($account['project_id'] ?? '');
+    $emulator = getenv('FIRESTORE_EMULATOR_HOST');
+    $token = $project === '' ? null : ($emulator ? 'owner' : dashit_google_access_token($account));
+    if ($token === null) {
+        error_log("DASHit: couldn't write $path to Firestore (no project id or access token).");
+        return false;
+    }
+    $encoded = [];
+    $mask = [];
+    foreach ($fields as $name => $value) {
+        $encoded[$name] = dashit_firestore_value($value);
+        $mask[] = 'updateMask.fieldPaths=' . rawurlencode($name);
+    }
+    $url = ($emulator ? "http://$emulator" : 'https://firestore.googleapis.com')
+        . '/v1/projects/' . rawurlencode($project)
+        . '/databases/(default)/documents/' . implode('/', array_map('rawurlencode', explode('/', $path)))
+        . '?' . implode('&', $mask);
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => 'PATCH',
+        CURLOPT_HTTPHEADER => ["Authorization: Bearer $token", 'Content-Type: application/json'],
+        CURLOPT_POSTFIELDS => json_encode(['fields' => $encoded]),
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => 20,
+    ]);
+    $raw = curl_exec($curl);
+    $status = $raw === false ? 0 : (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+    curl_close($curl);
+    if ($status < 200 || $status >= 300) {
+        $reply = $raw === false ? null : json_decode($raw, true);
+        error_log("DASHit: Firestore refused $path (HTTP $status): " . ($reply['error']['message'] ?? 'no answer'));
+        return false;
+    }
+    return true;
+}
+
+/**
  * Calls the Firebase Auth admin API (Identity Toolkit) for this project, as
  * the Admin SDK would: $method is "accounts:lookup", "accounts:update",
  * "accounts:delete" or "accounts" (create). Returns [HTTP status, reply];
@@ -243,6 +286,29 @@ function dashit_securetoken_certs(bool $refresh = false): array
         @rename("$cache.tmp", $cache);
     }
     return $certs;
+}
+
+/**
+ * The signed-in shopper asking: [service account, verified token claims]. A
+ * request with no token, a bad one, or one from an anonymous session (anyone
+ * can open one from a script) is answered 401 and stops here. Endpoints that
+ * cost money when abused (starting a payment, sending an SMS) call this first,
+ * so abusing them needs a real Google or Apple account, not just a network
+ * address.
+ */
+function dashit_require_shopper(array $body): array
+{
+    $account = dashit_firebase_service_account();
+    if ($account === null) {
+        dashit_respond(503, ['error' => 'The server is not set up for this yet. Please try again later.']);
+    }
+    $token = is_string($body['id_token'] ?? null) ? $body['id_token'] : '';
+    $claims = $token === '' ? null : dashit_verify_id_token($account, $token);
+    $provider = is_array($claims) ? (string) ($claims['firebase']['sign_in_provider'] ?? '') : '';
+    if ($claims === null || $provider === '' || $provider === 'anonymous') {
+        dashit_respond(401, ['error' => 'Please sign in to pay online.']);
+    }
+    return [$account, $claims];
 }
 
 /**

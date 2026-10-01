@@ -36,6 +36,8 @@ struct StorefrontHomeView: View {
     }
 
     private var address: DeliveryAddress? { addressBook.current }
+    /// Kept so the search bar can be scrolled to the top when search opens.
+    @State private var scrollProxy: ScrollViewProxy?
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -95,6 +97,7 @@ struct StorefrontHomeView: View {
                             .frame(height: 24)
                     } header: {
                         pinnedSearch
+                            .id("pinned")
                     }
                 }
                 .background(alignment: .top) {
@@ -137,6 +140,7 @@ struct StorefrontHomeView: View {
             .onChange(of: vm.isBrowsing) { _, browsing in
                 if !browsing { showFromTop(proxy) }
             }
+            .onAppear { scrollProxy = proxy }
             .task {
                 #if DEBUG
                 await applyScreenshotHooks(proxy)
@@ -363,8 +367,14 @@ struct StorefrontHomeView: View {
         }
     }
 
+    /// The search bar rises to the top of the page as the search page fades in,
+    /// so the bar the shopper tapped stays put and only what is around it
+    /// changes: one movement, not a page swapped in.
     private func openSearch() {
-        withAnimation(.easeOut(duration: 0.22)) { isSearchOpen = true }
+        if let scrollProxy {
+            withAnimation(.smooth(duration: 0.28)) { scrollProxy.scrollTo("pinned", anchor: .top) }
+        }
+        withAnimation(.easeOut(duration: 0.26)) { isSearchOpen = true }
     }
 
     private func closeSearch() {
@@ -450,17 +460,16 @@ struct StorefrontHomeView: View {
 
     // MARK: - Filtered results
 
-    /// Puts the top of the results just under the pinned search bar.
+    /// Puts the list right under the pinned search bar: the header scrolled
+    /// away, the bar at the top, the first items directly beneath it.
     private func showFromTop(_ proxy: ScrollViewProxy) {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         // At once, so a stale offset never shows a blank page...
         withTransaction(transaction) { proxy.scrollTo("top", anchor: .top) }
-        // ...then, after the new list has been laid out, to just under the search bar.
+        // ...then, after the new list has been laid out, to the pinned bar.
         DispatchQueue.main.async {
-            withTransaction(transaction) {
-                proxy.scrollTo(vm.isBrowsing ? "categories" : "results", anchor: UnitPoint(x: 0.5, y: 0.16))
-            }
+            withTransaction(transaction) { proxy.scrollTo("pinned", anchor: .top) }
         }
     }
 

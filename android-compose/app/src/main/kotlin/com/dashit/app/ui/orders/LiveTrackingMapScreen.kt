@@ -123,7 +123,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
-private val HUB = GeoPoint(DeliveryEta.HUB_LAT, DeliveryEta.HUB_LNG)
+internal val HUB = GeoPoint(DeliveryEta.HUB_LAT, DeliveryEta.HUB_LNG)
 
 /**
  * Live tracking for an order, in the iOS app's layout: the map fills the
@@ -147,6 +147,8 @@ fun LiveTrackingMapScreen(
     val order = orders.firstOrNull { it.id == shownId }
     // Only the active order has a tracking feed; don't show another order's rider.
     val rider = tracking?.takeIf { order != null && orderRepo.activeOrder.value?.id == order.id }
+    // The road still to cover, the time and distance left: kept up to date as the rider moves.
+    val routeProgress = rememberRouteProgress(order, rider)
 
     var isCancelSheetOpen by remember { mutableStateOf(false) }
     var isAddItemsOpen by remember { mutableStateOf(false) }
@@ -179,7 +181,7 @@ fun LiveTrackingMapScreen(
             onAddItems = openAddItems
         )
     } else Box(modifier = Modifier.fillMaxSize().background(DashitColors.SurfaceSunken)) {
-        TrackingMap(order = order, rider = rider)
+        TrackingMap(order = order, rider = rider, progress = routeProgress)
 
         // Back button and the change-window countdown
         Row(
@@ -234,6 +236,7 @@ fun LiveTrackingMapScreen(
                 OrderCard(
                     order = order,
                     rider = rider,
+                    routeProgress = routeProgress,
                     isCancelling = isCancelling,
                     cancelError = cancelError,
                     onCancel = openCancel,
@@ -364,6 +367,7 @@ private fun OrderStageScreen(
                 OrderCard(
                     order = order,
                     rider = null,
+                    routeProgress = RouteProgress(emptyList(), false, null, null),
                     isCancelling = isCancelling,
                     cancelError = cancelError,
                     onCancel = onCancel,
@@ -484,6 +488,7 @@ private fun OrderItemsCard(order: Order) {
 private fun OrderCard(
     order: Order,
     rider: DriverLiveTracking?,
+    routeProgress: RouteProgress,
     isCancelling: Boolean,
     cancelError: String?,
     onCancel: () -> Unit,
@@ -491,7 +496,8 @@ private fun OrderCard(
 ) {
     val stage = order.status
     val seconds = rememberModifySecondsRemaining(order)
-    val eta = rider?.etaMinutes ?: order.etaMinutes ?: 8
+    // Worked out from the road left, so it counts down as the rider moves.
+    val eta = routeProgress.etaMinutes(rider?.speed) ?: rider?.etaMinutes ?: order.etaMinutes ?: 8
     val shape = RoundedCornerShape(24.dp)
 
     Column(
@@ -522,12 +528,12 @@ private fun OrderCard(
             }
         }
 
-        val line = rider?.statusText?.takeIf { it.isNotBlank() } ?: rider?.distanceFormatted
+        val line = routeProgress.distanceLine() ?: rider?.statusText?.takeIf { it.isNotBlank() } ?: rider?.distanceFormatted
         if (stage == OrderStatus.OUT_FOR_DELIVERY && line != null) {
             Text(line, color = Color.White.copy(alpha = 0.75f), fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
 
-        OrderProgressRail(stage = stage, progress = stage.progress(rider?.progress))
+        OrderProgressRail(stage = stage, progress = stage.progress(routeProgress.percentDone ?: rider?.progress))
 
         val code = order.otp
         if (!stage.isFinished && !code.isNullOrEmpty()) DeliveryCodeRow(code)
@@ -623,39 +629,18 @@ private class MapLayers {
 }
 
 @Composable
-private fun TrackingMap(order: Order?, rider: DriverLiveTracking?) {
+private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: RouteProgress) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val layers = remember { MapLayers() }
-    var route by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
-    var isRoadRoute by remember { mutableStateOf(false) }
+    val route = progress.path
+    val isRoadRoute = progress.isRoad
 
     val destination = order?.deliveryAddress?.let { GeoPoint(it.latitude, it.longitude) }
     // The rider's phone shares its position once the delivery starts. Until it does,
     // the rider waits at the store (while the order is packed or on its way), facing the door.
     val atStore = order?.status == OrderStatus.PACKING || order?.status == OrderStatus.OUT_FOR_DELIVERY
     val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
-    // The way the rider comes: from the rider while riding, from the hub before.
-    val routeStart = riderPoint?.takeIf { order?.status == OrderStatus.OUT_FOR_DELIVERY } ?: HUB
-
-    LaunchedEffect(routeStart.latitude, routeStart.longitude, destination?.latitude, destination?.longitude) {
-        val to = destination ?: return@LaunchedEffect
-        val from = routeStart
-        // Re-route only when the rider has moved on by more than ~60 m.
-        val lastFrom = layers.routedFrom
-        if (lastFrom != null && layers.routedTo == to && lastFrom.distanceToAsDouble(from) < 60) return@LaunchedEffect
-        layers.routedFrom = from
-        layers.routedTo = to
-        val road = fetchRoadRoute(from, to)
-        if (road != null && road.size > 1) {
-            route = road
-            isRoadRoute = true
-        } else {
-            route = listOf(from, to)
-            isRoadRoute = false
-        }
-    }
-
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -786,7 +771,7 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?) {
 }
 
 /** OSRM's road route between two points, or null when it can't be reached. */
-private suspend fun fetchRoadRoute(from: GeoPoint, to: GeoPoint): List<GeoPoint>? = withContext(Dispatchers.IO) {
+internal suspend fun fetchRoadRoute(from: GeoPoint, to: GeoPoint): List<GeoPoint>? = withContext(Dispatchers.IO) {
     try {
         val url = URL(
             "https://router.project-osrm.org/route/v1/driving/" +

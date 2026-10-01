@@ -28,7 +28,7 @@ import com.dashit.app.data.repository.OrderRepository
 import com.dashit.app.ui.storefront.StorefrontScreen
 import com.dashit.app.viewmodel.StorefrontViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataListener {
     private val storefrontViewModel: StorefrontViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,6 +55,8 @@ class MainActivity : ComponentActivity() {
         OrderRepository.shared.init(this)
         StoreStatus.start()
         OrderNotifications.createChannel(this)
+        // Razorpay's checkout, warmed up so it opens at once at "Pay".
+        com.dashit.app.data.OnlinePayment.preload(this)
 
         // Initialize OpenStreetMap (osmdroid) configuration with compliant User-Agent & dedicated tile cache
         val osmConfig = org.osmdroid.config.Configuration.getInstance()
@@ -126,11 +128,13 @@ class MainActivity : ComponentActivity() {
         const val WELCOME_SEEN_KEY = "seen_auth_welcome"
     }
 
-    // The UPI app hands its answer back here; Razorpay's SDK reads it.
-    @Deprecated("Razorpay's SDK opens the UPI app with startActivityForResult.")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        com.dashit.app.data.OnlinePayment.onActivityResult(requestCode, resultCode, data)
+    // Razorpay's checkout reports back here; the payment code does the rest.
+    override fun onPaymentSuccess(paymentId: String?, data: com.razorpay.PaymentData?) {
+        com.dashit.app.data.OnlinePayment.onPaymentSuccess(paymentId, data)
+    }
+
+    override fun onPaymentError(code: Int, description: String?, data: com.razorpay.PaymentData?) {
+        com.dashit.app.data.OnlinePayment.onPaymentError(code, description)
     }
 
     override fun onStart() {

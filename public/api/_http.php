@@ -31,9 +31,17 @@ function dashit_only_post(): void
     }
 }
 
+/** Largest request body any endpoint reads: they all take a few small fields. */
+const DASHIT_MAX_BODY_BYTES = 16384;
+
 function dashit_json_body(): array
 {
-    $data = json_decode(file_get_contents('php://input') ?: '', true);
+    // Read one byte past the limit so an oversized body is refused, not cut short.
+    $raw = file_get_contents('php://input', false, null, 0, DASHIT_MAX_BODY_BYTES + 1) ?: '';
+    if (strlen($raw) > DASHIT_MAX_BODY_BYTES) {
+        dashit_respond(413, ['error' => 'That request is too large.']);
+    }
+    $data = json_decode($raw, true);
     if (!is_array($data)) {
         dashit_respond(400, ['error' => 'Send a JSON body.']);
     }

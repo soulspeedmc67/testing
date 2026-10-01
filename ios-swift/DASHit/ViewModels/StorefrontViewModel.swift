@@ -34,9 +34,7 @@ struct ProductRail: Identifiable {
 final class CatalogueStore: ObservableObject {
     static let shared = CatalogueStore()
 
-    @Published private(set) var products: [Product] = [] {
-        didSet { rebuild() }
-    }
+    @Published private(set) var products: [Product] = []
     @Published private(set) var isLoading = true
     #if TOBACCO_SECTION
     /// Tobacco and other 18+ items: never browsed, only listed in the tobacco
@@ -45,9 +43,7 @@ final class CatalogueStore: ObservableObject {
     #endif
     @Published private(set) var offers: [Offer] = CatalogueStore.defaultOffers
     /// The `categories` collection, when the rules let it be read.
-    @Published private var remoteCategories: [Category] = [] {
-        didSet { rebuild() }
-    }
+    @Published private var remoteCategories: [Category] = []
 
     private(set) var categories: [Category] = []
     private(set) var categoryTiles: [CategoryTile] = []
@@ -65,6 +61,11 @@ final class CatalogueStore: ObservableObject {
     /// The catalogue as it arrived, before sorting.
     private var arrived: [Product] = []
 
+    /// What the screens should show next, and the task working it out; see `commit()`.
+    private var latestProducts: [Product] = []
+    private var latestRemote: [Category] = []
+    private var commitTask: Task<Void, Never>?
+
     private var productListener: ListenerRegistration?
     private var categoryListener: ListenerRegistration?
     private var offerListener: ListenerRegistration?
@@ -74,17 +75,18 @@ final class CatalogueStore: ObservableObject {
         // built-in catalogue only stands in if Firestore hasn't answered in a
         // few seconds (no network and nothing cached yet).
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
-            guard let self, self.products.isEmpty else { return }
-            withAnimation(.easeOut(duration: 0.25)) {
-                self.products = CatalogSeed.products.filter { !$0.isAgeRestricted }
-                self.isLoading = false
-            }
+            guard let self, self.products.isEmpty, self.latestProducts.isEmpty else { return }
+            self.latestProducts = CatalogSeed.products.filter { !$0.isAgeRestricted }
+            self.commit()
         }
         startListeners()
         CleanPhotos.load { [weak self] names in
             guard let self, names != self.cleanPhotos else { return }
             self.cleanPhotos = names
-            if !self.arrived.isEmpty { self.products = self.photoOrder(self.arrived) }
+            if !self.arrived.isEmpty {
+                self.latestProducts = self.photoOrder(self.arrived)
+                self.commit()
+            }
         }
     }
 
@@ -114,122 +116,53 @@ final class CatalogueStore: ObservableObject {
         return entries
     }
 
-    private static func key(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespaces).lowercased()
+    private static func key(_ name: String) -> String { CatalogueDerive.key(name) }
+
+    /// Works the home feed out away from the main thread, waits for the launch
+    /// splash to clear (building it under the splash's animation made the logo
+    /// stutter), then swaps the products and everything derived from them in at
+    /// once, so a screen never sees one without the other.
+    private func commit() {
+        let products = latestProducts
+        let remote = latestRemote
+        // Categories can arrive before products: keep the skeletons up until there are products.
+        guard !products.isEmpty else { return }
+        commitTask?.cancel()
+        commitTask = Task { [weak self] in
+            let derived = await Task.detached(priority: .userInitiated) {
+                CatalogueDerive.derive(products: products, remote: remote)
+            }.value
+            while !AppReveal.shared.canPlay {
+                try? await Task.sleep(for: .milliseconds(50))
+                if Task.isCancelled { return }
+            }
+            guard !Task.isCancelled, let self else { return }
+            self.apply(derived, products: products, remote: remote)
+        }
     }
 
-    /// Familiar aisles first, in store order; anything new follows, busiest first.
-    private static let preferredOrder = [
-        "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
-        "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
-        "Instant Food", "Sweets & Chocolates", "Ice Cream", "Dry Fruits", "Sauces & Spreads",
-        "Spices", "Chicken", "Meat & Fish", "Home Care", "Kitchen Care", "Personal Care",
-        "Baby Care", "Health & Wellness", "Pet Care", "Stationery", "Toys & Games", "Electronics"
-    ].map { $0.lowercased() }
-
-    /// One pass over the catalogue: group by category, then build the tiles,
-    /// rails, departments and hints from the groups.
-    private func rebuild() {
-        var groups: [String: [Product]] = [:]
-        var names: [String: String] = [:]
-        var firstSeen: [String] = []
-        for product in products {
-            let name = product.cat.trimmingCharacters(in: .whitespaces)
-            guard !name.isEmpty else { continue }
-            let key = name.lowercased()
-            if groups[key] == nil {
-                firstSeen.append(key)
-                names[key] = name
-            }
-            groups[key, default: []].append(product)
-        }
-        productsByCategoryKey = groups
+    private func apply(_ derived: CatalogueDerived, products newProducts: [Product], remote: [Category]) {
+        categories = derived.categories
+        categoryTiles = derived.categoryTiles
+        topCategoryTiles = derived.topCategoryTiles
+        departments = derived.departments
+        rails = derived.rails
+        searchHints = derived.searchHints
+        popularProducts = derived.popularProducts
+        productsByCategoryKey = derived.byCategoryKey
         cachedSearchEntries = nil
-
-        if remoteCategories.isEmpty {
-            func rank(_ key: String) -> Int { Self.preferredOrder.firstIndex(of: key) ?? Int.max }
-            let ordered = firstSeen.sorted { a, b in
-                let (ra, rb) = (rank(a), rank(b))
-                if ra != rb { return ra < rb }
-                return (groups[a]?.count ?? 0) > (groups[b]?.count ?? 0)
-            }
-            categories = ordered.enumerated().map { index, key in
-                Category(id: key.replacingOccurrences(of: " ", with: "-"), name: names[key] ?? key, icon: nil, sortOrder: index)
+        remoteCategories = remote
+        // Photos the home feed shows first, saved to the phone ahead of time (Wi-Fi only).
+        ProductPhotoStore.shared.prefetch(Array(derived.feedPhotos.prefix(300)))
+        // The skeletons cross-fade into the catalogue on its first arrival.
+        if isLoading {
+            withAnimation(.easeOut(duration: 0.25)) {
+                products = newProducts
+                isLoading = false
             }
         } else {
-            categories = remoteCategories
+            products = newProducts
         }
-
-        let filled: [(category: Category, products: [Product])] = categories
-            .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
-            .compactMap { (category: Category) -> (category: Category, products: [Product])? in
-                let list = groups[Self.key(category.name)] ?? []
-                return list.isEmpty ? nil : (category: category, products: list)
-            }
-
-        categoryTiles = filled.map { entry in
-            CategoryTile(
-                id: entry.category.id,
-                name: entry.category.name,
-                previewImages: entry.products.prefix(4).map(\.img),
-                productCount: entry.products.count
-            )
-        }
-        topCategoryTiles = Array(categoryTiles.sorted { $0.productCount > $1.productCount }.prefix(6))
-        rails = filled.map { entry in
-            ProductRail(id: entry.category.id, title: entry.category.name, products: Array(entry.products.prefix(12)))
-        }
-        departments = Self.departments(from: categoryTiles)
-
-        var seen = Set<String>()
-        var hints: [String] = []
-        for product in products where product.isAvailable {
-            let hint = product.name.lowercased().split(separator: " ").prefix(3).joined(separator: " ")
-            if seen.insert(hint).inserted { hints.append(hint) }
-            if hints.count == 8 { break }
-        }
-        searchHints = hints
-
-        popularProducts = Array(
-            products
-                .filter(\.isAvailable)
-                .sorted { (Int($0.ratingCount ?? "") ?? 0) > (Int($1.ratingCount ?? "") ?? 0) }
-                .prefix(6)
-        )
-
-        // Photos the home feed shows first, saved to the phone ahead of time
-        // (Wi-Fi only) so they appear instantly.
-        let feedPhotos = topCategoryTiles.flatMap(\.previewImages)
-            + rails.flatMap { $0.products.prefix(6).map(\.img) }
-            + departments.flatMap { $0.tiles.compactMap(\.previewImages.first) }
-        ProductPhotoStore.shared.prefetch(Array(feedPhotos.compactMap { URL(string: $0) }.prefix(300)))
-    }
-
-    /// Categories grouped into store departments, Blinkit-style; anything that
-    /// fits none of them lands in "More to explore".
-    private static func departments(from tiles: [CategoryTile]) -> [Department] {
-        let groups: [(title: String, keys: [String])] = [
-            ("Fresh & Daily", ["dairy", "fruit", "vegetable", "egg", "chicken", "meat", "fish", "bread"]),
-            ("Grocery & Kitchen", ["staple", "grocery", "atta", "rice", "dal", "oil", "spice", "masala", "instant", "kitchen"]),
-            ("Snacks & Drinks", ["snack", "chip", "namkeen", "biscuit", "cookie", "bakery", "beverage", "drink", "juice", "sweet", "chocolate"]),
-            ("Home & Household", ["home", "clean", "household", "care"])
-        ]
-        var remaining = tiles
-        var result: [Department] = []
-        for group in groups {
-            let matched = remaining.filter { tile in
-                let name = tile.name.lowercased()
-                return group.keys.contains { name.contains($0) }
-            }
-            guard !matched.isEmpty else { continue }
-            let matchedIds = Set(matched.map(\.id))
-            remaining.removeAll { matchedIds.contains($0.id) }
-            result.append(Department(id: group.title, title: group.title, tiles: matched))
-        }
-        if !remaining.isEmpty {
-            result.append(Department(id: "more", title: "More to explore", tiles: remaining))
-        }
-        return result
     }
 
     private func startListeners() {
@@ -246,22 +179,15 @@ final class CatalogueStore: ObservableObject {
             // skeletons up until real products (or the fallback) arrive.
             guard !fetched.isEmpty else { return }
             self.arrived = fetched
-            let ordered = self.photoOrder(fetched)
-            // The skeletons cross-fade into the catalogue on its first arrival.
-            if self.isLoading {
-                withAnimation(.easeOut(duration: 0.25)) {
-                    self.products = ordered
-                    self.isLoading = false
-                }
-            } else {
-                self.products = ordered
-            }
+            self.latestProducts = self.photoOrder(fetched)
+            self.commit()
         }
 
         categoryListener = FirestoreService.shared.listenCategories { [weak self] fetched in
             guard let self = self else { return }
             if !fetched.isEmpty {
-                self.remoteCategories = fetched
+                self.latestRemote = fetched
+                self.commit()
             }
         }
 

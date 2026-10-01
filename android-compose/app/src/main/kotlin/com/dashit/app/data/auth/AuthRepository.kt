@@ -20,7 +20,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Sign-in for the customer app, sharing Firebase Auth and `users/{uid}` with
@@ -38,6 +43,7 @@ import java.util.UUID
  */
 object AuthRepository {
     private const val OFFLINE = "Couldn't reach DASHit. Check your connection and try again."
+    private const val SERVER = "https://dashit.co.in/api/auth/"
 
     private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
     private val db: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
@@ -50,7 +56,12 @@ object AuthRepository {
     val uid: String? get() = auth.currentUser?.uid
 
     /** A sign-in step failed; the message is ready to show. */
-    class SignInException(message: String, val retryAfterSeconds: Int? = null) : Exception(message)
+    class SignInException(
+        message: String,
+        val retryAfterSeconds: Int? = null,
+        /** The server has no such endpoint (yet): a newer app than the site. */
+        val notFound: Boolean = false
+    ) : Exception(message)
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -115,7 +126,47 @@ object AuthRepository {
         _user.value = null
     }
 
-    /** Saves the number the delivery person can call (not verified), or changes it. */
+    /**
+     * What asking for a code did: [configured] is false while the server has no
+     * 2Factor key yet, in which case nothing was sent and the number is simply
+     * saved (see [saveMobile]); otherwise a code was texted and [ticket] goes
+     * back with it to [verifyOtp].
+     */
+    data class OtpRequest(val configured: Boolean, val ticket: String?, val resendAfterSeconds: Int)
+
+    /** Texts a code to the number through the server (2Factor). */
+    suspend fun requestOtp(rawMobile: String): OtpRequest {
+        val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
+        val reply = try {
+            post("send-otp.php", JSONObject().put("mobile", mobile).put("id_token", idToken()))
+        } catch (e: SignInException) {
+            // A site that hasn't been updated yet has no code endpoint: just save the number.
+            if (e.notFound) return OtpRequest(false, null, 0)
+            throw e
+        }
+        if (!reply.optBoolean("configured", false)) return OtpRequest(false, null, 0)
+        return OtpRequest(true, reply.optString("ticket").takeIf { it.isNotBlank() }, reply.optInt("resend_after", 30))
+    }
+
+    /** Checks the code; the server marks the number verified on the profile. */
+    suspend fun verifyOtp(rawMobile: String, code: String, ticket: String): UserProfile {
+        val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
+        val current = _user.value ?: throw IllegalStateException("Please sign in first.")
+        post(
+            "verify-otp.php",
+            JSONObject().put("mobile", mobile).put("otp", code).put("ticket", ticket).put("id_token", idToken())
+        )
+        val updated = current.copy(mobile = mobile)
+        save(updated)
+        return updated
+    }
+
+    /** The signed-in shopper's Firebase ID token: what the server checks to know who is asking. */
+    suspend fun idToken(): String =
+        runCatching { auth.currentUser?.getIdToken(false)?.await()?.token }.getOrNull()
+            ?: throw SignInException("Please sign in again.")
+
+    /** Saves the number the delivery person can call (not verified by a code), or changes it. */
     suspend fun saveMobile(rawMobile: String): UserProfile {
         val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
         val current = _user.value ?: throw IllegalStateException("Please sign in first.")
@@ -213,5 +264,41 @@ object AuthRepository {
             ?.putString("email", profile.email)
             ?.apply()
         _user.value = profile
+    }
+
+    /** POSTs JSON to the sign-in server; its `error` message becomes the SignInException's. */
+    private suspend fun post(path: String, body: JSONObject): JSONObject = withContext(Dispatchers.IO) {
+        val connection = try {
+            (URL(SERVER + path).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 10_000
+                readTimeout = 25_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.use { it.write(body.toString().toByteArray()) }
+            }
+        } catch (e: Exception) {
+            throw SignInException(OFFLINE)
+        }
+        try {
+            val status = connection.responseCode
+            val text = (if (status in 200..299) connection.inputStream else connection.errorStream)
+                ?.bufferedReader()?.use { it.readText() }.orEmpty()
+            val json = runCatching { JSONObject(text) }.getOrNull()
+            if (status !in 200..299 || json == null) {
+                throw SignInException(
+                    json?.optString("error")?.takeIf { it.isNotBlank() } ?: "That didn't work. Please try again.",
+                    retryAfterSeconds = json?.optInt("retry_after")?.takeIf { it > 0 },
+                    notFound = status == 404
+                )
+            }
+            json
+        } catch (e: SignInException) {
+            throw e
+        } catch (e: Exception) {
+            throw SignInException(OFFLINE)
+        } finally {
+            connection.disconnect()
+        }
     }
 }

@@ -68,26 +68,21 @@ struct CheckoutView: View {
                                 .stroke(Color.hairline, lineWidth: 1)
                         )
 
-                        // 3. Payment: the UPI apps on this phone (picking one opens
-                        // it straight away at "Pay"), then cash on delivery.
+                        // 3. Payment: Razorpay's checkout (every way to pay it supports) or cash on delivery.
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Pay with")
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.textPrimary)
 
-                            ForEach(vm.upiApps ?? []) { app in
-                                paymentRow(title: app.name, value: "upi:\(app.shortcode)") {
-                                    CachedAsyncImage(url: app.logoURL) { phase in
-                                        if let image = phase.image {
-                                            image.resizable().scaledToFit()
-                                        } else {
-                                            Image(systemName: "indianrupeesign.circle")
-                                                .font(.system(size: 20))
-                                                .foregroundColor(.textMuted)
-                                        }
-                                    }
-                                    .frame(width: 28, height: 28)
-                                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            if OnlinePayment.isAvailable {
+                                paymentRow(
+                                    title: "Pay online",
+                                    subtitle: "UPI, cards, netbanking, wallets, EMI, Pay Later",
+                                    value: "online"
+                                ) {
+                                    Image(systemName: "creditcard")
+                                        .font(.system(size: 18, weight: .medium))
+                                        .foregroundColor(vm.paymentMethod == "online" ? .brandOrange : .textMuted)
                                 }
                             }
 
@@ -95,12 +90,6 @@ struct CheckoutView: View {
                                 Image(systemName: "banknote")
                                     .font(.system(size: 18, weight: .medium))
                                     .foregroundColor(vm.paymentMethod == "cod" ? .brandOrange : .textMuted)
-                            }
-
-                            if OnlinePayment.isAvailable, let apps = vm.upiApps, apps.isEmpty {
-                                Text("To pay online, install a UPI app like Google Pay or PhonePe.")
-                                    .font(.dashitMicro)
-                                    .foregroundColor(.textMuted)
                             }
                         }
                         .padding(14)
@@ -174,8 +163,9 @@ struct CheckoutView: View {
                             }
                             Text(vm.isSubmitting
                                  ? vm.progressText
-                                 : vm.chosenApp.map { "Pay \(CurrencyFormatter.format(cart.bill.grandTotal)) with \($0.name)" }
-                                    ?? "Place Order • \(CurrencyFormatter.format(cart.bill.grandTotal))")
+                                 : vm.paysOnline
+                                    ? "Pay \(CurrencyFormatter.format(cart.bill.grandTotal))"
+                                    : "Place Order • \(CurrencyFormatter.format(cart.bill.grandTotal))")
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.white)
                         }
@@ -192,7 +182,6 @@ struct CheckoutView: View {
             }
             .navigationTitle("Checkout")
             .navigationBarTitleDisplayMode(.inline)
-            .task { await vm.loadUpiApps() }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Back") { dismiss() }
@@ -219,7 +208,7 @@ struct CheckoutView: View {
     }
 
     /// One way to pay: its icon, its name, and a tick when chosen.
-    private func paymentRow<Icon: View>(title: String, value: String, @ViewBuilder icon: () -> Icon) -> some View {
+    private func paymentRow<Icon: View>(title: String, subtitle: String? = nil, value: String, @ViewBuilder icon: () -> Icon) -> some View {
         let isSelected = vm.paymentMethod == value
         return Button {
             vm.paymentMethod = value
@@ -228,9 +217,16 @@ struct CheckoutView: View {
             HStack(spacing: 12) {
                 icon()
                     .frame(width: 28, height: 28)
-                Text(title)
-                    .font(isSelected ? .dashitBodyBold : .dashitBody)
-                    .foregroundColor(.textPrimary)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(isSelected ? .dashitBodyBold : .dashitBody)
+                        .foregroundColor(.textPrimary)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.dashitMicro)
+                            .foregroundColor(.textMuted)
+                    }
+                }
                 Spacer()
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(isSelected ? .brandOrange : .gray)

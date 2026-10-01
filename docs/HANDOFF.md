@@ -110,7 +110,7 @@ migrated, since they still call it.
 ### Decisions the user made (do not re-litigate)
 | Question | Decision |
 |---|---|
-| Auth | Customers: number + WhatsApp code → Firebase custom token (§2). Staff: email |
+| Auth | Customers: Google (Android) / Apple (iPhone), then a mobile number confirmed with a 2Factor SMS code (§2). Staff: email |
 | Roles | `staff/{uid}` collection checked in security rules |
 | Admin app | Separate **web-only** build (not yet done) |
 | Plan | **Blaze** since 2026-09-30 (was Spark). Still no paid SMS; keep costs capped (§0a) |
@@ -154,37 +154,30 @@ All real-time events now use Firestore `watchOrder` and `watchOrderTracking`.
 
 ## 2. How auth works now
 
-**Customers (iOS `ios-swift/`, Android `android-compose/`) sign in with their
-phone number**: number → 6-digit code on WhatsApp → signed in. On 2026-09-30
-the owner asked for **Sign in with Apple (iOS) and Google (Android)** back
-(they had been removed for number-only sign-in the day before). The first
-Apple/Google sign-in confirms a number with a code once; `verify-code.php`
-then moves that identity onto the `ph-91…` account and sets a lasting
-`mobile` claim, so later Apple/Google sign-ins land on the same account and
-can order. Setup: `docs/whatsapp-otp-setup.md` §8. No email or password for
-customers.
+**Customers (iOS `ios-swift/`, Android `android-compose/`) sign in with Apple
+(iPhone) or Google (Android), then give a mobile number the rider can call.**
+The WhatsApp-code sign-in and the "Is this your number?" confirmation were
+removed on 2026-10-01; a number is now confirmed with an SMS code through
+**2Factor** (2factor.in). Setup: `docs/server-setup.md` §3.
 
-1. The app POSTs the number to `public/api/auth/send-code.php` (PHP on the
-   Hostinger site, beside the Razorpay endpoints). It sends the code with the
-   `dashit_auth_otp` WhatsApp authentication template.
-2. The app POSTs number + code to `verify-code.php`, which returns a Firebase
-   **custom token** signed with the project's service-account key, for uid
-   `ph-91XXXXXXXXXX` with the claim `mobile`. The app calls
-   `signInWithCustomToken`. One number = one account on any phone.
-3. `firestore.rules`: a `users/{uid}` profile can only carry its token's
-   `mobile`, and only `mobile`-claim accounts (or staff) can create orders.
-4. Sessions that aren't `ph-` accounts (old anonymous confirm-your-number,
-   email, Apple) read as signed out in the customer apps. Android signs them
-   out; iOS doesn't, because the admin app compiles the same `AuthService`.
-5. Deleting an account asks for a fresh code first (Firebase only deletes
-   recently signed-in accounts).
+1. The Firebase account (Google/Apple) is the customer. `users/{uid}` holds the
+   profile; `firestore.rules` only let a Google/Apple account (or an older
+   number account) write it or place orders.
+2. After the number is typed the app POSTs it, with the shopper's Firebase ID
+   token, to `public/api/auth/send-otp.php`, which asks 2Factor to text a code
+   and returns a signed ticket (account + number + 2Factor session, 10 minutes).
+3. The app POSTs number + code + ticket to `verify-otp.php`. If 2Factor says
+   the code is right, the server writes `mobile` and `mobileVerified: true` on
+   the profile with the service account. The rules stop an app turning
+   `mobileVerified` on or keeping it after changing the number.
+4. **If no 2Factor key is in `dashit-secrets/sign-in.php`, `send-otp.php`
+   answers `{"configured": false}` and the apps just save the number
+   (unverified).** The owner will add the key last; no app update is needed.
+5. Spend is capped in `auth/_otp.php` (per network address, account, number,
+   and per day for the whole shop).
 
 Secrets live outside the website folder on Hostinger
-(`domains/dashit.co.in/dashit-secrets/sign-in.php` and
-`firebase-service-account.json`). Setup, App Review demo number, and
-local testing are in `docs/whatsapp-otp-setup.md`. Each WhatsApp code is a paid
-Meta message; the server caps sends per number, per network address and per
-day.
+(`domains/dashit.co.in/dashit-secrets/`).
 
 **Staff** (web `/xcyop` admin, `/driver`, iOS admin app) are unchanged: email
 sign-in, or the driver console's on-screen code + anonymous session. Keep
@@ -296,13 +289,84 @@ fallback by design (Spark has no Cloud Functions to proxy through).
 
 ---
 
+## 4d. Driver App Simplification (Picture-First & Admin-Only Dispatch) — Complete (Oct 1, 2026)
+
+### 1. Overview & Low-Literacy Design
+The delivery driver app (`src/pages/driver.js`, packaged as `Dashit-Driver.apk`) was completely overhauled for delivery riders who cannot read well.
+- **Picture-first & high contrast**: Bold, color-coded status states, numbers, and clear iconography. Minimum touch targets >= 64×64 px, keypad numbers >= 32 px.
+- **Languages & Voice**: Urdu (🇵🇰 default), Hindi (🇮🇳), and English (🇬🇧) with one-tap switcher. All instructions, order amounts, and addresses can be read aloud via Text-to-Speech (`speechSynthesis` with `ur-PK`, `hi-IN`, `en-IN` locales).
+- **Sound Alerts**: Dual-tone repeating siren on new orders via Web Audio API synthesizer, cheerful chime on delivery completion, and error buzzers.
+- **No Available Orders Pool or Claiming**: The open order pool, manual claiming, and slide-to-accept have been completely removed.
+- **Admin-Only Dispatch**: Riders only receive and see orders assigned specifically to them by the admin in `/xcyop`.
+
+### 2. Workflow & Screens
+1. **Sign-In** (`/driver`):
+   - Phone keypad: 10-digit mobile number entry.
+   - PIN keypad: 6-digit PIN entry. Authenticates against Firebase Auth with `<phone>@riders.dashit.co.in`.
+2. **Waiting / Duty Status**:
+   - Giant On Duty / Off Duty toggle switch with resting bike illustration.
+   - Counter of today's completed deliveries.
+3. **Incoming Order Alert**:
+   - Loud repeating dual-tone siren. Amber border.
+   - Shows drop area name, bag count icon, payment card (₹ amount for Cash on Delivery or "Paid Online" shield).
+   - Single giant green button: **▶ START (شروع کریں)**.
+4. **En Route Navigation**:
+   - High-contrast Leaflet road route map with live GPS tracking marker and customer pin.
+   - Four large circular action buttons:
+     1. 🧭 **Map** (Turn-by-turn driving in Google Maps).
+     2. 📞 **Call** (Direct phone call to customer).
+     3. 🔊 **Listen** (Speaks address and landmark aloud in rider's chosen language).
+     4. ✅ **Reached** (Advances to door verification).
+5. **Door Arrival & Delivery Verification**:
+   - If COD: High-visibility amber card: **Take ₹___** with big confirm button.
+   - Delivery Confirmation: On-screen keypad for 4-digit customer delivery code.
+   - Security rule enforced: driver cannot mark `Delivered` unless `deliveryCode` matches `resource.data.otp`.
+6. **Delivered Screen**:
+   - Confetti burst (`canvas-confetti`), celebration chimes, thumbs-up, and updated daily count.
+
+- **Automatic Rider Self-Registration**:
+  - Riders do NOT need to be manually pre-created by the admin.
+  - When a rider installs the Rider APK (or accesses `/driver`), enters their 10-digit mobile number and sets their 6-digit PIN:
+    - If the account doesn't exist, it is automatically created in Firebase Auth (`<phone>@riders.dashit.co.in`) and registered in Firestore `staff/{uid}` with `role: "driver"`, `active: true`.
+    - If the account already exists, entering the correct PIN signs them in directly.
+    - If an incorrect PIN is entered for an existing account, it detects the conflict and signals "Wrong PIN".
+  - The newly registered rider immediately appears in the admin's driver fleet roster and assignment drawer on `/xcyop`.
+
+### 3. Backend, Admin & Security Rules
+- **Firestore Security Rules (`firestore.rules`)**:
+  - `staff/{uid}`: Riders can create their own staff record upon sign-up if `role == 'driver'` and `active == true`. Updates and deletions remain strictly admin-only.
+  - `orders/{orderId}`: Drivers cannot claim unassigned orders or change `driverId`/`driverName`.
+  - Drivers can only transition their own assigned orders to `Out for Delivery` or `Delivered`.
+  - Transition to `Delivered` strictly validates `deliveryCode` or `enteredOtp` against `resource.data.otp`.
+- **Admin Dispatch (`src/components/admin/OrderDetailDrawer.jsx`)**:
+  - Real active riders list with real-time active load counts (e.g. `(0 active)`).
+  - 1-tap assign, "Change rider", and "Take back".
+  - Cleaned: removed mock `DEFAULT_DRIVERS` and localStorage roster.
+- **Fleet Management (`src/components/admin/DriversView.jsx`)**:
+  - Live roster table showing phone, status, and active load.
+  - "Add Driver" modal (generates 6-digit PIN, writes to Auth + `staff/{uid}`).
+  - "Turn off / Turn on" driver toggle and "Reset PIN" modal.
+- **Server API (`public/api/staff/add-driver.php`)**:
+  - Secure PHP endpoint powered by Firebase service account and Identity Toolkit REST.
+  - Supports `self-register` action (caller UID auto-provisions driver staff doc) in addition to admin actions (`create`, `toggle-active`, `reset-pin`).
+- **Performance & Blaze Cost Control**:
+  - Exactly one Firestore listener per active driver: `where("driverId", "==", uid)`.
+  - GPS telemetry throttled to at most once per 10 seconds, only active while out for delivery.
+
+### 4. Setup Steps for Owner / Admin
+1. Upload Firebase service account JSON to `dashit-secrets/firebase-service-account.json`.
+2. Deploy the updated security rules: `npm run fb:rules`.
+3. Riders can simply open the APK, enter their phone and 6-digit PIN to start working immediately. No admin pre-registration needed. (Admins can still view the fleet, toggle active/inactive, or reset PINs from `/xcyop` -> **Drivers** tab).
+
+---
+
 ## 5. Next tasks, in order
 - [x] **Remove socket.io from client** — Done. Swapped `LiveOrderFloatingTracker.jsx`, `MapTracking.jsx`, `orders.js`, and `driver.js` to Firestore `watchOrder` / `watchOrderTracking` / `pushDriverLocation`.
 - [x] **Admin dashboard migration** — Done this session. See §4b.
-1. **Driver console** (`src/pages/driver.js`) → Still the original demo screen: hardcoded `orderId = "DASH-98214"`, fake incrementing coordinates instead of real GPS, no sign-in, no staff gate. Wire to `watchDriverOrders(uid, cb)` for a real assigned-order list, `navigator.geolocation.watchPosition` for real coordinates, and gate entry the same way `AdminAccessGate` does (`getStaffRole(uid) === 'driver'` instead of `'admin'` — consider extracting a shared `<StaffGate role="..." />` component rather than duplicating the gate a third time).
-2. **Split the admin build** (user chose web-only) so admin UI stops shipping inside the customer APK.
-3. Retire `server/` once 1 is done.
-4. **Deploy Firestore rules** (`npm run fb:rules`) — see §0. Blocked on the user; every write will keep failing until this happens.
+- [x] **Driver console overhaul** (`src/pages/driver.js`) — Done. Picture-first, voice-guided, admin-only dispatch, real GPS telemetry, rules-enforced OTP verification. See §4d.
+1. **Split the admin build** (user chose web-only) so admin UI stops shipping inside the customer APK.
+2. Retire `server/` once 1 is done.
+3. **Deploy Firestore rules** (`npm run fb:rules`) — see §0. Blocked on the user; every write will keep failing until this happens.
 
 ---
 

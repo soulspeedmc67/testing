@@ -11,6 +11,7 @@ import coil.request.CachePolicy
 import coil.request.ErrorResult
 import coil.request.ImageRequest
 import coil.request.ImageResult
+import kotlinx.coroutines.delay
 
 /**
  * Product photos kept on the phone, the same way as the iPhone app
@@ -99,10 +100,23 @@ object ProductPhotos {
             if (data is String) {
                 val resolved = displayUrl(data)
                 if (resolved != data || data.contains(THUMB_PATH)) {
-                    val result = chain.proceed(chain.request.newBuilder().data(resolved).build())
+                    var result = chain.proceed(chain.request.newBuilder().data(resolved).build())
                     // No small copy yet (a photo picked after the thumbnails were made): the full one.
                     if (result is ErrorResult && resolved.contains(THUMB_PATH)) {
-                        return chain.proceed(chain.request.newBuilder().data(resolved.replace(THUMB_PATH, CATALOG_PATH)).build())
+                        result = chain.proceed(chain.request.newBuilder().data(resolved.replace(THUMB_PATH, CATALOG_PATH)).build())
+                    }
+                    // The host sometimes answers a full-size photo with "not found" and then
+                    // serves it a moment later: ask again, then settle for the small copy.
+                    if (result is ErrorResult && resolved.contains(CATALOG_PATH)) {
+                        repeat(2) {
+                            if (result is ErrorResult) {
+                                delay(350)
+                                result = chain.proceed(chain.request.newBuilder().data(resolved).build())
+                            }
+                        }
+                        if (result is ErrorResult) {
+                            result = chain.proceed(chain.request.newBuilder().data(resolved.replace(CATALOG_PATH, THUMB_PATH)).build())
+                        }
                     }
                     return result
                 }

@@ -31,7 +31,7 @@ service cloud.firestore {
       return isSignedIn()
         && (
           request.auth.uid == 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-          || request.auth.token.email == 'm4k3ditz@gmail.com'
+          || (request.auth.token.email == 'm4k3ditz@gmail.com' && request.auth.token.email_verified == true)
           || (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) && staffDoc().active == true)
         );
     }
@@ -40,7 +40,7 @@ service cloud.firestore {
       return isStaff()
         && (
           request.auth.uid == 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-          || request.auth.token.email == 'm4k3ditz@gmail.com'
+          || (request.auth.token.email == 'm4k3ditz@gmail.com' && request.auth.token.email_verified == true)
           || (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) && staffDoc().role == 'admin')
         );
     }
@@ -49,7 +49,7 @@ service cloud.firestore {
       return isStaff()
         && (
           request.auth.uid == 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-          || request.auth.token.email == 'm4k3ditz@gmail.com'
+          || (request.auth.token.email == 'm4k3ditz@gmail.com' && request.auth.token.email_verified == true)
           || (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) && staffDoc().role == 'driver')
         );
     }
@@ -58,9 +58,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    /* A customer who signed in with their number: the sign-in server
-       (public/api/auth/) only issues a token after a code sent to that number
-       on WhatsApp, and the token carries the number as the `mobile` claim. */
+    /* An older customer account that signed in with their number: its token
+       carries the number as the `mobile` claim. New accounts use Google or Apple
+       (see isCustomerLogin) and verify the number with an SMS code instead. */
     function hasVerifiedMobile() {
       return isSignedIn() && 'mobile' in request.auth.token;
     }
@@ -110,6 +110,7 @@ service cloud.firestore {
       return order.get('razorpayOrderId', '') is string
         && order.get('razorpayOrderId', '').matches('order_[A-Za-z0-9]{6,40}')
         && payment.receipt == orderId
+        && payment.get('uid', '') in ['', request.auth.uid]
         && payment.amount >= order.total * 100 - 1;
     }
 
@@ -159,14 +160,27 @@ service cloud.firestore {
           || request.resource.data.mobile == request.auth.token.mobile;
       }
 
+      /* mobileVerified is only ever set by the server, after 2Factor confirmed an
+         SMS code (public/api/auth/verify-otp.php). The apps may keep it as it is,
+         or clear it when the shopper changes their number, never turn it on. */
+      function mobileCheckKept() {
+        return request.resource.data.get('mobileVerified', false) == false
+          || (resource.data.get('mobileVerified', false) == true
+              && request.resource.data.get('mobile', '') == resource.data.get('mobile', ''));
+      }
+
+      /* Writing needs a real shopper account (isCustomerLogin), so an
+         anonymous session, which anyone can open from a script, cannot fill the
+         database with profiles. */
       allow read: if isOwner(uid) || isAdmin();
-      allow create: if isOwner(uid) && keepsVerifiedMobile();
-      allow update: if isOwner(uid) && keepsVerifiedMobile();
+      allow create: if isOwner(uid) && isCustomerLogin() && keepsVerifiedMobile()
+        && request.resource.data.get('mobileVerified', false) == false;
+      allow update: if isOwner(uid) && isCustomerLogin() && keepsVerifiedMobile() && mobileCheckKept();
       allow delete: if isOwner(uid);
 
       match /addresses/{addressId} {
         allow read: if isOwner(uid) || isAdmin();
-        allow write: if isOwner(uid);
+        allow write: if isOwner(uid) && isCustomerLogin();
       }
     }
 
