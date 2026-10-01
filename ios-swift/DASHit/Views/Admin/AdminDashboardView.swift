@@ -91,9 +91,7 @@ public struct AdminDashboardView: View {
                 AddProductSheetView(vm: vm, editingProduct: productToEdit)
             }
             .sheet(isPresented: $isAddDriverSheetOpen) {
-                AddDriverSheetView { name, phone, vehicle in
-                    vm.addDriver(name: name, phone: phone, vehicle: vehicle)
-                }
+                AddRiderSheet(vm: vm)
             }
             .sheet(isPresented: $isStoreControlSheetOpen) {
                 StoreControlSheetView(vm: vm)
@@ -429,7 +427,7 @@ public struct AdminDashboardView: View {
                     }
                 } else if order.status.stage == .packing {
                     Button(action: { selectedOrderForDriver = order }) {
-                        Label("Assign Rider", systemImage: "scooter")
+                        Label("Pick a rider", systemImage: "scooter")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -664,62 +662,7 @@ public struct AdminDashboardView: View {
     // MARK: - Tab 4: Riders Content
 
     private var ridersTabContent: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                HStack {
-                    Text("Delivery Fleet (\(vm.drivers.count))")
-                        .font(.system(size: 18, weight: .bold))
-                    Spacer()
-                    Button("+ Register Rider") {
-                        isAddDriverSheetOpen = true
-                    }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.orange)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
-
-                LazyVStack(spacing: 12) {
-                    ForEach(vm.drivers) { driver in
-                        driverCard(driver: driver)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 30)
-            }
-        }
-    }
-
-    private func driverCard(driver: Driver) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: "person.circle.fill")
-                .font(.system(size: 40))
-                .foregroundColor(.purple)
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(driver.name)
-                    .font(.system(size: 15, weight: .bold))
-                Text("\(driver.vehicle) • ★ \(String(format: "%.1f", driver.rating))")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            if let url = URL(string: "tel:\(driver.phone.filter { "0123456789+".contains($0) })") {
-                Link(destination: url) {
-                    Image(systemName: "phone.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(.green)
-                        .padding(10)
-                        .background(Color.green.opacity(0.12))
-                        .clipShape(Circle())
-                }
-            }
-        }
-        .padding(14)
-        .background(Color(uiColor: .secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        AdminRidersTab(vm: vm)
     }
 
     // MARK: - Tab 5: Distributors Content
@@ -1234,27 +1177,37 @@ struct AssignDriverSheetView: View {
 
     var body: some View {
         NavigationStack {
-            List(vm.drivers) { driver in
-                Button(action: {
-                    vm.assignDriver(orderId: order.id, driver: driver)
-                    dismiss()
-                }) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(driver.name)
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundColor(.primary)
-                            Text("\(driver.vehicle) • \(driver.status.capitalized)")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
+            List {
+                if vm.approvedDrivers.isEmpty {
+                    Text("No riders can deliver yet. Add or approve one in the Riders tab.")
+                        .foregroundColor(.secondary)
+                }
+                ForEach(vm.approvedDrivers) { driver in
+                    let load = vm.activeOrderCount(for: driver)
+                    Button(action: {
+                        vm.assignDriver(orderId: order.id, driver: driver)
+                        dismiss()
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(driver.name)
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.primary)
+                                Text(load > 0 ? "Carrying \(load) order\(load == 1 ? "" : "s")" : "Free now")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(load > 0 ? .orange : .green)
+                            }
+                            Spacer()
+                            if order.driverId == driver.id {
+                                Image(systemName: "checkmark.circle.fill").foregroundColor(.orange)
+                            } else {
+                                Image(systemName: "chevron.right").foregroundColor(.secondary)
+                            }
                         }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.secondary)
                     }
                 }
             }
-            .navigationTitle("Assign Rider")
+            .navigationTitle("Pick a rider")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1751,46 +1704,6 @@ struct AddSupplierSheetView: View {
                         dismiss()
                     }
                     .disabled(trimmedName.isEmpty)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Add Driver Sheet View
-
-struct AddDriverSheetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var name = ""
-    @State private var phone = ""
-    @State private var vehicle = "Hero Electric Scooter"
-
-    var onSave: (String, String, String) -> Void
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Rider Information") {
-                    TextField("Full Name", text: $name)
-                    TextField("Phone Number", text: $phone)
-                        .keyboardType(.phonePad)
-                    TextField("Vehicle Type", text: $vehicle)
-                }
-            }
-            .navigationTitle("Register Rider")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        if !name.isEmpty {
-                            onSave(name, phone, vehicle)
-                            dismiss()
-                        }
-                    }
-                    .disabled(name.isEmpty)
                 }
             }
         }

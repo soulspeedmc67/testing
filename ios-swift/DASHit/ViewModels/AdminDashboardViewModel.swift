@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Combine
 import FirebaseFirestore
+import FirebaseAuth
 import AudioToolbox
 import AVFoundation
 
@@ -110,7 +111,17 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published public var recentOrders: [Order] = []
     /// Every order from the last seven days, for the Home page's numbers and charts.
     @Published public var weekOrders: [Order] = []
-    @Published public var drivers: [Driver] = Driver.defaults
+    /// Every rider account, live: approved, waiting for approval, and turned off.
+    @Published public var drivers: [Driver] = []
+    /// Approved riders, the ones an order can go to.
+    public var approvedDrivers: [Driver] { drivers.filter(\.isApproved) }
+    /// Orders a rider is carrying right now (assigned and not finished).
+    public func activeOrderCount(for driver: Driver) -> Int {
+        recentOrders.filter { $0.driverId == driver.id && !$0.status.stage.isFinished }.count
+    }
+
+    /// Signed up in the rider app, waiting for the owner to approve them.
+    public var waitingDrivers: [Driver] { drivers.filter(\.isWaiting) }
     @Published public var offers: [Offer] = Offer.defaults
     @Published public var storeConfig: StoreConfig = StoreConfig.default
     @Published public var isLoading: Bool = false
@@ -251,21 +262,17 @@ public final class AdminDashboardViewModel: ObservableObject {
                 }
             }
 
-        // 4. Delivery Fleet / Drivers Realtime Listener
-        driverListener = db.collection("drivers").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let docs = snapshot?.documents, error == nil, !docs.isEmpty else { return }
-            let decoder = Firestore.Decoder()
-            let list: [Driver] = docs.compactMap { doc in
-                var data = doc.data()
-                data["id"] = (data["id"] as? String) ?? doc.documentID
-                return try? decoder.decode(Driver.self, from: data)
-            }
-            if !list.isEmpty {
+        // 4. Riders, live: the staff records with role "driver", the same ones the
+        // website and the rider app use (drivers/ only holds their GPS).
+        driverListener = db.collection("staff").whereField("role", isEqualTo: "driver")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self, let docs = snapshot?.documents, error == nil else { return }
+                let list = docs.map { Driver(id: $0.documentID, staff: $0.data()) }
+                    .sorted { ($0.isWaiting ? 0 : $0.isApproved ? 1 : 2, $0.name) < ($1.isWaiting ? 0 : $1.isApproved ? 1 : 2, $1.name) }
                 Task { @MainActor in
                     self.drivers = list
                 }
             }
-        }
 
         // 5. Offers Realtime Listener
         offerListener = db.collection("offers").addSnapshotListener { [weak self] snapshot, error in
@@ -990,22 +997,46 @@ public final class AdminDashboardViewModel: ObservableObject {
         return chosen.count
     }
 
-    public func addDriver(name: String, phone: String, vehicle: String) {
-        let newDriver = Driver(
-            id: "drv_\(Date().timeIntervalSince1970)",
-            name: name,
-            phone: phone,
-            vehicle: vehicle
-        )
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-            drivers.append(newDriver)
+    /// Rider accounts are made and switched on or off by the server
+    /// (public/api/staff/add-driver.php), which can create sign-ins; the app
+    /// can't. Returns an error message, or nil when it worked.
+    public func riderAction(_ body: [String: Any]) async -> String? {
+        guard let user = Auth.auth().currentUser, let token = try? await user.getIDToken() else {
+            return "Please sign in again."
         }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        if let data = toDict(newDriver) {
-            db.collection("drivers").document(newDriver.id).setData(data, completion: saveResult("The new rider") { [weak self] in
-                self?.drivers.removeAll { $0.id == newDriver.id }
-            })
+        var payload = body
+        payload["id_token"] = token
+        var request = URLRequest(url: URL(string: "https://dashit.co.in/api/staff/add-driver.php")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: payload)
+        request.timeoutInterval = 25
+        guard let (data, response) = try? await URLSession.shared.data(for: request) else {
+            return "No internet. Try again."
         }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        if (200..<300).contains(status) {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            return nil
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        let message = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String
+        return message ?? "That didn't work. Try again."
+    }
+
+    /// A new rider: they sign in to the rider app with this phone number and 4-digit PIN.
+    public func addDriver(name: String, phone: String, pin: String) async -> String? {
+        await riderAction(["action": "create", "name": name, "phone": phone, "pin": pin])
+    }
+
+    /// Approves a waiting rider, or turns a rider on or off.
+    public func setDriver(_ driver: Driver, approved: Bool) async -> String? {
+        await riderAction(["action": "toggle-active", "uid": driver.id, "active": approved])
+    }
+
+    /// A new 4-digit PIN for a rider who forgot theirs.
+    public func resetPin(_ driver: Driver, pin: String) async -> String? {
+        await riderAction(["action": "reset-pin", "uid": driver.id, "pin": pin])
     }
 
     public func toggleStore(isOpen: Bool, reason: String) {
@@ -1152,7 +1183,7 @@ extension AdminDashboardViewModel {
         }
         recentOrders = todays
         weekOrders = todays + week.reversed()
-        drivers = Driver.defaults
+        drivers = []
         offers = Offer.defaults
         storeConfig = StoreConfig.default
         isLoading = false

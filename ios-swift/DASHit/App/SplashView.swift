@@ -9,8 +9,8 @@ import SwiftUI
 /// catalogue loaded underneath. Same timings and curves as the Android
 /// `SplashOverlay`.
 struct SplashView: View {
-    /// Called once the logo has built itself: the app can start drawing
-    /// underneath now without competing with the opening animation.
+    /// Called once the logo and letters have settled and the lockup holds
+    /// still: the app can be built underneath without making them stutter.
     var onLogoBuilt: () -> Void = {}
     /// Called as the backdrop starts to clear, so the app can settle into place.
     var onReveal: () -> Void
@@ -89,9 +89,10 @@ struct SplashView: View {
                 .scaleEffect(isTucked ? Self.tuckedLogoScale : 1)
                 .offset(x: isTucked ? Self.tuckedLogoX : 0)
             }
-            // Flattened once, so fading the lockup is one layer's opacity, not a
-            // blend for each of its ten overlapping images.
-            .compositingGroup()
+            // Drawn as one Metal layer: the six letters and four logo shapes
+            // move every frame, and composing them as separate layers each
+            // frame is what made the letters' wave stutter.
+            .drawingGroup()
             .scaleEffect(lockupScale)
             .opacity(lockupOpacity)
         }
@@ -155,7 +156,6 @@ struct SplashView: View {
 
         // 2. It tucks left, and the letters pop in from its side in a wave.
         try? await Task.sleep(for: .milliseconds(720))
-        onLogoBuilt()
         withAnimation(Self.easeInOut(0.56)) {
             isTucked = true
         }
@@ -169,8 +169,14 @@ struct SplashView: View {
             }
         }
 
+        // The letters have settled: the lockup now holds still, so this is
+        // when the app is built underneath (building it during the logo or the
+        // letters made each of them stutter in turn).
+        try? await Task.sleep(for: .milliseconds(940))
+        onLogoBuilt()
+
         // 3. The lockup lifts away and the backdrop clears onto the app.
-        try? await Task.sleep(for: .milliseconds(1060))
+        try? await Task.sleep(for: .milliseconds(420))
         withAnimation(Self.easeIn(0.32)) {
             lockupScale = 1.08
             lockupOpacity = 0
