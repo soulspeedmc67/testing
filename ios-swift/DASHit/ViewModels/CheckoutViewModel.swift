@@ -140,6 +140,8 @@ final class CheckoutViewModel: ObservableObject {
                 try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm, payment: receipt)
             }
 
+            // "Order placed" to the shopper's phones, "New order" to the store.
+            Push.shared.orderChanged(order.id)
             LocalStorage.shared.saveActiveOrderId(order.id)
             completedOrder = order
             ActiveOrderStore.shared.orderPlaced(order)

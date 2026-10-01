@@ -107,6 +107,7 @@ final class LiveTrackingViewModel: ObservableObject {
         guard let order = activeOrder, order.modifySecondsRemaining() > 0 else { return false }
         do {
             try await FirestoreService.shared.cancelOrder(orderId: order.id, reason: reason)
+            Push.shared.orderChanged(order.id)
             if restoreCart {
                 CartViewModel.shared.reorder(order.items)
             }

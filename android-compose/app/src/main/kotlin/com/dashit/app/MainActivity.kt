@@ -1,6 +1,8 @@
 package com.dashit.app
 
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -54,6 +56,10 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         com.dashit.app.data.AddressBook.init(this)
         // Signed-in shopper, their orders and the store's open/closed switch.
         AuthRepository.init(this)
+        // Order notifications by push, for whoever is signed in (again after each sign-in).
+        lifecycleScope.launch {
+            AuthRepository.user.collect { user -> if (user != null) com.dashit.app.data.Push.register() }
+        }
         OrderRepository.shared.init(this)
         StoreStatus.start()
         OrderNotifications.createChannel(this)

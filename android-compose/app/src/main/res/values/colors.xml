@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tint of the small icon on order notifications. -->
+    <color name="dashit_orange">#FF5B00</color>
+</resources>

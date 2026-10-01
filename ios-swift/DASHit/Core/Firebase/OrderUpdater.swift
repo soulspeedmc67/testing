@@ -109,6 +109,8 @@ enum OrderUpdater {
             throw UpdateError.storeStartedPacking
         }
 
+        // The store hears the order changed (the server says "updated", not "new").
+        Push.shared.orderChanged(replacement.id)
         return replacement
     }
 }

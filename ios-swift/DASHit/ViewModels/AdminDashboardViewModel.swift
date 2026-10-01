@@ -545,6 +545,15 @@ public final class AdminDashboardViewModel: ObservableObject {
     /// Completion for a database write. Every change shows on screen straight
     /// away; if the database refuses it, `undo` puts the screen back and the
     /// owner sees why instead of a change that silently never saved.
+    /// As `saveResult`, and once saved, the shopper gets the push for the new status.
+    private func saveThenNotify(_ what: String, orderId: String) -> (Error?) -> Void {
+        let report = saveResult(what)
+        return { error in
+            report(error)
+            if error == nil { Push.shared.orderChanged(orderId) }
+        }
+    }
+
     private func saveResult(_ what: String, undo: (@MainActor () -> Void)? = nil) -> (Error?) -> Void {
         return { [weak self] error in
             guard let error else { return }
@@ -763,7 +772,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         db.collection("orders").document(order.id).setData([
             "status": nextStatus,
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveResult("The order update"))
+        ], merge: true, completion: saveThenNotify("The order update", orderId: order.id))
     }
 
     public func cancelOrder(order: Order) {
@@ -771,7 +780,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         db.collection("orders").document(order.id).setData([
             "status": "Cancelled",
             "cancelledAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveResult("Cancelling the order"))
+        ], merge: true, completion: saveThenNotify("Cancelling the order", orderId: order.id))
     }
 
     public func assignDriver(orderId: String, driver: Driver) {
@@ -783,7 +792,7 @@ public final class AdminDashboardViewModel: ObservableObject {
             "driverVehicle": driver.vehicle,
             "status": "Out for Delivery",
             "dispatchedAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveResult("Assigning the rider"))
+        ], merge: true, completion: saveThenNotify("Assigning the rider", orderId: orderId))
     }
 
     /// Saves a distributor and returns the name to use. A name that's already on

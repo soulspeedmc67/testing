@@ -32,6 +32,8 @@ targets:
         product: FirebaseFirestore
       - package: Firebase
         product: FirebaseAppCheck
+      - package: Firebase
+        product: FirebaseMessaging
       - package: Razorpay
         product: RazorpayCheckout
       - sdk: SwiftUI.framework
@@ -71,6 +73,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         NSSupportsLiveActivities: true
         NSSupportsLiveActivitiesFrequentUpdates: true
+        # Order notifications by push (Firebase Cloud Messaging).
+        UIBackgroundModes: [remote-notification]
         # UPI apps the checkout lists when installed (the schemes Razorpay's SDK checks).
         LSApplicationQueriesSchemes: [tez, phonepe, paytmmp, credpay, mobikwik, freecharge, bhim, amazonpay, navi, kiwi, payzapp, jupiter, sbiyono, bobupi, myjio, indusmobile, in.fampay.app, kotakbank, slice-upi, popclubapp, shriramone, omnicard, whatsapp, upi]
         NSLocationWhenInUseUsageDescription: "DASHit requires your delivery address location to deliver groceries in Anantnag and show live courier arrival on the map."
@@ -136,6 +140,9 @@ targets:
         # and collides with this target's own Info.plist.
         excludes:
           - Info.plist
+          # Its own Firebase app (com.dashit.admin), so pushes reach it.
+          - GoogleService-Info.plist
+      - path: DASHitAdmin/GoogleService-Info.plist
       - path: DASHitWidgets/DASHitOrderAttributes.swift
       - path: DASHitWidgets/OrderProgressRail.swift
     dependencies:
@@ -145,6 +152,8 @@ targets:
         product: FirebaseFirestore
       - package: Firebase
         product: FirebaseAppCheck
+      - package: Firebase
+        product: FirebaseMessaging
       # Linked so the shared sources build the same way in both apps (the
       # admin app never opens a payment).
       - package: Razorpay
@@ -164,6 +173,8 @@ targets:
       properties:
         CFBundleDisplayName: "DASHit Admin"
         CFBundleIdentifier: com.dashit.admin
+        # New-order alerts by push (Firebase Cloud Messaging).
+        UIBackgroundModes: [remote-notification]
         CFBundleShortVersionString: "1.0.0"
         CFBundleVersion: "1"
         UILaunchScreen:

@@ -258,6 +258,7 @@ fun LiveTrackingMapScreen(
             scope.launch {
                 try {
                     orderRepo.cancelOrder(order.id)
+                    com.dashit.app.data.Push.orderChanged(order.id)
                     if (restoreCart) CartViewModel.shared.reorder(order.items)
                     HapticsManager.success(view)
                     onBack()

@@ -14,6 +14,8 @@ enum OrderNotifications {
     /// "Packing", "on the way" and "cancelled", as the order moves along.
     /// Delivered has its own notification and celebration.
     static func notifyStageChange(_ order: Order) {
+        // Pushes from the server cover this once they're set up.
+        guard !Push.shared.isActive else { return }
         let content = UNMutableNotificationContent()
         switch order.status.stage {
         case .packing:
@@ -57,6 +59,7 @@ enum OrderNotifications {
     }
 
     static func notifyDelivered(_ order: Order) {
+        guard !Push.shared.isActive else { return }
         let units = order.items.reduce(0) { $0 + $1.qty }
         let content = UNMutableNotificationContent()
         content.title = "Your order has been delivered"
