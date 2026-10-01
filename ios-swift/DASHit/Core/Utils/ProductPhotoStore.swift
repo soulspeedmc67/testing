@@ -28,6 +28,16 @@ final class ProductPhotoStore: @unchecked Sendable {
         return URLSession(configuration: config)
     }()
 
+    /// On-screen photos: many at a time, so a grid of products fills at once
+    /// rather than a few photos at a time.
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.httpMaximumConnectionsPerHost = 16
+        config.timeoutIntervalForRequest = 15
+        config.urlCache = nil // saved to our own folder instead
+        return URLSession(configuration: config)
+    }()
+
     private static let maxPixelSize: CGFloat = 800
     private static let diskLimitBytes = 300 * 1024 * 1024
 
@@ -60,7 +70,7 @@ final class ProductPhotoStore: @unchecked Sendable {
                 return hostingerURL
             }
         }
-        guard text.contains("openfoodfacts.org") || text.contains("openbeautyfacts.org"),
+        guard text.contains("openfoodfacts.") || text.contains("openbeautyfacts."),
               let range = text.range(of: #"\.full\.(jpg|jpeg|png|webp)$"#, options: [.regularExpression, .caseInsensitive])
         else { return url }
         let smaller = text.replacingCharacters(in: range, with: ".400" + String(text[range].dropFirst(5)))
@@ -129,7 +139,7 @@ final class ProductPhotoStore: @unchecked Sendable {
             remember(image, for: url)
             return image
         }
-        guard let (data, response) = try? await URLSession.shared.data(from: url),
+        guard let (data, response) = try? await session.data(from: url),
               Self.isOK(response), let image = Self.decode(data) else {
             let text = url.absoluteString
             // No small copy yet (a photo picked after the thumbnails were made): the full one.

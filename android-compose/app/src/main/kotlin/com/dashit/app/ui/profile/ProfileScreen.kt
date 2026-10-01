@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.dashit.app.core.design.ThemePreference
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Feedback
@@ -73,6 +75,7 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     user: UserProfile?,
     addressSummary: String? = null,
+    onBack: () -> Unit = {},
     onOpenAddress: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
@@ -106,13 +109,30 @@ fun ProfileScreen(
                 .background(DashitColors.Surface)
                 .statusBarsPadding()
         ) {
-            Text(
-                text = "Profile",
-                color = DashitColors.TextPrimary,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)
-            )
+            Row(
+                modifier = Modifier.padding(start = 8.dp, end = 20.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .pressable(scale = 0.88f) {
+                            HapticsManager.light(view)
+                            onBack()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = DashitColors.TextPrimary, modifier = Modifier.size(22.dp))
+                }
+                Text(
+                    text = "Profile",
+                    color = DashitColors.TextPrimary,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
             Box(Modifier.fillMaxWidth().height(1.dp).background(DashitColors.Hairline))
 
             Column(
@@ -141,6 +161,10 @@ fun ProfileScreen(
                             authMode = AuthMode.SignUp
                         }
                     )
+                }
+
+                Section("Appearance") {
+                    AppearancePicker()
                 }
 
                 Section("Help") {
@@ -437,4 +461,44 @@ private fun RowDivider() {
             .height(1.dp)
             .background(DashitColors.Hairline)
     )
+}
+
+/** Automatic / Light / Dark, as a segmented control like the iPhone app's. */
+@Composable
+private fun AppearancePicker() {
+    val view = LocalView.current
+    val selected = ThemePreference.mode
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(10.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(DashitColors.SurfaceMuted)
+            .padding(3.dp)
+    ) {
+        ThemePreference.Mode.entries.forEach { mode ->
+            val isSelected = mode == selected
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (isSelected) DashitColors.SurfaceRaised else Color.Transparent)
+                    .clickable {
+                        if (!isSelected) {
+                            HapticsManager.selection(view)
+                            ThemePreference.set(mode)
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = mode.label,
+                    color = if (isSelected) DashitColors.TextPrimary else DashitColors.TextMuted,
+                    fontSize = 13.5.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                )
+            }
+        }
+    }
 }

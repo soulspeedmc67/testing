@@ -26,6 +26,9 @@ struct StorefrontHomeView: View {
     /// Scroll-driven chrome, held by reference so scrolling redraws only the
     /// backdrops that watch it, never this whole feed.
     @State private var chrome = HomeChromeState()
+    /// Skeletons while one category's list gives way to another's.
+    @State private var isSwitchingList = false
+    @State private var switchTask: Task<Void, Never>?
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
     private let tileColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
@@ -114,9 +117,6 @@ struct StorefrontHomeView: View {
                 }
                 .drivesTabBarVisibility(in: "homeScroll")
             }
-            // A new scroll view per picked category, so it always opens at the
-            // top: the old offset, kept over a new and shorter list, showed blank.
-            .id(vm.selectedCategory ?? "")
             .coordinateSpace(.named("homeScroll"))
             .scrollDismissesKeyboard(.immediately)
             // Paints the status bar: the header's glow at rest, the page colour
@@ -133,13 +133,9 @@ struct StorefrontHomeView: View {
                     .followsTabBar()
                 }
             }
-            // A picked category, or a search, starts at the top of its list. The
-            // page before it stayed scrolled, which left the new list scrolled
-            // past its end: a blank screen to scroll back from.
-            .onChange(of: vm.selectedCategory) { _, _ in showFromTop(proxy) }
-            .onChange(of: vm.isBrowsing) { _, browsing in
-                if !browsing { showFromTop(proxy) }
-            }
+            // A picked category shows skeleton cards for a moment, then its items
+            // fade in; the page itself stays put instead of jumping up and down.
+            .onChange(of: vm.selectedCategory) { _, _ in switchList(proxy) }
             .onAppear { scrollProxy = proxy }
             .task {
                 #if DEBUG
@@ -159,7 +155,14 @@ struct StorefrontHomeView: View {
                     onVoiceSearch: { isVoiceSearchOpen = true },
                     onClose: closeSearch
                 )
-                .transition(.opacity)
+                // Zooms out of the search bar (pinned near the top by then) and
+                // takes over the screen; folds back the same way.
+                .transition(
+                    .asymmetric(
+                        insertion: .scale(scale: 0.86, anchor: UnitPoint(x: 0.5, y: 0.08)).combined(with: .opacity),
+                        removal: .scale(scale: 0.94, anchor: UnitPoint(x: 0.5, y: 0.08)).combined(with: .opacity)
+                    )
+                )
             }
         }
         .onChange(of: isSearchOpen) { _, isOpen in
@@ -374,11 +377,11 @@ struct StorefrontHomeView: View {
         if let scrollProxy {
             withAnimation(.smooth(duration: 0.28)) { scrollProxy.scrollTo("pinned", anchor: .top) }
         }
-        withAnimation(.easeOut(duration: 0.26)) { isSearchOpen = true }
+        withAnimation(.spring(response: 0.38, dampingFraction: 0.86)) { isSearchOpen = true }
     }
 
     private func closeSearch() {
-        withAnimation(.easeOut(duration: 0.2)) { isSearchOpen = false }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.95)) { isSearchOpen = false }
         searchText = ""
         submittedSearch = nil
     }
@@ -462,14 +465,22 @@ struct StorefrontHomeView: View {
 
     /// Puts the list right under the pinned search bar: the header scrolled
     /// away, the bar at the top, the first items directly beneath it.
-    private func showFromTop(_ proxy: ScrollViewProxy) {
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        // At once, so a stale offset never shows a blank page...
-        withTransaction(transaction) { proxy.scrollTo("top", anchor: .top) }
-        // ...then, after the new list has been laid out, to the pinned bar.
-        DispatchQueue.main.async {
+    /// Swaps the list under the tabs. While search is pinned (scrolled into a
+    /// list), the new list starts right under it; with the header still in view
+    /// nothing moves. Skeletons cover the swap, so a longer or shorter list
+    /// never shows the page jumping or a blank stretch.
+    private func switchList(_ proxy: ScrollViewProxy) {
+        switchTask?.cancel()
+        isSwitchingList = true
+        if chrome.pinProgress >= 1 {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
             withTransaction(transaction) { proxy.scrollTo("pinned", anchor: .top) }
+        }
+        switchTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(260))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeOut(duration: 0.25)) { isSwitchingList = false }
         }
     }
 
@@ -482,12 +493,15 @@ struct StorefrontHomeView: View {
                     .font(.system(size: 19, weight: .bold))
                     .foregroundColor(.textPrimary)
                 Spacer()
-                Text("\(products.count) item\(products.count == 1 ? "" : "s")")
+                Text(isSwitchingList ? " " : "\(products.count) item\(products.count == 1 ? "" : "s")")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.textMuted)
             }
 
-            if products.isEmpty {
+            if isSwitchingList {
+                ProductGridSkeleton(columns: 3, count: 12)
+                    .transition(.opacity)
+            } else if products.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 28))
@@ -567,7 +581,7 @@ final class HomeChromeState: ObservableObject {
 }
 
 /// The warm glow behind the header, search and tabs: the web header's peach in
-/// light mode, a deep ember in dark. Straight top-to-bottom, so it carries on
+/// light mode, a warm amber in dark. Straight top-to-bottom, so it carries on
 /// from the flat colour behind the status bar without a seam.
 private struct HeaderBackdrop: View {
     var body: some View {

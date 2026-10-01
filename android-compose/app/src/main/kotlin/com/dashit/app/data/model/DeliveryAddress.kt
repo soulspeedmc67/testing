@@ -16,8 +16,19 @@ data class DeliveryAddress(
     var receiverPhone: String? = null
 ) {
     val displaySummary: String
-        get() = "$nickname · $street, $city"
+        get() = "${nickname.uppercase()} · $street, $city"
 
+    /** House, street and landmark, as the rider reads it. */
+    val doorLine: String
+        get() = listOfNotNull(houseNumber?.takeIf { it.isNotBlank() }, street.takeIf { it.isNotBlank() }).joinToString(", ") +
+            (landmark?.takeIf { it.isNotBlank() }?.let { " · near $it" } ?: "")
+
+    /** Everything the rider needs to find the door, in one line. */
     val formattedSummary: String
-        get() = "$street, $city, $pincode"
+        get() = listOfNotNull(
+            houseNumber?.takeIf { it.isNotBlank() },
+            street.takeIf { it.isNotBlank() },
+            landmark?.takeIf { it.isNotBlank() }?.let { "near $it" },
+            "$city, $pincode"
+        ).joinToString(", ")
 }

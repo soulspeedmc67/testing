@@ -30,7 +30,14 @@ class RouteProgress(
     val isRoad: Boolean,
     val remainingMeters: Double?,
     /** The longest the road to the door has been, to measure progress against. */
-    private val totalMeters: Double?
+    private val totalMeters: Double?,
+    /**
+     * Where to draw the rider: on the road when the phone's fix is within a few
+     * metres of it (GPS wanders off the road; the rider doesn't), else the fix.
+     */
+    val riderPosition: GeoPoint? = null,
+    /** The way the road runs where the rider is, for the rider's heading. */
+    val roadBearing: Double? = null
 ) {
     /** 0–100, how much of the ride is behind the rider. */
     val percentDone: Double?
@@ -77,7 +84,9 @@ fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgr
     val destination = order?.deliveryAddress?.let { GeoPoint(it.latitude, it.longitude) }
     val atStore = order?.status == OrderStatus.PACKING || order?.status == OrderStatus.OUT_FOR_DELIVERY
     val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
-    val start = riderPoint?.takeIf { order?.status == OrderStatus.OUT_FOR_DELIVERY } ?: HUB
+    // Once the rider's phone shares a position, the road runs from the rider
+    // (a route from the store while the rider was elsewhere put them apart).
+    val start = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB
 
     var full by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
     var isRoad by remember { mutableStateOf(false) }
@@ -92,7 +101,7 @@ fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgr
             !isRoad -> now - fetch.at > 12_000            // the first try failed: try again
             else -> {
                 val onRoad = nearestOnPath(full, start)
-                onRoad == null || (onRoad.meters > 90 && now - fetch.at > 8_000) // left the road
+                onRoad == null || (onRoad.meters > SNAP_METERS && now - fetch.at > 6_000) // left the road
             }
         }
         if (!needs) return@LaunchedEffect
@@ -110,15 +119,29 @@ fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgr
         }
     }
 
-    val path = if (isRoad && riderPoint != null && order?.status == OrderStatus.OUT_FOR_DELIVERY) {
-        trimToRider(full, riderPoint)
-    } else full
+    val riding = isRoad && rider != null && riderPoint != null
+    val onRoad = if (riding) nearestOnPath(full, riderPoint!!) else null
+    val snapped = onRoad?.takeIf { it.meters <= SNAP_METERS }
+    val path = if (riding) trimToRider(full, riderPoint!!) else full
+    val roadBearing = snapped?.let { on -> bearingDegrees(full[on.index], full[on.index + 1]) }
     val remaining = when {
         path.size < 2 -> null
         isRoad -> pathLength(path)
         else -> pathLength(path) * 1.3   // as the crow flies, plus the bends
     }
-    return RouteProgress(path, isRoad, remaining, total)
+    return RouteProgress(path, isRoad, remaining, total, snapped?.point ?: riderPoint, roadBearing)
+}
+
+/** How far off the road a fix can be and still count as on it. */
+private const val SNAP_METERS = 45.0
+
+private fun bearingDegrees(a: GeoPoint, b: GeoPoint): Double {
+    val lat1 = Math.toRadians(a.latitude)
+    val lat2 = Math.toRadians(b.latitude)
+    val dLon = Math.toRadians(b.longitude - a.longitude)
+    val y = kotlin.math.sin(dLon) * cos(lat2)
+    val x = cos(lat1) * kotlin.math.sin(lat2) - kotlin.math.sin(lat1) * cos(lat2) * cos(dLon)
+    return (Math.toDegrees(kotlin.math.atan2(y, x)) + 360) % 360
 }
 
 /** Equirectangular metres from [origin], good to a few centimetres over a town. */

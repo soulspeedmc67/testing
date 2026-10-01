@@ -12,6 +12,10 @@ struct DASHitApp: App {
     @State private var isSplashVisible = true
     /// The app starts a touch zoomed in behind the splash and settles as it clears.
     @State private var isAppSettled = false
+    /// The app is built under the splash only once its logo has assembled:
+    /// building the shop (and its first catalogue work) during the opening
+    /// moments is what made the logo stutter.
+    @State private var isAppMounted = false
     /// Log in / sign up, once, on the very first launch; the splash clears onto
     /// it. "Skip for now" goes straight to the shop.
     @State private var isWelcomeAuthVisible: Bool
@@ -34,10 +38,12 @@ struct DASHitApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
-                RootView()
-                    .environmentObject(auth)
-                    .environmentObject(cart)
-                    .scaleEffect(isAppSettled ? 1 : 1.04)
+                if isAppMounted || !isSplashVisible {
+                    RootView()
+                        .environmentObject(auth)
+                        .environmentObject(cart)
+                        .scaleEffect(isAppSettled ? 1 : 1.04)
+                }
                 if isWelcomeAuthVisible {
                     AuthView(isWelcome: true) {
                         UserDefaults.standard.set(true, forKey: Self.welcomeSeenKey)
@@ -52,6 +58,7 @@ struct DASHitApp: App {
                 }
                 if isSplashVisible {
                     SplashView(
+                        onLogoBuilt: { isAppMounted = true },
                         onReveal: {
                             withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { isAppSettled = true }
                             // The welcome sign-in still covers the shop on a first launch.

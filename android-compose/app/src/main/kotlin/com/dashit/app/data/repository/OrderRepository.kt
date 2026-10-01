@@ -357,10 +357,14 @@ class OrderRepository(
             "paymentStatus" to order.paymentStatus,
             "location" to mapOf(
                 "address" to address.formattedSummary,
+                "house" to address.houseNumber.orEmpty(),
+                "landmark" to address.landmark.orEmpty(),
                 "lat" to address.latitude,
                 "lng" to address.longitude,
                 "alias" to address.nickname
             ),
+            // The rider app reads the landmark from the top of the order.
+            "landmark" to address.landmark.orEmpty(),
             "etaMinutes" to (order.etaMinutes ?: 8),
             // A number, as the web writes it; the rider types it back at the door.
             "otp" to (order.otp?.toIntOrNull() ?: Order.newDeliveryCode().toInt()),

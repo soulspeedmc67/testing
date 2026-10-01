@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.dashit.app.ui.components.HomeFeedSkeleton
+import com.dashit.app.ui.components.ProductGridSkeleton
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -107,7 +108,16 @@ import com.dashit.app.data.model.Order
 import com.dashit.app.data.model.OrderStatus
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.repository.OrderRepository
-import com.dashit.app.ui.address.AddressSelectionSheet
+import com.dashit.app.ui.address.AddressMenuPopup
+import com.dashit.app.ui.address.AddressPinPicker
+import com.dashit.app.ui.address.AddressSearchScreen
+import com.dashit.app.ui.address.PinStart
+import com.dashit.app.data.AddressBook
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.geometry.Rect
 import com.dashit.app.ui.cart.CartSheet
 import com.dashit.app.ui.categories.CategoriesScreen
 import com.dashit.app.ui.checkout.CheckoutSheet
@@ -187,15 +197,23 @@ fun StorefrontScreen(
     var isCartSheetOpen by remember { mutableStateOf(false) }
     var isCheckoutOpen by remember { mutableStateOf(false) }
     var isProfileOpen by remember { mutableStateOf(false) }
-    var isAddressSheetOpen by remember { mutableStateOf(false) }
+    // The "Deliver to" menu, address search and the full-screen pin picker.
+    var isAddressMenuOpen by remember { mutableStateOf(false) }
+    var isAddressSearchOpen by remember { mutableStateOf(false) }
+    var pinStart by remember { mutableStateOf<PinStart?>(null) }
+    var addressAnchor by remember { mutableStateOf<Rect?>(null) }
+    // Search grows out of the search bar, so it zooms from where it was tapped.
+    var searchBarY by remember { mutableStateOf(0f) }
+    var screenHeight by remember { mutableStateOf(1f) }
+    val isAddressSheetOpen = isAddressMenuOpen || isAddressSearchOpen || pinStart != null
     // Full-page search over the home feed; the tab bar steps aside while it's open.
     var isSearchOpen by remember { mutableStateOf(false) }
     val isKeyboardOpen = WindowInsets.isImeVisible
-    var currentAddress by remember { mutableStateOf(DeliveryAddress()) }
+    val savedCurrentAddress by AddressBook.current.collectAsState()
+    val currentAddress = savedCurrentAddress ?: remember { DeliveryAddress() }
     val productSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val cartSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val addressSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -211,7 +229,9 @@ fun StorefrontScreen(
         isCartSheetOpen = false
         isCheckoutOpen = false
         isProfileOpen = false
-        isAddressSheetOpen = false
+        isAddressMenuOpen = false
+        isAddressSearchOpen = false
+        pinStart = null
         detailProduct = null
         delay(if (covered) 600 else 200)
         celebrationOrder = order
@@ -219,7 +239,8 @@ fun StorefrontScreen(
 
     BackHandler(enabled = isAddressSheetOpen || isProfileOpen || trackingOrderId != null || detailProduct != null || isCheckoutOpen || isCartSheetOpen || isSearchOpen || !isBrowsing || activeTab != NavigationTab.HOME) {
         when {
-            isAddressSheetOpen -> isAddressSheetOpen = false
+            // The address screens handle their own back.
+            isAddressSheetOpen -> Unit
             isProfileOpen -> isProfileOpen = false
             trackingOrderId != null -> trackingOrderId = null
             detailProduct != null -> detailProduct = null
@@ -262,15 +283,9 @@ fun StorefrontScreen(
             .fillMaxSize()
             .background(DashitColors.Surface)
             .nestedScroll(dockScroll)
+            .onGloballyPositioned { screenHeight = it.size.height.toFloat().coerceAtLeast(1f) }
     ) {
-        if (isProfileOpen) {
-            ProfileScreen(
-                user = signedInUser,
-                addressSummary = currentAddress.displaySummary,
-                onOpenAddress = { isAddressSheetOpen = true },
-                onSignOut = { isProfileOpen = false }
-            )
-        } else if (trackingOrderId != null) {
+        if (trackingOrderId != null) {
             LiveTrackingMapScreen(
                 orderId = trackingOrderId!!,
                 products = allProducts,
@@ -286,11 +301,18 @@ fun StorefrontScreen(
                     // Item 1 is the pinned search bar, so the list starts right under it.
                     val showingKey = selectedCategory to searchQuery
                     var shownBefore by remember { mutableStateOf<Pair<String?, String>?>(null) }
+                    // Switching shelves shows skeleton cards for a moment, then the
+                    // new items fade in, instead of the old grid jumping into the new one.
+                    var isSwitching by remember { mutableStateOf(false) }
                     LaunchedEffect(showingKey) {
                         if (shownBefore != null && shownBefore != showingKey) {
-                            // After the new list has been laid out, so its length is known.
+                            isSwitching = true
                             withFrameNanos { }
-                            homeList.scrollToItem(1)
+                            // Only when scrolled past the search bar: with the header
+                            // in view the list already starts at the top.
+                            if (homeList.firstVisibleItemIndex >= 1) homeList.scrollToItem(1)
+                            delay(240)
+                            isSwitching = false
                         }
                         shownBefore = showingKey
                     }
@@ -310,8 +332,9 @@ fun StorefrontScreen(
                             address = currentAddress,
                             onOpenAddressPicker = {
                                 HapticsManager.light(view)
-                                isAddressSheetOpen = true
+                                isAddressMenuOpen = true
                             },
+                            onAddressRowPlaced = { addressAnchor = it },
                             onOpenProfile = {
                                 HapticsManager.selection(view)
                                 isProfileOpen = true
@@ -329,6 +352,7 @@ fun StorefrontScreen(
                 ) {
                     // Search Bar
                     SearchBarField(
+                        modifier = Modifier.onGloballyPositioned { searchBarY = it.boundsInWindow().center.y },
                         onOpen = {
                             HapticsManager.light(view)
                             isSearchOpen = true
@@ -479,7 +503,7 @@ fun StorefrontScreen(
                         )
 
                         Text(
-                            text = "${filteredProducts.size} items",
+                            text = if (isSwitching) " " else "${filteredProducts.size} items",
                             color = DashitColors.TextMuted,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
@@ -488,9 +512,18 @@ fun StorefrontScreen(
                 }
 
                 val chunkedProducts = filteredProductRows
-                items(chunkedProducts, key = { it.first().id }) { rowProducts ->
+                if (isSwitching) {
+                    item(key = "switch_skeleton") {
+                        ProductGridSkeleton(
+                            columns = 3,
+                            rows = 4,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp)
+                        )
+                    }
+                } else items(chunkedProducts, key = { it.first().id }) { rowProducts ->
                     Row(
                         modifier = Modifier
+                            .animateItem(fadeInSpec = tween(260), placementSpec = null, fadeOutSpec = null)
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 5.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -536,9 +569,16 @@ fun StorefrontScreen(
         // closing search returns to the same place in the feed).
         AnimatedVisibility(
             visible = isSearchOpen && !isProfileOpen && trackingOrderId == null,
-            enter = fadeIn(tween(220, easing = androidx.compose.animation.core.FastOutSlowInEasing)) +
-                slideInVertically(tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it / 18 },
-            exit = fadeOut(tween(150)) + slideOutVertically(tween(180)) { it / 24 }
+            enter = fadeIn(tween(180)) + scaleIn(
+                androidx.compose.animation.core.spring(dampingRatio = 0.86f, stiffness = 380f),
+                initialScale = 0.88f,
+                transformOrigin = TransformOrigin(0.5f, (searchBarY / screenHeight).coerceIn(0f, 1f))
+            ),
+            exit = fadeOut(tween(160)) + scaleOut(
+                tween(200, easing = androidx.compose.animation.core.FastOutLinearInEasing),
+                targetScale = 0.92f,
+                transformOrigin = TransformOrigin(0.5f, (searchBarY / screenHeight).coerceIn(0f, 1f))
+            )
         ) {
             // Opaque and swallowing touches, so nothing underneath reacts.
             Box(
@@ -688,15 +728,56 @@ fun StorefrontScreen(
             )
         }
 
-        // Address Selection Sheet (Search, Map Pinpoint, Saved Addresses)
-        if (isAddressSheetOpen) {
-            AddressSelectionSheet(
-                currentAddress = currentAddress,
-                sheetState = addressSheetState,
-                onDismiss = { isAddressSheetOpen = false },
-                onSelectAddress = { newAddr ->
-                    currentAddress = newAddr
-                    isAddressSheetOpen = false
+        // Profile slides in from the right over the shop, which stays as it was underneath.
+        AnimatedVisibility(
+            visible = isProfileOpen,
+            enter = slideInHorizontally(tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it } + fadeIn(tween(120)),
+            exit = slideOutHorizontally(tween(260, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it }
+        ) {
+            ProfileScreen(
+                user = signedInUser,
+                addressSummary = currentAddress.displaySummary,
+                onBack = { isProfileOpen = false },
+                onOpenAddress = { pinStart = PinStart(locateOnOpen = AddressBook.current.value == null) },
+                onSignOut = { isProfileOpen = false }
+            )
+        }
+
+        // "Deliver to": grows out of the header's address row.
+        if (isAddressMenuOpen) {
+            AddressMenuPopup(
+                anchor = addressAnchor,
+                onSearch = { isAddressSearchOpen = true },
+                onPickOnMap = { pinStart = PinStart(locateOnOpen = AddressBook.current.value == null) },
+                onDismiss = { isAddressMenuOpen = false }
+            )
+        }
+        AnimatedVisibility(
+            visible = isAddressSearchOpen,
+            enter = slideInHorizontally(tween(300, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it },
+            exit = slideOutHorizontally(tween(240)) { it }
+        ) {
+            AddressSearchScreen(
+                onBack = { isAddressSearchOpen = false },
+                onUseMyLocation = { pinStart = PinStart(locateOnOpen = true, isNew = true) },
+                onPick = { place -> pinStart = PinStart(place.lat, place.lng, place.title, isNew = true) }
+            )
+        }
+        AnimatedVisibility(
+            visible = pinStart != null,
+            enter = slideInHorizontally(tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it },
+            exit = slideOutHorizontally(tween(240)) { it }
+        ) {
+            // Kept while sliding out, so the picker doesn't blank mid-animation.
+            val held = remember { arrayOf(PinStart()) }
+            pinStart?.let { held[0] = it }
+            val start = held[0]
+            AddressPinPicker(
+                start = start,
+                onBack = { pinStart = null },
+                onSaved = {
+                    pinStart = null
+                    isAddressSearchOpen = false
                 }
             )
         }
@@ -720,17 +801,27 @@ fun StorefrontScreen(
 private fun StorefrontHeader(
     address: DeliveryAddress,
     onOpenAddressPicker: () -> Unit,
+    onAddressRowPlaced: (Rect) -> Unit,
     onOpenProfile: () -> Unit
 ) {
     val view = LocalView.current
+    val isDark = DashitColors.isDark
+    // Dark: the warm gold glow. Light: the web header's soft peach.
+    val headline = if (isDark) Color.White else DashitColors.TextPrimary
+    val kicker = if (isDark) Color(0xFFFDE68A) else Color(0xFFB45309)
+    val addressTint = if (isDark) Color(0xFFFFECC4) else DashitColors.TextSecondary
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
+                    colors = if (isDark) listOf(
                         Color(0xFF8C5D08),
                         Color(0xFF4C3004),
+                        DashitColors.Surface
+                    ) else listOf(
+                        Color(0xFFFFD9B8),
+                        Color(0xFFFFEBDA),
                         DashitColors.Surface
                     )
                 )
@@ -750,7 +841,7 @@ private fun StorefrontHeader(
             ) {
                 Text(
                     text = "DASHit in",
-                    color = Color(0xFFFDE68A),
+                    color = kicker,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
@@ -760,7 +851,7 @@ private fun StorefrontHeader(
 
                 Text(
                     text = "8 minutes",
-                    color = Color.White,
+                    color = headline,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Black,
                     lineHeight = 34.sp
@@ -772,14 +863,16 @@ private fun StorefrontHeader(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.pressable(scale = 0.96f) {
+                    modifier = Modifier
+                        .onGloballyPositioned { onAddressRowPlaced(it.boundsInWindow()) }
+                        .pressable(scale = 0.96f) {
                         HapticsManager.light(view)
                         onOpenAddressPicker()
                     }
                 ) {
                     Text(
                         text = address.displaySummary,
-                        color = Color(0xFFFFECC4),
+                        color = addressTint,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -789,7 +882,7 @@ private fun StorefrontHeader(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = "Change address",
-                        tint = Color(0xFFFFECC4),
+                        tint = addressTint,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -800,8 +893,8 @@ private fun StorefrontHeader(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF2C2214))
-                    .border(1.dp, Color(0xFF5A4420), CircleShape)
+                    .background(if (isDark) Color(0xFF2C2214) else Color.White.copy(alpha = 0.7f))
+                    .border(1.dp, if (isDark) Color(0xFF5A4420) else Color(0xFFF2C9A4), CircleShape)
                     .pressable(scale = 0.90f) {
                         onOpenProfile()
                     },
@@ -810,7 +903,7 @@ private fun StorefrontHeader(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profile",
-                    tint = Color.White,
+                    tint = headline,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -821,12 +914,13 @@ private fun StorefrontHeader(
 /** Opens the search page; typing happens there. */
 @Composable
 private fun SearchBarField(
+    modifier: Modifier = Modifier,
     onOpen: () -> Unit
 ) {
     val searchShape = RoundedCornerShape(16.dp)
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .height(48.dp)
@@ -860,7 +954,7 @@ private fun SearchBarField(
             Icon(
                 imageVector = Icons.Default.Mic,
                 contentDescription = "Voice Search",
-                tint = Color.White,
+                tint = DashitColors.TextPrimary,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -908,7 +1002,7 @@ private fun CategoryTabsRow(
                 Icon(
                     imageVector = icon,
                     contentDescription = cat.name,
-                    tint = if (isSelected) Color.White else DashitColors.TextMuted,
+                    tint = if (isSelected) DashitColors.TextPrimary else DashitColors.TextMuted,
                     modifier = Modifier.size(24.dp)
                 )
 
@@ -916,7 +1010,7 @@ private fun CategoryTabsRow(
 
                 Text(
                     text = cat.name,
-                    color = if (isSelected) Color.White else DashitColors.TextMuted,
+                    color = if (isSelected) DashitColors.TextPrimary else DashitColors.TextMuted,
                     fontSize = 11.5.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                 )
@@ -929,7 +1023,7 @@ private fun CategoryTabsRow(
                         .width(22.dp)
                         .height(2.5.dp)
                         .clip(RoundedCornerShape(1.dp))
-                        .background(if (isSelected) Color.White else Color.Transparent)
+                        .background(if (isSelected) DashitColors.TextPrimary else Color.Transparent)
                 )
             }
         }

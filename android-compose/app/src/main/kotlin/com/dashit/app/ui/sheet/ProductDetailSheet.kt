@@ -58,6 +58,8 @@ import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.model.Product
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.ui.draw.shadow
 import com.dashit.app.data.model.ProductVariant
 import com.dashit.app.ui.components.QuantityStepper
 import com.dashit.app.ui.components.StepperSize
@@ -110,7 +112,7 @@ fun ProductDetailSheet(
         }
     ) {
         // Full height: a product page, not a small pop-up.
-        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().statusBarsPadding()) {
+        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
@@ -118,16 +120,18 @@ fun ProductDetailSheet(
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .statusBarsPadding()
                         .verticalScroll(scroll)
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
-                    // Large Hero Image
+                    // Large photo on white, the way packs are shot.
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(20.dp))
+                            .aspectRatio(1.05f)
+                            .clip(RoundedCornerShape(26.dp))
                             .background(Color.White)
+                            .border(1.dp, DashitColors.Hairline, RoundedCornerShape(26.dp))
                     ) {
                         // Tobacco is shown as a plain pack, never the brand photo.
                         if (product.isAgeRestricted) {
@@ -141,19 +145,34 @@ fun ProductDetailSheet(
                                 contentDescription = product.name,
                                 // The whole pack on white, never cropped.
                                 contentScale = ContentScale.Fit,
-                                modifier = Modifier.matchParentSize().padding(24.dp),
+                                modifier = Modifier.matchParentSize().padding(28.dp),
                                 letterFallbackFor = product.name
                             )
+                        }
+
+                        // Delivery time, on the photo like a shop label.
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(12.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFFF1F5F9))
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Outlined.Timer, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(13.dp))
+                            Text(product.time ?: "8 mins", color = Color(0xFF0F172A), fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                         }
 
                         // Circular Close Button (Top-Right)
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
-                                .padding(10.dp)
-                                .size(32.dp)
+                                .padding(12.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.6f))
+                                .background(Color(0xFF0F172A).copy(alpha = 0.08f))
                                 .pressable(scale = 0.90f) {
                                     HapticsManager.light(view)
                                     onDismiss()
@@ -163,7 +182,7 @@ fun ProductDetailSheet(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close",
-                                tint = Color.White,
+                                tint = Color(0xFF0F172A),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -184,21 +203,6 @@ fun ProductDetailSheet(
                             letterSpacing = 1.sp
                         )
 
-                        Text(text = "·", color = DashitColors.TextFaint, fontSize = 12.sp)
-
-                        Icon(
-                            imageVector = Icons.Outlined.Timer,
-                            contentDescription = null,
-                            tint = DashitColors.TextMuted,
-                            modifier = Modifier.padding(top = 1.dp)
-                        )
-
-                        Text(
-                            text = product.time ?: "8 mins",
-                            color = DashitColors.TextMuted,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
@@ -259,6 +263,20 @@ fun ProductDetailSheet(
                                     textDecoration = TextDecoration.LineThrough,
                                     modifier = Modifier.padding(bottom = 4.dp)
                                 )
+                                val off = ((1 - activePrice / orig) * 100).toInt()
+                                if (off > 0) {
+                                    Text(
+                                        text = "$off% OFF",
+                                        color = DashitColors.Positive,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        modifier = Modifier
+                                            .padding(bottom = 5.dp)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(DashitColors.Positive.copy(alpha = 0.12f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -362,7 +380,7 @@ fun ProductDetailSheet(
 
                     if (similar.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(28.dp))
-                        Text("Similar products", color = DashitColors.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("You might also like", color = DashitColors.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(12.dp))
                         similar.chunked(3).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -390,8 +408,10 @@ fun ProductDetailSheet(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(DashitColors.SurfaceRaised)
-                        .border(width = 1.dp, color = DashitColors.Hairline)
+                        .shadow(16.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                        .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                        .background(DashitColors.SurfaceOverlay)
+                        .navigationBarsPadding()
                         .padding(horizontal = 20.dp, vertical = 14.dp)
                 ) {
                     Row(

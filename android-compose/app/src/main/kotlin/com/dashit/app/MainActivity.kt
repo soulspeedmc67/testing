@@ -50,6 +50,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         // Product photos: saved on the phone after the first download.
         coil.Coil.setImageLoader(com.dashit.app.data.ProductPhotos.imageLoader(this))
 
+        com.dashit.app.core.design.ThemePreference.init(this)
+        com.dashit.app.data.AddressBook.init(this)
         // Signed-in shopper, their orders and the store's open/closed switch.
         AuthRepository.init(this)
         OrderRepository.shared.init(this)
@@ -77,6 +79,14 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
 
         setContent {
             DashitTheme {
+                // Status and navigation bar icons follow the app's light or dark look.
+                val isDark = com.dashit.app.core.design.DashitColors.isDark
+                androidx.compose.runtime.SideEffect {
+                    androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+                        isAppearanceLightStatusBars = !isDark
+                        isAppearanceLightNavigationBars = !isDark
+                    }
+                }
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 var showWelcomeAuth by rememberSaveable { mutableStateOf(showWelcomeAtStart) }
                 // Also covers a restore where neither is showing any more.

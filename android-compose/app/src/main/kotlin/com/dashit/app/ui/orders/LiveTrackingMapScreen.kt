@@ -1,5 +1,9 @@
 package com.dashit.app.ui.orders
 
+import androidx.compose.animation.core.LinearOutSlowInEasing
+
+import androidx.compose.animation.core.Animatable
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -640,7 +644,22 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: Rou
     // The rider's phone shares its position once the delivery starts. Until it does,
     // the rider waits at the store (while the order is packed or on its way), facing the door.
     val atStore = order?.status == OrderStatus.PACKING || order?.status == OrderStatus.OUT_FOR_DELIVERY
-    val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
+    val target = progress.riderPosition ?: rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
+    // The rider glides from one fix to the next instead of jumping every few seconds.
+    val glide = remember { Animatable(1f) }
+    var from by remember { mutableStateOf(target) }
+    var to by remember { mutableStateOf(target) }
+    LaunchedEffect(target?.latitude, target?.longitude) {
+        val current = to?.let { prev -> from?.let { start -> lerp(start, prev, glide.value) } ?: prev }
+        from = current ?: target
+        to = target
+        val far = if (current != null && target != null) current.distanceToAsDouble(target) > 400 else true
+        if (far) glide.snapTo(1f) else {
+            glide.snapTo(0f)
+            glide.animateTo(1f, tween(1400, easing = LinearOutSlowInEasing))
+        }
+    }
+    val riderPoint = to?.let { end -> from?.let { start -> lerp(start, end, glide.value) } ?: end }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -673,10 +692,8 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: Rou
                 minZoomLevel = 11.0
                 maxZoomLevel = 19.0
                 zoomController.setVisibility(org.osmdroid.views.CustomZoomButtonsController.Visibility.NEVER)
-                // The app is dark, so the map is too: OpenStreetMap's tiles, inverted with their hues kept.
-                overlayManager.tilesOverlay.setColorFilter(darkMapFilter())
-                overlayManager.tilesOverlay.setLoadingBackgroundColor(android.graphics.Color.parseColor("#0B0B0E"))
-                overlayManager.tilesOverlay.setLoadingLineColor(android.graphics.Color.parseColor("#151519"))
+                // Light or dark with the app, like Apple Maps on the iPhone app.
+                com.dashit.app.ui.map.MapStyle.apply(this, com.dashit.app.core.design.DashitColors.isDark)
                 controller.setZoom(15.0)
                 controller.setCenter(HUB)
 
@@ -743,7 +760,8 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: Rou
 
             val riderMarker = layers.rider
             if (riderPoint != null && riderMarker != null) {
-                val bearing = rider?.let { r -> r.heading?.takeIf { (r.speed ?: 0.0) > 0.5 } }
+                val bearing = progress.roadBearing
+                    ?: rider?.let { r -> r.heading?.takeIf { (r.speed ?: 0.0) > 0.5 } }
                     ?: destination?.let { bearing(riderPoint, it) }
                 val sprite = riderSpriteName(bearing)
                 if (sprite != layers.riderSprite) {
@@ -818,29 +836,6 @@ private fun riderSpriteName(bearing: Double?): String {
 }
 
 private fun dp(context: Context, value: Float): Float = value * context.resources.displayMetrics.density
-
-/** Inverts the tiles' lightness but keeps their hues, then dims them to the app's surface. */
-private fun darkMapFilter(): ColorMatrixColorFilter {
-    val invert = ColorMatrix(floatArrayOf(
-        -1f, 0f, 0f, 0f, 255f,
-        0f, -1f, 0f, 0f, 255f,
-        0f, 0f, -1f, 0f, 255f,
-        0f, 0f, 0f, 1f, 0f
-    ))
-    val hueRotate180 = ColorMatrix(floatArrayOf(
-        -0.574f, 1.430f, 0.144f, 0f, 0f,
-        0.426f, 0.430f, 0.144f, 0f, 0f,
-        0.426f, 1.430f, -0.856f, 0f, 0f,
-        0f, 0f, 0f, 1f, 0f
-    ))
-    val dim = ColorMatrix().apply { setScale(0.82f, 0.82f, 0.86f, 1f) }
-    val desaturate = ColorMatrix().apply { setSaturation(0.55f) }
-    return ColorMatrixColorFilter(invert.apply {
-        postConcat(hueRotate180)
-        postConcat(desaturate)
-        postConcat(dim)
-    })
-}
 
 /** The app icon as a rounded tile with a white edge, for the hub. */
 private fun hubMarkerBitmap(context: Context): Bitmap {
@@ -919,3 +914,6 @@ private fun riderMarkerBitmap(context: Context, spriteName: String): Bitmap {
     }
     return out
 }
+
+private fun lerp(a: GeoPoint, b: GeoPoint, t: Float): GeoPoint =
+    GeoPoint(a.latitude + (b.latitude - a.latitude) * t, a.longitude + (b.longitude - a.longitude) * t)
