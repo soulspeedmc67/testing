@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The map looks the rider's 24 frames up by name (rider_000 ... rider_345), which
+     the resource shrinker can't see, so keep them in release builds. -->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@drawable/rider_*" />

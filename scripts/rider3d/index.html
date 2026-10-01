@@ -1,0 +1,231 @@
+<!doctype html>
+<!--
+  The DASHIT delivery rider as a 3D model, and the sprites the maps use.
+
+    node scripts/rider3d/render.mjs        renders public/rider/ sprites + assets/3d/dashit-rider.glb
+
+  This page builds the scooter, rider and delivery box from three.js shapes,
+  renders it from one fixed camera at 24 headings (every 15 degrees, 0 = riding
+  north, up the map, so the rider's back shows) and posts each frame to the
+  little server in render.mjs. One camera and one framing for every heading means
+  the rider turns on the map without jumping or changing size.
+
+  URL parameters: ?preview=0,90,180 renders just those headings into the page.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>html,body{margin:0;background:transparent}canvas{display:block}</style>
+<script type="importmap">
+{ "imports": { "three": "/three/build/three.module.js", "three/addons/": "/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+<script type="module">
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+
+const SIZE = 1024;
+const params = new URLSearchParams(location.search);
+const preview = params.get("preview");
+
+const C = {
+  orange: 0xff5600, orangeDeep: 0xd24400, navy: 0x0b1530, dark: 0x1a1d24,
+  steel: 0xb9c0cc, white: 0xf4f5f7, tire: 0x15171c, red: 0xff2d2d, skin: 0xe9b48f,
+};
+const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.46, metalness: 0.04, ...o });
+
+const bike = new THREE.Group();
+bike.name = "DASHIT rider";
+
+function add(mesh, x = 0, y = 0, z = 0, parent = bike) {
+  mesh.position.set(x, y, z);
+  mesh.castShadow = false;
+  parent.add(mesh);
+  return mesh;
+}
+const rbox = (w, h, d, r, color, o) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 5, r), mat(color, o));
+
+/** A capsule between two points. */
+function limb(a, b, radius, material) {
+  const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b);
+  const len = va.distanceTo(vb);
+  const m = new THREE.Mesh(new THREE.CapsuleGeometry(radius, Math.max(len - radius * 2, 0.001), 8, 16), material);
+  m.position.copy(va).lerp(vb, 0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
+  bike.add(m);
+  return m;
+}
+
+/* ---- wheels ------------------------------------------------------------ */
+function wheel(z) {
+  const g = new THREE.Group();
+  const tire = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.075, 20, 48), mat(C.tire, { roughness: 0.8 }));
+  tire.rotation.y = Math.PI / 2;
+  g.add(tire);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.09, 36), mat(C.steel, { metalness: 0.5, roughness: 0.3 }));
+  rim.rotation.z = Math.PI / 2;
+  g.add(rim);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.13, 20), mat(C.dark));
+  hub.rotation.z = Math.PI / 2;
+  g.add(hub);
+  g.position.set(0, 0.275, z);
+  bike.add(g);
+  return g;
+}
+wheel(-0.66);
+wheel(0.56);
+
+/* ---- scooter body ------------------------------------------------------ */
+add(rbox(0.46, 0.07, 0.8, 0.03, C.orangeDeep), 0, 0.33, -0.12);          // floorboard
+const shield = add(rbox(0.44, 0.58, 0.1, 0.045, C.orange), 0, 0.64, -0.55); // leg shield
+shield.rotation.x = -0.22;
+add(rbox(0.36, 0.17, 0.2, 0.07, C.orange), 0, 0.99, -0.55);                // head cover
+const fork = limb([0, 0.9, -0.58], [0, 0.3, -0.66], 0.03, mat(C.steel, { metalness: 0.5, roughness: 0.3 }));
+add(rbox(0.43, 0.36, 0.72, 0.12, C.orange), 0, 0.52, 0.42);                // rear body
+add(rbox(0.34, 0.1, 0.5, 0.05, C.dark, { roughness: 0.7 }), 0, 0.75, 0.3); // seat
+// mudguards
+const guardF = new THREE.Mesh(new THREE.TorusGeometry(0.265, 0.03, 10, 28, Math.PI * 0.85), mat(C.orange));
+guardF.rotation.set(0, Math.PI / 2, 0); guardF.rotation.z = Math.PI * 0.07;
+add(guardF, 0, 0.275, -0.66);
+// handlebar, grips, mirrors
+const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.66, 14), mat(C.dark));
+bar.rotation.z = Math.PI / 2; add(bar, 0, 1.01, -0.5);
+for (const s of [-1, 1]) {
+  const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 14), mat(C.dark, { roughness: 0.8 }));
+  grip.rotation.z = Math.PI / 2; add(grip, s * 0.3, 1.01, -0.5);
+}
+// lights
+add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 20, 14), new THREE.MeshStandardMaterial({ color: 0xfff6dc, emissive: 0xfff0b0, emissiveIntensity: 1.4 })), 0, 0.99, -0.67);
+add(rbox(0.2, 0.06, 0.04, 0.02, C.red, { emissive: C.red, emissiveIntensity: 0.9 }), 0, 0.56, 0.79);
+// pegs and stand-free underside: a dark underframe so the body doesn't float
+add(rbox(0.2, 0.1, 0.9, 0.04, C.dark), 0, 0.3, 0.1);
+
+/* ---- delivery box ------------------------------------------------------ */
+function logoTexture() {
+  const c = document.createElement("canvas"); c.width = c.height = 512;
+  const x = c.getContext("2d");
+  const pieces = ["top", "bottom", "arc", "bar"];
+  return Promise.all(pieces.map((p) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = `/assets/splash_logo_${p}.png`; })))
+    .then(([top, bottom, arc, barImg]) => {
+      x.clearRect(0, 0, 512, 512);
+      const s = 0.82, o = (512 - 344 * 512 / 344 * s) / 2; // centred
+      const draw = (img, tint) => {
+        const t = document.createElement("canvas"); t.width = t.height = 512;
+        const tx = t.getContext("2d");
+        tx.drawImage(img, o, o, 512 * s, 512 * s);
+        if (tint) { tx.globalCompositeOperation = "source-in"; tx.fillStyle = tint; tx.fillRect(0, 0, 512, 512); }
+        x.drawImage(t, 0, 0);
+      };
+      draw(top); draw(bottom); draw(arc); draw(barImg, "#0b1530");
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+      return tex;
+    });
+}
+const box = new THREE.Group();
+box.position.set(0, 1.07, 0.66);
+bike.add(box);
+add(rbox(0.6, 0.5, 0.56, 0.07, C.orange, { roughness: 0.4 }), 0, 0, 0, box);          // case
+add(rbox(0.62, 0.055, 0.58, 0.025, C.orangeDeep), 0, 0.2, 0, box);                       // lid edge
+add(rbox(0.3, 0.025, 0.1, 0.01, C.dark), 0, 0.235, -0.22, box);                         // handle
+const rack = add(rbox(0.5, 0.04, 0.5, 0.015, C.dark), 0, -0.275, 0, box);
+
+const logo = await logoTexture();
+const logoMat = new THREE.MeshStandardMaterial({ map: logo, transparent: true, roughness: 0.4, polygonOffset: true, polygonOffsetFactor: -2 });
+const back = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.34), logoMat); back.position.set(0, 0.0, 0.285); box.add(back);
+for (const s of [-1, 1]) {
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), logoMat);
+  side.position.set(s * 0.305, 0.0, 0.0); side.rotation.y = s * Math.PI / 2; box.add(side);
+}
+
+/* ---- the rider --------------------------------------------------------- */
+const jacket = mat(C.orange, { roughness: 0.55 });
+const pants = mat(C.dark, { roughness: 0.7 });
+const hips = [0, 0.8, 0.22];
+// torso, leaning forward a little
+const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 0.3, 10, 20), jacket);
+torso.position.set(0, 1.1, 0.1); torso.rotation.x = -0.28; torso.scale.set(1.1, 1, 0.9); bike.add(torso);
+// legs
+for (const s of [-1, 1]) {
+  limb([s * 0.12, 0.8, 0.22], [s * 0.17, 0.74, -0.2], 0.085, pants);   // thigh
+  limb([s * 0.17, 0.74, -0.2], [s * 0.17, 0.42, -0.32], 0.07, pants); // shin
+  const shoe = rbox(0.12, 0.08, 0.24, 0.035, C.white, { roughness: 0.6 }); add(shoe, s * 0.17, 0.37, -0.36);
+  const sole = rbox(0.125, 0.025, 0.25, 0.01, C.orange); add(sole, s * 0.17, 0.335, -0.36);
+}
+// arms to the grips
+for (const s of [-1, 1]) {
+  limb([s * 0.19, 1.22, -0.0], [s * 0.26, 1.07, -0.3], 0.068, jacket);   // upper arm
+  limb([s * 0.26, 1.07, -0.3], [s * 0.3, 1.01, -0.5], 0.058, jacket);       // forearm
+  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 12), mat(C.dark, { roughness: 0.8 })); hand.position.set(s * 0.3, 1.01, -0.5); bike.add(hand);
+}
+// neck + helmet
+const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.09, 12), mat(C.skin)); neck.position.set(0, 1.42, -0.0); bike.add(neck);
+const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.205, 36, 28), mat(C.orange, { roughness: 0.28, metalness: 0.1 }));
+helmet.scale.set(0.95, 1.0, 1.08); helmet.position.set(0, 1.57, -0.03); bike.add(helmet);
+const visor = new THREE.Mesh(new THREE.SphereGeometry(0.205, 36, 20, -0.95 - Math.PI / 2, 1.9, 0.75, 1.0), mat(0x0a0c12, { roughness: 0.08, metalness: 0.5 }));
+visor.scale.set(0.985, 1.0, 1.12); visor.position.copy(helmet.position); visor.position.z -= 0.012; bike.add(visor);
+const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.203, 0.013, 8, 40, Math.PI), mat(C.white));
+stripe.rotation.set(0, Math.PI / 2, 0); stripe.scale.set(1, 1, 1); stripe.position.set(0, 1.57, -0.03); bike.add(stripe);
+
+bike.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+
+/* ---- scene, light, camera ---------------------------------------------- */
+const scene = new THREE.Scene();
+scene.add(bike);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xcdbfb0, 0.85));
+const key = new THREE.DirectionalLight(0xfff4e6, 2.9); key.position.set(-3.5, 6, 3.5); scene.add(key);
+const rim = new THREE.DirectionalLight(0xcfe0ff, 1.0); rim.position.set(4, 3, -3.5); scene.add(rim);
+const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(3, 1.5, 4); scene.add(fill);
+
+const half = 1.42;
+const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 50);
+const elev = THREE.MathUtils.degToRad(38);
+const target = new THREE.Vector3(0, 0.78, 0.08);
+camera.position.copy(target).add(new THREE.Vector3(0, Math.sin(elev), Math.cos(elev)).multiplyScalar(12));
+camera.lookAt(target);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(SIZE, SIZE);
+renderer.setClearColor(0x000000, 0);
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.14;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+/** Heading in degrees clockwise from north; 0 shows the rider's back. */
+function frame(heading) {
+  bike.rotation.y = -THREE.MathUtils.degToRad(heading);
+  renderer.render(scene, camera);
+}
+
+async function post(path, body, type) {
+  await fetch(path, { method: "POST", headers: { "Content-Type": type }, body });
+}
+
+if (preview) {
+  document.body.style.background = "#c9ced6";
+  renderer.domElement.style.display = "none";
+  for (const h of preview.split(",").map(Number)) {
+    frame(h);
+    const img = new Image(); img.width = 360; img.src = renderer.domElement.toDataURL("image/png");
+    document.body.appendChild(img);
+  }
+  window.__done = true;
+} else {
+  for (let h = 0; h < 360; h += 15) {
+    frame(h);
+    const blob = await new Promise((r) => renderer.domElement.toBlob(r, "image/png"));
+    await post(`/save/rider_${String(h).padStart(3, "0")}.png`, blob, "image/png");
+  }
+  // the model itself, facing north
+  bike.rotation.y = 0;
+  const glb = await new Promise((res, rej) => new GLTFExporter().parse(bike, res, rej, { binary: true }));
+  await post("/save/dashit-rider.glb", glb, "application/octet-stream");
+  await post("/done", "ok", "text/plain");
+}
+</script>
+</body>
+</html>

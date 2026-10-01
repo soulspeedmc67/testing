@@ -2,21 +2,18 @@ import SwiftUI
 import UIKit
 import CoreLocation
 
-/// The branded 3D rider sprites from the web tracker (`public/rider/*.png`,
-/// bundled in Resources/MapArtwork), picked to face the way the rider travels.
+/// The branded 3D rider, rendered every 15 degrees from one 3D model
+/// (scripts/rider3d; the same 24 frames as Android, bundled in
+/// Resources/MapArtwork). `rider_000` rides north, up the map, so its back
+/// shows; the number is the heading clockwise from north. Picked to face the
+/// way the rider travels.
 enum RiderArtwork {
-    /// Clockwise from north: moving up the map shows the rider's back, moving
-    /// right shows the side view, and so on.
-    private static let byDirection = [
-        "rider_back", "rider_back_right", "rider_right", "rider_front_right",
-        "rider_front", "rider_front_left", "rider_left", "rider_back_left"
-    ]
-
     static func imageName(for bearing: Double?) -> String {
-        guard let bearing else { return "rider_map_live" }
+        // No heading yet: the rider faces the shopper.
+        guard let bearing else { return "rider_180" }
         let normalized = (bearing.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
-        let index = Int(((normalized + 22.5) / 45).rounded(.down)) % byDirection.count
-        return byDirection[index]
+        let step = Int(((normalized + 7.5) / 15).rounded(.down)) % 24
+        return String(format: "rider_%03d", step * 15)
     }
 
     /// Initial compass bearing from one point to another, in degrees.
@@ -49,28 +46,28 @@ struct RiderMapMarker: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.brandOrange.opacity(0.35))
-                .frame(width: 46, height: 46)
+                .fill(Color.brandOrange.opacity(0.3))
+                .frame(width: 54, height: 54)
                 .phaseAnimator([false, true]) { halo, expanded in
                     halo
-                        .scaleEffect(expanded ? 1.9 : 0.8)
+                        .scaleEffect(expanded ? 1.8 : 0.8)
                         .opacity(expanded ? 0 : 0.8)
                 } animation: { _ in
                     .easeOut(duration: 1.6)
                 }
-                .offset(y: 18)
+                .offset(y: 22)
 
             Ellipse()
-                .fill(Color.black.opacity(0.28))
-                .frame(width: 44, height: 12)
+                .fill(Color.black.opacity(0.3))
+                .frame(width: 52, height: 14)
                 .blur(radius: 3)
-                .offset(y: 26)
+                .offset(y: 22)
 
             if let sprite = UIImage(named: spriteName) {
                 Image(uiImage: sprite)
                     .resizable()
                     .scaledToFit()
-                    .frame(height: 60)
+                    .frame(height: 88)
             } else {
                 Image(systemName: "scooter")
                     .font(.system(size: 22, weight: .semibold))
@@ -79,7 +76,7 @@ struct RiderMapMarker: View {
                     .background(Circle().fill(Color.trackerCard))
             }
         }
-        .frame(width: 80, height: 80)
+        .frame(width: 104, height: 104)
         .animation(.easeInOut(duration: 0.3), value: spriteName)
         .accessibilityLabel("Delivery partner")
     }
