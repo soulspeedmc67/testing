@@ -817,12 +817,16 @@ private fun bearing(a: GeoPoint, b: GeoPoint): Double {
     return Math.toDegrees(atan2(y, x))
 }
 
-/** The same eight-direction rider sprites as iOS, picked by bearing. */
+/**
+ * The 3D rider, rendered every 15 degrees (the same 24 frames as iOS, from
+ * scripts/rider3d). `rider_000` rides north, up the map, and the number is the
+ * heading clockwise from north. With no heading yet it faces the shopper.
+ */
 private fun riderSpriteName(bearing: Double?): String {
-    if (bearing == null) return "rider_map_live"
-    val names = listOf("rider_back", "rider_back_right", "rider_right", "rider_front_right", "rider_front", "rider_front_left", "rider_left", "rider_back_left")
+    if (bearing == null) return "rider_180"
     val normalized = ((bearing % 360) + 360) % 360
-    return names[((normalized + 22.5) / 45).toInt() % names.size]
+    val step = ((normalized + 7.5) / 15).toInt() % 24
+    return "rider_%03d".format(step * 15)
 }
 
 private fun dp(context: Context, value: Float): Float = value * context.resources.displayMetrics.density
@@ -900,19 +904,24 @@ private fun destinationMarkerBitmap(context: Context): Bitmap {
     return out
 }
 
-/** The rider sprite for a heading, over a soft orange halo and a ground shadow. */
+/**
+ * The rider sprite for a heading, over a soft orange halo and a ground shadow.
+ * The sprites are square with the bike centred; its wheels meet the ground
+ * about a quarter of the sprite below the centre, where the halo and shadow go.
+ */
 private fun riderMarkerBitmap(context: Context, spriteName: String): Bitmap {
     val d = context.resources.displayMetrics.density
-    val size = (80 * d).toInt()
+    val size = (104 * d).toInt()
     val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(out)
     val c = size / 2f
-    canvas.drawCircle(c, c + 18 * d, 23 * d, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(80, 255, 91, 0) })
-    canvas.drawOval(RectF(c - 22 * d, c + 20 * d, c + 22 * d, c + 32 * d), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(70, 0, 0, 0) })
+    val ground = c + 22 * d
+    canvas.drawCircle(c, ground, 27 * d, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(70, 255, 91, 0) })
+    canvas.drawOval(RectF(c - 26 * d, ground - 6 * d, c + 26 * d, ground + 8 * d), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.argb(80, 0, 0, 0) })
     val id = context.resources.getIdentifier(spriteName, "drawable", context.packageName)
     val sprite = if (id != 0) BitmapFactory.decodeResource(context.resources, id) else null
     if (sprite != null) {
-        val targetH = 60 * d
+        val targetH = 88 * d
         val targetW = sprite.width * targetH / sprite.height
         canvas.drawBitmap(
             sprite, null,
