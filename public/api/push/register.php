@@ -38,4 +38,9 @@ $saved = dashit_firestore_set($account, 'pushTokens/' . hash('sha256', $token), 
 if (!$saved) {
     dashit_respond(502, ['error' => "Couldn't save the push token right now."]);
 }
+// Shoppers' phones join the "customers" topic that "Notify customers"
+// (broadcast.php) sends to; the newer apps also join it themselves.
+if ($app === 'customer') {
+    dashit_push_join_topic($account, $token, 'customers');
+}
 dashit_respond(200, ['saved' => true]);

@@ -6,13 +6,15 @@ import FirebaseAuth
 import AudioToolbox
 import AVFoundation
 
-/// The admin's sections, named and grouped as on the web console's sidebar.
+/// The admin's sections, named and grouped as on the web console's sidebar:
+/// what the day needs up front, everything else under "More".
 public enum AdminTab: String, CaseIterable, Identifiable {
     case home = "Home"
     case orders = "Orders"
     case inventory = "Stock"
+    case riders = "Riders"
+    case notify = "Notify customers"
     case addProduct = "Add an item"
-    case riders = "Delivery riders"
     case distributors = "Distributors"
     case offers = "Discounts"
     case storeControls = "Shop settings"
@@ -21,8 +23,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
 
     public enum NavGroup: String, CaseIterable, Identifiable {
         case everyDay = "Every day"
-        case shopSetup = "Shop setup"
-        case bulkTools = "Bulk tools"
+        case more = "More"
         public var id: String { rawValue }
     }
 
@@ -30,9 +31,8 @@ public enum AdminTab: String, CaseIterable, Identifiable {
 
     public var group: NavGroup {
         switch self {
-        case .home, .orders, .inventory, .addProduct, .riders: return .everyDay
-        case .distributors, .offers, .storeControls: return .shopSetup
-        case .batchInward, .importCSV: return .bulkTools
+        case .home, .orders, .inventory, .riders, .notify: return .everyDay
+        case .addProduct, .distributors, .offers, .storeControls, .batchInward, .importCSV: return .more
         }
     }
 
@@ -44,6 +44,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .inventory: return "How many of each item you have. Tap − or + to change the number."
         case .addProduct: return "Put a new item in the shop."
         case .riders: return "The people who deliver your orders."
+        case .notify: return "Send one notification to every customer with the app: offers, new items, shop news."
         case .distributors: return "The people and companies you buy stock from."
         case .offers: return "Coupon codes your customers can use."
         case .storeControls: return "Open or close the shop, and turn busy-hours pricing on or off."
@@ -59,6 +60,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .inventory: return "square.grid.2x2.fill"
         case .addProduct: return "plus.circle.fill"
         case .riders: return "scooter"
+        case .notify: return "megaphone.fill"
         case .distributors: return "building.2.fill"
         case .storeControls: return "storefront.fill"
         case .offers: return "sparkles"

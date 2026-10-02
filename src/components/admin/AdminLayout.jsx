@@ -28,6 +28,8 @@ import {
   Building2,
   Images,
   LayoutGrid,
+  Megaphone,
+  ChevronDown,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -54,10 +56,10 @@ export default function AdminLayout({
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  /* Labels are the words a shopkeeper uses, not warehouse software jargon:
-     "Batch Inward", "Catalogue", "FMCG Importer" and "CSV Import / Export" told
-     the person running this store nothing about what the screen does. The groups
-     are ordered by how often the day actually needs them. */
+  /* Labels are the words a shopkeeper uses, not warehouse software jargon.
+     Up front only what the day needs: orders, stock, riders, and a message to
+     every customer. Everything else waits under "More", folded away until
+     it's opened (or until one of its screens is the one showing). */
   const navItems = [
     {
       group: "Every day",
@@ -77,27 +79,22 @@ export default function AdminLayout({
           badgeColor: "bg-amber-500 text-slate-950",
         },
         {
-          id: "add-product",
-          label: "Add an item",
-          icon: Camera,
+          id: "drivers",
+          label: "Riders",
+          icon: Truck,
         },
         {
-          id: "drivers",
-          label: "Delivery riders",
-          icon: Truck,
+          id: "notify",
+          label: "Notify customers",
+          icon: Megaphone,
         },
       ],
     },
     {
-      group: "Shop setup",
+      group: "More",
+      collapsible: true,
       items: [
-        {
-          id: "distributors",
-          label: "Distributors",
-          icon: Building2,
-          badge: distributorsCount > 0 ? `${distributorsCount}` : null,
-          badgeColor: "bg-blue-500/15 text-blue-500 dark:text-blue-400 font-bold",
-        },
+        { id: "add-product", label: "Add an item", icon: Camera },
         {
           id: "catalogue",
           label: "All items",
@@ -105,59 +102,45 @@ export default function AdminLayout({
           badge: catalogueCount > 0 ? `${catalogueCount}` : null,
           badgeColor: "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300",
         },
+        { id: "offers", label: "Discounts", icon: Sparkles },
         {
-          id: "offers",
-          label: "Discounts",
-          icon: Sparkles,
+          id: "distributors",
+          label: "Distributors",
+          icon: Building2,
+          badge: distributorsCount > 0 ? `${distributorsCount}` : null,
+          badgeColor: "bg-blue-500/15 text-blue-500 dark:text-blue-400 font-bold",
         },
-        {
-          id: "settings",
-          label: "Shop settings",
-          icon: Store,
-        },
-      ],
-    },
-    {
-      group: "Bulk tools",
-      items: [
-        {
-          id: "photo-review",
-          label: "Check photos",
-          icon: Images,
-        },
-        {
-          id: "shelf-fix",
-          label: "Fix shelves",
-          icon: LayoutGrid,
-        },
-        {
-          id: "enricher",
-          label: "Auto Image Enricher",
-          icon: Sparkles,
-        },
-        {
-          id: "batch-inward",
-          label: "Add many at once",
-          icon: ArrowDownToLine,
-        },
-        {
-          id: "csv",
-          label: "Import CSV",
-          icon: FileSpreadsheet,
-        },
-        {
-          id: "catalog-pick",
-          label: "Pick from product list",
-          icon: ListChecks,
-        },
-        {
-          id: "importer",
-          label: "Find by barcode",
-          icon: Barcode,
-        },
+        { id: "settings", label: "Shop settings", icon: Store },
+        { id: "batch-inward", label: "Add many at once", icon: ArrowDownToLine },
+        { id: "importer", label: "Find by barcode", icon: Barcode },
+        { id: "catalog-pick", label: "Pick from product list", icon: ListChecks },
+        { id: "csv", label: "Import CSV", icon: FileSpreadsheet },
+        { id: "photo-review", label: "Check photos", icon: Images },
+        { id: "shelf-fix", label: "Fix shelves", icon: LayoutGrid },
+        { id: "enricher", label: "Auto Image Enricher", icon: Sparkles },
       ],
     },
   ];
+
+  const [moreOpen, setMoreOpen] = useState(false);
+  const isGroupOpen = (grp) => !grp.collapsible || moreOpen || grp.items.some((item) => item.id === activeTab);
+  const groupItems = (grp) => (isGroupOpen(grp) ? grp.items : []);
+
+  /** The group's heading; "More" is a button that folds its list open or shut. */
+  const groupHeading = (grp, className) =>
+    grp.collapsible ? (
+      <button
+        type="button"
+        onClick={() => setMoreOpen((open) => !open)}
+        aria-expanded={isGroupOpen(grp)}
+        className={`${className} w-full flex items-center justify-between cursor-pointer hover:text-slate-700 dark:hover:text-zinc-200`}
+      >
+        <span>{grp.group}</span>
+        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isGroupOpen(grp) ? "rotate-180" : ""}`} />
+      </button>
+    ) : (
+      <span className={className}>{grp.group}</span>
+    );
 
   const handleNavClick = (id) => {
     setActiveTab(id);
@@ -372,11 +355,9 @@ export default function AdminLayout({
           <div className="p-4 space-y-6 overflow-y-auto min-h-0 flex-1 admin-scroll">
             {navItems.map((grp, idx) => (
               <div key={idx} className="space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400 px-3 block mb-1.5">
-                  {grp.group}
-                </span>
+                {groupHeading(grp, "text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400 px-3 block mb-1.5")}
 
-                {grp.items.map((item) => {
+                {groupItems(grp).map((item) => {
                   const isActive = activeTab === item.id;
                   const Icon = item.icon;
 
@@ -471,10 +452,8 @@ export default function AdminLayout({
 
                 {navItems.map((grp, idx) => (
                   <div key={idx} className="space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-1">
-                      {grp.group}
-                    </span>
-                    {grp.items.map((item) => {
+                    {groupHeading(grp, "text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 block mb-1")}
+                    {groupItems(grp).map((item) => {
                       const isActive = activeTab === item.id;
                       const Icon = item.icon;
 

@@ -23,6 +23,8 @@ import java.net.URL
 object Push {
     private const val TAG = "DASHitPush"
     private const val SERVER = "https://dashit.co.in/api/push/"
+    /** The topic "Notify customers" sends to. */
+    private const val TOPIC_CUSTOMERS = "customers"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     /** Account and token last handed to the server, kept across launches (see [init]). */
     private var lastRegistered: Pair<String, String>? = null
@@ -46,6 +48,9 @@ object Push {
     /** Hands this phone's token to the server for the signed-in shopper. Safe to call often. */
     fun register(token: String? = null) {
         scope.launch {
+            // Every shop app hears "Notify customers" (broadcast.php).
+            runCatching { FirebaseMessaging.getInstance().subscribeToTopic(TOPIC_CUSTOMERS).await() }
+                .onFailure { Log.w(TAG, "Couldn't join the customers topic", it) }
             runCatching {
                 val uid = AuthRepository.user.value?.id ?: return@launch
                 val fcm = token ?: FirebaseMessaging.getInstance().token.await()
@@ -101,7 +106,8 @@ class PushService : FirebaseMessagingService() {
             applicationContext,
             note.title ?: "DASHit",
             note.body ?: "",
-            message.data["orderId"]
+            message.data["orderId"],
+            isNews = message.data["kind"] == "broadcast"
         )
     }
 }

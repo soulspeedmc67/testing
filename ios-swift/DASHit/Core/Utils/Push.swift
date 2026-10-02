@@ -113,6 +113,10 @@ final class Push: NSObject {
 extension Push: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
         guard let fcmToken else { return }
+        #if !ADMIN_APP_TARGET
+        // Every shop app hears "Notify customers" (broadcast.php), signed in or not.
+        messaging.subscribe(toTopic: "customers") { _ in }
+        #endif
         register(token: fcmToken)
     }
 }
