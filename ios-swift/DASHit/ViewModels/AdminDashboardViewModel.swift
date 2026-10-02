@@ -259,6 +259,7 @@ public final class AdminDashboardViewModel: ObservableObject {
                     self.knownOrderIds = Set(list.map { $0.id })
                     self.isFirstOrderFetch = false
                     self.recentOrders = list.sorted { $0.createdAt > $1.createdAt }
+                    self.coverWeek(with: self.recentOrders, reachedLimit: docs.count >= 100)
                 }
             }
 
@@ -289,27 +290,6 @@ public final class AdminDashboardViewModel: ObservableObject {
                 }
             }
         }
-
-        // 6b. The last seven days of orders, for the Home charts. Every app
-        // stamps createdAt with the server's clock, so one range covers them all.
-        let calendar = Calendar.current
-        let weekStart = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: Date())) ?? Date()
-        weekOrderListener = db.collection("orders")
-            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: weekStart))
-            .order(by: "createdAt", descending: true)
-            .limit(to: 1000)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self, let docs = snapshot?.documents, error == nil else { return }
-                let decoder = Firestore.Decoder()
-                let list: [Order] = docs.compactMap { doc in
-                    var data = doc.data()
-                    data["id"] = (data["id"] as? String) ?? doc.documentID
-                    return try? decoder.decode(Order.self, from: data)
-                }
-                Task { @MainActor in
-                    self.weekOrders = list
-                }
-            }
 
         // 6. Store Configuration Realtime Listener
         storeConfigListener = db.collection("config").document("store").addSnapshotListener { [weak self] doc, error in
@@ -412,6 +392,39 @@ public final class AdminDashboardViewModel: ObservableObject {
     // MARK: - Home page numbers
 
     /// Orders that count as sales: everything but cancelled ones.
+    /// The Home charts need the last seven days of orders. When the newest 100
+    /// (already being listened to) reach back a whole week, they are worked out
+    /// from those, at no extra reads; only a busier week opens a second
+    /// listener for the rest.
+    private func coverWeek(with recent: [Order], reachedLimit: Bool) {
+        let weekStart = Calendar.current.date(byAdding: .day, value: -6, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+        let start = weekStart.timeIntervalSince1970
+        let oldest = recent.last?.createdAt ?? .infinity
+        if !reachedLimit || oldest < start {
+            weekOrderListener?.remove()
+            weekOrderListener = nil
+            weekOrders = recent.filter { $0.createdAt >= start }
+            return
+        }
+        guard weekOrderListener == nil else { return }
+        weekOrderListener = db.collection("orders")
+            .whereField("createdAt", isGreaterThanOrEqualTo: Timestamp(date: weekStart))
+            .order(by: "createdAt", descending: true)
+            .limit(to: 1000)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self, let docs = snapshot?.documents, error == nil else { return }
+                let decoder = Firestore.Decoder()
+                let list: [Order] = docs.compactMap { doc in
+                    var data = doc.data()
+                    data["id"] = (data["id"] as? String) ?? doc.documentID
+                    return try? decoder.decode(Order.self, from: data)
+                }
+                Task { @MainActor in
+                    self.weekOrders = list
+                }
+            }
+    }
+
     private var weekSales: [Order] { weekOrders.filter { $0.status.stage != .cancelled } }
 
     private func orders(on day: Date) -> [Order] {

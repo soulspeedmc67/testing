@@ -112,3 +112,55 @@ function dashit_push_to(array $account, array $rows, string $app, string $title,
     }
     return $sent;
 }
+
+/**
+ * Updates (or, once delivered or cancelled, ends) the shopper's lock-screen
+ * order card through Apple's Live Activity push, sent via FCM. The card
+ * counts its minutes down by itself, so it only needs a push when the stage
+ * changes. Fields match DASHitOrderAttributes.ContentState in the iPhone app;
+ * dates are seconds since 2001-01-01, as Apple decodes them.
+ */
+function dashit_push_live_activity(array $account, string $fcmToken, string $activityToken, array $order, string $stage): void
+{
+    $access = dashit_google_access_token($account);
+    $project = (string) ($account['project_id'] ?? '');
+    if ($access === null || $project === '') return;
+
+    $status = ['placed' => 'placed', 'packing' => 'packing', 'on_the_way' => 'out_for_delivery',
+        'delivered' => 'delivered', 'cancelled' => 'cancelled'][$stage];
+    $progress = ['placed' => 0.12, 'packing' => 0.34, 'on_the_way' => 0.58, 'delivered' => 1.0, 'cancelled' => 0.0][$stage];
+    $now = time();
+    $created = strtotime((string) ($order['createdAt'] ?? '')) ?: $now;
+    $eta = max(1, (int) ($order['etaMinutes'] ?? 8));
+    // Promised arrival with the shown 3-minute margin; never sooner than 5 minutes from now while riding.
+    $arrival = max($created + $eta * 60, $stage === 'on_the_way' ? $now + 5 * 60 : 0) + 3 * 60;
+    $state = [
+        'status' => $status,
+        'etaMinutes' => max(1, (int) ceil(($arrival - $now) / 60)),
+        'progress' => $progress,
+        'estimatedArrival' => $arrival - 978307200,
+    ];
+    $rider = trim((string) ($order['driverName'] ?? ''));
+    if ($rider !== '') $state['driverName'] = $rider;
+
+    $finished = $stage === 'delivered' || $stage === 'cancelled';
+    $aps = ['timestamp' => $now, 'event' => $finished ? 'end' : 'update', 'content-state' => $state];
+    if ($finished) $aps['dismissal-date'] = $now + 15 * 60;
+
+    [$code, $reply] = dashit_firestore_request(
+        'POST',
+        'https://fcm.googleapis.com/v1/projects/' . rawurlencode($project) . '/messages:send',
+        $access,
+        ['message' => [
+            'token' => $fcmToken,
+            'apns' => [
+                'live_activity_token' => $activityToken,
+                'headers' => ['apns-priority' => '10', 'apns-push-type' => 'liveactivity', 'apns-topic' => 'com.dashit.app.push-type.liveactivity'],
+                'payload' => ['aps' => $aps],
+            ],
+        ]]
+    );
+    if ($code < 200 || $code >= 300) {
+        error_log("DASHit push: live activity update refused (HTTP $code): " . ($reply['error']['message'] ?? ''));
+    }
+}

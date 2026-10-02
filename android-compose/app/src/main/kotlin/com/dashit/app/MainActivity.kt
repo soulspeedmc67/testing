@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         com.dashit.app.data.AddressBook.init(this)
         // Signed-in shopper, their orders and the store's open/closed switch.
         AuthRepository.init(this)
+        com.dashit.app.data.Push.init(this)
         // Order notifications by push, for whoever is signed in (again after each sign-in).
         lifecycleScope.launch {
             AuthRepository.user.collect { user -> if (user != null) com.dashit.app.data.Push.register() }

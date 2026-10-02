@@ -47,11 +47,10 @@ if ($stage === 'cancelled' && (str_starts_with($reason, 'replaced') || str_start
     dashit_respond(200, ['stage' => $stage, 'sent' => 0]);
 }
 // Once per order and status: a second ask (or a retry) sends nothing more.
-$markPath = "pushSent/{$orderId}_{$stage}";
-if (dashit_firestore_get($account, $markPath) !== null) {
+// Created only if new: one write, no read.
+if (!dashit_firestore_create_once($account, "pushSent/{$orderId}_{$stage}", ['orderId' => $orderId, 'stage' => $stage, 'at' => new DateTimeImmutable()])) {
     dashit_respond(200, ['stage' => $stage, 'already' => true]);
 }
-dashit_firestore_set($account, $markPath, ['orderId' => $orderId, 'stage' => $stage, 'at' => new DateTimeImmutable()]);
 
 $code = (string) ($order['otp'] ?? '');
 $total = (int) round((float) ($order['total'] ?? $order['totalAmount'] ?? 0));
@@ -74,6 +73,15 @@ $sent = 0;
 if ($owner !== '' && !($stage === 'placed' && $replaces !== '')) {
     $sent += dashit_push_to($account, dashit_firestore_where($account, 'pushTokens', 'uid', $owner), 'customer', $shopper[0], $shopper[1], $data);
 }
+// The lock-screen order card on the shopper's iPhone, kept current while the
+// app is closed. Its push address is saved on the order (push/activity.php),
+// which was read above anyway: no extra reads.
+$liveToken = (string) ($order['liveActivityToken'] ?? '');
+$liveFcm = (string) ($order['liveActivityFcm'] ?? '');
+if ($liveToken !== '' && $liveFcm !== '') {
+    dashit_push_live_activity($account, $liveFcm, $liveToken, $order, $stage);
+}
+
 if ($stage === 'placed' || $stage === 'cancelled') {
     $title = $stage === 'cancelled' ? 'Order cancelled' : ($replaces !== '' ? 'Order updated' : 'New order');
     $text = $stage === 'placed'
