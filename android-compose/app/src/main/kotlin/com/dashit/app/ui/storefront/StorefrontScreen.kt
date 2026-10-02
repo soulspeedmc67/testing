@@ -118,6 +118,17 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Animatable
 import com.dashit.app.ui.cart.CartSheet
 import com.dashit.app.ui.categories.CategoriesScreen
 import com.dashit.app.ui.checkout.CheckoutSheet
@@ -209,7 +220,12 @@ fun StorefrontScreen(
     var pinStart by remember { mutableStateOf<PinStart?>(null) }
     var addressAnchor by remember { mutableStateOf<Rect?>(null) }
     // Search grows out of the search bar, so it zooms from where it was tapped.
-    var searchBarY by remember { mutableStateOf(0f) }
+    // Where the feed's search bar is, kept without state so scrolling doesn't recompose.
+    val searchBar = remember { SearchBarBounds() }
+    // The search page grows out of the bar (0) to the whole screen (1) and back.
+    val searchZoom = remember { Animatable(0f) }
+    var isSearchShown by remember { mutableStateOf(false) }
+    var searchFrom by remember { mutableStateOf(Rect.Zero) }
     var screenHeight by remember { mutableStateOf(1f) }
     val isAddressSheetOpen = isAddressMenuOpen || isAddressSearchOpen || pinStart != null
     // Full-page search over the home feed; the tab bar steps aside while it's open.
@@ -358,7 +374,7 @@ fun StorefrontScreen(
                 ) {
                     // Search Bar
                     SearchBarField(
-                        modifier = Modifier.onGloballyPositioned { searchBarY = it.boundsInWindow().center.y },
+                        modifier = Modifier.onGloballyPositioned { searchBar.rect = it.boundsInWindow() },
                         onOpen = {
                             HapticsManager.light(view)
                             isSearchOpen = true
@@ -571,38 +587,72 @@ fun StorefrontScreen(
     }
 }
 
-        // Search fades and rises in over the page, which stays where it was (so
-        // closing search returns to the same place in the feed).
-        AnimatedVisibility(
-            visible = isSearchOpen && !isProfileOpen && trackingOrderId == null,
-            enter = fadeIn(tween(180)) + scaleIn(
-                androidx.compose.animation.core.spring(dampingRatio = 0.86f, stiffness = 380f),
-                initialScale = 0.88f,
-                transformOrigin = TransformOrigin(0.5f, (searchBarY / screenHeight).coerceIn(0f, 1f))
-            ),
-            exit = fadeOut(tween(160)) + scaleOut(
-                tween(200, easing = androidx.compose.animation.core.FastOutLinearInEasing),
-                targetScale = 0.92f,
-                transformOrigin = TransformOrigin(0.5f, (searchBarY / screenHeight).coerceIn(0f, 1f))
-            )
-        ) {
-            // Opaque and swallowing touches, so nothing underneath reacts.
+        // Search grows out of the bar that was tapped into the whole screen, and
+        // folds back into it; the feed underneath stays where it was.
+        LaunchedEffect(isSearchOpen) {
+            if (isSearchOpen) {
+                searchFrom = searchBar.rect
+                isSearchShown = true
+                searchZoom.animateTo(1f, tween(460, easing = SearchZoomEasing))
+            } else if (isSearchShown) {
+                searchFrom = searchBar.rect
+                searchZoom.animateTo(0f, tween(380, easing = SearchZoomEasing))
+                isSearchShown = false
+            }
+        }
+        if (isSearchShown && !isProfileOpen && trackingOrderId == null) {
+            val statusTop = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
+            var origin by remember { mutableStateOf(Offset.Zero) }
+            // The panel: from the bar's rounded rectangle to the screen, fading in
+            // over the first quarter so the bar hands over without a flash.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onGloballyPositioned { origin = it.positionInWindow() }
+                    .graphicsLayer {
+                        val p = searchZoom.value
+                        val bar = searchBarRect(searchFrom, origin, statusTop)
+                        val panel = Rect(
+                            bar.left * (1 - p),
+                            bar.top * (1 - p),
+                            bar.right + (size.width - bar.right) * p,
+                            bar.bottom + (size.height - bar.bottom) * p
+                        )
+                        val radius = 16.dp.toPx() * (1 - p)
+                        shape = object : Shape {
+                            override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
+                                Outline.Rounded(RoundRect(panel, CornerRadius(radius)))
+                        }
+                        clip = true
+                        alpha = (p / 0.25f).coerceAtMost(1f)
+                    }
                     .background(DashitColors.Surface)
+                    // Opaque and swallowing touches, so nothing underneath reacts.
                     .pointerInput(Unit) { detectTapGestures { } }
             ) {
-                SearchScreen(
-                    products = allProducts,
-                    tobaccoProducts = tobaccoProducts,
-                    categories = categories,
-                    cartItems = cartItems,
-                    onOpenProduct = { detailProduct = it },
-                    onAdd = { cartVm.add(it) },
-                    onDecrement = { cartVm.decrementLatest(it.id) },
-                    onClose = { isSearchOpen = false }
-                )
+                // The page rides with the panel: its field starts where the tapped
+                // bar was and settles in its place at the top.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            val p = searchZoom.value
+                            val bar = searchBarRect(searchFrom, origin, statusTop)
+                            translationX = (bar.left - 48.dp.toPx()) * (1 - p)
+                            translationY = (bar.top - (statusTop + 6.dp.toPx())) * (1 - p)
+                        }
+                ) {
+                    SearchScreen(
+                        products = allProducts,
+                        tobaccoProducts = tobaccoProducts,
+                        categories = categories,
+                        cartItems = cartItems,
+                        onOpenProduct = { detailProduct = it },
+                        onAdd = { cartVm.add(it) },
+                        onDecrement = { cartVm.decrementLatest(it.id) },
+                        onClose = { isSearchOpen = false }
+                    )
+                }
             }
         }
 
@@ -1062,4 +1112,25 @@ private fun getCategoryIcon(name: String): ImageVector {
         "sweets & chocolates", "bakery" -> Icons.Default.Cake
         else -> Icons.Default.GridView
     }
+}
+
+/** The feed search bar's bounds in the window, written on every layout. */
+private class SearchBarBounds {
+    var rect: Rect = Rect.Zero
+}
+
+/** Quick to leave, long to settle: Material's emphasized curve. */
+private val SearchZoomEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+/**
+ * The tapped bar inside the search overlay's own coordinates. The bounds
+ * include the bar's 16 dp side margins; without bounds yet, the bar's place
+ * at the top of the feed.
+ */
+private fun androidx.compose.ui.unit.Density.searchBarRect(from: Rect, origin: Offset, statusTop: Float): Rect {
+    val inset = 16.dp.toPx()
+    if (from == Rect.Zero) {
+        return Rect(inset, statusTop + 6.dp.toPx(), inset + 300.dp.toPx(), statusTop + 54.dp.toPx())
+    }
+    return Rect(from.left + inset - origin.x, from.top - origin.y, from.right - inset - origin.x, from.bottom - origin.y)
 }
