@@ -20,7 +20,7 @@ struct OrderStatusPill: View {
         guard let tracking else { return order.etaMinutes ?? 8 }
         let door = order.deliveryAddress.coordinate
         let metres = DeliveryEta.haversineKm(from: tracking.coordinate, to: door) * 1000 * 1.3
-        return max(1, Int((metres / 5.5 / 60).rounded(.up)))
+        return max(1, Int((metres / 5.5 / 60).rounded(.up))) + LiveTrackingViewModel.shownMarginMinutes
     }
 
     /// Short, so nothing is cut off: no rider name here.

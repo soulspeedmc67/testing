@@ -48,13 +48,17 @@ class RouteProgress(
             return ((1 - left / total) * 100).coerceIn(0.0, 100.0)
         }
 
-    /** Whole minutes left (at least 1), from the road left and the rider's pace. */
+    /**
+     * Minutes to show the shopper: the road left at the rider's pace, plus a
+     * few minutes' margin (parking, stairs, finding the door), so the promise
+     * is one the store keeps.
+     */
     fun etaMinutes(riderSpeedMps: Double?): Int? {
         val left = remainingMeters ?: return null
         // A town average of ~20 km/h, nudged by how fast the rider is moving right now.
         val average = 5.5
         val speed = if (riderSpeedMps != null && riderSpeedMps > 2.0) 0.6 * average + 0.4 * min(riderSpeedMps, 12.0) else average
-        return max(1, kotlin.math.ceil(left / speed / 60.0).toInt())
+        return max(1, kotlin.math.ceil(left / speed / 60.0).toInt()) + SHOWN_MARGIN_MINUTES
     }
 
     /** "650 m away", "1.2 km away" or "Arriving now". */
@@ -131,6 +135,9 @@ fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgr
     }
     return RouteProgress(path, isRoad, remaining, total, snapped?.point ?: riderPoint, roadBearing)
 }
+
+/** Added to every live arrival time the shopper sees. */
+const val SHOWN_MARGIN_MINUTES = 3
 
 /** How far off the road a fix can be and still count as on it. */
 private const val SNAP_METERS = 45.0

@@ -59,6 +59,67 @@ const TELEMETRY_PUSH_INTERVAL_MS = 20000;
 /** Shortest gap while riding. */
 const TELEMETRY_MIN_INTERVAL_MS = 4000;
 
+/** The first part of the address ("Court Road"), as riders know the town by its areas. */
+function areaOf(order) {
+  return (
+    order?.userAddress?.area ||
+    (order?.location?.address || "").split(",").map((p) => p.trim()).find((p) => p && !/^\d+$/.test(p) && !/anantnag/i.test(p)) ||
+    order?.userAddress?.city ||
+    "Anantnag"
+  );
+}
+
+/** Where an order is dropped: its saved pin, or the town centre if it has none. */
+function dropPoint(order) {
+  const loc = order?.location || {};
+  const lat = Number(loc.lat ?? loc.latitude ?? order?.userAddress?.coords?.lat);
+  const lng = Number(loc.lng ?? loc.longitude ?? order?.userAddress?.coords?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && lat !== 0) return { latitude: lat, longitude: lng };
+  // No pin: the area named in the address, from the town's known localities.
+  const area = (order?.userAddress?.area || order?.userAddress?.city || areaOf(order) || "").toLowerCase();
+  const match = area
+    ? ANANTNAG_LOCALITIES.find(
+        (l) => l.name.toLowerCase().includes(area) || l.area.toLowerCase().includes(area) || l.aliases?.some((x) => area.includes(x))
+      )
+    : null;
+  return match ? { latitude: match.lat, longitude: match.lng } : { latitude: 33.729, longitude: 75.155 };
+}
+
+/**
+ * The order to visit `stops` ({ id, at }) from `start` riding the least: every
+ * order tried for up to 7 stops, nearest-next beyond that.
+ */
+function bestStopOrder(start, stops) {
+  const leg = (a, b) => metresBetween(a, b);
+  if (stops.length > 7) {
+    const left = [...stops];
+    const route = [];
+    let here = start;
+    while (left.length) {
+      left.sort((a, b) => leg(here, a.at) - leg(here, b.at));
+      const next = left.shift();
+      route.push(next);
+      here = next.at;
+    }
+    return route;
+  }
+  let best = stops;
+  let bestLength = Infinity;
+  const tryFrom = (here, done, left, length) => {
+    if (length >= bestLength) return;
+    if (!left.length) {
+      best = done;
+      bestLength = length;
+      return;
+    }
+    left.forEach((stop, i) => {
+      tryFrom(stop.at, [...done, stop], left.filter((_, j) => j !== i), length + leg(here, stop.at));
+    });
+  };
+  tryFrom(start, [], stops, 0);
+  return best;
+}
+
 /** Straight-line metres between two { latitude, longitude } points. */
 function metresBetween(a, b) {
   const toRad = (d) => (d * Math.PI) / 180;
@@ -591,8 +652,30 @@ export default function DashItDriverApp() {
     };
   }, [user?.uid, isPendingApproval]);
 
-  // Current active order
-  const activeOrder = assignedOrders[activeQueueIndex] || assignedOrders[0] || null;
+  /* With several orders, the stops in the order that rides the least: every
+     order tried (up to 7 stops, fewer than 5,040 orders to try), road distance
+     taken as 1.3 times the straight line, starting from where the rider is.
+     Planned once per set of orders, so stops never reshuffle mid-ride. */
+  // Where the rider is (GPS, see section 6); the store until the first fix.
+  const [currentCoords, setCurrentCoords] = useState(DARK_STORE_HUB);
+  const planRef = useRef({ key: "", ids: [] });
+  const plannedOrders = useMemo(() => {
+    if (assignedOrders.length < 2) return assignedOrders;
+    const idOf = (o) => String(o.orderId || o.id);
+    const key = assignedOrders.map(idOf).sort().join("|");
+    if (planRef.current.key !== key) {
+      const start = { latitude: currentCoords.latitude, longitude: currentCoords.longitude };
+      const stops = assignedOrders.map((o) => ({ id: idOf(o), at: dropPoint(o) }));
+      planRef.current = { key, ids: bestStopOrder(start, stops).map((s) => s.id) };
+    }
+    const rank = new Map(planRef.current.ids.map((id, i) => [id, i]));
+    return [...assignedOrders].sort((a, b) => (rank.get(idOf(a)) ?? 99) - (rank.get(idOf(b)) ?? 99));
+    // currentCoords only matters when a new set of orders is planned.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedOrders]);
+
+  // Current active order: the stop picked in the strip, else the first stop of the plan.
+  const activeOrder = plannedOrders[activeQueueIndex] || plannedOrders[0] || null;
 
   // 5. Delivery Workflow States
   // 'waiting' | 'new_order' | 'en_route' | 'cash_collection' | 'code_entry' | 'done'
@@ -651,7 +734,6 @@ export default function DashItDriverApp() {
   }, [activeOrder?.orderId, activeOrder?.id]);
 
   // 6. GPS Tracking - ALWAYS ON when onDuty is true, silently broadcasting telemetry in background
-  const [currentCoords, setCurrentCoords] = useState(DARK_STORE_HUB);
   const lastPushTimestampRef = useRef(0);
   const lastPushedCoordsRef = useRef(null);
   const watchPositionIdRef = useRef(null);
@@ -719,26 +801,7 @@ export default function DashItDriverApp() {
   }, [onDuty, startGps, stopGps]);
 
   // 7. Embedded Google Maps Target Resolution & Live Directions URL
-  const targetCoords = useMemo(() => {
-    if (!activeOrder) return DARK_STORE_HUB;
-    if (activeOrder.location?.lat && activeOrder.location?.lng) {
-      return { latitude: Number(activeOrder.location.lat), longitude: Number(activeOrder.location.lng) };
-    }
-    if (activeOrder.location?.latitude && activeOrder.location?.longitude) {
-      return { latitude: Number(activeOrder.location.latitude), longitude: Number(activeOrder.location.longitude) };
-    }
-    if (activeOrder.userAddress?.coords?.lat && activeOrder.userAddress?.coords?.lng) {
-      return { latitude: Number(activeOrder.userAddress.coords.lat), longitude: Number(activeOrder.userAddress.coords.lng) };
-    }
-    const area = (activeOrder.userAddress?.area || activeOrder.userAddress?.city || "").toLowerCase();
-    const match = ANANTNAG_LOCALITIES.find(
-      (l) => l.name.toLowerCase().includes(area) || l.area.toLowerCase().includes(area) || l.aliases?.some((a) => area.includes(a))
-    );
-    if (match) {
-      return { latitude: match.lat, longitude: match.lng };
-    }
-    return { latitude: 33.7290, longitude: 75.1550 };
-  }, [activeOrder]);
+  const targetCoords = useMemo(() => (activeOrder ? dropPoint(activeOrder) : DARK_STORE_HUB), [activeOrder]);
 
   const targetLat = targetCoords.latitude;
   const targetLng = targetCoords.longitude;
@@ -756,6 +819,8 @@ export default function DashItDriverApp() {
     }
     return mapOriginRef.current;
   }, [currentCoords.latitude, currentCoords.longitude, targetLat, targetLng]);
+  // The route to this stop only: the embedded map can't draw a route through
+  // several stops. The strip above it shows the order of all of them.
   const googleMapsEmbedUrl = useMemo(() => {
     const origin = `${mapOrigin.latitude},${mapOrigin.longitude}`;
     const dest = `${targetLat},${targetLng}`;
@@ -869,7 +934,8 @@ export default function DashItDriverApp() {
           setEnteredCode("");
           // Advance queue index if more orders
           if (assignedOrders.length > 1) {
-            setActiveQueueIndex((prev) => (prev + 1) % assignedOrders.length);
+            // The delivered order leaves the list; the next stop is now first.
+            setActiveQueueIndex(0);
           }
         }, 2500);
       }
@@ -884,12 +950,7 @@ export default function DashItDriverApp() {
   const isCOD = activeOrder && isCashOnDelivery(activeOrder);
   const orderTotal = activeOrder?.totalAmount || activeOrder?.total || 0;
   const bagCount = activeOrder?.items?.length || 1;
-  // The first part of the address ("Court Road"), as riders know the town by its areas.
-  const areaName =
-    activeOrder?.userAddress?.area ||
-    (activeOrder?.location?.address || "").split(",").map((p) => p.trim()).find((p) => p && !/^\d+$/.test(p) && !/anantnag/i.test(p)) ||
-    activeOrder?.userAddress?.city ||
-    "Anantnag";
+  const areaName = areaOf(activeOrder);
 
   function isCashOnDelivery(ord) {
     if (!ord) return true;
@@ -1356,33 +1417,46 @@ export default function DashItDriverApp() {
         </div>
       </div>
 
-      {/* More than one order: big numbers, one per order. Amber is new, blue is on the way. */}
-      {assignedOrders.length > 1 && (
-        <div className="bg-slate-900 px-4 pb-3 flex items-center gap-3 overflow-x-auto no-scrollbar shrink-0">
-          {assignedOrders.map((ord, idx) => {
-            const isSelected = idx === activeQueueIndex;
-            const isOut = ord.status === ORDER_STATUS.OUT_FOR_DELIVERY;
-            return (
-              <button
-                key={ord.orderId || ord.id || idx}
-                type="button"
-                aria-label={`${idx + 1}`}
-                onClick={() => {
-                  setActiveQueueIndex(idx);
-                  setReachedDoor(false);
-                  setCashCollected(false);
-                  setEnteredCode("");
-                }}
-                className={"shrink-0 w-14 h-14 rounded-2xl font-black text-2xl tabular-nums flex items-center justify-center border-2 active:scale-95 transition-transform " + (
-                  isSelected
-                    ? (isOut ? "bg-sky-600 border-sky-300 text-white" : "bg-amber-500 border-amber-200 text-slate-950")
-                    : (isOut ? "bg-sky-500/15 border-sky-500/40 text-sky-300" : "bg-amber-500/15 border-amber-500/40 text-amber-300")
-                )}
-              >
-                {idx + 1}
-              </button>
-            );
-          })}
+      {/* More than one order: the stops in the best order, each a big number
+          and its area. The first is where to go now; tap any to see it. */}
+      {plannedOrders.length > 1 && (
+        <div className="bg-slate-900 pb-3 shrink-0">
+          <p className="px-4 pb-2 text-[12px] font-bold text-emerald-300 flex items-center gap-1.5">
+            <Navigation className="w-3.5 h-3.5" />
+            {strings.bestOrder}
+          </p>
+          <div className="px-4 flex items-stretch gap-2 overflow-x-auto no-scrollbar">
+            {plannedOrders.map((ord, idx) => {
+              const isSelected = ord === activeOrder;
+              const isOut = ord.status === ORDER_STATUS.OUT_FOR_DELIVERY;
+              return (
+                <button
+                  key={ord.orderId || ord.id || idx}
+                  type="button"
+                  aria-label={`${strings.stop} ${idx + 1}: ${areaOf(ord)}`}
+                  onClick={() => {
+                    setActiveQueueIndex(idx);
+                    setReachedDoor(false);
+                    setCashCollected(false);
+                    setEnteredCode("");
+                  }}
+                  className={"shrink-0 min-w-[112px] max-w-[150px] h-16 rounded-2xl px-3 flex items-center gap-2.5 border-2 text-left active:scale-95 transition-transform " + (
+                    isSelected
+                      ? (isOut ? "bg-sky-600 border-sky-300 text-white" : "bg-amber-500 border-amber-200 text-slate-950")
+                      : "bg-slate-800 border-slate-700 text-slate-200"
+                  )}
+                >
+                  <span className="font-black text-3xl tabular-nums leading-none">{idx + 1}</span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-extrabold leading-tight truncate">{areaOf(ord)}</span>
+                    <span className="block text-[11px] font-semibold opacity-80 leading-tight">
+                      {idx === 0 ? strings.nextStop : `${strings.stop} ${idx + 1}`}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 

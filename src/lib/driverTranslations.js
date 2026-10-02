@@ -8,6 +8,11 @@ export const DRIVER_LANGUAGES = [
 
 export const DRIVER_STRINGS = {
   ur: {
+    stop: "اسٹاپ",
+    nextStop: "پہلے یہاں",
+    thenStop: "پھر",
+    noPhone: "اس آرڈر پر فون نمبر نہیں ہے",
+    bestOrder: "سب سے چھوٹا راستہ",
     langName: "اردو",
     enterPhone: "فون نمبر",
     enterPin: "۴ ہندسوں کا پن",
@@ -45,6 +50,11 @@ export const DRIVER_STRINGS = {
     speechDelivered: "آرڈر ڈیلیور ہو گیا، شکریہ۔",
   },
   hi: {
+    stop: "स्टॉप",
+    nextStop: "पहले यहाँ",
+    thenStop: "फिर",
+    noPhone: "इस ऑर्डर पर फ़ोन नंबर नहीं है",
+    bestOrder: "सबसे छोटा रास्ता",
     langName: "हिंदी",
     enterPhone: "फ़ोन नंबर",
     enterPin: "४ अंकों का पिन",
@@ -82,6 +92,11 @@ export const DRIVER_STRINGS = {
     speechDelivered: "ऑर्डर डिलीवर हो गया।",
   },
   en: {
+    stop: "Stop",
+    nextStop: "Go here first",
+    thenStop: "then",
+    noPhone: "No phone number on this order",
+    bestOrder: "Shortest route",
     langName: "English",
     enterPhone: "Phone",
     enterPin: "4-Digit PIN",
