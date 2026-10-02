@@ -10,6 +10,8 @@ private enum Palette {
     static let brandText = Color(red: 255 / 255, green: 106 / 255, blue: 26 / 255)     // #FF6A1A
     static let success = Color(red: 34 / 255, green: 197 / 255, blue: 94 / 255)        // #22C55E
     static let danger = Color(red: 244 / 255, green: 63 / 255, blue: 94 / 255)         // #F43F5E
+    static let secondary = Color(red: 203 / 255, green: 213 / 255, blue: 225 / 255)    // #CBD5E1
+    static let muted = Color(red: 160 / 255, green: 171 / 255, blue: 192 / 255)        // #A0ABC0
 }
 
 struct DASHitLiveActivityWidget: Widget {
@@ -55,26 +57,94 @@ struct DASHitLiveActivityWidget: Widget {
 
 // MARK: - Lock Screen / banner
 
-/// Two lines and nothing more: where the order is with the time left, and the
-/// scooter riding from the shop to the door.
+/// The stage with the wordmark, a line on what's happening (with the time left
+/// while riding), the scooter on its way, and the order itself underneath:
+/// items and total, and the code for the rider once it's on the way.
 private struct LockScreenLiveActivityView: View {
     let context: ActivityViewContext<DASHitOrderAttributes>
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let journey = Journey(context: context)
+        VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(Journey(context: context).title)
-                    .font(.system(size: 20, weight: .bold))
+                Text(journey.title)
+                    .font(.system(size: 19, weight: .bold))
                     .foregroundColor(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 8)
-                TrailingTime(context: context, size: 20)
+                Wordmark(size: 15)
             }
-            JourneyRail(context: context, markerSize: 26)
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                StatusLine(context: context, journey: journey)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Palette.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer(minLength: 8)
+                if !journey.isLate {
+                    TrailingTime(context: context, size: 17)
+                }
+            }
+            .padding(.top, 3)
+
+            JourneyRail(context: context, markerSize: 24)
+                .padding(.top, 12)
+
+            HStack(spacing: 8) {
+                Text(orderSummary)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(Palette.muted)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                if journey.stage == .onTheWay, let code = context.attributes.deliveryCode, !code.isEmpty {
+                    // What the rider asks for at the door.
+                    (Text("Code ").foregroundColor(Palette.muted) + Text(code).foregroundColor(.white).bold())
+                        .font(.system(size: 13, weight: .medium, design: .monospaced))
+                        .lineLimit(1)
+                }
+            }
+            .padding(.top, 10)
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 18)
+        .padding(.vertical, 16)
+    }
+
+    private var orderSummary: String {
+        let count = context.attributes.itemCount
+        let items = "\(count) item\(count == 1 ? "" : "s")"
+        return "\(items) · ₹\(Int(context.attributes.totalAmount.rounded()))"
+    }
+}
+
+/// One line on what's happening now, under the stage.
+private struct StatusLine: View {
+    let context: ActivityViewContext<DASHitOrderAttributes>
+    let journey: Journey
+
+    var body: some View {
+        if journey.isLate {
+            Text("Your rider is just around the corner")
+        } else {
+            switch journey.stage {
+            case .placed:
+                Text("We've got your order")
+            case .packing:
+                Text(packingLine)
+            case .onTheWay:
+                Text("Arriving by ") + Text(context.state.estimatedArrival, style: .time)
+            case .delivered:
+                Text("Handed over at your door")
+            case .cancelled:
+                Text("This order was cancelled")
+            }
+        }
+    }
+
+    private var packingLine: String {
+        let count = context.attributes.itemCount
+        return count > 0 ? "Packing \(count) item\(count == 1 ? "" : "s") at the store" : "Packing at the store"
     }
 }
 
@@ -218,5 +288,15 @@ private struct StageRing: View {
                 .foregroundColor(.white)
         }
         .frame(width: 22, height: 22)
+    }
+}
+
+/// The brand wordmark, as on the app's header: "dash" in white, "it" in orange.
+private struct Wordmark: View {
+    let size: CGFloat
+
+    var body: some View {
+        (Text("dash").foregroundColor(.white) + Text("it").foregroundColor(Palette.brand))
+            .font(.system(size: size, weight: .black).italic())
     }
 }
