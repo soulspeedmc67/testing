@@ -81,7 +81,10 @@ class CatalogueFile(context: Context) {
                         .apply()
                     true
                 }
-                else -> false
+                else -> {
+                    Log.w(TAG, "Catalogue file answered ${connection.responseCode}")
+                    false
+                }
             }
         } catch (e: Exception) {
             Log.w(TAG, "Catalogue file not reachable", e)
@@ -99,7 +102,10 @@ class CatalogueFile(context: Context) {
             readTimeout = 20_000
         }
         return try {
-            if (connection.responseCode != 200) return false
+            if (connection.responseCode != 200) {
+                Log.w(TAG, "Catalogue changes answered ${connection.responseCode}")
+                return false
+            }
             val data = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
             val changed = data.optJSONArray("products") ?: JSONArray()
             for (i in 0 until changed.length()) {
