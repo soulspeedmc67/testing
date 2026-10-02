@@ -9,10 +9,6 @@ struct CategoryTabsView: View {
     let onSelect: (String?) -> Void
 
     @Namespace private var underlineNamespace
-    /// False only until the launch entrance has played.
-    @State private var isRevealed = LaunchReveal.shared.hasPlayed(Self.revealKey)
-
-    private static let revealKey = "categoryTabs"
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -20,7 +16,6 @@ struct CategoryTabsView: View {
                 tab(title: "All", symbol: "square.grid.2x2", isSelected: selectedCategory == nil) {
                     onSelect(nil)
                 }
-                .slideInFromLeading(index: 0, isShown: isRevealed)
                 ForEach(Array(categories.enumerated()), id: \.element.id) { index, category in
                     tab(
                         title: category.name,
@@ -29,13 +24,11 @@ struct CategoryTabsView: View {
                     ) {
                         onSelect(category.name)
                     }
-                    .slideInFromLeading(index: index + 1, isShown: isRevealed)
                 }
             }
             .padding(.horizontal, 16)
         }
         .animation(.dashitSpring, value: selectedCategory)
-        .launchReveal(Self.revealKey, isReady: !categories.isEmpty, isShown: $isRevealed)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Color.hairline)

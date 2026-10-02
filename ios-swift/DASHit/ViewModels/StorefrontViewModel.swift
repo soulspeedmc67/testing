@@ -124,7 +124,9 @@ final class CatalogueStore: ObservableObject {
     /// plays in Core Animation and can't be slowed by it), so the feed is ready
     /// when the splash lifts rather than being laid out as it does.
     private func commit() {
-        let products = latestProducts
+        // Sold-out items never lead a list: they go after everything in stock,
+        // and every list below is built from this order.
+        let products = latestProducts.filter(\.isAvailable) + latestProducts.filter { !$0.isAvailable }
         let remote = latestRemote
         // Categories can arrive before products: keep the skeletons up until there are products.
         guard !products.isEmpty else { return }

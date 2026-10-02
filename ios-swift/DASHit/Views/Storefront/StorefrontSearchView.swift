@@ -81,7 +81,6 @@ struct StorefrontSearchView: View {
         }
         .onAppear {
             // Straight into typing, unless this opened on a finished search (voice).
-            // Together with the fade, so the keyboard rises with the page, not after it.
             if !isShowingResults {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { isFieldFocused = true }
             }
