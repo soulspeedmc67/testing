@@ -108,6 +108,18 @@ object AppReveal {
 
     val canPlay: Boolean get() = isRevealed || !coversLaunch
 
+    /**
+     * True once the shop's home screen has its products on screen. The splash
+     * holds its finished logo until then, so the letters and the hand-over
+     * play on a main thread that isn't busy building the feed.
+     */
+    var isHomeReady by mutableStateOf(false)
+        private set
+
+    fun homeReady() {
+        isHomeReady = true
+    }
+
     fun reveal() {
         isRevealed = true
     }

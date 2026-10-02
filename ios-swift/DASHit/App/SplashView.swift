@@ -22,14 +22,12 @@ struct SplashView: View {
     var onFinish: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var backdropOpacity: Double = 1
 
     var body: some View {
-        ZStack {
-            Color("LaunchBackground")
-                .opacity(backdropOpacity)
-            SplashLockup(reduceMotion: reduceMotion)
-        }
+        // Backdrop and lockup are both Core Animation layers, fading on the
+        // render server, so the hand-over to the shop stays smooth however
+        // busy the app is at that moment.
+        SplashLockup(reduceMotion: reduceMotion)
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -44,10 +42,7 @@ struct SplashView: View {
         onLogoBuilt()
         try? await Task.sleep(for: .seconds(reduced ? 0.6 : t.exit - t.logoBuilt + 0.08))
         onReveal()
-        withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.38)) {
-            backdropOpacity = 0
-        }
-        try? await Task.sleep(for: .seconds(0.42))
+        try? await Task.sleep(for: .seconds(0.46))
         onFinish()
     }
 }
@@ -95,6 +90,8 @@ final class SplashLockupView: UIView {
     private static let easeInOut = CAMediaTimingFunction(controlPoints: 0.65, 0, 0.35, 1)
 
     private let reduceMotion: Bool
+    /// The launch screen's midnight, fading away onto the shop at the end.
+    private let backdrop = CALayer()
     /// Everything; lifts and fades away at the end.
     private let lockup = CALayer()
     /// The logo; tucks left and shrinks.
@@ -117,6 +114,8 @@ final class SplashLockupView: UIView {
 
     private func build() {
         let scale = UIScreen.main.scale
+        backdrop.backgroundColor = UIColor(named: "LaunchBackground")?.cgColor ?? UIColor.black.cgColor
+        layer.addSublayer(backdrop)
         layer.addSublayer(lockup)
         lockup.addSublayer(logoTuck)
         logoTuck.addSublayer(logoReveal)
@@ -160,6 +159,7 @@ final class SplashLockupView: UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         lockup.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        backdrop.frame = bounds
         CATransaction.commit()
     }
 
@@ -182,6 +182,7 @@ final class SplashLockupView: UIView {
         fade.keyTimes = [0, 0.25, 0.75, 1]
         fade.duration = 1.2
         lockup.add(fade, forKey: "still")
+        self.fade(backdrop, from: 1, to: 0, at: CACurrentMediaTime() + 0.9, duration: 0.38, timing: Self.easeOut, holdBefore: true)
     }
 
     private static var tucked: CATransform3D {
@@ -225,6 +226,7 @@ final class SplashLockupView: UIView {
 
         // The lockup is shown throughout, then 3. lifts away and fades.
         fade(lockup, from: 1, to: 0, at: start + t.exit, duration: 0.32, timing: Self.easeIn, holdBefore: true)
+        fade(backdrop, from: 1, to: 0, at: start + t.exit + 0.08, duration: 0.38, timing: Self.easeOut, holdBefore: true)
         scale(lockup, from: 1, to: 1.08, at: start + t.exit, duration: 0.32, timing: Self.easeIn)
     }
 

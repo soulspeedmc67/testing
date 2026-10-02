@@ -118,10 +118,11 @@ final class CatalogueStore: ObservableObject {
 
     private static func key(_ name: String) -> String { CatalogueDerive.key(name) }
 
-    /// Works the home feed out away from the main thread, waits for the launch
-    /// splash to clear (building it under the splash's animation made the logo
-    /// stutter), then swaps the products and everything derived from them in at
-    /// once, so a screen never sees one without the other.
+    /// Works the home feed out away from the main thread, then swaps the
+    /// products and everything derived from them in at once, so a screen never
+    /// sees one without the other. At launch this lands under the splash (which
+    /// plays in Core Animation and can't be slowed by it), so the feed is ready
+    /// when the splash lifts rather than being laid out as it does.
     private func commit() {
         let products = latestProducts
         let remote = latestRemote
@@ -132,10 +133,6 @@ final class CatalogueStore: ObservableObject {
             let derived = await Task.detached(priority: .userInitiated) {
                 CatalogueDerive.derive(products: products, remote: remote)
             }.value
-            while !AppReveal.shared.canPlay {
-                try? await Task.sleep(for: .milliseconds(50))
-                if Task.isCancelled { return }
-            }
             guard !Task.isCancelled, let self else { return }
             self.apply(derived, products: products, remote: remote)
         }
@@ -154,14 +151,16 @@ final class CatalogueStore: ObservableObject {
         remoteCategories = remote
         // Photos the home feed shows first, saved to the phone ahead of time (Wi-Fi only).
         ProductPhotoStore.shared.prefetch(Array(derived.feedPhotos.prefix(300)))
-        // The skeletons cross-fade into the catalogue on its first arrival.
-        if isLoading {
+        // The skeletons cross-fade into the catalogue on its first arrival, when
+        // that's on screen; under the splash it simply appears.
+        if isLoading && AppReveal.shared.isRevealed {
             withAnimation(.easeOut(duration: 0.25)) {
                 products = newProducts
                 isLoading = false
             }
         } else {
             products = newProducts
+            isLoading = false
         }
     }
 
