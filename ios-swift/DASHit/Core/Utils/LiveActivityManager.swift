@@ -49,12 +49,17 @@ final class LiveActivityManager {
         let state = contentState(for: order)
 
         do {
-            let activity = try Activity<DASHitOrderAttributes>.request(
-                attributes: attributes,
-                content: ActivityContent(state: state, staleDate: nil),
-                pushType: nil
-            )
+            let content = ActivityContent(state: state, staleDate: nil)
+            // With a push address, the server keeps the card current while the
+            // app is closed; without one (no push permission yet) the app does.
+            let activity: Activity<DASHitOrderAttributes>
+            if let withPush = try? Activity<DASHitOrderAttributes>.request(attributes: attributes, content: content, pushType: .token) {
+                activity = withPush
+            } else {
+                activity = try Activity<DASHitOrderAttributes>.request(attributes: attributes, content: content, pushType: nil)
+            }
             currentActivity = activity
+            watchPushToken(of: activity)
             #if DEBUG
             print("⚡️ [ActivityKit] Started Live Activity with ID: \(activity.id)")
             #endif
@@ -109,6 +114,21 @@ final class LiveActivityManager {
 
     // MARK: - Private
 
+    /// Activities whose push address is already being passed on to the server.
+    private var watchedTokens = Set<String>()
+
+    /// Hands the card's push address to the server each time iOS gives it one.
+    private func watchPushToken(of activity: Activity<DASHitOrderAttributes>) {
+        guard watchedTokens.insert(activity.id).inserted else { return }
+        let orderId = activity.attributes.orderId
+        Task {
+            for await data in activity.pushTokenUpdates {
+                let hex = data.map { String(format: "%02x", $0) }.joined()
+                Push.shared.registerActivity(orderId: orderId, activityToken: hex)
+            }
+        }
+    }
+
     private func activity(for orderId: String) -> Activity<DASHitOrderAttributes>? {
         if let current = currentActivity, current.attributes.orderId == orderId {
             return current
@@ -119,6 +139,7 @@ final class LiveActivityManager {
             return nil
         }
         currentActivity = running
+        watchPushToken(of: running)
         let state = running.content.state
         lastEta = (orderId: orderId, minutes: state.etaMinutes, arrival: state.estimatedArrival)
         return running

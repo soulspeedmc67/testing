@@ -475,3 +475,18 @@ function dashit_staff_role(array $account, array $claims): array
     if (!is_array($staff) || ($staff['active'] ?? false) !== true) return [false, null];
     return [true, (string) ($staff['role'] ?? '')];
 }
+
+/**
+ * Creates the document at $path only if it doesn't exist yet: true if it was
+ * created, false if it was already there (or the write failed). One write and
+ * no read, where checking first would cost a read.
+ */
+function dashit_firestore_create_once(array $account, string $path, array $fields): bool
+{
+    $endpoint = dashit_firestore_endpoint($account, $path);
+    if ($endpoint === null) return false;
+    $encoded = [];
+    foreach ($fields as $name => $value) $encoded[$name] = dashit_firestore_value($value);
+    [$status] = dashit_firestore_request('PATCH', $endpoint[0] . '?currentDocument.exists=false', $endpoint[1], ['fields' => $encoded]);
+    return $status >= 200 && $status < 300;
+}

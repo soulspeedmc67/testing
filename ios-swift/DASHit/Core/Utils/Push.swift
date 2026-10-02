@@ -22,7 +22,12 @@ final class Push: NSObject {
     /// True once the server has this phone's token: the app's own local
     /// notifications then step aside, so nothing shows twice.
     private(set) var isActive = UserDefaults.standard.bool(forKey: "dashit_push_active")
-    private var lastRegistered: String?
+    /// Account and token last handed to the server, kept across launches so a
+    /// launch with nothing new costs the server no write.
+    private var lastRegistered: String? {
+        get { UserDefaults.standard.string(forKey: "dashit_push_registered") }
+        set { UserDefaults.standard.set(newValue, forKey: "dashit_push_registered") }
+    }
     private var authListener: AuthStateDidChangeListenerHandle?
 
     /// Called at launch: pushes need the APNs token, then the FCM token, then a signed-in account.
@@ -77,6 +82,19 @@ final class Push: NSObject {
         Task {
             guard let user = Auth.auth().currentUser, let idToken = try? await user.getIDToken() else { return }
             _ = await post("notify.php", ["id_token": idToken, "orderId": orderId])
+        }
+    }
+
+    /// The lock-screen order card's push address, saved on the order, so the
+    /// server can keep the card current while the app is closed.
+    func registerActivity(orderId: String, activityToken: String) {
+        Task {
+            guard let user = Auth.auth().currentUser,
+                  let idToken = try? await user.getIDToken(),
+                  let fcm = try? await Messaging.messaging().token() else { return }
+            _ = await post("activity.php", [
+                "id_token": idToken, "orderId": orderId, "activity_token": activityToken, "fcm_token": fcm
+            ])
         }
     }
 

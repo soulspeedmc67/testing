@@ -24,7 +24,19 @@ object Push {
     private const val TAG = "DASHitPush"
     private const val SERVER = "https://dashit.co.in/api/push/"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    /** Account and token last handed to the server, kept across launches (see [init]). */
     private var lastRegistered: Pair<String, String>? = null
+    private var prefs: android.content.SharedPreferences? = null
+
+    /** Remembers what the server already has, so a launch with nothing new costs it no write. */
+    fun init(context: android.content.Context) {
+        prefs = context.applicationContext.getSharedPreferences("dashit_push", android.content.Context.MODE_PRIVATE)
+        val saved = prefs?.getString("registered", null)?.split("|", limit = 2)
+        if (saved?.size == 2) {
+            lastRegistered = saved[0] to saved[1]
+            isActive = true
+        }
+    }
 
     /** True once the server has this phone's token: the app's own local notifications step aside. */
     @Volatile
@@ -45,6 +57,7 @@ object Push {
                     .put("app", "customer"))
                 lastRegistered = uid to fcm
                 isActive = true
+                prefs?.edit()?.putString("registered", "$uid|$fcm")?.apply()
             }.onFailure { Log.w(TAG, "Couldn't register for notifications", it) }
         }
     }
