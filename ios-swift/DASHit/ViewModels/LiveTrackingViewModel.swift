@@ -170,12 +170,20 @@ final class LiveTrackingViewModel: ObservableObject {
             isRoadRoute = false
             return
         }
-        // Once the rider's phone shares a position, the road runs from the rider
-        // (a route from the store while the rider was elsewhere put the rider
-        // and the road in different places).
-        let rider = riderLocation?.coordinate
-        let onTheWay = rider != nil
-        let start = rider ?? DeliveryEta.hub
+        // No road until a rider is assigned and their position is in: a route
+        // drawn from the store before that was wrong as soon as it came. The
+        // store copies the rider's last position onto the order when assigning.
+        guard let rider = riderLocation?.coordinate else {
+            routeTask?.cancel()
+            routePath = []
+            riderOnRoad = nil
+            fullRoute = []
+            remainingMeters = nil
+            isRoadRoute = false
+            return
+        }
+        let onTheWay = true
+        let start = rider
         let destination = order.deliveryAddress.coordinate
 
         showAhead(of: rider, onTheWay: onTheWay)

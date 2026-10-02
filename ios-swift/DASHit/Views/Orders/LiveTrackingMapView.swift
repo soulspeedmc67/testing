@@ -251,15 +251,6 @@ struct LiveTrackingMapView: View {
                         destination: vm.activeOrder?.deliveryAddress.coordinate
                     )
                 }
-            } else if let order = vm.activeOrder, order.status == .packing || order.status == .outForDelivery {
-                // The rider's phone hasn't started sharing its position yet: the rider
-                // waits at the store, facing the door, and moves once it does.
-                Annotation("Delivery partner", coordinate: DeliveryEta.hub, anchor: .center) {
-                    RiderMapMarker(
-                        tracking: DriverLiveTracking(lat: DeliveryEta.hub.latitude, lng: DeliveryEta.hub.longitude),
-                        destination: order.deliveryAddress.coordinate
-                    )
-                }
             }
         }
         .ignoresSafeArea()

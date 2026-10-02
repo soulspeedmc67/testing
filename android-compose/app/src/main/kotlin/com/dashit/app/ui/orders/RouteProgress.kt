@@ -86,19 +86,19 @@ private class FetchState {
 @Composable
 fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgress {
     val destination = order?.deliveryAddress?.let { GeoPoint(it.latitude, it.longitude) }
-    val atStore = order?.status == OrderStatus.PACKING || order?.status == OrderStatus.OUT_FOR_DELIVERY
-    val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
-    // Once the rider's phone shares a position, the road runs from the rider
-    // (a route from the store while the rider was elsewhere put them apart).
-    val start = rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB
+    // No road and no rider until a rider is assigned and their position is in:
+    // a route drawn from the store before that was wrong as soon as it came.
+    val riderPoint = rider?.let { GeoPoint(it.lat, it.lng) }
+    val start = riderPoint
 
     var full by remember { mutableStateOf<List<GeoPoint>>(emptyList()) }
     var isRoad by remember { mutableStateOf(false) }
     var total by remember { mutableStateOf<Double?>(null) }
     val fetch = remember { FetchState() }
 
-    LaunchedEffect(start.latitude, start.longitude, destination?.latitude, destination?.longitude) {
+    LaunchedEffect(start?.latitude, start?.longitude, destination?.latitude, destination?.longitude) {
         val to = destination ?: return@LaunchedEffect
+        val start = start ?: return@LaunchedEffect
         val now = SystemClock.elapsedRealtime()
         val needs = when {
             full.size < 2 || fetch.to != to -> true
@@ -123,10 +123,14 @@ fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgr
         }
     }
 
-    val riding = isRoad && rider != null && riderPoint != null
+    val riding = isRoad && riderPoint != null
     val onRoad = if (riding) nearestOnPath(full, riderPoint!!) else null
     val snapped = onRoad?.takeIf { it.meters <= SNAP_METERS }
-    val path = if (riding) trimToRider(full, riderPoint!!) else full
+    val path = when {
+        riderPoint == null -> emptyList()
+        riding -> trimToRider(full, riderPoint)
+        else -> full
+    }
     val roadBearing = snapped?.let { on -> bearingDegrees(full[on.index], full[on.index + 1]) }
     val remaining = when {
         path.size < 2 -> null

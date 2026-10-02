@@ -629,6 +629,7 @@ private class MapLayers {
     var rider: Marker? = null
     var riderSprite: String? = null
     var framed = false
+    var framedRider = false
     var routedFrom: GeoPoint? = null
     var routedTo: GeoPoint? = null
 }
@@ -642,10 +643,9 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: Rou
     val isRoadRoute = progress.isRoad
 
     val destination = order?.deliveryAddress?.let { GeoPoint(it.latitude, it.longitude) }
-    // The rider's phone shares its position once the delivery starts. Until it does,
-    // the rider waits at the store (while the order is packed or on its way), facing the door.
-    val atStore = order?.status == OrderStatus.PACKING || order?.status == OrderStatus.OUT_FOR_DELIVERY
-    val target = progress.riderPosition ?: rider?.let { GeoPoint(it.lat, it.lng) } ?: HUB.takeIf { atStore }
+    // The rider appears once assigned and their position is in (the store
+    // copies the rider's last position onto the order when assigning).
+    val target = progress.riderPosition ?: rider?.let { GeoPoint(it.lat, it.lng) }
     // The rider glides from one fix to the next instead of jumping every few seconds.
     val glide = remember { Animatable(1f) }
     var from by remember { mutableStateOf(target) }
@@ -750,11 +750,15 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: Rou
                 casing?.setPoints(route)
                 line?.setPoints(route)
                 casing?.isEnabled = isRoadRoute
+                line?.isEnabled = true
                 line?.outlinePaint?.apply {
                     color = if (isRoadRoute) android.graphics.Color.parseColor("#FF5B00") else android.graphics.Color.argb(140, 255, 91, 0)
                     strokeWidth = dp(context, if (isRoadRoute) 5f else 3f)
                     pathEffect = if (isRoadRoute) null else DashPathEffect(floatArrayOf(dp(context, 4f), dp(context, 8f)), 0f)
                 }
+            } else {
+                casing?.isEnabled = false
+                line?.isEnabled = false
             }
             destination?.let { layers.destination?.position = it }
             layers.destination?.isEnabled = destination != null
@@ -775,7 +779,12 @@ private fun TrackingMap(order: Order?, rider: DriverLiveTracking?, progress: Rou
                 riderMarker?.isEnabled = false
             }
 
-            // Frame hub, rider and door once, leaving room for the card below.
+            // Frame hub, rider and door once, leaving room for the card below,
+            // and once more when the rider first appears.
+            if (riderPoint != null && !layers.framedRider) {
+                layers.framed = false
+                layers.framedRider = true
+            }
             if (!layers.framed && destination != null && map.width > 0) {
                 val points = listOfNotNull(HUB, destination, riderPoint)
                 val box = BoundingBox.fromGeoPointsSafe(points)

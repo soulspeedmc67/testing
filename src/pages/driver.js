@@ -736,7 +736,26 @@ export default function DashItDriverApp() {
   // 6. GPS Tracking - ALWAYS ON when onDuty is true, silently broadcasting telemetry in background
   const lastPushTimestampRef = useRef(0);
   const lastPushedCoordsRef = useRef(null);
+  const lastFixRef = useRef(null);
   const watchPositionIdRef = useRef(null);
+  // Read by the GPS callback, so a new order doesn't restart the watcher.
+  const assignedIdsRef = useRef([]);
+  const assignedIds = useMemo(
+    () => assignedOrders.map((o) => o.orderId || o.id).filter(Boolean).map(String),
+    [assignedOrders]
+  );
+  assignedIdsRef.current = assignedIds;
+
+  const sendPosition = useCallback(
+    (coords) => {
+      if (!user?.uid || !coords) return Promise.resolve();
+      lastPushTimestampRef.current = Date.now();
+      lastPushedCoordsRef.current = coords;
+      // One write per order (the queue fan-out) plus the rider's own document.
+      return pushDriverTelemetryToQueue(user.uid, assignedIdsRef.current, coords).catch(() => {});
+    },
+    [user?.uid]
+  );
 
   const startGps = useCallback(() => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
@@ -752,6 +771,7 @@ export default function DashItDriverApp() {
           accuracy: Math.round(pos.coords.accuracy || 0),
         };
         setCurrentCoords(coords);
+        lastFixRef.current = coords;
 
         /* Customers see the rider move, so fixes go out often while riding, and
            rarely while standing still (each one is a billed Firestore write).
@@ -765,20 +785,46 @@ export default function DashItDriverApp() {
         const due =
           (precise && moved >= 12 && since >= TELEMETRY_MIN_INTERVAL_MS) ||
           since >= TELEMETRY_PUSH_INTERVAL_MS;
-        if (due && user?.uid) {
-          lastPushTimestampRef.current = now;
-          lastPushedCoordsRef.current = coords;
-          const activeOrderIds = assignedOrders.map((o) => o.orderId || o.id).filter(Boolean);
-          // One write per order (the queue fan-out) plus the rider's own document.
-          await pushDriverTelemetryToQueue(user.uid, activeOrderIds, coords).catch(() => {});
-        }
+        if (due) await sendPosition(coords);
       },
       (err) => {
         console.warn("GPS error:", err?.message);
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
-  }, [assignedOrders, user?.uid]);
+  }, [sendPosition]);
+
+  /* A newly assigned order has no rider position yet, and the next routine
+     fix can be 20 s away when the rider is standing still, so the customer's
+     map would draw the route from the store first. Send the last fix the
+     moment the order arrives, then a fresh one as soon as GPS answers. */
+  const positionedIdsRef = useRef(new Set());
+  const assignedKey = assignedIds.join(",");
+  useEffect(() => {
+    if (typeof window === "undefined" || window.location.search.includes("preview=")) return;
+    const fresh = assignedIds.filter((id) => !positionedIdsRef.current.has(id));
+    positionedIdsRef.current = new Set(assignedIds);
+    if (!fresh.length || !onDuty || !user?.uid) return;
+    if (lastFixRef.current) sendPosition(lastFixRef.current);
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          heading: pos.coords.heading || 0,
+          speed: pos.coords.speed || 0,
+          accuracy: Math.round(pos.coords.accuracy || 0),
+        };
+        setCurrentCoords(coords);
+        lastFixRef.current = coords;
+        sendPosition(coords);
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignedKey, onDuty, user?.uid]);
 
   const stopGps = useCallback(() => {
     if (typeof window !== "undefined" && navigator.geolocation && watchPositionIdRef.current !== null) {

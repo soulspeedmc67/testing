@@ -813,6 +813,30 @@ public final class AdminDashboardViewModel: ObservableObject {
             "status": "Out for Delivery",
             "dispatchedAt": FieldValue.serverTimestamp()
         ], merge: true, completion: saveThenNotify("Assigning the rider", orderId: orderId))
+        seedRiderPosition(orderId: orderId, driverId: driver.id)
+    }
+
+    /// Puts the rider's last known position (from the last few minutes) on the
+    /// order, so the customer's map starts at the rider instead of drawing the
+    /// route from the store until the rider app's next GPS write. Same as the
+    /// web console: one read, one write.
+    private func seedRiderPosition(orderId: String, driverId: String) {
+        let db = self.db
+        db.collection("drivers").document(driverId).collection("telemetry").document("live").getDocument { snap, _ in
+            guard let t = snap?.data(),
+                  let lat = t["latitude"] as? Double, let lng = t["longitude"] as? Double,
+                  let at = (t["updatedAt"] as? Timestamp)?.dateValue(),
+                  Date().timeIntervalSince(at) < 180 else { return }
+            db.collection("orders").document(orderId).collection("tracking").document("live").setData([
+                "latitude": lat,
+                "longitude": lng,
+                "heading": t["heading"] as? Double ?? 0,
+                "speed": t["speed"] as? Double ?? 0,
+                "accuracy": t["accuracy"] as? Double ?? 0,
+                "driverId": driverId,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+        }
     }
 
     /// Saves a distributor and returns the name to use. A name that's already on

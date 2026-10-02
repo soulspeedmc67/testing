@@ -204,6 +204,9 @@ jobs:
                 [ -d "$appex" ] || continue
                 cp "$WIDGET_PP" "$appex/embedded.mobileprovision"
                 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${BUILD_VER}" "$appex/Info.plist" 2>/dev/null || true
+                # An extension must carry its app's version, or the upload is refused.
+                APP_SHORT_VER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "Payload/$APP_NAME.app/Info.plist")
+                /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${APP_SHORT_VER}" "$appex/Info.plist" 2>/dev/null || true
                 codesign --force --sign "Apple Distribution" --entitlements $RUNNER_TEMP/widget_entitlements.plist --generate-entitlement-der "$appex"
                 echo "Signed $appex"
               done
