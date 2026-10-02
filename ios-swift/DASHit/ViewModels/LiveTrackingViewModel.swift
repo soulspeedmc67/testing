@@ -251,7 +251,7 @@ final class LiveTrackingViewModel: ObservableObject {
     /// Minutes to show the shopper: the road left at the rider's pace, plus a
     /// few minutes' margin (parking, stairs, finding the door), so the promise
     /// is one the store keeps. Same as Android.
-    static let shownMarginMinutes = 3
+    static let shownMarginMinutes = 4
 
     var etaMinutes: Int? {
         guard let left = remainingMeters else { return nil }

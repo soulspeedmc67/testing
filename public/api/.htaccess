@@ -10,7 +10,7 @@
 # PHP starts (see also DASHIT_MAX_BODY_BYTES in _http.php).
 LimitRequestBody 65536
 
-# catalog/build.php is for Hostinger's cron (command line) only.
-<Files "build.php">
+# catalog/build.php and push/tick.php are for Hostinger's cron (command line) only.
+<FilesMatch "^(build|tick)\.php$">
   Require all denied
-</Files>
+</FilesMatch>

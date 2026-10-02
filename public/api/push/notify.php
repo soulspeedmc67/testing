@@ -44,6 +44,7 @@ $stage = dashit_push_stage((string) ($order['status'] ?? ''));
 $replaces = (string) ($order['replacesOrderId'] ?? '');
 $reason = strtolower((string) ($order['cancelReason'] ?? ''));
 if ($stage === 'cancelled' && (str_starts_with($reason, 'replaced') || str_starts_with($reason, 'withdrawn'))) {
+    dashit_live_cards(function (array $cards) use ($orderId) { unset($cards[$orderId]); return $cards; });
     dashit_respond(200, ['stage' => $stage, 'sent' => 0]);
 }
 // Once per order and status: a second ask (or a retry) sends nothing more.
@@ -79,7 +80,7 @@ if ($owner !== '' && !($stage === 'placed' && $replaces !== '')) {
 $liveToken = (string) ($order['liveActivityToken'] ?? '');
 $liveFcm = (string) ($order['liveActivityFcm'] ?? '');
 if ($liveToken !== '' && $liveFcm !== '') {
-    dashit_push_live_activity($account, $liveFcm, $liveToken, $order, $stage);
+    dashit_push_live_activity($account, $liveFcm, $liveToken, $orderId, $order, $stage);
 }
 
 if ($stage === 'placed' || $stage === 'cancelled') {

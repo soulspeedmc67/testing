@@ -123,6 +123,16 @@ Android needs nothing more. iPhone needs Apple's push key, once:
    (`base64 -i profile.mobileprovision | pbcopy`). The admin app's profile
    already includes push.
 
+**Lock-screen order card (iPhone), cron every minute.** The card's scooter
+moves from the shop to the door with the clock, and a card only redraws when it
+gets an update, so `push/tick.php` sends each open card a quiet update once a
+minute. It reads `dashit-data/live-activities.json` (kept by `notify.php` and
+`activity.php`), so it makes no Firestore reads; FCM is free. Set it up like
+the catalogue cron below: hPanel → Cron Jobs → Type **PHP** → command
+`domains/dashit.co.in/public_html/api/push/tick.php` → schedule **Every
+minute** (`* * * * *`) → Save. Without it the card still works, but the scooter
+only moves when the order changes stage. The web gets 404 for `tick.php`.
+
 ## 6. Product list file (catalogue) and its cron job
 
 The shop apps no longer read products from Firestore. They download one file,

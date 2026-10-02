@@ -4,8 +4,9 @@ import ActivityKit
 /// Starts, updates and ends the order Live Activity (Lock Screen + Dynamic Island).
 /// Called from the main actor: checkout, the tracking screen and ActiveOrderStore.
 ///
-/// The activity stays up for as long as the order is in progress: it never goes
-/// stale, it is put back if it disappears (swiped away, or ended by the system)
+/// The activity stays up for as long as the order is in progress. Its stale
+/// date is the arrival time: iOS redraws the card then, and the card shows
+/// "almost there" instead of a countdown stuck at 0:00. It is put back if it disappears (swiped away, or ended by the system)
 /// the next time the app opens or hears about the order, and it only ends once
 /// the order is delivered or cancelled.
 final class LiveActivityManager {
@@ -49,7 +50,7 @@ final class LiveActivityManager {
         let state = contentState(for: order)
 
         do {
-            let content = ActivityContent(state: state, staleDate: nil)
+            let content = ActivityContent(state: state, staleDate: state.estimatedArrival)
             // With a push address, the server keeps the card current while the
             // app is closed; without one (no push permission yet) the app does.
             let activity: Activity<DASHitOrderAttributes>
@@ -93,8 +94,7 @@ final class LiveActivityManager {
             }
         } else {
             Task {
-                // No stale date: the card stays current-looking until the order ends.
-                await activity.update(ActivityContent(state: state, staleDate: nil))
+                await activity.update(ActivityContent(state: state, staleDate: state.estimatedArrival))
             }
         }
     }
@@ -141,7 +141,9 @@ final class LiveActivityManager {
         currentActivity = running
         watchPushToken(of: running)
         let state = running.content.state
-        lastEta = (orderId: orderId, minutes: state.etaMinutes, arrival: state.estimatedArrival)
+        let margin = TimeInterval(LiveTrackingViewModel.shownMarginMinutes * 60)
+        lastEta = (orderId: orderId, minutes: state.etaMinutes - LiveTrackingViewModel.shownMarginMinutes,
+                   arrival: state.estimatedArrival.addingTimeInterval(-margin))
         return running
     }
 
@@ -158,12 +160,14 @@ final class LiveActivityManager {
         }
         lastEta = (orderId: order.id, minutes: minutes, arrival: arrival)
 
+        // The shopper is shown the same extra minutes as in the app.
+        let margin = LiveTrackingViewModel.shownMarginMinutes
         return DASHitOrderAttributes.ContentState(
             status: order.status.rawValue,
-            etaMinutes: minutes,
+            etaMinutes: minutes + margin,
             driverName: order.driverName,
             progress: order.status.stage.progress(live: tracking?.progress),
-            estimatedArrival: arrival
+            estimatedArrival: arrival.addingTimeInterval(TimeInterval(margin * 60))
         )
     }
 }

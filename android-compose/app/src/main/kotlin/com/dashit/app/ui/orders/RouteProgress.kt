@@ -141,7 +141,7 @@ fun rememberRouteProgress(order: Order?, rider: DriverLiveTracking?): RouteProgr
 }
 
 /** Added to every live arrival time the shopper sees. */
-const val SHOWN_MARGIN_MINUTES = 3
+const val SHOWN_MARGIN_MINUTES = 4
 
 /** How far off the road a fix can be and still count as on it. */
 private const val SNAP_METERS = 45.0
