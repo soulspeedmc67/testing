@@ -743,12 +743,24 @@ export default function DashItDriverApp() {
   const targetLat = targetCoords.latitude;
   const targetLng = targetCoords.longitude;
 
-  // Embedded Google Maps Directions URL (from live GPS coords to customer drop)
+  // Embedded Google Maps directions, from where the rider is to the drop.
+  // Every change of address reloads the whole map, so the start point only
+  // moves on when the rider has gone ~500 m (or for a new drop): taking each
+  // GPS fix made the map blink every few seconds.
+  const mapOriginRef = useRef(null);
+  const mapOrigin = useMemo(() => {
+    const prev = mapOriginRef.current;
+    const here = { latitude: currentCoords.latitude, longitude: currentCoords.longitude };
+    if (!prev || prev.dest !== `${targetLat},${targetLng}` || metresBetween(prev, here) > 500) {
+      mapOriginRef.current = { ...here, dest: `${targetLat},${targetLng}` };
+    }
+    return mapOriginRef.current;
+  }, [currentCoords.latitude, currentCoords.longitude, targetLat, targetLng]);
   const googleMapsEmbedUrl = useMemo(() => {
-    const origin = `${currentCoords.latitude},${currentCoords.longitude}`;
+    const origin = `${mapOrigin.latitude},${mapOrigin.longitude}`;
     const dest = `${targetLat},${targetLng}`;
     return `https://maps.google.com/maps?saddr=${origin}&daddr=${dest}&output=embed`;
-  }, [currentCoords.latitude, currentCoords.longitude, targetLat, targetLng]);
+  }, [mapOrigin, targetLat, targetLng]);
 
   // 8. User Actions
   // START Delivery
