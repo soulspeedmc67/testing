@@ -40,8 +40,20 @@ object OrderNotifications {
         ).apply {
             description = "Your order's progress: placed, packed, on the way, delivered"
         }
-        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+        // Messages the shop sends everyone (offers, new items), kept apart so a
+        // shopper can turn these off and still hear about their order.
+        val news = NotificationChannel(
+            NEWS_CHANNEL_ID,
+            "Offers & news",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Offers, new items and news from DASHit"
+        }
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannels(listOf(channel, news))
     }
+
+    /** The "Offers & news" channel; broadcast.php sends to it too. */
+    const val NEWS_CHANNEL_ID = "news"
 
     /** Android 13+ asks for permission; older versions allow it by default. */
     fun needsPermission(context: Context): Boolean =
@@ -89,7 +101,7 @@ object OrderNotifications {
     }
 
     /** A push that arrived while the app is open (the system only shows them itself when it isn't). */
-    fun show(context: Context, title: String, text: String, orderId: String?) {
+    fun show(context: Context, title: String, text: String, orderId: String?, isNews: Boolean = false) {
         if (needsPermission(context)) return
         val open = PendingIntent.getActivity(
             context,
@@ -97,19 +109,19 @@ object OrderNotifications {
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, if (isNews) NEWS_CHANNEL_ID else CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_dashit)
             .setColor(0xFFFF5B00.toInt())
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setCategory(NotificationCompat.CATEGORY_STATUS)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(if (isNews) NotificationCompat.CATEGORY_PROMO else NotificationCompat.CATEGORY_STATUS)
+            .setPriority(if (isNews) NotificationCompat.PRIORITY_DEFAULT else NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(open)
             .build()
         try {
-            NotificationManagerCompat.from(context).notify(orderId ?: "dashit", 0, notification)
+            NotificationManagerCompat.from(context).notify(orderId ?: if (isNews) "news" else "dashit", 0, notification)
         } catch (_: SecurityException) {
         }
     }

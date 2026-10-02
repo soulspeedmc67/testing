@@ -123,6 +123,13 @@ Android needs nothing more. iPhone needs Apple's push key, once:
    (`base64 -i profile.mobileprovision | pbcopy`). The admin app's profile
    already includes push.
 
+**Notify customers.** `push/broadcast.php` sends one message to every shop
+app (Android and iPhone) through the FCM topic `customers`, which the apps join
+themselves and `register.php` also signs each phone up to. One FCM call however
+many customers, no Firestore reads. Admins only, at most 10 in any 24 hours;
+the last 20 are kept in `dashit-data/broadcasts.json`. Android shows them in an
+"Offers & news" channel, separate from order updates.
+
 **Lock-screen order card (iPhone), cron every minute.** The card's scooter
 moves from the shop to the door with the clock, and a card only redraws when it
 gets an update, so `push/tick.php` sends each open card a quiet update once a

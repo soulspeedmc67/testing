@@ -23,6 +23,8 @@ public struct AdminDashboardView: View {
     public var onSignOut: (() -> Void)? = nil
     @State private var isSignOutConfirmOpen = false
     @State private var sidebarSelection: AdminTab? = .home
+    /// "More" stays folded until it's opened.
+    @State private var isMoreOpen = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     public init(onSwitchToCustomer: (() -> Void)? = nil, onSignOut: (() -> Void)? = nil) {
@@ -186,12 +188,20 @@ public struct AdminDashboardView: View {
                 .listRowBackground(Color.clear)
             }
 
-            ForEach(AdminTab.NavGroup.allCases) { group in
-                Section(group.rawValue) {
-                    ForEach(AdminTab.allCases.filter { $0.group == group }) { tab in
-                        NavigationLink(value: tab) {
-                            sidebarRow(tab)
-                        }
+            Section(AdminTab.NavGroup.everyDay.rawValue) {
+                ForEach(AdminTab.allCases.filter { $0.group == .everyDay }) { tab in
+                    NavigationLink(value: tab) {
+                        sidebarRow(tab)
+                    }
+                }
+            }
+            Section(AdminTab.NavGroup.more.rawValue, isExpanded: Binding(
+                get: { isMoreOpen || vm.selectedTab.group == .more },
+                set: { isMoreOpen = $0 }
+            )) {
+                ForEach(AdminTab.allCases.filter { $0.group == .more }) { tab in
+                    NavigationLink(value: tab) {
+                        sidebarRow(tab)
                     }
                 }
             }
@@ -273,6 +283,8 @@ public struct AdminDashboardView: View {
                     addProductDirectContent
                 case .riders:
                     ridersTabContent
+                case .notify:
+                    AdminNotifyView()
                 case .distributors:
                     distributorsTabContent
                 case .storeControls:

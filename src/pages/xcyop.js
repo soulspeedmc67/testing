@@ -26,6 +26,7 @@ import {
 import AdminLayout from "../components/admin/AdminLayout";
 import OrderProcessingView from "../components/admin/OrderProcessingView";
 import DriversView from "../components/admin/DriversView";
+import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
 import BatchInwardView from "../components/admin/BatchInwardView";
@@ -1652,6 +1653,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onNavigateTab={setActiveTab}
         />
       )}
+
+      {activeTab === "notify" && <NotifyCustomersView darkMode={darkMode} showToast={showToast} />}
 
       {activeTab === "inventory" && (
         <InventoryView

@@ -67,6 +67,31 @@ function dashit_push_stage(string $status): string
     return 'placed';
 }
 
+/**
+ * Signs a phone up to an FCM topic (Instance ID API, with the service
+ * account's access token). Best effort: a failure only means that phone
+ * misses broadcasts until the app joins the topic itself.
+ */
+function dashit_push_join_topic(array $account, string $token, string $topic): void
+{
+    $access = dashit_google_access_token($account);
+    if ($access === null) return;
+    $curl = curl_init('https://iid.googleapis.com/iid/v1/' . rawurlencode($token) . '/rel/topics/' . rawurlencode($topic));
+    curl_setopt_array($curl, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => '',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 8,
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $access, 'access_token_auth: true', 'Content-Length: 0'],
+    ]);
+    curl_exec($curl);
+    $code = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+    if ($code < 200 || $code >= 300) {
+        error_log("DASHit push: couldn't add a phone to the $topic topic (HTTP $code)");
+    }
+}
+
 /** Sends one message to one token. Returns 'ok', 'gone' (token no longer valid) or 'failed'. */
 function dashit_push_send(array $account, string $token, string $title, string $text, array $data): string
 {
