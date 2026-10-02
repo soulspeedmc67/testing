@@ -5,6 +5,8 @@
  *   register.php  an app hands over its push token after signing in.
  *   notify.php    after an order changes, the app or console that changed it
  *                 asks for the matching push to go out.
+ *   activity.php  the iPhone app hands over its lock-screen card's address.
+ *   tick.php      cron, every minute: keeps those cards moving.
  *
  * The server writes every message itself from the order's real status, so a
  * caller can't send arbitrary text, and each order/status pair is sent once
@@ -113,27 +115,29 @@ function dashit_push_to(array $account, array $rows, string $app, string $title,
     return $sent;
 }
 
+/** Minutes added to every arrival time the shopper sees (the apps use the same). */
+const DASHIT_SHOWN_MARGIN_MINUTES = 4;
+
 /**
  * Updates (or, once delivered or cancelled, ends) the shopper's lock-screen
- * order card through Apple's Live Activity push, sent via FCM. The card
- * counts its minutes down by itself, so it only needs a push when the stage
- * changes. Fields match DASHitOrderAttributes.ContentState in the iPhone app;
- * dates are seconds since 2001-01-01, as Apple decodes them.
+ * order card through Apple's Live Activity push, sent via FCM. Fields match
+ * DASHitOrderAttributes.ContentState in the iPhone app; dates are seconds
+ * since 2001-01-01, as Apple decodes them.
+ *
+ * The card is also remembered in dashit-data/live-activities.json, so
+ * push/tick.php (cron, every minute) can nudge it along: the scooter on the
+ * card moves with the clock, and a card only redraws when it gets an update.
  */
-function dashit_push_live_activity(array $account, string $fcmToken, string $activityToken, array $order, string $stage): void
+function dashit_push_live_activity(array $account, string $fcmToken, string $activityToken, string $orderId, array $order, string $stage): void
 {
-    $access = dashit_google_access_token($account);
-    $project = (string) ($account['project_id'] ?? '');
-    if ($access === null || $project === '') return;
-
     $status = ['placed' => 'placed', 'packing' => 'packing', 'on_the_way' => 'out_for_delivery',
         'delivered' => 'delivered', 'cancelled' => 'cancelled'][$stage];
     $progress = ['placed' => 0.12, 'packing' => 0.34, 'on_the_way' => 0.58, 'delivered' => 1.0, 'cancelled' => 0.0][$stage];
     $now = time();
     $created = strtotime((string) ($order['createdAt'] ?? '')) ?: $now;
     $eta = max(1, (int) ($order['etaMinutes'] ?? 8));
-    // Promised arrival with the shown 3-minute margin; never sooner than 5 minutes from now while riding.
-    $arrival = max($created + $eta * 60, $stage === 'on_the_way' ? $now + 5 * 60 : 0) + 3 * 60;
+    // Promised arrival with the shown margin; never sooner than 5 minutes from now while riding.
+    $arrival = max($created + $eta * 60, $stage === 'on_the_way' ? $now + 5 * 60 : 0) + DASHIT_SHOWN_MARGIN_MINUTES * 60;
     $state = [
         'status' => $status,
         'etaMinutes' => max(1, (int) ceil(($arrival - $now) / 60)),
@@ -145,8 +149,32 @@ function dashit_push_live_activity(array $account, string $fcmToken, string $act
 
     $finished = $stage === 'delivered' || $stage === 'cancelled';
     $aps = ['timestamp' => $now, 'event' => $finished ? 'end' : 'update', 'content-state' => $state];
-    if ($finished) $aps['dismissal-date'] = $now + 15 * 60;
+    if ($finished) {
+        $aps['dismissal-date'] = $now + 15 * 60;
+    } else {
+        // At the arrival time iOS redraws the card as "stale", which it shows
+        // as "almost there" instead of a countdown stuck at 0:00.
+        $aps['stale-date'] = $arrival;
+    }
+    dashit_live_activity_send($account, $fcmToken, $activityToken, $aps, '10');
 
+    dashit_live_cards(function (array $cards) use ($orderId, $finished, $fcmToken, $activityToken, $state, $arrival, $created) {
+        if ($finished) {
+            unset($cards[$orderId]);
+        } else {
+            $cards[$orderId] = ['fcm' => $fcmToken, 'token' => $activityToken, 'state' => $state,
+                'placed' => $created, 'arrival' => $arrival];
+        }
+        return $cards;
+    });
+}
+
+/** One Live Activity push through FCM. Priority '5' is for routine nudges. */
+function dashit_live_activity_send(array $account, string $fcmToken, string $activityToken, array $aps, string $priority): bool
+{
+    $access = dashit_google_access_token($account);
+    $project = (string) ($account['project_id'] ?? '');
+    if ($access === null || $project === '') return false;
     [$code, $reply] = dashit_firestore_request(
         'POST',
         'https://fcm.googleapis.com/v1/projects/' . rawurlencode($project) . '/messages:send',
@@ -155,12 +183,39 @@ function dashit_push_live_activity(array $account, string $fcmToken, string $act
             'token' => $fcmToken,
             'apns' => [
                 'live_activity_token' => $activityToken,
-                'headers' => ['apns-priority' => '10', 'apns-push-type' => 'liveactivity', 'apns-topic' => 'com.dashit.app.push-type.liveactivity'],
+                'headers' => ['apns-priority' => $priority, 'apns-push-type' => 'liveactivity', 'apns-topic' => 'com.dashit.app.push-type.liveactivity'],
                 'payload' => ['aps' => $aps],
             ],
         ]]
     );
     if ($code < 200 || $code >= 300) {
         error_log("DASHit push: live activity update refused (HTTP $code): " . ($reply['error']['message'] ?? ''));
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Reads and rewrites dashit-data/live-activities.json under a lock:
+ * { orderId: { fcm, token, state, placed, arrival } }. $change gets the cards
+ * and returns them as they should be saved.
+ */
+function dashit_live_cards(callable $change): void
+{
+    $dir = dashit_private_dir('dashit-data');
+    if (!is_dir($dir) && !@mkdir($dir, 0700, true)) return;
+    $handle = @fopen("$dir/live-activities.json", 'c+');
+    if ($handle === false) return;
+    try {
+        if (!flock($handle, LOCK_EX)) return;
+        $cards = json_decode((string) stream_get_contents($handle), true);
+        $cards = $change(is_array($cards) ? $cards : []);
+        ftruncate($handle, 0);
+        rewind($handle);
+        fwrite($handle, json_encode((object) $cards));
+        fflush($handle);
+        flock($handle, LOCK_UN);
+    } finally {
+        fclose($handle);
     }
 }

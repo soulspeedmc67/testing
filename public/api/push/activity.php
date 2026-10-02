@@ -32,4 +32,10 @@ $saved = dashit_firestore_merge($account, "orders/$orderId", [
     'liveActivityToken' => $activity,
     'liveActivityFcm' => $fcm,
 ]);
+// From now on the card is kept moving by push/tick.php, starting with the
+// order's current stage.
+$stage = dashit_push_stage((string) ($order['status'] ?? ''));
+if ($saved && $stage !== 'delivered' && $stage !== 'cancelled') {
+    dashit_push_live_activity($account, $fcm, $activity, $orderId, $order, $stage);
+}
 dashit_respond($saved ? 200 : 502, ['saved' => $saved]);

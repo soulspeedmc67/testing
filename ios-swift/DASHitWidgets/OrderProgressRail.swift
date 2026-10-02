@@ -9,11 +9,14 @@ public struct OrderProgressRail: View {
     /// 0–1; defaults to the stage's floor. Pass the live value while riding.
     public let progress: Double?
     public let markerSize: CGFloat
+    /// The marker's SF Symbol; the stage's own when nil.
+    public let symbol: String?
 
-    public init(stage: DeliveryStage, progress: Double? = nil, markerSize: CGFloat = 26) {
+    public init(stage: DeliveryStage, progress: Double? = nil, markerSize: CGFloat = 26, symbol: String? = nil) {
         self.stage = stage
         self.progress = progress
         self.markerSize = markerSize
+        self.symbol = symbol
     }
 
     private static let midnight = Color(red: 6 / 255, green: 24 / 255, blue: 56 / 255)
@@ -64,7 +67,7 @@ public struct OrderProgressRail: View {
             .fill(Color.white)
             .frame(width: markerSize, height: markerSize)
             .overlay(
-                Image(systemName: stage.symbol)
+                Image(systemName: symbol ?? stage.symbol)
                     .font(.system(size: markerSize * 0.46, weight: .bold))
                     .foregroundColor(Self.midnight)
             )

@@ -12,7 +12,6 @@ struct DASHitApp: App {
     /// The animated splash that takes over from the static launch screen.
     @State private var isSplashVisible = true
     /// The app starts a touch zoomed in behind the splash and settles as it clears.
-    @State private var isAppSettled = false
     /// Log in / sign up, once, on the very first launch; the splash clears onto
     /// it. "Skip for now" goes straight to the shop.
     @State private var isWelcomeAuthVisible: Bool
@@ -41,7 +40,6 @@ struct DASHitApp: App {
                 RootView()
                     .environmentObject(auth)
                     .environmentObject(cart)
-                    .scaleEffect(isAppSettled ? 1 : 1.04)
                 if isWelcomeAuthVisible {
                     AuthView(isWelcome: true) {
                         UserDefaults.standard.set(true, forKey: Self.welcomeSeenKey)
@@ -57,7 +55,7 @@ struct DASHitApp: App {
                 if isSplashVisible {
                     SplashView(
                         onReveal: {
-                            withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) { isAppSettled = true }
+                            LaunchZoom.play()
                             // The welcome sign-in still covers the shop on a first launch.
                             if !isWelcomeAuthVisible { AppReveal.shared.reveal() }
                         },
@@ -73,6 +71,28 @@ struct DASHitApp: App {
                 }
             }
         }
+    }
+}
+
+/// The shop settling into place as the splash clears: a gentle zoom from
+/// slightly close up. It runs in Core Animation on the window's root layer,
+/// on the render server, so it stays smooth while the home screen is busy
+/// starting its own entrances (a SwiftUI scale effect there got two frames).
+private enum LaunchZoom {
+    static func play() {
+        guard !UIAccessibility.isReduceMotionEnabled,
+              let window = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .flatMap(\.windows)
+                .first(where: \.isKeyWindow),
+              let layer = window.rootViewController?.view.layer else { return }
+        let zoom = CABasicAnimation(keyPath: "transform.scale")
+        zoom.fromValue = 1.05
+        zoom.toValue = 1
+        zoom.duration = 0.75
+        // A long, soft ease-out: quick to start, settling slowly.
+        zoom.timingFunction = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)
+        layer.add(zoom, forKey: "launch-zoom")
     }
 }
 #endif
