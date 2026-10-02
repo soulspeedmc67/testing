@@ -7,8 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
@@ -16,7 +14,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dashit.app.ui.SplashOverlay
 import androidx.compose.runtime.LaunchedEffect
@@ -100,25 +97,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 LaunchedEffect(showSplash, showWelcomeAuth) {
                     if (!showSplash && !showWelcomeAuth) AppReveal.reveal()
                 }
-                // The app starts a touch zoomed in behind the splash and settles as it clears.
-                var isSettled by rememberSaveable { mutableStateOf(false) }
-                val appScale by animateFloatAsState(
-                    targetValue = if (isSettled) 1f else 1.04f,
-                    // The iOS spring (response 0.5 s, damping 0.86): stiffness = (2π / 0.5)².
-                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 158f),
-                    label = "app_settle"
-                )
                 Box(modifier = Modifier.fillMaxSize()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .graphicsLayer {
-                                scaleX = appScale
-                                scaleY = appScale
-                            }
-                    ) {
-                        StorefrontScreen(storefrontVm = storefrontViewModel)
-                    }
+                    StorefrontScreen(storefrontVm = storefrontViewModel)
                     if (showWelcomeAuth) {
                         AuthScreen(isWelcome = true, onClose = {
                             prefs.edit().putBoolean(WELCOME_SEEN_KEY, true).apply()
@@ -129,7 +109,6 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                     if (showSplash) {
                         SplashOverlay(
                             onReveal = {
-                                isSettled = true
                                 // The welcome sign-in still covers the shop on a first launch.
                                 if (!showWelcomeAuth) AppReveal.reveal()
                             },
