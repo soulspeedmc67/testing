@@ -502,7 +502,10 @@ export default function LandingPage() {
             </div>
 
             <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-7 gap-y-2.5 text-[13px] font-semibold text-slate-300">
+              <Link href="/shop" className="hover:text-white transition-colors">Products</Link>
               <Link href="/help" className="hover:text-white transition-colors">Help</Link>
+              <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+              <Link href="/refund-policy" className="hover:text-white transition-colors">Refunds</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
               <Link href="/complaints" className="hover:text-white transition-colors">Complaints</Link>
