@@ -83,8 +83,15 @@ object OnlinePayment {
 
         val result = CompletableDeferred<Outcome>()
         pending = result
+        val upiPackage = option?.takeIf { it.upiApp != null }?.id?.removePrefix("upi:")
         try {
             withContext(Dispatchers.Main) {
+                if (upiPackage != null) {
+                    // A UPI app was picked: it opens straight away, with no Razorpay
+                    // page (Razorpay's Custom UI kit, UPI intent flow).
+                    openUpiApp(activity, created, razorpayOrderId, orderCode, customer, upiPackage, result)
+                    return@withContext
+                }
                 val checkout = Checkout()
                 checkout.setKeyID(created.getString("key_id"))
                 checkout.setImage(com.dashit.app.R.mipmap.ic_launcher)
@@ -124,6 +131,7 @@ object OnlinePayment {
         val outcome = withTimeoutOrNull(RESULT_TIMEOUT_MS) { result.await() }
             ?: Outcome.Failed(Checkout.PAYMENT_CANCELED, "No answer from the payment screen")
         pending = null
+        withContext(Dispatchers.Main) { releaseUpi() }
         onConfirming()
 
         if (outcome is Outcome.Paid) {
@@ -151,7 +159,9 @@ object OnlinePayment {
         paidReceipt(razorpayOrderId)?.let { return it }
 
         val failed = outcome as? Outcome.Failed
-        val cancelled = failed?.code == Checkout.PAYMENT_CANCELED
+        // Backing out of a UPI app comes back as an error whose reason says so.
+        val reason = failed?.description?.let { runCatching { JSONObject(it).getJSONObject("error").optString("reason") }.getOrNull() }
+        val cancelled = failed?.code == Checkout.PAYMENT_CANCELED || reason == "payment_cancelled"
         throw PaymentException(
             when {
                 cancelled -> "Payment cancelled. Your order wasn't placed."
@@ -160,6 +170,66 @@ object OnlinePayment {
             },
             cancelled
         )
+    }
+
+    // MARK: - UPI apps, opened directly
+
+    private var upiSdk: com.razorpay.Razorpay? = null
+    private var upiWebView: android.webkit.WebView? = null
+
+    private fun openUpiApp(
+        activity: Activity,
+        created: JSONObject,
+        razorpayOrderId: String,
+        orderCode: String,
+        customer: UserProfile,
+        packageName: String,
+        result: CompletableDeferred<Outcome>
+    ) {
+        releaseUpi()
+        val sdk = com.razorpay.Razorpay(activity, created.getString("key_id"))
+        // The kit talks to Razorpay through a web view of its own; it sits
+        // behind the checkout, never seen: the shopper only sees their UPI app.
+        val root = activity.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val web = android.webkit.WebView(activity).apply { visibility = android.view.View.INVISIBLE }
+        root.addView(web, android.widget.FrameLayout.LayoutParams(1, 1))
+        sdk.setWebView(web)
+        upiSdk = sdk
+        upiWebView = web
+        val payload = JSONObject()
+            .put("amount", created.getInt("amount"))
+            .put("currency", created.getString("currency"))
+            .put("order_id", razorpayOrderId)
+            .put("description", "Order $orderCode")
+            .put("contact", customer.mobile.takeIf { it.isNotBlank() }?.let { "+91$it" } ?: "")
+            .put("email", customer.email?.takeIf { it.isNotBlank() } ?: "void@razorpay.com")
+            .put("method", "upi")
+            .put("_[flow]", "intent")
+            .put("upi_app_package_name", packageName)
+        sdk.submit(payload, object : com.razorpay.PaymentResultWithDataListener {
+            override fun onPaymentSuccess(paymentId: String?, data: PaymentData?) {
+                result.complete(Outcome.Paid(paymentId, data))
+            }
+
+            override fun onPaymentError(code: Int, description: String?, data: PaymentData?) {
+                Log.i(TAG, "UPI payment ended: $code $description")
+                result.complete(Outcome.Failed(code, description))
+            }
+        })
+    }
+
+    /** From MainActivity: the UPI app's answer, which the kit reads. */
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        upiSdk?.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun releaseUpi() {
+        upiSdk = null
+        upiWebView?.let { web ->
+            (web.parent as? android.view.ViewGroup)?.removeView(web)
+            web.destroy()
+        }
+        upiWebView = null
     }
 
     /** From MainActivity: the checkout says the payment went through. */

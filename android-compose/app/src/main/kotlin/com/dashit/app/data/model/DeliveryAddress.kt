@@ -15,8 +15,12 @@ data class DeliveryAddress(
     var receiverName: String? = null,
     var receiverPhone: String? = null
 ) {
+    /** The street, and the town only when the street doesn't already name it. */
+    private val streetAndTown: String
+        get() = if (street.contains(city, ignoreCase = true)) street else "$street, $city"
+
     val displaySummary: String
-        get() = "${nickname.uppercase()} · $street, $city"
+        get() = "${nickname.uppercase()} · $streetAndTown"
 
     /** House, street and landmark, as the rider reads it. */
     val doorLine: String
@@ -29,6 +33,6 @@ data class DeliveryAddress(
             houseNumber?.takeIf { it.isNotBlank() },
             street.takeIf { it.isNotBlank() },
             landmark?.takeIf { it.isNotBlank() }?.let { "near $it" },
-            "$city, $pincode"
+            if (street.contains(city, ignoreCase = true)) pincode else "$city, $pincode"
         ).joinToString(", ")
 }

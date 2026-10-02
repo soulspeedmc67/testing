@@ -94,6 +94,13 @@ dependencies {
     // Online payments: Razorpay's checkout, which offers every method Razorpay
     // supports in India (UPI, cards, netbanking, wallets, EMI, Pay Later).
     implementation 'com.razorpay:checkout:1.6.41'
+    // UPI apps opened directly from our checkout (Custom UI kit, UPI intent).
+    implementation 'com.razorpay:customui:3.9.22'
+    constraints {
+        // customui asks for "latest" of these; pinned so a build never changes under us.
+        implementation('com.razorpay:customui-core') { version { strictly '3.10.16' } }
+        implementation('com.razorpay:standard-core') { version { strictly '1.7.19' } }
+    }
 
     // Firebase Firestore & Auth
     def firebaseBom = platform('com.google.firebase:firebase-bom:33.7.0')

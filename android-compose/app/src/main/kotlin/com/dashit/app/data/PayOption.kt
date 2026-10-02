@@ -21,7 +21,10 @@ data class PayOption(
     val method: String,
     /** Razorpay's name for a UPI app, when this is one. */
     val upiApp: String? = null,
-    val icon: Drawable? = null
+    /** The app's own launcher icon, for UPI apps without a bundled logo. */
+    val icon: Drawable? = null,
+    /** The app's logo, bundled (Razorpay's set), for the well-known UPI apps. */
+    val logoRes: Int? = null
 ) {
     /** Razorpay checkout options showing only this way to pay. */
     fun checkoutConfig(): JSONObject {
@@ -78,12 +81,23 @@ data class PayOption(
                     subtitle = "UPI",
                     method = "upi",
                     upiApp = razorpayName,
-                    icon = runCatching { pm.getApplicationIcon(pkg) }.getOrNull()
+                    icon = runCatching { pm.getApplicationIcon(pkg) }.getOrNull(),
+                    logoRes = LOGOS[razorpayName]
                 )
             }
         }
 
-        val anyUpi = PayOption("upi", "Any UPI app or UPI ID", "Pay from any UPI app, or enter your UPI ID", "upi")
+        private val LOGOS = mapOf(
+            "google_pay" to com.dashit.app.R.drawable.pay_logo_google_pay,
+            "phonepe" to com.dashit.app.R.drawable.pay_logo_phonepe,
+            "paytm" to com.dashit.app.R.drawable.pay_logo_paytm,
+            "bhim" to com.dashit.app.R.drawable.pay_logo_bhim,
+            "cred" to com.dashit.app.R.drawable.pay_logo_cred,
+            "amazon_pay" to com.dashit.app.R.drawable.pay_logo_amazonpay,
+            "mobikwik" to com.dashit.app.R.drawable.pay_logo_mobikwik
+        )
+
+        val anyUpi = PayOption("upi", "UPI ID or other UPI app", "Enter your UPI ID, or pick another app", "upi")
 
         /** Everything besides UPI that Razorpay takes in India. */
         val others = listOf(

@@ -15,6 +15,13 @@ struct PayOption: Identifiable, Equatable {
     var upiApp: String? = nil
     /// SF Symbol for everything that isn't an app.
     var symbol: String = "creditcard"
+    /// The app's logo in the asset catalogue (Razorpay's set), for UPI apps.
+    var logo: String? { upiApp.flatMap { Self.logos[$0] } }
+
+    private static let logos = [
+        "google_pay": "PayLogo_google_pay", "phonepe": "PayLogo_phonepe", "paytm": "PayLogo_paytm",
+        "bhim": "PayLogo_bhim", "cred": "PayLogo_cred", "amazon_pay": "PayLogo_amazonpay", "mobikwik": "PayLogo_mobikwik"
+    ]
 
     /// Razorpay checkout `config` showing only this way to pay.
     var checkoutConfig: [String: Any] {
@@ -58,7 +65,7 @@ struct PayOption: Identifiable, Equatable {
         }
     }
 
-    static let anyUpi = PayOption(id: "upi", title: "Any UPI app or UPI ID", subtitle: "Pay from any UPI app, or enter your UPI ID", method: "upi", symbol: "qrcode")
+    static let anyUpi = PayOption(id: "upi", title: "UPI ID or other UPI app", subtitle: "Enter your UPI ID, or pick another app", method: "upi", symbol: "qrcode")
 
     /// Everything besides UPI that Razorpay takes in India.
     static let others: [PayOption] = [
