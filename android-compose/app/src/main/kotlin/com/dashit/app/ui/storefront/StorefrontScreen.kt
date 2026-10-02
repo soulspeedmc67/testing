@@ -189,6 +189,12 @@ fun StorefrontScreen(
     val activeOrder by OrderRepository.shared.activeOrder.collectAsState()
     val liveTracking by OrderRepository.shared.liveTracking.collectAsState()
     val allProducts by storefrontVm.products.collectAsState()
+    // Tells the launch splash the feed is built (products, tiles and rails, the
+    // last to be worked out), so it lifts onto a finished screen.
+    val isFeedBuilt = allProducts.isNotEmpty() && categoryTiles.isNotEmpty() && rails.isNotEmpty()
+    LaunchedEffect(isFeedBuilt) {
+        if (isFeedBuilt) com.dashit.app.core.design.AppReveal.homeReady()
+    }
     val signedInUser by AuthRepository.user.collectAsState()
 
     var activeTab by remember { mutableStateOf(NavigationTab.HOME) }

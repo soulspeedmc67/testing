@@ -1,5 +1,15 @@
 package com.dashit.app.ui
 
+import com.dashit.app.core.design.AppReveal
+
+import kotlinx.coroutines.withTimeoutOrNull
+
+import kotlinx.coroutines.flow.first
+
+import androidx.compose.runtime.withFrameNanos
+
+import androidx.compose.runtime.snapshotFlow
+
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
@@ -76,6 +86,9 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
     val lockupAlpha = remember { Animatable(1f) }
     val backdropAlpha = remember { Animatable(1f) }
 
+    // When the letters began: the lift-away follows them at a fixed beat.
+    val phaseTwoStarted = remember { kotlinx.coroutines.CompletableDeferred<Unit>() }
+
     LaunchedEffect(Unit) {
         val reduceMotion = Settings.Global.getFloat(
             context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f
@@ -102,8 +115,11 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
 
         coroutineScope {
             // 1. The logo builds itself: its shapes fly in one after another.
+            // It waits for the app's first frames (building the whole app the
+            // first time takes a few long frames) so its first moves aren't lost.
             launch {
-                delay(120)
+                repeat(4) { withFrameNanos { } }
+                delay(60)
                 coroutineScope {
                     launch { logoRevealScale.animateTo(1f, tween(700, easing = EaseOut)) }
                     LOGO_PIECES.forEachIndexed { index, piece ->
@@ -112,9 +128,24 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                     }
                 }
             }
-            // 2. It tucks left, and the letters pop in from its side in a wave.
+            // 2. It tucks left, and the letters pop in from its side in a wave,
+            // once the home screen underneath has been built (or after 0.9 s
+            // at most): building it during the letters made them stutter.
             launch {
                 delay(840)
+                withTimeoutOrNull(1000) {
+                    snapshotFlow { AppReveal.isHomeReady }.first { it }
+                    // Then until the main thread is quiet: three frames in a row
+                    // on time, so the feed's first layout and photos are done.
+                    var onTime = 0
+                    var last = withFrameNanos { it }
+                    while (onTime < 3) {
+                        val now = withFrameNanos { it }
+                        onTime = if (now - last < 20_000_000L) onTime + 1 else 0
+                        last = now
+                    }
+                }
+                phaseTwoStarted.complete(Unit)
                 coroutineScope {
                     launch { tuck.animateTo(1f, tween(560, easing = EaseInOut)) }
                     for (index in 0 until 6) {
@@ -126,7 +157,8 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
             }
             // 3. The lockup lifts away and the backdrop clears onto the app.
             launch {
-                delay(1900)
+                phaseTwoStarted.await()
+                delay(1060)
                 coroutineScope {
                     launch { lockupScale.animateTo(1.08f, tween(320, easing = EaseIn)) }
                     launch { lockupAlpha.animateTo(0f, tween(320, easing = EaseIn)) }
