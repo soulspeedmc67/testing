@@ -153,6 +153,13 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         com.dashit.app.data.OnlinePayment.onPaymentError(code, description)
     }
 
+    // A UPI app opened directly hands its answer back here; Razorpay's kit reads it.
+    @Deprecated("Razorpay's kit opens the UPI app with startActivityForResult.")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        com.dashit.app.data.OnlinePayment.onActivityResult(requestCode, resultCode, data)
+    }
+
     override fun onStart() {
         super.onStart()
         OrderNotifications.isAppInForeground = true

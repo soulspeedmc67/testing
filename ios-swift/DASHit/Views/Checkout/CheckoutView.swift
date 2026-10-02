@@ -70,29 +70,8 @@ struct CheckoutView: View {
                                 .stroke(Color.hairline, lineWidth: 1)
                         )
 
-                        // 3. Payment: Razorpay's checkout (every way to pay it supports) or cash on delivery.
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Pay with")
-                                .font(.dashitBodyBold)
-                                .foregroundColor(.textPrimary)
-
-                            if OnlinePayment.isAvailable {
-                                onlineSection
-                            }
-
-                            paymentRow(title: "Cash on delivery", value: "cod") {
-                                Image(systemName: "banknote")
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundColor(vm.paymentMethod == "cod" ? .brandOrange : .textMuted)
-                            }
-                        }
-                        .padding(14)
-                        .background(Color.surfaceRaised)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.hairline, lineWidth: 1)
-                        )
+                        // 3. How to pay: UPI apps as logo tiles, then the other online ways, then cash.
+                        paymentSection
 
                         // 4. Order Bill Summary
                         VStack(spacing: 8) {
@@ -157,9 +136,11 @@ struct CheckoutView: View {
                             }
                             Text(vm.isSubmitting
                                  ? vm.progressText
-                                 : vm.paysOnline
-                                    ? "Pay \(CurrencyFormatter.format(cart.bill.grandTotal))"
-                                    : "Place Order • \(CurrencyFormatter.format(cart.bill.grandTotal))")
+                                 : !vm.paysOnline
+                                    ? "Place order · \(CurrencyFormatter.format(cart.bill.grandTotal)) cash"
+                                    : vm.payOption?.upiApp != nil
+                                        ? "Pay \(CurrencyFormatter.format(cart.bill.grandTotal)) with \(vm.payOption?.title ?? "")"
+                                        : "Pay \(CurrencyFormatter.format(cart.bill.grandTotal))")
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.white)
                         }
@@ -201,186 +182,207 @@ struct CheckoutView: View {
         }
     }
 
-    /// "Pay online", opening out into every way to pay online that Razorpay
-    /// takes in India: the UPI apps on this phone, any UPI app or UPI ID,
-    /// cards, netbanking, wallets, EMI and Pay Later. Closed, it says which.
-    private var onlineSection: some View {
-        let paysOnline = vm.paymentMethod != "cod"
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                HapticsManager.shared.selection()
-                withAnimation(.dashitSpring) {
-                    isOnlineOpen.toggle()
-                    if !paysOnline, let first = vm.payOptions.first { vm.paymentMethod = first.id }
-                }
-            } label: {
-                HStack(spacing: 12) {
-                    Image(systemName: vm.payOption?.symbol ?? "creditcard")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(paysOnline ? .brandOrange : .textMuted)
-                        .frame(width: 28, height: 28)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Pay online")
-                            .font(paysOnline ? .dashitBodyBold : .dashitBody)
-                            .foregroundColor(.textPrimary)
-                        Text(paysOnline ? (vm.payOption?.title ?? "") : "UPI, cards, netbanking, wallets, EMI, Pay Later")
-                            .font(.system(size: 12, weight: paysOnline ? .semibold : .regular))
-                            .foregroundColor(paysOnline ? .brandAccent : .textMuted)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    Text(isOnlineOpen ? "Done" : "Change")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.brandAccent)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.textMuted)
-                        .rotationEffect(.degrees(isOnlineOpen ? 180 : 0))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 11)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(vm.isSubmitting)
+    /// How to pay, laid out the way shoppers expect from Blinkit or Zomato:
+    /// the UPI apps on this phone first as logo tiles, then cards and the
+    /// other online ways (wallets, Pay Later and EMI one tap away), then cash.
+    private var paymentSection: some View {
+        let apps = OnlinePayment.isAvailable ? vm.payOptions.filter { $0.upiApp != nil } : []
+        let others = OnlinePayment.isAvailable ? vm.payOptions.filter { $0.upiApp == nil } : []
+        let shown = others.filter { ["upi", "card", "netbanking"].contains($0.method) }
+        let more = others.filter { !["upi", "card", "netbanking"].contains($0.method) }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("Pay with")
+                .font(.system(size: 17, weight: .heavy))
+                .foregroundColor(.textPrimary)
 
-            if isOnlineOpen {
-                VStack(alignment: .leading, spacing: 6) {
-                    let apps = vm.payOptions.filter { $0.upiApp != nil }
-                    if !apps.isEmpty {
-                        sectionLabel("UPI APPS ON THIS PHONE")
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
-                            ForEach(apps) { app in
-                                optionTile(app)
+            if !apps.isEmpty {
+                payGroup("UPI apps", note: "Opens your app") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                        ForEach(apps) { app in appTile(app) }
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 10)
+                }
+            }
+
+            if !others.isEmpty {
+                payGroup("More ways to pay") {
+                    VStack(spacing: 0) {
+                        ForEach(Array((shown + (isOnlineOpen ? more : [])).enumerated()), id: \.element.id) { index, option in
+                            if index > 0 { payDivider }
+                            optionRow(option)
+                        }
+                        if !isOnlineOpen && !more.isEmpty {
+                            payDivider
+                            Button {
+                                withAnimation(.dashitSpring) { isOnlineOpen = true }
+                            } label: {
+                                HStack {
+                                    Text("Wallets, Pay Later, EMI")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundColor(.brandAccent)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundColor(.brandAccent)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 13)
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                         }
                     }
-                    sectionLabel("MORE WAYS TO PAY")
-                    ForEach(vm.payOptions.filter { $0.upiApp == nil }) { option in
-                        optionRow(option)
-                    }
                 }
-                .padding(.horizontal, 10)
-                .padding(.bottom, 10)
-                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            payGroup("Pay on delivery") {
+                Button { choose(id: "cod") } label: {
+                    HStack(spacing: 12) {
+                        methodBadge("banknote")
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Cash on delivery")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.textPrimary)
+                            Text("Pay the rider in cash or by UPI at your door")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textMuted)
+                        }
+                        Spacer()
+                        selectionMark(vm.paymentMethod == "cod")
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
         }
-        .background(paysOnline ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(paysOnline ? Color.brandOrange.opacity(0.4) : .clear, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-
-    private func sectionLabel(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 10.5, weight: .heavy))
-            .tracking(0.8)
-            .foregroundColor(.textMuted)
-            .padding(.leading, 4)
-            .padding(.top, 6)
-    }
-
-    private func choose(_ option: PayOption) {
-        HapticsManager.shared.selection()
-        withAnimation(.dashitSpring) {
-            vm.paymentMethod = option.id
-            isOnlineOpen = false
+        .disabled(vm.isSubmitting)
+        .onAppear {
+            // Open already when the saved choice is one of the folded-away ways.
+            if more.contains(where: { $0.id == vm.paymentMethod }) { isOnlineOpen = true }
         }
     }
 
-    private func optionTile(_ option: PayOption) -> some View {
+    private func payGroup<Content: View>(_ title: String, note: String? = nil, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text(title.uppercased())
+                    .font(.system(size: 11, weight: .heavy))
+                    .tracking(0.8)
+                    .foregroundColor(.textMuted)
+                Spacer()
+                if let note {
+                    Text(note)
+                        .font(.system(size: 11))
+                        .foregroundColor(.textFaint)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 6)
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+    }
+
+    private var payDivider: some View {
+        Rectangle()
+            .fill(Color.hairlineSoft)
+            .frame(height: 1)
+            .padding(.leading, 62)
+    }
+
+    private func choose(id: String) {
+        HapticsManager.shared.selection()
+        withAnimation(.dashitSpring) { vm.paymentMethod = id }
+    }
+
+    /// Filled orange circle with a tick when picked; an empty ring when not.
+    private func selectionMark(_ selected: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(selected ? Color.brandOrange : Color.clear)
+            Circle()
+                .strokeBorder(selected ? Color.brandOrange : Color.hairlineStrong, lineWidth: 1.5)
+            if selected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundColor(.white)
+            }
+        }
+        .frame(width: 22, height: 22)
+    }
+
+    private func methodBadge(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(.textSecondary)
+            .frame(width: 36, height: 36)
+            .background(Color.surfaceMuted, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    private func appTile(_ option: PayOption) -> some View {
         let isSelected = vm.paymentMethod == option.id
-        return Button { choose(option) } label: {
-            VStack(spacing: 6) {
-                Image(systemName: "indianrupeesign.circle.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(.brandAccent)
+        return Button { choose(id: option.id) } label: {
+            VStack(spacing: 7) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .fill(Color.white)
+                        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                    if let logo = option.logo {
+                        Image(logo)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 40, height: 40)
+                            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    } else {
+                        Image(systemName: option.symbol)
+                            .font(.system(size: 22))
+                            .foregroundColor(.brandAccent)
+                    }
+                }
+                .frame(width: 48, height: 48)
                 Text(option.title)
-                    .font(.system(size: 12, weight: isSelected ? .bold : .medium))
-                    .foregroundColor(.textPrimary)
+                    .font(.system(size: 11.5, weight: isSelected ? .bold : .medium))
+                    .foregroundColor(isSelected ? .brandAccent : .textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
-            .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isSelected ? Color.brandOrange : Color.hairline, lineWidth: 1.5)
-            )
+            .background(isSelected ? Color.brandOrange.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(isSelected ? Color.brandOrange : .clear, lineWidth: 1.5))
         }
-        .buttonStyle(PressableButtonStyle(scale: 0.95))
+        .buttonStyle(PressableButtonStyle(scale: 0.94))
+        .accessibilityLabel(option.title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func optionRow(_ option: PayOption) -> some View {
-        let isSelected = vm.paymentMethod == option.id
-        return Button { choose(option) } label: {
+        Button { choose(id: option.id) } label: {
             HStack(spacing: 12) {
-                Image(systemName: option.symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(.brandAccent)
-                    .frame(width: 32, height: 32)
-                    .background(Color.brandOrange.opacity(0.12), in: Circle())
+                methodBadge(option.symbol)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(option.title)
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.textPrimary)
                     Text(option.subtitle)
-                        .font(.system(size: 11.5))
+                        .font(.system(size: 12))
                         .foregroundColor(.textMuted)
                         .lineLimit(1)
                 }
                 Spacer()
-                Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
-                    .foregroundColor(isSelected ? .brandOrange : .textFaint)
+                selectionMark(vm.paymentMethod == option.id)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(Color.surfaceRaised, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isSelected ? Color.brandOrange : Color.hairline, lineWidth: 1.5)
-            )
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-    }
-
-    /// One way to pay: its icon, its name, and a tick when chosen.
-    private func paymentRow<Icon: View>(title: String, subtitle: String? = nil, value: String, @ViewBuilder icon: () -> Icon) -> some View {
-        let isSelected = vm.paymentMethod == value
-        return Button {
-            withAnimation(.dashitSpring) {
-                vm.paymentMethod = value
-                isOnlineOpen = false
-            }
-            HapticsManager.shared.selection()
-        } label: {
-            HStack(spacing: 12) {
-                icon()
-                    .frame(width: 28, height: 28)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(isSelected ? .dashitBodyBold : .dashitBody)
-                        .foregroundColor(.textPrimary)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.dashitMicro)
-                            .foregroundColor(.textMuted)
-                    }
-                }
-                Spacer()
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .brandOrange : .gray)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(isSelected ? Color.brandOrange.opacity(0.1) : Color.surfaceMuted)
-            .cornerRadius(10)
-        }
-        .buttonStyle(.plain)
-        .disabled(vm.isSubmitting)
     }
 
     private var deliveryHeadline: String {
