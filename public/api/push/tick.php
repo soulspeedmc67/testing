@@ -2,8 +2,8 @@
 /*
  * Cron, every minute:  php domains/dashit.co.in/public_html/api/push/tick.php
  *
- * Nudges every open lock-screen order card on the shoppers' iPhones. The
- * scooter on the card moves from the shop to the door with the clock, but a
+ * Nudges every lock-screen order card that's on its way. The scooter on the
+ * card moves from the shop to the door with the clock from pickup, but a
  * card only redraws when it receives an update, so each one gets a quiet,
  * low-priority push a minute. The cards come from dashit-data/live-activities.json
  * (written by notify.php and activity.php): no Firestore reads at all, and
@@ -33,21 +33,22 @@ dashit_live_cards(function (array $cards) use ($now, &$due) {
             unset($cards[$orderId]);
             continue;
         }
-        // Past the arrival time the card shows "almost there" by itself
-        // (its stale date), so nothing more to move until the order ends.
-        if ($now <= $arrival + 60) $due[$orderId] = $card;
+        // Only cards on the way move (before pickup the scooter waits at the
+        // store). Past the arrival time the card shows "almost there" by
+        // itself (its stale date), so nothing more to move until it ends.
+        if (!empty($card['start']) && $now <= $arrival + 60) $due[$orderId] = $card;
     }
     return $cards;
 });
 
 foreach ($due as $orderId => $card) {
     $arrival = (int) $card['arrival'];
-    $placed = (int) $card['placed'];
+    $start = (int) $card['start'];
     $state = (array) $card['state'];
     $state['etaMinutes'] = max(1, (int) ceil(($arrival - $now) / 60));
-    // How far along the clock is, the same as the card works it out.
-    $span = max(60, $arrival - $placed);
-    $state['progress'] = round(min(0.94, max(0.04, ($now - $placed) / $span)), 3);
+    // How far along the ride is, the same as the card works it out.
+    $span = max(60, $arrival - $start);
+    $state['progress'] = round(min(0.94, max(0.04, ($now - $start) / $span)), 3);
     dashit_live_activity_send($account, (string) $card['fcm'], (string) $card['token'], [
         'timestamp' => $now,
         'event' => 'update',

@@ -777,8 +777,9 @@ public final class AdminDashboardViewModel: ObservableObject {
         switch order.status.stage {
         case .placed: nextStatus = "Packing at Store"
         case .packing:
-            // Leaving the store is done by assigning a rider, so the customer
-            // and the driver app always know who is bringing the order.
+            // Normally the rider sends it out ("Start delivery" in the rider
+            // app); doing it here still needs a rider, so the customer and the
+            // rider app always know who is bringing the order.
             guard order.driverId?.isEmpty == false else {
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
                 saveError = "Assign a rider before sending this order out."
@@ -809,9 +810,10 @@ public final class AdminDashboardViewModel: ObservableObject {
             "driverId": driver.id,
             "driverName": driver.name,
             "driverPhone": driver.phone,
-            "driverVehicle": driver.vehicle,
-            "status": "Out for Delivery",
-            "dispatchedAt": FieldValue.serverTimestamp()
+            "driverVehicle": driver.vehicle
+            // The status stays as it is: the order goes out for delivery when the
+            // rider taps "Start delivery" with the bag, so the shopper's countdown
+            // doesn't start while it is still at the store.
         ], merge: true, completion: saveThenNotify("Assigning the rider", orderId: orderId))
         seedRiderPosition(orderId: orderId, driverId: driver.id)
     }

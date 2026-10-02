@@ -191,6 +191,13 @@ public struct Order: Identifiable, Hashable {
         self.modifyWindowEndsAt = modifyWindowEndsAt
         self.replacesOrderId = replacesOrderId
     }
+
+    /// A rider has the order but hasn't collected it from the store yet: it
+    /// goes out for delivery when they tap "Start delivery" in the rider app.
+    public var isAwaitingPickup: Bool {
+        let stage = status.stage
+        return (stage == .placed || stage == .packing) && driverId?.isEmpty == false
+    }
 }
 
 // MARK: - Codes

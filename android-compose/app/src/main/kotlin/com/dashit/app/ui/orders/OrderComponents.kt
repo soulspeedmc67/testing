@@ -131,8 +131,8 @@ fun OrderStatusPill(
         },
         label = "pill_accent"
     )
-    val subtitle = stage.subtitle(eta, order.itemCount)
-    val headline = stage.pillHeadline
+    val subtitle = if (order.isAwaitingPickup) "Your rider is collecting it from the store" else stage.subtitle(eta, order.itemCount)
+    val headline = if (order.isAwaitingPickup) "Picking up your order" else stage.pillHeadline
 
     Row(
         modifier = modifier

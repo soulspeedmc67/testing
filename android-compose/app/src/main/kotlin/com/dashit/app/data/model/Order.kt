@@ -115,6 +115,13 @@ data class Order(
     val modifyWindowEndsAt: Long? = null,
     val replacesOrderId: String? = null
 ) {
+    /**
+     * A rider has the order but hasn't collected it from the store yet: it goes
+     * out for delivery when they tap "Start delivery" in the rider app.
+     */
+    val isAwaitingPickup: Boolean
+        get() = (status == OrderStatus.PLACED || status == OrderStatus.PACKING) && !driverId.isNullOrBlank()
+
     val itemCount: Int get() = items.sumOf { it.qty }
 
     /**

@@ -130,20 +130,28 @@ const DASHIT_SHOWN_MARGIN_MINUTES = 4;
  */
 function dashit_push_live_activity(array $account, string $fcmToken, string $activityToken, string $orderId, array $order, string $stage): void
 {
-    $status = ['placed' => 'placed', 'packing' => 'packing', 'on_the_way' => 'out_for_delivery',
+    // "assigned" (a rider has it but hasn't collected it yet) is packing on
+    // the card; the card tells it apart by the rider being set.
+    $status = ['placed' => 'placed', 'packing' => 'packing', 'assigned' => 'packing', 'on_the_way' => 'out_for_delivery',
         'delivered' => 'delivered', 'cancelled' => 'cancelled'][$stage];
-    $progress = ['placed' => 0.12, 'packing' => 0.34, 'on_the_way' => 0.58, 'delivered' => 1.0, 'cancelled' => 0.0][$stage];
+    $progress = ['placed' => 0.12, 'packing' => 0.34, 'assigned' => 0.34, 'on_the_way' => 0.58, 'delivered' => 1.0, 'cancelled' => 0.0][$stage];
     $now = time();
     $created = strtotime((string) ($order['createdAt'] ?? '')) ?: $now;
     $eta = max(1, (int) ($order['etaMinutes'] ?? 8));
-    // Promised arrival with the shown margin; never sooner than 5 minutes from now while riding.
-    $arrival = max($created + $eta * 60, $stage === 'on_the_way' ? $now + 5 * 60 : 0) + DASHIT_SHOWN_MARGIN_MINUTES * 60;
+    $riding = $stage === 'on_the_way';
+    // The clock only runs once the rider has collected the order (the moment
+    // it went out for delivery): from then, the ride plus the shown margin.
+    $pickup = $riding ? dashit_order_pickup_time($order, $now) : null;
+    $arrival = $riding
+        ? $pickup + max(5, $eta - 3) * 60 + DASHIT_SHOWN_MARGIN_MINUTES * 60
+        : $created + $eta * 60 + DASHIT_SHOWN_MARGIN_MINUTES * 60;
     $state = [
         'status' => $status,
         'etaMinutes' => max(1, (int) ceil(($arrival - $now) / 60)),
         'progress' => $progress,
         'estimatedArrival' => $arrival - 978307200,
     ];
+    if ($pickup !== null) $state['pickedUpAt'] = $pickup - 978307200;
     $rider = trim((string) ($order['driverName'] ?? ''));
     if ($rider !== '') $state['driverName'] = $rider;
 
@@ -151,22 +159,38 @@ function dashit_push_live_activity(array $account, string $fcmToken, string $act
     $aps = ['timestamp' => $now, 'event' => $finished ? 'end' : 'update', 'content-state' => $state];
     if ($finished) {
         $aps['dismissal-date'] = $now + 15 * 60;
-    } else {
+    } elseif ($riding) {
         // At the arrival time iOS redraws the card as "stale", which it shows
         // as "almost there" instead of a countdown stuck at 0:00.
         $aps['stale-date'] = $arrival;
     }
     dashit_live_activity_send($account, $fcmToken, $activityToken, $aps, '10');
 
-    dashit_live_cards(function (array $cards) use ($orderId, $finished, $fcmToken, $activityToken, $state, $arrival, $created) {
+    dashit_live_cards(function (array $cards) use ($orderId, $finished, $fcmToken, $activityToken, $state, $arrival, $created, $pickup) {
         if ($finished) {
             unset($cards[$orderId]);
         } else {
+            // `start` is set once riding: tick.php only moves cards on the way.
             $cards[$orderId] = ['fcm' => $fcmToken, 'token' => $activityToken, 'state' => $state,
-                'placed' => $created, 'arrival' => $arrival];
+                'placed' => $created, 'start' => $pickup, 'arrival' => $arrival];
         }
         return $cards;
     });
+}
+
+/**
+ * When the rider collected the order: the last time it went out for delivery
+ * in its status history (the rider app writes it on "Start delivery"), or now.
+ */
+function dashit_order_pickup_time(array $order, int $now): int
+{
+    $at = null;
+    foreach ((array) ($order['statusHistory'] ?? []) as $entry) {
+        if (!is_array($entry) || dashit_push_stage((string) ($entry['status'] ?? '')) !== 'on_the_way') continue;
+        $time = strtotime((string) ($entry['at'] ?? ''));
+        if ($time !== false) $at = max($at ?? 0, $time);
+    }
+    return ($at !== null && $at <= $now && $at > $now - 3 * 3600) ? $at : $now;
 }
 
 /** One Live Activity push through FCM. Priority '5' is for routine nudges. */

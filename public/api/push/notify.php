@@ -39,6 +39,11 @@ if ($uid !== $owner) {
 }
 
 $stage = dashit_push_stage((string) ($order['status'] ?? ''));
+// A rider has the order but hasn't collected it from the store yet: its own
+// step (the countdown starts only once the rider taps "Start delivery").
+if (($stage === 'placed' || $stage === 'packing') && trim((string) ($order['driverId'] ?? '')) !== '') {
+    $stage = 'assigned';
+}
 // Adding items replaces the order with a new one and cancels the old: the
 // shopper gets no "placed" or "cancelled" for that, the store gets "updated".
 $replaces = (string) ($order['replacesOrderId'] ?? '');
@@ -65,6 +70,7 @@ $data = ['orderId' => $orderId, 'stage' => $stage];
 $shopper = [
     'placed' => ['Order placed', "We've got your order and are getting it ready."],
     'packing' => ['Packing your order', 'Your items are being packed. A rider picks them up next.'],
+    'assigned' => ['Rider assigned', 'Your rider is collecting your order from the store.'],
     'on_the_way' => ['On the way', $code !== '' ? "Your order is on its way. Share code $code with the rider." : 'Your order is on its way.'],
     'delivered' => ['Delivered', 'Your order has been delivered. Thanks for ordering from DASHit!'],
     'cancelled' => ['Order cancelled', "Order #$shortId has been cancelled."],

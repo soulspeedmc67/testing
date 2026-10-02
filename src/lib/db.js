@@ -2252,7 +2252,12 @@ export async function assignDriver(orderId, driverId, driverName) {
       assignedAt: isUnassigning ? null : serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
-    if (!isUnassigning) seedRiderPosition(db, orderId, targetDriverId);
+    if (!isUnassigning) {
+      seedRiderPosition(db, orderId, targetDriverId);
+      // "Rider assigned" to the shopper; the order goes out for delivery only
+      // when the rider taps "Start delivery" with the bag in hand.
+      requestOrderPush(orderId);
+    }
     return { success: true, firestoreSynced: true };
   } catch (err) {
     console.warn("Firestore assignDriver sync note:", err?.message || err);
