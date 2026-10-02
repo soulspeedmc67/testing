@@ -60,9 +60,20 @@ Options -Indexes
   RewriteCond %{HTTPS} !=on
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # The shop moved to the apps. Old shop links (bookmarks, search results,
+  # Anti-Scraper & Hotlink Protection for Product Assets
+  RewriteCond %{REQUEST_URI} ^/products/ [NC]
+  RewriteCond %{HTTP_USER_AGENT} (Scrapy|libwww-perl|Python|curl|wget|Ahrefs|Semrush|PetalBot|DotBot) [NC]
+  RewriteRule .* - [F,L]
+
+  RewriteCond %{REQUEST_URI} ^/products/ [NC]
+  RewriteCond %{HTTP_REFERER} !^$
+  RewriteCond %{HTTP_REFERER} !^https?://(www\.)?dashit\.co\.in [NC]
+  RewriteCond %{HTTP_REFERER} !^https?://localhost [NC]
+  RewriteRule \.(webp|jpg|jpeg|png)$ - [F,L]
+
+  # The shop moved to the apps (/shop is now the product list). Old shop links (bookmarks, search results,
   # shared product links) go to the home page, which points to the apps.
-  RewriteRule ^(shop|search|categories|product|cart|checkout|offers|orders|order-again|wishlist|tobacco|account|add-address|confirm-location|login|hero-3d-demo)(/.*)?$ / [R=302,L]
+  RewriteRule ^(search|categories|product|cart|checkout|offers|orders|order-again|wishlist|tobacco|account|add-address|confirm-location|login|hero-3d-demo)(/.*)?$ / [R=302,L]
 
   # Serve existing files or directories directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]
