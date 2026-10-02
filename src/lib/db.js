@@ -2188,6 +2188,29 @@ export async function claimOrder(orderId, driverId, driverName) {
   }
 }
 
+/**
+ * Puts the rider's last known position on a newly assigned order, so the
+ * customer's map starts at the rider rather than drawing a route from the
+ * store until the rider app's next GPS write. One read and one write, and only
+ * a position from the last few minutes is used. Fire and forget.
+ */
+const RIDER_POSITION_FRESH_MS = 3 * 60 * 1000;
+function seedRiderPosition(db, orderId, driverId) {
+  getDoc(doc(db, "drivers", String(driverId), "telemetry", "live"))
+    .then((snap) => {
+      const t = snap.exists() ? snap.data() : null;
+      const at = t?.updatedAt?.toMillis?.() || 0;
+      if (!t || typeof t.latitude !== "number" || Date.now() - at > RIDER_POSITION_FRESH_MS) return;
+      const { latitude, longitude, heading = 0, speed = 0, accuracy = 0 } = t;
+      return setDoc(
+        doc(db, "orders", String(orderId), "tracking", "live"),
+        { latitude, longitude, heading, speed, accuracy, driverId: String(driverId), updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+    })
+    .catch((e) => console.warn("Could not copy the rider's position:", e?.message));
+}
+
 /** Admin-only: assign a specific driver to an order. */
 export async function assignDriver(orderId, driverId, driverName) {
   const isUnassigning = !driverId;
@@ -2229,6 +2252,7 @@ export async function assignDriver(orderId, driverId, driverName) {
       assignedAt: isUnassigning ? null : serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+    if (!isUnassigning) seedRiderPosition(db, orderId, targetDriverId);
     return { success: true, firestoreSynced: true };
   } catch (err) {
     console.warn("Firestore assignDriver sync note:", err?.message || err);
