@@ -1,13 +1,17 @@
 import SwiftUI
+import UIKit
 
 /// Takes over from the plain midnight launch screen and hands over to the app.
 /// The logo builds itself, its four shapes flying in and snapping together,
 /// then shrinks and tucks to the left while the letters of "dashit" pop in
-/// from its side one after another, each sliding and settling, in a gentle
-/// wave. The lockup then lifts away and the backdrop clears onto the app. No
-/// blur anywhere: it is the costly kind of effect and stuttered while the
-/// catalogue loaded underneath. Same timings and curves as the Android
-/// `SplashOverlay`.
+/// from its side one after another, in a gentle wave. The lockup then lifts
+/// away and the backdrop clears onto the app. Same timings and curves as the
+/// Android `SplashOverlay`.
+///
+/// The animation is Core Animation, not SwiftUI: SwiftUI works each frame out
+/// on the main thread, so the app starting up (Firebase, sign-in, push) made
+/// the logo and then the letters stutter. Core Animation plays in iOS's render
+/// server, so nothing the app does meanwhile can drop its frames.
 struct SplashView: View {
     /// Called once the logo and letters have settled and the lockup holds
     /// still: the app can be built underneath without making them stutter.
@@ -18,19 +22,55 @@ struct SplashView: View {
     var onFinish: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    // 1. Reveal
-    @State private var pieceMoved = Array(repeating: false, count: 4)
-    @State private var pieceVisible = Array(repeating: false, count: 4)
-    @State private var logoRevealScale: CGFloat = 0.9
-    // 2. Tuck, then the letters' wave
-    @State private var isTucked = false
-    @State private var letterSettled = Array(repeating: false, count: 6)
-    @State private var letterVisible = Array(repeating: false, count: 6)
-    // 3. Exit
-    @State private var lockupScale: CGFloat = 1
-    @State private var lockupOpacity: Double = 1
     @State private var backdropOpacity: Double = 1
+
+    var body: some View {
+        ZStack {
+            Color("LaunchBackground")
+                .opacity(backdropOpacity)
+            SplashLockup(reduceMotion: reduceMotion)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .task { await play() }
+    }
+
+    /// The moments the app hears about; the lockup's own movement is in `SplashLockupView`.
+    private func play() async {
+        let t = SplashLockupView.Timeline.self
+        let reduced = reduceMotion
+        try? await Task.sleep(for: .seconds(reduced ? 0.3 : t.logoBuilt))
+        onLogoBuilt()
+        try? await Task.sleep(for: .seconds(reduced ? 0.6 : t.exit - t.logoBuilt + 0.08))
+        onReveal()
+        withAnimation(.timingCurve(0.22, 1, 0.36, 1, duration: 0.38)) {
+            backdropOpacity = 0
+        }
+        try? await Task.sleep(for: .seconds(0.42))
+        onFinish()
+    }
+}
+
+private struct SplashLockup: UIViewRepresentable {
+    let reduceMotion: Bool
+
+    func makeUIView(context: Context) -> SplashLockupView {
+        SplashLockupView(reduceMotion: reduceMotion)
+    }
+
+    func updateUIView(_ view: SplashLockupView, context: Context) {}
+}
+
+/// The logo and the wordmark as Core Animation layers, centred in the view.
+final class SplashLockupView: UIView {
+    /// When each part happens, in seconds from the start.
+    enum Timeline {
+        static let reveal: CFTimeInterval = 0.12
+        static let tuck: CFTimeInterval = 0.84
+        static let logoBuilt: CFTimeInterval = 1.78
+        static let exit: CFTimeInterval = 2.20
+    }
 
     // Lockup geometry, in points around the screen centre.
     private static let logoSize: CGFloat = 114.67
@@ -39,164 +79,194 @@ struct SplashView: View {
     private static let wordSize = CGSize(width: 158, height: 34)
     private static let wordX: CGFloat = 29.3
     /// The logo's four shapes (each the full logo-sized image, so they line up
-    /// where they are drawn), where each flies in from, and when (seconds).
-    private static let logoPieces: [(image: String, from: CGSize, delay: Double)] = [
+    /// where they are drawn), where each flies in from, and when.
+    private static let logoPieces: [(image: String, from: CGSize, delay: CFTimeInterval)] = [
         ("SplashLogoTop", CGSize(width: 0, height: -34), 0),
         ("SplashLogoBottom", CGSize(width: 0, height: 34), 0.06),
         ("SplashLogoArc", CGSize(width: 40, height: 0), 0.14),
         ("SplashLogoBar", CGSize(width: -72, height: 0), 0.22)
     ]
-    /// Where each letter of the wordmark image starts, as a fraction of its
-    /// width (d, a, s, h, i, t), cut in the gaps between the letters.
+    /// Where each letter of the wordmark starts, as a fraction of its width
+    /// (d, a, s, h, i, t), cut in the gaps between the letters.
     private static let letterCuts: [CGFloat] = [0, 0.1862, 0.3936, 0.5727, 0.7713, 0.8652, 1]
 
-    private static func easeOut(_ duration: Double) -> Animation { .timingCurve(0.22, 1, 0.36, 1, duration: duration) }
-    private static func easeIn(_ duration: Double) -> Animation { .timingCurve(0.55, 0, 1, 0.45, duration: duration) }
-    private static func easeInOut(_ duration: Double) -> Animation { .timingCurve(0.65, 0, 0.35, 1, duration: duration) }
-    /// A settle with a touch of overshoot, for each letter's pop.
-    private static func pop(_ duration: Double) -> Animation { .timingCurve(0.34, 1.36, 0.64, 1, duration: duration) }
+    private static let easeOut = CAMediaTimingFunction(controlPoints: 0.22, 1, 0.36, 1)
+    private static let easeIn = CAMediaTimingFunction(controlPoints: 0.55, 0, 1, 0.45)
+    private static let easeInOut = CAMediaTimingFunction(controlPoints: 0.65, 0, 0.35, 1)
 
-    var body: some View {
-        ZStack {
-            Color("LaunchBackground")
-                .opacity(backdropOpacity)
+    private let reduceMotion: Bool
+    /// Everything; lifts and fades away at the end.
+    private let lockup = CALayer()
+    /// The logo; tucks left and shrinks.
+    private let logoTuck = CALayer()
+    /// The logo; grows a touch as it builds.
+    private let logoReveal = CALayer()
+    private var pieces: [CALayer] = []
+    private var letters: [CALayer] = []
+    private var hasStarted = false
 
-            ZStack {
-                ZStack {
-                    ForEach(0..<6, id: \.self) { index in
-                        letter(index)
-                    }
-                }
-                .frame(width: Self.wordSize.width, height: Self.wordSize.height)
-                .offset(x: Self.wordX)
-
-                // The logo: its four shapes, moved together as one.
-                ZStack {
-                    ForEach(0..<Self.logoPieces.count, id: \.self) { index in
-                        let piece = Self.logoPieces[index]
-                        Image(piece.image)
-                            .resizable()
-                            .interpolation(.high)
-                            .frame(width: Self.logoSize, height: Self.logoSize)
-                            .offset(
-                                x: pieceMoved[index] ? 0 : piece.from.width,
-                                y: pieceMoved[index] ? 0 : piece.from.height
-                            )
-                            .opacity(pieceVisible[index] ? 1 : 0)
-                    }
-                }
-                .scaleEffect(logoRevealScale)
-                .scaleEffect(isTucked ? Self.tuckedLogoScale : 1)
-                .offset(x: isTucked ? Self.tuckedLogoX : 0)
-            }
-            // Drawn as one Metal layer: the six letters and four logo shapes
-            // move every frame, and composing them as separate layers each
-            // frame is what made the letters' wave stutter.
-            .drawingGroup()
-            .scaleEffect(lockupScale)
-            .opacity(lockupOpacity)
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .task { await play() }
+    init(reduceMotion: Bool) {
+        self.reduceMotion = reduceMotion
+        super.init(frame: .zero)
+        backgroundColor = .clear
+        isUserInteractionEnabled = false
+        build()
     }
 
-    /// One letter of the wordmark: the image cut to that letter, so each can move on its own.
-    private func letter(_ index: Int) -> some View {
-        let from = Self.letterCuts[index] * Self.wordSize.width
-        let to = Self.letterCuts[index + 1] * Self.wordSize.width
-        return Image("SplashWordmark")
-            .resizable()
-            .interpolation(.high)
-            .frame(width: Self.wordSize.width, height: Self.wordSize.height)
-            // A plain rectangular clip: far cheaper per frame than a mask layer.
-            .clipShape(LetterClip(from: from, to: to))
-            .opacity(letterVisible[index] ? 1 : 0)
-            .offset(x: letterSettled[index] ? 0 : -14, y: letterSettled[index] ? 0 : 7)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    private func build() {
+        let scale = UIScreen.main.scale
+        layer.addSublayer(lockup)
+        lockup.addSublayer(logoTuck)
+        logoTuck.addSublayer(logoReveal)
+
+        let logoBounds = CGRect(x: 0, y: 0, width: Self.logoSize, height: Self.logoSize)
+        logoTuck.bounds = logoBounds
+        logoReveal.bounds = logoBounds
+        logoReveal.position = CGPoint(x: logoBounds.midX, y: logoBounds.midY)
+        for piece in Self.logoPieces {
+            let shape = CALayer()
+            shape.contents = UIImage(named: piece.image)?.cgImage
+            shape.contentsScale = scale
+            shape.contentsGravity = .resizeAspect
+            shape.bounds = logoBounds
+            shape.position = CGPoint(x: logoBounds.midX, y: logoBounds.midY)
+            logoReveal.addSublayer(shape)
+            pieces.append(shape)
+        }
+
+        let word = UIImage(named: "SplashWordmark")?.cgImage
+        for index in 0..<6 {
+            let from = Self.letterCuts[index], to = Self.letterCuts[index + 1]
+            let letter = CALayer()
+            letter.contents = word
+            letter.contentsScale = scale
+            letter.contentsGravity = .resize
+            // Just this letter's strip of the wordmark.
+            letter.contentsRect = CGRect(x: from, y: 0, width: to - from, height: 1)
+            letter.bounds = CGRect(x: 0, y: 0, width: (to - from) * Self.wordSize.width, height: Self.wordSize.height)
+            letter.anchorPoint = CGPoint(x: 0, y: 0.5)
+            // Placed relative to the lockup's centre.
+            letter.position = CGPoint(x: Self.wordX - Self.wordSize.width / 2 + from * Self.wordSize.width, y: 0)
+            lockup.addSublayer(letter)
+            letters.append(letter)
+        }
+        logoTuck.position = .zero
     }
 
-    private func play() async {
-        guard !reduceMotion else {
-            // The finished lockup, faded in and out.
-            isTucked = true
-            logoRevealScale = 1
-            pieceMoved = Array(repeating: true, count: 4)
-            letterSettled = Array(repeating: true, count: 6)
-            withAnimation(.easeOut(duration: 0.3)) {
-                pieceVisible = Array(repeating: true, count: 4)
-                letterVisible = Array(repeating: true, count: 6)
-            }
-            onLogoBuilt()
-            try? await Task.sleep(for: .milliseconds(900))
-            onReveal()
-            withAnimation(.easeOut(duration: 0.3)) {
-                lockupOpacity = 0
-                backdropOpacity = 0
-            }
-            try? await Task.sleep(for: .milliseconds(320))
-            onFinish()
-            return
-        }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        lockup.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        CATransaction.commit()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil, !hasStarted else { return }
+        hasStarted = true
+        reduceMotion ? showStill() : play()
+    }
+
+    /// The finished lockup, faded in and out (Reduce Motion).
+    private func showStill() {
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        logoTuck.transform = Self.tucked
+        lockup.opacity = 0
+        CATransaction.commit()
+        let fade = CAKeyframeAnimation(keyPath: "opacity")
+        fade.values = [0, 1, 1, 0]
+        fade.keyTimes = [0, 0.25, 0.75, 1]
+        fade.duration = 1.2
+        lockup.add(fade, forKey: "still")
+    }
+
+    private static var tucked: CATransform3D {
+        CATransform3DScale(CATransform3DMakeTranslation(tuckedLogoX, 0, 0), tuckedLogoScale, tuckedLogoScale, 1)
+    }
+
+    private func play() {
+        let start = CACurrentMediaTime()
+        let t = Timeline.self
+
+        // Final states first, so each layer stays put once its animation ends.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        logoTuck.transform = Self.tucked
+        lockup.opacity = 0
+        lockup.transform = CATransform3DMakeScale(1.08, 1.08, 1)
+        CATransaction.commit()
 
         // 1. The logo builds itself: its shapes fly in one after another.
-        try? await Task.sleep(for: .milliseconds(120))
-        withAnimation(Self.easeOut(0.7)) {
-            logoRevealScale = 1
-        }
-        for index in 0..<Self.logoPieces.count {
-            let delay = Self.logoPieces[index].delay
-            withAnimation(Self.pop(0.46).delay(delay)) {
-                pieceMoved[index] = true
-            }
-            withAnimation(Self.easeOut(0.24).delay(delay)) {
-                pieceVisible[index] = true
-            }
+        scale(logoReveal, from: 0.9, to: 1, at: start + t.reveal, duration: 0.7, timing: Self.easeOut)
+        for (index, piece) in Self.logoPieces.enumerated() {
+            let begin = start + t.reveal + piece.delay
+            pop(pieces[index], from: piece.from, at: begin, duration: 0.46)
+            fade(pieces[index], from: 0, to: 1, at: begin, duration: 0.24, timing: Self.easeOut, holdBefore: true)
         }
 
         // 2. It tucks left, and the letters pop in from its side in a wave.
-        try? await Task.sleep(for: .milliseconds(720))
-        withAnimation(Self.easeInOut(0.56)) {
-            isTucked = true
-        }
-        for index in 0..<6 {
-            let delay = 0.22 + 0.045 * Double(index)
-            withAnimation(Self.pop(0.48).delay(delay)) {
-                letterSettled[index] = true
-            }
-            withAnimation(Self.easeOut(0.42).delay(delay)) {
-                letterVisible[index] = true
-            }
+        let tuck = CABasicAnimation(keyPath: "transform")
+        tuck.fromValue = CATransform3DIdentity
+        tuck.toValue = Self.tucked
+        tuck.beginTime = start + t.tuck
+        tuck.duration = 0.56
+        tuck.timingFunction = Self.easeInOut
+        tuck.fillMode = .backwards
+        logoTuck.add(tuck, forKey: "tuck")
+        for (index, letter) in letters.enumerated() {
+            let begin = start + t.tuck + 0.22 + 0.045 * Double(index)
+            pop(letter, from: CGSize(width: -14, height: 7), at: begin, duration: 0.48)
+            fade(letter, from: 0, to: 1, at: begin, duration: 0.42, timing: Self.easeOut, holdBefore: true)
         }
 
-        // The letters have settled: the lockup now holds still, so this is
-        // when the app is built underneath (building it during the logo or the
-        // letters made each of them stutter in turn).
-        try? await Task.sleep(for: .milliseconds(940))
-        onLogoBuilt()
-
-        // 3. The lockup lifts away and the backdrop clears onto the app.
-        try? await Task.sleep(for: .milliseconds(420))
-        withAnimation(Self.easeIn(0.32)) {
-            lockupScale = 1.08
-            lockupOpacity = 0
-        }
-        withAnimation(Self.easeOut(0.38).delay(0.08)) {
-            backdropOpacity = 0
-        }
-        try? await Task.sleep(for: .milliseconds(80))
-        onReveal()
-        try? await Task.sleep(for: .milliseconds(400))
-        onFinish()
+        // The lockup is shown throughout, then 3. lifts away and fades.
+        fade(lockup, from: 1, to: 0, at: start + t.exit, duration: 0.32, timing: Self.easeIn, holdBefore: true)
+        scale(lockup, from: 1, to: 1.08, at: start + t.exit, duration: 0.32, timing: Self.easeIn)
     }
-}
 
-/// The vertical strip of a wordmark image between two x positions.
-private struct LetterClip: Shape {
-    let from: CGFloat
-    let to: CGFloat
+    private func fade(_ layer: CALayer, from: Float, to: Float, at time: CFTimeInterval, duration: CFTimeInterval,
+                      timing: CAMediaTimingFunction, holdBefore: Bool = false) {
+        let animation = CABasicAnimation(keyPath: "opacity")
+        animation.fromValue = from
+        animation.toValue = to
+        animation.beginTime = time
+        animation.duration = duration
+        animation.timingFunction = timing
+        // Holding the start value until it begins (the layer's own value is the end one).
+        animation.fillMode = holdBefore ? .backwards : .removed
+        layer.add(animation, forKey: "fade-\(time)")
+        layer.opacity = to
+    }
 
-    func path(in rect: CGRect) -> Path {
-        Path(CGRect(x: from, y: rect.minY, width: to - from, height: rect.height))
+    private func scale(_ layer: CALayer, from: CGFloat, to: CGFloat, at time: CFTimeInterval, duration: CFTimeInterval,
+                       timing: CAMediaTimingFunction) {
+        let animation = CABasicAnimation(keyPath: "transform.scale")
+        animation.fromValue = from
+        animation.toValue = to
+        animation.beginTime = time
+        animation.duration = duration
+        animation.timingFunction = timing
+        animation.fillMode = .backwards
+        layer.add(animation, forKey: "scale-\(time)")
+    }
+
+    /// Moves in from `offset`, overshoots a touch and settles: the pop.
+    private func pop(_ layer: CALayer, from offset: CGSize, at time: CFTimeInterval, duration: CFTimeInterval) {
+        let animation = CAKeyframeAnimation(keyPath: "transform.translation")
+        animation.values = [
+            NSValue(cgSize: offset),
+            NSValue(cgSize: CGSize(width: -offset.width * 0.07, height: -offset.height * 0.07)),
+            NSValue(cgSize: .zero)
+        ]
+        animation.keyTimes = [0, 0.62, 1]
+        animation.timingFunctions = [Self.easeOut, CAMediaTimingFunction(name: .easeInEaseOut)]
+        animation.beginTime = time
+        animation.duration = duration
+        animation.fillMode = .backwards
+        layer.add(animation, forKey: "pop-\(time)")
     }
 }
