@@ -122,3 +122,42 @@ Android needs nothing more. iPhone needs Apple's push key, once:
    GitHub secret `IOS_PROVISION_PROFILE_BASE64` on soulspeedmc67/testing
    (`base64 -i profile.mobileprovision | pbcopy`). The admin app's profile
    already includes push.
+
+## 6. Product list file (catalogue) and its cron job
+
+The shop apps no longer read products from Firestore. They download one file,
+`https://dashit.co.in/catalog/catalog.json` (about 1.1 MB, ~200 KB compressed),
+and ask `https://dashit.co.in/api/catalog/changes.php?since=…` every 30 seconds
+for anything edited since. `public/api/catalog/build.php` keeps the file up to
+date; Hostinger runs it every 5 minutes. Each run costs one Firestore read when
+nothing changed, reads only the changed products when something did, and reads
+everything once a day.
+
+**Set up the cron job (once):**
+
+1. Upload the website zip as usual (it has `api/catalog/` and `catalog/.htaccess`).
+2. hPanel → **Websites** → dashit.co.in → **Advanced** → **Cron Jobs**.
+3. Type: **PHP**.
+4. Command to run: `domains/dashit.co.in/public_html/api/catalog/build.php`
+   (if hPanel asks for a full path, it is `/home/<your user>/domains/dashit.co.in/public_html/api/catalog/build.php`;
+   the user name is shown at the top of the File Manager).
+5. Schedule: **Every 5 minutes** (common settings), i.e. `*/5 * * * *`.
+6. **Save**. Then, on the same page, open the job's **View output** after five
+   minutes: the first run says `Full read: … products` and `Wrote catalog.json`;
+   later runs say `Up to date` or `N changed products merged`.
+7. Check `https://dashit.co.in/catalog/catalog-status.json` in a browser: it
+   shows when the file was last built (`builtAt`, milliseconds) and how many
+   products it has.
+
+**Install the new apps before deploying the new `firestore.rules`.** The rules
+now keep products to staff; older shop apps still read products from Firestore
+and would only show the copy already on the phone.
+
+**If the cron stops**, the apps keep working (they still get every change from
+`changes.php`), but each request reads every product edited since the file was
+built. Turn on hPanel's cron failure e-mail if it offers one, and glance at
+`catalog-status.json` now and then.
+
+**After a big CSV import** you can rebuild at once instead of waiting: in
+**Cron Jobs**, add the same command with `--full` at the end and run it once
+(then delete that job), or just wait up to 5 minutes.

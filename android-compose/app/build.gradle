@@ -20,6 +20,8 @@ android {
 
         // The sign-in server next to the website (public/api/auth/). A test build
         // can use another: ./gradlew installDebug -PsignInServer=http://127.0.0.1:8099/api/auth/
+        // The website the product list file comes from (public_html/catalog, public/api/catalog).
+        buildConfigField "String", "CATALOG_SERVER", "\"${project.findProperty('catalogServer') ?: 'https://dashit.co.in/'}\""
         buildConfigField "String", "SIGN_IN_SERVER", "\"${project.findProperty('signInServer') ?: 'https://dashit.co.in/api/auth/'}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"

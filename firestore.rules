@@ -114,13 +114,17 @@ service cloud.firestore {
         && payment.amount >= order.total * 100 - 1;
     }
 
-    // ---- Catalogue: world-readable, staff-writable ------------------------
-    // Customers must be able to browse before signing in, so reads are open.
-    // Writes (price, stock, availability) are the store's books — staff only.
-    // Riders never edit the catalogue, so the write grant is admin-only rather
-    // than staff-wide: a stolen rider phone must not be able to reprice the shop.
+    // ---- Catalogue: staff only -------------------------------------------
+    // Shoppers don't read products from Firestore: the shop apps get them from
+    // one file on the website (public_html/catalog/catalog.json, built by
+    // public/api/catalog/build.php with the service account, which these rules
+    // don't apply to) and ask public/api/catalog/changes.php for edits. So
+    // nobody outside the store can read the products collection, and no script
+    // can run up the bill by reading it over and over.
+    // Writes (price, stock, availability) are the store's books — admin only:
+    // a stolen rider phone must not be able to reprice the shop.
     match /products/{productId} {
-      allow read: if true;
+      allow read: if isStaff();
       allow write: if isAdmin();
     }
 

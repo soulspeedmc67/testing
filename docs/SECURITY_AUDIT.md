@@ -85,3 +85,18 @@ a sign-in form for anyone without a `staff/{uid}` record.
 - **Google sign-in in production** needs the Play App Signing key's SHA-1 added to
   the Firebase Android app once the app is on Google Play (debug and local-build
   keys are already added).
+
+## Update 2026-10-02: products moved off public Firestore reads
+
+- The shop apps read products from `catalog/catalog.json` on the website and
+  `api/catalog/changes.php`, not from Firestore. `firestore.rules` now allow
+  reading `products` to staff only, so a script with the public Firebase
+  settings can no longer read the catalogue over and over at your expense.
+- `changes.php` is public but reads Firestore at most about twice a minute in
+  total (it shares one cached look for 30 seconds), and is rate limited per
+  network address. `build.php` runs only from the command line (cron); the web
+  gets 404 and `.htaccess` blocks it.
+- The catalogue file is public, as the products already were in the apps.
+  Downloading it costs Hostinger bandwidth, not Firebase money.
+- App Check is still worth turning on for the remaining public reads
+  (categories, offers, store settings: a handful of small documents).

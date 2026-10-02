@@ -36,123 +36,51 @@ class FirestoreRepository {
     }
 
     /**
-     * The live catalogue, read from Firestore as little as possible. Every
-     * document read is billed and the free plan allows 50,000 a day, which
-     * reading all ~1,300 products on every app open used up within hours. So
-     * the app shows the copy already on the phone (Firestore's own cache, free
-     * to read) and only asks the server for products changed since the newest
-     * change it has seen. Every product write sets `updatedAt` and removals
-     * mark `active: false`. The whole list is read on the first open and then
-     * once a week. Same approach as the iPhone app and the website.
+     * The live catalogue, from one file on the website rather than Firestore
+     * (see [CatalogueFile] and public/api/catalog/): the copy on the phone at
+     * once, then the file if it changed, then what changed since, asked every
+     * 30 seconds while the app is on screen. Price and stock edits show up
+     * within about a minute, and Firestore isn't read for products at all
+     * (firestore.rules keep products to staff).
      */
     fun observeProducts(): Flow<List<Product>> = callbackFlow {
-        val db = firestore
-        if (db == null) {
+        val context = runCatching { FirebaseApp.getInstance().applicationContext }.getOrNull()
+        if (context == null) {
             trySend(CatalogSeed.products)
             awaitClose { }
             return@callbackFlow
         }
-
-        val sync = CatalogueSync(
-            FirebaseApp.getInstance().applicationContext.getSharedPreferences("dashit_prefs", Context.MODE_PRIVATE)
-        )
-        val products = db.collection("products")
-        val catalogue = HashMap<String, Product>() // by document id
-        var closed = false
-        // Firestore answers on the main thread by default, and reading ~4,600
-        // products there froze scrolling. One background thread does it all,
-        // so the catalogue is only ever touched from one place.
-        val worker = Executors.newSingleThreadExecutor()
-
-        // The built-in catalogue only stands in if Firestore hasn't answered in
-        // a few seconds (no network and nothing cached yet) or fails outright.
+        val file = CatalogueFile(context)
         var delivered = false
-        val fallback = launch {
-            delay(5000)
-            if (!delivered) trySend(CatalogSeed.products)
-        }
-        var listener: ListenerRegistration? = null
 
         fun deliver() {
-            val list = catalogue.toSortedMap().values.toList()
+            val list = file.shown().toSortedMap().mapNotNull { (id, entry) -> parseProduct(id, entry.toPlainMap()) }
             if (list.isEmpty()) return
             delivered = true
-            fallback.cancel()
             trySend(list)
         }
 
-        /** Applies documents to the catalogue; returns the newest `updatedAt` among them. */
-        fun apply(documents: List<DocumentSnapshot>, removed: List<String> = emptyList()): Long {
-            var newest = 0L
-            removed.forEach { catalogue.remove(it) }
-            documents.forEach { doc ->
-                val data = doc.data ?: return@forEach
-                (data["updatedAt"] as? Timestamp)?.let { newest = max(newest, it.toDate().time) }
-                val product = if (data["active"] == false) null else parseProduct(doc.id, data)
-                if (product == null) catalogue.remove(doc.id) else catalogue[doc.id] = product
+        val work = launch(kotlinx.coroutines.Dispatchers.IO) {
+            // 1. The copy on the phone: at once, no network.
+            if (file.loadSaved()) deliver()
+            // 2. The file, if it changed (otherwise the website answers "not modified").
+            var retry = 0
+            while (true) {
+                if (file.download() || (!delivered && file.shown().isNotEmpty())) deliver()
+                if (delivered) break
+                // Nothing on the phone and no file yet: the built-in list stands in
+                // after a few seconds, and the file is asked for again.
+                if (retry == 1) trySend(CatalogSeed.products)
+                delay(minOf(30_000L, 5_000L * (1 shl retry++)))
             }
-            return newest
-        }
-
-        fun listenToEverything() {
-            listener = products.addSnapshotListener(worker) { snapshot, error ->
-                if (closed) return@addSnapshotListener
-                if (error != null) {
-                    fallback.cancel()
-                    if (!delivered) trySend(CatalogSeed.products)
-                    return@addSnapshotListener
-                }
-                // An empty answer is usually an empty offline cache: keep waiting.
-                if (snapshot == null || snapshot.isEmpty) return@addSnapshotListener
-                catalogue.clear()
-                val newest = apply(snapshot.documents)
-                if (!snapshot.metadata.isFromCache) sync.markFullRead(newest, catalogue.size)
-                deliver()
+            // 3. What changed since, while the app is on screen.
+            while (true) {
+                delay(30_000)
+                if (com.dashit.app.data.OrderNotifications.isAppInForeground && file.fetchChanges()) deliver()
             }
         }
 
-        try {
-            if (!sync.canFetchChangesOnly) {
-                listenToEverything()
-            } else {
-                // 1. What this phone already has: free.
-                products.get(Source.CACHE).addOnCompleteListener(worker) { task ->
-                    if (closed) return@addOnCompleteListener
-                    apply(if (task.isSuccessful) task.result?.documents.orEmpty() else emptyList())
-                    // The phone's copy went missing (cleared storage): read it all again.
-                    if (catalogue.size < sync.minimumExpectedCount) {
-                        catalogue.clear()
-                        listenToEverything()
-                        return@addOnCompleteListener
-                    }
-                    deliver()
-                    // 2. Then only what changed since, live.
-                    listener = products
-                        .whereGreaterThan("updatedAt", Timestamp(Date(sync.syncedAt)))
-                        .addSnapshotListener(worker) { snapshot, error ->
-                            if (closed || error != null || snapshot == null) return@addSnapshotListener
-                            val changes = snapshot.documentChanges
-                            if (changes.isEmpty()) return@addSnapshotListener
-                            val newest = apply(
-                                changes.filter { it.type != DocumentChange.Type.REMOVED }.map { it.document },
-                                changes.filter { it.type == DocumentChange.Type.REMOVED }.map { it.document.id }
-                            )
-                            if (!snapshot.metadata.isFromCache) sync.markChanges(newest, catalogue.size)
-                            deliver()
-                        }
-                }
-            }
-        } catch (_: Exception) {
-            fallback.cancel()
-            trySend(CatalogSeed.products)
-        }
-
-        awaitClose {
-            closed = true
-            fallback.cancel()
-            listener?.remove()
-            worker.shutdown()
-        }
+        awaitClose { work.cancel() }
     }
 
     /** One product document as the storefront shows it, or null if it can't be read. */
@@ -312,43 +240,6 @@ class FirestoreRepository {
  * When the catalogue was last read in full and the newest product change
  * seen, kept on the phone so an app open only asks for what changed since.
  */
-private class CatalogueSync(private val prefs: SharedPreferences) {
-    val syncedAt: Long get() = prefs.getLong(SYNCED_KEY, 0L)
-
-    val canFetchChangesOnly: Boolean
-        get() {
-            val full = prefs.getLong(FULL_KEY, 0L)
-            return syncedAt > 0 && full > 0 && System.currentTimeMillis() - full < FULL_READ_EVERY_MS
-        }
-
-    /** Below this many products, the phone's copy is treated as missing. */
-    val minimumExpectedCount: Int get() = maxOf(1, (prefs.getInt(COUNT_KEY, 0) * 0.9).toInt())
-
-    fun markFullRead(newest: Long, count: Int) {
-        // Nothing has ever been edited: start from "now", less a margin for
-        // the phone's clock being ahead of the server's.
-        val synced = if (newest > 0) newest else System.currentTimeMillis() - 10 * 60 * 1000L
-        prefs.edit()
-            .putLong(SYNCED_KEY, synced)
-            .putLong(FULL_KEY, System.currentTimeMillis())
-            .putInt(COUNT_KEY, count)
-            .apply()
-    }
-
-    fun markChanges(newest: Long, count: Int) {
-        val editor = prefs.edit().putInt(COUNT_KEY, count)
-        if (newest > syncedAt) editor.putLong(SYNCED_KEY, newest)
-        editor.apply()
-    }
-
-    private companion object {
-        const val SYNCED_KEY = "catalogue_synced_at"
-        const val FULL_KEY = "catalogue_full_at"
-        const val COUNT_KEY = "catalogue_count"
-        const val FULL_READ_EVERY_MS = 7L * 24 * 60 * 60 * 1000
-    }
-}
-
 /**
  * Stock pictures (Unsplash and the like) aren't the product, so they count as
  * no photo, as on the web (`isPlaceholderImage` in src/lib/productPhotoMatch.js).

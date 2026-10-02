@@ -1,0 +1,16 @@
+# catalog.json: the shop's product list, rebuilt by Hostinger's cron
+# (public/api/catalog/build.php). Phones ask with If-Modified-Since /
+# If-None-Match and get "304 Not Modified" (no download) when it hasn't
+# changed; compressed on the way (mod_deflate, root .htaccess).
+<Files "catalog.json">
+  FileETag MTime Size
+  <IfModule mod_headers.c>
+    Header set Cache-Control "public, no-cache"
+    Header set Access-Control-Allow-Origin "*"
+  </IfModule>
+</Files>
+<Files "catalog-status.json">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-store"
+  </IfModule>
+</Files>
