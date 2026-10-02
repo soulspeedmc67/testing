@@ -47,8 +47,9 @@ enum ProductSearch {
                 rank(entry, query: q, words: words).map { (entry: entry, rank: $0) }
             }
             .sorted { a, b in
-                if a.rank != b.rank { return a.rank < b.rank }
+                // Sold-out items come after every match that can be bought.
                 if a.entry.product.isAvailable != b.entry.product.isAvailable { return a.entry.product.isAvailable }
+                if a.rank != b.rank { return a.rank < b.rank }
                 if a.entry.popularity != b.entry.popularity { return a.entry.popularity > b.entry.popularity }
                 return a.entry.name < b.entry.name
             }

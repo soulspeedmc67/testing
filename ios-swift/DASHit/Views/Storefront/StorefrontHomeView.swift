@@ -21,12 +21,6 @@ struct StorefrontHomeView: View {
     /// The full-page search, laid over the feed so the product and cart
     /// sheets keep presenting from where they always do.
     @State private var isSearchOpen = false
-    /// 0 = the search bar on the feed, 1 = the search page filling the screen.
-    @State private var searchProgress: CGFloat = 0
-    /// Where the feed's search bar was when search opened (global coordinates).
-    @State private var searchSource: CGRect = .zero
-    /// The bar's live frame, kept in a box so scrolling doesn't redraw the page.
-    @State private var searchFieldFrame = FrameBox()
     @State private var searchText = ""
     @State private var submittedSearch: String? = nil
     /// Scroll-driven chrome, held by reference so scrolling redraws only the
@@ -151,26 +145,17 @@ struct StorefrontHomeView: View {
         }
         .background(Color.surface.ignoresSafeArea())
         .overlay {
+            // Shown straight away, no transition: simple and steady.
             if isSearchOpen {
-                GeometryReader { geo in
-                    StorefrontSearchView(
-                        vm: vm,
-                        query: $searchText,
-                        submitted: $submittedSearch,
-                        onOpenProduct: { detailProduct = $0 },
-                        onRequestAgeConfirmation: { ageGateProduct = $0 },
-                        onVoiceSearch: { isVoiceSearchOpen = true },
-                        onClose: closeSearch
-                    )
-                    // Grows out of the search bar into the whole screen, and
-                    // folds back into it on the way out.
-                    .modifier(SearchZoom(
-                        progress: searchProgress,
-                        source: searchSource,
-                        container: geo.frame(in: .global),
-                        size: geo.size
-                    ))
-                }
+                StorefrontSearchView(
+                    vm: vm,
+                    query: $searchText,
+                    submitted: $submittedSearch,
+                    onOpenProduct: { detailProduct = $0 },
+                    onRequestAgeConfirmation: { ageGateProduct = $0 },
+                    onVoiceSearch: { isVoiceSearchOpen = true },
+                    onClose: closeSearch
+                )
             }
         }
         .onChange(of: isSearchOpen) { _, isOpen in
@@ -360,7 +345,6 @@ struct StorefrontHomeView: View {
                 onVoiceSearch: { isVoiceSearchOpen = true },
                 onActivate: openSearch
             )
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { searchFieldFrame.value = $0 }
             .padding(.horizontal, 16)
             .padding(.top, 6)
             CategoryTabsView(
@@ -379,28 +363,14 @@ struct StorefrontHomeView: View {
         }
     }
 
-    /// The search page grows out of the bar the shopper tapped, wherever it
-    /// is on the feed, and takes over the screen.
     private func openSearch() {
-        searchSource = searchFieldFrame.value
-        searchProgress = 0
         isSearchOpen = true
-        // Next turn, so the page is on screen at the bar's size before it grows.
-        DispatchQueue.main.async {
-            withAnimation(.smooth(duration: 0.46)) { searchProgress = 1 }
-        }
     }
 
     private func closeSearch() {
-        searchSource = searchFieldFrame.value
-        // Gentle to start, quick into the bar, so it doesn't linger at bar size.
-        withAnimation(.timingCurve(0.3, 0, 0.8, 0.15, duration: 0.3)) {
-            searchProgress = 0
-        } completion: {
-            isSearchOpen = false
-            searchText = ""
-            submittedSearch = nil
-        }
+        isSearchOpen = false
+        searchText = ""
+        submittedSearch = nil
     }
 
     // MARK: - Shop by category
@@ -625,62 +595,5 @@ private struct PinnedSearchBackdrop: View {
         Color.surface
             .opacity(chrome.pinProgress)
             .animation(.easeOut(duration: 0.15), value: chrome.pinProgress)
-    }
-}
-
-/// A frame written on every scroll without redrawing anything: read once,
-/// when search opens or closes.
-private final class FrameBox {
-    var value: CGRect = .zero
-}
-
-/// The search page as a panel that grows from the feed's search bar to the
-/// whole screen. The panel's shape runs from the bar's rounded rectangle to the
-/// screen; the page inside rides along, so its own search field starts where
-/// the tapped bar was and settles at the top.
-private struct SearchZoom: ViewModifier, Animatable {
-    var progress: CGFloat
-    let source: CGRect      // the feed's bar, global
-    let container: CGRect   // this overlay, global
-    let size: CGSize
-
-    var animatableData: CGFloat {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    /// Where the page's own field sits at rest (StorefrontSearchView.searchBar:
-    /// 6 pt from the top, after the 6 pt inset and the 44 pt back button).
-    private static let fieldRest = CGPoint(x: 50, y: 6)
-
-    func body(content: Content) -> some View {
-        let p = min(max(progress, 0), 1)
-        // The shape fills a little ahead of the page's glide, so its lower edge
-        // doesn't creep over the feed at the end.
-        let g = 1 - (1 - p) * (1 - p)
-        let bar = source == .zero
-            ? CGRect(x: 16, y: Self.fieldRest.y, width: size.width - 32, height: 50)
-            : source.offsetBy(dx: -container.minX, dy: -container.minY)
-        // The panel reaches past the safe areas, where the page's background goes.
-        let full = CGRect(x: 0, y: -container.minY - 60, width: size.width, height: size.height + container.minY + 160)
-        let panel = CGRect(
-            x: bar.minX + (full.minX - bar.minX) * g,
-            y: bar.minY + (full.minY - bar.minY) * g,
-            width: bar.width + (full.width - bar.width) * g,
-            height: bar.height + (full.height - bar.height) * g
-        )
-        content
-            .offset(
-                x: (bar.minX - Self.fieldRest.x) * (1 - p),
-                y: (bar.minY - Self.fieldRest.y) * (1 - p)
-            )
-            .mask(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 16 * (1 - g), style: .continuous)
-                    .frame(width: panel.width, height: panel.height)
-                    .offset(x: panel.minX, y: panel.minY)
-            }
-            // Solid except while still about the bar's size, so the page and
-            // the feed are never seen through each other.
-            .opacity(min(1, g / 0.12))
     }
 }
