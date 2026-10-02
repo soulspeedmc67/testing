@@ -593,38 +593,46 @@ fun StorefrontScreen(
             if (isSearchOpen) {
                 searchFrom = searchBar.rect
                 isSearchShown = true
+                // The page's first frame is the heavy one: let it draw (still
+                // invisible at 0) before the clock starts, or the start is skipped.
+                withFrameNanos { }
+                withFrameNanos { }
                 searchZoom.animateTo(1f, tween(460, easing = SearchZoomEasing))
             } else if (isSearchShown) {
                 searchFrom = searchBar.rect
-                searchZoom.animateTo(0f, tween(380, easing = SearchZoomEasing))
+                searchZoom.animateTo(0f, tween(300, easing = SearchFoldEasing))
                 isSearchShown = false
             }
         }
         if (isSearchShown && !isProfileOpen && trackingOrderId == null) {
             val statusTop = WindowInsets.statusBars.getTop(LocalDensity.current).toFloat()
             var origin by remember { mutableStateOf(Offset.Zero) }
-            // The panel: from the bar's rounded rectangle to the screen, fading in
-            // over the first quarter so the bar hands over without a flash.
+            // The panel: from the bar's rounded rectangle to the screen.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .onGloballyPositioned { origin = it.positionInWindow() }
                     .graphicsLayer {
                         val p = searchZoom.value
+                        // The shape fills a little ahead of the page's glide, so
+                        // its lower edge doesn't creep over the feed at the end.
+                        val g = 1 - (1 - p) * (1 - p)
                         val bar = searchBarRect(searchFrom, origin, statusTop)
                         val panel = Rect(
-                            bar.left * (1 - p),
-                            bar.top * (1 - p),
-                            bar.right + (size.width - bar.right) * p,
-                            bar.bottom + (size.height - bar.bottom) * p
+                            bar.left * (1 - g),
+                            bar.top * (1 - g),
+                            bar.right + (size.width - bar.right) * g,
+                            bar.bottom + (size.height - bar.bottom) * g
                         )
-                        val radius = 16.dp.toPx() * (1 - p)
+                        val radius = 16.dp.toPx() * (1 - g)
                         shape = object : Shape {
                             override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density) =
                                 Outline.Rounded(RoundRect(panel, CornerRadius(radius)))
                         }
                         clip = true
-                        alpha = (p / 0.25f).coerceAtMost(1f)
+                        // Solid except while it is still about the bar's size, so
+                        // the page and the feed are never seen through each other.
+                        alpha = (g / 0.12f).coerceAtMost(1f)
                     }
                     .background(DashitColors.Surface)
                     // Opaque and swallowing touches, so nothing underneath reacts.
@@ -1119,8 +1127,11 @@ private class SearchBarBounds {
     var rect: Rect = Rect.Zero
 }
 
-/** Quick to leave, long to settle: Material's emphasized curve. */
+/** Quick to leave, long to settle: Material's emphasized curve, for opening. */
 private val SearchZoomEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+
+/** Gentle to start, quick into the bar: closing doesn't linger at bar size. */
+private val SearchFoldEasing = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
 /**
  * The tapped bar inside the search overlay's own coordinates. The bounds

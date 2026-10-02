@@ -393,7 +393,8 @@ struct StorefrontHomeView: View {
 
     private func closeSearch() {
         searchSource = searchFieldFrame.value
-        withAnimation(.smooth(duration: 0.38)) {
+        // Gentle to start, quick into the bar, so it doesn't linger at bar size.
+        withAnimation(.timingCurve(0.3, 0, 0.8, 0.15, duration: 0.3)) {
             searchProgress = 0
         } completion: {
             isSearchOpen = false
@@ -636,8 +637,7 @@ private final class FrameBox {
 /// The search page as a panel that grows from the feed's search bar to the
 /// whole screen. The panel's shape runs from the bar's rounded rectangle to the
 /// screen; the page inside rides along, so its own search field starts where
-/// the tapped bar was and settles at the top. It fades in over the first
-/// quarter, so the bar hands over to the page's field without a flash.
+/// the tapped bar was and settles at the top.
 private struct SearchZoom: ViewModifier, Animatable {
     var progress: CGFloat
     let source: CGRect      // the feed's bar, global
@@ -655,16 +655,19 @@ private struct SearchZoom: ViewModifier, Animatable {
 
     func body(content: Content) -> some View {
         let p = min(max(progress, 0), 1)
+        // The shape fills a little ahead of the page's glide, so its lower edge
+        // doesn't creep over the feed at the end.
+        let g = 1 - (1 - p) * (1 - p)
         let bar = source == .zero
             ? CGRect(x: 16, y: Self.fieldRest.y, width: size.width - 32, height: 50)
             : source.offsetBy(dx: -container.minX, dy: -container.minY)
         // The panel reaches past the safe areas, where the page's background goes.
         let full = CGRect(x: 0, y: -container.minY - 60, width: size.width, height: size.height + container.minY + 160)
         let panel = CGRect(
-            x: bar.minX + (full.minX - bar.minX) * p,
-            y: bar.minY + (full.minY - bar.minY) * p,
-            width: bar.width + (full.width - bar.width) * p,
-            height: bar.height + (full.height - bar.height) * p
+            x: bar.minX + (full.minX - bar.minX) * g,
+            y: bar.minY + (full.minY - bar.minY) * g,
+            width: bar.width + (full.width - bar.width) * g,
+            height: bar.height + (full.height - bar.height) * g
         )
         content
             .offset(
@@ -672,10 +675,12 @@ private struct SearchZoom: ViewModifier, Animatable {
                 y: (bar.minY - Self.fieldRest.y) * (1 - p)
             )
             .mask(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 16 * (1 - p), style: .continuous)
+                RoundedRectangle(cornerRadius: 16 * (1 - g), style: .continuous)
                     .frame(width: panel.width, height: panel.height)
                     .offset(x: panel.minX, y: panel.minY)
             }
-            .opacity(min(1, p / 0.25))
+            // Solid except while still about the bar's size, so the page and
+            // the feed are never seen through each other.
+            .opacity(min(1, g / 0.12))
     }
 }
