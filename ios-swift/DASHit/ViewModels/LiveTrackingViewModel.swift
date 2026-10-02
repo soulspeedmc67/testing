@@ -240,14 +240,18 @@ final class LiveTrackingViewModel: ObservableObject {
         remainingMeters = ahead.count >= 2 ? length * (isRoadRoute ? 1 : 1.3) : nil
     }
 
-    /// Whole minutes left (at least 1), from the road left and the rider's pace.
+    /// Minutes to show the shopper: the road left at the rider's pace, plus a
+    /// few minutes' margin (parking, stairs, finding the door), so the promise
+    /// is one the store keeps. Same as Android.
+    static let shownMarginMinutes = 3
+
     var etaMinutes: Int? {
         guard let left = remainingMeters else { return nil }
         // A town average of ~20 km/h, nudged by how fast the rider is moving right now.
         let average = 5.5
         var speed = average
         if let now = riderLocation?.speed, now > 2 { speed = 0.6 * average + 0.4 * min(now, 12) }
-        return max(1, Int((left / speed / 60).rounded(.up)))
+        return max(1, Int((left / speed / 60).rounded(.up))) + Self.shownMarginMinutes
     }
 
     /// "650 m away", "1.2 km away" or "Arriving now".
