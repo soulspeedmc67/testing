@@ -38,8 +38,9 @@ object ProductSearch {
         return products
             .mapNotNull { product -> rank(product, q, words)?.let { product to it } }
             .sortedWith(
-                compareBy<Pair<Product, Int>> { it.second }
-                    .thenBy { if (it.first.isAvailable) 0 else 1 }
+                // Sold-out items come after every match that can be bought.
+                compareBy<Pair<Product, Int>> { if (it.first.isAvailable) 0 else 1 }
+                    .thenBy { it.second }
                     .thenByDescending { popularity(it.first) }
                     .thenBy { it.first.name.lowercase() }
             )

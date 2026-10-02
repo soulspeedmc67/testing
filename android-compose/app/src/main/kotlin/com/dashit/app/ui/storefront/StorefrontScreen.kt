@@ -101,7 +101,6 @@ import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.DashitMotion
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
-import com.dashit.app.core.design.slideInFromLeft
 import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.DeliveryAddress
 import com.dashit.app.data.model.Order
@@ -752,7 +751,7 @@ fun StorefrontScreen(
                     val current = detailProduct!!
                     allProducts
                         .filter { it.cat.equals(current.cat, true) && it.id != current.id && !it.isAgeRestricted }
-                        .sortedBy { it.img.isBlank() }
+                        .sortedWith(compareBy({ !it.isAvailable }, { it.img.isBlank() }))
                         .take(9)
                 },
                 quantityOf = { p -> cartQty[p.id] ?: 0 },
@@ -1063,8 +1062,6 @@ private fun CategoryTabsRow(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    // Slide in from the left, one after another, on the first look after launch.
-                    .slideInFromLeft("categoryTabs", index, isReady = categories.isNotEmpty())
                     .pressable(scale = 0.92f) {
                         HapticsManager.selection(view)
                         if (cat.id == "all") {

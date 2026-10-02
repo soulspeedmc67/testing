@@ -38,7 +38,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val EaseOut = CubicBezierEasing(0.22f, 1f, 0.36f, 1f)
-private val EaseIn = CubicBezierEasing(0.55f, 0f, 1f, 0.45f)
 private val EaseInOut = CubicBezierEasing(0.65f, 0f, 0.35f, 1f)
 /** A settle with a touch of overshoot, for each letter's pop. */
 private val Pop = CubicBezierEasing(0.34f, 1.36f, 0.64f, 1f)
@@ -82,7 +81,6 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
     val tuck = remember { Animatable(0f) } // 0 → 1 moves the logo into the lockup
     val letterSettle = remember { List(6) { Animatable(0f) } } // 0 → 1: slide and rise into place
     val letterShow = remember { List(6) { Animatable(0f) } } // 0 → 1: fade in and sharpen
-    val lockupScale = remember { Animatable(1f) }
     val lockupAlpha = remember { Animatable(1f) }
     val backdropAlpha = remember { Animatable(1f) }
 
@@ -155,19 +153,24 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
                     }
                 }
             }
-            // 3. The lockup lifts away and the backdrop clears onto the app.
+            // 3. The splash fades away onto the app, the logo a little ahead of
+            // the backdrop so it never hangs over the shop. The shop hears it
+            // is on show only after the fade, so its own work can't make the
+            // fade skip frames.
             launch {
                 phaseTwoStarted.await()
-                delay(1060)
+                delay(900)
+                // The shop's first real draw is slow on the GPU (~150 ms). Let it
+                // happen now, under a backdrop just short of solid (not visible),
+                // instead of on the fade's first frame, where it skipped the start.
+                backdropAlpha.snapTo(0.99f)
+                repeat(6) { withFrameNanos { } }
+                delay(60)
                 coroutineScope {
-                    launch { lockupScale.animateTo(1.08f, tween(320, easing = EaseIn)) }
-                    launch { lockupAlpha.animateTo(0f, tween(320, easing = EaseIn)) }
-                    launch { backdropAlpha.animateTo(0f, tween(380, delayMillis = 80, easing = EaseOut)) }
-                    launch {
-                        delay(80)
-                        onReveal()
-                    }
+                    launch { lockupAlpha.animateTo(0f, tween(200, easing = EaseInOut)) }
+                    launch { backdropAlpha.animateTo(0f, tween(340, easing = EaseInOut)) }
                 }
+                onReveal()
             }
         }
         onFinished()
@@ -184,8 +187,6 @@ fun SplashOverlay(onReveal: () -> Unit, onFinished: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
-                    scaleX = lockupScale.value
-                    scaleY = lockupScale.value
                     alpha = lockupAlpha.value
                 }
         ) {
