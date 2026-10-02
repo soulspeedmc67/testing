@@ -368,7 +368,7 @@ private fun OrderStageScreen(
                 TrackingCardSkeleton()
             } else {
                 val seconds = rememberModifySecondsRemaining(order)
-                OrderStageHero(stage = order.status, canStillChange = seconds > 0, canAddItems = !order.isPaidOnline)
+                OrderStageHero(stage = order.status, isAwaitingPickup = order.isAwaitingPickup, canStillChange = seconds > 0, canAddItems = !order.isPaidOnline)
                 OrderCard(
                     order = order,
                     rider = null,
@@ -390,8 +390,10 @@ private fun OrderStageScreen(
  * happening in plain words. Same icon and timing as the iOS app.
  */
 @Composable
-private fun OrderStageHero(stage: OrderStatus, canStillChange: Boolean, canAddItems: Boolean) {
-    val (title, subtitle) = when (stage) {
+private fun OrderStageHero(stage: OrderStatus, isAwaitingPickup: Boolean, canStillChange: Boolean, canAddItems: Boolean) {
+    val (title, subtitle) = if (isAwaitingPickup) {
+        "Picking up your order" to "Your rider is collecting it from the store. The countdown starts when they set off."
+    } else when (stage) {
         OrderStatus.PLACED -> "Order received" to when {
             canStillChange && canAddItems -> "You can still add items or cancel. Packing starts right after."
             canStillChange -> "You can still cancel. Packing starts right after."
@@ -519,7 +521,7 @@ private fun OrderCard(
             Icon(stage.icon, contentDescription = null, tint = DashitColors.BrandAccent, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                stage.headline(order.driverName),
+                if (order.isAwaitingPickup) "Picking up your order" else stage.headline(order.driverName),
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,

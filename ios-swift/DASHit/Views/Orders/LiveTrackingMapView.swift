@@ -92,7 +92,7 @@ struct LiveTrackingMapView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     if let order {
-                        OrderStageHero(stage: order.status.stage, canStillChange: vm.isModificationWindowActive, canAddItems: !order.isPaidOnline)
+                        OrderStageHero(stage: order.status.stage, isAwaitingPickup: order.isAwaitingPickup, canStillChange: vm.isModificationWindowActive, canAddItems: !order.isPaidOnline)
                             .padding(.top, 6)
                         orderCard(order)
                         itemsList(order)
@@ -267,7 +267,7 @@ struct LiveTrackingMapView: View {
                 HStack(spacing: 8) {
                     Image(systemName: order.status.iconName)
                         .foregroundColor(.brandAccent)
-                    Text(stage.headline(riderName: order.driverName))
+                    Text(order.isAwaitingPickup ? "Picking up your order" : stage.headline(riderName: order.driverName))
                         .font(.dashitBodyBold)
                         .foregroundColor(.white)
                         .lineLimit(1)
@@ -390,6 +390,8 @@ struct LiveTrackingMapView: View {
 /// so it starts from the beginning and never stutters when the order updates.
 private struct OrderStageHero: View {
     let stage: DeliveryStage
+    /// A rider has it and is collecting it from the store.
+    var isAwaitingPickup = false
     let canStillChange: Bool
     let canAddItems: Bool
 
@@ -397,6 +399,7 @@ private struct OrderStageHero: View {
     @State private var openedAt = Date()
 
     private var title: String {
+        if isAwaitingPickup { return "Picking up your order" }
         switch stage {
         case .placed: return "Order received"
         case .packing: return "Packing your order"
@@ -406,6 +409,9 @@ private struct OrderStageHero: View {
     }
 
     private var subtitle: String {
+        if isAwaitingPickup {
+            return "Your rider is collecting it from the store. The countdown starts when they set off."
+        }
         switch stage {
         case .placed:
             if !canStillChange { return "The store is getting your items ready." }

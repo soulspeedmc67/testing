@@ -25,6 +25,7 @@ struct OrderStatusPill: View {
 
     /// Short, so nothing is cut off: no rider name here.
     private var headline: String {
+        if order.isAwaitingPickup { return "Picking up your order" }
         switch stage {
         case .onTheWay: return "On the way"
         case .delivered: return "Delivered"
@@ -43,7 +44,8 @@ struct OrderStatusPill: View {
     }
 
     private var subtitle: String {
-        stage.subtitle(etaMinutes: etaMinutes, itemCount: itemCount)
+        if order.isAwaitingPickup { return "Your rider is collecting it from the store" }
+        return stage.subtitle(etaMinutes: etaMinutes, itemCount: itemCount)
     }
 
     /// Shown until the order is delivered or cancelled.

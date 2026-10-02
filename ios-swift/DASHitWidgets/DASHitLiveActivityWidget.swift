@@ -126,6 +126,8 @@ private struct StatusLine: View {
     var body: some View {
         if journey.isLate {
             Text("Your rider is just around the corner")
+        } else if journey.isAwaitingPickup {
+            Text("Your rider is collecting it from the store")
         } else {
             switch journey.stage {
             case .placed:
@@ -151,36 +153,43 @@ private struct StatusLine: View {
 // MARK: - Building blocks
 
 /// Where the order is, worked out from the clock each time the card redraws
-/// (on every update, at least once a minute while it's open, and at the
+/// (on every update, at least once a minute while it's on the way, and at the
 /// arrival time, when the card goes stale).
 private struct Journey {
     let stage: DeliveryStage
+    /// A rider has it but hasn't collected it from the store yet.
+    let isAwaitingPickup: Bool
     /// The arrival time has passed and the order isn't in yet.
     let isLate: Bool
-    /// 0–1 along the rail: the share of the promised time gone by. The scooter
-    /// stops short of the door until the order is actually delivered.
+    /// 0–1 along the rail. Until the rider collects the order the scooter waits
+    /// at the store; from pickup it moves with the share of the ride's time gone
+    /// by, and stops short of the door until the order is actually delivered.
     let progress: Double
 
     init(context: ActivityViewContext<DASHitOrderAttributes>) {
         stage = context.state.stage
+        isAwaitingPickup = context.state.isAwaitingPickup
         let now = Date()
-        let start = context.attributes.placedAt
         let end = context.state.estimatedArrival
-        isLate = !stage.isFinished && (context.isStale || now >= end)
+        isLate = stage == .onTheWay && (context.isStale || now >= end)
         switch stage {
         case .delivered:
             progress = 1
         case .cancelled:
             progress = 0
-        default:
+        case .onTheWay:
+            let start = context.state.pickedUpAt ?? context.attributes.placedAt
             let span = max(60, end.timeIntervalSince(start))
             let gone = now.timeIntervalSince(start) / span
             progress = isLate ? 0.94 : min(0.94, max(0.04, gone))
+        default:
+            progress = 0.04
         }
     }
 
     var title: String {
         if isLate { return "Almost there" }
+        if isAwaitingPickup { return "Picking up your order" }
         switch stage {
         case .placed: return "Order placed"
         case .packing: return "Packing your order"
@@ -250,7 +259,7 @@ private struct CountdownText: View {
     let context: ActivityViewContext<DASHitOrderAttributes>
 
     var body: some View {
-        let start = context.attributes.placedAt
+        let start = min(context.state.pickedUpAt ?? context.attributes.placedAt, Date())
         let end = max(context.state.estimatedArrival, start)
         Text(timerInterval: start...end, countsDown: true, showsHours: false)
             .monospacedDigit()

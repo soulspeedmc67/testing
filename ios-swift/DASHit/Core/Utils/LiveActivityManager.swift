@@ -17,7 +17,10 @@ final class LiveActivityManager {
     /// The ETA the activity was last given. `etaMinutes` on the order is "minutes
     /// remaining when it was set", so the arrival time is only recomputed when that
     /// number changes, not on every unrelated order update.
-    private var lastEta: (orderId: String, minutes: Int, arrival: Date)?
+    private var lastEta: (orderId: String, minutes: Int, arrival: Date, riding: Bool)?
+    /// When the rider collected each order (first seen on its way, or as the
+    /// card on the Lock Screen already says): the ride's countdown starts here.
+    private var pickups: [String: Date] = [:]
 
     private init() {}
 
@@ -37,7 +40,8 @@ final class LiveActivityManager {
         // An order that replaced another (items added in the change window)
         // keeps the original arrival time rather than restarting the clock.
         if let replaced = order.replacesOrderId, let last = lastEta, last.orderId == replaced {
-            lastEta = (orderId: order.id, minutes: last.minutes, arrival: last.arrival)
+            lastEta = (orderId: order.id, minutes: last.minutes, arrival: last.arrival, riding: last.riding)
+            if let pickup = pickups[replaced] { pickups[order.id] = pickup }
         }
 
         let attributes = DASHitOrderAttributes(
@@ -50,7 +54,7 @@ final class LiveActivityManager {
         let state = contentState(for: order)
 
         do {
-            let content = ActivityContent(state: state, staleDate: state.estimatedArrival)
+            let content = ActivityContent(state: state, staleDate: Self.staleDate(of: state))
             // With a push address, the server keeps the card current while the
             // app is closed; without one (no push permission yet) the app does.
             let activity: Activity<DASHitOrderAttributes>
@@ -86,6 +90,7 @@ final class LiveActivityManager {
         if order.status.stage.isFinished {
             currentActivity = nil
             lastEta = nil
+            pickups[order.id] = nil
             Task {
                 await activity.end(
                     ActivityContent(state: state, staleDate: nil),
@@ -94,7 +99,7 @@ final class LiveActivityManager {
             }
         } else {
             Task {
-                await activity.update(ActivityContent(state: state, staleDate: state.estimatedArrival))
+                await activity.update(ActivityContent(state: state, staleDate: Self.staleDate(of: state)))
             }
         }
     }
@@ -107,6 +112,7 @@ final class LiveActivityManager {
         guard let activity = currentActivity else { return }
         currentActivity = nil
         lastEta = nil
+        pickups.removeAll()
         Task {
             await activity.end(nil, dismissalPolicy: .after(Date().addingTimeInterval(15)))
         }
@@ -143,22 +149,41 @@ final class LiveActivityManager {
         let state = running.content.state
         let margin = TimeInterval(LiveTrackingViewModel.shownMarginMinutes * 60)
         lastEta = (orderId: orderId, minutes: state.etaMinutes - LiveTrackingViewModel.shownMarginMinutes,
-                   arrival: state.estimatedArrival.addingTimeInterval(-margin))
+                   arrival: state.estimatedArrival.addingTimeInterval(-margin), riding: state.pickedUpAt != nil)
+        if let pickup = state.pickedUpAt { pickups[orderId] = pickup }
         return running
     }
 
+    /// The card goes stale (and says "almost there") at the arrival time, but
+    /// only once the rider is on the way: before pickup there's no countdown.
+    private static func staleDate(of state: DASHitOrderAttributes.ContentState) -> Date? {
+        state.pickedUpAt == nil ? nil : state.estimatedArrival
+    }
+
     private func contentState(for order: Order, tracking: DriverLiveTracking? = nil) -> DASHitOrderAttributes.ContentState {
-        // The rider's live ETA (from the driver app) wins over the checkout estimate.
-        let minutes = max(tracking?.etaMinutes ?? order.etaMinutes ?? 8, 0)
+        let riding = order.status.stage == .onTheWay
         let arrival: Date
-        if let last = lastEta, last.orderId == order.id {
-            arrival = last.minutes == minutes
-                ? last.arrival
-                : Date().addingTimeInterval(TimeInterval(minutes * 60))
+        let minutes: Int
+        var pickup: Date? = nil
+        if riding {
+            // The clock starts when the rider collects the order, not when it
+            // was placed, so it can't run out while the order is at the store.
+            let start = pickups[order.id] ?? Date()
+            pickups[order.id] = start
+            pickup = start
+            // The rider's live ETA (from the driver app) wins over the estimate
+            // of the ride (the checkout time less the packing).
+            minutes = max(tracking?.etaMinutes ?? max(5, (order.etaMinutes ?? 8) - 3), 0)
+            if let last = lastEta, last.orderId == order.id, last.riding {
+                arrival = last.minutes == minutes ? last.arrival : Date().addingTimeInterval(TimeInterval(minutes * 60))
+            } else {
+                arrival = start.addingTimeInterval(TimeInterval(minutes * 60))
+            }
         } else {
+            minutes = max(order.etaMinutes ?? 8, 0)
             arrival = Date(timeIntervalSince1970: order.createdAt).addingTimeInterval(TimeInterval(minutes * 60))
         }
-        lastEta = (orderId: order.id, minutes: minutes, arrival: arrival)
+        lastEta = (orderId: order.id, minutes: minutes, arrival: arrival, riding: riding)
 
         // The shopper is shown the same extra minutes as in the app.
         let margin = LiveTrackingViewModel.shownMarginMinutes
@@ -167,7 +192,8 @@ final class LiveActivityManager {
             etaMinutes: minutes + margin,
             driverName: order.driverName,
             progress: order.status.stage.progress(live: tracking?.progress),
-            estimatedArrival: arrival.addingTimeInterval(TimeInterval(margin * 60))
+            estimatedArrival: arrival.addingTimeInterval(TimeInterval(margin * 60)),
+            pickedUpAt: pickup
         )
     }
 }

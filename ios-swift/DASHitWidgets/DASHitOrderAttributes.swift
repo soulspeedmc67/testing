@@ -11,19 +11,31 @@ public struct DASHitOrderAttributes: ActivityAttributes {
         public var driverName: String?
         public var progress: Double     // 0.0 to 1.0
         public var estimatedArrival: Date
+        /// When the rider collected the order ("Start delivery"); nil until then.
+        /// The countdown and the scooter's ride run from here.
+        public var pickedUpAt: Date?
 
         public init(
             status: String,
             etaMinutes: Int,
             driverName: String? = nil,
             progress: Double = 0.25,
-            estimatedArrival: Date = Date().addingTimeInterval(8 * 60)
+            estimatedArrival: Date = Date().addingTimeInterval(8 * 60),
+            pickedUpAt: Date? = nil
         ) {
             self.status = status
             self.etaMinutes = etaMinutes
             self.driverName = driverName
             self.progress = progress
             self.estimatedArrival = estimatedArrival
+            self.pickedUpAt = pickedUpAt
+        }
+
+        /// A rider has the order but hasn't collected it from the store yet.
+        public var isAwaitingPickup: Bool {
+            let s = stage
+            guard s == .placed || s == .packing else { return false }
+            return !(driverName?.trimmingCharacters(in: .whitespaces).isEmpty ?? true)
         }
 
         public var stage: DeliveryStage { DeliveryStage(status: status) }

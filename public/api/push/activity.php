@@ -35,6 +35,9 @@ $saved = dashit_firestore_merge($account, "orders/$orderId", [
 // From now on the card is kept moving by push/tick.php, starting with the
 // order's current stage.
 $stage = dashit_push_stage((string) ($order['status'] ?? ''));
+if (($stage === 'placed' || $stage === 'packing') && trim((string) ($order['driverId'] ?? '')) !== '') {
+    $stage = 'assigned';
+}
 if ($saved && $stage !== 'delivered' && $stage !== 'cancelled') {
     dashit_push_live_activity($account, $fcm, $activity, $orderId, $order, $stage);
 }
