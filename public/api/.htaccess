@@ -9,3 +9,8 @@
 # Every endpoint takes a few small JSON fields; refuse anything bigger before
 # PHP starts (see also DASHIT_MAX_BODY_BYTES in _http.php).
 LimitRequestBody 65536
+
+# catalog/build.php is for Hostinger's cron (command line) only.
+<Files "build.php">
+  Require all denied
+</Files>

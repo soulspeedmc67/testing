@@ -26,6 +26,12 @@ final class FirestoreService {
     /// Decoding runs off the main thread (thousands of documents froze
     /// scrolling there); `completion` is called on the main thread.
     func listenProducts(completion: @escaping ([Product]) -> Void) -> ListenerRegistration {
+        #if !ADMIN_APP_TARGET
+        // The shop app reads products from the website's catalogue file (see
+        // CatalogueFile); firestore.rules keep products to staff. The admin
+        // app reads Firestore, below.
+        return CatalogueFile(completion: completion)
+        #else
         let sync = CatalogueSync()
         let products = db.collection("products")
         let registration = DeferredListener()
@@ -123,6 +129,7 @@ final class FirestoreService {
             }
         }
         return registration
+        #endif
     }
 
     private static let decodeQueue = DispatchQueue(label: "dashit.catalogue.decode", qos: .userInitiated)

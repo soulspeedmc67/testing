@@ -51,7 +51,12 @@ function dashit_json_body(): array
 /** A folder beside public_html (never inside it), such as dashit-secrets. */
 function dashit_private_dir(string $name): string
 {
-    $root = rtrim($_SERVER['DOCUMENT_ROOT'] ?? __DIR__, '/');
+    // The website folder (public_html): from the web server, or, for cron
+    // (command line, no DOCUMENT_ROOT), the folder above api/.
+    $root = rtrim((string) ($_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    if ($root === '') {
+        $root = dirname(__DIR__);
+    }
     return dirname($root) . '/' . $name;
 }
 
