@@ -703,7 +703,8 @@ export default function DashItDriverApp() {
   const isOrderPlacedOrPacked = activeOrder && (
     activeOrder.status === ORDER_STATUS.PLACED ||
     activeOrder.status === ORDER_STATUS.PACKED ||
-    activeOrder.status === "Packing"
+    activeOrder.status === "Packing" ||
+    activeOrder.status === "Packing at Store"
   );
   const isOrderOutForDelivery = activeOrder && activeOrder.status === ORDER_STATUS.OUT_FOR_DELIVERY;
 

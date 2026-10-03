@@ -12,6 +12,8 @@ public struct AdminDashboardView: View {
     @State private var isAddDriverSheetOpen: Bool = false
     @State private var isStoreControlSheetOpen: Bool = false
     @State private var isAddOfferSheetOpen: Bool = false
+    @State private var isAddCouponSheetOpen: Bool = false
+    @State private var couponToEdit: Coupon? = nil
     @State private var isBatchInwardSheetOpen: Bool = false
     @State private var productToDelete: Product? = nil
     @State private var productToEdit: Product? = nil
@@ -79,8 +81,12 @@ public struct AdminDashboardView: View {
             .sheet(item: $selectedOrderForDetail) { order in
                 OrderDetailSheetView(order: order, vm: vm)
             }
-            .sheet(item: $selectedOrderForDriver) { order in
-                AssignDriverSheetView(order: order, vm: vm)
+            .sheet(item: $selectedOrderForDriver, onDismiss: {
+                selectedOrderForDriver = nil
+            }) { order in
+                AssignDriverSheetView(order: order, vm: vm) {
+                    selectedOrderForDriver = nil
+                }
             }
             .sheet(isPresented: $isAddSupplierSheetOpen) {
                 AddSupplierSheetView { name, phone, address, notes in
@@ -102,6 +108,12 @@ public struct AdminDashboardView: View {
                 AddOfferSheetView { code, title, discount, minOrder in
                     vm.addOffer(code: code, title: title, discountPercent: discount, minOrder: minOrder)
                 }
+            }
+            .sheet(isPresented: $isAddCouponSheetOpen) {
+                AddCouponSheetView(vm: vm)
+            }
+            .sheet(item: $couponToEdit) { coupon in
+                AddCouponSheetView(vm: vm, editingCoupon: coupon)
             }
             .confirmationDialog(
                 "Remove \(distributorToRemove?.name ?? "")?",
@@ -851,29 +863,217 @@ public struct AdminDashboardView: View {
 
     private var offersTabContent: some View {
         ScrollView {
-            VStack(spacing: 14) {
-                HStack {
-                    Text("Promotions & Offers (\(vm.offers.count))")
-                        .font(.system(size: 18, weight: .bold))
-                    Spacer()
-                    Button("+ Add Offer") {
-                        isAddOfferSheetOpen = true
+            VStack(spacing: 20) {
+                // Section 1: Checkout Coupons / Offer Codes
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "tag.fill")
+                                    .foregroundColor(.orange)
+                                Text("Checkout Offer Codes (\(vm.coupons.count))")
+                                    .font(.system(size: 17, weight: .bold))
+                            }
+                            Text("Coupons redeemable by shoppers in cart & checkout")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        HStack(spacing: 8) {
+                            if vm.coupons.isEmpty {
+                                Button("Reset Defaults") {
+                                    vm.resetDefaultCoupons()
+                                }
+                                .font(.system(size: 11, weight: .semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                                .clipShape(Capsule())
+                            }
+                            Button("+ Add Code") {
+                                isAddCouponSheetOpen = true
+                            }
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color.orange)
+                            .clipShape(Capsule())
+                        }
                     }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.orange)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 14)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
 
-                LazyVStack(spacing: 12) {
-                    ForEach(vm.offers) { offer in
-                        offerCard(offer: offer)
+                    if vm.coupons.isEmpty {
+                        VStack(spacing: 6) {
+                            Text("No offer codes configured")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                            Button("Load standard coupons (GET30, DASHIT50, FREEDEL)") {
+                                vm.resetDefaultCoupons()
+                            }
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.orange)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .background(Color(uiColor: .secondarySystemGroupedBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 16)
+                    } else {
+                        LazyVStack(spacing: 10) {
+                            ForEach(vm.coupons) { coupon in
+                                couponCard(coupon: coupon)
+                            }
+                        }
+                        .padding(.horizontal, 16)
                     }
                 }
-                .padding(.horizontal, 16)
+
+                Divider()
+                    .padding(.horizontal, 16)
+
+                // Section 2: Banner Promotions & Offers
+                VStack(spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "sparkles")
+                                    .foregroundColor(.orange)
+                                Text("Banner Promotions (\(vm.offers.count))")
+                                    .font(.system(size: 17, weight: .bold))
+                            }
+                            Text("Marketing banners shown in app feeds")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Button("+ Add Banner") {
+                            isAddOfferSheetOpen = true
+                        }
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.orange)
+                    }
+                    .padding(.horizontal, 16)
+
+                    if vm.offers.isEmpty {
+                        Text("No banner promotions added yet")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 20)
+                            .background(Color(uiColor: .secondarySystemGroupedBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal, 16)
+                    } else {
+                        LazyVStack(spacing: 10) {
+                            ForEach(vm.offers) { offer in
+                                offerCard(offer: offer)
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
                 .padding(.bottom, 30)
             }
         }
+    }
+
+    private func couponCard(coupon: Coupon) -> some View {
+        let isActive = coupon.active ?? true
+        let isFreeDel = coupon.waivesDelivery == true || coupon.code == "FREEDEL"
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
+                Text(coupon.code)
+                    .font(.system(size: 14, weight: .black, design: .monospaced))
+                    .foregroundColor(.orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Text(isActive ? "ACTIVE" : "INACTIVE")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(isActive ? .green : .secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background((isActive ? Color.green : Color.secondary).opacity(0.12))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Button(action: { couponToEdit = coupon }) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .padding(6)
+                        .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                        .clipShape(Circle())
+                }
+
+                Button(action: { vm.deleteCoupon(code: coupon.code) }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.red)
+                        .padding(6)
+                        .background(Color.red.opacity(0.1))
+                        .clipShape(Circle())
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(coupon.title)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(isActive ? .primary : .secondary)
+                if !coupon.description.isEmpty {
+                    Text(coupon.description)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                if let condition = coupon.condition, !condition.isEmpty {
+                    Text("• \(condition)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.orange)
+                }
+            }
+
+            HStack(spacing: 8) {
+                HStack(spacing: 3) {
+                    Image(systemName: isFreeDel ? "truck.fill" : "percent")
+                        .font(.system(size: 9))
+                    Text(isFreeDel ? "Free Delivery" : "₹\(Int(coupon.discount)) OFF")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundColor(isFreeDel ? .green : .orange)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background((isFreeDel ? Color.green : Color.orange).opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Text(coupon.minOrder > 0 ? "Min ₹\(Int(coupon.minOrder))" : "No minimum")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color(uiColor: .tertiarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { coupon.active ?? true },
+                    set: { vm.toggleCouponActive(code: coupon.code, active: $0) }
+                ))
+                .labelsHidden()
+                .scaleEffect(0.8)
+            }
+        }
+        .padding(12)
+        .background(Color(uiColor: .secondarySystemGroupedBackground))
+        .opacity(isActive ? 1.0 : 0.75)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func offerCard(offer: Offer) -> some View {
@@ -999,7 +1199,9 @@ struct OrderDetailSheetView: View {
                     dismiss()
                 }
             }) {
-                AssignDriverSheetView(order: live, vm: vm)
+                AssignDriverSheetView(order: live, vm: vm) {
+                    isAssignRiderOpen = false
+                }
             }
             .onAppear {
                 packed = Set(UserDefaults.standard.stringArray(forKey: storageKey) ?? [])
@@ -1226,6 +1428,7 @@ extension View {
 struct AssignDriverSheetView: View {
     let order: Order
     @ObservedObject var vm: AdminDashboardViewModel
+    var onDismiss: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1237,8 +1440,10 @@ struct AssignDriverSheetView: View {
                 }
                 ForEach(vm.approvedDrivers) { driver in
                     let load = vm.activeOrderCount(for: driver)
+                    let isAssigned = (vm.recentOrders.first(where: { $0.id == order.id })?.driverId ?? order.driverId) == driver.id
                     Button(action: {
                         vm.assignDriver(orderId: order.id, driver: driver)
+                        onDismiss?()
                         dismiss()
                     }) {
                         HStack {
@@ -1251,7 +1456,7 @@ struct AssignDriverSheetView: View {
                                     .foregroundColor(load > 0 ? .orange : .green)
                             }
                             Spacer()
-                            if order.driverId == driver.id {
+                            if isAssigned {
                                 Image(systemName: "checkmark.circle.fill").foregroundColor(.orange)
                             } else {
                                 Image(systemName: "chevron.right").foregroundColor(.secondary)
@@ -1264,7 +1469,10 @@ struct AssignDriverSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        onDismiss?()
+                        dismiss()
+                    }
                 }
             }
         }
@@ -1802,6 +2010,138 @@ struct AddOfferSheetView: View {
                         }
                     }
                     .disabled(code.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Add / Edit Coupon Sheet View
+
+struct AddCouponSheetView: View {
+    @ObservedObject var vm: AdminDashboardViewModel
+    var editingCoupon: Coupon? = nil
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var code: String = ""
+    @State private var title: String = ""
+    @State private var type: String = "discount" // "discount" | "free_delivery"
+    @State private var discount: String = "30"
+    @State private var minOrder: String = "199"
+    @State private var description: String = ""
+    @State private var condition: String = ""
+    @State private var active: Bool = true
+
+    init(vm: AdminDashboardViewModel, editingCoupon: Coupon? = nil) {
+        self.vm = vm
+        self.editingCoupon = editingCoupon
+        _code = State(initialValue: editingCoupon?.code ?? "")
+        _title = State(initialValue: editingCoupon?.title ?? "")
+        let isFreeDel = editingCoupon?.waivesDelivery == true || editingCoupon?.code == "FREEDEL"
+        _type = State(initialValue: isFreeDel ? "free_delivery" : "discount")
+        _discount = State(initialValue: editingCoupon != nil ? String(Int(editingCoupon!.discount)) : "30")
+        _minOrder = State(initialValue: editingCoupon != nil ? String(Int(editingCoupon!.minOrder)) : "199")
+        _description = State(initialValue: editingCoupon?.description ?? "")
+        _condition = State(initialValue: editingCoupon?.condition ?? "")
+        _active = State(initialValue: editingCoupon?.active ?? true)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Coupon Code") {
+                    TextField("Code (e.g. WELCOME50)", text: $code)
+                        .autocapitalization(.allCharacters)
+                        .disableAutocorrection(true)
+                        .font(.system(.body, design: .monospaced))
+
+                    Picker("Type", selection: $type) {
+                        Text("Discount").tag("discount")
+                        Text("Free Delivery").tag("free_delivery")
+                    }
+                    .pickerStyle(.segmented)
+
+                    if type == "discount" {
+                        HStack {
+                            Text("Discount Amount")
+                            Spacer()
+                            TextField("₹", text: $discount)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.trailing)
+                        }
+                    } else {
+                        HStack {
+                            Text("Delivery Waiver")
+                            Spacer()
+                            Text("100% Free (₹25 saved)")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.green)
+                        }
+                    }
+
+                    HStack {
+                        Text("Min Order Value")
+                        Spacer()
+                        TextField("₹ (0 for none)", text: $minOrder)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+
+                Section("Offer Details") {
+                    TextField("Title (e.g. ₹30 Off on ₹199+)", text: $title)
+                    TextField("Description / Subtitle", text: $description)
+                    TextField("Condition / Note (e.g. Grocery items)", text: $condition)
+                }
+
+                Section {
+                    Toggle("Active immediately in checkout", isOn: $active)
+                }
+            }
+            .navigationTitle(editingCoupon != nil ? "Edit Coupon" : "Add Coupon")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(editingCoupon != nil ? "Save" : "Create") {
+                        let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .uppercased()
+                            .replacingOccurrences(of: "[^A-Z0-9_-]", with: "", options: .regularExpression)
+                        guard !cleanCode.isEmpty else { return }
+
+                        let isFreeDel = type == "free_delivery"
+                        let discVal = isFreeDel ? 0.0 : (Double(discount) ?? 0.0)
+                        let minVal = Double(minOrder) ?? 0.0
+                        let fallbackTitle = isFreeDel
+                            ? "100% Free Delivery on your order"
+                            : "₹\(Int(discVal)) Off on orders of ₹\(Int(minVal))+"
+                        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? fallbackTitle
+                            : title.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let cleanDesc = description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? "Available at checkout"
+                            : description.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let cleanCond = condition.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            ? nil
+                            : condition.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                        let coupon = Coupon(
+                            id: editingCoupon?.id ?? cleanCode,
+                            code: cleanCode,
+                            title: cleanTitle,
+                            description: cleanDesc,
+                            discount: discVal,
+                            minOrder: minVal,
+                            waivesDelivery: isFreeDel,
+                            condition: cleanCond,
+                            active: active
+                        )
+                        vm.saveCoupon(coupon, editingCode: editingCoupon?.code)
+                        dismiss()
+                    }
+                    .disabled(code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         }
