@@ -15,9 +15,7 @@ export function isBeforeLaunch(now = Date.now()) {
 
 /**
  * The Android app, for people to install before the Google Play listing is
- * live. A GitHub release's "latest" link always points at the newest upload
- * of a file with this name; the repository has to be public for visitors to
- * download it.
+ * live. Hosted on the website itself (public_html/DASHit.apk, shipped in the
+ * upload zip, not in git); NEXT_PUBLIC_APK_URL points it elsewhere.
  */
-export const APK_URL =
-  process.env.NEXT_PUBLIC_APK_URL || "https://github.com/soulspeedmc67/testing/releases/latest/download/DASHit.apk";
+export const APK_URL = process.env.NEXT_PUBLIC_APK_URL || "/DASHit.apk";

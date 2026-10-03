@@ -121,6 +121,7 @@ function ApkLink({ onDark = false }) {
   return (
     <a
       href={APK_URL}
+      download="DASHit.apk"
       className={`group inline-flex items-center gap-2 text-[13.5px] font-semibold underline-offset-4 hover:underline ${
         onDark ? "text-slate-300 hover:text-white" : "text-slate-600 hover:text-[#061838] dark:text-slate-300 dark:hover:text-white"
       }`}
