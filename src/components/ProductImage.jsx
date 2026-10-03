@@ -29,8 +29,13 @@ export function productImageUrl(url, size = "small") {
  * and serves it a moment later (so once more).
  */
 function nextAttempt(url, attempt) {
-  if (attempt === 0 && url.includes("/products/thumbs/")) return url.replace("/products/thumbs/", "/products/catalog/");
-  if (attempt <= 1 && url.includes("/products/catalog/")) return `${url}${url.includes("?") ? "&" : "?"}r=${attempt + 1}`;
+  if (attempt === 0) {
+    if (url.includes("/products/thumbs/")) return url.replace("/products/thumbs/", "/products/catalog/");
+    if (url.includes("/products/catalog/")) return url.replace("/products/catalog/", "/products/thumbs/");
+  }
+  if (attempt === 1 && (url.includes("/products/catalog/") || url.includes("/products/thumbs/"))) {
+    return `${url}${url.includes("?") ? "&" : "?"}r=1`;
+  }
   return null;
 }
 
