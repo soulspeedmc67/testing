@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { ShieldCheck, Cookie } from "lucide-react";
 import { isNative } from "../lib/platform";
 
@@ -7,21 +8,16 @@ import { isNative } from "../lib/platform";
  * CookieConsentBanner
  *
  * Implements compliant cookieBanner and cookiePreferences controls
- * for web users. Never shown in the native mobile app.
- *
- * Fixed: previously the banner used tailwindcss-animate utility classes
- * (animate-in, fade-in, slide-in-from-bottom-5) that were never installed,
- * causing the banner to appear for one paint frame then vanish. Now uses
- * inline CSS transitions so it works everywhere. The show delay was also
- * increased to 2400ms so the banner appears after the splash screen finishes.
+ * for web users. Never shown in the native mobile app or driver app.
  */
 export default function CookieConsentBanner() {
+  const router = useRouter();
   const [shouldShow, setShouldShow] = useState(false);
   const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
-    // Never show cookie banner on the mobile app
-    if (isNative()) return;
+    // Never show cookie banner on the mobile app or driver app
+    if (isNative() || router.pathname === "/driver") return;
 
     try {
       const consent = localStorage.getItem("dashit_cookie_consent");
