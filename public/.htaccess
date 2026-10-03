@@ -29,8 +29,9 @@
   # Don't leak the customer's path (which can name an order) to third parties.
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
-  # Nothing here needs these; deny them by default.
-  Header always set Permissions-Policy "camera=(self), geolocation=(self), microphone=(self), payment=(), usb=(), interest-cohort=()"
+  # Deny what nothing here needs. Payment is allowed for the page and
+  # Razorpay's checkout window (UPI and saved cards use the Payment Request API).
+  Header always set Permissions-Policy "camera=(self), geolocation=(self), microphone=(self), payment=(self \"https://api.razorpay.com\"), usb=(), interest-cohort=()"
 
   # HTTPS only, once the certificate is confirmed working.
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -71,9 +72,14 @@ Options -Indexes
   RewriteCond %{HTTP_REFERER} !^https?://localhost [NC]
   RewriteRule \.(webp|jpg|jpeg|png)$ - [F,L]
 
-  # The shop moved to the apps (/shop is now the product list). Old shop links (bookmarks, search results,
-  # shared product links) go to the home page, which points to the apps.
-  RewriteRule ^(search|categories|product|cart|checkout|offers|orders|order-again|wishlist|tobacco|account|add-address|confirm-location|login|hero-3d-demo)(/.*)?$ / [R=302,L]
+  # The web shop is back (launch, 5 October 2026). Product pages are one page
+  # now, /product/?id=<id>; older /product/<id>/ links (bookmarks, search
+  # results, shared links) are sent there. Tobacco is never sold on the
+  # website, and the 3D demo is gone: both go to the shop.
+  # (Not for real files: /product/index.html itself must still be served.)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^product/([^/?]+)/?$ /product/?id=$1 [R=302,L,QSD]
+  RewriteRule ^(tobacco|hero-3d-demo)(/.*)?$ /shop/ [R=302,L]
 
   # Serve existing files or directories directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]

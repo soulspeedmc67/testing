@@ -1152,16 +1152,10 @@ export async function createOrder(orderData, explicitUid = null) {
       await auth.authStateReady();
     } catch (e) {}
   }
-  let uid = auth?.currentUser?.uid;
-
+  // Orders are only accepted from a Google or Apple account (firestore.rules).
+  let uid = auth?.currentUser && !auth.currentUser.isAnonymous ? auth.currentUser.uid : null;
   if (!uid && auth) {
-    try {
-      const { signInAnonymously } = await import("firebase/auth");
-      const cred = await signInAnonymously(auth);
-      uid = cred?.user?.uid;
-    } catch (e) {
-      console.warn("Could not ensure anonymous auth for order:", e?.message);
-    }
+    throw new Error("Please sign in again to place your order.");
   }
 
   // Fallback if auth is completely disabled
@@ -1204,41 +1198,9 @@ export async function createOrder(orderData, explicitUid = null) {
   let code = orderData?.orderId || newOrderCode();
   let lastError = null;
 
-  // Pre-checkout stock sanity check against Firestore to prevent overselling
-  if (db && Array.isArray(sanitized.items) && sanitized.items.length > 0) {
-    try {
-      const stockChecks = await Promise.all(
-        sanitized.items.map(async (item) => {
-          const itemId = String(item.id || item.barcode || "").trim();
-          if (!itemId) return null;
-          const pRef = doc(db, "products", itemId);
-          const pSnap = await getDoc(pRef);
-          if (pSnap.exists()) {
-            const pData = pSnap.data();
-            const avail = Number(pData.stock);
-            const reqQty = Number(item.quantity || item.qty) || 1;
-            if (pData.active === false) {
-              return `${item.name || "Item"} is currently unavailable.`;
-            }
-            if (!isNaN(avail) && avail < reqQty) {
-              return avail <= 0
-                ? `${item.name || "Item"} is out of stock.`
-                : `Only ${avail} left in stock for ${item.name || "Item"}.`;
-            }
-          }
-          return null;
-        })
-      );
-      const stockIssue = stockChecks.find(Boolean);
-      if (stockIssue) {
-        throw new Error(stockIssue);
-      }
-    } catch (stockErr) {
-      if (stockErr.message && !stockErr.message.includes("permission-denied")) {
-        throw stockErr;
-      }
-    }
-  }
+  /* Stock is checked by the checkout against the catalogue file (free), not
+     here: shoppers can't read the products collection (firestore.rules), and a
+     read per item was billed on every order. */
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const payload = buildPayload(code);

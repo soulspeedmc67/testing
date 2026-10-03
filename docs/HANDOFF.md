@@ -6,6 +6,45 @@
 
 ---
 
+## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
+
+- **Web shop restored** (pages removed in b7c93f3): /shop, /search, /categories,
+  /product/?id=<id> (one page for every product; old /product/<id>/ links 302
+  there via .htaccess), /checkout, /offers, /orders, /wishlist, /account,
+  /login. Tobacco never shows on the website (`isTobaccoSectionEnabled` is off
+  when not native).
+- **No Firestore product reads**: every shop page reads the cron-built
+  `/catalog/catalog.json` through `src/lib/catalogueFile.js` (browser ETag
+  revalidation, then `/api/catalog/changes.php` every 60 s while visible). A
+  shop visit costs one Firestore read (store open/closed). `createOrder` no
+  longer reads each product from Firestore (shoppers can't, and it failed every
+  web order); checkout checks stock against the catalogue and re-prices old carts.
+- **Sign-in on the web**: Google (Firebase popup, redirect fallback), then the
+  mobile number; SMS code through `send-otp.php`/`verify-otp.php` once 2Factor
+  is configured (`src/lib/shopperAuth.js`, `CheckoutLoginModal.jsx`).
+- **Payments on the web**: Razorpay Standard Checkout on the same PHP endpoints
+  as the apps (`src/lib/razorpayWeb.js`); the order is written only after
+  `verify-payment.php` recorded `payments/{id}`; a lost answer is checked with
+  `payment-status.php`. Server keys are still TEST until live keys go in
+  `dashit-secrets/razorpay.php`. .htaccess Permissions-Policy now allows
+  `payment` for the page and api.razorpay.com.
+- **Launch gate**: `src/lib/launch.js` (`LAUNCH_AT` = 5 Oct 2026 17:00 IST,
+  `APK_URL`). Before it, the shop shows a top line and checkout refuses to
+  place orders (button reads "Orders open 5 Oct, 5 pm"). Carts can be filled.
+- **Landing page rewritten**: Shop now, Google Play / App Store "coming soon"
+  badges (not links), "download the APK" link (default
+  `https://github.com/soulspeedmc67/testing/releases/latest/download/DASHit.apk`,
+  override with `NEXT_PUBLIC_APK_URL`; the repo must be public and the release
+  asset named `DASHit.apk`), opening-day countdown. Removed invented claims
+  (feature cards, "4.8 (10k)" ratings, "FSSAI / instant return" rows, made-up
+  pack-of-2/4 variants, fake coupon codes on /offers).
+- **iOS admin, "rider not assigned"**: since 717eb86 assigning keeps the order
+  in Packing (the rider sends it out), but the admin never showed the rider, so
+  it looked like nothing happened; save errors also showed behind the sheet.
+  Now the card and the order sheet say "<rider> is coming to collect it" with
+  "Change rider", errors show on the sheet, and writes always use the order's
+  document id. Not compiled locally (Linux); needs the GitHub Actions build.
+
 ## Oct 1, 2026: tracking, payments, sign-in and security pass
 
 - **Live tracking** (both apps): the route already ridden is trimmed away

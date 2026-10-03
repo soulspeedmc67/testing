@@ -245,7 +245,11 @@ public final class AdminDashboardViewModel: ObservableObject {
                 let decoder = Firestore.Decoder()
                 let list: [Order] = docs.compactMap { doc in
                     var data = doc.data()
-                    data["id"] = (data["id"] as? String) ?? doc.documentID
+                    // The document's own id: every change (pack, assign a rider,
+                    // deliver) is written to orders/{order.id}, and Order prefers
+                    // an orderId field, which must never point somewhere else.
+                    data["id"] = doc.documentID
+                    data["orderId"] = doc.documentID
                     return try? decoder.decode(Order.self, from: data)
                 }
 

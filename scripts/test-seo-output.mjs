@@ -24,8 +24,8 @@ console.log("\n=================== VERIFYING COMPILED HTML IN out/ =============
 
 // 1. Home Page SEO
 const homeHtml = fs.readFileSync(path.join(OUT, "index.html"), "utf8");
-assert(homeHtml.includes("<title>DASHIT — #1 Grocery Delivery App in Anantnag"), "Home title optimized");
-assert(homeHtml.includes('name="description" content="Download the DASHIT mobile app for Android &amp; iOS. #1 fastest grocery delivery across Anantnag.'), "Home description present");
+assert(homeHtml.includes("<title>DASHIT — Grocery Delivery App in Anantnag"), "Home title optimized");
+assert(homeHtml.includes('name="description" content="Groceries and everyday essentials delivered across Anantnag'), "Home description present");
 assert(homeHtml.includes('<link rel="canonical" href="https://dashit.co.in/"/>'), "Home canonical link present");
 assert(homeHtml.includes('property="og:image" content="https://dashit.co.in/og-image.png"'), "Home og:image present");
 assert(homeHtml.includes('name="twitter:card" content="summary_large_image"'), "Home twitter:card present");
@@ -34,10 +34,11 @@ assert(homeHtml.includes('"@type":"Organization"'), "Home Organization JSON-LD p
 assert(homeHtml.includes('"@type":"GroceryStore"'), "Home GroceryStore JSON-LD present");
 assert(homeHtml.includes('<link rel="manifest" href="/site.webmanifest"/>'), "Home manifest linked");
 
-// 2. The web shop is gone (ordering is in the apps): no shop pages are built
-for (const page of ["shop", "categories", "search", "cart", "checkout", "orders", "account", "product"]) {
-  assert(!fs.existsSync(path.join(OUT, page)), `No /${page}/ page in the build`);
+// 2. The web shop is built (back for launch, 5 October 2026)
+for (const page of ["shop", "categories", "search", "checkout", "orders", "account", "product", "login"]) {
+  assert(fs.existsSync(path.join(OUT, page, "index.html")), `/${page}/ page in the build`);
 }
+assert(!fs.existsSync(path.join(OUT, "tobacco")), "No tobacco page on the website");
 
 // 3. Help page
 const helpHtml = fs.readFileSync(path.join(OUT, "help/index.html"), "utf8");
@@ -54,7 +55,7 @@ assert(delHtml.includes('<link rel="canonical" href="https://dashit.co.in/delete
 // 7. Sitemap & Robots
 const sitemap = fs.readFileSync(path.join(OUT, "sitemap.xml"), "utf8");
 assert(sitemap.includes("<loc>https://dashit.co.in/</loc>") && sitemap.includes("https://dashit.co.in/help/"), "Sitemap lists the home and help pages");
-assert(!sitemap.includes("/product/") && !sitemap.includes("/shop/"), "Sitemap has no shop or product pages");
+assert(sitemap.includes("https://dashit.co.in/shop/") && !sitemap.includes("/product/"), "Sitemap lists the shop, not single products");
 const robots = fs.readFileSync(path.join(OUT, "robots.txt"), "utf8");
 assert(robots.includes("Sitemap: https://dashit.co.in/sitemap.xml"), "Robots.txt points to sitemap");
 

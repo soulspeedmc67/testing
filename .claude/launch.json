@@ -4,9 +4,24 @@
     {
       "name": "dashit-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "dashit-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3100",
+        "--directory",
+        "out"
+      ],
+      "port": 3100
     }
   ]
 }

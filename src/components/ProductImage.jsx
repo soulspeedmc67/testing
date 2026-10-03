@@ -12,10 +12,26 @@ export function productImageUrl(url, size = "small") {
   if (size === "small" && /images\.open(food|beauty)facts\.org/.test(value)) {
     return value.replace(/\.full\.(jpg|jpeg|png|webp)$/i, ".400.$1");
   }
+  let full = value;
   if (/^\/?products\/catalog\//.test(value)) {
-    return `https://dashit.co.in/${value.replace(/^\//, "")}`;
+    full = `https://dashit.co.in/${value.replace(/^\//, "")}`;
   }
-  return value;
+  // Catalogue photos: the 400px copy (~10 KB instead of ~100 KB), as in the apps.
+  if (size === "small" && full.includes("dashit.co.in/products/catalog/")) {
+    return full.replace("/products/catalog/", "/products/thumbs/");
+  }
+  return full;
+}
+
+/**
+ * What to try after a photo fails: the small copy may not exist yet (then the
+ * full one), and the host sometimes answers a full-size photo with "not found"
+ * and serves it a moment later (so once more).
+ */
+function nextAttempt(url, attempt) {
+  if (attempt === 0 && url.includes("/products/thumbs/")) return url.replace("/products/thumbs/", "/products/catalog/");
+  if (attempt <= 1 && url.includes("/products/catalog/")) return `${url}${url.includes("?") ? "&" : "?"}r=${attempt + 1}`;
+  return null;
 }
 
 /**
@@ -38,9 +54,18 @@ export default function ProductImage({
   dimmed = false,
 }) {
   const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [src]);
+  const [attempt, setAttempt] = useState({ n: 0, url: "" });
+  useEffect(() => {
+    setFailed(false);
+    setAttempt({ n: 0, url: "" });
+  }, [src]);
 
-  const url = !failed && !isPlaceholderImage(src) ? productImageUrl(src, size) : "";
+  const url = !failed && !isPlaceholderImage(src) ? attempt.url || productImageUrl(src, size) : "";
+  const onError = () => {
+    const next = nextAttempt(url, attempt.n);
+    if (next) setTimeout(() => setAttempt({ n: attempt.n + 1, url: next }), attempt.n === 0 ? 0 : 350);
+    else setFailed(true);
+  };
   const letter = (String(name).trim().match(/[A-Za-z0-9]/)?.[0] || "?").toUpperCase();
   const frame = fill ? "absolute inset-0" : "relative w-full aspect-square";
 
@@ -63,7 +88,7 @@ export default function ProductImage({
         alt={name}
         loading={loading}
         decoding="async"
-        onError={() => setFailed(true)}
+        onError={onError}
         className={`absolute inset-0 h-full w-full object-contain p-[8%] ${dimmed ? "grayscale-[40%]" : ""} ${imgClassName}`}
       />
     </div>

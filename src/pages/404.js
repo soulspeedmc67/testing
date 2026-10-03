@@ -2,7 +2,6 @@ import React from "react";
 import Link from "next/link";
 import SEO from "../components/SEO";
 import {
-  Download,
   Home,
   MapPin,
   Heart,
@@ -58,11 +57,10 @@ export default function Custom404() {
           </nav>
 
           <Link
-            href="/#get-the-app"
-            className="bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold px-3.5 sm:px-5 py-2 rounded-xl sm:rounded-full shadow-md shadow-[#FF5B00]/30 transition-all hover:scale-105 active:scale-95 flex items-center space-x-1.5"
+            href="/shop"
+            className="bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold px-3.5 sm:px-5 py-2 rounded-xl sm:rounded-full transition-colors active:scale-95 flex items-center space-x-1.5"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Get the app</span>
+            <span>Shop now</span>
           </Link>
         </header>
       </div>
@@ -123,11 +121,10 @@ export default function Custom404() {
         {/* PRIMARY CALL TO ACTION BUTTONS */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 w-full max-w-xs sm:max-w-md">
           <Link
-            href="/#get-the-app"
-            className="w-full sm:w-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-full shadow-lg shadow-[#FF5B00]/30 hover:shadow-xl transition-all duration-300 flex items-center justify-center space-x-2 active:scale-95"
+            href="/shop"
+            className="w-full sm:w-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs sm:text-sm px-6 py-3.5 rounded-full transition-colors flex items-center justify-center space-x-2 active:scale-95"
           >
-            <Download className="w-4 h-4" />
-            <span>Get the app</span>
+            <span>Go to the shop</span>
           </Link>
           <Link
             href="/"

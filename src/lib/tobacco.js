@@ -40,6 +40,8 @@ export const PLAIN_PACK_IMG = "/art/tobacco-plain-pack.svg";
  */
 export function isTobaccoSectionEnabled() {
   if (SECTION_FLAG === "off") return false;
+  // The website never lists tobacco (COTPA §5; the Terms promise it isn't promoted).
+  if (!isNative()) return false;
   if (isNative() && isIOS() && IOS_FLAG !== "on") return false;
   return true;
 }
