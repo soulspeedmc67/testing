@@ -125,6 +125,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     /// Signed up in the rider app, waiting for the owner to approve them.
     public var waitingDrivers: [Driver] { drivers.filter(\.isWaiting) }
     @Published public var offers: [Offer] = Offer.defaults
+    @Published public var coupons: [Coupon] = Coupon.defaultCatalog
     @Published public var storeConfig: StoreConfig = StoreConfig.default
     @Published public var isLoading: Bool = false
     /// Set when the database refuses a change; the dashboard shows it as an alert.
@@ -145,6 +146,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     private var orderListener: ListenerRegistration?
     private var driverListener: ListenerRegistration?
     private var offerListener: ListenerRegistration?
+    private var couponListener: ListenerRegistration?
     private var storeConfigListener: ListenerRegistration?
     private var weekOrderListener: ListenerRegistration?
     private var knownOrderIds: Set<String> = []
@@ -161,6 +163,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         orderListener?.remove()
         driverListener?.remove()
         offerListener?.remove()
+        couponListener?.remove()
         storeConfigListener?.remove()
     }
 
@@ -181,6 +184,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         orderListener?.remove()
         driverListener?.remove()
         offerListener?.remove()
+        couponListener?.remove()
         storeConfigListener?.remove()
         weekOrderListener?.remove()
         weekOrderListener = nil
@@ -189,6 +193,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         orderListener = nil
         driverListener = nil
         offerListener = nil
+        couponListener = nil
         storeConfigListener = nil
     }
 
@@ -314,6 +319,40 @@ public final class AdminDashboardViewModel: ObservableObject {
                     maxOrdersPerHour: maxOrders,
                     deliveryRadiusKm: radius
                 )
+            }
+        }
+
+        // 7. Checkout Coupons Realtime Listener (config/coupons)
+        couponListener = db.collection("config").document("coupons").addSnapshotListener { [weak self] doc, error in
+            guard let self = self, let doc = doc, doc.exists, error == nil, let data = doc.data() else { return }
+            if let list = data["list"] as? [[String: Any]] {
+                let decoded = list.compactMap { item -> Coupon? in
+                    let code = (item["code"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() ?? ""
+                    guard !code.isEmpty else { return nil }
+                    let title = item["title"] as? String ?? ""
+                    let desc = item["description"] as? String ?? ""
+                    let discount = (item["discount"] as? Double) ?? Double(item["discount"] as? Int ?? 0)
+                    let minOrder = (item["minOrder"] as? Double) ?? Double(item["minOrder"] as? Int ?? 0)
+                    let waives = (item["waivesDelivery"] as? Bool) ?? (code == "FREEDEL")
+                    let cond = item["condition"] as? String ?? ""
+                    let active = item["active"] as? Bool ?? true
+                    return Coupon(
+                        id: code,
+                        code: code,
+                        title: title,
+                        description: desc,
+                        discount: discount,
+                        minOrder: minOrder,
+                        waivesDelivery: waives,
+                        condition: cond,
+                        active: active
+                    )
+                }
+                Task { @MainActor in
+                    let resolved = decoded.isEmpty ? Coupon.defaultCatalog : decoded
+                    self.coupons = resolved
+                    Coupon.dynamicCatalog = resolved
+                }
             }
         }
     }
@@ -781,7 +820,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         let nextStatus: String
         switch order.status.stage {
-        case .placed: nextStatus = "Packing at Store"
+        case .placed: nextStatus = "Packed"
         case .packing:
             // Normally the rider sends it out ("Start delivery" in the rider
             // app); doing it here still needs a rider, so the customer and the
@@ -794,6 +833,11 @@ public final class AdminDashboardViewModel: ObservableObject {
             nextStatus = "Out for Delivery"
         case .onTheWay: nextStatus = "Delivered"
         default: return
+        }
+
+        // Optimistically update recentOrders
+        if let idx = recentOrders.firstIndex(where: { $0.id == order.id }) {
+            recentOrders[idx].status = OrderStatus(stage: DeliveryStage(status: nextStatus))
         }
 
         db.collection("orders").document(order.id).setData([
@@ -812,15 +856,34 @@ public final class AdminDashboardViewModel: ObservableObject {
 
     public func assignDriver(orderId: String, driver: Driver) {
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        db.collection("orders").document(orderId).setData([
+
+        // Optimistically update locally on MainActor so the driver immediately attaches
+        if let idx = recentOrders.firstIndex(where: { $0.id == orderId }) {
+            recentOrders[idx].driverId = driver.id
+            recentOrders[idx].driverName = driver.name
+            recentOrders[idx].driverPhone = driver.phone
+        }
+
+        var updatePayload: [String: Any] = [
             "driverId": driver.id,
             "driverName": driver.name,
             "driverPhone": driver.phone,
-            "driverVehicle": driver.vehicle
-            // The status stays as it is: the order goes out for delivery when the
-            // rider taps "Start delivery" with the bag, so the shopper's countdown
-            // doesn't start while it is still at the store.
-        ], merge: true, completion: saveThenNotify("Assigning the rider", orderId: orderId))
+            "driverVehicle": driver.vehicle,
+            "assignedAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ]
+
+        // Ensure order is in standard "Packed" status so the driver app and query catch it immediately
+        if let current = recentOrders.first(where: { $0.id == orderId }),
+           current.status.stage == .packing {
+            updatePayload["status"] = "Packed"
+        }
+
+        db.collection("orders").document(orderId).setData(
+            updatePayload,
+            merge: true,
+            completion: saveThenNotify("Assigning the rider", orderId: orderId)
+        )
         seedRiderPosition(orderId: orderId, driverId: driver.id)
     }
 
@@ -1151,6 +1214,116 @@ public final class AdminDashboardViewModel: ObservableObject {
             guard let self, !self.offers.contains(where: { $0.id == offerId }) else { return }
             self.offers.insert(removed, at: min(idx, self.offers.count))
         })
+    }
+
+    // MARK: - Checkout Coupons Management (config/coupons)
+
+    public func saveCoupon(_ coupon: Coupon, editingCode: String? = nil) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        var current = coupons
+        let cleanCode = coupon.code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased().replacingOccurrences(of: " ", with: "")
+        guard !cleanCode.isEmpty else { return }
+
+        let normalized = Coupon(
+            id: cleanCode,
+            code: cleanCode,
+            title: coupon.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? (coupon.waivesDelivery == true ? "100% Free Delivery on your order" : "₹\(Int(coupon.discount)) Off on orders of ₹\(Int(coupon.minOrder))+")
+                : coupon.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            description: coupon.description.trimmingCharacters(in: .whitespacesAndNewlines),
+            discount: coupon.waivesDelivery == true ? 0 : max(0, coupon.discount),
+            minOrder: max(0, coupon.minOrder),
+            waivesDelivery: coupon.waivesDelivery ?? (cleanCode == "FREEDEL"),
+            condition: coupon.condition?.trimmingCharacters(in: .whitespacesAndNewlines),
+            active: coupon.active ?? true
+        )
+
+        let targetCode = (editingCode?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()) ?? cleanCode
+        if let idx = current.firstIndex(where: { $0.code.uppercased() == targetCode }) {
+            current[idx] = normalized
+        } else if let idx = current.firstIndex(where: { $0.code.uppercased() == cleanCode }) {
+            current[idx] = normalized
+        } else {
+            current.insert(normalized, at: 0)
+        }
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            coupons = current
+            Coupon.dynamicCatalog = current
+        }
+
+        persistCoupons(current, title: "Saving offer code \(cleanCode)")
+    }
+
+    public func deleteCoupon(code: String) {
+        UIImpactFeedbackGenerator(style: .warning).impactOccurred()
+        let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        var current = coupons
+        current.removeAll { $0.code.uppercased() == cleanCode }
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            coupons = current
+            Coupon.dynamicCatalog = current
+        }
+
+        persistCoupons(current, title: "Removing offer code \(cleanCode)")
+    }
+
+    public func toggleCouponActive(code: String, active: Bool) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        var current = coupons
+        if let idx = current.firstIndex(where: { $0.code.uppercased() == cleanCode }) {
+            let old = current[idx]
+            current[idx] = Coupon(
+                id: old.id,
+                code: old.code,
+                title: old.title,
+                description: old.description,
+                discount: old.discount,
+                minOrder: old.minOrder,
+                waivesDelivery: old.waivesDelivery,
+                condition: old.condition,
+                active: active
+            )
+        }
+
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            coupons = current
+            Coupon.dynamicCatalog = current
+        }
+
+        persistCoupons(current, title: active ? "Activating \(cleanCode)" : "Deactivating \(cleanCode)")
+    }
+
+    public func resetDefaultCoupons() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let defaults = Coupon.defaultCatalog
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            coupons = defaults
+            Coupon.dynamicCatalog = defaults
+        }
+        persistCoupons(defaults, title: "Resetting offer codes to defaults")
+    }
+
+    private func persistCoupons(_ list: [Coupon], title: String) {
+        let serialized: [[String: Any]] = list.map { c in
+            [
+                "code": c.code,
+                "title": c.title,
+                "description": c.description,
+                "discount": c.discount,
+                "minOrder": c.minOrder,
+                "waivesDelivery": c.waivesDelivery ?? (c.code == "FREEDEL"),
+                "condition": c.condition ?? "",
+                "active": c.active ?? true
+            ]
+        }
+
+        db.collection("config").document("coupons").setData([
+            "list": serialized,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true, completion: saveResult(title))
     }
 
     public func processBatchInward(distributor: String, invoice: String, increments: [String: Int]) {

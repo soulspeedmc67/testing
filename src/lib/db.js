@@ -1627,6 +1627,7 @@ export function watchDriverOrders(driverId, callback) {
             ORDER_STATUS.PLACED,
             ORDER_STATUS.PACKED,
             "Packing",
+            "Packing at Store",
             ORDER_STATUS.OUT_FOR_DELIVERY,
           ])
         ),

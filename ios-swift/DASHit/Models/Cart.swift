@@ -76,6 +76,8 @@ public struct Coupon: Codable, Identifiable, Hashable {
     public let discount: Double
     public let minOrder: Double
     public let waivesDelivery: Bool?
+    public let condition: String?
+    public let active: Bool?
 
     public init(
         id: String,
@@ -84,7 +86,9 @@ public struct Coupon: Codable, Identifiable, Hashable {
         description: String,
         discount: Double,
         minOrder: Double,
-        waivesDelivery: Bool? = false
+        waivesDelivery: Bool? = false,
+        condition: String? = nil,
+        active: Bool? = true
     ) {
         self.id = id
         self.code = code
@@ -93,51 +97,68 @@ public struct Coupon: Codable, Identifiable, Hashable {
         self.discount = discount
         self.minOrder = minOrder
         self.waivesDelivery = waivesDelivery
+        self.condition = condition
+        self.active = active
     }
 }
 
 extension Coupon {
-    /// The store's offer codes, exactly as the web checkout honours them
-    /// (`AVAILABLE_COUPONS` in `src/components/CouponsDrawer.jsx`). Any other
-    /// code is refused. FREEDEL waives the delivery fee only; it carries no cash
-    /// discount, or it would pay out twice.
-    static let catalog: [Coupon] = [
+    /// Dynamically fetched coupons from Firestore `config/coupons`, if loaded.
+    public static var dynamicCatalog: [Coupon]? = nil
+
+    /// The active store's offer codes. If Firestore config/coupons has custom
+    /// codes, uses those; otherwise falls back to the default trio.
+    public static var catalog: [Coupon] {
+        dynamicCatalog ?? defaultCatalog
+    }
+
+    /// The store's default offer codes, matching web DEFAULT_COUPONS.
+    public static let defaultCatalog: [Coupon] = [
         Coupon(
             id: "c-get30",
             code: "GET30",
-            title: "₹30 off on orders of ₹199 or more",
+            title: "Up to ₹30 Off on orders of ₹199 or more",
             description: "Valid on all grocery and fresh items in Anantnag",
             discount: 30,
-            minOrder: 199
+            minOrder: 199,
+            waivesDelivery: false,
+            condition: "Add non discounted item(s) to unlock",
+            active: true
         ),
         Coupon(
             id: "c-dashit50",
             code: "DASHIT50",
             title: "Flat ₹50 off on orders above ₹299",
-            description: "Launch offer for DASHit customers in Anantnag",
+            description: "Special launch discount for Anantnag Dashit customers",
             discount: 50,
-            minOrder: 299
+            minOrder: 299,
+            waivesDelivery: false,
+            condition: "Cart value must be ₹299+",
+            active: true
         ),
         Coupon(
             id: "c-freedel",
             code: "FREEDEL",
-            title: "Free delivery on your order",
-            description: "The ₹25 delivery fee is waived",
+            title: "100% Free Delivery on your order",
+            description: "Zero delivery fee applied",
             discount: 0,
             minOrder: 99,
-            waivesDelivery: true
+            waivesDelivery: true,
+            condition: "No minimum required",
+            active: true
         )
     ]
 
     static func find(code: String) -> Coupon? {
         let wanted = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        return catalog.first { $0.code == wanted }
+        guard let coupon = catalog.first(where: { $0.code == wanted }) else { return nil }
+        return (coupon.active ?? true) ? coupon : nil
     }
 
     /// What this code actually takes off a cart with this subtotal.
     func saving(onSubtotal subtotal: Double) -> Double {
-        guard subtotal >= minOrder else { return 0 }
-        if waivesDelivery == true {
+        guard (active ?? true) && subtotal >= minOrder else { return 0 }
+        if waivesDelivery == true || code == "FREEDEL" {
             return subtotal >= CartBillBreakdown.freeDeliveryThreshold ? 0 : CartBillBreakdown.standardDeliveryFee
         }
         return min(subtotal, discount)
@@ -146,7 +167,7 @@ extension Coupon {
     /// The code that saves the most on this subtotal, if any saves anything.
     static func best(forSubtotal subtotal: Double) -> Coupon? {
         catalog
-            .filter { $0.saving(onSubtotal: subtotal) > 0 }
+            .filter { ($0.active ?? true) && $0.saving(onSubtotal: subtotal) > 0 }
             .max { $0.saving(onSubtotal: subtotal) < $1.saving(onSubtotal: subtotal) }
     }
 }
