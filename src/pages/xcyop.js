@@ -20,6 +20,7 @@ import {
   Edit3,
   X,
   Sparkles,
+  Receipt,
   ArrowDownToLine
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ import AddProductView from "../components/admin/AddProductView";
 import BatchInwardView from "../components/admin/BatchInwardView";
 import CatalogueView from "../components/admin/CatalogueView";
 import OffersView from "../components/admin/OffersView";
+import GstSalesReportModal from "../components/admin/GstSalesReportModal";
 import ImporterView from "../components/admin/ImporterView";
 import CsvInventoryView from "../components/admin/CsvInventoryView";
 import CatalogPickerView from "../components/admin/CatalogPickerView";
@@ -40,6 +42,7 @@ import PhotoReviewView from "../components/admin/PhotoReviewView";
 import ShelfFixView from "../components/admin/ShelfFixView";
 import StoreControlsView from "../components/admin/StoreControlsView";
 import DistributorsView from "../components/admin/DistributorsView";
+import { DEFAULT_BUSINESS_GST_INFO } from "../lib/gst";
 
 import BarcodeScannerView from "../components/BarcodeScannerView";
 import { findInIndianCatalog } from "../lib/barcodeCatalog";
@@ -54,6 +57,8 @@ import {
   watchOffers,
   saveOffer,
   deleteOffer as fsDeleteOffer,
+  watchCoupons,
+  saveCoupons,
   watchProducts,
   fetchProducts,
   upsertProduct,
@@ -72,6 +77,7 @@ import {
   ORDER_STATUS,
   ORDER_CHANGE_WINDOW_SECONDS
 } from "../lib/db";
+import { DEFAULT_COUPONS } from "../lib/coupons";
 import { searchOffByBarcode, searchOffByQuery } from "../lib/openFoodFacts";
 import {
   playOrderChime,
@@ -543,6 +549,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   const [isLoadingCatalogue, setIsLoadingCatalogue] = useState(false);
 
   // Offers State
+  const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
+  const [showGstModal, setShowGstModal] = useState(false);
+  const [businessGstInfo, setBusinessGstInfo] = useState(DEFAULT_BUSINESS_GST_INFO);
   const [exclusiveOffers, setExclusiveOffers] = useState(DEFAULT_OFFERS);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerForm, setOfferForm] = useState({
@@ -778,6 +787,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
               localStorage.setItem("dashit_store_close_reason", cfg.closeReason || "");
             } catch (e) {}
           }
+          if (cfg.businessGstInfo) {
+            setBusinessGstInfo((prev) => ({ ...prev, ...cfg.businessGstInfo }));
+          }
         }
       });
       return () => {
@@ -792,15 +804,25 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       setExclusiveOffers(getExclusiveOffers());
       return;
     }
-    const unsub = watchOffers((firestoreOffers) => {
+    const unsubOffers = watchOffers((firestoreOffers) => {
       if (firestoreOffers && firestoreOffers.length > 0) {
         setExclusiveOffers(firestoreOffers);
       } else {
         setExclusiveOffers(getExclusiveOffers());
       }
     });
+
+    const unsubCoupons = watchCoupons((firestoreCoupons) => {
+      if (Array.isArray(firestoreCoupons)) {
+        setCoupons(firestoreCoupons);
+      } else {
+        setCoupons(DEFAULT_COUPONS);
+      }
+    });
+
     return () => {
-      if (typeof unsub === "function") unsub();
+      if (typeof unsubOffers === "function") unsubOffers();
+      if (typeof unsubCoupons === "function") unsubCoupons();
     };
   }, []);
 
@@ -1468,6 +1490,96 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     }
   };
 
+  // Save Checkout Coupon (Add or Edit)
+  const handleSaveCoupon = async (couponData, editingCode = null) => {
+    try {
+      let updated;
+      const code = couponData.code.toUpperCase();
+      const currentList = Array.isArray(coupons) ? [...coupons] : [...DEFAULT_COUPONS];
+
+      if (editingCode) {
+        const idx = currentList.findIndex((c) => c.code.toUpperCase() === editingCode.toUpperCase());
+        if (idx !== -1) {
+          currentList[idx] = { ...currentList[idx], ...couponData };
+          updated = currentList;
+        } else {
+          updated = [couponData, ...currentList.filter((c) => c.code.toUpperCase() !== code)];
+        }
+      } else {
+        const existingIdx = currentList.findIndex((c) => c.code.toUpperCase() === code);
+        if (existingIdx !== -1) {
+          currentList[existingIdx] = { ...currentList[existingIdx], ...couponData };
+          updated = currentList;
+        } else {
+          updated = [couponData, ...currentList];
+        }
+      }
+
+      setCoupons(updated);
+      await saveCoupons(updated);
+      showToast(`Offer code "${code}" saved.`);
+    } catch (err) {
+      showToast(`Coupon notice: ${err?.message}`);
+    }
+  };
+
+  // Delete Checkout Coupon
+  const handleDeleteCoupon = async (code) => {
+    if (!confirm(`Are you sure you want to remove offer code "${code}"?`)) return;
+    try {
+      const currentList = Array.isArray(coupons) ? coupons : DEFAULT_COUPONS;
+      const updated = currentList.filter((c) => c.code.toUpperCase() !== code.toUpperCase());
+      setCoupons(updated);
+      await saveCoupons(updated);
+      showToast(`Offer code "${code}" removed.`);
+    } catch (err) {
+      showToast(`Delete notice: ${err?.message}`);
+    }
+  };
+
+  // Toggle Checkout Coupon Active
+  const handleToggleCouponActive = async (code, nextActive) => {
+    try {
+      const currentList = Array.isArray(coupons) ? coupons : DEFAULT_COUPONS;
+      const updated = currentList.map((c) =>
+        c.code.toUpperCase() === code.toUpperCase() ? { ...c, active: nextActive } : c
+      );
+      setCoupons(updated);
+      await saveCoupons(updated);
+      showToast(`Offer code "${code}" ${nextActive ? "activated" : "deactivated"}.`);
+    } catch (err) {
+      showToast(`Toggle notice: ${err?.message}`);
+    }
+  };
+
+  // Reset to Default Coupons
+  const handleResetDefaultCoupons = async () => {
+    if (!confirm("Reset offer codes back to defaults (GET30, DASHIT50, FREEDEL)?")) return;
+    try {
+      setCoupons(DEFAULT_COUPONS);
+      await saveCoupons(DEFAULT_COUPONS);
+      showToast("Reset checkout coupons to defaults.");
+    } catch (err) {
+      showToast(`Reset notice: ${err?.message}`);
+    }
+  };
+
+  // Save Business GST Information Profile
+  const handleSaveBusinessGstInfo = async (newInfo) => {
+    setBusinessGstInfo(newInfo);
+    try {
+      localStorage.setItem("dashit_business_gst", JSON.stringify(newInfo));
+    } catch (e) {}
+    try {
+      if (isFirebaseConfigured) {
+        await setStoreConfig({ businessGstInfo: newInfo });
+      }
+      showToast("Company GST profile updated.");
+    } catch (err) {
+      showToast(`Notice: ${err?.message}`);
+    }
+  };
+
   // OFF Importer Search
   const handleSearchOff = async () => {
     const term = offSearchQuery.trim();
@@ -1625,11 +1737,22 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
               <IndianRupee className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">
-            ₹{totalRevenue.toLocaleString("en-IN")}
+          <div className="flex items-baseline justify-between mt-1">
+            <div className="text-2xl font-black text-slate-900 dark:text-white">
+              ₹{totalRevenue.toLocaleString("en-IN")}
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowGstModal(true)}
+              className="text-xs font-black text-[#FF5B00] hover:text-[#E04E00] flex items-center space-x-1 cursor-pointer bg-orange-500/10 hover:bg-orange-500/20 px-2.5 py-1 rounded-xl transition-all active:scale-95"
+              title="Open GST Sales Bill & Tax Statement"
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              <span>GST Bill</span>
+            </button>
           </div>
-          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
-            Total sales processed
+          <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-1">
+            Total sales processed &middot; Click GST Bill for tax report
           </p>
         </div>
       </div>
@@ -1642,6 +1765,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onUpdateStatus={handleUpdateOrderStatus}
           onAssignDriver={handleAssignDriver}
           onNavigateTab={setActiveTab}
+          onOpenGstModal={() => setShowGstModal(true)}
           darkMode={darkMode}
         />
       )}
@@ -1723,6 +1847,11 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
       {activeTab === "offers" && (
         <OffersView
+          coupons={coupons}
+          onSaveCoupon={handleSaveCoupon}
+          onDeleteCoupon={handleDeleteCoupon}
+          onToggleCouponActive={handleToggleCouponActive}
+          onResetDefaultCoupons={handleResetDefaultCoupons}
           exclusiveOffers={exclusiveOffers}
           onOpenOfferModal={() => setShowOfferModal(true)}
           onDeleteOffer={handleDeleteOffer}
@@ -2219,6 +2348,18 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
             </form>
           </div>
         </div>
+      )}
+
+      {/* GST SALES BILL & TAX REPORT MODAL */}
+      {showGstModal && (
+        <GstSalesReportModal
+          orders={orders}
+          isOpen={showGstModal}
+          onClose={() => setShowGstModal(false)}
+          businessInfo={businessGstInfo}
+          onSaveBusinessInfo={handleSaveBusinessGstInfo}
+          darkMode={darkMode}
+        />
       )}
     </AdminLayout>
   );

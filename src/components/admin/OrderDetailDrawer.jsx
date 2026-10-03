@@ -18,9 +18,11 @@ import {
   ShieldCheck,
   IndianRupee,
   ArrowRight,
-  UserPlus
+  UserPlus,
+  Receipt
 } from "lucide-react";
 import PrintPackingSlip from "./PrintPackingSlip";
+import PrintGstTaxInvoice from "./PrintGstTaxInvoice";
 import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
 import { orderAddress } from "../../lib/orderReceipt";
@@ -36,6 +38,7 @@ export default function OrderDetailDrawer({
   darkMode = false,
 }) {
   const [showPrintSlip, setShowPrintSlip] = useState(false);
+  const [showGstInvoice, setShowGstInvoice] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
   const [isAssigning, setIsAssigning] = useState(false);
   const [isChangingDriver, setIsChangingDriver] = useState(false);
@@ -266,6 +269,18 @@ export default function OrderDetailDrawer({
             </div>
 
             <div className="flex items-center space-x-1.5">
+              <button
+                type="button"
+                onClick={() => setShowGstInvoice(true)}
+                title="Print Official GST Tax Invoice"
+                className={"p-2 rounded-xl border transition-all cursor-pointer " + (
+                  darkMode
+                    ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-zinc-700"
+                    : "bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs"
+                )}
+              >
+                <Receipt className="w-4 h-4 text-[#FF5B00]" />
+              </button>
               <button
                 type="button"
                 onClick={() => setShowPrintSlip(true)}
@@ -864,6 +879,15 @@ export default function OrderDetailDrawer({
       {/* Print Packing Slip Modal */}
       {showPrintSlip && (
         <PrintPackingSlip order={order} onClose={() => setShowPrintSlip(false)} />
+      )}
+
+      {/* Print GST Tax Invoice Modal */}
+      {showGstInvoice && (
+        <PrintGstTaxInvoice
+          mode="order"
+          order={order}
+          onClose={() => setShowGstInvoice(false)}
+        />
       )}
     </>
   );

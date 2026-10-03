@@ -1,38 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Tag, Check, Sparkles } from "lucide-react";
 import { hapticLight, hapticMedium } from "../lib/haptics";
 
-import { AVAILABLE_COUPONS } from "../lib/coupons";
+import { DEFAULT_COUPONS, watchActiveCoupons } from "../lib/coupons";
 
 export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupon, onApplyCoupon }) {
+  const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
   const [customCode, setCustomCode] = useState("");
   const [codeError, setCodeError] = useState("");
 
   /* Locks background scroll while open (see src/lib/useBodyScrollLock.js). */
-
   useBodyScrollLock(Boolean(isOpen));
 
+  useEffect(() => {
+    const unsub = watchActiveCoupons((activeList) => {
+      if (Array.isArray(activeList) && activeList.length > 0) {
+        setCoupons(activeList);
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
 
   if (!isOpen) return null;
 
-  /* Only codes in AVAILABLE_COUPONS are honoured. The previous version fell
-     through to a "dynamic coupon" that granted ₹35 off for ANY string the
-     customer typed, with the minimum order never checked — so every order could
-     be discounted by simply entering a random word. */
+  /* Only active codes in coupons are honoured. */
   const handleApplyCustom = (e) => {
     e?.preventDefault();
     const entered = customCode.trim().toUpperCase();
     if (!entered) return;
 
-    const found = AVAILABLE_COUPONS.find((c) => c.code.toUpperCase() === entered);
+    const found = coupons.find((c) => c.code.toUpperCase() === entered);
     if (!found) {
       setCodeError("That offer code is not valid.");
       return;
     }
-    if (cartTotal < found.minOrder) {
-      setCodeError(`Minimum cart value of ₹${found.minOrder} required for ${found.code}.`);
+    const min = Number(found.minOrder) || 0;
+    if (cartTotal < min) {
+      setCodeError(`Minimum cart value of ₹${min} required for ${found.code}.`);
       return;
     }
     setCodeError("");
@@ -103,70 +111,82 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
             <div className="space-y-3">
               <h3 className="text-xs font-black text-slate-900 dark:text-white">Offers</h3>
 
-              {AVAILABLE_COUPONS.map((coupon) => {
-                const isEligible = cartTotal >= coupon.minOrder;
-                const isSelected = appliedCoupon?.code === coupon.code;
+              {coupons.length === 0 ? (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-8 text-center text-xs font-bold text-slate-400">
+                  No active coupon offers right now. Check back soon!
+                </div>
+              ) : (
+                coupons.map((coupon) => {
+                  const min = Number(coupon.minOrder) || 0;
+                  const isEligible = cartTotal >= min;
+                  const isSelected = appliedCoupon?.code === coupon.code;
+                  const isFreeDel = Boolean(coupon.waivesDelivery || coupon.code === "FREEDEL");
 
-                return (
-                  <div
-                    key={coupon.code}
-                    className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-4 shadow-xs relative overflow-hidden"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3">
-                        <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-900">
-                          <Tag className="w-4 h-4 stroke-[2.5]" />
-                        </div>
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="font-mono font-black text-xs text-slate-900 dark:text-white border border-dashed border-slate-300 dark:border-zinc-700 px-2 py-0.5 rounded-md">
-                              {coupon.code}
-                            </span>
+                  return (
+                    <div
+                      key={coupon.code}
+                      className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 p-4 shadow-xs relative overflow-hidden"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start space-x-3 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-900">
+                            <Tag className="w-4 h-4 stroke-[2.5]" />
                           </div>
-                          <p className="text-xs font-extrabold text-slate-800 dark:text-zinc-200 mt-1">
-                            {coupon.title}
-                          </p>
-                          <p className="text-[10px] font-semibold text-slate-400 mt-0.5 dark:text-content-faint">
-                            {coupon.description}
-                          </p>
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-mono font-black text-xs text-slate-900 dark:text-white border border-dashed border-slate-300 dark:border-zinc-700 px-2 py-0.5 rounded-md">
+                                {coupon.code}
+                              </span>
+                            </div>
+                            <p className="text-xs font-extrabold text-slate-800 dark:text-zinc-200 mt-1">
+                              {coupon.title}
+                            </p>
+                            <p className="text-[10px] font-semibold text-slate-400 mt-0.5 dark:text-content-faint">
+                              {coupon.description || coupon.condition}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <span className="text-[10px] font-black text-slate-400 uppercase block dark:text-content-faint">
+                            {isFreeDel ? "Benefit" : "Save up to"}
+                          </span>
+                          <span className="text-sm font-mono font-black text-[#FF5B00] block">
+                            {isFreeDel ? "Free Del" : `₹${coupon.discount}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isEligible) {
+                                alert(`Add ₹${min - cartTotal} more to unlock this coupon`);
+                                return;
+                              }
+                              hapticMedium();
+                              onApplyCoupon(isSelected ? null : coupon);
+                              onClose();
+                            }}
+                            className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                              isSelected
+                                ? "bg-rose-50 text-rose-600 border border-rose-200"
+                                : isEligible
+                                ? "bg-[#FF5B00] text-white hover:bg-[#0a6f1a] shadow-xs"
+                                : "bg-slate-100 dark:bg-zinc-800 text-slate-400 cursor-not-allowed"
+                            }`}
+                          >
+                            {isSelected ? "Remove" : "Apply"}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <span className="text-[10px] font-black text-slate-400 uppercase block dark:text-content-faint">Save up to</span>
-                        <span className="text-sm font-mono font-black text-[#FF5B00] block">₹{coupon.discount}</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!isEligible) {
-                              alert(`Add ₹${coupon.minOrder - cartTotal} more to unlock this coupon`);
-                              return;
-                            }
-                            hapticMedium();
-                            onApplyCoupon(isSelected ? null : coupon);
-                            onClose();
-                          }}
-                          className={`mt-2 px-4 py-1.5 rounded-xl font-bold text-xs transition-colors ${
-                            isSelected
-                              ? "bg-rose-50 text-rose-600 border border-rose-200"
-                              : isEligible
-                              ? "bg-[#FF5B00] text-white hover:bg-[#0a6f1a] shadow-xs"
-                              : "bg-slate-100 dark:bg-zinc-800 text-slate-400 cursor-not-allowed"
-                          }`}
-                        >
-                          {isSelected ? "Remove" : "Apply"}
-                        </button>
-                      </div>
+                      {!isEligible && min > 0 && (
+                        <div className="mt-3 bg-zinc-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg">
+                          Add ₹{min - cartTotal} more items to unlock
+                        </div>
+                      )}
                     </div>
-
-                    {!isEligible && (
-                      <div className="mt-3 bg-zinc-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg">
-                        Add ₹{coupon.minOrder - cartTotal} more items to unlock
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </motion.div>

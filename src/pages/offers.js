@@ -5,7 +5,7 @@ import SEO from "../components/SEO";
 import ProductCard from "../components/ProductCard";
 import QuickProductSheet from "../components/QuickProductSheet";
 import { watchShopProducts, isSoldOut } from "../lib/catalogueFile";
-import { AVAILABLE_COUPONS } from "../lib/coupons";
+import { DEFAULT_COUPONS, watchActiveCoupons } from "../lib/coupons";
 import { browseable } from "../lib/tobacco";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 import { goBack } from "../lib/navigation";
@@ -22,6 +22,7 @@ const discountOf = (p) => {
 /** The real offer codes, and everything sold below its MRP right now. */
 export default function OffersPage() {
   const router = useRouter();
+  const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
   const [productsList, setProductsList] = useState([]);
   const [cart, setCart] = useState([]);
   const [copiedCode, setCopiedCode] = useState(null);
@@ -30,6 +31,15 @@ export default function OffersPage() {
   const moreRef = useRef(null);
 
   useEffect(() => watchShopProducts(setProductsList), []);
+
+  useEffect(() => {
+    const unsub = watchActiveCoupons((activeList) => {
+      if (Array.isArray(activeList)) setCoupons(activeList);
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, []);
 
   useEffect(() => {
     const syncCart = () => {
@@ -130,29 +140,35 @@ export default function OffersPage() {
           <h2 className="px-1 text-[16px] font-bold tracking-tight text-[#061838] dark:text-content">Offer codes</h2>
           <p className="px-1 mt-1 text-[13px] text-slate-500 dark:text-content-muted">Apply one at checkout.</p>
           <ul className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-            {AVAILABLE_COUPONS.map((c) => (
-              <li
-                key={c.code}
-                className="rounded-2xl border border-slate-200 bg-white p-4 flex items-start justify-between gap-3 dark:bg-surface-raised dark:border-line"
-              >
-                <div className="min-w-0">
-                  <p className="font-mono text-[15px] font-bold tracking-wider text-[#C24400] dark:text-[#FF8A4C]">{c.code}</p>
-                  <p className="mt-1 text-[14px] font-semibold text-slate-900 dark:text-content">{c.title}</p>
-                  <p className="mt-0.5 text-[12.5px] text-slate-500 dark:text-content-muted">
-                    {c.minOrder ? `On orders of ₹${c.minOrder} or more` : "No minimum order"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => copyCode(c.code)}
-                  aria-label={`Copy ${c.code}`}
-                  className="shrink-0 h-9 px-3 rounded-lg border border-slate-200 text-[12.5px] font-semibold text-slate-700 flex items-center gap-1.5 hover:bg-slate-50 dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
-                >
-                  {copiedCode === c.code ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  {copiedCode === c.code ? "Copied" : "Copy"}
-                </button>
+            {coupons.length === 0 ? (
+              <li className="col-span-full py-8 text-center text-[13px] text-slate-500 dark:text-content-muted">
+                No active coupon codes right now. Check back soon.
               </li>
-            ))}
+            ) : (
+              coupons.map((c) => (
+                <li
+                  key={c.code}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 flex items-start justify-between gap-3 dark:bg-surface-raised dark:border-line"
+                >
+                  <div className="min-w-0">
+                    <p className="font-mono text-[15px] font-bold tracking-wider text-[#C24400] dark:text-[#FF8A4C]">{c.code}</p>
+                    <p className="mt-1 text-[14px] font-semibold text-slate-900 dark:text-content">{c.title}</p>
+                    <p className="mt-0.5 text-[12.5px] text-slate-500 dark:text-content-muted">
+                      {c.minOrder ? `On orders of ₹${c.minOrder} or more` : "No minimum order"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyCode(c.code)}
+                    aria-label={`Copy ${c.code}`}
+                    className="shrink-0 h-9 px-3 rounded-lg border border-slate-200 text-[12.5px] font-semibold text-slate-700 flex items-center gap-1.5 hover:bg-slate-50 dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
+                  >
+                    {copiedCode === c.code ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedCode === c.code ? "Copied" : "Copy"}
+                  </button>
+                </li>
+              ))
+            )}
           </ul>
         </section>
 
