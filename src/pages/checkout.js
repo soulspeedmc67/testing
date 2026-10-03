@@ -38,6 +38,7 @@ import { watchShopProducts, isSoldOut } from "../lib/catalogueFile";
 import { payOnline } from "../lib/razorpayWeb";
 import { hasLiveSession, finishRedirectSignIn, readShopper } from "../lib/shopperAuth";
 import { isBeforeLaunch, LAUNCH_LABEL } from "../lib/launch";
+import { getStaffRole } from "../lib/auth";
 
 // Suggestions come from the everyday aisles only, never the unsorted shelf.
 const EVERYDAY_AISLES = new Set([
@@ -98,7 +99,14 @@ export default function CheckoutPage() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [receiverDetails, setReceiverDetails] = useState(null);
   const [shopper, setShopper] = useState(null);
-  const [beforeLaunch, setBeforeLaunch] = useState(false);
+  const [launchGate, setLaunchGate] = useState(false);
+  /* Admin accounts can place real orders before launch, to test the whole
+     flow (Razorpay is in test mode until the live keys go in). Customers
+     still wait for LAUNCH_AT. */
+  const [earlyAccess, setEarlyAccess] = useState(false);
+  const earlyRef = useRef(false);
+  const beforeLaunch = launchGate && !earlyAccess;
+  const isLaunchBlocked = () => isBeforeLaunch() && !earlyRef.current;
   const [resumeUser, setResumeUser] = useState(null);
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -136,10 +144,24 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    setBeforeLaunch(isBeforeLaunch());
-    const timer = setInterval(() => setBeforeLaunch(isBeforeLaunch()), 30 * 1000);
+    setLaunchGate(isBeforeLaunch());
+    const timer = setInterval(() => setLaunchGate(isBeforeLaunch()), 30 * 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // One read of the shopper's own staff record, only before launch.
+  useEffect(() => {
+    if (!launchGate || !shopper?.uid) return;
+    let alive = true;
+    getStaffRole(shopper.uid).then((role) => {
+      if (!alive) return;
+      earlyRef.current = role === "admin";
+      setEarlyAccess(role === "admin");
+    });
+    return () => {
+      alive = false;
+    };
+  }, [launchGate, shopper?.uid]);
 
   // Back from Google's own sign-in page (pop-up blocked): carry on to the number.
   useEffect(() => {
@@ -278,7 +300,7 @@ export default function CheckoutPage() {
 
   const placeOrder = async (authenticatedUser) => {
     if (placingRef.current) return;
-    if (isBeforeLaunch()) return alert(`We start taking orders on ${LAUNCH_LABEL}. Your cart is saved until then.`);
+    if (isLaunchBlocked()) return alert(`We start taking orders on ${LAUNCH_LABEL}. Your cart is saved until then.`);
     if (!isStoreOpen) return alert(`The store is closed right now. ${closeReason || "Please check back shortly."}`);
     if (cartItems.length === 0) return;
 
@@ -480,6 +502,14 @@ export default function CheckoutPage() {
       <main className="max-w-5xl mx-auto px-4 pt-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
         {/* Left: what's in the cart */}
         <div className="space-y-5 min-w-0">
+          {launchGate && earlyAccess && (
+            <div className="rounded-2xl border border-[#FF5B00]/40 bg-white px-4 py-3 flex items-start gap-3 dark:bg-surface-raised">
+              <Clock className="w-5 h-5 text-[#FF5B00] shrink-0 mt-0.5" />
+              <p className="text-[14px] leading-snug text-slate-700 dark:text-content-secondary">
+                <strong className="text-[#061838] dark:text-content">Test mode.</strong> You&apos;re signed in as an admin, so you can place orders before launch. Customers can&apos;t until {LAUNCH_LABEL}.
+              </p>
+            </div>
+          )}
           {beforeLaunch && (
             <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 flex items-start gap-3 dark:bg-surface-raised dark:border-line">
               <Clock className="w-5 h-5 text-[#FF5B00] shrink-0 mt-0.5" />
@@ -739,7 +769,7 @@ export default function CheckoutPage() {
         onAuthenticated={(user) => {
           setShopper(user);
           setIsLoginOpen(false);
-          if (!isBeforeLaunch()) placeOrder(user);
+          if (!isLaunchBlocked()) placeOrder(user);
         }}
       />
       <LocationPickerModal isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} currentLocation={location} onSelectLocation={chooseLocation} />
