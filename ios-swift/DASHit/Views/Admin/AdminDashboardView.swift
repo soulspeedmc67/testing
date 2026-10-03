@@ -394,13 +394,21 @@ public struct AdminDashboardView: View {
 
                 Spacer()
 
-                Text(order.status.stage.label)
+                Text(order.isAwaitingPickup ? "Rider assigned" : order.status.stage.label)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(stageColor(order.status.stage))
+                    .background(order.isAwaitingPickup ? Color.purple : stageColor(order.status.stage))
                     .clipShape(Capsule())
+            }
+
+            // Who is bringing it, once a rider has been picked.
+            if let rider = order.driverName, order.driverId?.isEmpty == false, !order.status.stage.isFinished {
+                Label(order.isAwaitingPickup ? "\(rider) is coming to collect it" : "\(rider) is on the way",
+                      systemImage: "scooter")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.purple)
             }
 
             Text(order.deliveryAddress.formattedSummary)
@@ -439,7 +447,7 @@ public struct AdminDashboardView: View {
                     }
                 } else if order.status.stage == .packing {
                     Button(action: { selectedOrderForDriver = order }) {
-                        Label("Pick a rider", systemImage: "scooter")
+                        Label(order.isAwaitingPickup ? "Change rider" : "Pick a rider", systemImage: "scooter")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -984,6 +992,7 @@ struct OrderDetailSheetView: View {
                     Button("Close") { dismiss() }
                 }
             }
+            .saveErrorAlert(vm)
             .sheet(isPresented: $isAssignRiderOpen, onDismiss: {
                 // Close the details too once a rider was picked; stay if not.
                 if vm.recentOrders.first(where: { $0.id == order.id })?.driverId?.isEmpty == false {
@@ -1127,9 +1136,24 @@ struct OrderDetailSheetView: View {
                 vm.advanceOrderStatus(order: live)
             })
         case .packing:
-            bottomBar(primaryAction("Assign rider") {
-                isAssignRiderOpen = true
-            })
+            if live.isAwaitingPickup {
+                // The rider sends it out with "Start delivery" when they collect it.
+                bottomBar(VStack(spacing: 8) {
+                    Label("\(live.driverName ?? "The rider") is coming to collect it", systemImage: "scooter")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.purple)
+                        .frame(maxWidth: .infinity)
+                    Button("Change rider") { isAssignRiderOpen = true }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.orange)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                })
+            } else {
+                bottomBar(primaryAction("Assign rider") {
+                    isAssignRiderOpen = true
+                })
+            }
         case .onTheWay:
             bottomBar(primaryAction("Confirm delivered") {
                 vm.advanceOrderStatus(order: live)
@@ -1180,6 +1204,23 @@ struct OrderDetailSheetView: View {
     }
 }
 
+// MARK: - Save errors on sheets
+
+extension View {
+    /// The dashboard shows `saveError` as an alert, but not while a sheet is
+    /// over it: a refused save from the order or rider sheet went unseen.
+    func saveErrorAlert(_ vm: AdminDashboardViewModel) -> some View {
+        alert("Not saved", isPresented: Binding(
+            get: { vm.saveError != nil },
+            set: { if !$0 { vm.saveError = nil } }
+        )) {
+            Button("OK", role: .cancel) { vm.saveError = nil }
+        } message: {
+            Text(vm.saveError ?? "")
+        }
+    }
+}
+
 // MARK: - Assign Driver Sheet View
 
 struct AssignDriverSheetView: View {
@@ -1219,7 +1260,7 @@ struct AssignDriverSheetView: View {
                     }
                 }
             }
-            .navigationTitle("Pick a rider")
+            .navigationTitle(order.driverId?.isEmpty == false ? "Change rider" : "Pick a rider")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

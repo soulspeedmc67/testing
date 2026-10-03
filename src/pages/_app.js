@@ -18,9 +18,20 @@ import { initNotificationPermissions } from '../lib/notifications';
 import { setDeviceSystemBars } from '../lib/systemBars';
 import { isNative } from '../lib/platform';
 import CookieConsentBanner from '../components/CookieConsentBanner';
+import LaunchBar from '../components/LaunchBar';
 import { forceUnlockBodyScroll } from '../lib/useBodyScrollLock';
 
 import { EASE_OUT } from '../lib/motion';
+
+/* The web shop's chrome: cart bar, bottom menu, order tracker. Loaded only on
+   shop pages, so the landing page, legal pages and staff consoles don't
+   download it. The tracker is the one piece that reaches Firestore. */
+const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout', '/offers', '/orders', '/wishlist', '/account', '/add-address', '/confirm-location', '/login'];
+const FloatingCartBar = dynamic(() => import('../components/FloatingCartBar'), { ssr: false });
+const BottomNav = dynamic(() => import('../components/BottomNav'), { ssr: false });
+const FlyingBadgeOverlay = dynamic(() => import('../components/FlyingBadgeOverlay'), { ssr: false });
+const FreeDeliveryToast = dynamic(() => import('../components/FreeDeliveryToast'), { ssr: false });
+const LiveOrderFloatingTracker = dynamic(() => import('../components/LiveOrderFloatingTracker'), { ssr: false });
 
 /**
  * Keeps the native system bars and the `color-scheme` meta in step with the
@@ -499,11 +510,19 @@ export default function App({ Component, pageProps }) {
                 : "w-full min-h-screen relative"
             }
           >
+            {SHOP_ROUTES.includes(router.pathname) && <LaunchBar />}
             <Component {...pageProps} />
           </motion.div>
         )}
-        {/* No shop on the website any more (ordering is in the apps), so no
-            cart bar, bottom menu or live order tracker here. */}
+        {!isDriverApp && SHOP_ROUTES.includes(router.pathname) && (
+          <>
+            {!['/login', '/orders'].includes(router.pathname) && <LiveOrderFloatingTracker />}
+            <FloatingCartBar />
+            {router.pathname !== '/login' && <BottomNav />}
+            <FlyingBadgeOverlay />
+            <FreeDeliveryToast />
+          </>
+        )}
         {!isDriverApp && <CookieConsentBanner />}
         </AgeGateProvider>
       </ScrollChromeProvider>

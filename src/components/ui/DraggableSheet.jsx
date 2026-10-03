@@ -2,14 +2,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 
-export default function DraggableSheet({ isOpen, onClose, title, subtitle, children, maxHeight = "85vh" }) {
+export default function DraggableSheet({ isOpen, onClose, title, subtitle, children, maxHeight = "85vh", zIndex = "z-50" }) {
   useBodyScrollLock(Boolean(isOpen));
 
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4">
+        <div className={`fixed inset-0 ${zIndex} flex items-end justify-center sm:items-center p-0 sm:p-4`}>
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

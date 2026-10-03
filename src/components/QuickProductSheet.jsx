@@ -62,11 +62,13 @@ export default function QuickProductSheet({
 
         {/* Product Name & Details */}
         <div className="space-y-1.5">
-          <div className="flex items-center space-x-1.5 text-xs text-amber-500 font-bold">
-            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-            <span className="text-slate-800 font-extrabold dark:text-content">{product.rating || "4.8"}</span>
-            <span className="text-slate-400 font-medium dark:text-content-faint">({product.ratingCount || "1,250"} ratings)</span>
-          </div>
+          {product.rating && product.ratingCount ? (
+            <div className="flex items-center space-x-1.5 text-xs text-amber-500 font-bold">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span className="text-slate-800 font-extrabold dark:text-content">{product.rating}</span>
+              <span className="text-slate-400 font-medium dark:text-content-faint">({product.ratingCount} ratings)</span>
+            </div>
+          ) : null}
 
           <h2 className="font-extrabold text-base text-slate-900 leading-snug dark:text-content">
             {product.name}
@@ -86,7 +88,7 @@ export default function QuickProductSheet({
         {isOutOfStock && (
           <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2 flex items-center space-x-2 text-xs text-rose-600 font-bold dark:text-rose-400">
             <Package className="w-4 h-4 shrink-0 text-rose-500" />
-            <span>Currently Out of Stock · Restocking shortly at Anantnag Hub</span>
+            <span>Sold out for now</span>
           </div>
         )}
 

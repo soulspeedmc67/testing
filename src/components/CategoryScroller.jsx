@@ -15,13 +15,15 @@ export const CATEGORY_STRIP = [
   { id: "Dairy", label: "Dairy", icon: Milk },
 ];
 
-export default function CategoryScroller({ activeCategory = "All", onSelectCategory }) {
+/** `categories` replaces the fixed strip with the shop's real aisles: [{ id, label, icon }]. */
+export default function CategoryScroller({ activeCategory = "All", onSelectCategory, categories }) {
   const router = useRouter();
+  const strip = categories && categories.length > 0 ? categories : CATEGORY_STRIP;
 
   return (
     <div className="w-full bg-[#FFFDF5] pt-2 pb-2 dark:bg-surface-raised">
       <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 sm:px-6 lg:px-8 max-w-md md:max-w-7xl mx-auto scroll-smooth pt-1 pb-1">
-        {CATEGORY_STRIP.map((cat) => {
+        {strip.map((cat) => {
           const Icon = cat.icon;
           const isActive = activeCategory === cat.id;
 
@@ -45,7 +47,7 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
               <div
                 className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-all duration-300 ${
                   cat.highlight
-                    ? "bg-gradient-to-br from-[#FF5B00] to-[#FF2E93] text-white shadow-[0_4px_12px_-4px_rgba(255,91,0,0.7)] ring-2 ring-[#FF5B00]/15"
+                    ? "bg-[#FF5B00] text-white"
                     : isActive
                     ? "bg-[#061838] text-white shadow-sm ring-2 ring-[#061838]/10 scale-105 dark:bg-[#FF5B00] dark:ring-[#FF5B00]/25"
                     : "bg-white text-slate-700 border border-slate-200/90 group-hover:border-slate-400 dark:bg-surface-muted dark:border-line dark:text-content-secondary dark:group-hover:border-line-strong"

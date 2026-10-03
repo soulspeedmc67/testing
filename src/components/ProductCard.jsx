@@ -62,7 +62,7 @@ function ProductCard({
     }
     const pId = product?.id || product?.barcode;
     if (pId) {
-      router.push(`/product/${pId}`);
+      router.push(`/product/?id=${encodeURIComponent(pId)}`);
     }
   };
 
