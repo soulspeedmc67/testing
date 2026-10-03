@@ -74,7 +74,17 @@ service cloud.firestore {
       return isSignedIn() && (
         'mobile' in request.auth.token
         || request.auth.token.firebase.sign_in_provider in ['google.com', 'apple.com']
+        || isAppReviewAccount()
       );
+    }
+
+    /* The demo account given to Apple App Review (App Store Connect → App
+       Review Information). iOS build 136, the one under review, signs in with
+       email and password, which no other account may use to shop. Firebase
+       allows one account per email, so this matches that account alone. */
+    function isAppReviewAccount() {
+      return request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.get('email', '') == 'mirmanal.mm@gmail.com';
     }
 
     /** Restricts a write to a known set of fields. */
