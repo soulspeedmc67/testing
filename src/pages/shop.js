@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import SEO from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/JsonLd";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Mic, Sparkles, Flame, Tag } from "lucide-react";
+import { Search, Mic, Sparkles, Flame, Tag, ArrowRight } from "lucide-react";
 import { buildAisles, aisleFor } from "../lib/shopAisles";
 import AppHeader from "../components/AppHeader";
 import CategoryScroller from "../components/CategoryScroller";
@@ -25,6 +25,17 @@ import { stagger, fadeUp, fadeUpTight, inViewOnce, EASE_OUT, SPRING_SNAPPY, TAP_
 import { forceUnlockBodyScroll } from "../lib/useBodyScrollLock";
 
 const PAGE_SIZE = 48;
+
+const PERSONAL_CARE_SUB_CATEGORIES = [
+  { id: "all", label: "All" },
+  { id: "skin", label: "Skin Care", regex: /\b(face ?wash|facewash|moisturi[sz]er|sunscreen|lotion|serum|scrub|face pack|rose water|sheet mask|cleanser|night cream|day cream|cold cream|lip balm)\b/i },
+  { id: "hair", label: "Hair Care", regex: /\b(shampoo|shmp|conditioner|hair ?oil|hair ?colou?r|hair mask|hair spray|hair spa|scalp)\b/i },
+  { id: "bath", label: "Bath & Body", regex: /\b(soap|bath|body ?wash|shower gel|loofah|sponge)\b/i },
+  { id: "fragrance", label: "Fragrances & Deos", regex: /\b(deo|deodorant|perfume|body ?spray|body ?mist|attar|edp|edt|cologne)\b/i },
+  { id: "oral", label: "Oral Care", regex: /\b(toothpaste|tooth ?brush|mouthwash|tongue cleaner|floss|dente?|dentoshine|sensodyne|colgate)\b/i },
+  { id: "shaving", label: "Men's Grooming", regex: /\b(razor|blade|shaving|after ?shave|beard|trimmer|foam|gillette)\b/i },
+  { id: "makeup", label: "Makeup & Beauty", regex: /\b(lipstick|kajal|mascara|eyeliner|nail|foundation|compact|concealer|makeup|bleach)\b/i },
+];
 
 const SEARCH_SUGGESTIONS = [
   '"milk, curd & paneer"',
@@ -67,6 +78,7 @@ export default function ShopPage() {
   const router = useRouter();
   const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
   const [activeCategory, setActiveCategory] = useState("All");
+  const [personalCareSubCat, setPersonalCareSubCat] = useState("all");
   const [cart, setCart] = useState([]);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [selectedVariantProduct, setSelectedVariantProduct] = useState(null);
@@ -220,6 +232,8 @@ export default function ShopPage() {
   const openAisle = (cat) => {
     setActiveDealPromo(null);
     setActiveCategory(cat);
+    setPersonalCareSubCat("all");
+    router.replace({ pathname: "/shop", query: { cat } }, undefined, { shallow: true });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -271,6 +285,12 @@ export default function ShopPage() {
 
     if (activeCategory !== "All") {
       list = list.filter((p) => String(p.cat || p.category || "Others").trim() === activeCategory);
+      if (activeCategory === "Personal Care" && personalCareSubCat !== "all") {
+        const sub = PERSONAL_CARE_SUB_CATEGORIES.find((s) => s.id === personalCareSubCat);
+        if (sub && sub.regex) {
+          list = list.filter((p) => sub.regex.test(p.name || ""));
+        }
+      }
     }
 
     if (activeDealPromo) {
@@ -288,13 +308,16 @@ export default function ShopPage() {
       });
     }
 
-    // Sold-out items never sit at the top.
-    return [...list.filter((p) => !isSoldOut(p)), ...list.filter(isSoldOut)];
-  }, [productsList, activeCategory, activeDealPromo]);
+    // In-stock items with confirmed photos first, in-stock without photos next, sold-out last.
+    const inStock = list.filter((p) => !isSoldOut(p));
+    const soldOut = list.filter(isSoldOut);
+    const hasPhoto = (p) => Boolean(p && typeof p.img === "string" && p.img.trim());
+    return [...inStock.filter(hasPhoto), ...inStock.filter((p) => !hasPhoto(p)), ...soldOut];
+  }, [shopProducts, activeCategory, personalCareSubCat, activeDealPromo]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [activeCategory, activeDealPromo]);
+  }, [activeCategory, personalCareSubCat, activeDealPromo]);
 
   useEffect(() => {
     const el = moreRef.current;
@@ -410,21 +433,53 @@ export default function ShopPage() {
           >
             {/* Selected Category Header (when activeCategory !== 'All') */}
             {activeCategory !== "All" && (
-              <div className="flex items-baseline justify-between px-1 pt-1 pb-0">
-                <div className="flex items-baseline space-x-2 min-w-0">
-                  <h2 className="font-bold text-[17px] md:text-xl text-[#061838] tracking-tight truncate dark:text-content">
-                    {aisleFor(activeCategory).label}
-                  </h2>
-                  <span className="text-[11px] font-medium text-slate-500 shrink-0 dark:text-content-muted">
-                    {filteredProducts.length} items
-                  </span>
+              <div className="space-y-3">
+                <div className="flex items-baseline justify-between px-1 pt-1 pb-0">
+                  <div className="flex items-baseline space-x-2 min-w-0">
+                    <h2 className="font-bold text-[17px] md:text-xl text-[#061838] tracking-tight truncate dark:text-content">
+                      {aisleFor(activeCategory).label}
+                    </h2>
+                    <span className="text-[11px] font-medium text-slate-500 shrink-0 dark:text-content-muted">
+                      {filteredProducts.length} items
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveCategory("All");
+                      setPersonalCareSubCat("all");
+                      router.replace("/shop", undefined, { shallow: true });
+                    }}
+                    className="text-[12px] font-semibold text-[#FF5B00] hover:underline shrink-0 cursor-pointer active:scale-95 transition-transform"
+                  >
+                    Clear
+                  </button>
                 </div>
-                <button
-                  onClick={() => setActiveCategory("All")}
-                  className="text-[12px] font-semibold text-[#FF5B00] hover:underline shrink-0 cursor-pointer active:scale-95 transition-transform"
-                >
-                  Clear
-                </button>
+
+                {/* Sub-Category Filter Pills for Personal Care */}
+                {activeCategory === "Personal Care" && (
+                  <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-2 overflow-x-auto scrollbar-none py-1">
+                    {PERSONAL_CARE_SUB_CATEGORIES.map((sub) => {
+                      const isSelected = personalCareSubCat === sub.id;
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => {
+                            setPersonalCareSubCat(sub.id);
+                            setVisibleCount(PAGE_SIZE);
+                          }}
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                            isSelected
+                              ? "bg-[#061838] text-white shadow-xs dark:bg-white dark:text-slate-900"
+                              : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 dark:bg-surface-raised dark:text-content-secondary dark:border-line"
+                          }`}
+                        >
+                          {sub.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -500,6 +555,23 @@ export default function ShopPage() {
                         </div>
                       );
                     })}
+                    {aisle.count > aisle.rail.length && (
+                      <button
+                        type="button"
+                        onClick={() => openAisle(aisle.cat)}
+                        className="w-[140px] sm:w-[160px] shrink-0 snap-start flex flex-col items-center justify-center text-center p-4 rounded-2xl border border-slate-200/80 bg-white hover:border-[#FF5B00]/40 transition-colors group cursor-pointer dark:bg-surface-raised dark:border-line"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-[#FF5B00]/10 flex items-center justify-center text-[#FF5B00] mb-2 group-hover:scale-110 transition-transform">
+                          <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+                        </div>
+                        <span className="text-[13px] font-bold text-[#061838] dark:text-content">
+                          See all
+                        </span>
+                        <span className="text-[11px] font-medium text-slate-500 mt-0.5 dark:text-content-muted">
+                          {aisle.count} items
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </section>
               ))}
@@ -578,6 +650,23 @@ export default function ShopPage() {
                 </div>
               )}
               {visibleCount < filteredProducts.length && <div ref={moreRef} aria-hidden="true" className="h-10" />}
+
+              {filteredProducts.length > PAGE_SIZE && (
+                <div className="flex flex-col items-center justify-center pt-4 pb-8 space-y-2.5">
+                  <p className="text-xs font-medium text-slate-500 dark:text-content-muted">
+                    Showing {Math.min(visibleCount, filteredProducts.length)} of {filteredProducts.length} items
+                  </p>
+                  {visibleCount < filteredProducts.length && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                      className="px-5 py-2 rounded-xl text-xs font-bold text-[#FF5B00] bg-[#FF5B00]/10 hover:bg-[#FF5B00]/15 active:scale-95 transition-all cursor-pointer"
+                    >
+                      Load more
+                    </button>
+                  )}
+                </div>
+              )}
             </section>
           </motion.div>
         </AnimatePresence>
