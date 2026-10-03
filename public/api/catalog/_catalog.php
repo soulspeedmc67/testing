@@ -145,3 +145,140 @@ function dashit_catalog_read(): ?array
     $data = json_decode((string) file_get_contents($path), true);
     return is_array($data) && isset($data['version'], $data['products']) && is_array($data['products']) ? $data : null;
 }
+
+const DASHIT_FULL_EVERY = 24 * 3600 * 1000;
+
+/**
+ * Brings catalog.json up to date (see build.php). True when the file is
+ * current, false when it couldn't be, null when another build holds the lock.
+ * Writes to a temporary file and renames it, so the website never serves a
+ * half-written file, and refuses a result that lost more than 10% of the
+ * products (a broken read), keeping the previous file.
+ */
+function dashit_catalog_build(bool $forceFull, callable $out): ?bool
+{
+    @set_time_limit(120);
+
+    $dir = dashit_catalog_dir();
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+        $out("Can't create $dir");
+        return false;
+    }
+    // One run at a time: a slow full read must not overlap the next cron run.
+    $lock = fopen("$dir/.build.lock", 'c');
+    if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
+        $out('Another build is running.');
+        return null;
+    }
+
+    $account = dashit_firebase_service_account();
+    if ($account === null) {
+        $out('No Firebase service account in dashit-secrets.');
+        return false;
+    }
+
+    $current = dashit_catalog_read();
+    $nowMs = (int) round(microtime(true) * 1000);
+    $full = $forceFull || $current === null || $nowMs - (int) ($current['fullAt'] ?? 0) > DASHIT_FULL_EVERY;
+
+    if (!$full) {
+        $newest = dashit_catalog_newest($account);
+        if ($newest === null) {
+            $out('Firestore did not answer; keeping the file.');
+            return false;
+        }
+        if ($newest <= (int) $current['version']) {
+            $out('Up to date (version ' . $current['version'] . ').');
+            $statusPath = "$dir/catalog-status.json";
+            $status = @json_decode((string) @file_get_contents($statusPath), true) ?: [];
+            $status['checkedAt'] = $nowMs;
+            @file_put_contents($statusPath, json_encode($status));
+            return true;
+        }
+        $changed = dashit_catalog_changed_since($account, (int) $current['version']);
+        if ($changed === null) {
+            $out('Firestore did not answer; keeping the file.');
+            return false;
+        }
+        $byId = [];
+        foreach ($current['products'] as $entry) $byId[$entry['id']] = $entry;
+        foreach ($changed as $entry) $byId[$entry['id']] = $entry;
+        $products = array_values($byId);
+        $fullAt = (int) ($current['fullAt'] ?? 0);
+        $out(count($changed) . ' changed products merged.');
+    } else {
+        $products = dashit_catalog_everything($account);
+        if ($products === null) {
+            $out('Firestore did not answer the full read; keeping the file.');
+            return false;
+        }
+        $fullAt = $nowMs;
+        $out('Full read: ' . count($products) . ' products.');
+    }
+
+    $active = count(array_filter($products, fn ($p) => ($p['active'] ?? true) !== false));
+    $before = $current === null ? 0 : count(array_filter($current['products'], fn ($p) => ($p['active'] ?? true) !== false));
+    if ($active < 50 || ($before > 0 && $active < $before * 0.9 && !$forceFull)) {
+        $out("Refusing: $active products shown, was $before. Keeping the previous file (run --full to accept).");
+        return false;
+    }
+
+    $version = 0;
+    foreach ($products as $p) $version = max($version, (int) ($p['updatedAt'] ?? 0));
+    usort($products, fn ($a, $b) => strcmp((string) $a['id'], (string) $b['id']));
+    $json = json_encode([
+        'version' => $version,
+        'builtAt' => $nowMs,
+        'fullAt' => $fullAt,
+        'count' => $active,
+        'products' => $products,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false || json_decode($json, true) === null) {
+        $out('Could not encode the file; keeping the previous one.');
+        return false;
+    }
+
+    $tmp = dashit_catalog_path() . '.tmp';
+    if (file_put_contents($tmp, $json) === false || !rename($tmp, dashit_catalog_path())) {
+        $out("Could not write the file in $dir.");
+        return false;
+    }
+    @chmod(dashit_catalog_path(), 0644);
+    file_put_contents("$dir/catalog-status.json", json_encode([
+        'version' => $version, 'builtAt' => $nowMs, 'checkedAt' => $nowMs, 'fullAt' => $fullAt, 'count' => $active,
+        'bytes' => strlen($json),
+    ]));
+    $out("Wrote catalog.json: $active products, version $version, " . round(strlen($json) / 1024) . ' KB.');
+    return true;
+}
+
+/**
+ * The cron job's backstop, run by changes.php: when the file is missing or
+ * hasn't been checked for 10 minutes, build it, at most once every 5 minutes
+ * for everyone (once a minute while there is no file at all). Same Firestore
+ * cost as the cron job, and only while people are using the shop.
+ */
+function dashit_catalog_refresh_if_stale(): void
+{
+    $file = dashit_catalog_read();
+    $nowMs = (int) round(microtime(true) * 1000);
+    $status = @json_decode((string) @file_get_contents(dashit_catalog_dir() . '/catalog-status.json'), true);
+    $checkedAt = (int) ($status['checkedAt'] ?? $status['builtAt'] ?? ($file['builtAt'] ?? 0));
+    if ($file !== null && $nowMs - $checkedAt < 10 * 60 * 1000) return;
+
+    $marker = dashit_private_dir('dashit-data') . '/catalog-web-build.txt';
+    $last = (int) @file_get_contents($marker);
+    if (time() - $last < ($file === null ? 60 : 300)) return;
+    @mkdir(dirname($marker), 0700, true);
+    @file_put_contents($marker, (string) time());
+
+    $ok = dashit_catalog_build(false, function (string $line): void {
+        error_log("DASHit catalogue (web): $line");
+    });
+    if ($ok === true) {
+        $path = dashit_catalog_dir() . '/catalog-status.json';
+        $status = @json_decode((string) @file_get_contents($path), true) ?: [];
+        $status['checkedAt'] = (int) round(microtime(true) * 1000);
+        @file_put_contents($path, json_encode($status));
+    }
+}

@@ -1,55 +1,43 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { motion } from "framer-motion";
-import SEO from "../components/SEO";
-import { 
-  ArrowLeft, 
-  Search, 
-  Share2, 
-  Clock, 
-  CheckCircle2, 
-  ChevronRight, 
-  ChevronUp, 
-  ShieldCheck, 
-  Plus, 
-  Minus, 
-  ShoppingBag, 
-  Users, 
-  Tag, 
-  UserCheck, 
-  Trash2, 
-  AlertTriangle, 
-  LogIn, 
-  ArrowRight,
-  Home,
-  Briefcase,
-  Building2,
+import {
+  ArrowLeft,
+  Plus,
+  Minus,
+  MapPin,
+  Tag,
+  ChevronRight,
   X,
-  Zap
+  Smartphone,
+  Banknote,
+  CheckCircle2,
+  Circle,
+  Users,
+  ShoppingBag,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
-import confetti from "canvas-confetti";
-import PaymentMethodModal from "../components/PaymentMethodModal";
+import SEO from "../components/SEO";
+import ProductImage from "../components/ProductImage";
+import ProductCard from "../components/ProductCard";
 import LocationPickerModal from "../components/LocationPickerModal";
 import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
-import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
+import { FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "../components/FreeDeliveryProgress";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
 import { showOrderPlacedNotification } from "../lib/notifications";
-import { addToWishlist } from "../lib/wishlist";
 import { useStoreDetails } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
+import { browseable } from "../lib/tobacco";
 import { watchShopProducts, isSoldOut } from "../lib/catalogueFile";
 import { payOnline } from "../lib/razorpayWeb";
-import { hasLiveSession, finishRedirectSignIn } from "../lib/shopperAuth";
+import { hasLiveSession, finishRedirectSignIn, readShopper } from "../lib/shopperAuth";
 import { isBeforeLaunch, LAUNCH_LABEL } from "../lib/launch";
-import { browseable } from "../lib/tobacco";
-import ProductImage from "../components/ProductImage";
-
 
 // Suggestions come from the everyday aisles only, never the unsorted shelf.
 const EVERYDAY_AISLES = new Set([
@@ -57,27 +45,95 @@ const EVERYDAY_AISLES = new Set([
   "Instant Food", "Sweets & Chocolates", "Ice Cream", "Dry Fruits", "Sauces & Spreads",
 ]);
 
+const PAYMENTS = [
+  { id: "online", title: "Pay online", detail: "UPI, cards, net banking, wallets", icon: Smartphone },
+  { id: "cod", title: "Cash on delivery", detail: "Cash or UPI to the rider", icon: Banknote },
+];
+
 const mixKey = (id) => {
   let h = 0;
   for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return h;
 };
 
-const parsePrice = (val) => {
-  if (typeof val === "number") return val;
-  if (!val) return 0;
-  const cleaned = String(val).replace(/[^0-9.]/g, "");
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
+const price = (val) => {
+  const n = typeof val === "number" ? val : parseFloat(String(val || "").replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
 };
+
+const rupees = (n) => `₹${Number.isInteger(n) ? n : n.toFixed(2)}`;
+
+/** More than the shop has of it (or none at all). */
+function shortOf(item) {
+  if (isSoldOut(item)) return true;
+  const left = Number(item.stock);
+  return item.stock !== undefined && item.stock !== null && Number.isFinite(left) && left < (Number(item.qty) || 1);
+}
+
+function readJson(key, fallback) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) || "null");
+    return v ?? fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function Card({ children, className = "" }) {
+  return (
+    <section className={`rounded-2xl bg-white border border-slate-200/80 dark:bg-surface-raised dark:border-line ${className}`}>
+      {children}
+    </section>
+  );
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
-  const [checkoutData, setCheckoutData] = useState(null);
-  const [selectedMethod, setSelectedMethod] = useState({ id: "cod", label: "Cash on Delivery" });
+  const [cartItems, setCartItems] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const [liveProducts, setLiveProducts] = useState([]);
+  const [location, setLocation] = useState(null);
+  const [method, setMethod] = useState("cod");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [receiverDetails, setReceiverDetails] = useState(null);
+  const [shopper, setShopper] = useState(null);
   const [beforeLaunch, setBeforeLaunch] = useState(false);
+  const [resumeUser, setResumeUser] = useState(null);
+
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isCouponsOpen, setIsCouponsOpen] = useState(false);
+  const [isReceiverOpen, setIsReceiverOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showProcessingModal, setShowProcessingModal] = useState(false);
+  const [processedOrder, setProcessedOrder] = useState(null);
+  /* `isProcessing` only disables the button on the next render; a ref closes
+     that gap synchronously, since placing an order twice charges twice. */
+  const placingRef = useRef(false);
+
+  // ---- Loading -------------------------------------------------------------
+
+  useEffect(() => {
+    setCartItems(readJson("dashit_cart", []).filter((i) => i && (Number(i.qty) || 0) > 0));
+    setLocation(readJson("dashit_user_address", null));
+    setShopper(readShopper());
+    setLoaded(true);
+
+    const syncCart = () => setCartItems(readJson("dashit_cart", []));
+    const syncUser = () => setShopper(readShopper());
+    const syncAddress = (e) => setLocation(e?.detail || readJson("dashit_user_address", null));
+    window.addEventListener("dashit_cart_updated", syncCart);
+    window.addEventListener("dashit_user_updated", syncUser);
+    window.addEventListener("dashit_address_updated", syncAddress);
+    window.addEventListener("storage", syncCart);
+    return () => {
+      window.removeEventListener("dashit_cart_updated", syncCart);
+      window.removeEventListener("dashit_user_updated", syncUser);
+      window.removeEventListener("dashit_address_updated", syncAddress);
+      window.removeEventListener("storage", syncCart);
+    };
+  }, []);
 
   useEffect(() => {
     setBeforeLaunch(isBeforeLaunch());
@@ -86,93 +142,25 @@ export default function CheckoutPage() {
   }, []);
 
   // Back from Google's own sign-in page (pop-up blocked): carry on to the number.
-  const [resumeUser, setResumeUser] = useState(null);
   useEffect(() => {
     finishRedirectSignIn().then((res) => {
       if (res?.user) {
         setResumeUser(res.user);
-        setIsLoginModalOpen(true);
+        setIsLoginOpen(true);
       }
     });
   }, []);
 
   // Today's prices and stock, from the catalogue file (no Firestore reads).
   useEffect(() => watchShopProducts(setLiveProducts), []);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isOrderingForSomeoneElseOpen, setIsOrderingForSomeoneElseOpen] = useState(false);
-  const [receiverDetails, setReceiverDetails] = useState(null);
-  const [isCouponsOpen, setIsCouponsOpen] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  /* `isProcessing` only disables the button on the next render, which leaves a
-     frame in which a second tap — or the login modal's callback racing the
-     button — can start a second order. A ref closes that window synchronously:
-     placing an order twice charges the customer twice. */
-  const placingRef = useRef(false);
-  const [showProcessingModal, setShowProcessingModal] = useState(false);
-  const [processedOrder, setProcessedOrder] = useState(null);
-  const [cartItems, setCartItems] = useState([]);
-  const [isClosing, setIsClosing] = useState(false);
-  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
 
-  // Dynamic smart recommendations based on cart items
-  const { pairsWell, popularAdditions } = useMemo(() => {
-    const cartIds = new Set(cartItems.map((i) => String(i.id || i.barcode)));
-    const cartCats = new Set(cartItems.map((i) => i.cat).filter(Boolean));
-    const cartNames = cartItems.map((i) => (i.name || "").toLowerCase()).join(" ");
-
-    const targetCats = new Set();
-    if (cartCats.has("Dairy") || cartNames.includes("milk") || cartNames.includes("curd") || cartNames.includes("butter")) {
-      targetCats.add("Bakery");
-      targetCats.add("Snacks");
-    }
-    if (cartCats.has("Bakery") || cartNames.includes("bread") || cartNames.includes("lavas")) {
-      targetCats.add("Dairy");
-      targetCats.add("Snacks");
-    }
-    if (cartCats.has("Snacks") || cartNames.includes("chips") || cartNames.includes("kurkure")) {
-      targetCats.add("Beverages");
-      targetCats.add("Dairy");
-    }
-    if (cartCats.has("Beverages") || cartNames.includes("coke") || cartNames.includes("red bull")) {
-      targetCats.add("Snacks");
-      targetCats.add("Bakery");
-    }
-    if (cartCats.has("Staples") || cartNames.includes("noodle") || cartNames.includes("maggi") || cartNames.includes("rice") || cartNames.includes("apple")) {
-      targetCats.add("Dairy");
-      targetCats.add("Bakery");
-      targetCats.add("Snacks");
-      targetCats.add("Beverages");
-    }
-
-    // Never upsell tobacco at checkout.
-    const available = browseable(liveProducts).filter(
-      (p) =>
-        !cartIds.has(String(p.id || p.barcode)) &&
-        !isSoldOut(p) &&
-        p.img &&
-        EVERYDAY_AISLES.has(String(p.cat || ""))
-    )
-      // A fixed mix rather than the list's A-to-Z order.
-      .sort((a, b) => mixKey(a.id) - mixKey(b.id));
-    const complementary = available.filter((p) => targetCats.has(p.cat));
-    const popularStaples = available.filter((p) => !targetCats.has(p.cat));
-
-    const pairs = complementary.length >= 4 
-      ? complementary 
-      : [...complementary, ...popularStaples];
-    const pairsSlice = pairs.slice(0, 8);
-    const pairsIds = new Set(pairsSlice.map((p) => String(p.id || p.barcode)));
-
-    const popular = available.filter((p) => !pairsIds.has(String(p.id || p.barcode)));
-
-    return {
-      pairsWell: pairsSlice,
-      popularAdditions: popular.length > 0 ? popular.slice(0, 10) : available.slice(0, 8),
-    };
-  }, [cartItems, liveProducts]);
+  const saveCart = (next) => {
+    setCartItems(next);
+    try {
+      localStorage.setItem("dashit_cart", JSON.stringify(next));
+      window.dispatchEvent(new Event("dashit_cart_updated"));
+    } catch (e) {}
+  };
 
   /* A cart can be days old: prices, stock and switched-off items are brought
      up to date from the catalogue, so the order is placed at today's prices. */
@@ -191,493 +179,215 @@ export default function CheckoutPage() {
         ...item,
         name: live.name || item.name,
         price: live.price,
-        originalPrice: live.originalPrice ?? item.originalPrice,
+        originalPrice: live.originalPrice ?? null,
         stock: live.stock,
         inStock: live.inStock,
         img: live.img || item.img,
         unit: live.unit || item.unit,
       };
-      if (updated.price !== item.price || updated.stock !== item.stock || updated.name !== item.name) changed = true;
+      if (updated.price !== item.price || updated.stock !== item.stock || updated.originalPrice !== item.originalPrice) changed = true;
       next.push(updated);
     }
-    if (!changed) return;
-    setCartItems(next);
-    try {
-      localStorage.setItem("dashit_cart", JSON.stringify(next));
-      window.dispatchEvent(new Event("dashit_cart_updated"));
-    } catch (e) {}
+    if (changed) saveCart(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveProducts]);
 
-  // Sync login status
+  // ---- Money ---------------------------------------------------------------
+
+  const itemCount = cartItems.reduce((s, i) => s + (Number(i.qty) || 0), 0);
+  const subtotal = cartItems.reduce((s, i) => s + price(i.price) * (Number(i.qty) || 0), 0);
+  const mrpSavings = cartItems.reduce((s, i) => {
+    const mrp = price(i.originalPrice || i.mrp);
+    return s + (mrp > price(i.price) ? (mrp - price(i.price)) * (Number(i.qty) || 0) : 0);
+  }, 0);
+
+  /* The coupon is re-checked against the live subtotal on every render, so
+     removing items after applying it can't keep a discount the cart no longer
+     earns. */
+  const coupon = appliedCoupon && subtotal >= (Number(appliedCoupon.minOrder) || 0) ? appliedCoupon : null;
   useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const u = localStorage.getItem("dashit_user");
-        if (u) {
-          const parsed = JSON.parse(u);
-          setIsUserLoggedIn(Boolean(parsed && parsed.isLoggedIn && parsed.mobile));
-        } else {
-          setIsUserLoggedIn(false);
-        }
-      } catch (e) {
-        setIsUserLoggedIn(false);
-      }
-    };
-    checkAuth();
-    window.addEventListener("dashit_user_updated", checkAuth);
-    window.addEventListener("storage", checkAuth);
-    return () => {
-      window.removeEventListener("dashit_user_updated", checkAuth);
-      window.removeEventListener("storage", checkAuth);
-    };
-  }, []);
+    if (appliedCoupon && !coupon) setAppliedCoupon(null);
+  }, [appliedCoupon, coupon]);
 
-  const handleSmoothClose = () => {
-    hapticLight();
-    setIsClosing(true);
-    setTimeout(() => {
-      router.push("/shop");
-    }, 220);
-  };
-
-  // 1. Initial Load: Read cart from master dashit_cart as single source of truth
-  useEffect(() => {
-    try {
-      const savedAddress = (() => {
-        try {
-          const a = localStorage.getItem("dashit_user_address");
-          return a ? JSON.parse(a) : null;
-        } catch (e) {
-          return null;
-        }
-      })();
-
-      // Single source of truth: dashit_cart
-      let activeCart = [];
-      const savedCart = localStorage.getItem("dashit_cart");
-      if (savedCart) {
-        try {
-          const parsed = JSON.parse(savedCart);
-          if (Array.isArray(parsed)) activeCart = parsed;
-        } catch (e) {}
-      }
-
-      // Fallback only if dashit_cart was never set
-      if (activeCart.length === 0) {
-        try {
-          const savedCheckout = localStorage.getItem("dashit_checkout_data");
-          if (savedCheckout) {
-            const parsed = JSON.parse(savedCheckout);
-            if (Array.isArray(parsed?.cart) && parsed.cart.length > 0) {
-              activeCart = parsed.cart;
-              localStorage.setItem("dashit_cart", JSON.stringify(activeCart));
-            }
-          }
-        } catch (e) {}
-      }
-
-      setCartItems(activeCart);
-
-      let loc = savedAddress;
-      try {
-        const savedCheckout = localStorage.getItem("dashit_checkout_data");
-        if (savedCheckout) {
-          const parsed = JSON.parse(savedCheckout);
-          if (parsed?.location && (!loc || !loc.address)) {
-            loc = parsed.location;
-          }
-        }
-      } catch (e) {}
-
-      const sub = activeCart.reduce(
-        (s, i) => s + parsePrice(i.price) * (Number(i.qty) || 0),
-        0
-      );
-
-      setCheckoutData({
-        cart: activeCart,
-        subtotal: sub,
-        grandTotal: sub >= 299 ? sub : sub + 25,
-        location: loc || {
-          nickname: "Home",
-          address: ""
-        }
-      });
-    } catch (e) {}
-  }, []);
-
-  // 2. React to external cart changes from shop / drawers / background events
-  useEffect(() => {
-    const handleCartSync = () => {
-      try {
-        const raw = localStorage.getItem("dashit_cart");
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            setCartItems(parsed);
-          }
-        } else {
-          setCartItems([]);
-        }
-      } catch (e) {}
-    };
-
-    window.addEventListener("dashit_cart_updated", handleCartSync);
-    window.addEventListener("storage", handleCartSync);
-    return () => {
-      window.removeEventListener("dashit_cart_updated", handleCartSync);
-      window.removeEventListener("storage", handleCartSync);
-    };
-  }, []);
-
-  const subtotal = cartItems.reduce(
-    (s, i) => s + parsePrice(i.price) * (Number(i.qty) || 0),
-    0
-  );
-
-  /* A coupon is re-validated against the live subtotal on every render. It used
-     to be validated only at the moment it was applied, so a customer could add
-     items to clear the minimum, apply the coupon, then remove those items and
-     still check out with the discount. */
-  const isCouponValid =
-    Boolean(appliedCoupon) && subtotal >= (Number(appliedCoupon?.minOrder) || 0);
-  const effectiveCoupon = isCouponValid ? appliedCoupon : null;
-
-  const deliveryFee =
-    subtotal >= 299 || effectiveCoupon?.waivesDelivery || effectiveCoupon?.code === "FREEDEL"
-      ? 0
-      : 25;
-  const couponDiscount = effectiveCoupon
-    ? Math.min(subtotal, Number(effectiveCoupon.discount) || 0)
-    : 0;
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD || coupon?.waivesDelivery || coupon?.code === "FREEDEL" ? 0 : DELIVERY_FEE;
+  const couponDiscount = coupon ? Math.min(subtotal, Number(coupon.discount) || 0) : 0;
   const grandTotal = Math.max(0, subtotal + deliveryFee - couponDiscount);
+  const toFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
 
-  // Sync checkoutData and localStorage dashit_checkout_data with live calculations
-  useEffect(() => {
-    setCheckoutData((prev) => ({
-      ...prev,
-      cart: cartItems,
-      subtotal,
-      grandTotal,
-      location: prev?.location || null,
-    }));
+  const eta = calculateDeliveryEta(location);
+  const hasAddress = Boolean(location?.address && location?.lat && location?.lng);
+  const shortItems = cartItems.filter(shortOf);
+  const isSignedIn = Boolean(shopper?.mobile);
 
-    try {
-      const coStr = localStorage.getItem("dashit_checkout_data");
-      const co = coStr ? JSON.parse(coStr) : {};
-      localStorage.setItem(
-        "dashit_checkout_data",
-        JSON.stringify({
-          ...co,
-          cart: cartItems,
-          subtotal,
-          grandTotal,
-          deliveryFee,
-          discount: couponDiscount,
-        })
-      );
-    } catch (e) {}
-  }, [cartItems, subtotal, grandTotal, deliveryFee, couponDiscount]);
+  // ---- Suggestions -----------------------------------------------------------
 
-  // Drop a coupon that the cart no longer qualifies for, so the UI stops
-  // showing it as applied.
-  useEffect(() => {
-    if (appliedCoupon && !isCouponValid) setAppliedCoupon(null);
-  }, [appliedCoupon, isCouponValid]);
+  const suggestions = useMemo(() => {
+    const inCart = new Set(cartItems.map((i) => String(i.id || i.barcode)));
+    const cats = new Set(cartItems.map((i) => i.cat).filter(Boolean));
+    return browseable(liveProducts)
+      .filter((p) => !inCart.has(String(p.id)) && !isSoldOut(p) && p.img && EVERYDAY_AISLES.has(String(p.cat || "")))
+      .sort((a, b) => Number(!cats.has(a.cat)) - Number(!cats.has(b.cat)) || mixKey(a.id) - mixKey(b.id))
+      .slice(0, 10);
+  }, [cartItems, liveProducts]);
 
-  // Sync address if updated externally or via map
-  useEffect(() => {
-    const handleAddressUpdated = (e) => {
-      try {
-        const newLoc = e?.detail || JSON.parse(localStorage.getItem("dashit_user_address") || "null");
-        if (newLoc) {
-          setCheckoutData((prev) => ({ ...prev, location: newLoc }));
-        }
-      } catch (err) {}
-    };
-    window.addEventListener("dashit_address_updated", handleAddressUpdated);
-    window.addEventListener("storage", handleAddressUpdated);
-    return () => {
-      window.removeEventListener("dashit_address_updated", handleAddressUpdated);
-      window.removeEventListener("storage", handleAddressUpdated);
-    };
-  }, []);
+  // ---- Cart actions ----------------------------------------------------------
 
-  const checkoutEta = calculateDeliveryEta(checkoutData?.location);
-
-  const handleAddToCart = (prod) => {
-    hapticLight();
-    const prodId = String(prod.id || prod.barcode);
-    const existingIndex = cartItems.findIndex(
-      (i) => String(i.id || i.barcode) === prodId
+  const changeQty = (id, delta) => {
+    const key = String(id);
+    const current = cartItems.find((i) => String(i.id || i.barcode) === key);
+    if (!current) return;
+    if (delta < 0 && (Number(current.qty) || 0) <= 1) hapticMedium();
+    else hapticLight();
+    if (delta > 0 && current.stock != null && Number(current.qty) >= Number(current.stock)) return;
+    saveCart(
+      cartItems
+        .map((i) => (String(i.id || i.barcode) === key ? { ...i, qty: Math.max(0, (Number(i.qty) || 0) + delta) } : i))
+        .filter((i) => (Number(i.qty) || 0) > 0)
     );
+  };
 
-    let updated;
-    if (existingIndex > -1) {
-      updated = cartItems.map((item, idx) =>
-        idx === existingIndex
-          ? { ...item, qty: (Number(item.qty) || 1) + 1 }
-          : item
-      );
-    } else {
-      const newItem = {
-        ...prod,
-        id: prod.id,
-        price: parsePrice(prod.price),
-        originalPrice: parsePrice(prod.originalPrice || prod.price),
-        img: prod.img || prod.image || "",
-        image: prod.img || prod.image || "",
-        qty: 1,
-      };
-      updated = [...cartItems, newItem];
-    }
+  const addSuggestion = (p) => {
+    hapticLight();
+    const key = String(p.id);
+    if (cartItems.some((i) => String(i.id) === key)) changeQty(key, 1);
+    else saveCart([...cartItems, { ...p, id: key, qty: 1 }]);
+  };
 
-    setCartItems(updated);
+  const qtyOf = (p) => cartItems.find((i) => String(i.id) === String(p.id))?.qty || 0;
+
+  const clearCart = () => {
+    if (window.confirm("Remove everything from your cart?")) saveCart([]);
+  };
+
+  const chooseLocation = (loc) => {
+    setLocation(loc);
     try {
-      localStorage.setItem("dashit_cart", JSON.stringify(updated));
-      window.dispatchEvent(new Event("dashit_cart_updated"));
+      localStorage.setItem("dashit_user_address", JSON.stringify(loc));
+      localStorage.setItem("dashit_selected_location", JSON.stringify(loc));
+      window.dispatchEvent(new CustomEvent("dashit_address_updated", { detail: loc }));
     } catch (e) {}
   };
 
-  const updateItemQty = (id, delta) => {
-    const idStr = String(id);
-    if (delta > 0) {
-      hapticLight();
-    } else {
-      const current = cartItems.find((i) => String(i.id || i.barcode) === idStr);
-      if (current && (Number(current.qty) || 0) <= 1) {
-        hapticMedium();
-      } else {
-        hapticLight();
-      }
-    }
-    const updated = cartItems
-      .map((item) =>
-        String(item.id || item.barcode) === idStr
-          ? { ...item, qty: Math.max(0, (Number(item.qty) || 0) + delta) }
-          : item
-      )
-      .filter((item) => (Number(item.qty) || 0) > 0);
+  // ---- Placing the order -----------------------------------------------------
 
-    setCartItems(updated);
-    try {
-      localStorage.setItem("dashit_cart", JSON.stringify(updated));
-      window.dispatchEvent(new Event("dashit_cart_updated"));
-    } catch (e) {}
-    if (updated.length === 0) {
-      router.push("/shop");
-    }
+  const fail = (message) => {
+    placingRef.current = false;
+    setIsProcessing(false);
+    if (message) alert(message);
   };
 
-  const handleClearAllCart = () => {
-    hapticMedium();
-    setCartItems([]);
-    try {
-      localStorage.removeItem("dashit_cart");
-      window.dispatchEvent(new Event("dashit_cart_updated"));
-    } catch (e) {}
-    router.push("/shop");
-  };
-
-  const handlePlaceOrder = async () => {
-    if (isBeforeLaunch()) {
-      alert(`We start taking orders on ${LAUNCH_LABEL}. Your cart is saved until then.`);
-      return;
-    }
-    if (!isStoreOpen) {
-      alert(`The store is closed right now. ${closeReason || "Please check back shortly."}`);
-      return;
-    }
-
-    if (!cartItems || cartItems.length === 0) {
-      alert("Your cart is empty! Please add items before placing an order.");
-      return;
-    }
-    
-    if (cartItems.length === 0 || isProcessing) return;
-
-    // Login is strictly mandatory before placing an order
-    let userObj = null;
-    try {
-      const u = localStorage.getItem("dashit_user");
-      if (u) userObj = JSON.parse(u);
-    } catch (e) {}
+  const placeOrder = async (authenticatedUser) => {
+    if (placingRef.current) return;
+    if (isBeforeLaunch()) return alert(`We start taking orders on ${LAUNCH_LABEL}. Your cart is saved until then.`);
+    if (!isStoreOpen) return alert(`The store is closed right now. ${closeReason || "Please check back shortly."}`);
+    if (cartItems.length === 0) return;
 
     // The saved session must still have a Google sign-in behind it.
-    const loggedIn = Boolean(userObj && userObj.isLoggedIn && userObj.mobile) && (await hasLiveSession());
-    if (!loggedIn) {
-      try {
-        localStorage.setItem(
-          "dashit_checkout_data",
-          JSON.stringify({
-            cart: cartItems,
-            subtotal,
-            deliveryFee,
-            handlingFee: 0,
-            discount: couponDiscount,
-            grandTotal,
-            location: checkoutData?.location,
-          })
-        );
-      } catch (e) {}
-      setIsLoginModalOpen(true);
+    const user = authenticatedUser || readShopper();
+    if (!user?.mobile || !(await hasLiveSession())) {
+      setIsLoginOpen(true);
       return;
     }
-
-    executeOrderPlacement();
-  };
-
-  const executeOrderPlacement = async (authenticatedUser) => {
-    if (placingRef.current) return;
+    /* No pin, no order: a missing pin used to default to the store's own
+       position, which made the ETA and the 5 km check meaningless. */
+    const orderLocation = location;
+    if (!orderLocation?.address || !orderLocation.lat || !orderLocation.lng) {
+      setIsLocationOpen(true);
+      return;
+    }
+    const short = cartItems.find(shortOf);
+    if (short) {
+      return alert(
+        isSoldOut(short)
+          ? `${short.name} has just sold out. Please remove it to continue.`
+          : `Only ${short.stock} of ${short.name} left. Please lower the quantity to continue.`
+      );
+    }
+    const orderEta = calculateDeliveryEta(orderLocation);
+    if (!orderEta.isDeliverable) {
+      return alert("We don't deliver to this address yet. Please choose an address in Anantnag town.");
+    }
 
     placingRef.current = true;
     setIsProcessing(true);
     hapticOrderPlaced();
 
-    const generatedCode = newOrderCode();
-    let userObj = authenticatedUser;
-    if (!userObj) {
-      try {
-        const u = localStorage.getItem("dashit_user");
-        if (u) userObj = JSON.parse(u);
-      } catch (e) {}
-    }
-
-    let orderLocation = checkoutData?.location;
-    if (!orderLocation || !orderLocation.address) {
-      try {
-        const saved = localStorage.getItem("dashit_user_address");
-        if (saved) orderLocation = JSON.parse(saved);
-      } catch (e) {}
-    }
-    /* A missing pin used to default to the dark store's own coordinates. That
-       made the ETA and the 5 km serviceability check meaningless, and handed
-       the rider a map pinned on the shop rather than the customer's door. The
-       customer is asked to drop a pin instead. */
-    if (!orderLocation || !orderLocation.lat || !orderLocation.lng || !orderLocation.address) {
-      placingRef.current = false;
-      setIsProcessing(false);
-      setIsLocationModalOpen(true);
-      return;
-    }
-
-    // Sold out since it went in the cart, or fewer left than asked for.
-    const short = cartItems.find((i) => {
-      if (isSoldOut(i)) return true;
-      const left = Number(i.stock);
-      return i.stock !== undefined && i.stock !== null && Number.isFinite(left) && left < (Number(i.qty) || 1);
-    });
-    if (short) {
-      placingRef.current = false;
-      setIsProcessing(false);
-      alert(
-        isSoldOut(short)
-          ? `${short.name} has just sold out. Please remove it to continue.`
-          : `Only ${short.stock} of ${short.name} left. Please lower the quantity to continue.`
-      );
-      return;
-    }
-
-    const orderEta = calculateDeliveryEta(orderLocation);
-    if (!orderEta.isDeliverable) {
-      placingRef.current = false;
-      setIsProcessing(false);
-      alert("Delivery is not available in your area yet.\n\nWe are expanding across Anantnag and will reach you soon. Please pick another address for now.");
-      return;
-    }
-
-    const newOrder = {
-      orderId: generatedCode,
+    const code = newOrderCode();
+    const order = {
+      orderId: code,
       date: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
       createdAt: new Date().toISOString(),
       items: cartItems,
+      subtotal,
+      deliveryFee,
+      discount: couponDiscount,
+      couponCode: coupon?.code || null,
       totalAmount: grandTotal,
       total: grandTotal,
       finalTotal: grandTotal,
-      /* Real savings: the sum of per-item MRP gaps plus the coupon, rather than
-         a flat ₹140 that was printed on every receipt regardless of the cart. */
-      savings:
-        cartItems.reduce((sum, i) => {
-          const mrp = Number(i.originalPrice || i.mrp || i.price) || 0;
-          const paid = Number(i.price) || 0;
-          return sum + Math.max(0, mrp - paid) * (Number(i.qty) || 0);
-        }, 0) +
-        couponDiscount +
-        (deliveryFee === 0 ? 25 : 0),
-      paymentMethod: selectedMethod.label,
+      savings: mrpSavings + couponDiscount + (deliveryFee === 0 ? DELIVERY_FEE : 0),
+      paymentMethod: "Cash on Delivery",
       location: orderLocation,
       etaMinutes: orderEta.etaMinutes,
       distanceKm: orderEta.distanceKm,
       otp: Math.floor(1000 + Math.random() * 9000),
       status: "Placed",
-      customerName: userObj?.name || "Customer",
-      mobile: userObj?.mobile || (typeof window !== "undefined" ? localStorage.getItem("dashit_user_phone") : "") || "",
-      email: userObj?.email || (typeof window !== "undefined" ? localStorage.getItem("dashit_user_email") : "") || "",
+      customerName: user.name || "Customer",
+      mobile: user.mobile,
+      email: user.email || "",
       receiverContact: receiverDetails || null,
+      platform: "web",
     };
+    setProcessedOrder(order);
 
-    setProcessedOrder(newOrder);
-
-    const finalizeOrder = async (orderPayload) => {
+    const finish = async (payload) => {
       try {
-        // 1. Submit directly to Firestore & await confirmation. A paid order is
-        // tried a few times: the money has already been taken.
+        // A paid order is tried a few times: the money has already been taken.
         let res;
         for (let attempt = 0; ; attempt += 1) {
           try {
-            res = await submitOrder(orderPayload);
+            res = await submitOrder(payload);
             break;
           } catch (writeErr) {
-            if (!orderPayload.razorpayOrderId || attempt >= 2) throw writeErr;
+            if (!payload.razorpayOrderId || attempt >= 2) throw writeErr;
             await new Promise((r) => setTimeout(r, 2600));
           }
         }
-        const finalOrderId = res?.orderId || generatedCode;
-        const confirmedOrder = { ...orderPayload, orderId: finalOrderId };
-        setProcessedOrder(confirmedOrder);
+        const confirmed = { ...payload, orderId: res?.orderId || code };
+        setProcessedOrder(confirmed);
         placingRef.current = false;
         setIsProcessing(false);
         setShowProcessingModal(true);
-
         try {
-          showOrderPlacedNotification(confirmedOrder);
-        } catch (notifErr) {
-          console.warn("Could not dispatch placed order notification:", notifErr);
-        }
-
-        const existingOrders = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
-        const filtered = existingOrders.filter((o) => o.orderId !== finalOrderId);
-        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmedOrder, ...filtered].slice(0, 20)));
-        localStorage.setItem("dashit_active_order", JSON.stringify(confirmedOrder));
-
+          showOrderPlacedNotification(confirmed);
+        } catch (e) {}
+        const history = readJson("dashit_orders_history", []).filter((o) => o.orderId !== confirmed.orderId);
+        localStorage.setItem("dashit_orders_history", JSON.stringify([confirmed, ...history].slice(0, 20)));
+        localStorage.setItem("dashit_active_order", JSON.stringify(confirmed));
         localStorage.removeItem("dashit_cart");
         localStorage.removeItem("dashit_checkout_data");
         window.dispatchEvent(new Event("dashit_cart_updated"));
       } catch (err) {
         console.error("Order placement error:", err);
-        placingRef.current = false;
-        setIsProcessing(false);
         setShowProcessingModal(false);
-        alert(
-          orderPayload.razorpayOrderId
-            ? `Your payment went through, but the order didn't reach the store. Please email support@dashit.co.in with payment reference ${orderPayload.razorpayPaymentId || orderPayload.razorpayOrderId}. If the order can't be placed, the money is refunded.`
-            : err?.message || "Unable to process order. Please check your connection and try again."
+        fail(
+          payload.razorpayOrderId
+            ? `Your payment went through, but the order didn't reach the store. Please email support@dashit.co.in with payment reference ${payload.razorpayPaymentId || payload.razorpayOrderId}. If the order can't be placed, the money is refunded.`
+            : err?.message || "We couldn't place the order. Please check your connection and try again."
         );
       }
     };
 
-    if (selectedMethod.id !== "online") {
-      await finalizeOrder(newOrder);
+    if (method !== "online") {
+      await finish(order);
       return;
     }
-
     // Paid online: the order goes in only once the server has confirmed the
     // payment (firestore.rules check payments/{razorpay order id}).
     try {
-      const paid = await payOnline({ amountRupees: grandTotal, receipt: generatedCode, customer: userObj });
-      await finalizeOrder({
-        ...newOrder,
+      const paid = await payOnline({ amountRupees: grandTotal, receipt: code, customer: user });
+      await finish({
+        ...order,
         paymentMethod: "Paid online",
         paymentStatus: "paid",
         razorpayOrderId: paid.razorpayOrderId,
@@ -685,682 +395,370 @@ export default function CheckoutPage() {
         amountPaid: (Number(paid.amountPaidPaise) || Math.round(grandTotal * 100)) / 100,
       });
     } catch (err) {
-      placingRef.current = false;
-      setIsProcessing(false);
-      if (!err?.cancelled) alert(err?.message || "The payment didn't go through. Please try again.");
+      fail(err?.cancelled ? "" : err?.message || "The payment didn't go through. Please try again.");
     }
   };
 
-  return (
-    <div className="min-h-screen bg-[#F4F6F8] text-slate-900 font-sans relative flex flex-col justify-between dark:bg-surface dark:text-content">
-      <SEO title="Checkout" noindex={true} />
-      {/* 1. TOP HEADER with Smooth Return */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex items-center justify-between shadow-2xs dark:bg-surface dark:border-line/80">
-        <div className="flex items-center space-x-3">
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            type="button"
-            onClick={handleSmoothClose}
-            aria-label="Go back"
-            /* Icon-only controls carried no accessible name and sat under the
-               44px target: the circle keeps its size, the button grows around
-               it, and the negative margin keeps the header spacing intact. */
-            className="w-9 h-9 min-w-[44px] min-h-[44px] -m-[3.5px] rounded-full border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-50 transition-transform cursor-pointer dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
-          >
-            <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-          </motion.button>
-          <h1 className="font-extrabold text-base text-slate-900 dark:text-content">
-            Checkout
-          </h1>
-        </div>
+  // ---- The button ------------------------------------------------------------
 
-        <div className="flex items-center space-x-2">
+  const blocked = beforeLaunch || !isStoreOpen || (hasAddress && !eta.isDeliverable) || shortItems.length > 0;
+  const buttonLabel = isProcessing
+    ? method === "online"
+      ? "Waiting for payment…"
+      : "Placing your order…"
+    : beforeLaunch
+    ? "Orders open 5 Oct, 5 pm"
+    : !isStoreOpen
+    ? "Store closed right now"
+    : shortItems.length > 0
+    ? "Remove sold-out items"
+    : !isSignedIn
+    ? "Sign in to place order"
+    : !hasAddress
+    ? "Add delivery address"
+    : !eta.isDeliverable
+    ? "Outside our delivery area"
+    : method === "online"
+    ? `Pay ${rupees(grandTotal)}`
+    : "Place order";
+
+  const placeButton = (className) => (
+    <button
+      type="button"
+      onClick={() => placeOrder()}
+      disabled={isProcessing || blocked}
+      className={`h-12 rounded-xl px-5 text-[15px] font-bold transition-colors items-center justify-center gap-2 ${
+        blocked
+          ? "bg-slate-200 text-slate-600 cursor-not-allowed dark:bg-white/10 dark:text-white/70"
+          : "bg-[#FF5B00] hover:bg-[#E04E00] text-white active:scale-[0.99]"
+      } ${className}`}
+    >
+      {isProcessing && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
+      {buttonLabel}
+    </button>
+  );
+
+  // ---- Render ----------------------------------------------------------------
+
+  if (loaded && cartItems.length === 0 && !showProcessingModal) {
+    return (
+      <div className="min-h-screen bg-[#F6F5F1] dark:bg-surface flex flex-col items-center justify-center px-6 text-center">
+        <SEO title="Your cart" noindex={true} />
+        <span className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-[#061838] dark:bg-surface-raised dark:border-line dark:text-content">
+          <ShoppingBag className="w-7 h-7" />
+        </span>
+        <h1 className="mt-5 text-[20px] font-bold text-[#061838] dark:text-content">Your cart is empty</h1>
+        <p className="mt-1.5 text-[14.5px] text-slate-600 dark:text-content-muted">Add a few things from the shop and they&apos;ll show up here.</p>
+        <Link href="/shop" className="mt-6 h-11 px-6 rounded-xl bg-[#FF5B00] hover:bg-[#E04E00] text-white text-[15px] font-bold flex items-center">
+          Go to the shop
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F6F5F1] text-slate-900 pb-28 lg:pb-12 dark:bg-surface dark:text-content">
+      <SEO title="Your cart" noindex={true} />
+
+      <header className="sticky top-0 z-40 bg-[#F6F5F1]/90 backdrop-blur-md border-b border-slate-200/70 pt-[env(safe-area-inset-top,0px)] dark:bg-surface/90 dark:border-line">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-2">
           <button
             type="button"
-            aria-label="Search products"
-            onClick={() => router.push("/search")}
-            className="w-9 h-9 min-w-[44px] min-h-[44px] rounded-full border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 active:scale-90 transition-transform dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
+            onClick={() => router.push("/shop")}
+            aria-label="Back to the shop"
+            className="w-9 h-9 -ml-1 rounded-full flex items-center justify-center text-[#061838] hover:bg-black/5 dark:text-content dark:hover:bg-white/10"
           >
-            <Search className="w-4 h-4 stroke-[2.5]" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (navigator.share) {
-                navigator.share({ title: "My Dashit Cart", text: "Check out what I am ordering on Dashit!" });
-              }
-            }}
-            className="flex items-center space-x-1.5 px-3 min-h-[44px] rounded-full border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-transform dark:border-line dark:text-content-secondary dark:hover:bg-surface-muted"
-          >
-            <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Share</span>
-          </button>
+          <h1 className="text-[17px] font-bold tracking-tight text-[#061838] dark:text-content">Your cart</h1>
+          <span className="text-[13px] text-slate-500 dark:text-content-muted">
+            · {itemCount} item{itemCount === 1 ? "" : "s"}
+          </span>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      {cartItems.length === 0 ? (
-        <main className="max-w-md mx-auto p-6 py-20 text-center space-y-4">
-          <div className="w-20 h-20 rounded-3xl bg-blue-50 text-[#061838] mx-auto flex items-center justify-center border border-blue-100 shadow-sm dark:bg-surface-raised dark:text-content dark:border-line">
-            <ShoppingBag className="w-10 h-10 stroke-[1.5]" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-lg font-black text-slate-900 dark:text-content">Your cart is empty</h2>
-            <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto dark:text-content-muted">
-              You haven't added any items to your cart yet. Explore our fresh categories with fastest delivery in Anantnag!
-            </p>
-          </div>
-          <Link
-            href="/shop"
-            className="inline-block bg-[#061838] hover:bg-slate-900 dark:bg-accent dark:hover:bg-[#e05000] text-white font-black text-xs px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-all"
-          >
-            Browse Storefront →
-          </Link>
-        </main>
-      ) : (
-        <main className="max-w-2xl mx-auto w-full p-4 sm:p-6 space-y-4 pb-64">
-        {/* STORE CLOSED BANNER */}
-        {!isStoreOpen && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-start space-x-3 text-slate-800 dark:bg-surface-raised dark:border-line dark:text-content">
-            <div className="w-8 h-8 rounded-full bg-slate-100 text-rose-600 flex items-center justify-center shrink-0 dark:bg-surface-muted">
-              <X className="w-4 h-4 stroke-[2.5]" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-slate-900 dark:text-content">Ordering paused</h3>
-              <p className="text-xs text-red-700 font-medium mt-0.5 leading-relaxed dark:text-rose-400">
-                The store is closed right now. {closeReason || "Please check back shortly."}
+      <main className="max-w-5xl mx-auto px-4 pt-5 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+        {/* Left: what's in the cart */}
+        <div className="space-y-5 min-w-0">
+          {beforeLaunch && (
+            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 flex items-start gap-3 dark:bg-surface-raised dark:border-line">
+              <Clock className="w-5 h-5 text-[#FF5B00] shrink-0 mt-0.5" />
+              <p className="text-[14px] leading-snug text-slate-700 dark:text-content-secondary">
+                We start taking orders on <strong className="text-[#061838] dark:text-content">{LAUNCH_LABEL}</strong>. Your cart stays saved on this device until then.
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Delivery Summary Banner */}
-        <div className="bg-white dark:bg-[#12161F] rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 rounded-xl bg-orange-500/10 text-[#FF5B00] flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4 stroke-[2.2]" />
-              </div>
-              <div>
-                <h2 className="font-extrabold text-sm sm:text-base text-slate-900 dark:text-white leading-tight">
-                  Delivery in {checkoutEta.isDeliverable ? `${checkoutEta.etaMinutes || 12} minutes` : "Unavailable"}
-                </h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium text-xs mt-0.5">
-                  Shipment of {cartItems.reduce((s, i) => s + (Number(i.qty) || 0), 0)} item{cartItems.reduce((s, i) => s + (Number(i.qty) || 0), 0) !== 1 ? "s" : ""} • Doorstep delivery
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleClearAllCart}
-              className="text-xs font-semibold text-slate-400 hover:text-rose-500 transition-colors cursor-pointer py-1 px-1.5"
-              title="Remove all items from cart"
-            >
-              Clear all
-            </button>
-          </div>
-
-          <FreeDeliveryProgress subtotal={subtotal} />
-
-          {/* Product Items List matching screenshot */}
-          <div className="divide-y divide-slate-100 pt-1 dark:divide-line-soft">
-            {cartItems.map((item) => (
-              <div key={item.id} className="py-3 flex items-start justify-between space-x-3">
-                <div className="w-16 h-16 shrink-0">
-                  <ProductImage
-                    src={item.img || item.image}
-                    name={item.name}
-                    className="rounded-2xl border border-slate-100 dark:border-line-soft"
-                    letterClassName="text-xl"
-                  />
-                </div>
-
-                <div className="grow">
-                  <h3 className="font-extrabold text-xs text-slate-900 leading-snug line-clamp-2 dark:text-content">
-                    {item.name}
-                  </h3>
-                  <span className="text-[11px] font-semibold text-slate-500 block mt-0.5 dark:text-content-muted">
-                    {item.unit || "1 unit"}
-                  </span>
-                  <button
-                    onClick={() => {
-                      addToWishlist(item);
-                      updateItemQty(item.id, -item.qty);
-                    }}
-                    className="text-[11px] font-bold text-slate-400 hover:text-[#061838] underline mt-1 py-1.5 -my-0.5 text-left active:scale-95 transition-transform dark:text-content-faint"
-                  >
-                    Move to wishlist
-                  </button>
-                </div>
-
-                <div className="flex flex-col items-end space-y-1.5 shrink-0">
-                  <div className="flex items-center space-x-1.5 border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-[#161B26] text-slate-800 dark:text-white px-2 py-1 font-bold text-xs shadow-2xs">
-                    <button
-                      type="button"
-                      aria-label={`Remove one ${item.name || "item"}`}
-                      onClick={() => updateItemQty(item.id, -1)}
-                      className="p-0.5 hover:text-[#FF5B00] active:scale-75 transition-transform"
-                    >
-                      <Minus className="w-3 h-3 stroke-[2.5]" />
-                    </button>
-                    <span className="font-mono px-1.5 text-xs" aria-live="polite" aria-label={`Quantity ${item.qty}`}>
-                      {item.qty}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label={`Add one more ${item.name || "item"}`}
-                      onClick={() => updateItemQty(item.id, 1)}
-                      className="p-0.5 hover:text-[#FF5B00] active:scale-75 transition-transform"
-                    >
-                      <Plus className="w-3 h-3 stroke-[2.5]" />
-                    </button>
-                  </div>
-
-                  <div className="text-right">
-                    <span className="text-[10px] text-slate-400 line-through mr-1 font-mono dark:text-content-faint">
-                      ₹{parsePrice(item.originalPrice || parsePrice(item.price) + 20) * (Number(item.qty) || 0)}
-                    </span>
-                    <span className="font-black text-xs text-slate-900 font-mono dark:text-content">
-                      ₹{parsePrice(item.price) * (Number(item.qty) || 0)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Coupons & Offers Banner matching Screenshot 3 */}
-        <div
-          onClick={() => setIsCouponsOpen(true)}
-          className="bg-white dark:bg-[#12161F] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-2xs cursor-pointer hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-[#FF5B00] flex items-center justify-center shrink-0">
-              <Tag className="w-4 h-4 stroke-[2.2]" />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                {appliedCoupon ? `Coupon '${appliedCoupon.code}' applied` : "Avail Offers & Coupons"}
-              </span>
-              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block">
-                {appliedCoupon ? `You are saving ₹${couponDiscount} with this order` : "Save up to ₹50 on this order"}
-              </span>
-            </div>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400" />
-        </div>
-
-        {/* Bill Details */}
-        <div className="bg-white dark:bg-[#12161F] border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-2xs text-xs">
-          <h4 className="font-extrabold text-slate-900 dark:text-white text-xs">Bill Details</h4>
-          <div className="flex justify-between text-slate-600 dark:text-slate-400">
-            <span>Items total</span>
-            <span className="font-mono font-bold text-slate-900 dark:text-white">₹{subtotal}</span>
-          </div>
-          <div className="flex justify-between text-slate-600 dark:text-slate-400">
-            <span>Delivery fee</span>
-            <span className="font-mono font-bold text-slate-900 dark:text-white">
-              {deliveryFee === 0 ? "FREE" : `₹${deliveryFee}`}
-            </span>
-          </div>
-          {couponDiscount > 0 && (
-            <div className="flex justify-between text-[#FF5B00] font-bold">
-              <span>Coupon discount ({appliedCoupon?.code})</span>
-              <span className="font-mono">-₹{couponDiscount}</span>
-            </div>
           )}
-          <div className="pt-2 border-t border-slate-100 dark:border-line flex justify-between font-black text-sm text-slate-900 dark:text-content">
-            <span>To Pay</span>
-            <span className="font-mono text-[#061838] dark:text-[#FF6A1A]">₹{grandTotal}</span>
-          </div>
-        </div>
 
-        {/* 3. SMART RECOMMENDATIONS: PAIRS WELL WITH YOUR BASKET */}
-        {pairsWell.length > 0 && (
-          <section className="space-y-3 pt-2">
-            <div className="flex items-center justify-between px-1">
+          <Card>
+            <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center justify-between">
               <div>
-                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-content tracking-tight">
-                  Pairs Well with Your Items
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-content-secondary font-medium">
-                  Smart additions tailored to your cart
+                <h2 className="text-[15px] font-bold text-[#061838] dark:text-content">Items</h2>
+                <p className="text-[12.5px] text-slate-500 dark:text-content-muted">
+                  {hasAddress && eta.isDeliverable ? `Delivery in about ${eta.etaMinutes} minutes` : "From our Anantnag store"}
                 </p>
               </div>
+              <button type="button" onClick={clearCart} className="text-[13px] font-semibold text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-content">
+                Clear cart
+              </button>
             </div>
 
-            <div className="flex space-x-3 overflow-x-auto no-scrollbar pb-2 pt-1 px-1">
-              {pairsWell.map((prod) => {
-                const inCart = cartItems.find((i) => String(i.id || i.barcode) === String(prod.id || prod.barcode));
-                const savings = prod.originalPrice && prod.originalPrice > prod.price 
-                  ? prod.originalPrice - prod.price 
-                  : 0;
-
-                return (
-                  <div
-                    key={prod.id}
-                    className="w-[175px] shrink-0 bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs hover:shadow-sm transition-shadow"
-                  >
-                    <div className="relative">
-                      {savings > 0 && (
-                        <span className="absolute top-0 left-0 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 font-bold text-[9.5px] px-1.5 py-0.5 rounded-md">
-                          Save ₹{savings}
-                        </span>
-                      )}
-                      <div className="w-24 h-24 mx-auto mt-2">
-                        <ProductImage src={prod.img || prod.image} name={prod.name} className="rounded-2xl" letterClassName="text-2xl" />
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{prod.unit || "1 unit"}</span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-content leading-tight line-clamp-2 mt-0.5">
-                        {prod.name}
-                      </h4>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 dark:border-line flex items-center justify-between">
-                      <div>
-                        {prod.originalPrice > prod.price && (
-                          <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none dark:text-content-faint">
-                            ₹{prod.originalPrice}
-                          </span>
-                        )}
-                        <span className="text-xs font-black text-slate-900 dark:text-content font-mono">
-                          ₹{prod.price}
-                        </span>
-                      </div>
-
-                      {inCart ? (
-                        <div className="flex items-center space-x-1 bg-[#061838] text-white rounded-xl px-2 py-1 font-bold text-xs shadow-xs">
-                          <button
-                            type="button"
-                            aria-label={`Remove one ${prod.name || "item"}`}
-                            onClick={() => updateItemQty(prod.id, -1)}
-                            className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
-                          >
-                            <Minus className="w-3 h-3 stroke-[3]" />
-                          </button>
-                          <span className="font-mono px-1" aria-live="polite">{inCart.qty}</span>
-                          <button
-                            type="button"
-                            aria-label={`Add one more ${prod.name || "item"}`}
-                            onClick={() => updateItemQty(prod.id, 1)}
-                            className="relative p-0.5 active:scale-75 transition-transform before:absolute before:-inset-3 before:content-['']"
-                          >
-                            <Plus className="w-3 h-3 stroke-[3]" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleAddToCart(prod)}
-                          className="bg-white dark:bg-surface-muted border-2 border-[#061838] dark:border-line-strong text-[#061838] dark:text-content font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-raised active:scale-95 shadow-2xs transition-all"
-                        >
-                          ADD
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 4. FREQUENTLY ADDED IN ANANTNAG (HIGH-DENSITY SUGGESTIONS AT BOTTOM) */}
-        {popularAdditions.length > 0 && (
-          <section className="space-y-3 pt-2">
-            <div className="flex items-center justify-between px-1">
-              <div>
-                <h3 className="font-black text-sm sm:text-base text-slate-900 dark:text-content tracking-tight">
-                  Frequently Ordered in Anantnag
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-content-secondary font-medium">
-                  Popular pantry staples, snacks & beverages customers often add
-                </p>
+            <div className="px-4 sm:px-5 pb-3">
+              <p className="text-[13px] font-medium text-slate-600 dark:text-content-secondary">
+                {toFreeDelivery > 0 ? (
+                  <>
+                    Add <strong className="text-[#061838] dark:text-content">{rupees(toFreeDelivery)}</strong> more for free delivery
+                  </>
+                ) : (
+                  <span className="text-emerald-700 dark:text-emerald-400">You get free delivery</span>
+                )}
+              </p>
+              <div className="mt-2 h-1 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-500 ${toFreeDelivery > 0 ? "bg-[#FF5B00]" : "bg-emerald-500"}`}
+                  style={{ width: `${Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` }}
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-              {popularAdditions.map((prod) => {
-                const inCart = cartItems.find((i) => String(i.id || i.barcode) === String(prod.id || prod.barcode));
-                const savings = prod.originalPrice && prod.originalPrice > prod.price 
-                  ? prod.originalPrice - prod.price 
-                  : 0;
-
+            <ul className="divide-y divide-slate-100 dark:divide-line border-t border-slate-100 dark:border-line">
+              {cartItems.map((item) => {
+                const key = String(item.id || item.barcode);
+                const qty = Number(item.qty) || 0;
+                const unitPrice = price(item.price);
+                const mrp = price(item.originalPrice || item.mrp);
+                const problem = shortOf(item);
                 return (
-                  <div
-                    key={prod.id}
-                    className="bg-white dark:bg-surface-raised border border-slate-200/90 dark:border-line rounded-3xl p-3 flex flex-col justify-between space-y-2 shadow-2xs hover:shadow-sm transition-shadow"
-                  >
-                    <div className="relative">
-                      {savings > 0 && (
-                        <span className="absolute top-0 left-0 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 font-bold text-[9.5px] px-1.5 py-0.5 rounded-md">
-                          Save ₹{savings}
-                        </span>
+                  <li key={key} className="px-4 sm:px-5 py-3.5 flex items-center gap-3.5">
+                    <div className="w-16 h-16 shrink-0">
+                      <ProductImage src={item.img || item.image} name={item.name} className="rounded-xl border border-slate-100 dark:border-line" letterClassName="text-xl" />
+                    </div>
+                    <div className="min-w-0 grow">
+                      <p className="text-[14px] font-semibold leading-snug text-slate-900 line-clamp-2 dark:text-content">{item.name}</p>
+                      <p className="text-[12.5px] text-slate-500 dark:text-content-muted">
+                        {item.unit ? `${item.unit} · ` : ""}
+                        {rupees(unitPrice)} each
+                      </p>
+                      {problem && (
+                        <p className="mt-0.5 text-[12.5px] font-semibold text-red-600 dark:text-red-400 flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          {isSoldOut(item) ? "Sold out" : `Only ${item.stock} left`}
+                        </p>
                       )}
-                      <div className="w-24 h-24 mx-auto mt-2">
-                        <ProductImage src={prod.img || prod.image} name={prod.name} className="rounded-2xl" letterClassName="text-2xl" />
-                      </div>
                     </div>
-
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{prod.unit || "1 unit"}</span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-content leading-tight line-clamp-2 mt-0.5">
-                        {prod.name}
-                      </h4>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 dark:border-line flex items-center justify-between">
-                      <div>
-                        {prod.originalPrice > prod.price && (
-                          <span className="text-[9px] font-semibold text-slate-400 line-through block leading-none dark:text-content-faint">
-                            ₹{prod.originalPrice}
-                          </span>
-                        )}
-                        <span className="text-xs font-black text-slate-900 dark:text-content font-mono">
-                          ₹{prod.price}
-                        </span>
-                      </div>
-
-                      {inCart ? (
-                        <div className="flex items-center space-x-1 bg-[#061838] text-white rounded-xl px-2 py-1 font-bold text-xs shadow-xs">
-                          <button
-                            type="button"
-                            onClick={() => updateItemQty(prod.id, -1)}
-                            className="p-0.5 active:scale-75 transition-transform"
-                          >
-                            <Minus className="w-3 h-3 stroke-[3]" />
-                          </button>
-                          <span className="font-mono px-1">{inCart.qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => updateItemQty(prod.id, 1)}
-                            className="p-0.5 active:scale-75 transition-transform"
-                          >
-                            <Plus className="w-3 h-3 stroke-[3]" />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleAddToCart(prod)}
-                          className="bg-white dark:bg-surface-muted border-2 border-[#061838] dark:border-line-strong text-[#061838] dark:text-content font-black text-xs px-3.5 py-1 rounded-xl hover:bg-slate-50 dark:hover:bg-surface-raised active:scale-95 shadow-2xs transition-all"
-                        >
-                          ADD
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="h-9 rounded-lg bg-[#061838] text-white flex items-center dark:bg-[#FF5B00]">
+                        <button type="button" onClick={() => changeQty(key, -1)} aria-label={`One less ${item.name}`} className="w-9 h-9 flex items-center justify-center">
+                          <Minus className="w-4 h-4" />
                         </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-      </main>
-      )}
-
-      {/* 5. STICKY BOTTOM BAR (Always anchored to viewport bottom) */}
-      {cartItems.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-surface-overlay/95 backdrop-blur-md border-t border-slate-200/90 dark:border-line shadow-[0_-10px_30px_rgba(0,0,0,0.1)] pb-[max(12px,env(safe-area-inset-bottom,12px))]">
-          <div className="max-w-2xl mx-auto px-2">
-            {/* Address Strip */}
-            <div className="px-3 py-2 border-b border-slate-100 dark:border-line space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2.5 overflow-hidden">
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-surface-muted flex items-center justify-center shrink-0 border border-slate-200 dark:border-line">
-                    {checkoutData?.location?.alias === "Work" ? (
-                      <Briefcase className="w-4 h-4 text-[#061838] dark:text-content" />
-                    ) : checkoutData?.location?.alias === "Parents" ? (
-                      <Users className="w-4 h-4 text-[#061838] dark:text-content" />
-                    ) : checkoutData?.location?.alias === "Shop" ? (
-                      <Building2 className="w-4 h-4 text-[#061838] dark:text-content" />
-                    ) : (
-                      <Home className="w-4 h-4 text-[#061838] dark:text-content" />
-                    )}
-                  </div>
-                  <div className="overflow-hidden">
-                    <div className="flex items-center space-x-1.5 flex-wrap">
-                      <span className="text-xs font-black text-slate-900 dark:text-content uppercase">
-                        Delivering to {checkoutData?.location?.alias || checkoutData?.location?.nickname || "Home"}
-                      </span>
-                      {checkoutEta.isDeliverable ? (
-                        <span className="text-[11px] font-medium text-slate-500 dark:text-content-muted flex items-center space-x-1">
-                          <span>•</span>
-                          <span className="text-slate-700 dark:text-content-secondary font-semibold">{checkoutEta.pillText}</span>
-                          <span className="text-slate-400 dark:text-content-faint">({checkoutEta.distanceFormatted})</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 flex items-center space-x-1">
-                          <span>•</span>
-                          <span>Beyond 5km ({checkoutEta.distanceFormatted})</span>
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-content-secondary font-medium truncate max-w-[280px]">
-                      {checkoutData?.location?.address || "Tap to set delivery address"}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsLocationModalOpen(true)}
-                  className="text-xs font-black text-[#FF5B00] hover:underline shrink-0 pl-2 cursor-pointer"
-                >
-                  Change
-                </button>
-              </div>
-
-              {/* Outside the service area warning */}
-              {!checkoutEta.isDeliverable && (
-                <div className="mt-2 space-y-2">
-                  <div className="flex items-start space-x-2 text-slate-600 dark:text-content-secondary">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                    <div className="min-w-0 text-left">
-                      <span className="text-[11px] font-semibold block leading-tight text-slate-900 dark:text-content">
-                        Not available in your area yet
-                      </span>
-                      <p className="text-[10.5px] text-slate-500 font-medium leading-snug mt-0.5 dark:text-content-muted">
-                        DASHit currently delivers around Anantnag, Jammu &amp; Kashmir.
-                        We are expanding soon.
+                        <span className="w-6 text-center text-[14px] font-bold tabular-nums">{qty}</span>
+                        <button type="button" onClick={() => changeQty(key, 1)} aria-label={`One more ${item.name}`} className="w-9 h-9 flex items-center justify-center">
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <p className="text-[14px] font-bold tabular-nums text-slate-900 dark:text-content">
+                        {mrp > unitPrice && <span className="mr-1.5 text-[12px] font-medium text-slate-400 line-through">{rupees(mrp * qty)}</span>}
+                        {rupees(unitPrice * qty)}
                       </p>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsLocationModalOpen(true)}
-                    className="w-full text-[11px] font-semibold text-[#061838] border border-slate-200 rounded-lg py-2 hover:bg-slate-50 cursor-pointer dark:border-line dark:hover:bg-surface-muted dark:text-content"
-                  >
-                    Choose an address in our delivery area
-                  </button>
-                </div>
-              )}
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
 
-              {/* Ordering for someone else button */}
-              <div className="pt-1 flex items-center justify-between border-t border-slate-100 dark:border-line">
+          {suggestions.length > 0 && (
+            <section>
+              <h2 className="px-1 text-[15px] font-bold text-[#061838] dark:text-content">You might also need</h2>
+              <div className="mt-3 -mx-4 px-4 lg:mx-0 lg:px-0 flex gap-3 overflow-x-auto scrollbar-none pb-1">
+                {suggestions.map((p) => (
+                  <div key={p.id} className="w-[148px] shrink-0">
+                    <ProductCard
+                      product={p}
+                      qty={qtyOf(p)}
+                      onAdd={() => addSuggestion(p)}
+                      onUpdateQty={(id, d) => changeQty(id, d)}
+                      onIncrement={() => changeQty(p.id, 1)}
+                      onDecrement={() => changeQty(p.id, -1)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Right: delivery, offer, bill, payment */}
+        <div className="space-y-4 lg:sticky lg:top-20">
+          <Card className="p-4">
+            <div className="flex items-start gap-3">
+              <span className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-[#061838] shrink-0 dark:bg-white/10 dark:text-content">
+                <MapPin className="w-[18px] h-[18px]" />
+              </span>
+              <div className="min-w-0 grow">
+                <p className="text-[13px] font-semibold text-slate-500 dark:text-content-muted">Deliver to</p>
+                {hasAddress ? (
+                  <>
+                    <p className="text-[14px] font-semibold text-slate-900 line-clamp-2 dark:text-content">{location.address}</p>
+                    {!eta.isDeliverable && <p className="mt-0.5 text-[12.5px] font-semibold text-red-600 dark:text-red-400">We don&apos;t deliver here yet</p>}
+                  </>
+                ) : (
+                  <p className="text-[14px] font-semibold text-slate-900 dark:text-content">No address yet</p>
+                )}
+              </div>
+              <button type="button" onClick={() => setIsLocationOpen(true)} className="shrink-0 text-[13.5px] font-bold text-[#FF5B00] hover:underline">
+                {hasAddress ? "Change" : "Add"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsReceiverOpen(true)}
+              className="mt-3 pt-3 w-full border-t border-slate-100 flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-slate-900 dark:border-line dark:text-content-muted dark:hover:text-content"
+            >
+              <Users className="w-4 h-4" />
+              <span className="truncate">{receiverDetails ? `For ${receiverDetails.name} (${receiverDetails.phone})` : "Ordering for someone else?"}</span>
+            </button>
+          </Card>
+
+          <Card>
+            <div className="flex items-center">
+              <button type="button" onClick={() => setIsCouponsOpen(true)} className="grow min-w-0 px-4 py-3.5 flex items-center gap-3 text-left">
+                <Tag className="w-[18px] h-[18px] text-[#FF5B00] shrink-0" />
+                <span className="grow min-w-0">
+                  {coupon ? (
+                    <>
+                      <span className="block text-[14px] font-semibold text-slate-900 dark:text-content">{coupon.code} applied</span>
+                      <span className="block text-[12.5px] text-emerald-700 dark:text-emerald-400">
+                        {couponDiscount > 0 ? `You save ${rupees(couponDiscount)}` : "Delivery is free"}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="block text-[14px] font-semibold text-slate-900 dark:text-content">Apply an offer code</span>
+                  )}
+                </span>
+                {!coupon && <ChevronRight className="w-4 h-4 text-slate-400" />}
+              </button>
+              {coupon && (
                 <button
                   type="button"
-                  onClick={() => setIsOrderingForSomeoneElseOpen(true)}
-                  className="flex items-center space-x-1.5 text-[11px] font-black text-[#061838] hover:underline cursor-pointer dark:text-content"
+                  aria-label="Remove offer code"
+                  onClick={() => setAppliedCoupon(null)}
+                  className="mr-3 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
                 >
-                  <Users className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>
-                    {receiverDetails
-                      ? `Recipient: ${receiverDetails.name} (${receiverDetails.phone})`
-                      : "Ordering for someone else?"}
-                  </span>
+                  <X className="w-4 h-4" />
                 </button>
+              )}
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="text-[15px] font-bold text-[#061838] dark:text-content">Bill</h2>
+            <dl className="mt-3 space-y-2 text-[14px]">
+              <div className="flex justify-between">
+                <dt className="text-slate-600 dark:text-content-secondary">Items ({itemCount})</dt>
+                <dd className="tabular-nums">{rupees(subtotal)}</dd>
               </div>
+              <div className="flex justify-between">
+                <dt className="text-slate-600 dark:text-content-secondary">Delivery</dt>
+                <dd className="tabular-nums">
+                  {deliveryFee === 0 ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Free</span> : rupees(deliveryFee)}
+                </dd>
+              </div>
+              {couponDiscount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-slate-600 dark:text-content-secondary">Offer {coupon.code}</dt>
+                  <dd className="tabular-nums text-emerald-700 dark:text-emerald-400">−{rupees(couponDiscount)}</dd>
+                </div>
+              )}
+              <div className="pt-2.5 mt-1 border-t border-slate-100 dark:border-line flex justify-between text-[16px] font-bold text-[#061838] dark:text-content">
+                <dt>To pay</dt>
+                <dd className="tabular-nums">{rupees(grandTotal)}</dd>
+              </div>
+            </dl>
+            {mrpSavings + couponDiscount > 0 && (
+              <p className="mt-2 text-[12.5px] font-semibold text-emerald-700 dark:text-emerald-400">You save {rupees(mrpSavings + couponDiscount)} on this order</p>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <h2 className="text-[15px] font-bold text-[#061838] dark:text-content">Payment</h2>
+            <div className="mt-3 space-y-2" role="radiogroup" aria-label="Payment method">
+              {PAYMENTS.map((p) => {
+                const Icon = p.icon;
+                const active = method === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => {
+                      hapticLight();
+                      setMethod(p.id);
+                    }}
+                    className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
+                      active ? "border-[#FF5B00] bg-[#FF5B00]/[0.05]" : "border-slate-200 hover:border-slate-300 dark:border-line dark:hover:border-line-strong"
+                    }`}
+                  >
+                    <Icon className="w-5 h-5 text-[#061838] shrink-0 dark:text-content" />
+                    <span className="grow min-w-0">
+                      <span className="block text-[14px] font-semibold text-slate-900 dark:text-content">{p.title}</span>
+                      <span className="block text-[12.5px] text-slate-500 dark:text-content-muted">{p.detail}</span>
+                    </span>
+                    {active ? <CheckCircle2 className="w-5 h-5 text-[#FF5B00] shrink-0" /> : <Circle className="w-5 h-5 text-slate-300 shrink-0 dark:text-content-faint" />}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Account Verification Prompt if not logged in */}
-            {!isUserLoggedIn && (
-              <div className="px-3 pt-2">
-                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 flex items-center justify-between dark:bg-surface-raised dark:border-line">
-                  <div className="flex items-center space-x-2.5 min-w-0 pr-2">
-                    <div className="w-7 h-7 rounded-xl bg-[#061838] text-white flex items-center justify-center shrink-0">
-                      <LogIn className="w-3.5 h-3.5 text-[#FF5B00] stroke-[2.5]" />
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-black text-slate-900 truncate dark:text-content">Sign in to order</h4>
-                      <p className="text-[10px] text-slate-600 font-medium truncate dark:text-content-secondary">With your Google account and mobile number.</p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsLoginModalOpen(true)}
-                    className="px-3 py-1.5 rounded-xl bg-[#FF5B00] text-white text-xs font-black shrink-0 shadow-xs cursor-pointer active:scale-95 transition-all"
-                  >
-                    Sign In
-                  </button>
-                </div>
-              </div>
+            {!isSignedIn && (
+              <button type="button" onClick={() => setIsLoginOpen(true)} className="mt-3 w-full text-left text-[13px] text-slate-600 dark:text-content-muted">
+                You&apos;ll sign in with Google before ordering. <span className="font-semibold text-[#FF5B00]">Sign in now</span>
+              </button>
             )}
 
-            <div className="p-3 px-3 flex items-center justify-between space-x-3">
-              {/* Left: Pay Using Button */}
-              <button
-                type="button"
-                onClick={() => setIsPaymentModalOpen(true)}
-                className="text-left active:scale-95 transition-transform cursor-pointer"
-              >
-                <span className="text-[9px] font-black text-slate-400 flex items-center space-x-1 uppercase tracking-wider dark:text-content-faint">
-                  <span>PAY USING</span>
-                  <ChevronUp className="w-3 h-3 text-slate-500 stroke-[3] dark:text-content-muted" />
-                </span>
-                <div className="flex items-center space-x-1.5 mt-0.5">
-                  <span className="w-4 h-4 rounded-md bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-[10px] font-black leading-none font-mono">
-                    ₹
-                  </span>
-                  <span className="text-xs font-black text-slate-900 dark:text-content truncate max-w-[110px]">
-                    {selectedMethod.id === "online" ? "Online (UPI, card)" : "Cash on delivery"}
-                  </span>
-                </div>
-              </button>
-
-              {/* Right: Dual Trust Navy / Orange CTA Button */}
-              <button
-                type="button"
-                onClick={handlePlaceOrder}
-                disabled={isProcessing || beforeLaunch || !isStoreOpen || !checkoutEta.isDeliverable}
-                className={`grow rounded-2xl py-3 px-4 border transition-all flex items-center justify-between ${
-                  beforeLaunch || !isStoreOpen || !checkoutEta.isDeliverable
-                    ? "bg-slate-300 border-slate-400 text-slate-600 cursor-not-allowed opacity-90 dark:bg-surface-muted dark:border-line dark:text-content-faint"
-                    : !isUserLoggedIn
-                    ? "bg-[#FF5B00] hover:bg-[#E04E00] text-white shadow-sm border-orange-500/40 active:scale-[0.98] cursor-pointer"
-                    : "bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white shadow-sm border-slate-700/60 dark:border-orange-500/40 active:scale-[0.98] cursor-pointer"
-                }`}
-              >
-                <div className="text-left pr-3 border-r border-white/25">
-                  <span className="font-mono font-black text-sm block leading-tight">
-                    ₹{grandTotal}
-                  </span>
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider block leading-tight opacity-80">
-                    TOTAL
-                  </span>
-                </div>
-
-                <div className="flex items-center space-x-1 pl-3">
-                  {isProcessing && (
-                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-1 shrink-0" />
-                  )}
-                  <span className="font-black text-xs sm:text-sm">
-                    {isProcessing
-                      ? selectedMethod.id === "online" ? "Waiting for payment…" : "Placing order…"
-                      : beforeLaunch
-                      ? "Orders open 5 Oct, 5 pm"
-                      : !checkoutEta.isDeliverable
-                      ? "Outside delivery area"
-                      : !isStoreOpen
-                      ? "Store closed"
-                      : !isUserLoggedIn
-                      ? "Sign in to order"
-                      : selectedMethod.id === "online"
-                      ? "Pay & place order"
-                      : "Place order"}
-                  </span>
-                  {!isProcessing && !beforeLaunch && isStoreOpen && checkoutEta.isDeliverable && (
-                    !isUserLoggedIn ? (
-                      <ArrowRight className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 stroke-[3]" />
-                    )
-                  )}
-                </div>
-              </button>
-            </div>
-          </div>
+            {placeButton("hidden lg:flex w-full mt-4")}
+          </Card>
         </div>
-      )}
+      </main>
 
-      {/* Modals & Bottom Sheets */}
+      {/* Phones: total and the button, always in reach */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 pb-[env(safe-area-inset-bottom,0px)] dark:bg-surface-raised/95 dark:border-line">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-3">
+          <div className="shrink-0">
+            <p className="text-[17px] font-bold tabular-nums text-[#061838] dark:text-content">{rupees(grandTotal)}</p>
+            <p className="text-[11.5px] text-slate-500 dark:text-content-muted">{method === "online" ? "Pay online" : "Cash on delivery"}</p>
+          </div>
+          {placeButton("flex grow")}
+        </div>
+      </div>
+
       <CheckoutLoginModal
-        isOpen={isLoginModalOpen}
+        isOpen={isLoginOpen}
         resumeUser={resumeUser}
-        onClose={() => setIsLoginModalOpen(false)}
+        onClose={() => setIsLoginOpen(false)}
         onAuthenticated={(user) => {
-          setIsUserLoggedIn(true);
-          setIsLoginModalOpen(false);
-          executeOrderPlacement(user);
+          setShopper(user);
+          setIsLoginOpen(false);
+          if (!isBeforeLaunch()) placeOrder(user);
         }}
       />
-
-      <PaymentMethodModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        selectedMethod={selectedMethod}
-        onSelectMethod={(method) => setSelectedMethod(method)}
-        grandTotal={grandTotal}
-      />
-
-      <LocationPickerModal
-        isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
-        currentLocation={checkoutData?.location}
-        onSelectLocation={(newLoc) => {
-          const updated = { ...checkoutData, location: newLoc };
-          setCheckoutData(updated);
-          try {
-            localStorage.setItem("dashit_checkout_data", JSON.stringify(updated));
-            localStorage.setItem("dashit_user_address", JSON.stringify(newLoc));
-            localStorage.setItem("dashit_selected_location", JSON.stringify(newLoc));
-            window.dispatchEvent(new CustomEvent("dashit_address_updated", { detail: newLoc }));
-          } catch (e) {}
-        }}
-      />
-
-      {/* Ordering For Someone Else Modal (Screenshot 2) */}
-      <OrderingForSomeoneElseModal
-        isOpen={isOrderingForSomeoneElseOpen}
-        onClose={() => setIsOrderingForSomeoneElseOpen(false)}
-        onSaveReceiver={(details) => setReceiverDetails(details)}
-      />
-
-      {/* Coupons Drawer (Screenshot 3) */}
+      <LocationPickerModal isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} currentLocation={location} onSelectLocation={chooseLocation} />
+      <OrderingForSomeoneElseModal isOpen={isReceiverOpen} onClose={() => setIsReceiverOpen(false)} onSaveReceiver={(details) => setReceiverDetails(details)} />
       <CouponsDrawer
         isOpen={isCouponsOpen}
         onClose={() => setIsCouponsOpen(false)}
         cartTotal={subtotal}
         appliedCoupon={appliedCoupon}
-        onApplyCoupon={(coupon) => setAppliedCoupon(coupon)}
+        onApplyCoupon={(c) => setAppliedCoupon(c)}
       />
-
-      {/* Animated Order Processing & Email Confirmation Modal */}
       <OrderProcessingModal
         isOpen={showProcessingModal}
         orderDetails={processedOrder}
         onComplete={() => {
           setShowProcessingModal(false);
-          placingRef.current = false;
-          setIsProcessing(false);
           router.push("/orders");
         }}
       />
-
     </div>
   );
 }

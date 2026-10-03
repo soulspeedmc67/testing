@@ -22,6 +22,8 @@ $since = filter_var($_GET['since'] ?? null, FILTER_VALIDATE_INT, ['options' => [
 if ($since === false || $since === null) {
     dashit_respond(400, ['error' => 'Which version?']);
 }
+// If the cron job has stopped, the shop's own visitors keep the file current.
+dashit_catalog_refresh_if_stale();
 $file = dashit_catalog_read();
 if ($file === null) {
     // No file yet (the cron hasn't run): the phone keeps what it has.

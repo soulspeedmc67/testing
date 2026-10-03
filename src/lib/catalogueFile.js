@@ -126,10 +126,45 @@ function schedulePoll() {
   }, POLL_MS);
 }
 
+/**
+ * No file on the website (the cron job hasn't made it yet): changes.php since
+ * version 0 builds it on the server and answers with every product.
+ */
+async function fetchEverything() {
+  try {
+    const res = await fetch(`${CHANGES_URL}?since=0`);
+    if (!res.ok) return false;
+    const body = await res.json();
+    const products = Array.isArray(body?.products) ? body.products : [];
+    if (products.filter((p) => p && p.active !== false).length < 50) return false;
+    state = { version: 0, items: {} };
+    fold(products, body.version);
+    save();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function start() {
   if (started || typeof window === "undefined") return;
   started = true;
-  if (await download()) broadcast();
+  for (let attempt = 0; ; attempt += 1) {
+    if (await download()) {
+      broadcast();
+      break;
+    }
+    if (state && list().length > 0) break; // the saved copy stands
+    if (await fetchEverything()) {
+      broadcast();
+      break;
+    }
+    if (subscribers.size === 0) {
+      started = false;
+      return;
+    }
+    await new Promise((r) => setTimeout(r, Math.min(30000, 5000 * (attempt + 1))));
+  }
   schedulePoll();
 }
 

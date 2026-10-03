@@ -11,7 +11,7 @@ import { productImageUrl } from "./ProductImage";
 /* Stable identity so an empty cart does not produce a new array each render. */
 const EMPTY_CART = [];
 
-const STOREFRONT_ROUTES = ["/shop", "/order-again", "/categories", "/wishlist"];
+const STOREFRONT_ROUTES = ["/shop", "/order-again", "/categories", "/wishlist", "/search", "/offers", "/product"];
 const NAVBAR_ROUTES = ["/shop", "/order-again", "/categories"];
 
 export default function FloatingCartBar() {
@@ -147,58 +147,34 @@ export default function FloatingCartBar() {
         }}
         role="button"
         tabIndex={0}
-        className="pointer-events-auto relative overflow-hidden bg-[#061838] text-white rounded-full py-2 px-3.5 shadow-[0_6px_20px_rgba(6,24,56,0.3)] border border-slate-700/60 flex items-center space-x-3 transition-transform active:scale-[0.97] cursor-pointer select-none"
+        aria-label={`View cart: ${itemCount} ${itemCount === 1 ? "item" : "items"}, ₹${subtotal}`}
+        className="pointer-events-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-2xl pl-2 pr-3 py-2 shadow-[0_10px_28px_-10px_rgba(255,91,0,0.65)] flex items-center gap-3 min-w-[230px] transition-[transform,background-color] active:scale-[0.98] cursor-pointer select-none"
       >
-        {/* Left: Last 3 items added to cart in overlapping circular shapes */}
-        <div className="flex items-center -space-x-2.5 shrink-0 py-0.5 pl-0.5">
-          {items.length > 0 ? (
-            items.slice(-3).reverse().map((item, idx) => (
-              <div
-                key={item.id || idx}
-                className="w-8 h-8 rounded-full bg-white border-2 border-[#061838] overflow-hidden flex items-center justify-center shadow-xs shrink-0"
-                style={{ zIndex: 10 - idx }}
-              >
-                {item.image || item.img ? (
-                  <img
-                    src={productImageUrl(item.image || item.img)}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-xs font-black text-[#FF5B00]">
-                    {item.name ? item.name.charAt(0) : <ShoppingBag className="w-3.5 h-3.5" />}
-                  </span>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-white text-[#061838] flex items-center justify-center shrink-0 shadow-xs dark:text-content">
-              <ShoppingBag className="w-4 h-4 stroke-[2.8]" />
+        {/* The last few things added, as small white packshots */}
+        <div className="flex items-center -space-x-2 shrink-0">
+          {items.slice(-3).reverse().map((item, idx) => (
+            <div
+              key={item.id || idx}
+              className="w-9 h-9 rounded-lg bg-white ring-2 ring-[#FF5B00] overflow-hidden flex items-center justify-center shrink-0"
+              style={{ zIndex: 10 - idx }}
+            >
+              {item.image || item.img ? (
+                <img src={productImageUrl(item.image || item.img)} alt="" className="w-full h-full object-contain p-0.5" />
+              ) : (
+                <ShoppingBag className="w-4 h-4 text-[#FF5B00]" />
+              )}
             </div>
-          )}
+          ))}
         </div>
 
-        {/* Middle: View cart, Total & Min Order Reminder */}
-        <div className="text-left pr-1 pl-0.5">
-          <div className="flex items-center space-x-2">
-            <span className="font-extrabold text-xs md:text-sm text-white block leading-tight tracking-tight drop-shadow-xs">
-              View cart
-            </span>
-            <span className="font-mono font-black text-xs text-white/95">
-              ₹{subtotal}
-            </span>
-          </div>
-          <div className="flex items-center space-x-1.5 mt-0.5">
-            <span className="text-[10px] font-black text-white bg-[#FF5B00] px-1.5 py-0.5 rounded-md leading-none">
-              <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "Item" : "Items"}
-            </span>
-          </div>
+        <div className="grow text-left leading-tight">
+          <span className="block text-[15px] font-bold">View cart</span>
+          <span className="block text-[12px] font-medium text-white/85 tabular-nums">
+            <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "item" : "items"} · ₹{subtotal}
+          </span>
         </div>
 
-        {/* Right: Chevron arrow circle */}
-        <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center text-white shrink-0 shadow-xs ring-1 ring-white/20">
-          <ChevronRight className="w-4 h-4 stroke-[3]" />
-        </div>
+        <ChevronRight className="w-5 h-5 shrink-0" />
       </div>
     </motion.div>
   );
