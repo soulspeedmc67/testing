@@ -1256,7 +1256,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     }
 
     public func deleteCoupon(code: String) {
-        UIImpactFeedbackGenerator(style: .warning).impactOccurred()
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
         let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         var current = coupons
         current.removeAll { $0.code.uppercased() == cleanCode }
