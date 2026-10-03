@@ -49,7 +49,7 @@ final class AdminSession: ObservableObject {
             return true
         }
         let email = user.email?.lowercased() ?? ""
-        return email == "m4k3ditz@gmail.com" || email == "soulspeedmc67@gmail.com" || email == "kanyualeem416@gmail.com"
+        return email == "m4k3ditz@gmail.com" || email == "soulspeedmc67@gmail.com" || email == "kanyualeem416@gmail.com" || email == "mirmanal.mm@gmail.com"
     }
 
     func signIn(email: String, password: String) async {
