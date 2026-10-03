@@ -30,8 +30,27 @@ android {
         }
     }
 
+    // Release builds are signed with the shop's key (android/dashit-release.jks,
+    // the same key as the old web-wrapper app with this app ID), read from
+    // android/keystore.properties, which stays out of git. Without that file a
+    // release build is left unsigned.
+    def keystoreFile = rootProject.file('../android/keystore.properties')
+    signingConfigs {
+        if (keystoreFile.exists()) {
+            release {
+                def props = new Properties()
+                keystoreFile.withInputStream { props.load(it) }
+                storeFile rootProject.file('../android/' + props['storeFile'].replaceFirst('^\\.\\./', 'app/../'))
+                storePassword props['storePassword']
+                keyAlias props['keyAlias']
+                keyPassword props['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (keystoreFile.exists()) signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

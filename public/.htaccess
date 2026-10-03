@@ -36,6 +36,13 @@
   # HTTPS only, once the certificate is confirmed working.
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 
+  # The APK is replaced in place with each new version: always revalidate,
+  # and download rather than open.
+  <FilesMatch "\.apk$">
+    Header always set Cache-Control "public, no-cache"
+    Header always set Content-Disposition "attachment; filename=DASHit.apk"
+  </FilesMatch>
+
   # Static exported HTML: allow CDN & Hostinger LiteSpeed caching with quick revalidation
   <FilesMatch "\.html$">
     Header always set Cache-Control "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400"
@@ -106,6 +113,9 @@ Options -Indexes
 # MIME Types for SEO & Web Standards
 <IfModule mod_mime.c>
   AddType application/manifest+json .webmanifest
+  # The Android app (DASHit.apk at the site root): phones only offer to
+  # install it when it is served with this type.
+  AddType application/vnd.android.package-archive .apk
   AddType application/xml .xml
 </IfModule>
 
