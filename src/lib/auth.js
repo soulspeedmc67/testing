@@ -734,11 +734,24 @@ export async function getStaffRole(uid) {
   }
 
   // Whitelisted owner / developer accounts (authorized for admin & fleet)
-  if (uid === "DOf5enic8SXBZTupGJbxDrNdrOt2") {
+  const ADMIN_UIDS = [
+    "DOf5enic8SXBZTupGJbxDrNdrOt2",
+    "mWN8b37A5FXMHnUaSf6SbTLiDej1", // soulspeedmc67@gmail.com
+    "s1jkY9BfGNQBqeykkvFtzsVAqLq1", // kanyualeem416@gmail.com
+    "06RRC5cz6JUIJPyoP5LUPNLFbeB3", // mirmanal.mm@gmail.com
+  ];
+  if (ADMIN_UIDS.includes(uid)) {
     return "admin";
   }
   const auth = getFirebaseAuth();
-  if (auth?.currentUser?.email?.toLowerCase() === "m4k3ditz@gmail.com") {
+  const email = auth?.currentUser?.email?.toLowerCase() || "";
+  const ADMIN_EMAILS = [
+    "m4k3ditz@gmail.com",
+    "soulspeedmc67@gmail.com",
+    "kanyualeem416@gmail.com",
+    "mirmanal.mm@gmail.com"
+  ];
+  if (ADMIN_EMAILS.includes(email)) {
     return "admin";
   }
 

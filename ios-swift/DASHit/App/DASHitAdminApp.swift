@@ -48,8 +48,8 @@ final class AdminSession: ObservableObject {
            (data["role"] as? String) == "admin" {
             return true
         }
-        if user.uid == "DOf5enic8SXBZTupGJbxDrNdrOt2" { return true }
-        return user.email?.lowercased() == "m4k3ditz@gmail.com"
+        let email = user.email?.lowercased() ?? ""
+        return email == "m4k3ditz@gmail.com" || email == "soulspeedmc67@gmail.com" || email == "kanyualeem416@gmail.com"
     }
 
     func signIn(email: String, password: String) async {

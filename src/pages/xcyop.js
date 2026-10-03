@@ -50,7 +50,7 @@ import { findProductPhotos } from "../lib/productPhotoFinder";
 import PhotoSearchStatus from "../components/admin/PhotoSearchStatus";
 import { isPlaceholderImage } from "../lib/productPhotoMatch";
 import { isFirebaseConfigured } from "../lib/firebase";
-import { watchAuth, getStaffRole, signInWithEmail, signOut } from "../lib/auth";
+import { watchAuth, getStaffRole, signInWithEmail, signInWithGoogle, completeGoogleRedirect, signOut } from "../lib/auth";
 import {
   watchAllOrders,
   updateOrderStatus as fsUpdateOrderStatus,
@@ -231,13 +231,26 @@ const CATEGORIES = [
   "Bakery"
 ];
 
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 48 48" className="w-4 h-4 shrink-0" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
+  );
+}
+
 export default function AdminAccessGate() {
   const [currentUid, setCurrentUid] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   /* The session is restored from Firebase Auth, never from a sessionStorage
      flag: a flag is writable from devtools, so trusting it would let anyone
@@ -253,6 +266,7 @@ export default function AdminAccessGate() {
       }
     }
     if (!isFirebaseConfigured) return;
+    completeGoogleRedirect().catch(() => {});
     const unsub = watchAuth(async (user) => {
       if (!user) {
         setCurrentUid("");
@@ -273,11 +287,69 @@ export default function AdminAccessGate() {
     return unsub;
   }, []);
 
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    setLoginError("");
+    setResetMessage("");
+    try {
+      const res = await signInWithGoogle();
+      if (!res.success && !res.redirecting) {
+        if (!res.cancelled) {
+          setLoginError(res.message || "Google sign-in failed. Please try again.");
+        }
+        setIsGoogleLoading(false);
+        return;
+      }
+      if (res.user) {
+        const role = await getStaffRole(res.user?.uid);
+        if (role !== "admin") {
+          const uid = res.user?.uid || "";
+          await signOut();
+          setLoginError(
+            `Account ${res.user?.email || uid} is not authorised for the admin console.`
+          );
+        } else {
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("dashit_admin_email", res.user?.email || "");
+          }
+          setIsAuthenticated(true);
+        }
+      }
+    } catch (err) {
+      setLoginError(err?.message || "Google sign-in error.");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const cleanEmail = String(email || "").trim().toLowerCase();
+    if (!cleanEmail) {
+      setLoginError("Please type your administrator email above to send the reset link.");
+      return;
+    }
+    setIsLoading(true);
+    setLoginError("");
+    setResetMessage("");
+    try {
+      const { getFirebaseAuth } = await import("../lib/firebase");
+      const auth = getFirebaseAuth();
+      if (!auth) throw new Error("Firebase not initialized");
+      const { sendPasswordResetEmail } = await import("firebase/auth");
+      await sendPasswordResetEmail(auth, cleanEmail);
+      setResetMessage(`Password reset link sent to ${cleanEmail}. Check your inbox!`);
+    } catch (err) {
+      setLoginError(err?.message || "Could not send password reset email.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setLoginError("");
+    setResetMessage("");
 
     const cleanEmail = String(email || "").trim().toLowerCase();
     const cleanPassword = String(password || "").trim();
@@ -349,8 +421,29 @@ export default function AdminAccessGate() {
           </span>
           <h1 className="font-black text-xl text-white tracking-tight">Store Console</h1>
           <p className="text-xs text-zinc-400 font-medium leading-relaxed mt-1">
-            Sign in with your store administrator email and password to manage orders and inventory.
+            Sign in with Google or administrator credentials to manage orders and inventory.
           </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleGoogleLogin}
+          disabled={isLoading || isGoogleLoading}
+          className="w-full bg-white hover:bg-zinc-100 active:scale-[0.99] text-zinc-900 font-bold text-xs py-3 rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2.5 disabled:opacity-50"
+        >
+          {isGoogleLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin text-zinc-900" />
+          ) : (
+            <GoogleMark />
+          )}
+          <span>Sign in with Google</span>
+        </button>
+
+        <div className="relative flex items-center justify-center my-1">
+          <div className="border-t border-zinc-800 w-full" />
+          <span className="bg-[#12141A] px-2.5 text-[10px] uppercase font-bold text-zinc-500 absolute">
+            or with email
+          </span>
         </div>
 
         <form onSubmit={handleLoginSubmit} className="space-y-3.5 pt-1 text-left">
@@ -366,6 +459,7 @@ export default function AdminAccessGate() {
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setLoginError("");
+                  setResetMessage("");
                 }}
                 placeholder="admin@dashit.in"
                 className="w-full bg-[#181B24] border border-zinc-700 rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] transition-colors"
@@ -376,9 +470,18 @@ export default function AdminAccessGate() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[11px] font-bold text-zinc-300 block">
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-zinc-300 block">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-[10.5px] font-bold text-[#FF5B00] hover:underline cursor-pointer"
+              >
+                Set or Reset
+              </button>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -387,6 +490,7 @@ export default function AdminAccessGate() {
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setLoginError("");
+                  setResetMessage("");
                 }}
                 placeholder="••••••••"
                 className="w-full bg-[#181B24] border border-zinc-700 rounded-xl pl-10 pr-3.5 py-2.5 text-xs font-semibold text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#FF5B00] focus:ring-1 focus:ring-[#FF5B00] transition-colors"
@@ -394,6 +498,12 @@ export default function AdminAccessGate() {
               />
             </div>
           </div>
+
+          {resetMessage && (
+            <p className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-2 px-3 rounded-lg text-center">
+              {resetMessage}
+            </p>
+          )}
 
           {loginError && (
             <p className="text-[11px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20 py-2 px-3 rounded-lg text-center">
@@ -403,7 +513,7 @@ export default function AdminAccessGate() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
             className="w-full bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs py-3 rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
