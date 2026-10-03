@@ -26,6 +26,7 @@ import {
   Banknote,
   ArrowRight,
   UserPlus,
+  Receipt,
   X
 } from "lucide-react";
 import { ORDER_STATUS, ORDER_CHANGE_WINDOW_SECONDS } from "../../lib/db";
@@ -48,6 +49,7 @@ export default function OrderProcessingView({
   onUpdateStatus,
   onAssignDriver,
   onNavigateTab,
+  onOpenGstModal,
   darkMode = false,
 }) {
   /* The chronological list is the default. The board was the default before, and
@@ -704,6 +706,22 @@ export default function OrderProcessingView({
           >
             <Download className="w-4 h-4" />
           </button>
+
+          {onOpenGstModal && (
+            <button
+              type="button"
+              onClick={onOpenGstModal}
+              title="GST Sales Bill & Tax Register"
+              className={"px-3 py-2 rounded-xl border transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 text-xs font-bold " + (
+                darkMode
+                  ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-zinc-700"
+                  : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+              )}
+            >
+              <Receipt className="w-3.5 h-3.5 text-[#FF5B00]" />
+              <span>GST Bill</span>
+            </button>
+          )}
         </div>
       </div>
 

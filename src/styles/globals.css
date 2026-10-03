@@ -623,6 +623,7 @@ html {
   }
   body > * { display: none !important; }
   body > #dashit-print-root { display: block !important; }
+  body > #dashit-gst-print-root { display: block !important; }
   #dashit-print-root {
     position: static !important;
     width: 80mm;
@@ -633,7 +634,20 @@ html {
     background: #fff !important;
     color: #000 !important;
   }
-  @page { size: 80mm auto; margin: 0; }
+  #dashit-gst-print-root {
+    position: static !important;
+    width: 100% !important;
+    max-width: 210mm !important;
+    margin: 0 auto !important;
+    padding: 8mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+  }
+  @page { size: auto; margin: 6mm; }
 }
 
 /* ==========================================================================

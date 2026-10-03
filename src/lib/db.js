@@ -2642,6 +2642,95 @@ export async function setStoreConfig(patch) {
   );
 }
 
+/* ------------------------------------------------------------ checkout coupons */
+
+let memoryCoupons = null;
+const couponsSubscribers = new Set();
+let sharedCouponsUnsub = null;
+let sharedCouponsCleanupTimer = null;
+
+function broadcastCoupons(list) {
+  memoryCoupons = list;
+  if (typeof window !== "undefined" && Array.isArray(list)) {
+    try {
+      localStorage.setItem("dashit_config_coupons", JSON.stringify(list));
+      window.dispatchEvent(new CustomEvent("dashit_coupons_updated"));
+    } catch (e) {}
+  }
+  couponsSubscribers.forEach((cb) => {
+    try { cb(list); } catch (e) {}
+  });
+}
+
+function startSharedCouponsWatcher() {
+  if (sharedCouponsCleanupTimer) {
+    clearTimeout(sharedCouponsCleanupTimer);
+    sharedCouponsCleanupTimer = null;
+  }
+  if (sharedCouponsUnsub) return;
+
+  const db = getDb();
+  if (!db) return;
+  try {
+    sharedCouponsUnsub = onSnapshot(
+      doc(db, "config", "coupons"),
+      (snap) => {
+        if (snap.exists() && Array.isArray(snap.data()?.list)) {
+          broadcastCoupons(snap.data().list);
+        } else {
+          broadcastCoupons(null);
+        }
+      },
+      (err) => {
+        console.warn("watchCoupons snapshot error:", err?.message);
+      }
+    );
+  } catch (e) {
+    console.warn("watchCoupons init error:", e?.message);
+  }
+}
+
+export function watchCoupons(callback) {
+  couponsSubscribers.add(callback);
+  if (memoryCoupons) {
+    callback(memoryCoupons);
+  } else if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("dashit_config_coupons");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) callback(parsed);
+      }
+    } catch (e) {}
+  }
+  startSharedCouponsWatcher();
+
+  return () => {
+    couponsSubscribers.delete(callback);
+    if (couponsSubscribers.size === 0) {
+      if (sharedCouponsCleanupTimer) clearTimeout(sharedCouponsCleanupTimer);
+      sharedCouponsCleanupTimer = setTimeout(() => {
+        if (couponsSubscribers.size === 0 && typeof sharedCouponsUnsub === "function") {
+          sharedCouponsUnsub();
+          sharedCouponsUnsub = null;
+        }
+      }, 30000);
+    }
+  };
+}
+
+export async function saveCoupons(couponsList) {
+  const sanitized = Array.isArray(couponsList) ? couponsList : [];
+  broadcastCoupons(sanitized);
+  const db = getDb();
+  if (!db) return;
+  await setDoc(
+    doc(db, "config", "coupons"),
+    { list: sanitized, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
 /* ---------------------------------------------------------------- addresses */
 
 export async function fetchAddresses(uid) {
