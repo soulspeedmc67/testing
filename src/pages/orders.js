@@ -493,10 +493,11 @@ export default function OrdersPage() {
 
   // Stage details for tracking
   const currentStatus = String(displayedOrder?.status || "Placed");
-  const isOutForDelivery = currentStatus === "Out for Delivery";
-  const isDelivered = currentStatus === "Delivered";
-  const isCancelled = currentStatus === "Cancelled";
-  const isPacking = currentStatus === "Packed" || currentStatus === "Packing";
+  const normStatus = currentStatus.trim().toLowerCase().replace(/_/g, " ");
+  const isOutForDelivery = normStatus === "out for delivery";
+  const isDelivered = normStatus === "delivered";
+  const isCancelled = normStatus === "cancelled";
+  const isPacking = normStatus === "packed" || normStatus === "packing";
   const showsMap = displayedOrder && (isOutForDelivery || isDelivered);
 
   const stageProgress = isDelivered ? 1.0 : isOutForDelivery ? 0.75 : isPacking ? 0.45 : 0.18;
