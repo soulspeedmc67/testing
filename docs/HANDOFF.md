@@ -95,6 +95,25 @@ Android apps were NOT changed by this; ask the owner before porting it.
   full width on desktop (so does the header's inner row, width only).
 - **Search**: Categories and Clear sit at the top right under the search bar.
 
+### Late night Oct 4: the same rules in both apps
+
+- **Android** (VERIFIED on the Pixel, release-signed build): cart bill is item
+  total + delivery (40% under ₹180 / ₹35 / ₹25) + ₹11 handling (₹85 → ₹130);
+  orders save `handlingFee`; home shows 6 everyday categories and their rows;
+  Categories has five departments on the left, category chips and shelf chips
+  on the right; search has a Categories button beside Clear. Android has no
+  "first 5 orders free" promo (web and iOS do).
+- **iOS**: same changes; compiled only by the GitHub Actions build.
+- **Sorting rules are generated**: `android-compose/.../data/Shelves.kt` and
+  `ios-swift/DASHit/Core/Utils/Shelves.swift` come from
+  `src/lib/categorize.js`. Change the rules there and regenerate both, never
+  by hand. The iOS admin app keeps the saved category (no re-shelving).
+- Departments live in `Departments.kt` / `CatalogueDerive.departmentGroups` /
+  `GROUPS` in `shopAisles.js`: keep the three in step.
+- Handling charge is listed on the iOS order sheet, the web tracking page, the
+  WhatsApp receipt and the packing slip (derived from the total for orders
+  saved without `handlingFee`).
+
 ## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
 
 - **Web shop restored** (pages removed in b7c93f3): /shop, /search, /categories,
