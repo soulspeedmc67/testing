@@ -42,7 +42,6 @@ import CancelOrderModal from "../components/CancelOrderModal";
 import OrderStageAnimation from "../components/OrderStageAnimation";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
-const Rider3DViewer = dynamic(() => import("../components/Rider3DViewer"), { ssr: false });
 
 /**
  * Milliseconds for an order's creation time, whatever shape it arrives in:
@@ -99,7 +98,6 @@ export default function OrdersPage() {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [modifyToast, setModifyToast] = useState(null);
-  const [show3DRider, setShow3DRider] = useState(false);
   const [cart, setCart] = useState([]);
   const [selectedCat, setSelectedCat] = useState("All");
   const [productsList, setProductsList] = useState([]);
@@ -621,36 +619,6 @@ export default function OrdersPage() {
                   <DeliveryCodeRow otp={displayedOrder.otp} />
                 )}
 
-                {/* 3D Delivery Driver Model Viewer */}
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      hapticLight();
-                      setShow3DRider((prev) => !prev);
-                    }}
-                    className="w-full py-2.5 px-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer text-left"
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#FF5B00]/20 border border-[#FF5B00]/30 flex items-center justify-center p-0.5 overflow-hidden">
-                        <img src="/rider/rider_180.png" alt="3D Rider" className="w-full h-full object-contain" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-white block">3D Delivery Partner</span>
-                        <span className="text-[10px] text-white/55">Official DASHit 3D Scooter Model</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-[#FF5B00] px-2.5 py-1 rounded-full bg-[#FF5B00]/15 border border-[#FF5B00]/30">
-                      {show3DRider ? "Hide 3D" : "View 3D"}
-                    </span>
-                  </button>
-
-                  {show3DRider && (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-2xl">
-                      <Rider3DViewer className="w-full h-64" autoRotate={true} />
-                    </div>
-                  )}
-                </div>
 
                 <div className="h-[1px] bg-white/10" />
 
@@ -772,36 +740,6 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                {/* 3D Delivery Partner Model Viewer */}
-                <div className="pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      hapticLight();
-                      setShow3DRider((prev) => !prev);
-                    }}
-                    className="w-full py-2.5 px-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer text-left"
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#FF5B00]/20 border border-[#FF5B00]/30 flex items-center justify-center p-0.5 overflow-hidden">
-                        <img src="/rider/rider_180.png" alt="3D Rider" className="w-full h-full object-contain" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-white block">Meet Your Delivery Partner</span>
-                        <span className="text-[10px] text-white/55">Official DASHit 3D Rider & Scooter Model</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-[#FF5B00] px-2.5 py-1 rounded-full bg-[#FF5B00]/15 border border-[#FF5B00]/30">
-                      {show3DRider ? "Hide 3D" : "View 3D"}
-                    </span>
-                  </button>
-
-                  {show3DRider && (
-                    <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-2xl">
-                      <Rider3DViewer className="w-full h-64" autoRotate={true} />
-                    </div>
-                  )}
-                </div>
 
                 <div className="h-[1px] bg-white/10" />
 
