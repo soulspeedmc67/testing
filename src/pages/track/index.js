@@ -17,7 +17,10 @@ import {
   Clock,
   Plus,
   Home,
-  Receipt
+  Receipt,
+  XCircle,
+  Share2,
+  Printer
 } from "lucide-react";
 import {
   watchOrder,
@@ -283,7 +286,11 @@ export default function OrderTrackingPage() {
           {/* Header Row: Stage Icon + Headline + ETA Badge */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              {isDelivered ? (
+              {isCancelled ? (
+                <div className="w-6 h-6 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-500">
+                  <XCircle className="w-4 h-4 stroke-[2.5]" />
+                </div>
+              ) : isDelivered ? (
                 <div className="w-6 h-6 rounded-full bg-[#00D26A]/20 flex items-center justify-center text-[#00D26A]">
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
@@ -297,7 +304,9 @@ export default function OrderTrackingPage() {
                 </div>
               )}
               <h3 className="font-extrabold text-base text-white tracking-tight">
-                {isDelivered
+                {isCancelled
+                  ? "Order Cancelled"
+                  : isDelivered
                   ? "Delivered to Doorstep"
                   : isOutForDelivery
                   ? `${telemetry.riderName || "Tariq"} is on the way`
@@ -308,6 +317,11 @@ export default function OrderTrackingPage() {
             </div>
 
             {/* ETA Tag */}
+            {isCancelled && (
+              <span className="text-xs font-bold text-rose-400 bg-rose-500/15 border border-rose-500/25 px-2.5 py-1 rounded-full uppercase">
+                Cancelled
+              </span>
+            )}
             {isOutForDelivery && (
               <span className="text-sm font-black text-[#00D26A] tracking-wider uppercase drop-shadow-[0_0_8px_rgba(0,210,106,0.35)]">
                 ETA {telemetry.etaMinutes} MINS
@@ -318,7 +332,7 @@ export default function OrderTrackingPage() {
                 Delivered
               </span>
             )}
-            {!isOutForDelivery && !isDelivered && (
+            {!isCancelled && !isOutForDelivery && !isDelivered && (
               <span className="text-xs font-bold text-[#FF5B00] bg-[#FF5B00]/15 border border-[#FF5B00]/25 px-2.5 py-1 rounded-full uppercase">
                 {isPacking ? "Packing" : "Received"}
               </span>
@@ -326,13 +340,33 @@ export default function OrderTrackingPage() {
           </div>
 
           {/* Subtitle / Distance Line */}
-          <p className="text-xs font-medium text-white/70">
-            {isOutForDelivery
-              ? `${telemetry.distanceKm ? telemetry.distanceKm + " km away • " : ""}Arriving at your doorstep`
-              : isPacking
-              ? "Your items are being picked and packed at DASHit Hub"
-              : "Store received your order. Packing starts right after."}
-          </p>
+          {(() => {
+            const cancelReason = order?.rejectionReason || order?.cancelReason || order?.cancelledReason || order?.rejectReason;
+            return (
+              <>
+                <p className="text-xs font-medium text-white/70">
+                  {isCancelled
+                    ? (cancelReason ? `Reason: ${cancelReason}` : "This order was cancelled and won't be delivered.")
+                    : isOutForDelivery
+                    ? `${telemetry.distanceKm ? telemetry.distanceKm + " km away • " : ""}Arriving at your doorstep`
+                    : isPacking
+                    ? "Your items are being picked and packed at DASHit Hub"
+                    : "Store received your order. Packing starts right after."}
+                </p>
+
+                {isCancelled && (
+                  <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-3.5 space-y-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-rose-400 block">
+                      Cancellation Reason
+                    </span>
+                    <p className="text-xs font-semibold text-rose-100 leading-snug">
+                      {cancelReason || "This order was cancelled and will not be delivered."}
+                    </p>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
           {/* Stage Rail: OrderProgressRail (1:1 Android Implementation) */}
           <div className="space-y-1.5 pt-1">
@@ -490,6 +524,44 @@ export default function OrderTrackingPage() {
                 <span className="text-white/80 line-clamp-2">
                   {order?.location?.address || order?.deliveryAddress?.address || "Anantnag, Jammu & Kashmir"}
                 </span>
+              </div>
+
+              {/* Trust Badge: Packed with Care in Anantnag */}
+              <div className="bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 rounded-xl p-2.5 flex items-center space-x-2.5">
+                <span className="text-xl">🏔️</span>
+                <div className="text-[11px] leading-tight">
+                  <span className="font-extrabold text-white block">Packed with Care in Anantnag</span>
+                  <span className="text-white/60">100% verified local fulfillment at DASHit Dark Store</span>
+                </div>
+              </div>
+
+              {/* Action Buttons: WhatsApp Share & Print Bag Slip */}
+              <div className="flex items-center space-x-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticLight();
+                    const text = encodeURIComponent(`Tracking my DASHit order #${formatDisplayId(targetOrderId)} in Anantnag! Arriving in ${telemetry.etaMinutes || 8} mins. Track live here: https://dashit.co.in/track?id=${targetOrderId}`);
+                    window.open(`https://wa.me/?text=${text}`, "_blank");
+                  }}
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 border border-[#25D366]/30 text-[#25D366] text-xs font-bold flex items-center justify-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share on WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticLight();
+                    window.print();
+                  }}
+                  className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white/90 text-xs font-bold flex items-center justify-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+                  title="Print bag slip"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Slip</span>
+                </button>
               </div>
             </div>
           )}

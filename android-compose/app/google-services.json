@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "391742831837-nmp1eusapt0utfmldjjcnap0h3ha8km8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dashit.app",
+            "certificate_hash": "795ba28d0ccdd3911e0658d3f469e8b396e654ee"
+          }
+        },
+        {
           "client_id": "391742831837-qumo204m72gteinaj8l1sbo4knlr92k5.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

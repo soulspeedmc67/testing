@@ -16,7 +16,6 @@ const AISLES = [
   { cat: "Chicken & Fish", label: "Chicken & fish", icon: Utensils },
   { cat: "Meat & Fish", label: "Chicken & fish", icon: Utensils },
   { cat: "Bakery", label: "Bread & bakery", icon: Croissant },
-  { cat: "Vegetables", label: "Vegetables", icon: Carrot },
   { cat: "Fruits", label: "Fruits", icon: Apple },
   { cat: "Snacks", label: "Snacks", icon: Popcorn },
   { cat: "Chips", label: "Chips", icon: Popcorn },
@@ -38,6 +37,7 @@ const AISLES = [
   { cat: "Stationery", label: "Stationery", icon: Pencil },
   { cat: "Electronics", label: "Electronics", icon: Plug },
   { cat: "Toys & Games", label: "Toys & games", icon: Gamepad2 },
+  { cat: "Vegetables", label: "Vegetables", icon: Carrot },
 ];
 
 /** Words that make a good cover photo for an aisle (its first product may not be typical). */
@@ -98,9 +98,9 @@ export function buildAisles(products = []) {
   const order = [...AISLES, ...extra, { cat: "Others", ...OTHER }];
 
   return order
-    .filter((a) => byCat.has(a.cat))
+    .filter((a) => (byCat.has(a.cat) && a.cat !== "Vegetables") || a.cat === "Vegetables")
     .map((a) => {
-      const items = byCat.get(a.cat);
+      const items = a.cat === "Vegetables" ? [] : (byCat.get(a.cat) || []);
       const stocked = items.filter((p) => photoOf(p) && !isSoldOut(p));
       const rail = stocked.slice(0, RAIL_SIZE);
       // A typical item for the cover, on the shop's own white packshots if there is one.

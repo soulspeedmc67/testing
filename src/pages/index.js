@@ -8,7 +8,7 @@ import { hapticLight } from "../lib/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import { stagger, fadeUp, inViewOnce, EASE_OUT } from "../lib/motion";
 import { LAUNCH_AT, LAUNCH_LABEL, APK_URL, isBeforeLaunch } from "../lib/launch";
-import { X, Menu, Sun, Moon, ArrowRight, MapPin, Wallet, Truck, Download } from "lucide-react";
+import { X, Menu, Sun, Moon, ArrowRight, MapPin, Wallet, Truck, Download, Plus, Check, Sparkles } from "lucide-react";
 
 const DELIVERY_STEPS = [
   {
@@ -56,6 +56,60 @@ const SHELVES = [
   { name: "Instant food", img: "instant-food", alt: "Wai Wai noodles cup", cat: "Instant Food" },
   { name: "Ice cream", img: "ice-cream", alt: "Cornetto cone", cat: "Ice Cream" },
   { name: "Sweets & chocolates", img: "sweets", alt: "Toblerone Tiny Mix", cat: "Sweets & Chocolates" },
+];
+
+/** Top local essentials in high demand across Anantnag */
+const POPULAR_ANANTNAG_ITEMS = [
+  {
+    id: "CSV-amul-taaza-milk-paj5ea",
+    name: "Amul Taaza Toned Fresh Milk",
+    unit: "500 ml",
+    price: 27,
+    mrp: 28,
+    img: "/landing/shelves/dairy.webp",
+    badge: "Daily Essential",
+    tag: "10 mins",
+  },
+  {
+    id: "local-kashmiri-lavas-bread",
+    name: "Fresh Kashmiri Lavas Bread",
+    unit: "4 pcs",
+    price: 30,
+    mrp: 40,
+    img: "/landing/shelves/biscuits.webp",
+    badge: "Hot Local Bake",
+    tag: "10 mins",
+  },
+  {
+    id: "CSV-aashirvad-atta-if2zuq",
+    name: "Aashirvaad Sharbati Whole Atta",
+    unit: "5 kg",
+    price: 260,
+    mrp: 290,
+    img: "/landing/shelves/staples.webp",
+    badge: "100% MP Wheat",
+    tag: "10 mins",
+  },
+  {
+    id: "CSV-maggi-2minute-noodles-2wsyf6",
+    name: "Maggi 2-Minute Masala Noodles",
+    unit: "4 x 70 g",
+    price: 56,
+    mrp: 60,
+    img: "/landing/shelves/instant-food.webp",
+    badge: "Family Pack",
+    tag: "10 mins",
+  },
+  {
+    id: "lays-magic-masala-chips",
+    name: "Lay's India's Magic Masala Chips",
+    unit: "50 g",
+    price: 20,
+    mrp: 20,
+    img: "/landing/shelves/snacks.webp",
+    badge: "Crispy Classic",
+    tag: "10 mins",
+  },
 ];
 
 /** A small caps label with a leading rule. */
@@ -196,6 +250,30 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [beforeLaunch, setBeforeLaunch] = useState(true);
+  const [addedIds, setAddedIds] = useState({});
+
+  const handleQuickAdd = (item, e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    try {
+      hapticLight();
+      const savedCart = JSON.parse(localStorage.getItem("dashit_cart") || "[]");
+      const pId = String(item.id);
+      const existing = savedCart.find((i) => String(i.id || i.barcode) === pId);
+      let nextCart;
+      if (existing) {
+        nextCart = savedCart.map((i) => (String(i.id || i.barcode) === pId ? { ...i, qty: (i.qty || 1) + 1 } : i));
+      } else {
+        nextCart = [...savedCart, { ...item, id: pId, qty: 1 }];
+      }
+      localStorage.setItem("dashit_cart", JSON.stringify(nextCart));
+      window.dispatchEvent(new Event("dashit_cart_updated"));
+      setAddedIds((prev) => ({ ...prev, [pId]: true }));
+      setTimeout(() => {
+        setAddedIds((prev) => ({ ...prev, [pId]: false }));
+      }, 2000);
+    } catch (err) {}
+  };
 
   useEffect(() => {
     if (isNative() || (typeof window !== "undefined" && Boolean(window.__DASHIT_ROLE__))) setIsAppClient(true);
@@ -390,6 +468,115 @@ export default function LandingPage() {
             <div className="relative w-[236px] sm:w-[290px] xl:w-[300px] mt-2 mb-9">
               <PhoneFrame />
             </div>
+          </div>
+        </section>
+
+        {/* Popular Right Now in Anantnag Shelf */}
+        <section className="mb-14 sm:mb-20">
+          <div className="flex items-end justify-between mb-5 sm:mb-6">
+            <div>
+              <Eyebrow>In High Demand</Eyebrow>
+              <h2 className="mt-2 font-display text-[26px] sm:text-[32px] font-extrabold tracking-tight text-[#061838] dark:text-white flex items-center gap-2">
+                Popular Right Now in Anantnag <span className="text-[#FF5B00]">⚡</span>
+              </h2>
+              <p className="mt-1 text-[13.5px] sm:text-[14.5px] text-slate-500 dark:text-slate-400">
+                Daily local staples and family favorites delivered to your door in 10 minutes.
+              </p>
+            </div>
+            <Link
+              href="/shop"
+              className="hidden sm:inline-flex items-center gap-1.5 text-[14px] font-bold text-[#FF5B00] hover:text-[#E04E00] transition-colors"
+            >
+              See all in shop <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="relative -mx-5 px-5 sm:mx-0 sm:px-0">
+            <div className="flex sm:grid sm:grid-cols-5 gap-3.5 sm:gap-4 overflow-x-auto pb-4 pt-1 no-scrollbar snap-x snap-mandatory">
+              {POPULAR_ANANTNAG_ITEMS.map((item) => {
+                const isAdded = Boolean(addedIds[item.id]);
+                return (
+                  <div
+                    key={item.id}
+                    className="w-[210px] sm:w-auto shrink-0 snap-start rounded-2xl bg-white dark:bg-[#12161F] border border-[#EDE8DD] dark:border-slate-800 p-3.5 flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-[#D9D1BF] dark:hover:border-slate-700"
+                  >
+                    <div>
+                      {/* Thumbnail & Badges */}
+                      <div className="relative aspect-square rounded-xl bg-slate-50 dark:bg-white/[0.04] p-2 flex items-center justify-center overflow-hidden">
+                        <span className="absolute top-2 left-2 z-10 text-[9.5px] font-extrabold uppercase tracking-wide bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
+                          ⚡ {item.tag}
+                        </span>
+                        <img
+                          src={item.img}
+                          alt={item.name}
+                          width={240}
+                          height={240}
+                          loading="lazy"
+                          className="w-full h-full object-contain p-1 transition-transform duration-300 hover:scale-105"
+                        />
+                      </div>
+
+                      {/* Product Details */}
+                      <span className="mt-2.5 block text-[11px] font-bold text-[#FF5B00] tracking-wide uppercase">
+                        {item.badge}
+                      </span>
+                      <h3 className="text-[13.5px] font-bold text-[#061838] dark:text-white line-clamp-2 leading-snug mt-0.5">
+                        {item.name}
+                      </h3>
+                      <span className="text-[12px] font-medium text-slate-400 block mt-1">
+                        {item.unit}
+                      </span>
+                    </div>
+
+                    {/* Price and Add button */}
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[15px] font-extrabold text-[#061838] dark:text-white">
+                          ₹{item.price}
+                        </span>
+                        {item.mrp > item.price && (
+                          <span className="ml-1.5 text-[11px] font-medium text-slate-400 line-through">
+                            ₹{item.mrp}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleQuickAdd(item, e)}
+                          className={`h-8 px-3 rounded-lg text-[12px] font-bold transition-all flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer ${
+                            isAdded
+                              ? "bg-emerald-600 text-white"
+                              : "bg-[#FF5B00] hover:bg-[#E04E00] text-white"
+                          }`}
+                          aria-label={`Add ${item.name} to cart`}
+                        >
+                          {isAdded ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" /> Added
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" /> Add
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-3 text-center sm:hidden">
+            <Link
+              href="/shop"
+              className="inline-flex items-center gap-1.5 text-[13px] font-bold text-[#FF5B00]"
+            >
+              Browse all items in store <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </section>
 

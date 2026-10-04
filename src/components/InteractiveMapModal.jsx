@@ -427,29 +427,51 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
           <div>
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
-              House / Flat / Floor / Building
+              Building / Mohalla / House No.
             </label>
             <input
               type="text"
               value={houseNumber}
               onChange={(e) => setHouseNumber(e.target.value)}
-              placeholder="e.g. Flat 3B, Rose Villa, 2nd Floor"
+              placeholder="e.g. Sheerpora Mohalla, Rose Villa"
               maxLength={80}
               className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
             />
           </div>
           <div>
             <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
-              Landmark / Nearby Place
+              Prominent Landmark
             </label>
             <input
               type="text"
               value={landmark}
               onChange={(e) => setLandmark(e.target.value)}
-              placeholder="e.g. Near Jamia Masjid, Opp. SBI"
+              placeholder="e.g. Near Jamia Masjid, Opp. J&K Bank"
               maxLength={80}
               className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
             />
+            {/* Quick Landmark Chips */}
+            <div className="flex flex-wrap gap-1.5 pt-1.5">
+              {[
+                { label: "🕌 Masjid", prefix: "Near Jamia Masjid" },
+                { label: "🏫 School", prefix: "Near Govt School" },
+                { label: "🏥 Hospital", prefix: "Near Hospital" },
+                { label: "🏬 Chowk", prefix: "Near Main Chowk" },
+                { label: "🏧 Bank / ATM", prefix: "Near J&K Bank / ATM" },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => {
+                    hapticLight();
+                    setLandmark(chip.prefix);
+                  }}
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-[#FF5B00] border border-slate-200 text-slate-600 transition-colors active:scale-95 cursor-pointer dark:bg-surface-muted dark:border-line dark:text-content-secondary"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

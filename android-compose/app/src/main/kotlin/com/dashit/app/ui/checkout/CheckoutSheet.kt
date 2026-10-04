@@ -134,6 +134,11 @@ fun CheckoutSheet(
             errorMessage = "Your cart is empty."
             return
         }
+        if (com.dashit.app.data.LaunchGate.isBeforeLaunch) {
+            errorMessage = "We start delivering on Monday, 5 Oct at 10:00 AM. You can explore products and build your cart now."
+            HapticsManager.warning(view)
+            return
+        }
         val store = StoreStatus.state.value
         if (!store.isOpen) {
             errorMessage = "The store is closed right now. ${store.closeReason}".trim()
@@ -373,6 +378,28 @@ fun CheckoutSheet(
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)
                         )
                     }
+                    if (com.dashit.app.data.LaunchGate.isBeforeLaunch) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(DashitColors.BrandOrange.copy(alpha = 0.12f))
+                                .border(1.dp, DashitColors.BrandOrange.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = "🚀 Deliveries begin Monday, 5 Oct at 10:00 AM IST in Anantnag. Feel free to browse and prepare your cart!",
+                                color = DashitColors.BrandOrange,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                lineHeight = 17.sp
+                            )
+                        }
+                    }
+
+                    val isLaunchLocked = com.dashit.app.data.LaunchGate.isBeforeLaunch
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -384,9 +411,23 @@ fun CheckoutSheet(
                                 .fillMaxWidth()
                                 .height(58.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isSubmitting) DashitColors.SurfaceMuted else DashitColors.BrandOrange)
-                                .pressable(scale = 0.98f) {
-                                    if (!isSubmitting) {
+                                .background(
+                                    when {
+                                        isSubmitting -> DashitColors.SurfaceMuted
+                                        isLaunchLocked -> DashitColors.SurfaceRaised
+                                        else -> DashitColors.BrandOrange
+                                    }
+                                )
+                                .border(
+                                    width = if (isLaunchLocked) 1.dp else 0.dp,
+                                    color = if (isLaunchLocked) DashitColors.BrandOrange.copy(alpha = 0.4f) else Color.Transparent,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
+                                .pressable(scale = if (isLaunchLocked) 1f else 0.98f) {
+                                    if (isLaunchLocked) {
+                                        HapticsManager.warning(view)
+                                        errorMessage = "Orders open on Monday, 5 Oct at 10:00 AM. Cart items are saved."
+                                    } else if (!isSubmitting) {
                                         val customer = signedInUser
                                         if (customer == null || customer.name.isNullOrBlank() || customer.mobile.isBlank()) {
                                             // Orders need a signed-in shopper with a name and a number the rider can call.
@@ -419,11 +460,12 @@ fun CheckoutSheet(
                             } else {
                                 Text(
                                     text = when {
+                                        isLaunchLocked -> com.dashit.app.data.LaunchGate.LAUNCH_LABEL
                                         !paysOnline -> "Place order · ₹${bill.grandTotal.toInt()} cash"
                                         payOption?.upiApp != null -> "Pay ₹${bill.grandTotal.toInt()} with ${payOption.title}"
                                         else -> "Pay ₹${bill.grandTotal.toInt()}"
                                     },
-                                    color = Color.White,
+                                    color = if (isLaunchLocked) DashitColors.BrandOrange else Color.White,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )

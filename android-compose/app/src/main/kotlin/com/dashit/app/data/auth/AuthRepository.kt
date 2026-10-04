@@ -1,6 +1,8 @@
 package com.dashit.app.data.auth
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.SharedPreferences
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
@@ -88,25 +90,48 @@ object AuthRepository {
      * it) and returns the account's profile, which has no number yet the first
      * time. Null if the sheet was closed.
      */
-    suspend fun signInWithGoogle(activity: Context): UserProfile? {
+    private fun Context.findActivity(): Activity? {
+        var ctx = this
+        while (ctx is ContextWrapper) {
+            if (ctx is Activity) return ctx
+            ctx = ctx.baseContext
+        }
+        return null
+    }
+
+    suspend fun signInWithGoogle(context: Context): UserProfile? {
+        val activity = context.findActivity() ?: context
         val failed = "Google sign-in didn't complete. Please try again."
-        val option = GetSignInWithGoogleOption.Builder(activity.getString(R.string.default_web_client_id)).build()
+        val webClientId = activity.getString(R.string.default_web_client_id)
+        val option = GetSignInWithGoogleOption.Builder(webClientId).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
         val credential = try {
             CredentialManager.create(activity).getCredential(activity, request).credential
         } catch (e: GetCredentialCancellationException) {
+            android.util.Log.d("DashitAuth", "User cancelled Google sign-in")
             return null
         } catch (e: GetCredentialException) {
+            android.util.Log.e("DashitAuth", "CredentialManager getCredential failed: ${e.type} ${e.message}", e)
+            throw SignInException(failed)
+        } catch (e: Exception) {
+            android.util.Log.e("DashitAuth", "CredentialManager unexpected error: ${e.message}", e)
             throw SignInException(failed)
         }
         if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            android.util.Log.e("DashitAuth", "Unexpected credential type: ${credential.type}")
             throw SignInException(failed)
         }
-        val google = runCatching { GoogleIdTokenCredential.createFrom(credential.data) }.getOrNull()
-            ?: throw SignInException(failed)
-        val user = runCatching {
+        val google = runCatching { GoogleIdTokenCredential.createFrom(credential.data) }
+            .onFailure { android.util.Log.e("DashitAuth", "Failed to parse GoogleIdTokenCredential", it) }
+            .getOrNull() ?: throw SignInException(failed)
+
+        val user = try {
             auth.signInWithCredential(GoogleAuthProvider.getCredential(google.idToken, null)).await().user
-        }.getOrNull() ?: throw SignInException(OFFLINE)
+        } catch (e: Exception) {
+            android.util.Log.e("DashitAuth", "FirebaseAuth signInWithCredential failed: ${e.message}", e)
+            throw SignInException(OFFLINE)
+        } ?: throw SignInException(OFFLINE)
+
         val profile = try {
             ensureUserProfile(
                 uid = user.uid,
@@ -114,6 +139,7 @@ object AuthRepository {
                 email = user.email ?: google.id
             )
         } catch (e: Exception) {
+            android.util.Log.e("DashitAuth", "ensureUserProfile failed: ${e.message}", e)
             throw SignInException("We couldn't sign you in. Check your connection and try again.")
         }
         save(profile)

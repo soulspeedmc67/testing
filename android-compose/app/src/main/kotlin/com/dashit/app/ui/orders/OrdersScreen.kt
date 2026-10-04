@@ -261,6 +261,24 @@ private fun OrderCard(
             )
         }
 
+        if (order.status == OrderStatus.CANCELLED) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(DashitColors.Danger.copy(alpha = 0.1f))
+                    .border(1.dp, DashitColors.Danger.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Reason: ${order.rejectionReason?.takeIf { it.isNotBlank() } ?: "Cancelled by customer/store"}",
+                    color = DashitColors.Danger,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxWidth()

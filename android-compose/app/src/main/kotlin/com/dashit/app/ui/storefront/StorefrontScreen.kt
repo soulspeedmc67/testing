@@ -49,26 +49,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Cake
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.Celebration
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Coffee
-import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Kitchen
-import androidx.compose.material.icons.filled.LocalDrink
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.ShoppingBasket
-import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -1104,17 +1085,35 @@ private fun CategoryTabsRow(
 }
 
 private fun getCategoryIcon(name: String): ImageVector {
-    return when (name.lowercase()) {
-        "all" -> Icons.Default.ShoppingBag
-        "ganeshotsav", "seasonal" -> Icons.Default.Celebration
-        "electronics" -> Icons.Default.Headphones
-        "beauty" -> Icons.Default.Spa
-        "gifting" -> Icons.Default.CardGiftcard
-        "dairy", "dairy, bread & eggs" -> Icons.Default.Coffee
-        "snacks" -> Icons.Default.Fastfood
-        "drinks & juices", "drinks" -> Icons.Default.LocalDrink
-        "vegetables & fruits", "vegetables" -> Icons.Default.Eco
-        "sweets & chocolates", "bakery" -> Icons.Default.Cake
+    val clean = name.lowercase().trim()
+    return when {
+        clean == "all" -> Icons.Default.ShoppingBag
+        clean.contains("fruit") -> Icons.Default.LocalFlorist
+        clean.contains("staple") || clean.contains("atta") || clean.contains("rice") || clean.contains("dal") -> Icons.Default.Grain
+        clean.contains("biscuit") || clean.contains("cookie") -> Icons.Default.Cookie
+        clean.contains("bakery") || clean.contains("bread") -> Icons.Default.BakeryDining
+        clean.contains("snack") || clean.contains("chip") || clean.contains("namkeen") -> Icons.Default.Fastfood
+        clean.contains("drink") || clean.contains("juice") || clean.contains("beverage") -> Icons.Default.LocalDrink
+        clean.contains("tea") || clean.contains("coffee") -> Icons.Default.Coffee
+        clean.contains("dairy") || clean.contains("milk") || clean.contains("egg") -> Icons.Default.Egg
+        clean.contains("instant") || clean.contains("maggi") || clean.contains("noodle") -> Icons.Default.RamenDining
+        clean.contains("chicken") || clean.contains("meat") || clean.contains("fish") -> Icons.Default.SetMeal
+        clean.contains("sweet") || clean.contains("chocolate") || clean.contains("candy") -> Icons.Default.Cake
+        clean.contains("ice cream") -> Icons.Default.Icecream
+        clean.contains("spice") || clean.contains("masala") -> Icons.Default.Whatshot
+        clean.contains("sauce") || clean.contains("spread") -> Icons.Default.WaterDrop
+        clean.contains("dry fruit") || clean.contains("nut") -> Icons.Default.Forest
+        clean.contains("personal") || clean.contains("beauty") || (clean.contains("care") && !clean.contains("home") && !clean.contains("baby") && !clean.contains("pet")) -> Icons.Default.Spa
+        clean.contains("home") || clean.contains("clean") -> Icons.Default.CleaningServices
+        clean.contains("kitchen") -> Icons.Default.Kitchen
+        clean.contains("baby") -> Icons.Default.ChildCare
+        clean.contains("pet") -> Icons.Default.Pets
+        clean.contains("stationery") || clean.contains("book") -> Icons.Default.Edit
+        clean.contains("electronic") || clean.contains("appliance") -> Icons.Default.Bolt
+        clean.contains("toy") || clean.contains("game") -> Icons.Default.SportsEsports
+        clean.contains("vegetable") || clean.contains("veggie") -> Icons.Default.Eco
+        clean.contains("gift") -> Icons.Default.CardGiftcard
+        clean.contains("season") || clean.contains("festival") -> Icons.Default.Celebration
         else -> Icons.Default.GridView
     }
 }

@@ -263,7 +263,7 @@ service cloud.firestore {
         );
 
       // Orders are business records — nobody deletes them from a client.
-      allow delete: if false;
+      allow delete: if isAdmin();
 
       /* Live rider position. The customer watching their delivery reads it; only
          the rider actually assigned to this order (or an admin) writes it, so

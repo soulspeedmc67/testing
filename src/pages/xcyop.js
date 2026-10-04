@@ -68,6 +68,8 @@ import {
   deductInventoryForOrder,
   watchStoreConfig,
   setStoreConfig,
+  clearAllOrders,
+  clearAllStock,
   assignDriver,
   watchDistributors,
   upsertDistributor,
@@ -550,6 +552,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   // Tabs: "orders" | "inventory" | "add-product" | "batch-inward" | "catalogue" | "csv" | "catalog-pick" | "offers" | "importer" | "enricher" | "settings"
   const [activeTab, setActiveTab] = useState("orders");
   const [isStoreOpen, setIsStoreOpen] = useState(true);
+  const [weatherAlert, setWeatherAlert] = useState(null);
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
@@ -897,6 +900,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           }
           if (cfg.businessGstInfo) {
             setBusinessGstInfo((prev) => ({ ...prev, ...cfg.businessGstInfo }));
+          }
+          if (cfg.weatherAlert !== undefined) {
+            setWeatherAlert(cfg.weatherAlert);
           }
         }
       });
@@ -2037,6 +2043,21 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           soundEnabled={soundEnabled}
           onToggleSound={() => setSoundEnabled(!soundEnabled)}
           onTestChime={handleTestChime}
+          weatherAlert={weatherAlert}
+          onSaveWeatherAlert={async (alert) => {
+            await setStoreConfig({ weatherAlert: alert });
+            setWeatherAlert(alert);
+            showToast("Delivery weather notice updated.");
+          }}
+          onClearAllOrders={async () => {
+            const res = await clearAllOrders();
+            setOrders([]);
+            showToast(res.count > 0 ? `Deleted ${res.count} test orders.` : "Test orders wiped.");
+          }}
+          onResetAllStock={async () => {
+            const res = await clearAllStock(catalogue);
+            showToast(`Stock reset to 0 across ${res.count || catalogue.length} products.`);
+          }}
           darkMode={darkMode}
         />
       )}

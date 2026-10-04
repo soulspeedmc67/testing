@@ -368,7 +368,13 @@ private fun OrderStageScreen(
                 TrackingCardSkeleton()
             } else {
                 val seconds = rememberModifySecondsRemaining(order)
-                OrderStageHero(stage = order.status, isAwaitingPickup = order.isAwaitingPickup, canStillChange = seconds > 0, canAddItems = !order.isPaidOnline)
+                OrderStageHero(
+                    stage = order.status,
+                    isAwaitingPickup = order.isAwaitingPickup,
+                    canStillChange = seconds > 0,
+                    canAddItems = !order.isPaidOnline,
+                    rejectionReason = order.rejectionReason
+                )
                 OrderCard(
                     order = order,
                     rider = null,
@@ -390,7 +396,13 @@ private fun OrderStageScreen(
  * happening in plain words. Same icon and timing as the iOS app.
  */
 @Composable
-private fun OrderStageHero(stage: OrderStatus, isAwaitingPickup: Boolean, canStillChange: Boolean, canAddItems: Boolean) {
+private fun OrderStageHero(
+    stage: OrderStatus,
+    isAwaitingPickup: Boolean,
+    canStillChange: Boolean,
+    canAddItems: Boolean,
+    rejectionReason: String? = null
+) {
     val (title, subtitle) = if (isAwaitingPickup) {
         "Picking up your order" to "Your rider is collecting it from the store. The countdown starts when they set off."
     } else when (stage) {
@@ -401,7 +413,11 @@ private fun OrderStageHero(stage: OrderStatus, isAwaitingPickup: Boolean, canSti
         }
         OrderStatus.PACKING -> "Packing your order" to
             "Your items are being picked and packed. The map opens as soon as a rider is on the way."
-        OrderStatus.CANCELLED -> "Order cancelled" to "This order won't be delivered."
+        OrderStatus.CANCELLED -> {
+            val headline = if (!rejectionReason.isNullOrBlank()) "Order rejected by store" else "Order cancelled"
+            val sub = if (!rejectionReason.isNullOrBlank()) "Reason: $rejectionReason" else "This order won't be delivered."
+            headline to sub
+        }
         else -> stage.headline(null) to ""
     }
     val iconKind = when (stage) {
@@ -541,6 +557,34 @@ private fun OrderCard(
         }
 
         OrderProgressRail(stage = stage, progress = stage.progress(routeProgress.percentDone ?: rider?.progress))
+
+        if (stage == OrderStatus.CANCELLED) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(DashitColors.Danger.copy(alpha = 0.12f))
+                    .border(1.dp, DashitColors.Danger.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    .padding(12.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        "CANCELLATION REASON",
+                        color = DashitColors.Danger,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
+                    )
+                    Text(
+                        order.rejectionReason?.takeIf { it.isNotBlank() }
+                            ?: "This order was cancelled and will not be delivered.",
+                        color = Color.White,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
 
         val code = order.otp
         if (!stage.isFinished && !code.isNullOrEmpty()) DeliveryCodeRow(code)

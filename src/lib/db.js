@@ -848,6 +848,47 @@ export async function bulkUpdateProductStock(stockUpdates = [], options = {}) {
 }
 
 /**
+ * Admin action: Resets stock to 0 for all products.
+ * Updates local catalog/mirror and batches setDoc on Firestore /products/{id} with stock: 0, inStock: false.
+ * @param {Array} [products] List of product objects or IDs. If omitted, attempts to use cached catalog products.
+ * @param {{ onProgress?: (done: number, total: number) => void }} [options]
+ */
+export async function clearAllStock(products = null, options = {}) {
+  let targetProducts = products;
+  if (!targetProducts || targetProducts.length === 0) {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("dashit_products_cache");
+        if (cached) targetProducts = JSON.parse(cached);
+      } catch (e) {}
+    }
+  }
+
+  if (!targetProducts || targetProducts.length === 0) {
+    return { success: false, count: 0, message: "No products available to reset." };
+  }
+
+  const stockUpdates = targetProducts
+    .map((p) => {
+      const id = String(p.id || p.barcode || "");
+      if (!id) return null;
+      return {
+        id,
+        newStock: 0,
+        calculatedStock: 0,
+        product: {
+          stock: 0,
+          inStock: false,
+          active: true,
+        },
+      };
+    })
+    .filter(Boolean);
+
+  return await bulkUpdateProductStock(stockUpdates, options);
+}
+
+/**
  * Deduct inventory for items in an order when shipped/out for delivery.
  */
 export async function deductInventoryForOrder(orderId, items = []) {
@@ -2065,6 +2106,70 @@ export async function updateOrderContent(orderId, updatedFields = {}) {
     console.warn("Firestore updateOrderContent sync note:", err?.message || err);
     return { success: false, localUpdated: true, firestoreSynced: false, error: err?.message };
   }
+}
+
+/**
+ * Admin action: Permanently deletes orders (test orders).
+ * Clears Firestore orders documents in batches, and purges localStorage test order mirrors.
+ * @param {string[]} [orderIds] Optional specific list of IDs. If omitted, queries existing orders.
+ */
+export async function clearAllOrders(orderIds = null) {
+  const db = getDb();
+  let deletedCount = 0;
+
+  // 1. Purge local storage mirrors immediately
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem("dashit_orders_history");
+      localStorage.removeItem("dashit_active_order");
+      window.dispatchEvent(new Event("dashit_orders_updated"));
+    } catch (e) {}
+  }
+
+  // 2. Batch delete from Firestore
+  if (db) {
+    let idsToDelete = Array.isArray(orderIds) && orderIds.length > 0 ? [...orderIds] : null;
+
+    if (!idsToDelete) {
+      try {
+        const snap = await getDocs(query(collection(db, "orders"), limit(500)));
+        idsToDelete = snap.docs.map((d) => d.id);
+      } catch (err) {
+        console.warn("clearAllOrders getDocs warning:", err?.message);
+        idsToDelete = [];
+      }
+    }
+
+    if (idsToDelete && idsToDelete.length > 0) {
+      const chunks = [];
+      for (let i = 0; i < idsToDelete.length; i += 450) {
+        chunks.push(idsToDelete.slice(i, i + 450));
+      }
+      for (const chunk of chunks) {
+        try {
+          const batch = writeBatch(db);
+          chunk.forEach((id) => {
+            batch.delete(doc(db, "orders", id));
+          });
+          await batch.commit();
+          deletedCount += chunk.length;
+        } catch (err) {
+          console.warn("clearAllOrders batch commit warning:", err?.message);
+          // Retry one by one if batch failed
+          for (const id of chunk) {
+            try {
+              await deleteDoc(doc(db, "orders", id));
+              deletedCount += 1;
+            } catch (singleErr) {
+              console.warn("clearAllOrders single delete error:", singleErr?.message);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return { success: true, count: deletedCount };
 }
 
 /** Driver claims an unassigned order. */

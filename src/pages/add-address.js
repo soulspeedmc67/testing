@@ -9,6 +9,8 @@ export default function AddAddressPage() {
   const [city, setCity] = useState("");
   const [area, setArea] = useState("");
   const [completeAddress, setCompleteAddress] = useState("");
+  const [mohalla, setMohalla] = useState("");
+  const [landmark, setLandmark] = useState("");
   const [mapsLink, setMapsLink] = useState("");
   const [contactType, setContactType] = useState("Someone else");
   const [receiverName, setReceiverName] = useState("");
@@ -25,7 +27,9 @@ export default function AddAddressPage() {
     // Save address in localStorage
     const saved = {
       nickname: addressLabel || "Home",
-      address: [completeAddress, area, city].filter(Boolean).join(", "),
+      address: [completeAddress, mohalla, landmark ? `Near ${landmark.replace(/^Near\s+/i, '')}` : "", area, city].filter(Boolean).join(", "),
+      mohalla,
+      landmark,
       lat: 33.748413,
       lng: 75.150839,
       phone: phone || "",
@@ -110,8 +114,50 @@ export default function AddAddressPage() {
               />
             </div>
             <p className="text-[10px] text-slate-400 font-medium mt-1 ml-2 dark:text-content-faint">
-              Example: A-504, Shanti Heights, Near Bus Stand
+              Example: House No. 12, Sheerpora
             </p>
+          </div>
+
+          {/* Building / Mohalla */}
+          <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
+            <input
+              type="text"
+              placeholder="Building / Mohalla / Floor"
+              value={mohalla}
+              onChange={(e) => setMohalla(e.target.value)}
+              className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none dark:text-content dark:placeholder-content-faint"
+            />
+          </div>
+
+          {/* Prominent Landmark with Quick Chips */}
+          <div className="space-y-1.5">
+            <div className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-3 focus-within:border-[#FF5B00] focus-within:bg-white transition-all dark:bg-surface-muted/60 dark:border-line/90 dark:focus-within:bg-surface-overlay">
+              <input
+                type="text"
+                placeholder="Prominent landmark (e.g. Near Jamia Masjid)"
+                value={landmark}
+                onChange={(e) => setLandmark(e.target.value)}
+                className="w-full bg-transparent text-xs font-bold text-slate-900 placeholder-slate-400 focus:outline-none dark:text-content dark:placeholder-content-faint"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5 px-1">
+              {[
+                { label: "🕌 Masjid", prefix: "Near Jamia Masjid" },
+                { label: "🏫 School", prefix: "Near Govt School" },
+                { label: "🏥 Hospital", prefix: "Near Hospital" },
+                { label: "🏬 Chowk", prefix: "Near Main Chowk" },
+                { label: "🏧 Bank / ATM", prefix: "Near J&K Bank / ATM" },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setLandmark(chip.prefix)}
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-[#FF5B00] border border-slate-200 text-slate-600 transition-colors active:scale-95 cursor-pointer dark:bg-surface-muted dark:border-line dark:text-content-secondary"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Google Maps Link (optional) */}

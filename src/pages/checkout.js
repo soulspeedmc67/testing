@@ -39,6 +39,7 @@ import { payOnline } from "../lib/razorpayWeb";
 import { hasLiveSession, finishRedirectSignIn, readShopper } from "../lib/shopperAuth";
 import { isBeforeLaunch, LAUNCH_LABEL } from "../lib/launch";
 import { getStaffRole } from "../lib/auth";
+import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 
 // Suggestions come from the everyday aisles only, never the unsorted shelf.
 const EVERYDAY_AISLES = new Set([
@@ -846,6 +847,7 @@ export default function CheckoutPage() {
           router.push(targetId ? `/track?id=${targetId}` : "/track");
         }}
       />
+      <WhatsAppSupportButton bottomOffset="bottom-32 sm:bottom-10" />
     </div>
   );
 }

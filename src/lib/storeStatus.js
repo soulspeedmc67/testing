@@ -22,17 +22,23 @@ export function useStoreDetails() {
      different tree than the prerendered HTML, and React responded by discarding
      the server markup and client-rendering the entire page. The cached value is
      picked up in the effect below instead, one tick later. */
-  const [details, setDetails] = useState({ isOpen: true, closeReason: "" });
+  const [details, setDetails] = useState({ isOpen: true, closeReason: "", weatherAlert: null });
 
   useEffect(() => {
     // Adopt the cached status as soon as we are past hydration.
     try {
       const cachedOpen = localStorage.getItem("dashit_store_open");
       const cachedReason = localStorage.getItem("dashit_store_close_reason");
-      if (cachedOpen !== null || cachedReason) {
+      const cachedWeather = localStorage.getItem("dashit_store_weather_alert");
+      let weather = null;
+      if (cachedWeather) {
+        try { weather = JSON.parse(cachedWeather); } catch (e) {}
+      }
+      if (cachedOpen !== null || cachedReason || weather) {
         setDetails({
           isOpen: cachedOpen !== null ? JSON.parse(cachedOpen) !== false : true,
           closeReason: cachedReason || "Night hours — reopening tomorrow at 7:00 AM",
+          weatherAlert: weather,
         });
       }
     } catch (e) {}
@@ -40,13 +46,19 @@ export function useStoreDetails() {
 
   useEffect(() => {
     const handleStorage = (e) => {
-      if (e.key === "dashit_store_open" || e.key === "dashit_store_close_reason") {
+      if (e.key === "dashit_store_open" || e.key === "dashit_store_close_reason" || e.key === "dashit_store_weather_alert") {
         try {
           const cachedOpen = localStorage.getItem("dashit_store_open");
           const cachedReason = localStorage.getItem("dashit_store_close_reason");
+          const cachedWeather = localStorage.getItem("dashit_store_weather_alert");
+          let weather = null;
+          if (cachedWeather) {
+            try { weather = JSON.parse(cachedWeather); } catch (e) {}
+          }
           setDetails({
             isOpen: cachedOpen !== null ? JSON.parse(cachedOpen) !== false : true,
             closeReason: cachedReason || "Night hours — reopening tomorrow at 7:00 AM",
+            weatherAlert: weather,
           });
         } catch (err) {}
       }
@@ -57,6 +69,7 @@ export function useStoreDetails() {
         setDetails((prev) => ({
           isOpen: typeof e.detail.isOpen === "boolean" ? e.detail.isOpen : prev.isOpen,
           closeReason: e.detail.closeReason || prev.closeReason,
+          weatherAlert: e.detail.weatherAlert !== undefined ? e.detail.weatherAlert : prev.weatherAlert,
         }));
       }
     };
@@ -70,11 +83,15 @@ export function useStoreDetails() {
         if (cfg) {
           const isOpen = typeof cfg.isOpen === "boolean" ? cfg.isOpen : true;
           const closeReason = cfg.closeReason || "Night hours — reopening tomorrow at 7:00 AM";
-          setDetails({ isOpen, closeReason });
+          const weatherAlert = cfg.weatherAlert || null;
+          setDetails({ isOpen, closeReason, weatherAlert });
           try {
             localStorage.setItem("dashit_store_open", JSON.stringify(isOpen));
             if (cfg.closeReason) {
               localStorage.setItem("dashit_store_close_reason", cfg.closeReason);
+            }
+            if (cfg.weatherAlert !== undefined) {
+              localStorage.setItem("dashit_store_weather_alert", JSON.stringify(cfg.weatherAlert));
             }
           } catch (err) {}
         }

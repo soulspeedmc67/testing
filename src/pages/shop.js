@@ -23,6 +23,8 @@ import { useStoreDetails } from "../lib/storeStatus";
 import { hapticMedium } from "../lib/haptics";
 import { stagger, fadeUp, fadeUpTight, inViewOnce, EASE_OUT, SPRING_SNAPPY, TAP_SOFT } from "../lib/motion";
 import { forceUnlockBodyScroll } from "../lib/useBodyScrollLock";
+import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
+import FloatingDeliveryBanner from "../components/FloatingDeliveryBanner";
 
 const PAGE_SIZE = 48;
 
@@ -284,6 +286,9 @@ export default function ShopPage() {
     let list = shopProducts;
 
     if (activeCategory !== "All") {
+      if (activeCategory === "Vegetables") {
+        return [];
+      }
       list = list.filter((p) => String(p.cat || p.category || "Others").trim() === activeCategory);
       if (activeCategory === "Personal Care" && personalCareSubCat !== "all") {
         const sub = PERSONAL_CARE_SUB_CATEGORIES.find((s) => s.id === personalCareSubCat);
@@ -628,6 +633,38 @@ export default function ShopPage() {
                     <ProductCardSkeleton key={i} />
                   ))}
                 </div>
+              ) : filteredProducts.length === 0 ? (
+                activeCategory === "Vegetables" ? (
+                  <div className="text-center py-16 px-4 space-y-4 max-w-md mx-auto">
+                    <div className="w-16 h-16 mx-auto rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-3xl">
+                      🥕
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                        Fresh Farm Vegetables Arriving Soon
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                        We are onboarding local growers across Anantnag to bring fresh organic vegetables to your doorstep daily.
+                      </p>
+                    </div>
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveCategory("All");
+                          router.replace("/shop", undefined, { shallow: true });
+                        }}
+                        className="px-5 py-2.5 rounded-xl bg-[#FF5B00] hover:bg-[#e04f00] text-white text-xs font-bold transition-all active:scale-95 shadow-xs cursor-pointer"
+                      >
+                        Explore Other Aisles
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-slate-400 text-xs font-semibold">
+                    No products found in this aisle.
+                  </div>
+                )
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
                   {filteredProducts.slice(0, visibleCount).map((p) => {
@@ -728,6 +765,12 @@ export default function ShopPage() {
           router.push(`/search?q=${encodeURIComponent(spokenText)}`);
         }}
       />
+
+      {/* 12. FLOATING WHATSAPP SUPPORT CONCIERGE */}
+      <WhatsAppSupportButton />
+
+      {/* 13. FLOATING WEATHER / SURGE ALERT BANNER */}
+      <FloatingDeliveryBanner />
     </div>
   );
 }

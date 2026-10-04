@@ -287,15 +287,6 @@ fun AuthScreen(
                     )
                 )
         )
-        // The panel's colour behind the bottom of the screen, so it runs to the edge.
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .fillMaxHeight(0.3f)
-                .background(DashitColors.SurfaceRaised)
-        )
-
         // While the keyboard is up, keep the whole form above it (field,
         // button and any error), not just the text cursor Compose would show.
         val scroll = rememberScrollState()
@@ -318,7 +309,6 @@ fun AuthScreen(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .imePadding()
-                .verticalScroll(scroll)
         ) {
             // Skip / close, as plain text
             Row(
@@ -405,16 +395,21 @@ fun AuthScreen(
             if (isKeyboardUp) Spacer(Modifier.height(12.dp))
 
             // Form
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 300.dp)
+                    .weight(1f)
                     .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .background(DashitColors.SurfaceRaised)
-                    .navigationBarsPadding()
-                    .padding(start = 24.dp, end = 24.dp, top = 26.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scroll)
+                        .navigationBarsPadding()
+                        .padding(start = 24.dp, end = 24.dp, top = 26.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                 SectionTitle(
                     when (step) {
                         AuthStep.Google -> "Log in or sign up"
@@ -512,6 +507,7 @@ fun AuthScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
             }
         }
     }

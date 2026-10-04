@@ -448,6 +448,7 @@ class OrderRepository(
             modifyWindowEndsAt = timestampMillis(doc, "modifyWindowEndsAt"),
             replacesOrderId = doc.getString("replacesOrderId"),
             rejectionReason = doc.getString("rejectionReason")
+                ?: doc.getString("cancelReason")
                 ?: doc.getString("cancelledReason")
                 ?: doc.getString("rejectReason")
         )
