@@ -136,7 +136,12 @@ fun AddressPinPicker(
     var map by remember { mutableStateOf<MapView?>(null) }
     var meMarker by remember { mutableStateOf<Marker?>(null) }
 
-    val quote = remember(pin) { DeliveryEta.quote(pin.latitude, pin.longitude) }
+    // Measured by road for where the pin rests; the quote redraws when it arrives.
+    LaunchedEffect(pin) {
+        kotlinx.coroutines.delay(500)
+        DeliveryEta.measure(pin.latitude, pin.longitude)
+    }
+    val quote = DeliveryEta.quote(pin.latitude, pin.longitude)
     val canSave = quote.isDeliverable && !isMoving && !isResolving
 
     BackHandler(onBack = onBack)

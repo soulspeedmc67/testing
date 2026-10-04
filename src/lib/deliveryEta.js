@@ -68,26 +68,32 @@ export function calculateDeliveryEta(targetCoords, hubCoords = DARK_STORE_HUB) {
     tLng
   );
 
-  // Strictly enforce 5.0 km radius limit
-  const isDeliverable = rawDistKm <= MAX_DELIVERY_RADIUS_KM;
+  /* The 5 km limit is by road, not as the crow flies. `roadKm` is the
+     shortest driving route from the store, measured once for the address
+     (see roadDistance.js); until it is known, town streets run about 1.25x
+     the straight line. */
+  // A measured distance only counts for the point it was measured for.
+  const measuredHere = targetCoords.roadFor === `${tLat.toFixed(5)},${tLng.toFixed(5)}`;
+  const measured = measuredHere ? Number(targetCoords.roadKm) : NaN;
+  const roadKmExact = Number.isFinite(measured) && measured > 0 ? measured : rawDistKm * 1.25;
+  const isDeliverable = roadKmExact <= MAX_DELIVERY_RADIUS_KM;
 
   if (!isDeliverable) {
-    const formatted = `${rawDistKm.toFixed(1)} km away`;
+    const formatted = `${roadKmExact.toFixed(1)} km away`;
     return {
       etaMinutes: null,
-      distanceKm: parseFloat(rawDistKm.toFixed(1)),
+      distanceKm: parseFloat(roadKmExact.toFixed(1)),
       distanceFormatted: formatted,
       displayText: "Not available here yet",
       pillText: "Beyond 5km",
       isAccurate: true,
       isDeliverable: false,
       maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
-      warningText: "Delivery is not available in your area yet. We are expanding soon.",
+      warningText: `We can't deliver to this address yet. It is ${roadKmExact.toFixed(1)} km from our store by road; we deliver up to ${MAX_DELIVERY_RADIUS_KM} km.`,
     };
   }
 
-  // Road factor in town is ~1.25x straight-line
-  const roadDistKm = Math.max(0.4, rawDistKm * 1.25);
+  const roadDistKm = Math.max(0.4, roadKmExact);
 
   // Speed: ~18 km/h -> 1 km takes ~3.33 mins
   const drivingMinutes = (roadDistKm / 18) * 60;

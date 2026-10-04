@@ -42,13 +42,58 @@ object DeliveryEta {
         return r * 2 * atan2(sqrt(h), sqrt(1 - h))
     }
 
-    /** Hub → customer: 3 min packing + ride at ~18 km/h on roads 1.25× the line + 3 min buffer, never under 8. */
+    /**
+     * Shortest driving distance from the store, by point, once measured
+     * (see [measure]). Compose state, so a screen showing a quote redraws when
+     * the measurement arrives.
+     */
+    private val measuredRoadKm = androidx.compose.runtime.mutableStateMapOf<String, Double>()
+
+    private fun pointKey(lat: Double, lng: Double) = "%.5f,%.5f".format(java.util.Locale.US, lat, lng)
+
+    /**
+     * Asks the road router for the shortest driving distance from the store
+     * to this point and remembers it. Nothing changes if the router can't be
+     * reached: the straight-line estimate stands.
+     */
+    suspend fun measure(lat: Double, lng: Double) {
+        val key = pointKey(lat, lng)
+        if (measuredRoadKm.containsKey(key)) return
+        val km = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                val url = java.net.URL(
+                    "https://router.project-osrm.org/route/v1/driving/$HUB_LNG,$HUB_LAT;$lng,$lat?overview=false"
+                )
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                }
+                try {
+                    if (connection.responseCode != 200) return@runCatching null
+                    val body = org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                    if (body.optString("code") != "Ok") return@runCatching null
+                    body.optJSONArray("routes")?.optJSONObject(0)?.optDouble("distance")
+                        ?.takeIf { !it.isNaN() }?.let { it / 1000.0 }
+                } finally {
+                    connection.disconnect()
+                }
+            }.getOrNull()
+        }
+        if (km != null) measuredRoadKm[key] = km
+    }
+
+    /**
+     * Hub → customer: 3 min packing + ride at ~18 km/h + 3 min buffer, never
+     * under 8. The 5 km limit is by road: the measured shortest route when
+     * known, else 1.25× the straight line.
+     */
     fun quote(lat: Double, lng: Double): Quote {
         val straightKm = haversineKm(HUB_LAT, HUB_LNG, lat, lng)
-        if (straightKm > MAX_RADIUS_KM) {
-            return Quote(null, (straightKm * 10).roundToInt() / 10.0, false)
+        val byRoad = measuredRoadKm[pointKey(lat, lng)] ?: (straightKm * 1.25)
+        if (byRoad > MAX_RADIUS_KM) {
+            return Quote(null, (byRoad * 10).roundToInt() / 10.0, false)
         }
-        val roadKm = maxOf(0.4, straightKm * 1.25)
+        val roadKm = maxOf(0.4, byRoad)
         val ridingMinutes = roadKm / 18 * 60
         val total = maxOf(8, (3 + ridingMinutes + 3).roundToInt())
         return Quote(total, (roadKm * 10).roundToInt() / 10.0, true)

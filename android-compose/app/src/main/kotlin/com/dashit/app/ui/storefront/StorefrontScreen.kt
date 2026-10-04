@@ -1,5 +1,7 @@
 package com.dashit.app.ui.storefront
 
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.dashit.app.data.DeliveryEta
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -217,6 +219,27 @@ fun StorefrontScreen(
     val cartSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+
+    /* Tell the shopper early whether we deliver to them: with no address yet,
+       a sheet explains why we want their location before Android asks for it;
+       an address further than 5 km by road gets a plain "can't deliver" sheet,
+       once per address. */
+    var isLocationAskOpen by remember { mutableStateOf(false) }
+    var outsideAreaFor by remember { mutableStateOf<String?>(null) }
+    var toldOutsideFor by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(1500)
+        if (AddressBook.current.value == null) isLocationAskOpen = true
+    }
+    LaunchedEffect(savedCurrentAddress?.latitude, savedCurrentAddress?.longitude) {
+        val address = savedCurrentAddress ?: return@LaunchedEffect
+        DeliveryEta.measure(address.latitude, address.longitude)
+        val key = "${address.latitude},${address.longitude}"
+        if (!DeliveryEta.quote(address.latitude, address.longitude).isDeliverable && toldOutsideFor != key) {
+            toldOutsideFor = key
+            outsideAreaFor = key
+        }
+    }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     // Delivered while the app is open (or before it was reopened): close whatever
@@ -817,6 +840,33 @@ fun StorefrontScreen(
                 onPick = { place -> pinStart = PinStart(place.lat, place.lng, place.title, isNew = true) }
             )
         }
+        if (isLocationAskOpen) {
+            DeliveryAreaSheet(
+                title = "Where should we deliver?",
+                message = "We deliver within 5 km of our store in Anantnag. Share your location and we'll tell you straight away if we reach you.",
+                primary = "Use my current location",
+                secondary = "Not now",
+                onPrimary = {
+                    isLocationAskOpen = false
+                    pinStart = PinStart(locateOnOpen = true, isNew = true)
+                },
+                onDismiss = { isLocationAskOpen = false }
+            )
+        }
+        if (outsideAreaFor != null) {
+            val far = savedCurrentAddress?.let { DeliveryEta.quote(it.latitude, it.longitude) }
+            DeliveryAreaSheet(
+                title = "We can't deliver to this address yet",
+                message = "It is ${far?.shortDistanceText ?: "more than 5 km"} from our store by road. We deliver up to 5 km for now.",
+                primary = "Choose another address",
+                secondary = "Keep browsing",
+                onPrimary = {
+                    outsideAreaFor = null
+                    pinStart = PinStart(locateOnOpen = false, isNew = true)
+                },
+                onDismiss = { outsideAreaFor = null }
+            )
+        }
         AnimatedVisibility(
             visible = pinStart != null,
             enter = slideInHorizontally(tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing)) { it },
@@ -1148,4 +1198,60 @@ private fun androidx.compose.ui.unit.Density.searchBarRect(from: Rect, origin: O
         return Rect(inset, statusTop + 6.dp.toPx(), inset + 300.dp.toPx(), statusTop + 54.dp.toPx())
     }
     return Rect(from.left + inset - origin.x, from.top - origin.y, from.right - inset - origin.x, from.bottom - origin.y)
+}
+
+/** A short bottom sheet with one message and two choices, for the delivery-area notices. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun DeliveryAreaSheet(
+    title: String,
+    message: String,
+    primary: String,
+    secondary: String,
+    onPrimary: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = DashitColors.SurfaceRaised
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(text = title, color = DashitColors.TextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+            Text(text = message, color = DashitColors.TextSecondary, fontSize = 14.sp, lineHeight = 20.sp)
+            Text(
+                text = primary,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier
+                    .padding(top = 6.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(DashitColors.BrandOrange)
+                    .clickable { onPrimary() }
+                    .padding(vertical = 14.dp)
+            )
+            Text(
+                text = secondary,
+                color = DashitColors.TextMuted,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onDismiss() }
+                    .padding(vertical = 10.dp)
+            )
+        }
+    }
 }

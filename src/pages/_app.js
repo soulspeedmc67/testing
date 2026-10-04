@@ -31,6 +31,7 @@ const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout',
 const FloatingCartBar = dynamic(() => import('../components/FloatingCartBar'), { ssr: false });
 const BottomNav = dynamic(() => import('../components/BottomNav'), { ssr: false });
 const FlyingBadgeOverlay = dynamic(() => import('../components/FlyingBadgeOverlay'), { ssr: false });
+const DeliveryAreaCheck = dynamic(() => import('../components/DeliveryAreaCheck'), { ssr: false });
 const LiveOrderFloatingTracker = dynamic(() => import('../components/LiveOrderFloatingTracker'), { ssr: false });
 
 /**
@@ -536,6 +537,11 @@ export default function App({ Component, pageProps }) {
             {router.pathname !== '/login' && !router.pathname.startsWith('/track') && (
               <ErrorBoundary quiet name="bottom menu" resetKey={router.pathname}>
                 <BottomNav />
+              </ErrorBoundary>
+            )}
+            {!router.pathname.startsWith('/track') && (
+              <ErrorBoundary quiet name="delivery area check" resetKey={router.pathname}>
+                <DeliveryAreaCheck />
               </ErrorBoundary>
             )}
             <ErrorBoundary quiet name="cart effects" resetKey={router.pathname}>

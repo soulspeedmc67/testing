@@ -114,6 +114,21 @@ Android apps were NOT changed by this; ask the owner before porting it.
   WhatsApp receipt and the packing slip (derived from the total for orders
   saved without `handlingFee`).
 
+### Delivery area by road (website and Android only; iOS not done)
+
+- The 5 km limit is the shortest driving route from the store (OSRM), not the
+  straight line. Until a route is measured the estimate is straight line x 1.25.
+- Web: `src/lib/roadDistance.js` measures; `DeliveryAreaCheck.jsx` (in `_app`)
+  saves `roadKm` + `roadFor` on the address, asks for location on opening the
+  shop with no address (our own sheet first, then the browser prompt), and
+  shows "We can't deliver to this address yet" once per address.
+  `calculateDeliveryEta` reads `roadKm`.
+- Android: `DeliveryEta.measure()` + the same two sheets in `StorefrontScreen`.
+  Compiles and runs on the Pixel; the sheets themselves were not seen there
+  (the phone has a saved in-area address).
+- iOS build 1.0.0 (412) on TestFlight has the charges, shelves and categories
+  work, not this road check (iOS still uses the straight-line 5 km).
+
 ## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
 
 - **Web shop restored** (pages removed in b7c93f3): /shop, /search, /categories,
