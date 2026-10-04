@@ -52,12 +52,12 @@ export default function OffersPage() {
     return () => window.removeEventListener("dashit_cart_updated", syncCart);
   }, []);
 
-  /* Deepest saving first; sold-out items after everything in stock. */
+  /* Deepest saving first; only in-stock items are shown. */
   const deals = useMemo(() => {
     const list = browseable(productsList)
       .map((p) => ({ p, off: discountOf(p) }))
-      .filter((d) => d.off > 0)
-      .sort((a, b) => Number(isSoldOut(a.p)) - Number(isSoldOut(b.p)) || b.off - a.off);
+      .filter((d) => d.off > 0 && !isSoldOut(d.p))
+      .sort((a, b) => b.off - a.off);
     return list.map((d) => d.p);
   }, [productsList]);
 

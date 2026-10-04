@@ -10,37 +10,37 @@ export const SIX_PACK_CATEGORIES = [
   {
     id: "home-care",
     name: "Home Care",
-    img: "/products/catalog/cleaning_essentials/dsh_ecbb246d3258.webp",
+    img: "/products/enriched/30.webp",
     cat: "Home Care"
   },
   {
     id: "kitchen-care",
     name: "Kitchen Care",
-    img: "/products/catalog/cleaning_essentials/dsh_7a53cc7827e8.webp",
+    img: "/products/enriched/35.webp",
     cat: "Kitchen Care"
   },
   {
     id: "vegetables",
     name: "Vegetables",
-    img: "/products/catalog/vegetables_fruits/dsh_3815336e8e85.webp",
+    img: "/products/enriched/40.webp",
     cat: "Vegetables"
   },
   {
     id: "fresh-fruits",
     name: "Fresh Fruits",
-    img: "/products/catalog/vegetables_fruits/dsh_30b889a20ff7.webp",
+    img: "/products/enriched/4.webp",
     cat: "Fresh Fruits"
   },
   {
     id: "chicken",
     name: "Chicken & Fish",
-    img: "/products/catalog/chicken_meat_fish/dsh_6377ab70ba0c.webp",
+    img: "/products/enriched/50.webp",
     cat: "Chicken"
   },
   {
     id: "dairy",
     name: "Dairy",
-    img: "/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp",
+    img: "/products/enriched/1.webp",
     cat: "Dairy"
   },
 ];

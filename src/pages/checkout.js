@@ -40,6 +40,7 @@ import { hasLiveSession, finishRedirectSignIn, readShopper } from "../lib/shoppe
 import { isBeforeLaunch, LAUNCH_LABEL } from "../lib/launch";
 import { getStaffRole } from "../lib/auth";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
+import { isPlaceholderImage } from "../lib/productPhotoMatch";
 
 // Suggestions come from the everyday aisles only, never the unsorted shelf.
 const EVERYDAY_AISLES = new Set([
@@ -236,10 +237,27 @@ export default function CheckoutPage() {
      orders, so reading them in the first render made the page disagree with
      its own HTML ("Order #1" vs "#2") and React rebuilt the whole page. */
   const [userOrdersCount, setUserOrdersCount] = useState(0);
+  const [couponManuallyRemoved, setCouponManuallyRemoved] = useState(false);
+
   useEffect(() => {
     const history = readJson("dashit_orders_history", []);
-    setUserOrdersCount(Array.isArray(history) ? history.length : 0);
-  }, [cartItems]);
+    const count = Array.isArray(history) ? history.length : 0;
+    setUserOrdersCount(count);
+
+    // Auto-apply 100% Free Delivery on the shopper's first 5 orders
+    if (count < 5 && !appliedCoupon && !couponManuallyRemoved) {
+      setAppliedCoupon({
+        code: "FREEDEL",
+        title: "100% Free Delivery on your order",
+        discount: 0,
+        waivesDelivery: true,
+        minOrder: 0,
+        description: `Free delivery auto-applied on your first 5 orders (Order #${count + 1})`,
+        condition: "Auto-applied on first 5 orders",
+        active: true,
+      });
+    }
+  }, [cartItems, appliedCoupon, couponManuallyRemoved]);
 
   const deliveryCharges = useMemo(() => {
     return calculateDeliveryCharges(subtotal, userOrdersCount, coupon);
@@ -247,7 +265,11 @@ export default function CheckoutPage() {
 
   const deliveryFee = deliveryCharges.fee;
   const handlingFee = HANDLING_FEE;
-  const couponDiscount = coupon ? Math.min(subtotal, Number(coupon.discount) || 0) : 0;
+  const couponDiscount = coupon
+    ? coupon.isPercent || coupon.discountType === "percent"
+      ? Math.round(subtotal * ((Number(coupon.discount) || 0) / 100))
+      : Math.min(subtotal, Number(coupon.discount) || 0)
+    : 0;
   const grandTotal = Math.max(0, subtotal + deliveryFee + handlingFee - couponDiscount);
   const toFreeDelivery = deliveryCharges.isFirstFivePromo ? 0 : Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
 
@@ -262,10 +284,20 @@ export default function CheckoutPage() {
     const inCart = new Set(cartItems.map((i) => String(i.id || i.barcode)));
     const cats = new Set(cartItems.map((i) => i.cat).filter(Boolean));
     return browseable(liveProducts)
-      .filter((p) => !inCart.has(String(p.id)) && !isSoldOut(p) && p.img && EVERYDAY_AISLES.has(String(p.cat || "")))
+      .filter(
+        (p) =>
+          !inCart.has(String(p.id)) &&
+          !isSoldOut(p) &&
+          p.img &&
+          typeof p.img === "string" &&
+          p.img.trim().length > 0 &&
+          !isPlaceholderImage(p.img) &&
+          EVERYDAY_AISLES.has(String(p.cat || ""))
+      )
       .sort((a, b) => Number(!cats.has(a.cat)) - Number(!cats.has(b.cat)) || mixKey(a.id) - mixKey(b.id))
       .slice(0, 10);
   }, [cartItems, liveProducts]);
+
 
   // ---- Cart actions ----------------------------------------------------------
 
@@ -691,7 +723,10 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   aria-label="Remove offer code"
-                  onClick={() => setAppliedCoupon(null)}
+                  onClick={() => {
+                    setAppliedCoupon(null);
+                    setCouponManuallyRemoved(true);
+                  }}
                   className="mr-3 w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10"
                 >
                   <X className="w-4 h-4" />
@@ -840,7 +875,10 @@ export default function CheckoutPage() {
         onClose={() => setIsCouponsOpen(false)}
         cartTotal={subtotal}
         appliedCoupon={appliedCoupon}
-        onApplyCoupon={(c) => setAppliedCoupon(c)}
+        onApplyCoupon={(c) => {
+          setAppliedCoupon(c);
+          if (!c) setCouponManuallyRemoved(true);
+        }}
       />
       <OrderProcessingModal
         isOpen={showProcessingModal}

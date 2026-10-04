@@ -134,7 +134,7 @@ export default function FloatingCartBar() {
           : { type: "spring", stiffness: 320, damping: 28 },
         opacity: { duration: 0.18 },
       }}
-      className="fixed left-0 right-0 md:right-auto md:left-6 z-[55] flex justify-start pointer-events-none px-4 md:px-0"
+      className="fixed left-0 right-0 md:right-auto md:left-6 z-[55] flex justify-center md:justify-start pointer-events-none px-4 md:px-0"
       style={{
         bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
       }}
@@ -148,7 +148,7 @@ export default function FloatingCartBar() {
         role="button"
         tabIndex={0}
         aria-label={`View cart: ${itemCount} ${itemCount === 1 ? "item" : "items"}, ₹${subtotal}`}
-        className="pointer-events-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-2xl pl-2 pr-3 py-2 shadow-[0_8px_20px_-8px_rgba(0,0,0,0.35)] flex items-center gap-3 min-w-[230px] transition-[transform,background-color] active:scale-[0.98] cursor-pointer select-none"
+        className="pointer-events-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-full pl-2 pr-4 py-2 shadow-[0_12px_32px_-6px_rgba(255,91,0,0.55),0_4px_12px_rgba(0,0,0,0.15)] border border-white/25 flex items-center gap-3 min-w-[240px] transition-all active:scale-[0.97] cursor-pointer select-none"
       >
         {/* The last few things added, as small white packshots */}
         <div className="flex items-center -space-x-2 shrink-0">

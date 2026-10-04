@@ -4,6 +4,7 @@ import {
   Gamepad2, Package, Shirt,
 } from "lucide-react";
 import { isSoldOut } from "./catalogueFile";
+import { isPlaceholderImage } from "./productPhotoMatch";
 
 /**
  * The web shop's aisles, in the order a grocery run goes: fresh food first,
@@ -88,8 +89,39 @@ const GROUPS = [
   { id: "home", label: "Home & more", icon: SprayCan, cats: ["Home Care", "Kitchen Care", "Pet Care", "Stationery", "Electronics", "Toys & Games", "Clothing"] },
 ];
 
+export const DEFAULT_CATEGORY_COVERS = {
+  "Dairy": "/products/enriched/1.webp",
+  "Fresh Fruits": "/products/enriched/4.webp",
+  "Fruits": "/products/enriched/4.webp",
+  "Snacks": "/products/enriched/5.webp",
+  "Chips": "/products/enriched/5.webp",
+  "Sweets & Chocolates": "/products/enriched/6.webp",
+  "Bakery": "/products/enriched/7.webp",
+  "Staples": "/products/enriched/8.webp",
+  "Biscuits": "/products/enriched/14.webp",
+  "Beverages": "/products/enriched/20.webp",
+  "Home Care": "/products/enriched/30.webp",
+  "Kitchen Care": "/products/enriched/35.webp",
+  "Vegetables": "/products/enriched/40.webp",
+  "Chicken": "/products/enriched/50.webp",
+  "Chicken & Fish": "/products/enriched/50.webp",
+  "Meat & Fish": "/products/enriched/50.webp",
+  "Dry Fruits": "/products/enriched/14.webp",
+  "Personal Care": "/products/enriched/30.webp",
+  "Baby Care": "/products/enriched/1.webp",
+  "Ice Cream": "/products/enriched/6.webp",
+  "Spices": "/products/enriched/8.webp",
+  "Instant Food": "/products/enriched/13.webp",
+  "Sauces & Spreads": "/products/enriched/8.webp",
+};
+
 function photoOf(p) {
   return p && typeof p.img === "string" && p.img.trim() ? p.img : "";
+}
+
+function hasValidPhoto(p) {
+  const url = photoOf(p);
+  return Boolean(url && !isPlaceholderImage(url));
 }
 
 /**
@@ -113,17 +145,24 @@ export function buildAisles(products = []) {
   const order = [...AISLES, ...extra, { cat: "Others", ...OTHER }];
 
   return order
-    .filter((a) => (byCat.has(a.cat) && a.cat !== "Vegetables") || a.cat === "Vegetables")
+    .filter((a) => byCat.has(a.cat) || a.cat === "Vegetables" || DEFAULT_CATEGORY_COVERS[a.cat])
     .map((a) => {
-      const items = a.cat === "Vegetables" ? [] : (byCat.get(a.cat) || []);
-      const stocked = items.filter((p) => photoOf(p) && !isSoldOut(p));
+      const items = byCat.get(a.cat) || [];
+      const stocked = items.filter((p) => hasValidPhoto(p) && !isSoldOut(p));
       const rail = stocked.slice(0, RAIL_SIZE);
-      // A typical item for the cover, on the shop's own white packshots if there is one.
       const hint = COVER_HINTS[a.cat];
       const typical = hint ? stocked.filter((p) => hint.test(p.name || "")) : [];
       const pick =
-        typical.find((p) => photoOf(p).includes("/products/catalog/")) || typical[0] || rail[0];
-      return { ...a, count: items.length, cover: pick ? photoOf(pick) : "", rail };
+        typical.find((p) => hasValidPhoto(p) && photoOf(p).includes("/products/enriched/")) ||
+        typical.find((p) => hasValidPhoto(p)) ||
+        rail.find((p) => hasValidPhoto(p)) ||
+        items.find((p) => hasValidPhoto(p));
+      const defaultCover =
+        DEFAULT_CATEGORY_COVERS[a.cat] ||
+        DEFAULT_CATEGORY_COVERS[a.label] ||
+        "/products/enriched/5.webp";
+      const cover = pick && hasValidPhoto(pick) ? photoOf(pick) : defaultCover;
+      return { ...a, count: items.length, cover, rail };
     });
 }
 
@@ -157,5 +196,6 @@ export function buildAisleGroups(aisles = []) {
  * grocery-run order. Everything else is one tap away under "All categories".
  */
 export function featuredAisles(aisles = [], limit = 7) {
-  return aisles.filter((a) => a.cover && a.rail.length >= 4 && a.cat !== "Others").slice(0, limit);
+  return aisles.filter((a) => a.cover && a.cat !== "Others").slice(0, limit);
 }
+

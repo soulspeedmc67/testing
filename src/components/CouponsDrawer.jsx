@@ -51,13 +51,17 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex flex-col justify-end bg-black/60 backdrop-blur-xs">
+      <div
+        className="fixed inset-0 z-[120] flex flex-col justify-end bg-black/60 backdrop-blur-xs overscroll-contain"
+        onClick={onClose}
+      >
         <motion.div
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 28, stiffness: 350 }}
-          className="w-full max-w-lg mx-auto bg-slate-50 dark:bg-zinc-950 h-[85vh] rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl border-t border-slate-200 dark:border-zinc-800"
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-lg mx-auto bg-slate-50 dark:bg-zinc-950 h-[85vh] max-h-[85vh] rounded-t-[32px] overflow-hidden flex flex-col shadow-2xl border-t border-slate-200 dark:border-zinc-800"
         >
           {/* Header */}
           <div className="bg-white dark:bg-zinc-900 px-5 py-4 border-b border-slate-200/80 dark:border-zinc-800 flex items-center space-x-3 shrink-0">
@@ -75,7 +79,10 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
             </div>
           </div>
 
-          <div className="p-5 overflow-y-auto space-y-6">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 space-y-6 touch-pan-y"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
             {/* Have an offer code? */}
             <div className="space-y-2">
               <label className="text-xs font-black text-slate-900 dark:text-white block">
@@ -121,6 +128,7 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                   const isEligible = cartTotal >= min;
                   const isSelected = appliedCoupon?.code === coupon.code;
                   const isFreeDel = Boolean(coupon.waivesDelivery || coupon.code === "FREEDEL");
+                  const isPercentDiscount = Boolean(coupon.isPercent || coupon.discountType === "percent");
 
                   return (
                     <div
@@ -149,10 +157,10 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
 
                         <div className="text-right shrink-0">
                           <span className="text-[10px] font-black text-slate-400 uppercase block dark:text-content-faint">
-                            {isFreeDel ? "Benefit" : "Save up to"}
+                            {isFreeDel ? "Benefit" : isPercentDiscount ? "Discount" : "Save up to"}
                           </span>
                           <span className="text-sm font-mono font-black text-[#FF5B00] block">
-                            {isFreeDel ? "Free Del" : `₹${coupon.discount}`}
+                            {isFreeDel ? "Free Del" : isPercentDiscount ? `${coupon.discount}% Off` : `₹${coupon.discount}`}
                           </span>
                           <button
                             type="button"
@@ -177,6 +185,7 @@ export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupo
                           </button>
                         </div>
                       </div>
+
 
                       {!isEligible && min > 0 && (
                         <div className="mt-3 bg-zinc-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg">

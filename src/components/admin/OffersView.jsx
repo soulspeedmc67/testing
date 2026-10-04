@@ -17,9 +17,9 @@ import {
 const EMPTY_COUPON = {
   code: "",
   title: "",
-  type: "discount", // "discount" | "free_delivery"
-  discount: 30,
-  minOrder: 199,
+  type: "percent", // "discount" | "percent" | "free_delivery"
+  discount: 50,
+  minOrder: 799,
   description: "",
   condition: "",
   active: true,
@@ -46,14 +46,42 @@ export default function OffersView({
     setShowCouponModal(true);
   };
 
+  const applyTemplate = (tmpl) => {
+    if (tmpl === "FREEDEL") {
+      setCouponForm({
+        code: "FREEDEL",
+        title: "100% Free Delivery on your order",
+        type: "free_delivery",
+        discount: 0,
+        minOrder: 0,
+        description: "Free delivery auto-applied on your first 5 orders",
+        condition: "Valid on first 5 orders across Anantnag",
+        active: true,
+      });
+    } else if (tmpl === "FLAT50") {
+      setCouponForm({
+        code: "FLAT50",
+        title: "Flat 50% Off on orders above ₹799",
+        type: "percent",
+        discount: 50,
+        minOrder: 799,
+        description: "Get 50% off on all grocery and daily essentials above ₹799",
+        condition: "Cart value must be ₹799+",
+        active: true,
+      });
+    }
+  };
+
   const handleOpenEditCoupon = (c) => {
     setEditingCouponCode(c.code);
+    const isFreeDel = Boolean(c.waivesDelivery || c.code === "FREEDEL");
+    const isPercent = Boolean(c.isPercent || c.discountType === "percent");
     setCouponForm({
       code: c.code || "",
       title: c.title || "",
-      type: c.waivesDelivery || c.code === "FREEDEL" ? "free_delivery" : "discount",
-      discount: c.discount !== undefined ? c.discount : 30,
-      minOrder: c.minOrder !== undefined ? c.minOrder : 199,
+      type: isFreeDel ? "free_delivery" : isPercent ? "percent" : "discount",
+      discount: c.discount !== undefined ? c.discount : 50,
+      minOrder: c.minOrder !== undefined ? c.minOrder : 0,
       description: c.description || "",
       condition: c.condition || "",
       active: c.active !== false,
@@ -70,10 +98,19 @@ export default function OffersView({
     }
 
     const isFreeDel = couponForm.type === "free_delivery";
+    const isPercent = couponForm.type === "percent";
     const payload = {
       code: cleanCode,
-      title: couponForm.title.trim() || (isFreeDel ? "100% Free Delivery on your order" : `₹${couponForm.discount} Off on orders of ₹${couponForm.minOrder || 0}+`),
+      title:
+        couponForm.title.trim() ||
+        (isFreeDel
+          ? "100% Free Delivery on your order"
+          : isPercent
+          ? `Flat ${couponForm.discount}% Off on orders above ₹${couponForm.minOrder || 0}`
+          : `₹${couponForm.discount} Off on orders of ₹${couponForm.minOrder || 0}+`),
       discount: isFreeDel ? 0 : Math.max(0, Number(couponForm.discount) || 0),
+      discountType: isPercent ? "percent" : "fixed",
+      isPercent: isPercent,
       waivesDelivery: isFreeDel,
       minOrder: Math.max(0, Number(couponForm.minOrder) || 0),
       description: couponForm.description.trim(),
@@ -86,6 +123,7 @@ export default function OffersView({
     }
     setShowCouponModal(false);
   };
+
 
   return (
     <div className="space-y-6">
@@ -215,6 +253,8 @@ export default function OffersView({
                       <span className="inline-flex items-center text-[10.5px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded-md">
                         {isFreeDel ? (
                           <span className="text-emerald-600 dark:text-emerald-400 font-black">Free Delivery</span>
+                        ) : c.isPercent || c.discountType === "percent" ? (
+                          <span className="text-[#FF5B00] font-black">{c.discount}% Off</span>
                         ) : (
                           <span>₹{c.discount} Discount</span>
                         )}
@@ -379,18 +419,51 @@ export default function OffersView({
                     darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
                   }`}
                 />
+                {/* Quick Template Chips */}
+                <div className="flex items-center gap-1.5 pt-1.5 flex-wrap">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase">Quick Presets:</span>
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("FLAT50")}
+                    className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-orange-500/10 text-[#FF5B00] hover:bg-orange-500/20 border border-orange-500/20 cursor-pointer"
+                  >
+                    ⚡ FLAT50 (50% &gt; ₹799)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyTemplate("FREEDEL")}
+                    className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 cursor-pointer"
+                  >
+                    ⚡ FREEDEL (100% Free)
+                  </button>
+                </div>
               </div>
 
-              {/* Offer Type: Flat Discount vs Free Delivery */}
+              {/* Offer Type: Percentage vs Flat Discount vs Free Delivery */}
               <div>
                 <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">
                   Benefit Type
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCouponForm((p) => ({ ...p, type: "percent" }))}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border flex items-center justify-center space-x-1 transition-all cursor-pointer ${
+                      couponForm.type === "percent"
+                        ? "bg-[#FF5B00] text-white border-[#FF5B00] shadow-xs"
+                        : darkMode
+                        ? "bg-[#1A1D26] border-zinc-700 text-zinc-300"
+                        : "bg-slate-50 border-slate-300 text-slate-700"
+                    }`}
+                  >
+                    <Percent className="w-3.5 h-3.5 shrink-0" />
+                    <span>% Off</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setCouponForm((p) => ({ ...p, type: "discount" }))}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border flex items-center justify-center space-x-1 transition-all cursor-pointer ${
                       couponForm.type === "discount"
                         ? "bg-[#FF5B00] text-white border-[#FF5B00] shadow-xs"
                         : darkMode
@@ -398,8 +471,8 @@ export default function OffersView({
                         : "bg-slate-50 border-slate-300 text-slate-700"
                     }`}
                   >
-                    <Percent className="w-3.5 h-3.5" />
-                    <span>Flat Discount (₹)</span>
+                    <span className="font-mono text-xs font-bold">₹</span>
+                    <span>Flat (₹)</span>
                   </button>
 
                   <button
@@ -411,7 +484,7 @@ export default function OffersView({
                         discount: 0,
                       }))
                     }
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border flex items-center justify-center space-x-1.5 transition-all cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border flex items-center justify-center space-x-1 transition-all cursor-pointer ${
                       couponForm.type === "free_delivery"
                         ? "bg-[#FF5B00] text-white border-[#FF5B00] shadow-xs"
                         : darkMode
@@ -419,15 +492,38 @@ export default function OffersView({
                         : "bg-slate-50 border-slate-300 text-slate-700"
                     }`}
                   >
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>Free Delivery</span>
+                    <Truck className="w-3.5 h-3.5 shrink-0" />
+                    <span>Free Del</span>
                   </button>
                 </div>
               </div>
 
               {/* Discount Amount & Min Order Value */}
               <div className="grid grid-cols-2 gap-2">
-                {couponForm.type === "discount" ? (
+                {couponForm.type === "percent" ? (
+                  <div>
+                    <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">
+                      Discount (% Off) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      required
+                      placeholder="e.g. 50"
+                      value={couponForm.discount}
+                      onChange={(e) =>
+                        setCouponForm((p) => ({
+                          ...p,
+                          discount: Number(e.target.value) || 0,
+                        }))
+                      }
+                      className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
+                        darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
+                      }`}
+                    />
+                  </div>
+                ) : couponForm.type === "discount" ? (
                   <div>
                     <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">
                       Discount Amount (₹) *
@@ -459,7 +555,7 @@ export default function OffersView({
                         darkMode ? "bg-[#1A1D26] border-zinc-700" : "bg-slate-50 border-slate-300"
                       }`}
                     >
-                      100% Free (₹25 saved)
+                      100% Free Delivery
                     </div>
                   </div>
                 )}

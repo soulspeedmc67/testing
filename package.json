@@ -6,7 +6,7 @@
     "dev": "next dev",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "build": "node scripts/generate-sitemap.mjs && next build",
-    "export:zip": "rm -f dashit-hostinger-deploy.zip && npm run build && (cp public/.htaccess out/.htaccess 2>/dev/null || true) && ([ -f out/catalog/catalog.json ] || (mkdir -p out/catalog && cp public/catalog/catalog.json out/catalog/ 2>/dev/null || true)) && (cd out && zip -q -r ../dashit-hostinger-deploy.zip . -x '*.apk' -x '*.ipa' -x '*.zip' -x '*.tar' -x '*.gz' -x 'remotion-assets/*' -x 'products/enriched/*')",
+    "export:zip": "rm -f dashit-hostinger-deploy.zip && npm run build && (cp public/.htaccess out/.htaccess 2>/dev/null || true) && ([ -f out/catalog/catalog.json ] || (mkdir -p out/catalog && cp public/catalog/catalog.json out/catalog/ 2>/dev/null || true)) && (cd out && zip -q -r ../dashit-hostinger-deploy.zip . -x '*.apk' -x '*.ipa' -x '*.zip' -x '*.tar' -x '*.gz' -x 'remotion-assets/*')",
     "start": "next start",
     "server": "node server.js",
     "serve:static": "node scripts/serve-local.js",

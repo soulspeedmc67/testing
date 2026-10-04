@@ -929,8 +929,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     });
 
     const unsubCoupons = watchCoupons((firestoreCoupons) => {
-      if (Array.isArray(firestoreCoupons)) {
-        setCoupons(firestoreCoupons);
+      if (Array.isArray(firestoreCoupons) && firestoreCoupons.length > 0) {
+        const cleaned = firestoreCoupons.filter((c) => c && c.code !== "GET30" && c.code !== "DASHIT50");
+        setCoupons(cleaned.length > 0 ? cleaned : DEFAULT_COUPONS);
       } else {
         setCoupons(DEFAULT_COUPONS);
       }
@@ -1706,7 +1707,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
   // Reset to Default Coupons
   const handleResetDefaultCoupons = async () => {
-    if (!confirm("Reset offer codes back to defaults (GET30, DASHIT50, FREEDEL)?")) return;
+    if (!confirm("Reset offer codes back to defaults (FREEDEL, FLAT50)?")) return;
     try {
       setCoupons(DEFAULT_COUPONS);
       await saveCoupons(DEFAULT_COUPONS);

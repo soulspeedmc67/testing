@@ -527,14 +527,13 @@ html {
    orange. Brightness and contrast are pulled back so the result sits at the
    same value as the surrounding surfaces instead of glowing.
 
-   Markers, pins and overlays are deliberately excluded: they are UI, already
-   drawn in brand colours, and inverting them would turn the orange pin cyan. */
+/* Pitch-black vector map tiles for dark mode (eliminates all brownish/muddy tints). */
 .dark .leaflet-tile-pane {
-  filter: invert(100%) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.25);
+  filter: grayscale(100%) invert(100%) contrast(1.4) brightness(0.72);
 }
 
 .dark .leaflet-container {
-  background: var(--surface-muted);
+  background: #08090c;
 }
 
 /* Leaflet's zoom and attribution chrome is light-on-light by default. */

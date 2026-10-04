@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { ArrowLeft, Search, Crosshair, MapPin, Check, Loader2, X, AlertTriangle, ShieldCheck, Home, Briefcase, Users, Building2 } from "lucide-react";
+import { ArrowLeft, Search, Crosshair, MapPin, Check, Loader2, X, AlertTriangle, ShieldCheck, Home, Briefcase, Users, Building2, ChevronDown } from "lucide-react";
 import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
 import { hapticHeavy, hapticLight } from "../lib/haptics";
 import { calculateDeliveryEta, MAX_DELIVERY_RADIUS_KM } from "../lib/deliveryEta";
@@ -39,7 +39,9 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
   const [houseNumber, setHouseNumber] = useState("");
   const [landmark, setLandmark] = useState("");
   const [extraInstructions, setExtraInstructions] = useState("");
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -423,113 +425,140 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
           );
         })()}
 
-        {/* House / Flat / Floor & Landmark inputs to help the driver locate user */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
-              Building / Mohalla / House No.
-            </label>
-            <input
-              type="text"
-              value={houseNumber}
-              onChange={(e) => setHouseNumber(e.target.value)}
-              placeholder="e.g. Sheerpora Mohalla, Rose Villa"
-              maxLength={80}
-              className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
-              Prominent Landmark
-            </label>
-            <input
-              type="text"
-              value={landmark}
-              onChange={(e) => setLandmark(e.target.value)}
-              placeholder="e.g. Near Jamia Masjid, Opp. J&K Bank"
-              maxLength={80}
-              className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
-            />
-            {/* Quick Landmark Chips */}
-            <div className="flex flex-wrap gap-1.5 pt-1.5">
-              {[
-                { label: "🕌 Masjid", prefix: "Near Jamia Masjid" },
-                { label: "🏫 School", prefix: "Near Govt School" },
-                { label: "🏥 Hospital", prefix: "Near Hospital" },
-                { label: "🏬 Chowk", prefix: "Near Main Chowk" },
-                { label: "🏧 Bank / ATM", prefix: "Near J&K Bank / ATM" },
-              ].map((chip) => (
-                <button
-                  key={chip.label}
-                  type="button"
-                  onClick={() => {
-                    hapticLight();
-                    setLandmark(chip.prefix);
-                  }}
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-[#FF5B00] border border-slate-200 text-slate-600 transition-colors active:scale-95 cursor-pointer dark:bg-surface-muted dark:border-line dark:text-content-secondary"
-                >
-                  {chip.label}
-                </button>
-              ))}
+        {/* Collapsible toggle for House / Mohalla / Landmark / Delivery details */}
+        <button
+          type="button"
+          onClick={() => {
+            hapticLight();
+            setShowMoreDetails((prev) => !prev);
+          }}
+          className="w-full py-2.5 px-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-surface-raised dark:hover:bg-surface-muted border border-slate-200/80 dark:border-line flex items-center justify-between text-xs font-bold text-slate-700 dark:text-zinc-200 transition-colors cursor-pointer"
+        >
+          <span className="flex items-center space-x-1.5 truncate">
+            <span>
+              {houseNumber || landmark
+                ? `Details: ${[houseNumber, landmark].filter(Boolean).join(", ")}`
+                : "Add house no, mohalla & instructions (optional)"}
+            </span>
+          </span>
+          <ChevronDown
+            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform duration-200 ${
+              showMoreDetails ? "rotate-180" : ""
+            }`}
+          />
+        </button>
+
+        {showMoreDetails && (
+          <div className="space-y-3 pt-1 border-t border-slate-100 dark:border-line-soft">
+            {/* House / Flat / Floor & Landmark inputs to help the driver locate user */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
+                  Building / Mohalla / House No.
+                </label>
+                <input
+                  type="text"
+                  value={houseNumber}
+                  onChange={(e) => setHouseNumber(e.target.value)}
+                  placeholder="e.g. Sheerpora Mohalla, Rose Villa"
+                  maxLength={80}
+                  className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
+                  Prominent Landmark
+                </label>
+                <input
+                  type="text"
+                  value={landmark}
+                  onChange={(e) => setLandmark(e.target.value)}
+                  placeholder="e.g. Near Jamia Masjid, Opp. J&K Bank"
+                  maxLength={80}
+                  className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
+                />
+                {/* Quick Landmark Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-1.5">
+                  {[
+                    { label: "🕌 Masjid", prefix: "Near Jamia Masjid" },
+                    { label: "🏫 School", prefix: "Near Govt School" },
+                    { label: "🏥 Hospital", prefix: "Near Hospital" },
+                    { label: "🏬 Chowk", prefix: "Near Main Chowk" },
+                    { label: "🏧 Bank / ATM", prefix: "Near J&K Bank / ATM" },
+                  ].map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => {
+                        hapticLight();
+                        setLandmark(chip.prefix);
+                      }}
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-orange-50 hover:text-[#FF5B00] border border-slate-200 text-slate-600 transition-colors active:scale-95 cursor-pointer dark:bg-surface-muted dark:border-line dark:text-content-secondary"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Extra Delivery Instructions for Driver */}
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
+                Delivery instructions for driver (optional)
+              </label>
+              <input
+                type="text"
+                value={extraInstructions}
+                onChange={(e) => setExtraInstructions(e.target.value)}
+                placeholder="e.g. Ring the bell, Gate on right, Call on arrival"
+                maxLength={120}
+                className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
+              />
+            </div>
+
+            {/* ALIAS PICKER CHIPS */}
+            <div className="space-y-1.5 pt-0.5">
+              <label className="text-[10.5px] font-black uppercase tracking-wider text-slate-500 block dark:text-content-faint">
+                Save Address As (Type)
+              </label>
+              <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
+                {ALIAS_PRESETS.map((preset) => {
+                  const isSelected = selectedAlias === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => {
+                        hapticLight();
+                        setSelectedAlias(preset.id);
+                      }}
+                      className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 active:scale-95 ${
+                        isSelected
+                          ? "bg-[#FF5B00] text-white shadow-md border border-[#FF5B00]"
+                          : "bg-black text-white hover:bg-neutral-900 border border-white/20 shadow-2xs"
+                      }`}
+                    >
+                      {preset.icon && <preset.icon className="w-3.5 h-3.5 shrink-0 text-white" />}
+                      <span className="text-white font-bold">{preset.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedAlias === "Other" && (
+                <input
+                  type="text"
+                  value={customAlias}
+                  onChange={(e) => setCustomAlias(e.target.value)}
+                  placeholder="e.g. Grandma's, Hostel, Studio..."
+                  maxLength={25}
+                  className="w-full mt-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
+                />
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Extra Delivery Instructions for Driver */}
-        <div>
-          <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 block mb-1 dark:text-content-faint">
-            Delivery instructions for driver (optional)
-          </label>
-          <input
-            type="text"
-            value={extraInstructions}
-            onChange={(e) => setExtraInstructions(e.target.value)}
-            placeholder="e.g. Ring the bell, Gate on right, Call on arrival"
-            maxLength={120}
-            className="w-full px-3 py-2 text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
-          />
-        </div>
-
-        {/* ALIAS PICKER CHIPS */}
-        <div className="space-y-1.5 pt-0.5">
-          <label className="text-[10.5px] font-black uppercase tracking-wider text-slate-500 block dark:text-content-faint">
-            Save Address As (Type)
-          </label>
-          <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {ALIAS_PRESETS.map((preset) => {
-              const isSelected = selectedAlias === preset.id;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => {
-                    hapticLight();
-                    setSelectedAlias(preset.id);
-                  }}
-                  className={`shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 active:scale-95 ${
-                    isSelected
-                      ? "bg-[#FF5B00] text-white shadow-md border border-[#FF5B00]"
-                      : "bg-black text-white hover:bg-neutral-900 border border-white/20 shadow-2xs"
-                  }`}
-                >
-                  {preset.icon && <preset.icon className="w-3.5 h-3.5 shrink-0 text-white" />}
-                  <span className="text-white font-bold">{preset.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {selectedAlias === "Other" && (
-            <input
-              type="text"
-              value={customAlias}
-              onChange={(e) => setCustomAlias(e.target.value)}
-              placeholder="e.g. Grandma's, Hostel, Studio..."
-              maxLength={25}
-              className="w-full mt-1.5 px-3 py-2 text-xs font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-[#FF5B00] transition-colors dark:text-content dark:bg-surface-raised dark:border-line"
-            />
-          )}
-        </div>
+        )}
 
         {/* Confirm Button */}
         {(() => {
