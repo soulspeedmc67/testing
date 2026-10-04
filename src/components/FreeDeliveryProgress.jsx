@@ -27,8 +27,8 @@ export function calculateDeliveryCharges(subtotal, orderCount = 0, coupon = null
   let standardFee = 25;
   let tierLabel = "₹25 delivery on orders above ₹299";
   if (subtotal < 180) {
-    standardFee = Math.round(subtotal * 0.30);
-    tierLabel = "30% delivery charge (orders under ₹180)";
+    standardFee = Math.round(subtotal * 0.40);
+    tierLabel = "40% delivery charge (orders under ₹180)";
   } else if (subtotal <= 299) {
     standardFee = 35;
     tierLabel = "₹35 delivery charge (orders ₹180 - ₹299)";

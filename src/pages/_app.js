@@ -31,7 +31,6 @@ const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout',
 const FloatingCartBar = dynamic(() => import('../components/FloatingCartBar'), { ssr: false });
 const BottomNav = dynamic(() => import('../components/BottomNav'), { ssr: false });
 const FlyingBadgeOverlay = dynamic(() => import('../components/FlyingBadgeOverlay'), { ssr: false });
-const FreeDeliveryToast = dynamic(() => import('../components/FreeDeliveryToast'), { ssr: false });
 const LiveOrderFloatingTracker = dynamic(() => import('../components/LiveOrderFloatingTracker'), { ssr: false });
 
 /**
@@ -515,6 +514,11 @@ export default function App({ Component, pageProps }) {
             }
           >
             {SHOP_ROUTES.includes(router.pathname) && <LaunchBar />}
+            {!isDriverApp && SHOP_ROUTES.includes(router.pathname) && !['/login', '/orders', '/track'].some((p) => router.pathname.startsWith(p)) && (
+              <ErrorBoundary quiet name="order tracker" resetKey={router.pathname}>
+                <LiveOrderFloatingTracker />
+              </ErrorBoundary>
+            )}
             <ErrorBoundary name="page" resetKey={router.asPath}>
               <Component {...pageProps} />
             </ErrorBoundary>
@@ -524,11 +528,6 @@ export default function App({ Component, pageProps }) {
             take the page (or the cart bar) down with it. */}
         {!isDriverApp && SHOP_ROUTES.includes(router.pathname) && (
           <>
-            {!['/login', '/orders', '/track'].some((p) => router.pathname.startsWith(p)) && (
-              <ErrorBoundary quiet name="order tracker" resetKey={router.pathname}>
-                <LiveOrderFloatingTracker />
-              </ErrorBoundary>
-            )}
             {!router.pathname.startsWith('/track') && (
               <ErrorBoundary quiet name="cart bar" resetKey={router.pathname}>
                 <FloatingCartBar />
@@ -541,7 +540,6 @@ export default function App({ Component, pageProps }) {
             )}
             <ErrorBoundary quiet name="cart effects" resetKey={router.pathname}>
               <FlyingBadgeOverlay />
-              <FreeDeliveryToast />
             </ErrorBoundary>
           </>
         )}

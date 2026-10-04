@@ -28,17 +28,6 @@ import FloatingDeliveryBanner from "../components/FloatingDeliveryBanner";
 
 const PAGE_SIZE = 48;
 
-const PERSONAL_CARE_SUB_CATEGORIES = [
-  { id: "all", label: "All" },
-  { id: "skin", label: "Skin Care", regex: /\b(face ?wash|facewash|moisturi[sz]er|sunscreen|lotion|serum|scrub|face pack|rose water|sheet mask|cleanser|night cream|day cream|cold cream|lip balm)\b/i },
-  { id: "hair", label: "Hair Care", regex: /\b(shampoo|shmp|conditioner|hair ?oil|hair ?colou?r|hair mask|hair spray|hair spa|scalp)\b/i },
-  { id: "bath", label: "Bath & Body", regex: /\b(soap|bath|body ?wash|shower gel|loofah|sponge)\b/i },
-  { id: "fragrance", label: "Fragrances & Deos", regex: /\b(deo|deodorant|perfume|body ?spray|body ?mist|attar|edp|edt|cologne)\b/i },
-  { id: "oral", label: "Oral Care", regex: /\b(toothpaste|tooth ?brush|mouthwash|tongue cleaner|floss|dente?|dentoshine|sensodyne|colgate)\b/i },
-  { id: "shaving", label: "Men's Grooming", regex: /\b(razor|blade|shaving|after ?shave|beard|trimmer|foam|gillette)\b/i },
-  { id: "makeup", label: "Makeup & Beauty", regex: /\b(lipstick|kajal|mascara|eyeliner|nail|foundation|compact|concealer|makeup|bleach)\b/i },
-];
-
 const SEARCH_SUGGESTIONS = [
   '"milk, curd & paneer"',
   '"atta, dal & cooking oil"',
@@ -293,6 +282,18 @@ export default function ShopPage() {
     ];
   }, [aisles, featured, activeCategory]);
 
+  /* The smaller shelves inside the picked aisle ("Drinks" → Soft drinks,
+     Juices, Tea & coffee…), biggest first, so nobody scrolls 300 items. */
+  const subShelves = useMemo(() => {
+    if (activeCategory === "All") return [];
+    const counts = new Map();
+    for (const p of shopProducts) {
+      if (String(p.cat || p.category || "Others").trim() !== activeCategory || !p.sub) continue;
+      counts.set(p.sub, (counts.get(p.sub) || 0) + 1);
+    }
+    return [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([label]) => label);
+  }, [shopProducts, activeCategory]);
+
   const filteredProducts = useMemo(() => {
     // Tobacco is never listed on the website (browseable drops it).
     let list = shopProducts;
@@ -302,11 +303,8 @@ export default function ShopPage() {
         return [];
       }
       list = list.filter((p) => String(p.cat || p.category || "Others").trim() === activeCategory);
-      if (activeCategory === "Personal Care" && personalCareSubCat !== "all") {
-        const sub = PERSONAL_CARE_SUB_CATEGORIES.find((s) => s.id === personalCareSubCat);
-        if (sub && sub.regex) {
-          list = list.filter((p) => sub.regex.test(p.name || ""));
-        }
+      if (personalCareSubCat !== "all") {
+        list = list.filter((p) => (p.sub || "") === personalCareSubCat);
       }
     }
 
@@ -430,12 +428,13 @@ export default function ShopPage() {
           activeCategory={activeCategory}
           onSelectCategory={(cat) => {
             setActiveCategory(cat);
+            setPersonalCareSubCat("all");
           }}
         />
       </div>
 
       {/* MAIN BODY CONTENT (Responsive: max-w-md on mobile, expands to max-w-7xl on desktop) */}
-      <main className="max-w-md md:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
+      <main className="max-w-md md:max-w-none mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
         {/* A picked category shows straight away with a short fade-in. It used
             to wait for the old list to fade out first, which added half a
             second to every tap. No fade on the very first paint. */}
@@ -470,26 +469,26 @@ export default function ShopPage() {
                   </button>
                 </div>
 
-                {/* Sub-Category Filter Pills for Personal Care */}
-                {activeCategory === "Personal Care" && (
+                {/* The shelves inside this aisle */}
+                {subShelves.length > 1 && (
                   <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-2 overflow-x-auto scrollbar-none py-1">
-                    {PERSONAL_CARE_SUB_CATEGORIES.map((sub) => {
-                      const isSelected = personalCareSubCat === sub.id;
+                    {["all", ...subShelves].map((sub) => {
+                      const isSelected = personalCareSubCat === sub;
                       return (
                         <button
-                          key={sub.id}
+                          key={sub}
                           type="button"
                           onClick={() => {
-                            setPersonalCareSubCat(sub.id);
+                            setPersonalCareSubCat(sub);
                             setVisibleCount(PAGE_SIZE);
                           }}
-                          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 cursor-pointer ${
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors shrink-0 cursor-pointer ${
                             isSelected
-                              ? "bg-[#061838] text-white shadow-xs dark:bg-white dark:text-slate-900"
+                              ? "bg-[#061838] text-white dark:bg-white dark:text-slate-900"
                               : "bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 dark:bg-surface-raised dark:text-content-secondary dark:border-line"
                           }`}
                         >
-                          {sub.label}
+                          {sub === "all" ? "All" : sub}
                         </button>
                       );
                     })}
@@ -693,7 +692,7 @@ export default function ShopPage() {
                   </div>
                 )
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 sm:gap-4 lg:gap-5">
                   {filteredProducts.slice(0, visibleCount).map((p) => {
                     const pId = String(p.id || p.barcode);
                     const inCart = cart.find((i) => String(i.id || i.barcode) === pId);

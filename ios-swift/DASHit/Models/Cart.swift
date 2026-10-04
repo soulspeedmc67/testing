@@ -161,7 +161,7 @@ extension Coupon {
         if waivesDelivery == true || code == "FREEDEL" {
             guard subtotal < CartBillBreakdown.freeDeliveryThreshold else { return 0 }
             // Compute the tiered delivery fee this order would incur.
-            let tieredFee: Double = subtotal < 180 ? (subtotal * 0.30).rounded()
+            let tieredFee: Double = subtotal < 180 ? (subtotal * 0.40).rounded()
                                   : subtotal <= 299 ? 35.0 : 25.0
             return tieredFee
         }
@@ -222,8 +222,8 @@ public struct CartBillBreakdown {
         let standardFee: Double
         let tierLabel: String
         if subtotal < 180 {
-            standardFee = (subtotal * 0.30).rounded()
-            tierLabel = "30% delivery charge (orders under ₹180)"
+            standardFee = (subtotal * 0.40).rounded()
+            tierLabel = "40% delivery charge (orders under ₹180)"
         } else if subtotal <= 299 {
             standardFee = 35.0
             tierLabel = "₹35 delivery charge (orders ₹180 - ₹299)"

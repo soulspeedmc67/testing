@@ -258,30 +258,18 @@ export default function LiveOrderFloatingTracker() {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - effectiveProgress);
 
+  /* A bar at the top of the page, in the page's own flow (top right on a
+     computer). It used to float over the bottom of the screen, on top of the
+     cart button and the WhatsApp button. */
   return (
-    <AnimatePresence>
-      <motion.div
-        key="dashit-order-status-pill"
-        initial={{ y: 80, opacity: 0, scale: 0.92 }}
-        animate={{
-          y: bottomY,
-          opacity: 1,
-          scale: 1,
-        }}
-        exit={{ y: 80, opacity: 0, scale: 0.92 }}
-        transition={{ type: "spring", stiffness: 320, damping: 28 }}
-        className="fixed left-0 right-0 md:left-auto md:right-8 z-[50] flex justify-center md:justify-end pointer-events-none px-3.5 sm:px-4"
-        style={{
-          bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
-        }}
-      >
+      <div className="w-full bg-[#15161A] px-3 md:px-6 lg:px-8 py-1.5 flex justify-center md:justify-end">
         {/* Native Android / iOS Parity: OrderStatusPill */}
         <div
           onClick={handleOpenTracking}
           role="button"
           tabIndex={0}
           aria-label={`${statusDetails.headline}. ${statusDetails.subtitle}. Tap to open live tracking.`}
-          className="pointer-events-auto w-full max-w-sm sm:max-w-md h-[58px] bg-[#15161A] text-white rounded-full px-3 py-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border border-white/15 flex items-center justify-between gap-3 cursor-pointer select-none transition-transform active:scale-[0.98]"
+          className="w-full md:w-[420px] h-[52px] text-white px-1 flex items-center justify-between gap-3 cursor-pointer select-none"
         >
           {/* Left: Stage Icon with Circular Progress Ring */}
           <div className="relative w-[42px] h-[42px] flex items-center justify-center shrink-0">
@@ -369,7 +357,6 @@ export default function LiveOrderFloatingTracker() {
             ) : null}
           </div>
         </div>
-      </motion.div>
-    </AnimatePresence>
+      </div>
   );
 }

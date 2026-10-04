@@ -146,7 +146,7 @@ export default function AppHeader({
       {/* DESKTOP UNIFIED HEADER (md: and above) — Clean, cohesive, single-row bar */}
       {/* ========================================================================= */}
       <div className="hidden md:block w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-[0_2px_12px_rgba(0,0,0,0.04)] dark:bg-surface-raised/95 dark:border-line/90">
-        <div className="max-w-7xl mx-auto px-6 h-[74px] flex items-center justify-between">
+        <div className="max-w-none mx-auto px-6 lg:px-8 h-[74px] flex items-center justify-between">
           {/* Left: Brand Logo & Location Lockup */}
           <div className="flex items-center space-x-6">
             <Link href="/" className="flex items-center space-x-2.5 group">

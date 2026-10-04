@@ -22,7 +22,7 @@ export default function CategoryScroller({ activeCategory = "All", onSelectCateg
 
   return (
     <div className="w-full bg-[#FFFDF5] pt-2 pb-2 dark:bg-surface-raised">
-      <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 sm:px-6 lg:px-8 max-w-md md:max-w-7xl mx-auto scroll-smooth pt-1 pb-1">
+      <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 sm:px-6 lg:px-8 max-w-md md:max-w-none mx-auto scroll-smooth pt-1 pb-1">
         {strip.map((cat) => {
           const Icon = cat.icon;
           const isActive = activeCategory === cat.id;

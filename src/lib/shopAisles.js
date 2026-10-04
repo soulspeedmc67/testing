@@ -1,7 +1,7 @@
 import {
   Milk, Croissant, Carrot, Apple, Popcorn, Cookie, CupSoda, Wheat, Soup, Candy, IceCreamCone,
   Nut, Flame, Droplets, Sparkles, SprayCan, Utensils, Baby, HeartPulse, PawPrint, Pencil, Plug,
-  Gamepad2, Package,
+  Gamepad2, Package, Shirt,
 } from "lucide-react";
 import { isSoldOut } from "./catalogueFile";
 
@@ -37,6 +37,7 @@ const AISLES = [
   { cat: "Stationery", label: "Stationery", icon: Pencil },
   { cat: "Electronics", label: "Electronics", icon: Plug },
   { cat: "Toys & Games", label: "Toys & games", icon: Gamepad2 },
+  { cat: "Clothing", label: "Clothing", icon: Shirt },
   { cat: "Vegetables", label: "Vegetables", icon: Carrot },
 ];
 
@@ -84,7 +85,7 @@ const GROUPS = [
   { id: "snacks", label: "Snacks & drinks", icon: Popcorn, cats: ["Snacks", "Chips", "Biscuits", "Beverages", "Sweets & Chocolates", "Ice Cream"] },
   { id: "cooking", label: "Cooking & pantry", icon: Wheat, cats: ["Staples", "Spices", "Sauces & Spreads", "Instant Food", "Dry Fruits"] },
   { id: "care", label: "Personal & baby care", icon: Sparkles, cats: ["Personal Care", "Baby Care", "Health & Wellness"] },
-  { id: "home", label: "Home & more", icon: SprayCan, cats: ["Home Care", "Kitchen Care", "Pet Care", "Stationery", "Electronics", "Toys & Games"] },
+  { id: "home", label: "Home & more", icon: SprayCan, cats: ["Home Care", "Kitchen Care", "Pet Care", "Stationery", "Electronics", "Toys & Games", "Clothing"] },
 ];
 
 function photoOf(p) {

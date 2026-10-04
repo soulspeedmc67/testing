@@ -34,7 +34,7 @@ export default function CategoriesPage() {
         canonical="/categories/"
       />
       <header className="sticky top-0 z-30 bg-[#FFFDF5]/95 backdrop-blur-md border-b border-slate-200/70 pt-[env(safe-area-inset-top,0px)] dark:bg-surface/95 dark:border-line">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+        <div className="max-w-3xl md:max-w-none mx-auto px-4 md:px-6 lg:px-8 h-14 flex items-center gap-3">
           <button
             type="button"
             onClick={() => goBack(router, "/shop")}
@@ -47,7 +47,7 @@ export default function CategoriesPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 pt-4">
+      <main className="max-w-3xl md:max-w-none mx-auto px-4 md:px-6 lg:px-8 pt-4">
         {/* Until the products arrive there is only the always-present
             Vegetables shelf to group, so wait for them. */}
         {products.length === 0 || groups.length === 0 ? (
@@ -57,7 +57,7 @@ export default function CategoriesPage() {
             ))}
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4 md:items-start">
             {groups.map((group) => {
               const Icon = group.icon;
               const isOpen = openGroup === group.id;
@@ -93,7 +93,7 @@ export default function CategoriesPage() {
                   {isOpen && (
                     <ul
                       id={panelId}
-                      className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5 px-2.5 pb-3 pt-2.5 border-t border-slate-100 dark:border-line-soft"
+                      className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 gap-1.5 px-2.5 pb-3 pt-2.5 border-t border-slate-100 dark:border-line-soft"
                     >
                       {group.aisles.map((aisle) => {
                         const AisleIcon = aisle.icon;

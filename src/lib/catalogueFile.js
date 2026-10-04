@@ -1,3 +1,5 @@
+import { withShelf } from "./categorize";
+
 /**
  * The web shop's product list, from the same file the Android and iPhone apps
  * use: /catalog/catalog.json, rebuilt on Hostinger by cron every 5 minutes
@@ -52,7 +54,11 @@ function save() {
 
 function list() {
   if (!shown) {
-    shown = Object.values(state?.items || {}).filter((p) => p && p.active !== false && p.name);
+    // Each product goes on the shelf its name says (see categorize.js); the
+    // saved copy keeps the catalogue's own category.
+    shown = Object.values(state?.items || {})
+      .filter((p) => p && p.active !== false && p.name)
+      .map(withShelf);
   }
   return shown;
 }

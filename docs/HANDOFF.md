@@ -75,6 +75,26 @@ Android apps were NOT changed by this; ask the owner before porting it.
   files, Razorpay without StoreKit / Play Billing); physical groceries are
   exempt from in-app purchase, but answer for it before App Store review.
 
+### Night of Oct 4: owner's rules for launch (website; VERIFIED on the export)
+
+- **Delivery fee**: 40% of the order under ₹180 (was 30%), ₹35 from ₹180 to
+  ₹299, ₹25 above ₹299; ₹11 handling on every order. Web
+  (`FreeDeliveryProgress.jsx`) and iOS (`Cart.swift`, not built yet). Android
+  not changed. The "first 5 orders free delivery" promo is still in the code:
+  ask the owner whether it stays.
+- **Right shelf for each product**: `src/lib/categorize.js` (ordered keyword
+  rules, first match wins) gives every product `{cat, sub}` from its name;
+  `catalogueFile.js` applies it when listing, so the saved copy keeps the
+  catalogue's own category. About 1,300 of 4,650 products move. Website only:
+  the apps still show the catalogue's categories. Shop shows the `sub` shelves
+  as chips inside every aisle. New aisle: Clothing.
+- **Shop chrome**: the order pill is now a bar at the top of the page, in the
+  page flow (`_app.js`, next to `LaunchBar`); cart button bottom left; WhatsApp
+  button bottom right with no pulse ring; the "FREE delivery above ₹299" pill
+  and the free-delivery toast are gone; shop, categories and search use the
+  full width on desktop (so does the header's inner row, width only).
+- **Search**: Categories and Clear sit at the top right under the search bar.
+
 ## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
 
 - **Web shop restored** (pages removed in b7c93f3): /shop, /search, /categories,

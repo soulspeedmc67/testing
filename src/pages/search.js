@@ -202,7 +202,7 @@ export default function SearchPage() {
       <header
         className="sticky top-0 z-40 bg-[#061838] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 shadow-md dark:bg-surface-raised dark:border-b dark:border-line/80"
       >
-        <div className="max-w-md md:max-w-4xl mx-auto flex items-center space-x-3">
+        <div className="max-w-md md:max-w-none mx-auto md:px-2 lg:px-4 flex items-center space-x-3">
           <motion.button
             whileTap={{ scale: 0.88 }}
             type="button"
@@ -259,7 +259,7 @@ export default function SearchPage() {
         }}
       />
 
-      <main className="max-w-md md:max-w-4xl mx-auto px-4 mt-4 space-y-4">
+      <main className="max-w-md md:max-w-none mx-auto px-4 md:px-6 lg:px-8 mt-4 space-y-4">
         {/* Nothing typed yet: recent searches, with the categories one tap away. */}
         {!query && (
           <section className="space-y-3">
@@ -267,18 +267,29 @@ export default function SearchPage() {
               <h2 className="text-[14px] font-bold text-[#061838] dark:text-content">
                 {showCategories ? "Categories" : recent.length > 0 ? "Recent searches" : "Popular searches"}
               </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  hapticLight();
-                  setShowCategories((v) => !v);
-                }}
-                aria-pressed={showCategories}
-                className="h-9 px-3 shrink-0 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-[#061838] inline-flex items-center gap-1.5 hover:border-slate-300 active:scale-[0.98] transition cursor-pointer dark:bg-surface-raised dark:border-line dark:text-content"
-              >
-                {showCategories ? <History className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
-                {showCategories ? "Recent searches" : "Categories"}
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticLight();
+                    setShowCategories((v) => !v);
+                  }}
+                  aria-pressed={showCategories}
+                  className="h-9 px-3 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-[#061838] inline-flex items-center gap-1.5 hover:border-slate-300 active:scale-[0.98] transition cursor-pointer dark:bg-surface-raised dark:border-line dark:text-content"
+                >
+                  {showCategories ? <History className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+                  {showCategories ? "History" : "Categories"}
+                </button>
+                {!showCategories && recent.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setRecent(clearRecentSearches())}
+                    className="h-9 px-3 rounded-xl text-[12.5px] font-semibold text-[#FF5B00] hover:bg-[#FF5B00]/10 active:scale-[0.98] transition cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
             {showCategories ? (
@@ -330,13 +341,6 @@ export default function SearchPage() {
                         </li>
                       ))}
                     </ul>
-                    <button
-                      type="button"
-                      onClick={() => setRecent(clearRecentSearches())}
-                      className="text-[12.5px] font-semibold text-slate-500 hover:text-slate-800 cursor-pointer dark:text-content-muted dark:hover:text-content"
-                    >
-                      Clear recent searches
-                    </button>
                   </div>
                 )}
 
@@ -387,14 +391,14 @@ export default function SearchPage() {
             cleanQuery ? (
               <EmptySearchState query={query} onSelectChip={(chip) => setQuery(chip)} />
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <ProductCardSkeleton key={i} />
                 ))}
               </div>
             )
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
               {gridProducts.map((p) => {
                 const inCart = cart.find((i) => i.id === p.id);
                 return (
