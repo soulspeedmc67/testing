@@ -842,7 +842,8 @@ export default function CheckoutPage() {
         orderDetails={processedOrder}
         onComplete={() => {
           setShowProcessingModal(false);
-          router.push("/orders");
+          const targetId = processedOrder?.id || processedOrder?.orderId;
+          router.push(targetId ? `/track?id=${targetId}` : "/track");
         }}
       />
     </div>

@@ -116,7 +116,7 @@ export default function HomeScreenLiveOrderCard() {
         )}
 
         <Link
-          href="/orders"
+          href={activeOrder?.id || activeOrder?.orderId ? `/track?id=${activeOrder.id || activeOrder.orderId}` : "/track"}
           className="bg-[#061838] hover:bg-slate-900 text-white font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center space-x-1 shrink-0"
         >
           <Navigation className="w-3.5 h-3.5" />

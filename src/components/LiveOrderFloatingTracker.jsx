@@ -220,7 +220,7 @@ export default function LiveOrderFloatingTracker() {
 
   if (!activeOrder || isDismissed) return null;
 
-  const isCustomerPage = !["/xcyop", "/driver", "/login", "/orders"].includes(router.pathname);
+  const isCustomerPage = !["/xcyop", "/driver", "/login", "/orders", "/track"].includes(router.pathname) && !router.pathname.startsWith("/track");
   if (!isCustomerPage) return null;
 
   const StageIcon = stageIconFor(orderStatus);
@@ -229,7 +229,7 @@ export default function LiveOrderFloatingTracker() {
 
   const handleOpenTracking = () => {
     hapticMedium();
-    router.push(`/orders?id=${targetOrderId}`);
+    router.push(`/track?id=${targetOrderId}`);
   };
 
   const handleDismiss = (e) => {

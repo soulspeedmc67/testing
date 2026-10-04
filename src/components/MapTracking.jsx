@@ -26,12 +26,33 @@ function create3DDestinationIcon(L) {
   return L.divIcon({
     className: "destination-marker-3d",
     html: `
-      <div style="position:relative; width:44px; height:52px; display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 6px 14px rgba(255,91,0,0.45));">
-        <img src="${RIDER_ASSETS.pins.front}" style="width:44px; height:52px; object-fit:contain;" alt="Delivery Location" />
+      <div style="position:relative; width:38px; height:52px; display:flex; flex-direction:column; align-items:center; filter:drop-shadow(0 6px 12px rgba(0,0,0,0.45));">
+        <svg width="38" height="52" viewBox="0 0 38 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="19" cy="48" rx="9" ry="3" fill="rgba(0,0,0,0.3)"/>
+          <path d="M19 0C8.5 0 0 8.5 0 19C0 32.5 19 46 19 46C19 46 38 32.5 38 19C38 8.5 29.5 0 19 0Z" fill="#FF5B00"/>
+          <circle cx="19" cy="19" r="14.5" fill="#ffffff"/>
+          <circle cx="19" cy="19" r="11.5" fill="#FF5B00"/>
+          <path d="M19 12L12.5 17.5V24H16.5V20H21.5V24H25.5V17.5L19 12Z" fill="#ffffff"/>
+        </svg>
       </div>
     `,
-    iconSize: [44, 52],
-    iconAnchor: [22, 50]
+    iconSize: [38, 52],
+    iconAnchor: [19, 48]
+  });
+}
+
+function createHubMarkerIcon(L) {
+  return L.divIcon({
+    className: "hub-marker-tile",
+    html: `
+      <div style="position:relative; width:38px; height:38px; display:flex; align-items:center; justify-content:center; filter:drop-shadow(0 4px 10px rgba(0,0,0,0.45));">
+        <div style="width:34px; height:34px; border-radius:10px; background:#FF5B00; border:2px solid #ffffff; display:flex; align-items:center; justify-content:center; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.3);">
+          <img src="/brand-tile.png" onerror="this.onerror=null; this.src='/icons/icon-192.png';" style="width:100%; height:100%; object-fit:cover;" alt="DASHit Hub" />
+        </div>
+      </div>
+    `,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19]
   });
 }
 
@@ -41,11 +62,14 @@ export default function MapTracking({
   initialLng = 75.150839,
   customerLat = 33.7385,
   customerLng = 75.1565,
-  destinationName = "Your Delivery Location"
+  destinationName = "Your Delivery Location",
+  fullScreen = false,
+  onTelemetryChange = null
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const riderMarkerRef = useRef(null);
+  const hubMarkerRef = useRef(null);
   const destinationMarkerRef = useRef(null);
   const polylineGlowRef = useRef(null);
   const polylineCoreRef = useRef(null);
@@ -114,9 +138,10 @@ export default function MapTracking({
           lineJoin: "round"
         }).addTo(map);
 
-        try {
-          map.fitBounds(coreLine.getBounds(), { padding: [45, 45], maxZoom: 16 });
-        } catch (e) {}
+        // DASHit Dark Store Hub marker matching Android hubMarkerBitmap
+        const hubPoint = [initialLat, initialLng];
+        const hubIcon = createHubMarkerIcon(L);
+        const hubMarker = L.marker(hubPoint, { icon: hubIcon }).addTo(map);
 
         // 3D Delivery Rider Scooter Marker facing destination using 3D heading sprite
         const initialBearing = calculateBearing(startPoint[0], startPoint[1], customerLat, customerLng);
@@ -127,15 +152,25 @@ export default function MapTracking({
         const customerIcon = create3DDestinationIcon(L);
         const destMarker = L.marker(endPoint, { icon: customerIcon }).addTo(map);
 
-        // Fit map bounds neatly to encompass route with padding
-        const bounds = L.latLngBounds([startPoint, endPoint]);
-        map.fitBounds(bounds, { padding: [35, 35] });
+        // Fit map bounds neatly to encompass route with padding, offsetting upward in fullScreen mode
+        const bounds = L.latLngBounds([startPoint, endPoint, hubPoint]);
+        const paddingConfig = fullScreen
+          ? { paddingBottomRight: [30, 260], paddingTopLeft: [40, 40], maxZoom: 16 }
+          : { padding: [35, 35] };
+        map.fitBounds(bounds, paddingConfig);
 
         mapInstanceRef.current = map;
         riderMarkerRef.current = riderMarker;
+        hubMarkerRef.current = hubMarker;
         destinationMarkerRef.current = destMarker;
         polylineGlowRef.current = casingLine;
         polylineCoreRef.current = coreLine;
+
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.invalidateSize();
+          }
+        }, 200);
       }
     });
 
@@ -233,9 +268,24 @@ export default function MapTracking({
       if (!ord) return;
       if (ord.driverName) setRiderName(ord.driverName);
       if (ord.status) setRiderStatus(ord.status);
+      onTelemetryChange?.({
+        etaMinutes,
+        distanceKm,
+        riderName: ord.driverName || riderName,
+        riderStatus: ord.status || riderStatus,
+        queuePosition
+      });
     });
 
+    const handleWindowResize = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+      }
+    };
+    window.addEventListener("resize", handleWindowResize);
+
     return () => {
+      window.removeEventListener("resize", handleWindowResize);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (typeof unsubTracking === "function") unsubTracking();
       if (typeof unsubOrder === "function") unsubOrder();
@@ -244,13 +294,41 @@ export default function MapTracking({
         mapInstanceRef.current = null;
       }
     };
-  }, [orderId, initialLat, initialLng, customerLat, customerLng]);
+  }, [orderId, initialLat, initialLng, customerLat, customerLng, fullScreen]);
 
   const recenterMap = () => {
     if (mapInstanceRef.current) {
-      mapInstanceRef.current.setView([riderLocation.lat, riderLocation.lng], 15, { animate: true });
+      if (fullScreen) {
+        const target = riderLocation.lat ? [riderLocation.lat, riderLocation.lng] : [initialLat, initialLng];
+        mapInstanceRef.current.setView(target, 16, { animate: true });
+        mapInstanceRef.current.panBy([0, 90], { animate: true });
+      } else {
+        mapInstanceRef.current.setView([riderLocation.lat, riderLocation.lng], 15, { animate: true });
+      }
     }
   };
+
+  // -------------------------------------------------------------
+  // FULL SCREEN MODE: Edge-to-edge interactive canvas for /track
+  // -------------------------------------------------------------
+  if (fullScreen) {
+    return (
+      <div className="w-full h-full relative select-none">
+        <div ref={mapContainerRef} className="w-full h-full z-0" />
+
+        {/* Floating Recenter FAB on top right below header */}
+        <button
+          type="button"
+          onClick={recenterMap}
+          className="absolute top-20 right-4 z-10 w-11 h-11 bg-black/75 backdrop-blur-xl border border-white/15 rounded-full text-white shadow-2xl flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+          title="Recenter Map"
+          aria-label="Recenter Map"
+        >
+          <Navigation className="w-5 h-5 text-[#FF5B00] fill-[#FF5B00]/25" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full bg-white border border-slate-200/90 rounded-3xl p-3.5 shadow-sm space-y-3 dark:bg-surface-raised dark:border-line/90">

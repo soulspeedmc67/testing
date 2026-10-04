@@ -26,7 +26,7 @@ import { EASE_OUT } from '../lib/motion';
 /* The web shop's chrome: cart bar, bottom menu, order tracker. Loaded only on
    shop pages, so the landing page, legal pages and staff consoles don't
    download it. The tracker is the one piece that reaches Firestore. */
-const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout', '/offers', '/orders', '/wishlist', '/account', '/add-address', '/confirm-location', '/login'];
+const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout', '/offers', '/orders', '/track', '/wishlist', '/account', '/add-address', '/confirm-location', '/login'];
 const FloatingCartBar = dynamic(() => import('../components/FloatingCartBar'), { ssr: false });
 const BottomNav = dynamic(() => import('../components/BottomNav'), { ssr: false });
 const FlyingBadgeOverlay = dynamic(() => import('../components/FlyingBadgeOverlay'), { ssr: false });
@@ -516,14 +516,14 @@ export default function App({ Component, pageProps }) {
         )}
         {!isDriverApp && SHOP_ROUTES.includes(router.pathname) && (
           <>
-            {!['/login', '/orders'].includes(router.pathname) && <LiveOrderFloatingTracker />}
-            <FloatingCartBar />
-            {router.pathname !== '/login' && <BottomNav />}
+            {!['/login', '/orders', '/track'].some((p) => router.pathname.startsWith(p)) && <LiveOrderFloatingTracker />}
+            {!router.pathname.startsWith('/track') && <FloatingCartBar />}
+            {router.pathname !== '/login' && !router.pathname.startsWith('/track') && <BottomNav />}
             <FlyingBadgeOverlay />
             <FreeDeliveryToast />
           </>
         )}
-        {!isDriverApp && <CookieConsentBanner />}
+        {!isDriverApp && !router.pathname.startsWith('/track') && <CookieConsentBanner />}
         </AgeGateProvider>
       </ScrollChromeProvider>
       </ThemeProvider>

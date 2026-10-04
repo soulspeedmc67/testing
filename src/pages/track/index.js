@@ -1,0 +1,524 @@
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import SEO from "../../components/SEO";
+import {
+  Bike,
+  Package,
+  Check,
+  CheckCircle2,
+  ArrowLeft,
+  Shield,
+  Phone,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+  Clock,
+  Plus,
+  Home,
+  Receipt
+} from "lucide-react";
+import {
+  watchOrder,
+  watchOrderTracking,
+  ORDER_CHANGE_WINDOW_SECONDS,
+  updateOrderStatus
+} from "../../lib/db";
+import { hapticLight, hapticMedium, hapticSuccess } from "../../lib/haptics";
+import ModifyOrderModal from "../../components/ModifyOrderModal";
+import CancelOrderModal from "../../components/CancelOrderModal";
+
+const MapTracking = dynamic(() => import("../../components/MapTracking"), { ssr: false });
+
+function orderTimestampMs(order) {
+  const ts = order?.createdAt ?? order?.timestamp;
+  if (!ts) return 0;
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "string") {
+    const parsed = Date.parse(ts);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  if (typeof ts.toMillis === "function") return ts.toMillis();
+  if (typeof ts.seconds === "number") return ts.seconds * 1000;
+  if (ts instanceof Date) return ts.getTime();
+  return 0;
+}
+
+function getRemainingCancellationSeconds(order) {
+  if (!order) return 0;
+  const status = String(order.status || "").toLowerCase();
+  if (status && status !== "placed") return 0;
+
+  const orderTime = orderTimestampMs(order);
+  if (!orderTime) return 0;
+
+  const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
+  return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
+}
+
+function formatDisplayId(id) {
+  if (!id) return "98214";
+  const cleaned = String(id).replace(/^DASH-?/i, "").replace(/^#/, "").replace(/^-/, "");
+  return cleaned.length > 5 ? cleaned.slice(-5).toUpperCase() : cleaned.toUpperCase();
+}
+
+export default function OrderTrackingPage() {
+  const router = useRouter();
+  const [order, setOrder] = useState(null);
+  const [telemetry, setTelemetry] = useState({
+    etaMinutes: 7,
+    distanceKm: "1.7",
+    riderName: "Tariq Ahmad",
+    riderStatus: "On the way on Scooter",
+    queuePosition: 0,
+  });
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [cancellationSeconds, setCancellationSeconds] = useState(0);
+  const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // 1. Resolve target order from router query or localStorage
+  useEffect(() => {
+    const syncOrder = () => {
+      try {
+        const queryId = router.query.id;
+        const activeRaw = localStorage.getItem("dashit_active_order");
+        const historyRaw = localStorage.getItem("dashit_orders_history");
+
+        let activeParsed = activeRaw ? JSON.parse(activeRaw) : null;
+        let historyParsed = historyRaw ? JSON.parse(historyRaw) : [];
+
+        if (queryId) {
+          const match =
+            (activeParsed && String(activeParsed.orderId || activeParsed.id) === String(queryId))
+              ? activeParsed
+              : historyParsed.find((o) => String(o.orderId || o.id) === String(queryId));
+          if (match) {
+            setOrder(match);
+            return;
+          }
+        }
+
+        if (activeParsed) {
+          setOrder(activeParsed);
+          return;
+        }
+
+        if (historyParsed && historyParsed.length > 0) {
+          setOrder(historyParsed[0]);
+        }
+      } catch (e) {}
+    };
+
+    syncOrder();
+    window.addEventListener("dashit_orders_updated", syncOrder);
+    window.addEventListener("dashit_order_updated", syncOrder);
+    window.addEventListener("storage", syncOrder);
+
+    return () => {
+      window.removeEventListener("dashit_orders_updated", syncOrder);
+      window.removeEventListener("dashit_order_updated", syncOrder);
+      window.removeEventListener("storage", syncOrder);
+    };
+  }, [router.query.id]);
+
+  const targetOrderId = order?.orderId || order?.id || "DASH-98214";
+
+  // 2. Real-time Firestore sync
+  useEffect(() => {
+    if (!targetOrderId) return;
+    const unsubOrder = watchOrder(targetOrderId, (data) => {
+      if (data) {
+        setOrder((prev) => ({ ...(prev || {}), ...data }));
+      }
+    });
+
+    const unsubTracking = watchOrderTracking(targetOrderId, (track) => {
+      if (track) {
+        setTelemetry((prev) => ({
+          ...prev,
+          etaMinutes: track.etaMinutes ? Number(track.etaMinutes) : prev.etaMinutes,
+          distanceKm: track.distanceKm ? Number(track.distanceKm).toFixed(1) : prev.distanceKm,
+          riderName: track.driverName || prev.riderName,
+          riderStatus: track.status || prev.riderStatus,
+          queuePosition: track.queuePosition !== undefined ? Number(track.queuePosition) : prev.queuePosition,
+        }));
+      }
+    });
+
+    return () => {
+      if (typeof unsubOrder === "function") unsubOrder();
+      if (typeof unsubTracking === "function") unsubTracking();
+    };
+  }, [targetOrderId]);
+
+  // 3. Countdown timer for cancellation/modification
+  useEffect(() => {
+    if (!order) return;
+    const updateTime = () => setCancellationSeconds(getRemainingCancellationSeconds(order));
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [order]);
+
+  // Normalized order status
+  const currentStatus = String(order?.status || "Placed");
+  const normStatus = currentStatus.trim().toLowerCase().replace(/_/g, " ");
+  const isOutForDelivery = normStatus === "out for delivery";
+  const isDelivered = normStatus === "delivered";
+  const isCancelled = normStatus === "cancelled";
+  const isPacking = normStatus === "packed" || normStatus === "packing";
+
+  // Progress percentage matching Android OrderProgressRail
+  const stageProgress = isDelivered ? 1.0 : isOutForDelivery ? 0.75 : isPacking ? 0.45 : 0.18;
+
+  const handleCancelOrder = async () => {
+    if (!order) return;
+    setIsCancelling(true);
+    try {
+      await updateOrderStatus(targetOrderId, "cancelled");
+      localStorage.removeItem("dashit_active_order");
+      hapticSuccess();
+      setIsCancelModalOpen(false);
+      router.push("/orders");
+    } catch (e) {
+      alert("Error cancelling order: " + (e?.message || "Please call store support"));
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  const handleBack = () => {
+    hapticLight();
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/orders");
+    }
+  };
+
+  const grandTotal = Number(order?.total || order?.grandTotal || order?.amount || 0);
+  const items = Array.isArray(order?.items) ? order.items : [];
+  const itemCount = items.reduce((sum, it) => sum + (Number(it.qty || it.quantity) || 1), 0);
+  const otpCode = order?.otp || "4289";
+
+  return (
+    <div className="dark fixed inset-0 w-screen h-screen overflow-hidden bg-[#060709] text-white select-none">
+      <SEO title={`Track Order #${formatDisplayId(targetOrderId)} - DASHit`} noindex={true} />
+
+      {/* =====================================================================
+          1. FULL SCREEN MAP BACKGROUND (Fills 100% of viewport edge-to-edge)
+          ===================================================================== */}
+      <div className="absolute inset-0 w-full h-full z-0">
+        <MapTracking
+          orderId={targetOrderId}
+          initialLat={33.748413}
+          initialLng={75.150839}
+          customerLat={order?.location?.lat || order?.deliveryAddress?.latitude || 33.7385}
+          customerLng={order?.location?.lng || order?.deliveryAddress?.longitude || 75.1565}
+          destinationName={order?.location?.address || order?.deliveryAddress?.address || "Your Doorstep"}
+          fullScreen={true}
+          onTelemetryChange={(tel) => setTelemetry((prev) => ({ ...prev, ...tel }))}
+        />
+      </div>
+
+      {/* =====================================================================
+          2. FLOATING TOP OVERLAY BAR (Back Button + Change Countdown Pill)
+          ===================================================================== */}
+      <div className="fixed top-0 left-0 right-0 z-30 pt-[calc(env(safe-area-inset-top,0px)+12px)] px-4 pointer-events-none">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          {/* Circular Floating Back Button (Black glass, white arrow matching Android) */}
+          <button
+            type="button"
+            onClick={handleBack}
+            className="pointer-events-auto w-11 h-11 rounded-full bg-black/75 backdrop-blur-xl border border-white/15 text-white flex items-center justify-center shadow-2xl active:scale-90 transition-transform cursor-pointer"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+          </button>
+
+          {/* Change Window Countdown or Order ID Badge */}
+          {cancellationSeconds > 0 ? (
+            <div className="pointer-events-auto h-9 px-3.5 rounded-full bg-black/80 backdrop-blur-xl border border-white/15 flex items-center space-x-2 text-white shadow-xl select-none">
+              <div className="relative w-4 h-4 flex items-center justify-center">
+                <svg className="w-4 h-4 -rotate-90 transform" viewBox="0 0 20 20">
+                  <circle cx="10" cy="10" r="8" className="stroke-white/20" strokeWidth="2.5" fill="none" />
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="8"
+                    stroke="#FF5B00"
+                    strokeWidth="2.5"
+                    strokeDasharray={50.2}
+                    strokeDashoffset={50.2 * (1 - cancellationSeconds / ORDER_CHANGE_WINDOW_SECONDS)}
+                    strokeLinecap="round"
+                    fill="none"
+                    className="transition-all duration-900 ease-linear"
+                  />
+                </svg>
+              </div>
+              <span className="font-mono text-xs font-bold text-white">
+                0:{cancellationSeconds < 10 ? `0${cancellationSeconds}` : cancellationSeconds}
+              </span>
+              <span className="text-[11px] font-semibold text-white/70">to change</span>
+            </div>
+          ) : (
+            <div className="pointer-events-auto px-3.5 py-1.5 rounded-full bg-black/75 backdrop-blur-xl border border-white/15 flex items-center space-x-1.5 text-xs font-bold text-white shadow-xl">
+              <span className="font-mono text-xs text-white/80">
+                #{formatDisplayId(targetOrderId)}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================================
+          3. SMALL POP-UP CARD AT THE BOTTOM (Exact Android OrderCard Parity)
+          ===================================================================== */}
+      <div className="fixed bottom-3 left-3 right-3 sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 sm:w-[440px] z-30 pointer-events-none">
+        <div className="pointer-events-auto bg-[#141416]/95 backdrop-blur-2xl border border-white/12 rounded-3xl p-4 sm:p-5 shadow-[0_12px_45px_rgba(0,0,0,0.7)] text-white space-y-3.5 max-h-[82vh] overflow-y-auto scrollbar-none transition-all duration-300">
+          
+          {/* Header Row: Stage Icon + Headline + ETA Badge */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              {isDelivered ? (
+                <div className="w-6 h-6 rounded-full bg-[#00D26A]/20 flex items-center justify-center text-[#00D26A]">
+                  <Check className="w-4 h-4 stroke-[3]" />
+                </div>
+              ) : isOutForDelivery ? (
+                <div className="w-6 h-6 rounded-full bg-[#FF5B00]/20 flex items-center justify-center text-[#FF5B00]">
+                  <Bike className="w-4 h-4 animate-pulse stroke-[2.5]" />
+                </div>
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-[#FF5B00]/20 flex items-center justify-center text-[#FF5B00]">
+                  <Package className="w-4 h-4 stroke-[2.5]" />
+                </div>
+              )}
+              <h3 className="font-extrabold text-base text-white tracking-tight">
+                {isDelivered
+                  ? "Delivered to Doorstep"
+                  : isOutForDelivery
+                  ? `${telemetry.riderName || "Tariq"} is on the way`
+                  : isPacking
+                  ? "Packing your order"
+                  : "Order received"}
+              </h3>
+            </div>
+
+            {/* ETA Tag */}
+            {isOutForDelivery && (
+              <span className="text-sm font-black text-[#00D26A] tracking-wider uppercase drop-shadow-[0_0_8px_rgba(0,210,106,0.35)]">
+                ETA {telemetry.etaMinutes} MINS
+              </span>
+            )}
+            {isDelivered && (
+              <span className="text-xs font-bold text-[#00D26A] bg-[#00D26A]/15 border border-[#00D26A]/25 px-2.5 py-1 rounded-full uppercase">
+                Delivered
+              </span>
+            )}
+            {!isOutForDelivery && !isDelivered && (
+              <span className="text-xs font-bold text-[#FF5B00] bg-[#FF5B00]/15 border border-[#FF5B00]/25 px-2.5 py-1 rounded-full uppercase">
+                {isPacking ? "Packing" : "Received"}
+              </span>
+            )}
+          </div>
+
+          {/* Subtitle / Distance Line */}
+          <p className="text-xs font-medium text-white/70">
+            {isOutForDelivery
+              ? `${telemetry.distanceKm ? telemetry.distanceKm + " km away • " : ""}Arriving at your doorstep`
+              : isPacking
+              ? "Your items are being picked and packed at DASHit Hub"
+              : "Store received your order. Packing starts right after."}
+          </p>
+
+          {/* Stage Rail: OrderProgressRail (1:1 Android Implementation) */}
+          <div className="space-y-1.5 pt-1">
+            <div className="relative h-2 w-full bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#FF5B00] to-[#00D26A] rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${Math.round(stageProgress * 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px] font-bold text-white/50 px-0.5">
+              <span className={stageProgress >= 0.18 ? "text-white" : ""}>Placed</span>
+              <span className={stageProgress >= 0.45 ? "text-white" : ""}>Packing</span>
+              <span className={stageProgress >= 0.75 ? "text-white" : ""}>On the way</span>
+              <span className={stageProgress >= 1.0 ? "text-[#00D26A]" : ""}>Delivered</span>
+            </div>
+          </div>
+
+          {/* Courier Details Row (Only when out for delivery or rider assigned) */}
+          {isOutForDelivery && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-11 h-11 rounded-xl bg-orange-500/15 border border-orange-500/25 p-1 flex items-center justify-center overflow-hidden">
+                  <img
+                    src="/rider/rider_180.png"
+                    alt={telemetry.riderName}
+                    className="w-full h-full object-contain filter drop-shadow"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-1.5">
+                    <h4 className="font-extrabold text-sm text-white">{telemetry.riderName}</h4>
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#00D26A] text-black flex items-center justify-center text-[9px] font-black">✓</span>
+                  </div>
+                  <p className="text-[11px] font-medium text-white/60">{telemetry.riderStatus}</p>
+                </div>
+              </div>
+
+              <a
+                href="tel:916006990032"
+                onClick={() => hapticLight()}
+                className="px-3.5 py-2 rounded-xl bg-[#00D26A]/20 hover:bg-[#00D26A]/30 text-[#00D26A] border border-[#00D26A]/30 text-xs font-bold flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                <span>Call</span>
+              </a>
+            </div>
+          )}
+
+          {/* Delivery PIN Row (OTP code) */}
+          {!isDelivered && otpCode && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-3.5 py-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Shield className="w-4 h-4 text-[#FF5B00]" />
+                <div>
+                  <span className="text-xs font-bold text-white block leading-tight">Delivery PIN</span>
+                  <span className="text-[10px] text-white/60">Share with partner at door</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-1.5">
+                {String(otpCode).split("").map((digit, i) => (
+                  <span
+                    key={i}
+                    className="w-7 h-9 rounded-lg bg-white/10 border border-white/15 font-mono text-base font-extrabold flex items-center justify-center text-white shadow-sm"
+                  >
+                    {digit}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Change Window Actions (Modify / Cancel during 60s) */}
+          {cancellationSeconds > 0 && (
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center justify-between gap-2">
+              <div className="leading-tight">
+                <span className="text-xs font-semibold text-white block">Forgot something?</span>
+                <span className="text-[10px] text-white/60">Add or cancel before packing</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCancelModalOpen(true)}
+                  className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-rose-400 text-xs font-semibold active:scale-95 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsModifyModalOpen(true)}
+                  className="px-3 py-1.5 rounded-full bg-[#FF5B00] hover:bg-[#e04f00] text-white text-xs font-bold flex items-center space-x-1 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Add items</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Divider & Items Summary with Expandable Drawer */}
+          <div className="border-t border-white/10 pt-2.5 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-semibold text-white/70 block">
+                {itemCount} {itemCount === 1 ? "item" : "items"} • ₹{grandTotal.toFixed(0)}
+              </span>
+              <span className="font-mono text-[10px] text-white/40">
+                #{formatDisplayId(targetOrderId)}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                hapticLight();
+                setIsDetailsExpanded(!isDetailsExpanded);
+              }}
+              className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-white text-xs font-bold flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+            >
+              <span>{isDetailsExpanded ? "Hide Details" : "View Items"}</span>
+              {isDetailsExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
+          {/* Expandable Order Details Accordion Drawer */}
+          {isDetailsExpanded && (
+            <div className="pt-2 border-t border-white/10 space-y-3 max-h-60 overflow-y-auto scrollbar-none animate-fadeIn">
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-white/60 uppercase tracking-wider block">
+                  Items in this order
+                </span>
+                {items.map((it, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-white/5 last:border-0">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                        {it.img || it.image ? (
+                          <img src={it.img || it.image} alt={it.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="w-4 h-4 text-white/40" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-white line-clamp-1">{it.name}</span>
+                        <span className="text-[10px] text-white/50">{it.unit || "unit"} × {it.qty || it.quantity || 1}</span>
+                      </div>
+                    </div>
+                    <span className="font-bold text-white shrink-0">
+                      ₹{((Number(it.price) || 0) * (Number(it.qty || it.quantity) || 1)).toFixed(0)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Delivery Address */}
+              <div className="bg-white/5 rounded-xl p-2.5 flex items-start space-x-2 text-xs">
+                <MapPin className="w-3.5 h-3.5 text-[#FF5B00] shrink-0 mt-0.5" />
+                <span className="text-white/80 line-clamp-2">
+                  {order?.location?.address || order?.deliveryAddress?.address || "Anantnag, Jammu & Kashmir"}
+                </span>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Modals for Modification & Cancellation */}
+      {isCancelModalOpen && (
+        <CancelOrderModal
+          isOpen={isCancelModalOpen}
+          order={order}
+          isCancelling={isCancelling}
+          onConfirm={handleCancelOrder}
+          onClose={() => setIsCancelModalOpen(false)}
+        />
+      )}
+
+      {isModifyModalOpen && (
+        <ModifyOrderModal
+          isOpen={isModifyModalOpen}
+          order={order}
+          onClose={() => setIsModifyModalOpen(false)}
+          onSuccess={() => {
+            setIsModifyModalOpen(false);
+            hapticSuccess();
+          }}
+        />
+      )}
+    </div>
+  );
+}

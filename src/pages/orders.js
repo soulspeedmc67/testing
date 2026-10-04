@@ -209,27 +209,12 @@ export default function OrdersPage() {
           } catch (e) {}
         }
 
-        // URL query parameter routing: ?id= or ?viewPast=true
-        if (router.query.viewPast === "true") {
-          setViewMode("history");
-        } else if (router.query.id) {
-          const match =
-            (parsedActive && String(parsedActive.orderId || parsedActive.id) === String(router.query.id))
-              ? parsedActive
-              : parsedHistory.find((o) => String(o.orderId || o.id) === String(router.query.id));
-          if (match) {
-            setSelectedOrder(match);
-            setViewMode("tracking");
-          } else if (parsedActive) {
-            setSelectedOrder(parsedActive);
-            setViewMode("tracking");
-          }
-        } else if (parsedActive) {
-          setSelectedOrder(parsedActive);
-          setViewMode("tracking");
-        } else {
-          setViewMode("history");
+        // URL query parameter routing: if ?id= present, redirect to dedicated /track screen
+        if (router.query.id) {
+          router.replace(`/track?id=${router.query.id}`);
+          return;
         }
+        setViewMode("history");
       } catch (e) {}
     };
 
@@ -835,8 +820,7 @@ export default function OrdersPage() {
                   type="button"
                   onClick={() => {
                     hapticLight();
-                    setSelectedOrder(activeOrder);
-                    setViewMode("tracking");
+                    router.push(`/track?id=${activeOrder.orderId || activeOrder.id}`);
                   }}
                   className="px-3.5 py-1.5 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 text-xs font-bold flex items-center space-x-1.5 active:scale-95 cursor-pointer"
                 >
@@ -853,14 +837,13 @@ export default function OrdersPage() {
               <div
                 onClick={() => {
                   hapticLight();
-                  setSelectedOrder(activeOrder);
-                  setViewMode("tracking");
+                  router.push(`/track?id=${activeOrder.orderId || activeOrder.id}`);
                 }}
-                className="bg-[#15161A] text-white border border-white/12 rounded-3xl p-4 shadow-md flex items-center justify-between gap-3 cursor-pointer select-none transition-transform active:scale-[0.98]"
+                className="bg-[#141416] text-white border border-white/12 rounded-3xl p-4 shadow-xl flex items-center justify-between gap-3 cursor-pointer select-none transition-transform active:scale-[0.98]"
               >
                 <div className="flex items-center space-x-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-[#FF5B00]/20 text-[#FF5B00] flex items-center justify-center shrink-0">
-                    <Bike className="w-5 h-5 stroke-[2.2]" />
+                  <div className="w-11 h-11 rounded-2xl bg-[#FF5B00]/20 text-[#FF5B00] flex items-center justify-center shrink-0 border border-[#FF5B00]/30">
+                    <Bike className="w-5 h-5 stroke-[2.2] animate-pulse" />
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center space-x-2">
@@ -874,13 +857,14 @@ export default function OrdersPage() {
                       <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
                     </div>
                     <span className="text-[11px] text-white/60 block truncate mt-0.5">
-                      #{String(activeOrder.orderId || activeOrder.id || "").slice(-6).toUpperCase()} · Tap to track live
+                      #{String(activeOrder.orderId || activeOrder.id || "").slice(-6).toUpperCase()} · Tap to track on live map
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-[#22C55E] text-white px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1 shrink-0 shadow-sm">
-                  <span>🛵 Track</span>
+                <div className="bg-[#FF5B00] text-white px-3.5 py-2 rounded-2xl font-bold text-xs flex items-center space-x-1.5 shrink-0 shadow-md">
+                  <span>Track</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </div>
               </div>
             )}
@@ -1002,8 +986,7 @@ export default function OrdersPage() {
                               type="button"
                               onClick={() => {
                                 hapticMedium();
-                                setSelectedOrder(ord);
-                                setViewMode("tracking");
+                                router.push(`/track?id=${ordId}`);
                               }}
                               className="bg-[#22C55E] hover:bg-[#1eb354] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs transition-all active:scale-95 flex items-center space-x-1.5 cursor-pointer"
                             >
@@ -1015,8 +998,7 @@ export default function OrdersPage() {
                                 type="button"
                                 onClick={() => {
                                   hapticLight();
-                                  setSelectedOrder(ord);
-                                  setViewMode("tracking");
+                                  router.push(`/track?id=${ordId}`);
                                 }}
                                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-xl border border-slate-200/80 transition-all active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-overlay dark:border-line dark:text-content-secondary cursor-pointer"
                               >
