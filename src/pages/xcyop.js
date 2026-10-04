@@ -51,6 +51,7 @@ import PhotoSearchStatus from "../components/admin/PhotoSearchStatus";
 import { isPlaceholderImage } from "../lib/productPhotoMatch";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { watchAuth, getStaffRole, signInWithEmail, signInWithGoogle, completeGoogleRedirect, signOut } from "../lib/auth";
+import { watchShopProducts as watchProducts } from "../lib/catalogueFile";
 import {
   watchAllOrders,
   updateOrderStatus as fsUpdateOrderStatus,
@@ -59,7 +60,6 @@ import {
   deleteOffer as fsDeleteOffer,
   watchCoupons,
   saveCoupons,
-  watchProducts,
   fetchProducts,
   upsertProduct,
   deleteProduct as fsDeleteProduct,

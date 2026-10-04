@@ -146,7 +146,7 @@ function dashit_catalog_read(): ?array
     return is_array($data) && isset($data['version'], $data['products']) && is_array($data['products']) ? $data : null;
 }
 
-const DASHIT_FULL_EVERY = 24 * 3600 * 1000;
+const DASHIT_FULL_EVERY = 7 * 24 * 3600 * 1000;
 
 /**
  * Brings catalog.json up to date (see build.php). True when the file is
@@ -268,7 +268,7 @@ function dashit_catalog_refresh_if_stale(): void
 
     $marker = dashit_private_dir('dashit-data') . '/catalog-web-build.txt';
     $last = (int) @file_get_contents($marker);
-    if (time() - $last < ($file === null ? 60 : 300)) return;
+    if (time() - $last < ($file === null ? 900 : 300)) return;
     @mkdir(dirname($marker), 0700, true);
     @file_put_contents($marker, (string) time());
 
