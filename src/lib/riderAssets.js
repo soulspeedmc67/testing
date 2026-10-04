@@ -4,6 +4,8 @@
  */
 
 export const RIDER_ASSETS = {
+  // Official 3D GLB model
+  model3D: "/3d/dashit-rider.glb",
   // 8-directional road heading angles
   directions: {
     north: "/rider/rider_back.png",
@@ -82,7 +84,8 @@ export function calculateBearing(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Returns the best 3D rider asset based on current heading bearing and motion state.
+ * Returns the 3D rider sprite rendered from dashit-rider.glb for this heading.
+ * Uses the 24 headings (every 15°) matching Android and iOS implementations.
  * @param {number|null} bearingDeg - Bearing in degrees (0..360)
  * @param {boolean} isMoving - Whether courier is actively in motion
  * @param {boolean} isBraking - Whether courier is decelerating or stopping at delivery point
@@ -92,28 +95,13 @@ export function getRiderAssetForHeading(bearingDeg, isMoving = true, isBraking =
     return RIDER_ASSETS.states.braking;
   }
   if (!isMoving || bearingDeg == null) {
-    return RIDER_ASSETS.states.liveMap;
+    return "/rider/rider_180.png";
   }
 
-  // Normalize bearing to 0..360
-  const b = (bearingDeg + 360) % 360;
-
-  // 8 cardinal sectors of 45 degrees each:
-  // Sector 0: 337.5° - 22.5° -> North (facing away)
-  // Sector 1: 22.5° - 67.5°  -> North-East
-  // Sector 2: 67.5° - 112.5° -> East
-  // Sector 3: 112.5° - 157.5° -> South-East
-  // Sector 4: 157.5° - 202.5° -> South (facing viewer)
-  // Sector 5: 202.5° - 247.5° -> South-West
-  // Sector 6: 247.5° - 292.5° -> West
-  // Sector 7: 292.5° - 337.5° -> North-West
-
-  if (b >= 337.5 || b < 22.5) return RIDER_ASSETS.directions.north;
-  if (b >= 22.5 && b < 67.5) return RIDER_ASSETS.directions.northEast;
-  if (b >= 67.5 && b < 112.5) return RIDER_ASSETS.directions.east;
-  if (b >= 112.5 && b < 157.5) return RIDER_ASSETS.directions.southEast;
-  if (b >= 157.5 && b < 202.5) return RIDER_ASSETS.directions.south;
-  if (b >= 202.5 && b < 247.5) return RIDER_ASSETS.directions.southWest;
-  if (b >= 247.5 && b < 292.5) return RIDER_ASSETS.directions.west;
-  return RIDER_ASSETS.directions.northWest;
+  // Normalize bearing to 0..360 and find closest of the 24 frames
+  const normalized = ((bearingDeg % 360) + 360) % 360;
+  const step = Math.floor((normalized + 7.5) / 15) % 24;
+  const deg = String(step * 15).padStart(3, "0");
+  return `/rider/rider_${deg}.png`;
 }
+

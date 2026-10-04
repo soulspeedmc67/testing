@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import "leaflet/dist/leaflet.css";
-import { ShieldCheck, Phone, Navigation, Clock, CheckCircle2, Bike, Layers } from "lucide-react";
+import { ShieldCheck, Phone, Navigation, Clock, CheckCircle2, Bike, Layers, Box, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { fetchRoadRoute } from "../lib/maps";
 import { calculateLiveOrderEta } from "../lib/deliveryEta";
 import { watchOrder, watchOrderTracking } from "../lib/db";
 import { calculateBearing, getRiderAssetForHeading, RIDER_ASSETS } from "../lib/riderAssets";
 
+const Rider3DViewer = dynamic(() => import("./Rider3DViewer"), { ssr: false });
+
 // 3D Rider & Marker builders for Leaflet
-function create3DRiderIcon(L, assetUrl = RIDER_ASSETS.states.liveMap) {
+function create3DRiderIcon(L, assetUrl = "/rider/rider_180.png") {
   return L.divIcon({
     className: "rider-marker-3d",
     html: `
@@ -59,6 +62,7 @@ export default function MapTracking({
   const [riderLocation, setRiderLocation] = useState({ lat: initialLat, lng: initialLng });
   const [riderName, setRiderName] = useState("Tariq Ahmad");
   const [riderStatus, setRiderStatus] = useState("On the way on Scooter");
+  const [show3DModel, setShow3DModel] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
@@ -118,8 +122,9 @@ export default function MapTracking({
           map.fitBounds(coreLine.getBounds(), { padding: [45, 45], maxZoom: 16 });
         } catch (e) {}
 
-        // 3D Delivery Rider Scooter Marker
-        const riderIcon = create3DRiderIcon(L, RIDER_ASSETS.states.liveMap);
+        // 3D Delivery Rider Scooter Marker facing destination using 3D heading sprite
+        const initialBearing = calculateBearing(startPoint[0], startPoint[1], customerLat, customerLng);
+        const riderIcon = create3DRiderIcon(L, getRiderAssetForHeading(initialBearing));
         const riderMarker = L.marker(startPoint, { icon: riderIcon }).addTo(map);
 
         // 3D Destination Location Pin
@@ -297,29 +302,59 @@ export default function MapTracking({
         </div>
       </div>
 
-      {/* Clean Courier Details Row with 3D Rider Avatar */}
-      <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
-        <div className="flex items-center space-x-2.5">
-          <div className="w-11 h-11 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center p-1 shadow-sm overflow-hidden dark:bg-orange-500/15">
-            <img src={RIDER_ASSETS.directions.south} alt={riderName} className="w-full h-full object-contain filter drop-shadow-sm" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-1.5">
-              <h4 className="font-extrabold text-xs text-slate-900 dark:text-content">{riderName}</h4>
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+      {/* Clean Courier Details Row with 3D Rider Avatar and Interactive 3D Model View */}
+      <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 dark:bg-surface-raised dark:border-line-soft space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <button
+              type="button"
+              onClick={() => setShow3DModel((v) => !v)}
+              className="relative w-11 h-11 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center p-1 shadow-sm overflow-hidden hover:scale-105 active:scale-95 transition-transform cursor-pointer dark:bg-orange-500/15"
+              title="Click to view 3D Rider Model"
+            >
+              <img src="/rider/rider_180.png" alt={riderName} className="w-full h-full object-contain filter drop-shadow-sm" />
+              <span className="absolute bottom-0 right-0 bg-[#FF5B00] text-[8px] font-black text-white px-1 rounded-tl-md">3D</span>
+            </button>
+            <div>
+              <div className="flex items-center space-x-1.5">
+                <h4 className="font-extrabold text-xs text-slate-900 dark:text-content">{riderName}</h4>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              </div>
+              <p className="text-[10px] font-medium text-slate-500 dark:text-content-muted">{riderStatus}</p>
             </div>
-            <p className="text-[10px] font-medium text-slate-500 dark:text-content-muted">{riderStatus}</p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => setShow3DModel((v) => !v)}
+              className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+                show3DModel
+                  ? "bg-[#FF5B00] text-white border-[#FF5B00] shadow-sm"
+                  : "bg-white text-slate-700 border-slate-200 hover:bg-orange-50 hover:text-[#FF5B00] dark:bg-surface dark:border-line dark:text-content"
+              }`}
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>{show3DModel ? "Hide 3D" : "3D Model"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => alert("Calling delivery partner...")}
+              className="p-2.5 bg-white hover:bg-orange-50 text-[#FF5B00] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold cursor-pointer dark:bg-surface-raised dark:border-line"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              <span className="text-[11px]">Call</span>
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => alert("Calling delivery partner...")}
-          className="p-2.5 bg-white hover:bg-orange-50 text-[#FF5B00] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold cursor-pointer dark:bg-surface-raised dark:border-line"
-        >
-          <Phone className="w-3.5 h-3.5" />
-          <span className="text-[11px]">Call</span>
-        </button>
+        {/* Expandable Interactive 3D Rider Model */}
+        {show3DModel && (
+          <div className="pt-2 border-t border-slate-200/60 dark:border-line/60">
+            <Rider3DViewer className="w-full h-56 bg-black/60 rounded-2xl border border-white/10" autoRotate={true} />
+          </div>
+        )}
       </div>
     </div>
   );
