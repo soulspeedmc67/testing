@@ -53,7 +53,7 @@ import { orderAddress } from "../lib/orderReceipt";
 import { DRIVER_LANGUAGES, DRIVER_STRINGS } from "../lib/driverTranslations";
 
 // Lal Chowk Dark Store Hub default coordinates
-const DARK_STORE_HUB = { latitude: 33.735832, longitude: 75.143614 };
+const DARK_STORE_HUB = { latitude: 33.748413, longitude: 75.150839 };
 /** Longest gap between position updates, even standing still. */
 const TELEMETRY_PUSH_INTERVAL_MS = 20000;
 /** Shortest gap while riding. */

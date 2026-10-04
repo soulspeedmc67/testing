@@ -21,7 +21,25 @@ struct OrderDetailSheet: View {
                         .foregroundColor(.textMuted)
                 }
 
-                if !stage.isFinished {
+                if stage == .cancelled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark.octagon.fill")
+                                .foregroundColor(.red)
+                            Text(order.rejectionReason != nil ? "Order Rejected by Store" : "Order Cancelled")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.red)
+                        }
+                        if let reason = order.rejectionReason, !reason.isEmpty {
+                            Text("Reason: \(reason)")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.1), in: cardShape)
+                } else if !stage.isFinished {
                     OrderProgressRail(stage: stage)
                         .padding(14)
                         .background(Color.trackerCard, in: cardShape)

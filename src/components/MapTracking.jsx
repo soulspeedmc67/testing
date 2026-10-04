@@ -37,8 +37,8 @@ function create3DDestinationIcon(L) {
 
 export default function MapTracking({
   orderId = "DASH-98214",
-  initialLat = 33.735832,
-  initialLng = 75.143614,
+  initialLat = 33.748413,
+  initialLng = 75.150839,
   customerLat = 33.7385,
   customerLng = 75.1565,
   destinationName = "Your Delivery Location"

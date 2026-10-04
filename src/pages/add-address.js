@@ -26,8 +26,8 @@ export default function AddAddressPage() {
     const saved = {
       nickname: addressLabel || "Home",
       address: [completeAddress, area, city].filter(Boolean).join(", "),
-      lat: 33.735832,
-      lng: 75.143614,
+      lat: 33.748413,
+      lng: 75.150839,
       phone: phone || "",
       receiver: receiverName || "Self"
     };

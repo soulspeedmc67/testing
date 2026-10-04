@@ -17,8 +17,8 @@ import kotlin.math.sqrt
  */
 object DeliveryEta {
     /** Anantnag Central Dark Store Hub. */
-    const val HUB_LAT = 33.735832
-    const val HUB_LNG = 75.143614
+    const val HUB_LAT = 33.748413
+    const val HUB_LNG = 75.150839
     const val MAX_RADIUS_KM = 5.0
 
     data class Quote(

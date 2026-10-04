@@ -376,11 +376,17 @@ struct StorefrontSearchView: View {
 
     private func thumbnail(_ product: Product) -> some View {
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        let initial = String(product.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(1)).uppercased()
         return CachedAsyncImage(url: URL(string: product.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
             if let image = phase.image {
                 image.resizable().scaledToFit().padding(4)
             } else {
-                Color.surfaceMuted
+                ZStack {
+                    Color.surfaceMuted
+                    Text(initial.isEmpty ? "?" : initial)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.textMuted)
+                }
             }
         }
         .frame(width: 48, height: 48)

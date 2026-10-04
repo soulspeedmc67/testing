@@ -60,8 +60,8 @@ export default function CategoriesPage() {
                       <ProductImage
                         src={aisle.cover}
                         name={aisle.label}
-                        className="rounded-2xl border border-slate-200/80 dark:border-line"
-                        imgClassName="p-[14%] transition-transform duration-300 group-hover:scale-105"
+                        className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs dark:border-line"
+                        imgClassName="p-[10%] object-contain transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
                       <span className="w-full aspect-square rounded-2xl border border-slate-200/80 bg-white flex items-center justify-center text-[#061838] dark:bg-surface-raised dark:border-line dark:text-content">

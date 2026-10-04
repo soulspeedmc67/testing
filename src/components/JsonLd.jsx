@@ -97,8 +97,8 @@ export function GroceryStoreJsonLd() {
     },
     geo: {
       "@type": "GeoCoordinates",
-      latitude: 33.735832,
-      longitude: 75.143614,
+      latitude: 33.748413,
+      longitude: 75.150839,
     },
     openingHoursSpecification: [
       {

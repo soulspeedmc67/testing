@@ -344,6 +344,23 @@ export default function OrderDetailDrawer({
                 </div>
               )}
 
+              {/* Order Cancelled / Rejected Notice */}
+              {isCancelled && (
+                <div className="bg-rose-500/10 border border-rose-300 dark:border-rose-800/60 rounded-2xl p-3.5 space-y-1.5 text-xs">
+                  <div className="flex items-center space-x-2 text-rose-700 dark:text-rose-400">
+                    <XCircle className="w-4 h-4 shrink-0" />
+                    <span className="font-black text-rose-900 dark:text-rose-200">
+                      Order Rejected / Cancelled
+                    </span>
+                  </div>
+                  {order?.rejectionReason && (
+                    <p className="text-[12px] font-semibold text-rose-800 dark:text-rose-300">
+                      <span className="font-bold text-rose-950 dark:text-rose-200">Reason:</span> {order.rejectionReason}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider block">
                 Order Progress
               </span>
@@ -855,20 +872,18 @@ export default function OrderDetailDrawer({
               )}
             </div>
 
-            {/* 6. Danger Zone: Cancel Order */}
+            {/* 6. Danger Zone: Reject Order */}
             {!isDelivered && !isCancelled && (
               <div className="pt-2">
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm("Are you sure you want to cancel Order #" + orderId + "?")) {
-                      onUpdateStatus(orderId, ORDER_STATUS.CANCELLED, order);
-                    }
+                    onUpdateStatus(orderId, ORDER_STATUS.CANCELLED, order);
                   }}
                   className="w-full py-2.5 px-4 rounded-xl text-rose-500 hover:bg-rose-500/10 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center justify-center space-x-1.5"
                 >
                   <XCircle className="w-4 h-4" />
-                  <span>Cancel Customer Order</span>
+                  <span>Reject Order with Reason</span>
                 </button>
               </div>
             )}

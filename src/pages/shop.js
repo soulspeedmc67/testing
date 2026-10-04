@@ -93,8 +93,8 @@ export default function ShopPage() {
   const [location, setLocation] = useState({
     nickname: "LOCATION",
     address: "Select delivery location",
-    lat: 33.735832,
-    lng: 75.143614
+    lat: 33.748413,
+    lng: 75.150839
   });
 
   const handleSelectLocation = (newLoc) => {

@@ -42,6 +42,14 @@ import { generateCsvString, triggerCsvDownload, ORDERS_CSV_COLUMNS } from "../..
    is India-only, so the zone is fixed. */
 const IST = "Asia/Kolkata";
 
+export const REJECTION_PRESETS = [
+  "Items out of stock",
+  "Delivery address unserviceable / out of delivery zone",
+  "Dark store closed / operations temporarily paused",
+  "Customer unreachable / phone switched off",
+  "Customer requested cancellation",
+  "Duplicate order placed",
+];
 
 export default function OrderProcessingView({
   orders = [],
@@ -63,6 +71,10 @@ export default function OrderProcessingView({
 
   // Table multi-selection for bulk operations
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+
+  // Order Rejection Reason State
+  const [selectedRejectionReason, setSelectedRejectionReason] = useState(REJECTION_PRESETS[0]);
+  const [customRejectionText, setCustomRejectionText] = useState("");
 
   /* Orders the operator has just moved. They stay listed even when a status
      filter would now exclude them, so advancing "Placed → Packed" while filtered
@@ -207,9 +219,9 @@ export default function OrderProcessingView({
   /* Applies a status change: pins the row in place and remembers what it was so
      the operator can undo. */
   const applyStatusChange = React.useCallback(
-    async (id, nextStatus, order) => {
+    async (id, nextStatus, order, extraFields = {}) => {
       markRecentlyUpdated(id, order?.status || null);
-      if (onUpdateStatus) await onUpdateStatus(id, nextStatus, order);
+      if (onUpdateStatus) await onUpdateStatus(id, nextStatus, order, extraFields);
     },
     [markRecentlyUpdated, onUpdateStatus]
   );
@@ -218,7 +230,7 @@ export default function OrderProcessingView({
   const NEEDS_CONFIRM = [ORDER_STATUS.DELIVERED, ORDER_STATUS.CANCELLED];
 
   const handleStatusChange = React.useCallback(
-    async (id, nextStatus, order) => {
+    async (id, nextStatus, order, extraFields = {}) => {
       const ord = order || orders.find((o) => (o.orderId || o.id) === id);
       const graceRem = getGraceSeconds(ord);
       if (
@@ -250,12 +262,14 @@ export default function OrderProcessingView({
         return;
       }
       if (NEEDS_CONFIRM.includes(nextStatus)) {
-        setPendingChange({ id, nextStatus, order });
+        setSelectedRejectionReason(REJECTION_PRESETS[0]);
+        setCustomRejectionText("");
+        setPendingChange({ id, nextStatus, order: ord, ...extraFields });
         return;
       }
-      await applyStatusChange(id, nextStatus, order);
+      await applyStatusChange(id, nextStatus, order, extraFields);
     },
-    [applyStatusChange, orders]
+    [applyStatusChange, orders, getGraceSeconds]
   );
 
   const handleConfirmHandover = React.useCallback(async () => {
@@ -977,15 +991,27 @@ export default function OrderProcessingView({
                                 </div>
                               </div>
                             ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleStatusChange(orderId, col.nextStatus, ord)}
-                                className={"w-full py-3 px-4 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center space-x-2 transition-all active:scale-[0.98] " + col.actionButtonClass}
-                              >
-                                {col.ActionIcon && <col.ActionIcon className="w-4 h-4 stroke-[2.5]" />}
-                                <span>{col.actionText}</span>
-                                <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
-                              </button>
+                              <div className="space-y-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStatusChange(orderId, col.nextStatus, ord)}
+                                  className={"w-full py-3 px-4 rounded-xl font-black text-xs cursor-pointer flex items-center justify-center space-x-2 transition-all active:scale-[0.98] " + col.actionButtonClass}
+                                >
+                                  {col.ActionIcon && <col.ActionIcon className="w-4 h-4 stroke-[2.5]" />}
+                                  <span>{col.actionText}</span>
+                                  <ArrowRight className="w-3.5 h-3.5 stroke-[3]" />
+                                </button>
+                                {status !== ORDER_STATUS.DELIVERED && status !== ORDER_STATUS.CANCELLED && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStatusChange(orderId, ORDER_STATUS.CANCELLED, ord)}
+                                    className="w-full py-1.5 px-3 rounded-lg border border-rose-500/25 bg-rose-500/5 hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold text-[11px] cursor-pointer flex items-center justify-center space-x-1.5 transition-colors"
+                                  >
+                                    <XCircle className="w-3.5 h-3.5" />
+                                    <span>Reject Order</span>
+                                  </button>
+                                )}
+                              </div>
                             )
                           )}
 
@@ -1109,6 +1135,17 @@ export default function OrderProcessingView({
                         className="px-3 py-2 rounded-lg bg-[#061838] hover:bg-[#0A2450] text-white dark:bg-blue-600 dark:hover:bg-blue-500 font-semibold text-[11px] cursor-pointer whitespace-nowrap shrink-0 transition-colors shadow-xs"
                       >
                         {step.label}
+                      </button>
+                    )}
+
+                    {status !== ORDER_STATUS.DELIVERED && status !== ORDER_STATUS.CANCELLED && (
+                      <button
+                        type="button"
+                        title="Reject order with reason"
+                        onClick={() => handleStatusChange(orderId, ORDER_STATUS.CANCELLED, ord)}
+                        className="p-2 rounded-lg border border-rose-400/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white cursor-pointer transition-colors shrink-0"
+                      >
+                        <XCircle className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -1371,14 +1408,26 @@ export default function OrderProcessingView({
 
                                 {/* Quick tick: instantly marks order as Packed */}
                                 {status !== ORDER_STATUS.DELIVERED && status !== ORDER_STATUS.CANCELLED && (
-                                  <button
-                                    type="button"
-                                    title="Mark all items packed and move order to Packing stage"
-                                    onClick={() => handleStatusChange(orderId, ORDER_STATUS.PACKED, ord)}
-                                    className="p-1.5 rounded-lg border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white cursor-pointer transition-colors shadow-2xs"
-                                  >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      title="Mark all items packed and move order to Packing stage"
+                                      onClick={() => handleStatusChange(orderId, ORDER_STATUS.PACKED, ord)}
+                                      className="p-1.5 rounded-lg border border-emerald-400/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white cursor-pointer transition-colors shadow-2xs"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </button>
+
+                                    {/* Reject Order Button */}
+                                    <button
+                                      type="button"
+                                      title="Reject this order with reason"
+                                      onClick={() => handleStatusChange(orderId, ORDER_STATUS.CANCELLED, ord)}
+                                      className="p-1.5 rounded-lg border border-rose-400/40 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white cursor-pointer transition-colors shadow-2xs"
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </button>
+                                  </>
                                 )}
                               </>
                             )}
@@ -1403,57 +1452,147 @@ export default function OrderProcessingView({
         </div>
       )}
 
-      {/* 6. ORDER DETAIL SLIDE-OVER DRAWER */}
-      {/* Confirmation for the two changes that are awkward to walk back:
-          Delivered closes the order, Cancelled stops it being fulfilled. */}
+      {/* 6. ORDER DETAIL SLIDE-OVER DRAWER & CONFIRMATION / REJECTION MODAL */}
       {pendingChange && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60">
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div
-            className={"w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border p-5 space-y-4 pb-[max(20px,env(safe-area-inset-bottom,20px))] sm:pb-5 " + (
+            className={"w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl border p-5 sm:p-6 space-y-4 pb-[max(24px,env(safe-area-inset-bottom,24px))] sm:pb-6 shadow-2xl " + (
               darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
             )}
           >
-            <div>
-              <h3 className="font-semibold text-base">
-                {pendingChange.nextStatus === ORDER_STATUS.CANCELLED
-                  ? "Cancel this order?"
-                  : "Mark as delivered?"}
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                {pendingChange.nextStatus === ORDER_STATUS.CANCELLED
-                  ? `Order #${pendingChange.id} will stop being fulfilled and the customer will see it as cancelled.`
-                  : `Order #${pendingChange.id} will be closed and counted in today's delivered total.`}
-              </p>
-            </div>
+            {pendingChange.nextStatus === ORDER_STATUS.CANCELLED ? (
+              <>
+                <div className="flex items-start justify-between gap-3 border-b pb-3.5 border-slate-200 dark:border-zinc-800">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+                      <XCircle className="w-5 h-5 stroke-[2.2]" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-base">Reject Order #{String(pendingChange.id).slice(-6).toUpperCase()}</h3>
+                      <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                        Specify a reason so the customer knows why their order was rejected.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPendingChange(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPendingChange(null)}
-                className={"px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer " + (
-                  darkMode
-                    ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                )}
-              >
-                Keep as is
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const p = pendingChange;
-                  setPendingChange(null);
-                  await applyStatusChange(p.id, p.nextStatus, p.order);
-                }}
-                className={"px-4 py-2.5 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer " + (
-                  pendingChange.nextStatus === ORDER_STATUS.CANCELLED
-                    ? "bg-rose-600 hover:bg-rose-700"
-                    : "bg-emerald-700 hover:bg-emerald-800"
-                )}
-              >
-                {pendingChange.nextStatus === ORDER_STATUS.CANCELLED ? "Cancel order" : "Confirm delivered"}
-              </button>
-            </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-700 dark:text-zinc-300 block">
+                    Reason for Rejection
+                  </label>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {REJECTION_PRESETS.map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRejectionReason(reason);
+                          setCustomRejectionText("");
+                        }}
+                        className={"w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-all flex items-center justify-between cursor-pointer " + (
+                          selectedRejectionReason === reason && !customRejectionText
+                            ? "border-rose-500 bg-rose-50/70 text-rose-700 dark:bg-rose-950/40 dark:border-rose-600 dark:text-rose-300 font-bold"
+                            : (darkMode ? "border-zinc-800 text-zinc-300 hover:bg-zinc-800/60" : "border-slate-200 text-slate-700 hover:bg-slate-50")
+                        )}
+                      >
+                        <span>{reason}</span>
+                        {selectedRejectionReason === reason && !customRejectionText && (
+                          <CheckSquare className="w-4 h-4 text-rose-500 shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="space-y-1 pt-1">
+                    <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 block">
+                      Or type custom reason
+                    </label>
+                    <input
+                      type="text"
+                      value={customRejectionText}
+                      onChange={(e) => setCustomRejectionText(e.target.value)}
+                      placeholder="e.g. Kashmiri lavas out of stock until 5 PM"
+                      className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-transparent text-slate-900 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
+
+                  <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/40 rounded-xl p-3 text-[11.5px] text-amber-800 dark:text-amber-300 font-medium">
+                    Customer notice: <span className="font-bold">"{customRejectionText.trim() || selectedRejectionReason}"</span> will be displayed on their tracking screen.
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2 border-t border-slate-200 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setPendingChange(null)}
+                    className={"px-4 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer " + (
+                      darkMode
+                        ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                    )}
+                  >
+                    Keep Order
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const p = pendingChange;
+                      const finalReason = customRejectionText.trim() || selectedRejectionReason;
+                      setPendingChange(null);
+                      await applyStatusChange(p.id, p.nextStatus, p.order, {
+                        rejectionReason: finalReason,
+                        cancelledReason: finalReason,
+                      });
+                    }}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors cursor-pointer flex items-center justify-center space-x-1.5 shadow-md shadow-rose-600/20"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Confirm Rejection</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Delivered confirmation */
+              <>
+                <div>
+                  <h3 className="font-semibold text-base">Mark as delivered?</h3>
+                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Order #{pendingChange.id} will be closed and counted in today's delivered total.
+                  </p>
+                </div>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPendingChange(null)}
+                    className={"px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer " + (
+                      darkMode
+                        ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                        : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                    )}
+                  >
+                    Keep as is
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const p = pendingChange;
+                      setPendingChange(null);
+                      await applyStatusChange(p.id, p.nextStatus, p.order);
+                    }}
+                    className="px-4 py-2.5 rounded-lg text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 transition-colors cursor-pointer"
+                  >
+                    Confirm delivered
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

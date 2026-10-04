@@ -30,7 +30,17 @@ object ProductSearch {
             .lowercase()
             .trim()
 
-    /** Products matching [query], best match first. */
+    private val placeholderHosts = listOf("unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com")
+
+    /** True when a product has a genuine photo (not empty or placeholder). */
+    fun hasPhoto(product: Product): Boolean {
+        val img = product.img.trim()
+        if (img.isEmpty()) return false
+        val lower = img.lowercase()
+        return !placeholderHosts.any { lower.contains(it) }
+    }
+
+    /** Products matching [query], best match first. Items with genuine photos rank strictly first. */
     fun results(query: String, products: List<Product>): List<Product> {
         val q = normalized(query)
         if (q.isEmpty()) return emptyList()
@@ -40,6 +50,8 @@ object ProductSearch {
             .sortedWith(
                 // Sold-out items come after every match that can be bought.
                 compareBy<Pair<Product, Int>> { if (it.first.isAvailable) 0 else 1 }
+                    // Products with genuine pictures rank strictly before products without pictures
+                    .thenBy { if (hasPhoto(it.first)) 0 else 1 }
                     .thenBy { it.second }
                     .thenByDescending { popularity(it.first) }
                     .thenBy { it.first.name.lowercase() }
@@ -65,9 +77,12 @@ object ProductSearch {
             .map { it.first }
     }
 
-    /** In-stock items shoppers rate most, for the empty search page. */
+    /** In-stock items shoppers rate most that have genuine pictures, for the empty search page. */
     fun popular(products: List<Product>, limit: Int = 6): List<Product> =
-        products.filter { it.isAvailable }.sortedByDescending { popularity(it) }.take(limit)
+        products
+            .filter { it.isAvailable && hasPhoto(it) }
+            .sortedByDescending { popularity(it) }
+            .take(limit)
 
     /** [text] with the part matching [query] in bold. */
     fun highlighted(text: String, query: String, matchColor: Color): AnnotatedString {

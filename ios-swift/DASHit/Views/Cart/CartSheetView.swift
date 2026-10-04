@@ -246,8 +246,12 @@ struct CartSheetView: View {
             billRow("Item total", value: CurrencyFormatter.format(bill.subtotal))
             billRow(
                 "Delivery partner fee",
-                value: bill.deliveryFee == 0 ? "FREE" : CurrencyFormatter.format(bill.deliveryFee),
+                value: bill.deliveryFee == 0 ? (bill.isFirstFivePromo ? "FREE (First 5 orders)" : "FREE") : CurrencyFormatter.format(bill.deliveryFee),
                 valueColor: bill.deliveryFee == 0 ? .positive : .textPrimary
+            )
+            billRow(
+                "Handling charge",
+                value: CurrencyFormatter.format(bill.handlingFee)
             )
             if bill.couponDiscount > 0 {
                 billRow("Coupon discount", value: "-\(CurrencyFormatter.format(bill.couponDiscount))", valueColor: .positive)

@@ -693,10 +693,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       const savedTheme = localStorage.getItem("dashit_admin_theme");
       if (savedTheme === "dark") {
         setDarkMode(true);
-      } else if (savedTheme === "light") {
+      } else {
         setDarkMode(false);
-      } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-        setDarkMode(true);
       }
     }
   }, []);
@@ -998,7 +996,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   };
 
   // Order Status Update
-  const handleUpdateOrderStatus = async (orderId, newStatus, order = null) => {
+  const handleUpdateOrderStatus = async (orderId, newStatus, order = null, extraFields = {}) => {
     // 30-second grace window guard: admin cannot process Placed orders until 30s have elapsed
     const ordObj = order || orders.find((o) => (o.orderId || o.id) === orderId);
     const orderTime = getOrderTimestampMs(ordObj);
@@ -1020,10 +1018,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     try {
       let syncResult = null;
       if (isFirebaseConfigured) {
-        syncResult = await fsUpdateOrderStatus(orderId, newStatus);
+        syncResult = await fsUpdateOrderStatus(orderId, newStatus, extraFields);
       }
       setOrders((prev) =>
-        prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus } : o))
+        prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o))
       );
 
       // Auto-deduct stock on Out for Delivery
@@ -1038,12 +1036,14 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
       if (syncResult && syncResult.firestoreSynced === false) {
         showToast(`Order #${orderId} updated locally only (Firestore sync failed: ${syncResult.error || "Permission denied"})`);
+      } else if (newStatus === ORDER_STATUS.CANCELLED && extraFields.rejectionReason) {
+        showToast(`Order #${orderId} rejected: "${extraFields.rejectionReason}".`);
       } else {
         showToast(`Order #${orderId} updated to "${newStatus}".`);
       }
     } catch (err) {
       setOrders((prev) =>
-        prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus } : o))
+        prev.map((o) => (o.orderId === orderId || o.id === orderId ? { ...o, status: newStatus, ...extraFields } : o))
       );
       showToast(`Order #${orderId} updated to "${newStatus}".`);
     }

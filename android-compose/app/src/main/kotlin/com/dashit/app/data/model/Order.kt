@@ -113,7 +113,8 @@ data class Order(
     val couponCode: String? = null,
     /** Epoch milliseconds; set on replacement orders so the window keeps its deadline. */
     val modifyWindowEndsAt: Long? = null,
-    val replacesOrderId: String? = null
+    val replacesOrderId: String? = null,
+    val rejectionReason: String? = null
 ) {
     /**
      * A rider has the order but hasn't collected it from the store yet: it goes

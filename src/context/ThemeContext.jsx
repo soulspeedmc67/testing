@@ -16,19 +16,19 @@ import {
  * cares about `preference`.
  */
 const ThemeContext = createContext({
-  preference: 'system',
+  preference: 'light',
   theme: 'light',
   hydrated: false,
   setPreference: () => {},
 });
 
 export function ThemeProvider({ children }) {
-  /* Seeded with 'system'/'light' rather than reading storage, because this
+  /* Seeded with 'light' rather than reading storage, because this
      runs during SSG where there is no storage and any other value would make
      the static HTML disagree with the first client render. The real values are
      adopted in the effect below; the pre-paint script in _document.js has
      already put the right class on <html>, so nothing flashes in between. */
-  const [preference, setPreferenceState] = useState('system');
+  const [preference, setPreferenceState] = useState('light');
   const [theme, setTheme] = useState('light');
   /* False until the stored preference has been adopted. Controls that animate
      between states use this to skip their entrance animation: without it, a

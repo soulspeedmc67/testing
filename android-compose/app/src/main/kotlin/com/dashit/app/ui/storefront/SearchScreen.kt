@@ -82,6 +82,7 @@ import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.Product
 import com.dashit.app.ui.components.ProductCard
 import com.dashit.app.ui.components.QuantityStepper
+import com.dashit.app.ui.components.ShimmerImage
 
 /**
  * Full-page search, opened from the home search bar. Before anything is typed
@@ -547,13 +548,14 @@ private fun SearchProductRow(
                 .clip(RoundedCornerShape(10.dp))
                 .clickable { onOpen() }
         ) {
-            AsyncImage(
+            ShimmerImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(product.img)
                     .crossfade(200)
                     .build(),
-                contentDescription = null,
+                contentDescription = product.name,
                 contentScale = ContentScale.Fit,
+                letterFallbackFor = product.name,
                 modifier = Modifier
                     .size(48.dp)
                     .clip(thumbShape)

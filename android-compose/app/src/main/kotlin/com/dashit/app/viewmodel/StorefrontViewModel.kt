@@ -162,7 +162,7 @@ class StorefrontViewModel(
             "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
             "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
             "Instant Food", "Sweets & Chocolates", "Ice Cream", "Dry Fruits", "Sauces & Spreads",
-            "Spices", "Chicken", "Meat & Fish", "Home Care", "Kitchen Care", "Personal Care",
+            "Spices", "Chicken", "Chicken & Fish", "Home Care", "Kitchen Care", "Personal Care",
             "Baby Care", "Health & Wellness", "Pet Care", "Stationery", "Toys & Games", "Electronics"
         )
         // The shelf's name as its first item spells it; how many items it has.

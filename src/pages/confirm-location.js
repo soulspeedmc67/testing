@@ -8,7 +8,7 @@ import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
 
 const MapWithPin = dynamic(() => import("../components/MapWithPinInner"), { ssr: false });
 
-const HUB_POS = { lat: 33.735832, lng: 75.143614 }; // Lal Chowk hub, Anantnag
+const HUB_POS = { lat: 33.748413, lng: 75.150839 }; // Anantnag dark store hub
 
 export default function ConfirmLocationPage() {
   const router = useRouter();

@@ -31,8 +31,8 @@ const DELIVERY_STEPS = [
 const PROMISES = [
   {
     Icon: Truck,
-    title: "Free delivery above ₹299",
-    body: "Smaller orders pay a ₹25 delivery fee. No other charges are added at checkout.",
+    title: "First 5 orders free delivery",
+    body: "Enjoy free delivery on your first 5 orders! Standard ₹11 handling fee across all orders.",
   },
   {
     Icon: Wallet,
@@ -116,18 +116,20 @@ function StoreBadges({ onDark = false }) {
   );
 }
 
-/** The Android app before it is on Google Play. */
-function ApkLink({ onDark = false }) {
+/** The Android app before it is on Google Play: downloadable as an APK button. */
+function ApkButton({ onDark = false }) {
   return (
     <a
       href={APK_URL}
       download="DASHit.apk"
-      className={`group inline-flex items-center gap-2 text-[13.5px] font-semibold underline-offset-4 hover:underline ${
-        onDark ? "text-slate-300 hover:text-white" : "text-slate-600 hover:text-[#061838] dark:text-slate-300 dark:hover:text-white"
+      className={`group h-[48px] px-4 rounded-xl border flex items-center justify-center gap-2.5 max-w-[360px] text-[13.5px] font-bold transition-all shadow-xs active:scale-[0.98] ${
+        onDark
+          ? "border-white/20 bg-white/10 hover:bg-white/15 text-white"
+          : "border-slate-300 bg-white hover:bg-slate-50 text-[#061838] dark:border-slate-700 dark:bg-[#12161F] dark:hover:bg-[#181D2A] dark:text-white"
       }`}
     >
-      <Download className="w-4 h-4" aria-hidden="true" />
-      <span>Android: download the app (APK) and try it now</span>
+      <Download className="w-4 h-4 text-[#FF5B00] shrink-0 transition-transform group-hover:-translate-y-0.5" aria-hidden="true" />
+      <span>Download Android App (APK)</span>
     </a>
   );
 }
@@ -353,7 +355,7 @@ export default function LandingPage() {
               Groceries at your door, <span className="text-[#FF5B00]">in minutes.</span>
             </h1>
             <p className="mt-6 max-w-[34rem] text-[16px] sm:text-[17px] leading-[1.7] text-slate-600 dark:text-slate-300 [text-wrap:pretty]">
-              Milk, bread, vegetables, snacks and everyday household things, packed at our Anantnag store and
+              Milk, bread, vegetables, snacks and everyday household things, packed at our Anantnag dark store and
               brought to your door. Shop on the website now; the apps are on their way.
             </p>
 
@@ -374,11 +376,9 @@ export default function LandingPage() {
               </a>
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 space-y-3">
               <StoreBadges />
-              <div className="mt-4">
-                <ApkLink />
-              </div>
+              <ApkButton />
             </div>
           </div>
 
@@ -494,11 +494,11 @@ export default function LandingPage() {
             <div className="lg:col-span-7">
               <Eyebrow>{beforeLaunch ? "Opening day" : "Open now"}</Eyebrow>
               <h2 className="mt-5 font-display text-[34px] sm:text-[48px] font-extrabold tracking-[-0.03em] leading-[1.05] [text-wrap:balance]">
-                {beforeLaunch ? "We open on Monday 5 October, at 5 pm." : "Your next order is a few taps away."}
+                {beforeLaunch ? "We open on Monday 5 October, at 10 am." : "Your next order is a few taps away."}
               </h2>
               <p className="mt-4 max-w-lg text-[15px] leading-[1.7] text-slate-300">
                 {beforeLaunch
-                  ? "Orders are taken from 5 pm on opening day. Until then you can browse the shop and fill your cart; it will be waiting for you."
+                  ? "Orders are taken from 10 am on opening day. Until then you can browse the shop and fill your cart; it will be waiting for you."
                   : "Shop on the website, or install the app on your phone."}
               </p>
               {beforeLaunch && (
@@ -507,7 +507,7 @@ export default function LandingPage() {
                 </div>
               )}
             </div>
-            <div className="lg:col-span-5 lg:justify-self-end w-full max-w-md space-y-5">
+            <div className="lg:col-span-5 lg:justify-self-end w-full max-w-md space-y-4">
               <Link
                 href="/shop"
                 className="group flex items-center justify-center gap-2 h-[52px] rounded-xl bg-[#FF5B00] hover:bg-[#E04E00] text-white text-[16px] font-bold transition-colors"
@@ -516,7 +516,7 @@ export default function LandingPage() {
                 <ArrowRight className="w-[18px] h-[18px] transition-transform group-hover:translate-x-0.5" />
               </Link>
               <StoreBadges onDark />
-              <ApkLink onDark />
+              <ApkButton onDark />
             </div>
           </div>
 

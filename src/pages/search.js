@@ -7,16 +7,20 @@ import SEO from "../components/SEO";
 import confetti from "canvas-confetti";
 import BottomNav from "../components/BottomNav";
 import ProductCardStepper from "../components/ProductCardStepper";
+import ProductImage from "../components/ProductImage";
 import FloatingCartBar from "../components/FloatingCartBar";
 import QuickProductSheet from "../components/QuickProductSheet";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { EmptySearchState } from "../components/ui/EmptyState";
+import ProductCardSkeleton from "../components/ProductCardSkeleton";
+import { ALL_PRODUCTS } from "../data/products";
 import TobaccoSearchBanner from "../components/TobaccoSearchBanner";
 import { useAgeGate } from "../context/AgeGateContext";
 import { hapticLight, hapticMedium } from "../lib/haptics";
 import { goBack } from "../lib/navigation";
 import { watchShopProducts as watchProducts, isSoldOut } from "../lib/catalogueFile";
 import { browseable, isTobaccoSectionEnabled, tobaccoMatches, TOBACCO_ROUTE } from "../lib/tobacco";
+import { isPlaceholderImage } from "../lib/productPhotoMatch";
 
 const POPULAR_SEARCH_CHIPS = ["Milk", "Lavas Bread", "Chips", "Apples", "Silk Chocolate", "Maggi", "Butter", "Biscuits"];
 
@@ -27,7 +31,7 @@ export default function SearchPage() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [allProducts, setAllProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState(ALL_PRODUCTS || []);
   const [tobaccoEnabled, setTobaccoEnabled] = useState(false);
   const { requestTobaccoAccess } = useAgeGate();
 
@@ -94,18 +98,33 @@ export default function SearchPage() {
   const cleanQuery = (query || "").trim().toLowerCase();
   // Tobacco is never a search result; a tobacco query gets the banner instead.
   const browseProducts = useMemo(() => browseable(allProducts), [allProducts]);
-  /* Every word typed must appear (in the name, shelf or brand). Names that
-     start with what was typed come first, then shorter names; sold-out items
-     always come after the ones in stock. */
+
+  const hasValidPhoto = (p) => {
+    if (!p || !p.img) return false;
+    const str = String(p.img).trim();
+    if (!str) return false;
+    return !isPlaceholderImage(str);
+  };
+
+  /* When the user opens search, only products with verified pictures are shown
+     at the top. When searching, in-stock products with genuine photos strictly rank
+     ahead of items without photos, followed by prefix and length match. */
   const filteredProducts = useMemo(() => {
-    if (!cleanQuery) return browseProducts.filter((p) => p.img && !isSoldOut(p)).slice(0, 16);
+    if (!cleanQuery) {
+      return browseProducts
+        .filter((p) => hasValidPhoto(p) && !isSoldOut(p))
+        .slice(0, 24);
+    }
     const words = cleanQuery.split(/\s+/).filter(Boolean);
     const hits = [];
     for (const p of browseProducts) {
       const name = (p.name || "").toLowerCase();
       const hay = `${name} ${(p.cat || "").toLowerCase()} ${(p.brand || "").toLowerCase()}`;
       if (!words.every((w) => hay.includes(w))) continue;
-      const rank = (isSoldOut(p) ? 4 : 0) + (name.startsWith(words[0]) ? 0 : name.includes(` ${words[0]}`) ? 1 : 2);
+      const stockPenalty = isSoldOut(p) ? 40 : 0;
+      const photoPenalty = hasValidPhoto(p) ? 0 : 10;
+      const nameMatchRank = name.startsWith(words[0]) ? 0 : name.includes(` ${words[0]}`) ? 1 : 2;
+      const rank = stockPenalty + photoPenalty + nameMatchRank;
       hits.push([rank, name.length, p]);
     }
     hits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -114,9 +133,11 @@ export default function SearchPage() {
 
   const tobaccoHits = tobaccoEnabled ? tobaccoMatches(cleanQuery, allProducts) : [];
   const showTobaccoPrompt = tobaccoHits.length > 0;
-  // "No results" with the banner still shows something to buy underneath.
+  // "No results" with the banner still shows products with pictures underneath.
   const showPopularInstead = showTobaccoPrompt && filteredProducts.length === 0;
-  const gridProducts = showPopularInstead ? browseProducts.slice(0, 8) : filteredProducts;
+  const gridProducts = showPopularInstead
+    ? browseProducts.filter((p) => hasValidPhoto(p) && !isSoldOut(p)).slice(0, 8)
+    : filteredProducts;
 
   const openTobaccoSection = () => {
     hapticLight();
@@ -241,7 +262,15 @@ export default function SearchPage() {
           </div>
 
           {gridProducts.length === 0 ? (
-            <EmptySearchState query={query} onSelectChip={(chip) => setQuery(chip)} />
+            cleanQuery ? (
+              <EmptySearchState query={query} onSelectChip={(chip) => setQuery(chip)} />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <ProductCardSkeleton key={i} />
+                ))}
+              </div>
+            )
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {gridProducts.map((p) => {
@@ -250,9 +279,17 @@ export default function SearchPage() {
                   <div key={p.id} className="bg-white border border-slate-200/90 rounded-3xl p-3 flex flex-col justify-between shadow-sm space-y-2 dark:bg-surface-raised dark:border-line/90">
                     <button
                       onClick={() => setSelectedQuickProduct(p)}
-                      className="bg-slate-50 rounded-2xl p-2 h-28 flex items-center justify-center cursor-pointer w-full dark:bg-surface-raised"
+                      className="bg-slate-50 rounded-2xl p-2 h-28 flex items-center justify-center cursor-pointer w-full relative overflow-hidden dark:bg-surface-raised"
                     >
-                      <img src={p.img} alt={p.name} className="h-20 w-20 object-contain rounded-lg transform hover:scale-105 transition-transform" />
+                      <div className="w-20 h-20 relative flex items-center justify-center">
+                        <ProductImage
+                          src={p.img}
+                          name={p.name}
+                          fill
+                          letterClassName="text-xl"
+                          imgClassName="transform hover:scale-105 transition-transform"
+                        />
+                      </div>
                     </button>
 
                     <div>

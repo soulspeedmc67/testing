@@ -4,12 +4,12 @@
  * with a realistic traffic model, order packing buffer, and a +2-3 minute safety margin.
  */
 
-// Anantnag Central Dark Store Hub (Exact location: https://maps.app.goo.gl/kKouW9fsgyGBJezT7)
+// Anantnag Central Dark Store Hub
 export const DARK_STORE_HUB = {
-  lat: 33.735832,
-  lng: 75.143614,
-  name: "Anantnag Store",
-  address: "Lal Chowk, Anantnag 192101",
+  lat: 33.748413,
+  lng: 75.150839,
+  name: "Anantnag Dark Store",
+  address: "Anantnag 192101",
 };
 
 /**

@@ -176,6 +176,13 @@ final class CartViewModel: ObservableObject {
         appliedCoupon = nil
     }
 
+    @Published var userOrdersCount: Int = 0
+
+    func setUserOrdersCount(_ count: Int) {
+        userOrdersCount = count
+        recalculate()
+    }
+
     private func recalculate() {
         // Validate applied coupon against live subtotal
         if let coupon = appliedCoupon {
@@ -186,7 +193,7 @@ final class CartViewModel: ObservableObject {
         }
 
         let previousSubtotal = bill.subtotal
-        self.bill = CartBillBreakdown.calculate(items: items, appliedCoupon: appliedCoupon)
+        self.bill = CartBillBreakdown.calculate(items: items, appliedCoupon: appliedCoupon, userOrdersCount: userOrdersCount)
         noteFreeDeliveryCrossing(from: previousSubtotal)
     }
 

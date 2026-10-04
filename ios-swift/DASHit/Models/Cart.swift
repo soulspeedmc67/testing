@@ -175,44 +175,74 @@ extension Coupon {
 public struct CartBillBreakdown {
     public let subtotal: Double
     public let deliveryFee: Double
+    public let standardDeliveryFee: Double
+    public let handlingFee: Double
     public let couponDiscount: Double
     public let grandTotal: Double
     public let isMinOrderSatisfied: Bool
     public let amountNeededForMinOrder: Double
     public let amountNeededForFreeDelivery: Double
+    public let isFirstFivePromo: Bool
+    public let tierLabel: String
 
     public static let minOrderValue: Double = 0.0
-    public static let freeDeliveryThreshold: Double = 299.0
-    public static let standardDeliveryFee: Double = 25.0
+    public static let freeDeliveryThreshold: Double = 300.0
+    public static let handlingFeeAmount: Double = 11.0
 
-    public static func calculate(items: [CartItem], appliedCoupon: Coupon?) -> CartBillBreakdown {
+    public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0) -> CartBillBreakdown {
         let subtotal = items.reduce(0.0) { $0 + ($1.price * Double($1.qty)) }
+        guard subtotal > 0 else {
+            return CartBillBreakdown(
+                subtotal: 0,
+                deliveryFee: 0,
+                standardDeliveryFee: 0,
+                handlingFee: 0,
+                couponDiscount: 0,
+                grandTotal: 0,
+                isMinOrderSatisfied: true,
+                amountNeededForMinOrder: 0,
+                amountNeededForFreeDelivery: freeDeliveryThreshold,
+                isFirstFivePromo: false,
+                tierLabel: ""
+            )
+        }
 
         let isCouponValid = appliedCoupon != nil && subtotal >= (appliedCoupon?.minOrder ?? 0)
         let effectiveCoupon = isCouponValid ? appliedCoupon : nil
 
-        let deliveryFee: Double = {
-            if subtotal >= freeDeliveryThreshold || effectiveCoupon?.waivesDelivery == true || effectiveCoupon?.code == "FREEDEL" {
-                return 0.0
-            }
-            return subtotal > 0 ? standardDeliveryFee : 0.0
-        }()
+        let standardFee: Double
+        let tierLabel: String
+        if subtotal < 180 {
+            standardFee = (subtotal * 0.30).rounded()
+            tierLabel = "30% delivery charge (orders under ₹180)"
+        } else if subtotal <= 299 {
+            standardFee = 35.0
+            tierLabel = "₹35 delivery charge (orders ₹180 - ₹299)"
+        } else {
+            standardFee = 25.0
+            tierLabel = "₹25 delivery charge (orders above ₹299)"
+        }
 
+        let isFirstFive = userOrdersCount < 5
+        let isWaivedByCoupon = effectiveCoupon?.waivesDelivery == true || effectiveCoupon?.code == "FREEDEL"
+
+        let deliveryFee: Double = (isWaivedByCoupon || isFirstFive) ? 0.0 : standardFee
+        let handlingFee = handlingFeeAmount
         let discount = effectiveCoupon != nil ? min(subtotal, effectiveCoupon!.discount) : 0.0
-        let grandTotal = max(0.0, subtotal + deliveryFee - discount)
-
-        let isMinOrder = true
-        let neededForMin = 0.0
-        let neededForFreeDel = max(0.0, freeDeliveryThreshold - subtotal)
+        let grandTotal = max(0.0, subtotal + deliveryFee + handlingFee - discount)
 
         return CartBillBreakdown(
             subtotal: subtotal,
             deliveryFee: deliveryFee,
+            standardDeliveryFee: standardFee,
+            handlingFee: handlingFee,
             couponDiscount: discount,
             grandTotal: grandTotal,
-            isMinOrderSatisfied: isMinOrder,
-            amountNeededForMinOrder: neededForMin,
-            amountNeededForFreeDelivery: neededForFreeDel
+            isMinOrderSatisfied: true,
+            amountNeededForMinOrder: 0.0,
+            amountNeededForFreeDelivery: isFirstFive ? 0.0 : max(0.0, freeDeliveryThreshold - subtotal),
+            isFirstFivePromo: isFirstFive,
+            tierLabel: tierLabel
         )
     }
 }

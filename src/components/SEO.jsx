@@ -91,8 +91,8 @@ export default function SEO({
       {/* Geographic / Local SEO Meta Tags */}
       <meta name="geo.region" content="IN-JK" />
       <meta name="geo.placename" content="Anantnag" />
-      <meta name="geo.position" content="33.735832;75.143614" />
-      <meta name="ICBM" content="33.735832, 75.143614" />
+      <meta name="geo.position" content="33.748413;75.150839" />
+      <meta name="ICBM" content="33.748413, 75.150839" />
 
       {children}
     </Head>

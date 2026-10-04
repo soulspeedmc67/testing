@@ -145,6 +145,7 @@ public struct Order: Identifiable, Hashable {
     /// order's window end (epoch seconds), so adding items never extends it.
     public var modifyWindowEndsAt: Double?
     public var replacesOrderId: String?
+    public var rejectionReason: String?
 
     public init(
         id: String,
@@ -167,7 +168,8 @@ public struct Order: Identifiable, Hashable {
         otp: String? = nil,
         couponCode: String? = nil,
         modifyWindowEndsAt: Double? = nil,
-        replacesOrderId: String? = nil
+        replacesOrderId: String? = nil,
+        rejectionReason: String? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -190,6 +192,7 @@ public struct Order: Identifiable, Hashable {
         self.couponCode = couponCode
         self.modifyWindowEndsAt = modifyWindowEndsAt
         self.replacesOrderId = replacesOrderId
+        self.rejectionReason = rejectionReason
     }
 
     /// A rider has the order but hasn't collected it from the store yet: it
@@ -257,6 +260,7 @@ extension Order: Decodable {
         case paymentMethod, paymentStatus
         case driverId, driverName, driverPhone, etaMinutes, tracking
         case otp, couponCode, modifyWindowEndsAt, replacesOrderId
+        case rejectionReason, cancelledReason, rejectReason, cancelReason
     }
 
     public init(from decoder: Decoder) throws {
@@ -308,7 +312,11 @@ extension Order: Decodable {
             otp: c.flexibleString(.otp),
             couponCode: c.flexibleString(.couponCode),
             modifyWindowEndsAt: c.flexibleTimestamp(.modifyWindowEndsAt),
-            replacesOrderId: c.flexibleString(.replacesOrderId)
+            replacesOrderId: c.flexibleString(.replacesOrderId),
+            rejectionReason: c.flexibleString(.rejectionReason)
+                ?? c.flexibleString(.cancelledReason)
+                ?? c.flexibleString(.rejectReason)
+                ?? c.flexibleString(.cancelReason)
         )
     }
 }

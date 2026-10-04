@@ -62,7 +62,7 @@ final class ProductPhotoStore: @unchecked Sendable {
         }
         let resolved = absolute(text).absoluteString
         if resolved.contains(catalogPath) {
-            return URL(string: resolved.replacingOccurrences(of: catalogPath, with: thumbPath)) ?? url
+            return URL(string: resolved) ?? url
         }
         if url.scheme == nil || (!text.hasPrefix("http://") && !text.hasPrefix("https://")) {
             let path = text.hasPrefix("/") ? text : "/\(text)"

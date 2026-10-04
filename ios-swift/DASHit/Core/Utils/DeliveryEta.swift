@@ -5,7 +5,7 @@ import CoreLocation
 /// iOS app promises the same times and the same 5 km area as web and Android.
 enum DeliveryEta {
     /// Anantnag Central Dark Store Hub.
-    static let hub = CLLocationCoordinate2D(latitude: 33.735832, longitude: 75.143614)
+    static let hub = CLLocationCoordinate2D(latitude: 33.748413, longitude: 75.150839)
     static let hubName = "DASHit Express Hub · Anantnag"
     static let maxRadiusKm = 5.0
 

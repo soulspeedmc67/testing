@@ -9,16 +9,12 @@ import { isPlaceholderImage } from "../lib/productPhotoMatch";
  */
 export function productImageUrl(url, size = "small") {
   const value = String(url || "");
-  if (size === "small" && /images\.open(food|beauty)facts\.org/.test(value)) {
+  if (size === "small" && /images\.open(food|beauty)facts\.(org|net)/.test(value)) {
     return value.replace(/\.full\.(jpg|jpeg|png|webp)$/i, ".400.$1");
   }
   let full = value;
   if (/^\/?products\/catalog\//.test(value)) {
     full = `https://dashit.co.in/${value.replace(/^\//, "")}`;
-  }
-  // Catalogue photos: the 400px copy (~10 KB instead of ~100 KB), as in the apps.
-  if (size === "small" && full.includes("dashit.co.in/products/catalog/")) {
-    return full.replace("/products/catalog/", "/products/thumbs/");
   }
   return full;
 }

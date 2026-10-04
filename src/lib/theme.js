@@ -47,12 +47,12 @@ export const THEME_CHROME = {
 
 /** Reads the saved preference, tolerating private-mode storage failures. */
 export function getStoredPreference() {
-  if (typeof window === 'undefined') return 'system';
+  if (typeof window === 'undefined') return 'light';
   try {
     const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
-    return THEME_PREFERENCES.includes(saved) ? saved : 'system';
+    return saved && THEME_PREFERENCES.includes(saved) ? saved : 'light';
   } catch (e) {
-    return 'system';
+    return 'light';
   }
 }
 
@@ -77,7 +77,7 @@ export function prefersDark() {
 export function resolveTheme(preference) {
   if (preference === 'dark') return 'dark';
   if (preference === 'light') return 'light';
-  return prefersDark() ? 'dark' : 'light';
+  return 'light';
 }
 
 /**
@@ -131,9 +131,9 @@ export function watchSystemTheme(onChange) {
  * browser with storage disabled, hence the bare try/catch.
  */
 export const THEME_BOOT_SCRIPT = `(function(){try{
-var k='${THEME_STORAGE_KEY}';var p='system';
-try{var s=localStorage.getItem(k);if(s==='light'||s==='dark'||s==='system'){p=s}}catch(e){}
-var d=p==='dark'||(p==='system'&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);
+var k='${THEME_STORAGE_KEY}';var p='light';
+try{var s=localStorage.getItem(k);if(s==='light'||s==='dark'){p=s}}catch(e){}
+var d=p==='dark';
 var r=document.documentElement;
 if(d){r.classList.add('dark')}else{r.classList.remove('dark')}
 r.style.colorScheme=d?'dark':'light';r.setAttribute('data-theme',d?'dark':'light');

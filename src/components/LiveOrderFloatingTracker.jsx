@@ -1,52 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Home, Bike, Package, Clock } from "lucide-react";
+import { Check, X, ChevronRight, Bike, Package, Clock, Shield } from "lucide-react";
 import {
   showOrderLiveNotification,
   clearOrderLiveNotification,
   showOutForDeliveryNotification,
 } from "../lib/notifications";
 import { hapticLight, hapticMedium } from "../lib/haptics";
-import DeliveryStatusIcon, { statusToMark } from "./DeliveryStatusIcon";
-import { SPRING_SNAPPY, SPRING_SOFT, EASE_OUT } from "../lib/motion";
+import { SPRING_SNAPPY, EASE_OUT } from "../lib/motion";
 import { watchOrder, watchOrderTracking, retireFinishedOrder } from "../lib/db";
 import { calculateDeliveryEta, computeOrderProgress } from "../lib/deliveryEta";
 import { useStoredJson } from "../lib/useStoredJson";
-
-/**
- * DASHit Live Order Activity Tracker.
- *
- * Supports two distinct presentations:
- *   1. Minimized Side Widget: Pinned to the side of the screen with animated 3-mode
- *      icons (Order Processing, Packing, Delivery Guy Riding).
- *   2. Full Expanded Order Popup: Rich stage rail, delivery OTP, and live map link.
- *
- * Route-Change Persistence:
- *   Once minimized or closed by the customer, the state is persisted in sessionStorage
- *   and will NEVER automatically pop open when switching between screens.
- */
+import { useScrollChrome } from "../context/ScrollChromeContext";
 
 const FINISHED_HOLD_MS = 6000;
+const NAVBAR_ROUTES = ["/shop", "/order-again", "/categories"];
 
-const STAGES = [
-  { key: "Placed", short: "Processing", caption: "Order confirmed at the hub" },
-  { key: "Packed", short: "Packing", caption: "Your items are being bagged" },
-  { key: "Out for Delivery", short: "On the way", caption: "Rider is heading to you" },
-  { key: "Delivered", short: "Delivered", caption: "Handed over at your door" },
-];
-
-const advanceStatus = (prev, next) => {
-  if (!next) return prev || "Placed";
-  return next;
-};
-
-const stageIndexFor = (status) => {
-  const idx = STAGES.findIndex((s) => s.key === status);
-  if (idx >= 0) return idx;
-  if (status === "Packing") return 1;
-  return 0;
-};
+function stageIconFor(status) {
+  const norm = String(status || "").toLowerCase();
+  if (norm.includes("deliver")) return Check;
+  if (norm.includes("way") || norm.includes("out") || norm.includes("rider") || norm.includes("dispatched")) return Bike;
+  if (norm.includes("pack") || norm.includes("bag")) return Package;
+  return Clock;
+}
 
 export const resolveOrderStatusDetails = (status, etaMinutes, riderName, activeOrder) => {
   const norm = String(status || "Placed").toLowerCase();
@@ -56,27 +33,27 @@ export const resolveOrderStatusDetails = (status, etaMinutes, riderName, activeO
       headline: "Order delivered",
       subtitle: "Handed over safely",
       stage: "Delivered",
-      progressWidth: "100%",
-      badgeText: "Arrived",
+      progress: 1.0,
+      accent: "#22C55E",
     };
   }
   if (norm.includes("cancel")) {
     return {
-      headline: "Order cancelled",
-      subtitle: "This order has been cancelled",
+      headline: activeOrder?.rejectionReason ? "Order rejected by store" : "Order cancelled",
+      subtitle: activeOrder?.rejectionReason ? `Reason: ${activeOrder.rejectionReason}` : "This order won't be delivered",
       stage: "Cancelled",
-      progressWidth: "0%",
-      badgeText: "Cancelled",
+      progress: 1.0,
+      accent: "#EF4444",
     };
   }
   if (norm.includes("way") || norm.includes("out") || norm.includes("rider") || norm.includes("dispatched")) {
     const etaText = !etaMinutes || etaMinutes <= 1 ? "Arriving now" : `Arriving in ${etaMinutes} mins`;
     return {
       headline: riderName ? `${riderName} is on the way` : "On the way to you",
-      subtitle: `On time | ${etaText}`,
+      subtitle: `On time · ${etaText}`,
       stage: "Out for Delivery",
-      progressWidth: "75%",
-      badgeText: "On time",
+      progress: 0.75,
+      accent: "#FF5B00",
     };
   }
   if (norm.includes("pack") || norm.includes("bag")) {
@@ -84,54 +61,59 @@ export const resolveOrderStatusDetails = (status, etaMinutes, riderName, activeO
     return {
       headline: "Packing your order",
       subtitle: count
-        ? `Packing ${count} item${count > 1 ? "s" : ""} at hub · On time`
-        : "Items are packed & sealed · On time",
+        ? `Packing ${count} item${count > 1 ? "s" : ""} at hub`
+        : "Items are being packed & sealed",
       stage: "Packed",
-      progressWidth: "50%",
-      badgeText: "On time",
+      progress: 0.45,
+      accent: "#FF5B00",
     };
   }
   // Placed / Processing
   return {
     headline: "Order placed",
-    subtitle: "Hub is picking fresh items · On time",
+    subtitle: "Hub is picking fresh items",
     stage: "Placed",
-    progressWidth: "25%",
-    badgeText: "Confirmed",
+    progress: 0.18,
+    accent: "#FF5B00",
   };
 };
 
 export default function LiveOrderFloatingTracker() {
   const router = useRouter();
+  const { isNavVisible } = useScrollChrome();
+
   if (router.pathname === "/orders" || router.pathname?.startsWith("/orders")) {
     return null;
   }
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(true); // Default to minimized side pill
 
   const [etaMinutes, setEtaMinutes] = useState(null);
-  const [progressPct, setProgressPct] = useState(12);
+  const [progressPct, setProgressPct] = useState(18);
   const [orderStatus, setOrderStatus] = useState("Placed");
   const [riderName, setRiderName] = useState("");
-  const [distanceLabel, setDistanceLabel] = useState("");
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  const liveRef = useRef({ etaMinutes: null, progressPct: 12, status: "Placed", riderName: "" });
   useEffect(() => {
-    liveRef.current = { etaMinutes, progressPct, status: orderStatus, riderName };
-  }, [etaMinutes, progressPct, orderStatus, riderName]);
+    if (typeof window === "undefined") return;
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
-  const stageIndex = stageIndexFor(orderStatus);
-  const orderStatusNorm = String(orderStatus || activeOrder?.status || "").trim().toLowerCase();
-  const isDelivered = orderStatusNorm.includes("deliver");
-  const isCancelled = orderStatusNorm.includes("cancel");
-  const isFinished = isDelivered || isCancelled;
+  const activeOrder = useStoredJson("dashit_active_order", {
+    events: ["dashit_orders_updated", "dashit_order_updated"],
+  });
 
-  // If order is delivered/cancelled, don't keep it minimized in the bottom circle
-  useEffect(() => {
-    if (isFinished && isMinimized) {
-      setIsMinimized(false);
-    }
-  }, [isFinished, isMinimized]);
+  const cart = useStoredJson("dashit_cart", {
+    events: ["dashit_cart_updated"],
+    fallback: [],
+  });
+
+  const hasCart = Array.isArray(cart) && cart.length > 0;
+  const isNavPage = !isDesktop && NAVBAR_ROUTES.includes(router.pathname) && isNavVisible;
+
+  const targetOrderId = activeOrder?.orderId || activeOrder?.id;
 
   const seedFromOrder = useCallback((parsed) => {
     const loc = parsed?.location || parsed?.userAddress || null;
@@ -139,174 +121,30 @@ export default function LiveOrderFloatingTracker() {
     setEtaMinutes((prev) => prev ?? seeded);
   }, []);
 
-  const activeOrder = useStoredJson("dashit_active_order", {
-    events: ["dashit_orders_updated", "dashit_order_updated"],
-  });
-
-  const initializedOrderRef = useRef(null);
-
-  // Read minimized state from sessionStorage on mount or when order changes
   useEffect(() => {
-    const orderId = activeOrder?.orderId || activeOrder?.id;
-    if (!orderId) {
+    if (!targetOrderId) {
       clearOrderLiveNotification();
       return;
     }
-
-    setOrderStatus((prev) => advanceStatus(prev, activeOrder.status));
+    setOrderStatus((prev) => activeOrder.status || prev || "Placed");
     seedFromOrder(activeOrder);
+    setIsDismissed(false);
+  }, [targetOrderId, activeOrder, seedFromOrder]);
 
-    if (initializedOrderRef.current !== orderId) {
-      initializedOrderRef.current = orderId;
-      try {
-        const stored = sessionStorage.getItem(`dashit_tracker_minimized_${orderId}`);
-        if (stored !== null) {
-          setIsMinimized(stored === "true");
-        } else {
-          const genericClosed = sessionStorage.getItem("dashit_tracker_closed");
-          setIsMinimized(genericClosed === "true");
-        }
-      } catch (e) {}
-    }
-  }, [activeOrder, seedFromOrder]);
+  const orderStatusNorm = String(orderStatus || activeOrder?.status || "").trim().toLowerCase();
+  const isDelivered = orderStatusNorm.includes("deliver");
+  const isCancelled = orderStatusNorm.includes("cancel");
+  const isFinished = isDelivered || isCancelled;
 
-  const minimizeTracker = () => {
-    hapticLight();
-    setIsMinimized(true);
-    setIsExpanded(false);
-    if (typeof window !== "undefined") {
-      try {
-        sessionStorage.setItem("dashit_tracker_closed", "true");
-        const id = activeOrder?.orderId || activeOrder?.id;
-        if (id) {
-          sessionStorage.setItem(`dashit_tracker_minimized_${id}`, "true");
-        }
-      } catch (e) {}
-      window.__dashit_tracker_minimized = true;
-      window.dispatchEvent(
-        new CustomEvent("dashit_tracker_minimized_changed", {
-          detail: { isMinimized: true, hasOrder: Boolean((activeOrder?.orderId || activeOrder?.id) && !isFinished) },
-        })
-      );
-    }
-  };
-
-  const expandTracker = () => {
-    hapticMedium();
-    setIsMinimized(false);
-    setIsExpanded(true);
-    if (typeof window !== "undefined") {
-      try {
-        sessionStorage.setItem("dashit_tracker_closed", "false");
-        const id = activeOrder?.orderId || activeOrder?.id;
-        if (id) {
-          sessionStorage.setItem(`dashit_tracker_minimized_${id}`, "false");
-        }
-      } catch (e) {}
-      window.__dashit_tracker_minimized = false;
-      window.dispatchEvent(
-        new CustomEvent("dashit_tracker_minimized_changed", {
-          detail: { isMinimized: false, hasOrder: Boolean((activeOrder?.orderId || activeOrder?.id) && !isFinished) },
-        })
-      );
-    }
-  };
-
+  // Real-time synchronization via watchOrder & watchOrderTracking
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hasOrder = Boolean((activeOrder?.orderId || activeOrder?.id) && !isFinished);
-      window.__dashit_tracker_minimized = isMinimized;
-      window.dispatchEvent(
-        new CustomEvent("dashit_tracker_minimized_changed", {
-          detail: { isMinimized, hasOrder },
-        })
-      );
-    }
-  }, [isMinimized, activeOrder?.orderId, activeOrder?.id, isFinished]);
-
-  const statusDetails = resolveOrderStatusDetails(orderStatus, etaMinutes, riderName, activeOrder);
-
-  useEffect(() => {
-    const targetId = activeOrder?.orderId || activeOrder?.id;
-    if (!targetId) return;
-    showOrderLiveNotification({
-      orderId: targetId,
-      storeName: activeOrder.storeName || "DASHit Express Hub · Anantnag",
-      headline: statusDetails.headline,
-      subtitle: statusDetails.subtitle,
-      etaMinutes: isDelivered ? 0 : etaMinutes || 0,
-      progressPct: isDelivered ? 100 : progressPct,
-      status: statusDetails.headline,
-      riderName,
-      isDelivered,
-    });
-  }, [
-    activeOrder?.orderId,
-    activeOrder?.id,
-    activeOrder?.storeName,
-    statusDetails.headline,
-    statusDetails.subtitle,
-    etaMinutes,
-    progressPct,
-    riderName,
-    isDelivered,
-  ]);
-
-  useEffect(() => {
-    const orderId = activeOrder?.orderId || activeOrder?.id;
-    if (!orderId || !isFinished) return undefined;
-
-    let delay = FINISHED_HOLD_MS;
-    try {
-      const seenKey = `dashit_finished_seen_${orderId}`;
-      const firstSeen = sessionStorage.getItem(seenKey);
-      if (!firstSeen) {
-        sessionStorage.setItem(seenKey, String(Date.now()));
-      } else {
-        const elapsed = Date.now() - Number(firstSeen);
-        if (Number.isFinite(elapsed) && elapsed >= FINISHED_HOLD_MS) {
-          retireFinishedOrder(orderId, orderStatus);
-          clearOrderLiveNotification();
-          return undefined;
-        } else if (Number.isFinite(elapsed) && elapsed > 0) {
-          delay = FINISHED_HOLD_MS - elapsed;
-        }
-      }
-    } catch (e) {}
-
-    const timer = setTimeout(() => {
-      if (retireFinishedOrder(orderId, orderStatus)) {
-        clearOrderLiveNotification();
-      }
-    }, delay);
-    return () => clearTimeout(timer);
-  }, [activeOrder?.orderId, activeOrder?.id, isFinished, orderStatus]);
-
-  // Customer pages where tracking should be alive — hide completely on /orders page
-  const isCustomerPage = !["/xcyop", "/driver", "/login", "/orders"].includes(router.pathname);
-
-  // Auto-collapse order popup after 10 seconds into the circular widget (in-flight orders only)
-  useEffect(() => {
-    if (!isMinimized && isCustomerPage && (activeOrder?.orderId || activeOrder?.id) && !isFinished) {
-      const autoCollapseTimer = setTimeout(() => {
-        minimizeTracker();
-      }, 10000);
-      return () => clearTimeout(autoCollapseTimer);
-    }
-  }, [isMinimized, isCustomerPage, activeOrder?.orderId, activeOrder?.id, isFinished]);
-
-  const targetOrderId = activeOrder?.orderId || activeOrder?.id;
-
-  useEffect(() => {
-    if (!targetOrderId || !isCustomerPage) return;
+    if (!targetOrderId) return;
 
     const unsubOrder = watchOrder(targetOrderId, (data) => {
       if (!data) return;
       if (data.status) {
-        setOrderStatus((prev) => advanceStatus(prev, data.status));
-        setProgressPct((prev) =>
-          Math.max(prev, computeOrderProgress({ status: data.status }))
-        );
+        setOrderStatus(data.status);
+        setProgressPct((prev) => Math.max(prev, computeOrderProgress({ status: data.status })));
         const stNorm = String(data.status || "").toLowerCase();
         if (stNorm.includes("deliver")) {
           setProgressPct(100);
@@ -315,28 +153,10 @@ export default function LiveOrderFloatingTracker() {
         if (data.status === "Out for Delivery") {
           showOutForDeliveryNotification({
             orderId: targetOrderId,
-            riderName: data.driverName || liveRef.current.riderName,
-            etaMinutes: liveRef.current.etaMinutes,
+            riderName: data.driverName || riderName,
+            etaMinutes: etaMinutes,
           });
         }
-
-        // Persist incoming status update back to localStorage and notify UI listeners
-        try {
-          const stored = localStorage.getItem("dashit_active_order");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (String(parsed.orderId || parsed.id) === String(targetOrderId)) {
-              const merged = { ...parsed, ...data };
-              localStorage.setItem("dashit_active_order", JSON.stringify(merged));
-              window.dispatchEvent(
-                new CustomEvent("dashit_orders_updated", { detail: merged })
-              );
-              window.dispatchEvent(
-                new CustomEvent("dashit_order_updated", { detail: merged })
-              );
-            }
-          }
-        } catch (e) {}
       }
       if (data.driverName) setRiderName(data.driverName);
     });
@@ -349,234 +169,208 @@ export default function LiveOrderFloatingTracker() {
       if (data.progress !== undefined) {
         setProgressPct(Number(data.progress) || 0);
       }
-      if (data.distanceFormatted) setDistanceLabel(String(data.distanceFormatted));
-      else if (data.distanceKm) setDistanceLabel(`${Number(data.distanceKm).toFixed(1)} km away`);
       if (data.driverName) setRiderName(data.driverName);
-      if (data.status) setOrderStatus((prev) => advanceStatus(prev, data.status));
+      if (data.status) setOrderStatus(data.status);
     });
 
     return () => {
       if (typeof unsubOrder === "function") unsubOrder();
       if (typeof unsubTracking === "function") unsubTracking();
     };
-  }, [targetOrderId, isCustomerPage]);
+  }, [targetOrderId, riderName, etaMinutes]);
 
-  if (!activeOrder || !isCustomerPage) return null;
+  const statusDetails = resolveOrderStatusDetails(orderStatus, etaMinutes, riderName, activeOrder);
 
-  const displayProgress = Math.min(
-    100,
-    Math.max(progressPct, computeOrderProgress({ status: orderStatus }))
-  );
+  // Background notifications
+  useEffect(() => {
+    if (!targetOrderId) return;
+    showOrderLiveNotification({
+      orderId: targetOrderId,
+      storeName: activeOrder?.storeName || "DASHit Express Hub · Anantnag",
+      headline: statusDetails.headline,
+      subtitle: statusDetails.subtitle,
+      etaMinutes: isDelivered ? 0 : etaMinutes || 0,
+      progressPct: isDelivered ? 100 : progressPct,
+      status: statusDetails.headline,
+      riderName,
+      isDelivered,
+    });
+  }, [
+    targetOrderId,
+    activeOrder?.storeName,
+    statusDetails.headline,
+    statusDetails.subtitle,
+    etaMinutes,
+    progressPct,
+    riderName,
+    isDelivered,
+  ]);
 
-  const caption = isDelivered
-    ? "Enjoy your order"
-    : distanceLabel && orderStatus === "Out for Delivery"
-    ? `${riderName || "Your rider"} · ${distanceLabel}`
-    : STAGES[stageIndex]?.caption || "";
-
-  const currentMark = isDelivered
-    ? "delivered"
-    : statusToMark(orderStatus);
-
-  const modeCaption = currentMark === "riding"
-    ? "On the Way"
-    : currentMark === "packing"
-    ? "Packing"
-    : currentMark === "delivered"
-    ? "Delivered"
-    : "Processing";
-
-  const openFullTracking = () => {
-    hapticMedium();
-    router.push(`/orders?id=${activeOrder?.orderId || ""}`);
-  };
-
-  const DISMISS_PX = 36;
-  const handleDragEnd = (_, info) => {
-    if (info.offset.y < -DISMISS_PX || info.velocity.y < -500) {
-      if (isFinished) {
-        const orderId = activeOrder?.orderId || activeOrder?.id;
-        if (orderId) {
-          retireFinishedOrder(orderId, orderStatus);
-        }
+  // Hold finished order briefly before retirement
+  useEffect(() => {
+    if (!targetOrderId || !isFinished) return undefined;
+    const timer = setTimeout(() => {
+      if (retireFinishedOrder(targetOrderId, orderStatus)) {
         clearOrderLiveNotification();
-      } else {
-        minimizeTracker();
+        setIsDismissed(true);
       }
-    }
+    }, FINISHED_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [targetOrderId, isFinished, orderStatus]);
+
+  if (!activeOrder || isDismissed) return null;
+
+  const isCustomerPage = !["/xcyop", "/driver", "/login", "/orders"].includes(router.pathname);
+  if (!isCustomerPage) return null;
+
+  const StageIcon = stageIconFor(orderStatus);
+  const otpCode = activeOrder.otp?.trim();
+  const effectiveProgress = isDelivered ? 1 : Math.max(0.12, Math.min(1, progressPct / 100, statusDetails.progress));
+
+  const handleOpenTracking = () => {
+    hapticMedium();
+    router.push(`/orders?id=${targetOrderId}`);
   };
+
+  const handleDismiss = (e) => {
+    e.stopPropagation();
+    hapticLight();
+    if (isFinished) {
+      retireFinishedOrder(targetOrderId, orderStatus);
+      clearOrderLiveNotification();
+    }
+    setIsDismissed(true);
+  };
+
+  // Docking position:
+  // Mobile with navbar: sits above navbar (+cart bar if visible)
+  // Mobile without navbar: sits at bottom (+cart bar if visible)
+  // Desktop: sits at bottom right
+  let bottomY = 0;
+  if (!isDesktop) {
+    if (isNavPage) {
+      bottomY = hasCart ? -132 : -72;
+    } else {
+      bottomY = hasCart ? -60 : 0;
+    }
+  }
+
+  const radius = 17;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - effectiveProgress);
 
   return (
-    <>
-      <AnimatePresence initial={false} mode="wait">
-        {isMinimized && !isFinished ? (
-          /* MINIMIZED FLOATING CIRCLE WIDGET — docked beside bottom navbar */
-          <motion.div
-            key="dashit-bottom-docked-circle"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            transition={SPRING_SNAPPY}
-            className="fixed right-3.5 sm:right-5 z-[60] md:hidden pointer-events-auto select-none flex items-center justify-center"
-            style={{
-              bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
-            }}
-          >
-            {/* Subtle animated ambient beacon ring behind circle */}
-            <span className="absolute w-[44px] h-[44px] rounded-full bg-[#FF5B00]/35 animate-ping pointer-events-none" />
-
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.92 }}
-              onClick={expandTracker}
-              aria-label={`Order status: ${statusDetails.headline}. Tap to view live order details.`}
-              className="relative w-[50px] h-[50px] rounded-full bg-gradient-to-br from-[#FF6F1E] via-[#FF5B00] to-[#E24800] shadow-[0_6px_18px_rgba(255,91,0,0.45),0_2px_6px_rgba(0,0,0,0.22)] flex items-center justify-center cursor-pointer select-none transition-transform active:scale-95 ring-1 ring-inset ring-white/35"
-            >
-              <DeliveryStatusIcon
-                status={currentMark}
-                size="md"
-                iconColor="text-[#061838]"
-                bgColor="bg-transparent"
+    <AnimatePresence>
+      <motion.div
+        key="dashit-order-status-pill"
+        initial={{ y: 80, opacity: 0, scale: 0.92 }}
+        animate={{
+          y: bottomY,
+          opacity: 1,
+          scale: 1,
+        }}
+        exit={{ y: 80, opacity: 0, scale: 0.92 }}
+        transition={{ type: "spring", stiffness: 320, damping: 28 }}
+        className="fixed left-0 right-0 md:left-auto md:right-8 z-[50] flex justify-center md:justify-end pointer-events-none px-3.5 sm:px-4"
+        style={{
+          bottom: "max(12px, calc(8px + env(safe-area-inset-bottom, 8px)))",
+        }}
+      >
+        {/* Native Android / iOS Parity: OrderStatusPill */}
+        <div
+          onClick={handleOpenTracking}
+          role="button"
+          tabIndex={0}
+          aria-label={`${statusDetails.headline}. ${statusDetails.subtitle}. Tap to open live tracking.`}
+          className="pointer-events-auto w-full max-w-sm sm:max-w-md h-[58px] bg-[#15161A] text-white rounded-full px-3 py-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.65)] border border-white/15 flex items-center justify-between gap-3 cursor-pointer select-none transition-transform active:scale-[0.98]"
+        >
+          {/* Left: Stage Icon with Circular Progress Ring */}
+          <div className="relative w-[42px] h-[42px] flex items-center justify-center shrink-0">
+            <svg className="w-[39px] h-[39px] -rotate-90 transform" viewBox="0 0 42 42">
+              {/* Soft background track */}
+              <circle
+                cx="21"
+                cy="21"
+                r={radius}
+                className="stroke-white/10"
+                strokeWidth="3"
+                fill="rgba(255, 255, 255, 0.04)"
               />
-            </motion.button>
-          </motion.div>
-        ) : (
-          /* EXPANDED LIVE ACTIVITY POPUP — ZOMATO STYLE */
-          <div
-            key="dashit-zomato-tracker-container"
-            className="fixed left-0 right-0 z-[250] flex justify-center px-4 pointer-events-none"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
-          >
-            <motion.div
-              key="dashit-zomato-card"
-              initial={{ opacity: 0, scale: 0.95, y: -12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -12 }}
-              transition={SPRING_SOFT}
-              drag="y"
-              dragSnapToOrigin
-              dragElastic={0.25}
-              onDragEnd={handleDragEnd}
-              onClick={openFullTracking}
-              className="pointer-events-auto w-full max-w-sm sm:max-w-md bg-[#16171B] border border-white/10 rounded-[26px] p-4.5 sm:p-5 shadow-[0_16px_40px_rgba(0,0,0,0.65)] cursor-pointer select-none touch-none"
-            >
-              {/* TOP ROW: Store name on left, brand + close on right */}
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium text-neutral-400 truncate max-w-[200px]">
-                  {activeOrder?.storeName || "DASHit Express Hub · Anantnag"}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-black italic text-[15px] sm:text-base tracking-tight text-white">
-                    dash<span className="text-[#FF5B00]">it</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isFinished) {
-                        const orderId = activeOrder?.orderId || activeOrder?.id;
-                        if (orderId) {
-                          retireFinishedOrder(orderId, orderStatus);
-                        }
-                        clearOrderLiveNotification();
-                      } else {
-                        minimizeTracker();
-                      }
-                    }}
-                    title={isFinished ? "Dismiss" : "Collapse to circle"}
-                    aria-label={isFinished ? "Dismiss" : "Collapse to circle"}
-                    className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-neutral-300 hover:text-white transition-all ml-1 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </button>
-                </div>
-              </div>
-
-              {/* HEADLINE: Actual dynamic real-time status */}
-              <h3 className="text-[20px] sm:text-[22px] font-bold text-white tracking-tight leading-snug mt-2">
-                {statusDetails.headline}
-              </h3>
-
-              {/* SUBTITLE: Actual dynamic subtitle details */}
-              <div className="flex items-center gap-2 mt-1 text-[13px]">
-                <span className="text-[#22C55E] font-semibold">{statusDetails.badgeText}</span>
-                <span className="text-neutral-500 font-light">|</span>
-                <span className="text-neutral-300 font-medium">
-                  {statusDetails.subtitle}
-                </span>
-              </div>
-
-              {/* ZOMATO-STYLE PROGRESS TIMELINE */}
-              <div className="mt-4 mb-0.5 relative flex items-center w-full">
-                {isDelivered ? (
-                  /* Clean, contained delivered state with full green bar and checkmark */
-                  <div className="relative w-full flex items-center gap-3">
-                    <div className="flex-1 h-[4px] bg-[#22C55E]/30 rounded-full overflow-hidden">
-                      <motion.div
-                        className="h-full bg-[#22C55E] rounded-full"
-                        initial={{ width: "30%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 0.6, ease: EASE_OUT }}
-                      />
-                    </div>
-                    <div className="w-7 h-7 rounded-full bg-[#22C55E] text-white shadow-md flex items-center justify-center shrink-0 z-10">
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    </div>
-                  </div>
-                ) : (
-                  /* In-transit stage rail with rider / packing / clock marker */
-                  <div className="relative w-full flex items-center">
-                    <div className="relative flex-1 flex items-center mr-2 h-7">
-                      {/* Background dashed track */}
-                      <div className="absolute inset-x-0 h-[2.5px] border-t-[2.5px] border-dashed border-neutral-600 top-1/2 -translate-y-1/2" />
-
-                      {/* Completed solid white bar */}
-                      <motion.div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-[3.5px] bg-white rounded-full"
-                        initial={{ width: "20%" }}
-                        animate={{
-                          width: statusDetails.progressWidth,
-                        }}
-                        transition={{ duration: 0.6, ease: EASE_OUT }}
-                      />
-
-                      {/* Current Status Avatar Marker centered on the progress bar */}
-                      <motion.div
-                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white text-[#061838] shadow-md flex items-center justify-center z-10"
-                        initial={{ left: "20%" }}
-                        animate={{
-                          left: statusDetails.progressWidth,
-                        }}
-                        transition={{ duration: 0.6, ease: EASE_OUT }}
-                      >
-                        {orderStatusNorm.includes("way") ||
-                        orderStatusNorm.includes("out") ||
-                        orderStatusNorm.includes("rider") ||
-                        orderStatusNorm.includes("dispatched") ? (
-                          <img
-                            src="/rider/rider_moving.png"
-                            alt="Rider"
-                            className="w-4 h-4 object-contain"
-                          />
-                        ) : orderStatusNorm.includes("pack") || orderStatusNorm.includes("bag") ? (
-                          <Package className="w-3.5 h-3.5 stroke-[2.4]" />
-                        ) : (
-                          <Clock className="w-3.5 h-3.5 stroke-[2.4]" />
-                        )}
-                      </motion.div>
-                    </div>
-
-                    {/* Destination Home Marker at the far right end */}
-                    <div className="w-7 h-7 rounded-full bg-white text-[#061838] shadow-md flex items-center justify-center shrink-0 z-10">
-                      <Home className="w-3.5 h-3.5 stroke-[2.5]" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
+              {/* Dynamic filled progress arc with round caps */}
+              <circle
+                cx="21"
+                cy="21"
+                r={radius}
+                stroke={statusDetails.accent}
+                strokeWidth="3.2"
+                strokeDasharray={circumference}
+                strokeDashoffset={strokeDashoffset}
+                strokeLinecap="round"
+                fill="none"
+                className="transition-all duration-700 ease-out"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center text-white">
+              <StageIcon className="w-4 h-4 stroke-[2.4]" />
+            </div>
           </div>
-        )}
-      </AnimatePresence>
-    </>
+
+          {/* Center: Live Headline & Subtitle */}
+          <div className="grow min-w-0 text-left">
+            <h4 className="text-[14px] font-bold text-white tracking-tight leading-snug truncate">
+              {statusDetails.headline}
+            </h4>
+            <div className="flex items-center gap-1.5 text-[11.5px] text-[#C7C7CC] truncate">
+              {!isFinished && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] shrink-0 animate-pulse" />
+              )}
+              <span className="truncate">{statusDetails.subtitle}</span>
+            </div>
+          </div>
+
+          {/* Right Side: OTP Badge, ETA or Actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* OTP Code Badge */}
+            {otpCode && !isFinished && (
+              <div
+                className="bg-white/10 border border-white/15 rounded-xl px-2.5 py-1 text-center select-none"
+                title="Delivery OTP"
+              >
+                <span className="block text-[8px] font-black uppercase text-[#C7C7CC] tracking-wider leading-none">
+                  OTP
+                </span>
+                <span className="block font-mono text-[13px] font-black text-white tracking-widest leading-tight mt-0.5">
+                  {otpCode}
+                </span>
+              </div>
+            )}
+
+            {/* Out For Delivery ETA Badge */}
+            {orderStatus === "Out for Delivery" && etaMinutes !== null && (
+              <div className="w-11 h-10 rounded-xl bg-[#FF5B00] text-white flex flex-col items-center justify-center shadow-sm select-none">
+                <span className="text-[15px] font-black leading-none">{etaMinutes}</span>
+                <span className="text-[8px] font-black tracking-wider uppercase leading-none mt-0.5">MIN</span>
+              </div>
+            )}
+
+            {/* Dismiss Close Button (if finished) or Right Chevron */}
+            {isFinished ? (
+              <button
+                type="button"
+                onClick={handleDismiss}
+                aria-label="Dismiss tracking pill"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 active:scale-90 flex items-center justify-center text-[#C7C7CC] hover:text-white transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            ) : orderStatus !== "Out for Delivery" ? (
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[#C7C7CC]">
+                <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

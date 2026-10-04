@@ -8,38 +8,38 @@ import {
   Package,
   Clock,
   ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  ChevronDown,
-  ChevronUp,
-  ShoppingBag,
-  X,
+  Check,
   RotateCcw,
   MapPin,
   Sparkles,
+  ShoppingBag,
+  Bike,
+  Shield,
   Plus,
   Minus,
-  Check,
-  Truck,
-  KeyRound,
-  Zap
+  X,
+  XCircle,
+  ChevronRight
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
-
-import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
-import { Card, CardContent } from "../components/ui/card";
-import DraggableSheet from "../components/ui/DraggableSheet";
 import { motion, AnimatePresence } from "framer-motion";
 import { showOrderLiveNotification, clearOrderLiveNotification } from "../lib/notifications";
-import DashitAnimatedLogo, { DashitProgressBadge } from "../components/DashitAnimatedLogo";
-import { watchOrder, watchOrderTracking, updateOrderStatus, updateOrderContent, getOrderGracePeriodSeconds, retireFinishedOrder, ORDER_STATUS, ORDER_CHANGE_WINDOW_SECONDS } from "../lib/db";
+import {
+  watchOrder,
+  watchOrderTracking,
+  updateOrderStatus,
+  updateOrderContent,
+  retireFinishedOrder,
+  ORDER_STATUS,
+  ORDER_CHANGE_WINDOW_SECONDS
+} from "../lib/db";
 import { watchShopProducts as watchProducts } from "../lib/catalogueFile";
 import { browseable } from "../lib/tobacco";
-import { hapticLight, hapticCartAdd } from "../lib/haptics";
+import { hapticLight, hapticMedium, hapticCartAdd } from "../lib/haptics";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import ModifyOrderModal from "../components/ModifyOrderModal";
 import CancelOrderModal from "../components/CancelOrderModal";
+import OrderStageAnimation from "../components/OrderStageAnimation";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -66,10 +66,6 @@ function getRemainingCancellationSeconds(order) {
   const status = String(order.status || "").toLowerCase();
   if (status && status !== "placed") return 0;
 
-  /* createdAt arrives as a Firestore Timestamp ({seconds, nanoseconds}) for any
-     order read back from the server, and as an ISO string only for the local
-     copy. `new Date(timestampObject)` is Invalid Date, so the 30-second cancel
-     window silently never opened for real orders. */
   const orderTime = orderTimestampMs(order);
   if (!orderTime) return 0;
 
@@ -77,16 +73,30 @@ function getRemainingCancellationSeconds(order) {
   return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
 }
 
+function formatDate(order) {
+  const ms = orderTimestampMs(order);
+  if (!ms) return order?.date || "Recently";
+  const date = new Date(ms);
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const [activeOrder, setActiveOrder] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [viewMode, setViewMode] = useState("tracking"); // "tracking" | "history"
   const [liveEta, setLiveEta] = useState(null);
   const [cancellationSeconds, setCancellationSeconds] = useState(0);
-  const [orderHistory, setOrderHistory] = useState([]);
-  const [showPastOrdersModal, setShowPastOrdersModal] = useState(false);
-  const [isItemsExpanded, setIsItemsExpanded] = useState(false);
   const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [modifyToast, setModifyToast] = useState(null);
   const [cart, setCart] = useState([]);
   const [selectedCat, setSelectedCat] = useState("All");
@@ -94,7 +104,6 @@ export default function OrdersPage() {
 
   // Live Firestore Catalog Sync
   useEffect(() => {
-
     const unsub = watchProducts((liveProducts) => {
       if (liveProducts && liveProducts.length > 0) {
         setProductsList(liveProducts);
@@ -174,70 +183,52 @@ export default function OrdersPage() {
     }
   };
 
-  // Smart recommendations based on past orders and popular items with accurate live stock
-  const recommendations = useMemo(() => {
-    const pastItemsMap = new Map();
-    [activeOrder, ...orderHistory].forEach((ord) => {
-      if (ord?.items && Array.isArray(ord.items)) {
-        ord.items.forEach((it) => {
-          const key = String(it.id || it.barcode || it.name);
-          if (!pastItemsMap.has(key)) {
-            const matchedLive =
-              productsById.get(String(it.id)) ||
-              productsById.get(String(it.barcode)) ||
-              productsById.get((it.name || "").trim().toLowerCase());
-            pastItemsMap.set(key, {
-              ...(matchedLive || it),
-              isPastOrder: true,
-            });
-          }
-        });
-      }
-    });
-
-    const combined = Array.from(pastItemsMap.values());
-    browseable(productsList).forEach((p) => {
-      const key = String(p.id || p.barcode || p.name);
-      if (!combined.some((c) => String(c.id || c.barcode || c.name) === key)) {
-        combined.push(p);
-      }
-    });
-
-    if (selectedCat === "All") return combined.slice(0, 10);
-    return combined.filter((p) => (p.cat || "").toLowerCase() === selectedCat.toLowerCase()).slice(0, 8);
-  }, [activeOrder, orderHistory, selectedCat, productsList, productsById]);
-
-  /* Once the rider is broadcasting, their live road-routed ETA replaces the
-     static hub-to-address estimate — the header used to keep showing the
-     original promise long after the scooter had closed most of the distance. */
-  const etaData = useMemo(() => {
-    if (liveEta?.etaMinutes !== undefined && liveEta?.etaMinutes !== null) {
-      return {
-        etaMinutes: liveEta.etaMinutes,
-        distanceFormatted: liveEta.distanceFormatted || "En route",
-        isLive: true,
-      };
-    }
-    if (!activeOrder) return { etaMinutes: 10, distanceFormatted: "1.2 km away" };
-    const loc = activeOrder.location || activeOrder.userAddress || null;
-    return calculateDeliveryEta(loc);
-  }, [activeOrder, liveEta]);
-
-  const targetOrderId = activeOrder?.orderId || activeOrder?.id;
-
+  // Local storage synchronization
   useEffect(() => {
     const syncLocal = () => {
       try {
         const active = localStorage.getItem("dashit_active_order");
         const history = localStorage.getItem("dashit_orders_history");
 
+        let parsedActive = null;
+        let parsedHistory = [];
+
         if (active) {
-          try { setActiveOrder(JSON.parse(active)); } catch (e) {}
+          try {
+            parsedActive = JSON.parse(active);
+            setActiveOrder(parsedActive);
+          } catch (e) {}
         } else {
           setActiveOrder(null);
         }
+
         if (history) {
-          try { setOrderHistory(JSON.parse(history)); } catch (e) {}
+          try {
+            parsedHistory = JSON.parse(history);
+            setOrderHistory(parsedHistory);
+          } catch (e) {}
+        }
+
+        // URL query parameter routing: ?id= or ?viewPast=true
+        if (router.query.viewPast === "true") {
+          setViewMode("history");
+        } else if (router.query.id) {
+          const match =
+            (parsedActive && String(parsedActive.orderId || parsedActive.id) === String(router.query.id))
+              ? parsedActive
+              : parsedHistory.find((o) => String(o.orderId || o.id) === String(router.query.id));
+          if (match) {
+            setSelectedOrder(match);
+            setViewMode("tracking");
+          } else if (parsedActive) {
+            setSelectedOrder(parsedActive);
+            setViewMode("tracking");
+          }
+        } else if (parsedActive) {
+          setSelectedOrder(parsedActive);
+          setViewMode("tracking");
+        } else {
+          setViewMode("history");
         }
       } catch (e) {}
     };
@@ -260,10 +251,6 @@ export default function OrdersPage() {
       } catch (e) {}
     }
 
-    if (router.query.viewPast === "true") {
-      setShowPastOrdersModal(true);
-    }
-
     return () => {
       window.removeEventListener("dashit_orders_updated", syncLocal);
       window.removeEventListener("dashit_order_updated", syncLocal);
@@ -272,10 +259,12 @@ export default function OrdersPage() {
         try { bc.close(); } catch (e) {}
       }
     };
-  }, [router.query]);
+  }, [router.query.id, router.query.viewPast]);
 
-  /* Live rider telemetry: arrival time and remaining distance, rewritten on the
-     rider's broadcast cadence while the order is assigned. */
+  const displayedOrder = selectedOrder || activeOrder;
+  const targetOrderId = displayedOrder?.orderId || displayedOrder?.id;
+
+  // Live rider telemetry
   useEffect(() => {
     if (!targetOrderId) return;
     const unsub = watchOrderTracking(targetOrderId, (data) => {
@@ -300,30 +289,28 @@ export default function OrdersPage() {
     const unsub = watchOrder(targetOrderId, (data) => {
       if (!data) return;
       if (data.status) {
-        setActiveOrder((prev) => {
-          if (!prev) return data;
-          const updated = { ...prev, ...data };
-          try {
-            localStorage.setItem("dashit_active_order", JSON.stringify(updated));
-          } catch (e) {}
-          return updated;
-        });
+        setSelectedOrder((prev) => (prev ? { ...prev, ...data } : data));
+        if (activeOrder && String(activeOrder.orderId || activeOrder.id) === String(targetOrderId)) {
+          setActiveOrder((prev) => {
+            const updated = { ...prev, ...data };
+            try {
+              localStorage.setItem("dashit_active_order", JSON.stringify(updated));
+            } catch (e) {}
+            return updated;
+          });
+        }
 
         try {
           const hist = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
           const updatedHist = hist.map((o) =>
-            String(o.orderId || o.id) === String(targetOrderId)
-              ? { ...o, ...data }
-              : o
+            String(o.orderId || o.id) === String(targetOrderId) ? { ...o, ...data } : o
           );
           localStorage.setItem("dashit_orders_history", JSON.stringify(updatedHist));
           setOrderHistory(updatedHist);
         } catch (e) {}
 
         if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent("dashit_orders_updated", { detail: data })
-          );
+          window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: data }));
         }
       }
     });
@@ -331,19 +318,20 @@ export default function OrdersPage() {
     return () => {
       if (typeof unsub === "function") unsub();
     };
-  }, [targetOrderId]);
+  }, [targetOrderId, activeOrder]);
 
+  // Change window countdown timer
   useEffect(() => {
-    if (!activeOrder) {
+    if (!displayedOrder) {
       setCancellationSeconds(0);
       return;
     }
-    const initialRem = getRemainingCancellationSeconds(activeOrder);
+    const initialRem = getRemainingCancellationSeconds(displayedOrder);
     setCancellationSeconds(initialRem);
     if (initialRem <= 0) return;
 
     const timer = setInterval(() => {
-      const rem = getRemainingCancellationSeconds(activeOrder);
+      const rem = getRemainingCancellationSeconds(displayedOrder);
       setCancellationSeconds(rem);
       if (rem <= 0) {
         clearInterval(timer);
@@ -351,11 +339,9 @@ export default function OrdersPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [activeOrder]);
+  }, [displayedOrder]);
 
-  /* The orders page is where a finished delivery becomes a receipt: once the
-     order reads Delivered, it is held on screen briefly and then moved into
-     history, so the page stops presenting a completed order as in-flight. */
+  // Finished delivery timeout
   useEffect(() => {
     const orderId = activeOrder?.orderId || activeOrder?.id;
     const status = String(activeOrder?.status || "").toLowerCase();
@@ -373,44 +359,54 @@ export default function OrdersPage() {
       }
     }, 6000);
     return () => clearTimeout(timer);
-  }, [targetOrderId, activeOrder?.status]);
+  }, [activeOrder?.orderId, activeOrder?.id, activeOrder?.status]);
 
-  /* Cancelling has to reach the store. This used to only delete the order from
-     the customer's own localStorage and then say "Order cancelled successfully"
-     — the order stayed 'Placed' in Firestore, so it was still picked, packed
-     and delivered, and the customer had no record of it to complain about. */
-  const [isCancelling, setIsCancelling] = useState(false);
+  const etaData = useMemo(() => {
+    if (liveEta?.etaMinutes !== undefined && liveEta?.etaMinutes !== null) {
+      return {
+        etaMinutes: liveEta.etaMinutes,
+        distanceFormatted: liveEta.distanceFormatted || "En route",
+        isLive: true,
+      };
+    }
+    if (!displayedOrder) return { etaMinutes: 8, distanceFormatted: "1.2 km away" };
+    const loc = displayedOrder.location || displayedOrder.userAddress || null;
+    return calculateDeliveryEta(loc);
+  }, [displayedOrder, liveEta]);
 
   const handleSaveModifiedOrder = async (updatedFields) => {
-    if (!activeOrder) return;
-    const orderId = activeOrder.orderId || activeOrder.id;
+    if (!displayedOrder) return;
+    const orderId = displayedOrder.orderId || displayedOrder.id;
     const res = await updateOrderContent(orderId, updatedFields);
-    setActiveOrder((prev) => ({ ...prev, ...updatedFields }));
+    setSelectedOrder((prev) => ({ ...prev, ...updatedFields }));
+    if (activeOrder && String(activeOrder.orderId || activeOrder.id) === String(orderId)) {
+      setActiveOrder((prev) => ({ ...prev, ...updatedFields }));
+    }
     setModifyToast("Order items updated successfully!");
     setTimeout(() => setModifyToast(null), 3500);
     return res;
   };
 
   const handleConfirmCancellation = async ({ restoreCart }) => {
-    if (!activeOrder || isCancelling) return;
-    const orderId = activeOrder.orderId || activeOrder.id;
+    if (!displayedOrder || isCancelling) return;
+    const orderId = displayedOrder.orderId || displayedOrder.id;
     setIsCancelling(true);
     try {
-      if (restoreCart && activeOrder.items && activeOrder.items.length > 0) {
-        localStorage.setItem("dashit_cart", JSON.stringify(activeOrder.items));
+      if (restoreCart && displayedOrder.items && displayedOrder.items.length > 0) {
+        localStorage.setItem("dashit_cart", JSON.stringify(displayedOrder.items));
         window.dispatchEvent(new Event("dashit_cart_updated"));
       }
       const res = await updateOrderStatus(orderId, ORDER_STATUS.CANCELLED);
       if (res?.firestoreSynced === false) {
-        alert(
-          "We could not sync the cancellation automatically. Support has been notified at 6006990032 to assist with your cancellation."
-        );
+        alert("We could not sync the cancellation automatically. Support has been notified at 6006990032.");
         return;
       }
       localStorage.removeItem("dashit_active_order");
       setActiveOrder(null);
+      setSelectedOrder(null);
       clearOrderLiveNotification();
       setIsCancelModalOpen(false);
+      setViewMode("history");
       setModifyToast("Order cancelled successfully.");
       setTimeout(() => setModifyToast(null), 3500);
     } catch (e) {
@@ -462,644 +458,727 @@ export default function OrdersPage() {
     }
   };
 
+  // Recommendations
+  const recommendations = useMemo(() => {
+    const pastItemsMap = new Map();
+    [activeOrder, ...orderHistory].forEach((ord) => {
+      if (ord?.items && Array.isArray(ord.items)) {
+        ord.items.forEach((it) => {
+          const key = String(it.id || it.barcode || it.name);
+          if (!pastItemsMap.has(key)) {
+            const matchedLive =
+              productsById.get(String(it.id)) ||
+              productsById.get(String(it.barcode)) ||
+              productsById.get((it.name || "").trim().toLowerCase());
+            pastItemsMap.set(key, {
+              ...(matchedLive || it),
+              isPastOrder: true,
+            });
+          }
+        });
+      }
+    });
+
+    const combined = Array.from(pastItemsMap.values());
+    browseable(productsList).forEach((p) => {
+      const key = String(p.id || p.barcode || p.name);
+      if (!combined.some((c) => String(c.id || c.barcode || c.name) === key)) {
+        combined.push(p);
+      }
+    });
+
+    if (selectedCat === "All") return combined.slice(0, 10);
+    return combined.filter((p) => (p.cat || "").toLowerCase() === selectedCat.toLowerCase()).slice(0, 8);
+  }, [activeOrder, orderHistory, selectedCat, productsList, productsById]);
+
+  // Stage details for tracking
+  const currentStatus = String(displayedOrder?.status || "Placed");
+  const isOutForDelivery = currentStatus === "Out for Delivery";
+  const isDelivered = currentStatus === "Delivered";
+  const isCancelled = currentStatus === "Cancelled";
+  const isPacking = currentStatus === "Packed" || currentStatus === "Packing";
+  const showsMap = displayedOrder && (isOutForDelivery || isDelivered);
+
+  const stageProgress = isDelivered ? 1.0 : isOutForDelivery ? 0.75 : isPacking ? 0.45 : 0.18;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-dock dark:bg-surface dark:text-content">
-      <SEO title="Order History" noindex={true} />
-      {/* Minimalist Top App Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 shadow-sm dark:bg-surface/95 dark:border-line/80">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => {
-                if (window.history.length > 1) {
-                  goBack(router);
-                } else {
-                  router.push("/shop");
-                }
-              }}
-              className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-muted"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div>
-              <h1 className="font-black text-base text-slate-900 tracking-tight dark:text-content">Orders</h1>
-              <p className="text-[10px] font-semibold text-slate-400 dark:text-content-faint">Live order status & receipts</p>
-            </div>
-          </div>
+    <div className={`min-h-screen font-sans ${showsMap || (viewMode === "tracking" && displayedOrder) ? "bg-[#060709] text-white" : "bg-slate-50 text-slate-900 pb-dock dark:bg-surface dark:text-content"}`}>
+      <SEO title={viewMode === "tracking" && displayedOrder ? "Live Tracking" : "Order History"} noindex={true} />
 
-          <button
-            onClick={() => setShowPastOrdersModal(true)}
-            className="flex items-center space-x-1.5 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-full font-bold transition-all active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-muted dark:text-content cursor-pointer"
-          >
-            <Package className="w-3.5 h-3.5 text-[#061838] dark:text-[#FF5B00]" />
-            <span>Past Orders ({orderHistory.length})</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
-        {/* ACTIVE ORDER MINIMALIST CARD */}
-        {activeOrder ? (
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-4 shadow-sm animate-bottom-sheet dark:bg-surface-raised dark:border-line/90">
-            {/* Header: Status Pill & OTP */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-line-soft">
-              <div className="flex items-center space-x-2">
-                <span className="flex h-2.5 w-2.5 rounded-full bg-[#FF5B00]"></span>
-                <div>
-                  <h2 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">
-                    {activeOrder.status === "Out for Delivery"
-                      ? "Rider Dispatched"
-                      : activeOrder.status === "Delivered"
-                      ? "Delivered to Doorstep"
-                      : activeOrder.status === "Packed"
-                      ? "Order Packed & Ready for Pickup"
-                      : "Processing & Packing at Central Hub"}
-                  </h2>
-                  <span className="text-[10px] font-semibold text-slate-400 font-mono dark:text-content-faint">
-                    #{activeOrder.orderId}
-                  </span>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block dark:text-content-faint">Total</span>
-                <span className="font-mono text-xs font-black text-slate-900 dark:text-content">
-                  ₹{activeOrder.totalAmount || activeOrder.total || activeOrder.finalTotal || 0}
-                </span>
-                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80 block mt-0.5 dark:bg-emerald-950/40 dark:border-emerald-800/60 dark:text-emerald-300">
-                  {activeOrder.paymentMethod || "Cash on Delivery"}
-                </span>
-              </div>
-            </div>
-
-            {/* Minimal Horizontal Step Tracker with Spring Motion */}
-            <div className="py-1">
-              <div className="grid grid-cols-4 gap-1.5 relative">
-                {/* 1. Placed */}
-                <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
-                      transition={{ type: "spring", stiffness: 80, damping: 15 }}
-                      className="h-full bg-[#061838] dark:bg-[#FF5B00] rounded-full"
-                    />
-                  </div>
-                  <span className="text-[9px] font-black text-[#061838] block dark:text-content">Placed</span>
-                </div>
-
-                {/* 2. Processing (Active when placed/packing, not jumping to On Way) */}
-                <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{
-                        width:
-                          activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
-                            ? "100%"
-                            : "80%",
-                      }}
-                      transition={{ type: "spring", stiffness: 80, damping: 15, delay: 0.15 }}
-                      className={`h-full ${
-                        activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
-                          ? "bg-[#061838] dark:bg-[#FF5B00]"
-                          : "bg-[#FF5B00] animate-pulse"
-                      } rounded-full`}
-                    />
-                  </div>
-                  <span
-                    className={`text-[9px] font-black ${
-                      activeOrder.status === "Out for Delivery" || activeOrder.status === "Delivered"
-                        ? "text-[#061838] dark:text-content"
-                        : "text-[#FF5B00]"
-                    } block`}
-                  >
-                    Processing
-                  </span>
-                </div>
-
-                {/* 3. On Way (Only active when dispatched by driver) */}
-                <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
-                    <motion.div
-                      animate={{
-                        width:
-                          activeOrder.status === "Delivered"
-                            ? "100%"
-                            : activeOrder.status === "Out for Delivery"
-                            ? "70%"
-                            : "0%",
-                      }}
-                      transition={{ type: "spring", stiffness: 80, damping: 15 }}
-                      className="h-full bg-[#061838] dark:bg-[#FF5B00] rounded-full"
-                    />
-                  </div>
-                  <span
-                    className={`text-[9px] font-black ${
-                      activeOrder.status === "Out for Delivery"
-                        ? "text-[#FF5B00]"
-                        : activeOrder.status === "Delivered"
-                        ? "text-[#061838] dark:text-content"
-                        : "text-slate-400 dark:text-content-faint"
-                    } block`}
-                  >
-                    On Way
-                  </span>
-                </div>
-
-                {/* 4. Delivered */}
-                <div className="space-y-1 text-center">
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden dark:bg-surface-muted">
-                    <motion.div
-                      animate={{ width: activeOrder.status === "Delivered" ? "100%" : "0%" }}
-                      transition={{ type: "spring", stiffness: 80, damping: 15 }}
-                      className="h-full bg-[#061838] dark:bg-[#FF5B00] rounded-full"
-                    />
-                  </div>
-                  <span
-                    className={`text-[9px] font-black ${
-                      activeOrder.status === "Delivered" ? "text-[#061838] dark:text-content" : "text-slate-400 dark:text-content-faint"
-                    } block`}
-                  >
-                    Delivered
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* MINIMALIST DELIVERY VERIFICATION OTP & ARRIVAL TIME CARD */}
-            {activeOrder.status !== "Delivered" && (
-              <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-2xs dark:bg-surface-raised dark:border-line/90">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs dark:bg-surface-muted dark:border-line dark:text-content-secondary">
-                      <KeyRound className="w-5 h-5 stroke-[2]" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block dark:text-content-faint">
-                        Delivery Verification OTP
-                      </span>
-                      <p className="text-xs font-semibold text-slate-700 mt-0.5 dark:text-content-secondary">
-                        Share this code with your driver at delivery
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white border border-slate-300 px-3.5 py-1.5 rounded-xl text-center shadow-2xs shrink-0 dark:bg-surface-muted dark:border-line-strong">
-                    <span className="font-mono text-xl font-black tracking-[0.2em] text-slate-900 dark:text-content">
-                      {activeOrder.otp || "4821"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Dynamic Arrival Calculation */}
-                <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/80 text-xs font-medium text-slate-600 dark:border-line/80 dark:text-content-secondary">
-                  <div className="flex items-center space-x-1.5">
-                    <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-content-muted" />
-                    <span>
-                      Est. Delivery: <strong className="text-slate-900 font-bold dark:text-content">~{etaData.etaMinutes} mins</strong>
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-400 font-medium dark:text-content-faint">
-                    {etaData.distanceFormatted} • {etaData.isLive ? "Live from rider" : "Central Hub"}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* 30-Second Order Modification & Grace Period Card */}
-            {cancellationSeconds > 0 && (
-              <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-200/90 dark:border-amber-500/30 rounded-3xl p-4 space-y-3.5 shadow-sm dark:bg-surface-raised">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-500 to-[#FF5B00] text-white flex items-center justify-center shrink-0 shadow-sm">
-                        <Clock className="w-5 h-5 stroke-[2.5]" />
-                      </div>
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full animate-ping" />
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-xs font-black text-slate-900 dark:text-content">
-                          Order Modification Window
-                        </h4>
-                        <span className="font-mono text-[10px] font-black uppercase text-[#FF5B00] bg-orange-100 dark:bg-orange-950/60 px-2 py-0.5 rounded-full">
-                          00:{cancellationSeconds < 10 ? `0${cancellationSeconds}` : cancellationSeconds}s
-                        </span>
-                      </div>
-                      <p className="text-[11.5px] font-medium text-slate-600 dark:text-content-secondary mt-0.5 leading-snug">
-                        Forgot an item or changed your mind? You can add items or cancel before packing starts.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Animated Countdown Progress Track */}
-                <div className="space-y-1">
-                  <div className="h-2 w-full bg-amber-200/60 dark:bg-surface-muted rounded-full overflow-hidden p-0.5">
-                    <motion.div
-                      animate={{ width: `${Math.max(0, Math.min(100, (cancellationSeconds / ORDER_CHANGE_WINDOW_SECONDS) * 100))}%` }}
-                      transition={{ ease: "linear", duration: 0.9 }}
-                      className="h-full bg-gradient-to-r from-amber-500 via-[#FF6F1E] to-[#FF5B00] rounded-full"
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-content-faint px-0.5">
-                    <span>Packing locked</span>
-                    <span>Packing starts in {cancellationSeconds}s</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons: Modify Items & Cancel Order */}
-                <div className="flex items-center space-x-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setIsModifyModalOpen(true)}
-                    className="grow h-10 px-3.5 rounded-xl bg-[#061838] hover:bg-[#0A2450] dark:bg-[#FF5B00] dark:hover:bg-[#E04E00] text-white font-extrabold text-xs shadow-xs active:scale-95 transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Add / Modify Items</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsCancelModalOpen(true)}
-                    disabled={isCancelling}
-                    className="h-10 px-3.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-black shadow-xs active:scale-95 transition-all flex items-center justify-center space-x-1.5 dark:bg-surface-muted dark:border-rose-900/50 dark:text-rose-400 dark:hover:bg-rose-950/30 cursor-pointer disabled:opacity-50"
-                  >
-                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>Cancel</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Fulfilment Processing State vs Out for Delivery Map */}
-            {activeOrder.status === "Out for Delivery" ? (
-              <div className="pt-1">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">Live Delivery Route</span>
-                  <Badge variant="success">
-                    Rider En Route
-                  </Badge>
-                </div>
-                <MapTracking
-                  orderId={activeOrder.orderId}
-                  initialLat={33.735832}
-                  initialLng={75.143614}
-                  customerLat={activeOrder.location?.lat || 33.7385}
-                  customerLng={activeOrder.location?.lng || 75.1565}
-                  destinationName={activeOrder.location?.address || "Your Doorstep"}
-                />
-              </div>
-            ) : (
-              <div className="bg-gradient-to-b from-slate-50 to-blue-50/50 border border-slate-200/80 rounded-3xl p-5 space-y-3.5 text-center shadow-xs dark:from-surface-raised dark:to-surface dark:border-line/80">
-                <div className="w-16 h-16 mx-auto rounded-2xl bg-white shadow-[0_8px_24px_rgba(6,24,56,0.1)] border border-slate-200/80 flex items-center justify-center p-2 dark:bg-surface-muted dark:border-line/80">
-                  <DashitAnimatedLogo size="md" showGlow={true} />
-                </div>
-                <div>
-                  <h3 className="font-black text-sm text-slate-900 dark:text-content">
-                    Packing at Dashit Central Hub
-                  </h3>
-                  <p className="text-xs text-slate-600 font-medium mt-1 max-w-xs mx-auto dark:text-content-secondary">
-                    Our team is picking and packing your fresh items.
-                  </p>
-                </div>
-
-                <div className="bg-white/80 backdrop-blur-xs rounded-2xl p-3 border border-orange-100 text-left space-y-2 dark:bg-surface-muted/90 dark:border-line-soft">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-content">
-                    <span className="w-2 h-2 rounded-full bg-orange-500" />
-                    <span>Order received & confirmed</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-content">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span>Picking items from shelves & packing</span>
-                  </div>
-                  <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 dark:text-content-faint">
-                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-neutral-600" />
-                    <span>Live GPS map unlocks when rider departs</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Minimal Collapsible Items Summary */}
-            <div className="bg-slate-50/80 rounded-2xl border border-slate-100 overflow-hidden dark:bg-surface-raised dark:border-line-soft">
+      {/* =====================================================================
+          VIEW 1: LIVE ORDER TRACKING (PARITY WITH LiveTrackingMapScreen.kt)
+          ===================================================================== */}
+      {viewMode === "tracking" && displayedOrder ? (
+        <div className="min-h-screen flex flex-col justify-between">
+          {/* Top Bar */}
+          <header className="sticky top-0 z-40 bg-[#060709]/80 backdrop-blur-xl px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 border-b border-white/10">
+            <div className="max-w-md mx-auto flex items-center justify-between">
               <button
-                onClick={() => setIsItemsExpanded(!isItemsExpanded)}
-                className="w-full p-3 flex items-center justify-between text-left cursor-pointer"
+                type="button"
+                onClick={() => {
+                  hapticLight();
+                  if (orderHistory.length > 0) {
+                    setViewMode("history");
+                  } else {
+                    router.push("/shop");
+                  }
+                }}
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95 cursor-pointer"
+                aria-label="Back to orders"
               >
-                <div className="flex items-center space-x-2">
-                  <ShoppingBag className="w-4 h-4 text-slate-400 dark:text-content-muted" />
-                  <span className="text-xs font-bold text-slate-800 dark:text-content">
-                    Order Items ({activeOrder.items?.length || 1})
-                  </span>
-                </div>
-                <div className="flex items-center space-x-1.5">
-                  <span className="font-mono font-bold text-xs text-slate-900 dark:text-content">
-                    ₹{activeOrder.totalAmount || activeOrder.items?.reduce((s, i) => s + i.price * i.qty, 0) || 0}
-                  </span>
-                  {isItemsExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400 dark:text-content-faint" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400 dark:text-content-faint" />
-                  )}
-                </div>
+                <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
               </button>
 
-              {isItemsExpanded && (
-                <div className="p-3 pt-0 space-y-2 border-t border-slate-100 text-xs dark:border-line-soft">
-                  {activeOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-slate-700 py-1 dark:text-content-secondary">
-                      <span className="font-medium text-[11px]">{item.name} <b className="text-slate-400 font-normal dark:text-content-faint">x{item.qty}</b></span>
-                      <span className="font-mono font-bold text-[11px] text-slate-900 dark:text-content">₹{item.price * item.qty}</span>
-                    </div>
-                  ))}
-                  {activeOrder.location?.address && (
-                    <div className="pt-2 border-t border-slate-100 flex items-start space-x-1.5 text-slate-500 text-[10px] dark:border-line-soft dark:text-content-muted">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5 dark:text-content-faint" />
-                      <span>{activeOrder.location.address}</span>
-                    </div>
-                  )}
+              <span className="font-mono text-xs font-semibold text-white/55 tracking-wider">
+                Order #{String(targetOrderId || "").slice(-6).toUpperCase()}
+              </span>
+
+              {cancellationSeconds > 0 ? (
+                <div className="h-9 px-3 rounded-full bg-black/80 border border-white/15 flex items-center space-x-2 select-none">
+                  {/* Circular countdown gauge */}
+                  <div className="relative w-4 h-4 flex items-center justify-center">
+                    <svg className="w-4 h-4 -rotate-90 transform" viewBox="0 0 20 20">
+                      <circle cx="10" cy="10" r="8" className="stroke-white/20" strokeWidth="2.5" fill="none" />
+                      <circle
+                        cx="10"
+                        cy="10"
+                        r="8"
+                        stroke="#FF5B00"
+                        strokeWidth="2.5"
+                        strokeDasharray={50.2}
+                        strokeDashoffset={50.2 * (1 - cancellationSeconds / ORDER_CHANGE_WINDOW_SECONDS)}
+                        strokeLinecap="round"
+                        fill="none"
+                        className="transition-all duration-900 ease-linear"
+                      />
+                    </svg>
+                  </div>
+                  <span className="font-mono text-xs font-bold text-white">
+                    0:{cancellationSeconds < 10 ? `0${cancellationSeconds}` : cancellationSeconds}
+                  </span>
+                  <span className="text-[11px] font-semibold text-white/70">to change</span>
                 </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticLight();
+                    setViewMode("history");
+                  }}
+                  className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
+                >
+                  <Package className="w-3.5 h-3.5 text-[#FF5B00]" />
+                  <span>All Orders ({orderHistory.length})</span>
+                </button>
               )}
             </div>
+          </header>
 
-            {/* Actions Row */}
-            <div className="flex space-x-2 pt-1">
-              <Link
-                href="/shop"
-                className="grow bg-[#061838] hover:bg-slate-900 text-white text-center text-xs font-black py-3 rounded-2xl transition-all shadow-md active:scale-95 dark:bg-[#FF5B00] dark:hover:bg-[#E04F00]"
-              >
-                + Add Items to Cart
-              </Link>
-            </div>
-          </div>
-        ) : (
-          /* Minimalist Empty Active Orders State */
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-3 shadow-sm dark:bg-surface-raised dark:border-line/90">
-            <div className="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto dark:bg-surface-muted dark:text-content-faint">
-              <Package className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-content">No active deliveries</h3>
-              <p className="text-xs text-slate-400 mt-0.5 font-medium dark:text-content-faint">
-                Your live order path and courier ETA will appear here.
-              </p>
-            </div>
-            <Link
-              href="/shop"
-              className="inline-block bg-[#061838] hover:bg-slate-900 text-white font-black text-xs px-5 py-2.5 rounded-2xl shadow-md transition-all active:scale-95 dark:bg-[#FF5B00] dark:hover:bg-[#E04F00]"
-            >
-              Start Shopping
-            </Link>
-          </div>
-        )}
-
-        {/* SMART PAST ORDER RECOMMENDATIONS & FREQUENT PICKS */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3.5 shadow-sm dark:bg-surface-raised dark:border-line/90">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-line-soft">
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5B00] flex items-center justify-center dark:bg-orange-950/40">
-                <Sparkles className="w-3.5 h-3.5" />
+          {/* Body Content */}
+          {showsMap ? (
+            /* MAP TRACKING (OUT FOR DELIVERY / DELIVERED) */
+            <div className="relative flex-1 max-w-md mx-auto w-full flex flex-col justify-between p-4 space-y-4">
+              <div className="rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                <MapTracking
+                  orderId={targetOrderId}
+                  initialLat={33.748413}
+                  initialLng={75.150839}
+                  customerLat={displayedOrder.location?.lat || 33.7385}
+                  customerLng={displayedOrder.location?.lng || 75.1565}
+                  destinationName={displayedOrder.location?.address || "Your Doorstep"}
+                />
               </div>
-              <div>
-                <h3 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">
-                  Past Picks &amp; Recommendations
-                </h3>
-                <p className="text-[10px] text-slate-400 font-semibold dark:text-content-faint">
-                  1-tap quick add from your favourites
-                </p>
-              </div>
-            </div>
-          </div>
 
-          {/* Category Filter Chips */}
-          <div className="flex space-x-1.5 overflow-x-auto scrollbar-none py-0.5">
-            {["All", "Snacks", "Dairy", "Bakery"].map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setSelectedCat(cat)}
-                className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all shrink-0 cursor-pointer ${
-                  selectedCat === cat
-                    ? "bg-[#061838] text-white shadow-xs dark:bg-[#FF5B00]"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-surface-muted dark:text-content-secondary dark:hover:bg-surface-overlay"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Recommendations Grid */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            {recommendations.map((prod) => {
-              const pId = String(prod.id || prod.barcode);
-              const live = productsById.get(pId) || productsById.get((prod.name || "").trim().toLowerCase()) || prod;
-              const isOutOfStock = live.stock !== undefined && Number(live.stock) <= 0;
-              const cartItem = cart.find((i) => String(i.id || i.barcode) === pId);
-              const qty = cartItem ? cartItem.qty : 0;
-
-              return (
-                <div
-                  key={pId}
-                  className={`bg-slate-50/80 hover:bg-slate-50 border rounded-2xl p-2.5 flex flex-col justify-between transition-all group dark:bg-surface-raised dark:hover:bg-surface-overlay ${
-                    isOutOfStock
-                      ? "border-slate-200 dark:border-line/60 opacity-80"
-                      : "border-slate-200/80 dark:border-line/80"
-                  }`}
-                >
-                  <div className="relative">
-                    <div className="w-full aspect-square rounded-xl bg-white flex items-center justify-center p-2 mb-2 overflow-hidden border border-slate-100 dark:bg-surface-muted dark:border-line-soft relative">
-                      <img
-                        src={prod.img}
-                        alt={prod.name}
-                        className={`w-full h-full object-contain group-hover:scale-105 transition-transform ${
-                          isOutOfStock ? "grayscale-[40%] opacity-60" : ""
-                        }`}
-                      />
-                      {isOutOfStock && (
-                        <div className="absolute inset-x-0 bottom-0 bg-rose-600/90 py-0.5 text-center text-[8.5px] font-black uppercase tracking-wider text-white">
-                          Out of Stock
-                        </div>
-                      )}
-                    </div>
-                    {prod.isPastOrder && !isOutOfStock && (
-                      <span className="absolute top-1 left-1 bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md dark:bg-amber-950/60 dark:text-amber-300">
-                        Past Pick
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-extrabold text-slate-900 line-clamp-2 leading-tight dark:text-content">
-                      {prod.name}
-                    </span>
-                    <span className="text-[10px] font-semibold text-slate-400 block dark:text-content-faint">
-                      {prod.unit || "1 unit"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/60 dark:border-line/60">
-                    <span className="font-mono font-black text-xs text-slate-900 dark:text-content">
-                      ₹{prod.price}
-                    </span>
-
-                    {isOutOfStock ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="bg-slate-100 border border-slate-200 text-slate-400 font-black text-[10px] px-2 py-1 rounded-lg cursor-not-allowed dark:bg-surface-muted dark:border-line dark:text-content-faint"
-                      >
-                        SOLD OUT
-                      </button>
-                    ) : qty === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => handleAddToCart(prod)}
-                        className="bg-white hover:bg-orange-50 active:scale-90 border border-[#FF5B00] text-[#FF5B00] font-black text-[11px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-2xs dark:bg-surface-muted dark:hover:bg-[#FF5B00]/10"
-                      >
-                        ADD
-                      </button>
-                    ) : (
-                      <div className="flex items-center bg-[#FF5B00] text-white rounded-lg px-2 py-0.5 space-x-2 font-mono font-bold text-xs shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateQty(pId, -1)}
-                          className="hover:scale-110 active:scale-90 cursor-pointer"
-                        >
-                          -
-                        </button>
-                        <span className="text-[11px]">{qty}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateQty(pId, 1)}
-                          className="hover:scale-110 active:scale-90 cursor-pointer"
-                        >
-                          +
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* WELL-ORDERED PAST ORDERS SECTION */}
-        <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3 shadow-sm dark:bg-surface-raised dark:border-line/90">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-line-soft">
-            <h3 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">Recent Receipts</h3>
-            <span className="text-[10px] font-bold text-slate-400 dark:text-content-faint">{orderHistory.length} orders placed</span>
-          </div>
-
-          {orderHistory.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-5 font-medium dark:text-content-faint">No order history found yet.</p>
-          ) : (
-            <div className="space-y-2.5 divide-y divide-slate-100 dark:divide-line-soft">
-              {orderHistory.map((ord, idx) => (
-                <div key={idx} className="pt-2.5 space-y-1.5 text-xs first:pt-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-black text-slate-900 font-mono text-[11px] dark:text-content">{ord.orderId}</span>
-                      <Badge variant="success">
-                        Delivered
-                      </Badge>
-                    </div>
-                    <span className="font-black font-mono text-slate-900 text-xs dark:text-content">₹{ord.totalAmount}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium dark:text-content-faint">
-                    <span>{ord.date} • {ord.items?.length || 1} {ord.items?.length === 1 ? "item" : "items"}</span>
-                    <button
-                      onClick={() => handleReorder(ord)}
-                      className="text-[#061838] font-black hover:underline flex items-center space-x-1 dark:text-[#FF5B00] cursor-pointer"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reorder</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* PAST ORDERS DRAGGABLE SHEET */}
-      <DraggableSheet
-        isOpen={showPastOrdersModal}
-        onClose={() => setShowPastOrdersModal(false)}
-        title="Order History"
-        subtitle="Your past deliveries & receipts"
-      >
-        {orderHistory.length === 0 ? (
-          <p className="text-xs text-slate-400 text-center py-6 font-medium dark:text-content-faint">No past orders found.</p>
-        ) : (
-          <div className="space-y-3 divide-y divide-slate-100 dark:divide-line-soft">
-            {orderHistory.map((ord, idx) => (
-              <div key={idx} className="pt-3 space-y-2 text-xs first:pt-0">
+              {/* Obsidian Floating OrderCard */}
+              <div className="bg-[#15161A] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4 text-white">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-black text-slate-900 font-mono dark:text-content">{ord.orderId}</span>
-                    <span className="text-[10px] text-slate-400 block dark:text-content-faint">{ord.date}</span>
+                  <div className="flex items-center space-x-2.5">
+                    <Bike className="w-5 h-5 text-[#FF5B00] stroke-[2.2]" />
+                    <span className="text-base font-bold text-white">
+                      {isDelivered ? "Delivered to Doorstep" : "Rider is heading to you"}
+                    </span>
                   </div>
-                  <div className="text-right">
-                    <span className="font-black font-mono text-slate-900 block dark:text-content">₹{ord.totalAmount}</span>
-                    <span className="text-[9px] font-extrabold text-[#061838] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200/50 dark:bg-blue-950/40 dark:border-blue-900/50 dark:text-blue-300">
-                      Delivered
+                  {isOutForDelivery && (
+                    <span className="text-xs font-black text-[#FF5B00] tracking-wider uppercase">
+                      ETA {etaData.etaMinutes} MINS
+                    </span>
+                  )}
+                </div>
+
+                {/* Road progress line */}
+                <div className="text-xs text-white/75 font-medium">
+                  {etaData.distanceFormatted} · {etaData.isLive ? "Live GPS telemetry" : "Central Hub"}
+                </div>
+
+                {/* Delivery Progress Rail */}
+                <ProgressRail stageProgress={stageProgress} isDelivered={isDelivered} />
+
+                {/* Delivery Verification Code Row */}
+                {!isDelivered && displayedOrder.otp && (
+                  <DeliveryCodeRow otp={displayedOrder.otp} />
+                )}
+
+                <div className="h-[1px] bg-white/10" />
+
+                {/* Footer items & bill */}
+                <div className="flex items-center justify-between text-xs text-white/60">
+                  <span>
+                    {(displayedOrder.items || []).reduce((s, i) => s + (Number(i.qty) || 1), 0)} items · ₹{displayedOrder.totalAmount || displayedOrder.finalTotal || displayedOrder.total || 0}
+                  </span>
+                  <span className="font-mono text-white/45">
+                    #{String(targetOrderId || "").slice(-6).toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* STAGE SCREEN (RECEIVED & PACKING) */
+            <main className="flex-1 max-w-md mx-auto w-full px-4 pt-3 pb-20 space-y-6">
+              {/* Order Stage Hero */}
+              <div className="text-center pt-2 space-y-3">
+                <OrderStageAnimation
+                  kind={isPacking ? "PACKING" : "RECEIVED"}
+                  className="w-40 h-40 mx-auto"
+                />
+
+                <div className="space-y-1.5 px-4">
+                  <h2 className="text-2xl font-black text-white tracking-tight">
+                    {isCancelled
+                      ? (displayedOrder.rejectionReason ? "Order rejected by store" : "Order cancelled")
+                      : isPacking
+                      ? "Packing your order"
+                      : "Order received"}
+                  </h2>
+                  <p className="text-sm font-medium text-white/65 max-w-xs mx-auto leading-snug">
+                    {isCancelled
+                      ? (displayedOrder.rejectionReason
+                          ? `Reason: ${displayedOrder.rejectionReason}`
+                          : "This order won't be delivered.")
+                      : cancellationSeconds > 0
+                      ? "You can still add items or cancel. Packing starts right after."
+                      : isPacking
+                      ? "Your items are being picked and packed. The map opens as soon as a rider is on the way."
+                      : "The store is getting your items ready."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Obsidian OrderCard */}
+              <div className="bg-[#15161A] border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4 text-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    {isCancelled ? (
+                      <XCircle className="w-5 h-5 text-rose-500 stroke-[2.2]" />
+                    ) : isPacking ? (
+                      <Package className="w-5 h-5 text-[#FF5B00] stroke-[2.2]" />
+                    ) : (
+                      <Clock className="w-5 h-5 text-[#FF5B00] stroke-[2.2]" />
+                    )}
+                    <span className="text-base font-bold text-white">
+                      {isCancelled
+                        ? (displayedOrder.rejectionReason ? "Order Rejected" : "Order Cancelled")
+                        : isPacking
+                        ? "Packing at Central Hub"
+                        : "Order placed"}
                     </span>
                   </div>
                 </div>
 
-                {/* Item list */}
-                {ord.items && ord.items.length > 0 && (
-                  <div className="bg-slate-50 rounded-xl p-2 space-y-1 dark:bg-surface-muted">
-                    {ord.items.map((item, itemIdx) => {
-                      const pId = item.id || item._id || item.barcode;
-                      const liveProd = productsById[pId] || (item.barcode ? productsById[item.barcode] : null);
-                      const isItemOutOfStock = liveProd ? (liveProd.stock !== undefined && Number(liveProd.stock) <= 0) : false;
-                      return (
-                        <div key={itemIdx} className="flex items-center justify-between text-[11px] text-slate-600 dark:text-content-secondary">
-                          <div className="flex items-center space-x-1.5">
-                            <span>{item.name} x{item.qty}</span>
-                            {isItemOutOfStock && (
-                              <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1.5 py-0.2 rounded dark:bg-red-950/40 dark:text-red-400">
-                                Out of stock
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-mono font-semibold dark:text-content">₹{item.price * item.qty}</span>
-                        </div>
-                      );
-                    })}
+                {/* Rejection Notice Banner */}
+                {isCancelled && displayedOrder.rejectionReason && (
+                  <div className="bg-rose-500/15 border border-rose-500/30 rounded-2xl p-4 space-y-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-rose-400 block">
+                      Rejection Reason
+                    </span>
+                    <p className="text-sm font-semibold text-rose-100 leading-snug">
+                      {displayedOrder.rejectionReason}
+                    </p>
                   </div>
                 )}
 
-                <div className="pt-1 flex justify-end">
-                  <button
-                    onClick={() => {
-                      handleReorder(ord);
-                      setShowPastOrdersModal(false);
-                    }}
-                    className="bg-slate-100 hover:bg-slate-200 text-[#061838] font-black text-xs px-3 py-1.5 rounded-xl transition-colors flex items-center space-x-1 dark:bg-surface-muted dark:hover:bg-surface-raised dark:text-[#FF5B00] cursor-pointer"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Reorder all items</span>
-                  </button>
+                {/* Progress Rail */}
+                <ProgressRail stageProgress={stageProgress} isDelivered={false} />
+
+                {/* Delivery Verification Code */}
+                {displayedOrder.otp && (
+                  <DeliveryCodeRow otp={displayedOrder.otp} />
+                )}
+
+                {/* 30-Second Change Window Row */}
+                {cancellationSeconds > 0 && (
+                  <div className="bg-white/[0.06] border border-white/[0.08] rounded-2xl p-3.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="block text-xs font-bold text-white truncate">
+                        Forgot something?
+                      </span>
+                      <span className="block text-[11px] font-medium text-white/60 truncate mt-0.5">
+                        Add or cancel before packing
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsCancelModalOpen(true)}
+                        disabled={isCancelling}
+                        className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsModifyModalOpen(true)}
+                        className="px-3.5 py-1.5 rounded-full bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-all active:scale-95 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                        <span>Add items</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="h-[1px] bg-white/10" />
+
+                {/* Footer details */}
+                <div className="flex items-center justify-between text-xs text-white/60">
+                  <span>
+                    {(displayedOrder.items || []).reduce((s, i) => s + (Number(i.qty) || 1), 0)} items · ₹{displayedOrder.totalAmount || displayedOrder.finalTotal || displayedOrder.total || 0}
+                  </span>
+                  <span className="font-mono text-white/45">
+                    #{String(targetOrderId || "").slice(-6).toUpperCase()}
+                  </span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </DraggableSheet>
+
+              {/* OrderItemsCard */}
+              <div className="bg-white/[0.06] border border-white/[0.08] rounded-2xl p-4 space-y-3">
+                <span className="block text-sm font-bold text-white">
+                  {isPacking ? "Being packed" : "Your items"}
+                </span>
+
+                <div className="divide-y divide-white/[0.08]">
+                  {(displayedOrder.items || []).map((item, idx) => (
+                    <div key={idx} className="py-2.5 first:pt-1 last:pb-1 flex items-center justify-between gap-3">
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 border border-white/10 overflow-hidden">
+                          <img
+                            src={item.img || item.image || "/favicon.png"}
+                            alt={item.name}
+                            className="w-full h-full object-contain"
+                          />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-semibold text-white truncate">
+                            {item.name}
+                          </span>
+                          <span className="block text-[11px] text-white/55 mt-0.5">
+                            {item.unit || "1 unit"} · ×{item.qty}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className="font-mono text-xs font-bold text-white shrink-0">
+                        ₹{item.price * item.qty}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Address link */}
+                {(displayedOrder.location?.address || displayedOrder.userAddress?.address) && (
+                  <div className="pt-2 border-t border-white/[0.08] flex items-start space-x-2 text-xs text-white/65">
+                    <MapPin className="w-3.5 h-3.5 text-white/50 shrink-0 mt-0.5" />
+                    <span className="leading-snug">
+                      {displayedOrder.location?.address || displayedOrder.userAddress?.address}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </main>
+          )}
+        </div>
+      ) : (
+        /* =====================================================================
+            VIEW 2: ORDER HISTORY ("ORDER AGAIN" - PARITY WITH OrdersScreen.kt)
+            ===================================================================== */
+        <div className="min-h-screen">
+          {/* Top Header */}
+          <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 shadow-xs dark:bg-surface/95 dark:border-line/80">
+            <div className="max-w-md mx-auto flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.history.length > 1) {
+                      goBack(router);
+                    } else {
+                      router.push("/shop");
+                    }
+                  }}
+                  className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-muted dark:text-content"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <h1 className="font-black text-xl text-slate-900 tracking-tight dark:text-content">
+                    Order again
+                  </h1>
+                </div>
+              </div>
+
+              {activeOrder && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    hapticLight();
+                    setSelectedOrder(activeOrder);
+                    setViewMode("tracking");
+                  }}
+                  className="px-3.5 py-1.5 rounded-full bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 text-xs font-bold flex items-center space-x-1.5 active:scale-95 cursor-pointer"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
+                  <span>Live Delivery</span>
+                </button>
+              )}
+            </div>
+          </header>
+
+          <main className="max-w-md mx-auto px-4 mt-4 space-y-4">
+            {/* Active order quick glance if in progress */}
+            {activeOrder && (
+              <div
+                onClick={() => {
+                  hapticLight();
+                  setSelectedOrder(activeOrder);
+                  setViewMode("tracking");
+                }}
+                className="bg-[#15161A] text-white border border-white/12 rounded-3xl p-4 shadow-md flex items-center justify-between gap-3 cursor-pointer select-none transition-transform active:scale-[0.98]"
+              >
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-[#FF5B00]/20 text-[#FF5B00] flex items-center justify-center shrink-0">
+                    <Bike className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold text-white truncate">
+                        {activeOrder.status === "Out for Delivery"
+                          ? "Rider Dispatched"
+                          : activeOrder.status === "Packed"
+                          ? "Order Packed"
+                          : "Processing at Central Hub"}
+                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+                    </div>
+                    <span className="text-[11px] text-white/60 block truncate mt-0.5">
+                      #{String(activeOrder.orderId || activeOrder.id || "").slice(-6).toUpperCase()} · Tap to track live
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-[#22C55E] text-white px-3 py-1.5 rounded-xl font-bold text-xs flex items-center space-x-1 shrink-0 shadow-sm">
+                  <span>🛵 Track</span>
+                </div>
+              </div>
+            )}
+
+            {/* Orders List */}
+            {orderHistory.length === 0 && !activeOrder ? (
+              <div className="bg-white border border-slate-200/90 rounded-3xl p-8 text-center space-y-3 shadow-xs dark:bg-surface-raised dark:border-line/90">
+                <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto dark:bg-surface-muted dark:text-content-faint">
+                  <ShoppingBag className="w-7 h-7 stroke-[1.8]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-content">No orders yet</h3>
+                  <p className="text-xs text-slate-500 font-medium max-w-xs mx-auto dark:text-content-secondary">
+                    When you place an order, you can track it live and reorder your favorites from here.
+                  </p>
+                </div>
+                <Link
+                  href="/shop"
+                  className="inline-block bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-xs px-6 py-2.5 rounded-2xl shadow-md transition-all active:scale-95"
+                >
+                  Start Shopping
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {orderHistory.map((ord, idx) => {
+                  const status = ord.status || "Delivered";
+                  const isDeliv = String(status).toLowerCase().includes("deliver");
+                  const isCanc = String(status).toLowerCase().includes("cancel");
+                  const isOut = String(status).toLowerCase().includes("out") || String(status).toLowerCase().includes("way");
+
+                  const statusColor = isDeliv
+                    ? "text-[#22C55E]"
+                    : isCanc
+                    ? "text-rose-500"
+                    : isOut
+                    ? "text-amber-500"
+                    : "text-[#FF5B00]";
+
+                  const statusDotBg = isDeliv
+                    ? "bg-[#22C55E]"
+                    : isCanc
+                    ? "bg-rose-500"
+                    : isOut
+                    ? "bg-amber-500"
+                    : "bg-[#FF5B00]";
+
+                  const ordId = ord.orderId || ord.id || "";
+                  const total = ord.totalAmount || ord.finalTotal || ord.total || 0;
+                  const itemsCount = (ord.items || []).reduce((s, i) => s + (Number(i.qty) || 1), 0);
+
+                  return (
+                    <div
+                      key={ordId || idx}
+                      className="bg-white border border-slate-200/90 rounded-2xl p-4 space-y-3 shadow-xs dark:bg-surface-raised dark:border-line/90"
+                    >
+                      {/* Status Row & Date */}
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center space-x-2">
+                          <span className={`w-2 h-2 rounded-full ${statusDotBg}`} />
+                          <span className={`font-bold ${statusColor}`}>{status}</span>
+                        </div>
+                        <span className="text-[11.5px] text-slate-400 font-medium dark:text-content-faint">
+                          {formatDate(ord)}
+                        </span>
+                      </div>
+
+                      {/* Product Packshots Strip */}
+                      <div className="flex items-center space-x-2 overflow-x-auto scrollbar-none py-1">
+                        {(ord.items || []).map((item, itemIdx) => (
+                          <div
+                            key={itemIdx}
+                            className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 border border-slate-100 shadow-2xs dark:border-line-soft overflow-hidden"
+                            title={item.name}
+                          >
+                            <img
+                              src={item.img || item.image || "/favicon.png"}
+                              alt={item.name}
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Items Count & Total Bill */}
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-slate-600 font-medium dark:text-content-secondary">
+                          {itemsCount} {itemsCount === 1 ? "item" : "items"}
+                        </span>
+                        <span className="font-mono text-sm font-black text-slate-900 dark:text-content">
+                          ₹{total}
+                        </span>
+                      </div>
+
+                      {/* Rejection reason notice if cancelled */}
+                      {isCanc && ord.rejectionReason && (
+                        <div className="bg-rose-50 border border-rose-200/80 rounded-xl px-3.5 py-2 space-y-0.5 dark:bg-rose-950/30 dark:border-rose-800/40">
+                          <span className="text-[10px] font-black uppercase text-rose-500 tracking-wider block">
+                            Rejected by Store
+                          </span>
+                          <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">
+                            Reason: {ord.rejectionReason}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="h-[1px] bg-slate-100 dark:bg-line-soft" />
+
+                      {/* Actions Row */}
+                      <div className="flex items-center justify-between pt-0.5">
+                        <span className="font-mono text-[11px] font-semibold text-slate-400 dark:text-content-faint">
+                          #{String(ordId).slice(-6).toUpperCase()}
+                        </span>
+
+                        <div className="flex items-center space-x-2">
+                          {/* If active, give live tracking */}
+                          {!isDeliv && !isCanc ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                hapticMedium();
+                                setSelectedOrder(ord);
+                                setViewMode("tracking");
+                              }}
+                              className="bg-[#22C55E] hover:bg-[#1eb354] text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-xs transition-all active:scale-95 flex items-center space-x-1.5 cursor-pointer"
+                            >
+                              <span>🛵 Track Live Delivery</span>
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  hapticLight();
+                                  setSelectedOrder(ord);
+                                  setViewMode("tracking");
+                                }}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-1.5 rounded-xl border border-slate-200/80 transition-all active:scale-95 dark:bg-surface-muted dark:hover:bg-surface-overlay dark:border-line dark:text-content-secondary cursor-pointer"
+                              >
+                                View Route
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleReorder(ord)}
+                                className="bg-[#FF5B00]/12 hover:bg-[#FF5B00]/20 text-[#FF5B00] border border-[#FF5B00]/30 font-bold text-xs px-3.5 py-1.5 rounded-xl transition-all active:scale-95 flex items-center space-x-1.5 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Reorder</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Past Picks & Recommendations */}
+            <div className="bg-white border border-slate-200/90 rounded-3xl p-4 space-y-3.5 shadow-xs dark:bg-surface-raised dark:border-line/90">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-line-soft">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5B00] flex items-center justify-center dark:bg-orange-950/40">
+                    <Sparkles className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-xs text-slate-900 tracking-tight dark:text-content">
+                      Past Picks &amp; Recommendations
+                    </h3>
+                    <p className="text-[10px] text-slate-400 font-semibold dark:text-content-faint">
+                      1-tap quick add from your favorites
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Filter Chips */}
+              <div className="flex space-x-1.5 overflow-x-auto scrollbar-none py-0.5">
+                {["All", "Snacks", "Dairy", "Bakery"].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setSelectedCat(cat)}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-full transition-all shrink-0 cursor-pointer ${
+                      selectedCat === cat
+                        ? "bg-[#061838] text-white shadow-xs dark:bg-[#FF5B00]"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-surface-muted dark:text-content-secondary dark:hover:bg-surface-overlay"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Recommendations Grid */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                {recommendations.map((prod) => {
+                  const pId = String(prod.id || prod.barcode);
+                  const live = productsById.get(pId) || productsById.get((prod.name || "").trim().toLowerCase()) || prod;
+                  const isOutOfStock = live.stock !== undefined && Number(live.stock) <= 0;
+                  const cartItem = cart.find((i) => String(i.id || i.barcode) === pId);
+                  const qty = cartItem ? cartItem.qty : 0;
+
+                  return (
+                    <div
+                      key={pId}
+                      className={`bg-slate-50/80 hover:bg-slate-50 border rounded-2xl p-2.5 flex flex-col justify-between transition-all group dark:bg-surface-raised dark:hover:bg-surface-overlay ${
+                        isOutOfStock
+                          ? "border-slate-200 dark:border-line/60 opacity-80"
+                          : "border-slate-200/80 dark:border-line/80"
+                      }`}
+                    >
+                      <div className="relative">
+                        <div className="w-full aspect-square rounded-xl bg-white flex items-center justify-center p-2 mb-2 overflow-hidden border border-slate-100 dark:border-line-soft relative">
+                          <img
+                            src={prod.img}
+                            alt={prod.name}
+                            className={`w-full h-full object-contain group-hover:scale-105 transition-transform ${
+                              isOutOfStock ? "grayscale-[40%] opacity-60" : ""
+                            }`}
+                          />
+                          {isOutOfStock && (
+                            <div className="absolute inset-x-0 bottom-0 bg-rose-600/90 py-0.5 text-center text-[8.5px] font-black uppercase tracking-wider text-white">
+                              Out of Stock
+                            </div>
+                          )}
+                        </div>
+                        {prod.isPastOrder && !isOutOfStock && (
+                          <span className="absolute top-1 left-1 bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md dark:bg-amber-950/60 dark:text-amber-300">
+                            Past Pick
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-extrabold text-slate-900 line-clamp-2 leading-tight dark:text-content">
+                          {prod.name}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-400 block dark:text-content-faint">
+                          {prod.unit || "1 unit"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-200/60 dark:border-line/60">
+                        <span className="font-mono font-black text-xs text-slate-900 dark:text-content">
+                          ₹{prod.price}
+                        </span>
+
+                        {isOutOfStock ? (
+                          <button
+                            type="button"
+                            disabled
+                            className="bg-slate-100 border border-slate-200 text-slate-400 font-black text-[10px] px-2 py-1 rounded-lg cursor-not-allowed dark:bg-surface-muted dark:border-line dark:text-content-faint"
+                          >
+                            SOLD OUT
+                          </button>
+                        ) : qty === 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => handleAddToCart(prod)}
+                            className="bg-white hover:bg-orange-50 active:scale-90 border border-[#FF5B00] text-[#FF5B00] font-black text-[11px] px-3 py-1 rounded-lg transition-transform cursor-pointer shadow-2xs dark:bg-surface-muted dark:hover:bg-[#FF5B00]/10"
+                          >
+                            ADD
+                          </button>
+                        ) : (
+                          <div className="flex items-center bg-[#FF5B00] text-white rounded-lg px-2 py-0.5 space-x-2 font-mono font-bold text-xs shadow-2xs">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQty(pId, -1)}
+                              className="hover:scale-110 active:scale-90 cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="text-[11px]">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQty(pId, 1)}
+                              className="hover:scale-110 active:scale-90 cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </main>
+          <BottomNav />
+        </div>
+      )}
 
       {/* 30s Order Content Modifier Modal */}
       <ModifyOrderModal
         isOpen={isModifyModalOpen}
         onClose={() => setIsModifyModalOpen(false)}
-        order={activeOrder}
+        order={displayedOrder}
         productsList={browseable(productsList)}
         onSaveOrder={handleSaveModifiedOrder}
         remainingSeconds={cancellationSeconds}
@@ -1110,11 +1189,11 @@ export default function OrdersPage() {
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
         onConfirmCancel={handleConfirmCancellation}
-        order={activeOrder}
+        order={displayedOrder}
         isCancelling={isCancelling}
       />
 
-      {/* Grace Period Toast Notification */}
+      {/* Toast Notification */}
       <AnimatePresence>
         {modifyToast && (
           <motion.div
@@ -1128,6 +1207,82 @@ export default function OrdersPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * ProgressRail component matching Android's OrderProgressRail
+ */
+function ProgressRail({ stageProgress, isDelivered }) {
+  return (
+    <div className="relative py-1 flex items-center w-full">
+      <div className="relative flex-1 flex items-center mr-3 h-7">
+        {/* Background dashed track */}
+        <div className="absolute inset-x-0 h-[2.5px] border-t-[2.5px] border-dashed border-white/25 top-1/2 -translate-y-1/2" />
+
+        {/* Solid white fill */}
+        <motion.div
+          className={`absolute left-0 top-1/2 -translate-y-1/2 h-[3.5px] ${isDelivered ? "bg-[#22C55E]" : "bg-white"} rounded-full`}
+          initial={{ width: "15%" }}
+          animate={{ width: `${Math.round(stageProgress * 100)}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        />
+
+        {/* Stage Marker Avatar */}
+        <motion.div
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full ${isDelivered ? "bg-[#22C55E] text-white" : "bg-white text-[#060709]"} shadow-md flex items-center justify-center z-10`}
+          animate={{ left: `${Math.round(stageProgress * 100)}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+        >
+          {isDelivered ? (
+            <Check className="w-3.5 h-3.5 stroke-[3]" />
+          ) : stageProgress >= 0.7 ? (
+            <Bike className="w-3.5 h-3.5 stroke-[2.5]" />
+          ) : stageProgress >= 0.4 ? (
+            <Package className="w-3.5 h-3.5 stroke-[2.5]" />
+          ) : (
+            <Clock className="w-3.5 h-3.5 stroke-[2.5]" />
+          )}
+        </motion.div>
+      </div>
+
+      {/* Destination Home Marker */}
+      <div
+        className={`w-6 h-6 rounded-full ${isDelivered ? "bg-[#22C55E] text-white" : "bg-white text-[#060709]"} shadow-md flex items-center justify-center shrink-0 z-10`}
+      >
+        <Check className="w-3.5 h-3.5 stroke-[3]" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 4-digit Delivery Verification Code Row matching Android DeliveryCodeRow
+ */
+function DeliveryCodeRow({ otp }) {
+  const digits = String(otp || "4821").padStart(4, "0").slice(0, 4).split("");
+
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center space-x-2.5">
+        <Shield className="w-5 h-5 text-[#FF5B00] stroke-[2.2] shrink-0" />
+        <div>
+          <span className="block text-xs font-semibold text-white">Delivery code</span>
+          <span className="block text-[11px] text-white/60">Share it with your rider at the door</span>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-1.5 shrink-0">
+        {digits.map((d, i) => (
+          <div
+            key={i}
+            className="w-7 h-9 rounded-lg bg-white/10 border border-white/10 flex items-center justify-center font-mono text-base font-black text-white shadow-inner select-none"
+          >
+            {d}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

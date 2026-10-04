@@ -27,9 +27,17 @@ enum CatalogueDerive {
         "Dairy", "Fruits", "Fresh Fruits", "Vegetables", "Staples", "Grocery",
         "Snacks", "Biscuits", "Bakery", "Beverages", "Drinks",
         "Instant Food", "Sweets & Chocolates", "Ice Cream", "Dry Fruits", "Sauces & Spreads",
-        "Spices", "Chicken", "Meat & Fish", "Home Care", "Kitchen Care", "Personal Care",
+        "Spices", "Chicken", "Chicken & Fish", "Home Care", "Kitchen Care", "Personal Care",
         "Baby Care", "Health & Wellness", "Pet Care", "Stationery", "Toys & Games", "Electronics"
     ].map { $0.lowercased() }
+
+    static func hasPhoto(_ product: Product) -> Bool {
+        let img = product.img.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !img.isEmpty else { return false }
+        let lower = img.lowercased()
+        let placeholders = ["unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com"]
+        return !placeholders.contains { lower.contains($0) }
+    }
 
     /// Group by category, then build the tiles, rails, departments and hints from the groups.
     static func derive(products: [Product], remote remoteCategories: [Category]) -> CatalogueDerived {
@@ -86,7 +94,7 @@ enum CatalogueDerive {
 
         var seen = Set<String>()
         var hints: [String] = []
-        for product in products where product.isAvailable {
+        for product in products where product.isAvailable && CatalogueDerive.hasPhoto(product) {
             let hint = product.name.lowercased().split(separator: " ").prefix(3).joined(separator: " ")
             if seen.insert(hint).inserted { hints.append(hint) }
             if hints.count == 8 { break }
@@ -95,7 +103,7 @@ enum CatalogueDerive {
 
         derived.popularProducts = Array(
             products
-                .filter(\.isAvailable)
+                .filter { $0.isAvailable && CatalogueDerive.hasPhoto($0) }
                 .sorted { (Int($0.ratingCount ?? "") ?? 0) > (Int($1.ratingCount ?? "") ?? 0) }
                 .prefix(6)
         )

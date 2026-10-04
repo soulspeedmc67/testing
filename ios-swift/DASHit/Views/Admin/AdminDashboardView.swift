@@ -7,6 +7,7 @@ public struct AdminDashboardView: View {
     // Navigation and Sheet Modals
     @State private var selectedOrderForDetail: Order? = nil
     @State private var selectedOrderForDriver: Order? = nil
+    @State private var orderToReject: Order? = nil
     @State private var isAddSupplierSheetOpen: Bool = false
     @State private var isAddProductSheetOpen: Bool = false
     @State private var isAddDriverSheetOpen: Bool = false
@@ -87,6 +88,9 @@ public struct AdminDashboardView: View {
                 AssignDriverSheetView(order: order, vm: vm) {
                     selectedOrderForDriver = nil
                 }
+            }
+            .sheet(item: $orderToReject) { order in
+                RejectOrderSheetView(order: order, vm: vm)
             }
             .sheet(isPresented: $isAddSupplierSheetOpen) {
                 AddSupplierSheetView { name, phone, address, notes in
@@ -457,6 +461,17 @@ public struct AdminDashboardView: View {
                             .background(Color.blue)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
+                    Button(role: .destructive, action: {
+                        orderToReject = order
+                    }) {
+                        Label("Reject", systemImage: "xmark.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.12))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
                 } else if order.status.stage == .packing {
                     Button(action: { selectedOrderForDriver = order }) {
                         Label(order.isAwaitingPickup ? "Change rider" : "Pick a rider", systemImage: "scooter")
@@ -465,6 +480,17 @@ public struct AdminDashboardView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(Color.purple)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    Button(role: .destructive, action: {
+                        orderToReject = order
+                    }) {
+                        Label("Reject", systemImage: "xmark.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 } else if order.status.stage == .onTheWay {
@@ -478,6 +504,22 @@ public struct AdminDashboardView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
+            }
+
+            if order.status.stage == .cancelled, let reason = order.rejectionReason, !reason.isEmpty {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "xmark.octagon.fill")
+                        .foregroundColor(.red)
+                        .font(.system(size: 12))
+                    Text("Reason: \(reason)")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(.red)
+                        .lineLimit(2)
+                }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.red.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding(14)
@@ -1127,6 +1169,7 @@ struct OrderDetailSheetView: View {
     @ObservedObject var vm: AdminDashboardViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var isAssignRiderOpen = false
+    @State private var isRejectSheetOpen = false
     @State private var packed: Set<String> = []
     @State private var isMoreOpen = false
 
@@ -1201,6 +1244,11 @@ struct OrderDetailSheetView: View {
             }) {
                 AssignDriverSheetView(order: live, vm: vm) {
                     isAssignRiderOpen = false
+                }
+            }
+            .sheet(isPresented: $isRejectSheetOpen) {
+                RejectOrderSheetView(order: live, vm: vm) {
+                    dismiss()
                 }
             }
             .onAppear {
@@ -1391,12 +1439,29 @@ struct OrderDetailSheetView: View {
                     .font(.system(size: 17, weight: .black))
                     .foregroundColor(.orange)
             }
+            if live.status.stage == .cancelled, let reason = live.rejectionReason, !reason.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark.octagon.fill")
+                            .foregroundColor(.red)
+                        Text("Order Cancelled / Rejected")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.red)
+                    }
+                    Text("Reason: \(reason)")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.red.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
             if [DeliveryStage.placed, .packing, .onTheWay].contains(live.status.stage) {
                 Button(role: .destructive) {
-                    vm.cancelOrder(order: order)
-                    dismiss()
+                    isRejectSheetOpen = true
                 } label: {
-                    Text("Cancel order")
+                    Label("Reject order with reason", systemImage: "xmark.circle.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
@@ -2235,3 +2300,95 @@ struct BatchInwardSheetView: View {
         }
     }
 }
+
+// MARK: - Reject Order Sheet View
+
+struct RejectOrderSheetView: View {
+    let order: Order
+    @ObservedObject var vm: AdminDashboardViewModel
+    var onDone: (() -> Void)? = nil
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedPreset: String = "Items out of stock"
+    @State private var customReason: String = ""
+
+    private let presets = [
+        "Items out of stock",
+        "Delivery address unserviceable / out of zone",
+        "Dark store operations paused",
+        "Customer unreachable / phone switched off",
+        "Customer requested cancellation",
+        "Duplicate order placed"
+    ]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Order #\(order.id.suffix(6).uppercased())")
+                            .font(.system(size: 15, weight: .bold, design: .monospaced))
+                        Text("\(order.items.count) items • ₹\(Int(order.grandTotal))")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 2)
+                }
+
+                Section(
+                    header: Text("Reason for Rejection"),
+                    footer: Text("The customer will see this reason in their live tracking and order history.")
+                ) {
+                    ForEach(presets, id: \.self) { preset in
+                        Button(action: {
+                            selectedPreset = preset
+                            customReason = ""
+                        }) {
+                            HStack {
+                                Text(preset)
+                                    .foregroundColor(.primary)
+                                    .font(.system(size: 14, weight: selectedPreset == preset && customReason.isEmpty ? .bold : .regular))
+                                Spacer()
+                                if selectedPreset == preset && customReason.isEmpty {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.red)
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                            }
+                        }
+                    }
+
+                    TextField("Or enter custom reason...", text: $customReason)
+                        .font(.system(size: 14))
+                }
+
+                Section {
+                    Button(role: .destructive, action: {
+                        let trimmed = customReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let finalReason = trimmed.isEmpty ? selectedPreset : trimmed
+                        vm.rejectOrder(order: order, reason: finalReason)
+                        onDone?()
+                        dismiss()
+                    }) {
+                        HStack {
+                            Spacer()
+                            Label("Confirm Rejection", systemImage: "xmark.circle.fill")
+                                .font(.system(size: 15, weight: .bold))
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Reject Order")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Keep Order") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+

@@ -233,6 +233,7 @@ final class FirestoreService {
             "items": items,
             "subtotal": order.subtotal,
             "deliveryFee": order.deliveryFee,
+            "handlingFee": 11.0,
             "discount": order.discount,
             "totalAmount": order.grandTotal,
             "total": order.grandTotal,

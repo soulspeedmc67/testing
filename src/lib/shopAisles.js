@@ -11,7 +11,10 @@ import { isSoldOut } from "./catalogueFile";
  * actually on, so an aisle only shows when it has something in it.
  */
 const AISLES = [
-  { cat: "Dairy", label: "Milk & dairy", icon: Milk },
+  { cat: "Dairy", label: "Dairy", icon: Milk },
+  { cat: "Chicken", label: "Chicken & fish", icon: Utensils },
+  { cat: "Chicken & Fish", label: "Chicken & fish", icon: Utensils },
+  { cat: "Meat & Fish", label: "Chicken & fish", icon: Utensils },
   { cat: "Bakery", label: "Bread & bakery", icon: Croissant },
   { cat: "Vegetables", label: "Vegetables", icon: Carrot },
   { cat: "Fruits", label: "Fruits", icon: Apple },
@@ -40,6 +43,9 @@ const AISLES = [
 /** Words that make a good cover photo for an aisle (its first product may not be typical). */
 const COVER_HINTS = {
   "Dairy": /\b(milk|curd|dahi|paneer|butter|cheese)\b/i,
+  "Chicken": /\b(chicken|fish|curry|breast|kebab)\b/i,
+  "Chicken & Fish": /\b(chicken|fish|curry|breast|kebab)\b/i,
+  "Meat & Fish": /\b(chicken|fish|curry|breast|kebab)\b/i,
   "Bakery": /\b(bread|bun|rusk|pav|cake|toast)\b/i,
   "Vegetables": /\b(onion|potato|tomato|carrot|cabbage)\b/i,
   "Fruits": /\b(apple|banana|orange|grapes|mango)\b/i,

@@ -14,7 +14,7 @@ export default function OrderProcessingModal({
     hapticSuccess();
     const timer = setTimeout(() => {
       if (onComplete) onComplete();
-    }, 2000);
+    }, 2200);
     return () => clearTimeout(timer);
   }, [isOpen, isSubmitting, onComplete]);
 
@@ -30,47 +30,47 @@ export default function OrderProcessingModal({
     orderDetails?.total ||
     0;
   const eta = orderDetails?.etaMinutes || 10;
-  const address = orderDetails?.location?.address || "Delivery Address";
+  const address = orderDetails?.location?.address || orderDetails?.userAddress?.address || "Delivery Address";
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4">
-        {/* Soft Backdrop */}
+      <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 select-none">
+        {/* Soft Dark Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/75 backdrop-blur-md"
           onClick={onComplete}
         />
 
-        {/* Minimal Bottom Sheet / Card */}
+        {/* Apple / Android Native Style Card */}
         <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.96 }}
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 40, scale: 0.96 }}
-          transition={{ type: "spring", damping: 28, stiffness: 340 }}
-          className="relative w-full sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-[32px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] sm:pb-6 shadow-2xl border border-slate-100 overflow-hidden z-10 select-none text-slate-900 dark:bg-surface-overlay dark:border-line-soft dark:text-content"
+          exit={{ opacity: 0, y: 50, scale: 0.95 }}
+          transition={{ type: "spring", damping: 26, stiffness: 320 }}
+          className="relative w-full sm:max-w-sm bg-[#15161A] text-white rounded-t-[32px] sm:rounded-[32px] p-6 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] sm:pb-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/12 overflow-hidden z-10"
         >
-          {/* Top Notch Pill for Mobile Sheet */}
-          <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-4 sm:hidden dark:bg-surface-muted" />
+          {/* Top Sheet Notch Pill */}
+          <div className="w-10 h-1 rounded-full bg-white/20 mx-auto mb-4 sm:hidden" />
 
           {/* Centered Success Checkmark */}
           <div className="flex flex-col items-center text-center">
             <div className="relative flex items-center justify-center mb-3">
-              {/* Outer soft ripple */}
+              {/* Soft Pulsing Ripple */}
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: [1, 1.3, 1.2], opacity: [0.6, 0.2, 0] }}
+                animate={{ scale: [1, 1.35, 1.2], opacity: [0.5, 0.15, 0] }}
                 transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
-                className="absolute w-20 h-20 rounded-full bg-emerald-500/20"
+                className="absolute w-20 h-20 rounded-full bg-[#22C55E]/25"
               />
               {/* Circle check badge */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", damping: 14, stiffness: 220 }}
-                className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30"
+                className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#22C55E] to-emerald-400 text-white flex items-center justify-center shadow-lg shadow-[#22C55E]/30"
               >
                 <Check className="w-8 h-8 stroke-[3.2]" />
               </motion.div>
@@ -80,7 +80,7 @@ export default function OrderProcessingModal({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="text-2xl font-black text-slate-900 tracking-tight dark:text-content"
+              className="text-2xl font-black text-white tracking-tight"
             >
               Order Placed!
             </motion.h3>
@@ -89,52 +89,52 @@ export default function OrderProcessingModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15 }}
-              className="text-xs font-mono font-bold text-slate-400 mt-0.5 tracking-wide uppercase dark:text-content-faint"
+              className="text-xs font-mono font-bold text-white/50 mt-1 tracking-wider uppercase"
             >
-              {orderDetails?.orderId || "DSH-PROCESSING"}
+              #{orderDetails?.orderId || "DSH-PROCESSING"}
             </motion.p>
           </div>
 
-          {/* Minimal Info Card */}
+          {/* Obsidian Info Card */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mt-5 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3 dark:bg-surface-raised dark:border-line/80"
+            className="mt-5 bg-white/[0.06] border border-white/[0.08] rounded-2xl p-4 space-y-3"
           >
             {/* ETA & Status pill */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-line/60">
-              <div className="flex items-center space-x-2 text-slate-800 dark:text-content">
-                <span className="w-6 h-6 rounded-lg bg-orange-100 text-[#FF5B00] flex items-center justify-center shrink-0">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center space-x-2 text-white">
+                <span className="w-6 h-6 rounded-lg bg-orange-500/15 text-[#FF5B00] flex items-center justify-center shrink-0">
                   <Zap className="w-3.5 h-3.5 fill-[#FF5B00]" />
                 </span>
-                <span className="text-xs font-black text-slate-900 dark:text-content">
+                <span className="text-xs font-black text-white">
                   Arriving in ~{eta} mins
                 </span>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#22C55E] bg-[#22C55E]/15 border border-[#22C55E]/30 px-2 py-0.5 rounded-full">
                 Confirmed
               </span>
             </div>
 
             {/* Items and Address snippet */}
-            <div className="space-y-1.5 text-left text-xs text-slate-600 dark:text-content-secondary">
+            <div className="space-y-1.5 text-left text-xs text-white/75">
               <div className="flex items-center space-x-2">
-                <ShoppingBag className="w-3.5 h-3.5 text-slate-400 shrink-0 dark:text-content-faint" />
+                <ShoppingBag className="w-3.5 h-3.5 text-white/50 shrink-0" />
                 <span className="font-semibold truncate">
                   {itemCount} {itemCount === 1 ? "item" : "items"} • ₹{total}
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0 dark:text-content-faint" />
-                <span className="font-medium text-slate-500 truncate text-[11.5px] dark:text-content-muted">
+                <MapPin className="w-3.5 h-3.5 text-white/50 shrink-0" />
+                <span className="font-medium text-white/60 truncate text-[11.5px]">
                   {address}
                 </span>
               </div>
             </div>
           </motion.div>
 
-          {/* Single Action Button */}
+          {/* Action Button */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -144,9 +144,9 @@ export default function OrderProcessingModal({
             <button
               type="button"
               onClick={onComplete}
-              className="w-full py-3.5 rounded-2xl bg-[#061838] hover:bg-slate-900 text-white font-black text-xs shadow-md transition-all active:scale-[0.98] flex items-center justify-center space-x-2 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-[#FF5B00] hover:bg-[#E04E00] text-white font-extrabold text-xs shadow-lg shadow-[#FF5B00]/25 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 cursor-pointer"
             >
-              <span>Track Live Order</span>
+              <span>Track Live Delivery</span>
               <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </button>
           </motion.div>

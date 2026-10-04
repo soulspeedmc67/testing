@@ -8,7 +8,7 @@ struct FreeDeliveryStrip: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isUnlocked: Bool { bill.subtotal >= CartBillBreakdown.freeDeliveryThreshold }
+    private var isUnlocked: Bool { bill.isFirstFivePromo || bill.subtotal >= CartBillBreakdown.freeDeliveryThreshold }
     private var progress: CGFloat { CGFloat(min(bill.subtotal / CartBillBreakdown.freeDeliveryThreshold, 1)) }
 
     var body: some View {
@@ -17,7 +17,7 @@ struct FreeDeliveryStrip: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 15, weight: .semibold))
-                    Text("You've unlocked free delivery")
+                    Text(bill.isFirstFivePromo ? "Free delivery on your first 5 orders!" : "You've unlocked free delivery")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer(minLength: 0)
                 }

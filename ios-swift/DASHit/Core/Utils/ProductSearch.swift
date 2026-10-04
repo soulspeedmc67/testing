@@ -33,7 +33,15 @@ enum ProductSearch {
         }
     }
 
-    /// Products matching `query`, best match first.
+    static func hasPhoto(_ product: Product) -> Bool {
+        let img = product.img.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !img.isEmpty else { return false }
+        let lower = img.lowercased()
+        let placeholders = ["unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com"]
+        return !placeholders.contains { lower.contains($0) }
+    }
+
+    /// Products matching `query`, best match first. Items with genuine photos rank strictly first.
     static func results(for query: String, in products: [Product]) -> [Product] {
         results(for: query, in: entries(for: products))
     }
@@ -49,6 +57,10 @@ enum ProductSearch {
             .sorted { a, b in
                 // Sold-out items come after every match that can be bought.
                 if a.entry.product.isAvailable != b.entry.product.isAvailable { return a.entry.product.isAvailable }
+                // Products with verified pictures strictly come before products without pictures.
+                let aHasPhoto = hasPhoto(a.entry.product)
+                let bHasPhoto = hasPhoto(b.entry.product)
+                if aHasPhoto != bHasPhoto { return aHasPhoto }
                 if a.rank != b.rank { return a.rank < b.rank }
                 if a.entry.popularity != b.entry.popularity { return a.entry.popularity > b.entry.popularity }
                 return a.entry.name < b.entry.name

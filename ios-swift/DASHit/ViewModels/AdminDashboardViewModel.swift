@@ -847,11 +847,22 @@ public final class AdminDashboardViewModel: ObservableObject {
     }
 
     public func cancelOrder(order: Order) {
+        rejectOrder(order: order, reason: "Customer cancelled")
+    }
+
+    public func rejectOrder(order: Order, reason: String) {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
+        if let idx = recentOrders.firstIndex(where: { $0.id == order.id }) {
+            recentOrders[idx].status = .cancelled
+            recentOrders[idx].rejectionReason = reason
+        }
         db.collection("orders").document(order.id).setData([
             "status": "Cancelled",
-            "cancelledAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveThenNotify("Cancelling the order", orderId: order.id))
+            "rejectionReason": reason,
+            "cancelledReason": reason,
+            "cancelledAt": FieldValue.serverTimestamp(),
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true, completion: saveThenNotify("Rejecting the order", orderId: order.id))
     }
 
     public func assignDriver(orderId: String, driver: Driver) {

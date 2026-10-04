@@ -446,7 +446,10 @@ class OrderRepository(
             otp = doc.get("otp")?.let { if (it is Number) it.toInt().toString() else it.toString() },
             couponCode = doc.getString("couponCode"),
             modifyWindowEndsAt = timestampMillis(doc, "modifyWindowEndsAt"),
-            replacesOrderId = doc.getString("replacesOrderId")
+            replacesOrderId = doc.getString("replacesOrderId"),
+            rejectionReason = doc.getString("rejectionReason")
+                ?: doc.getString("cancelledReason")
+                ?: doc.getString("rejectReason")
         )
     } catch (e: Exception) {
         null

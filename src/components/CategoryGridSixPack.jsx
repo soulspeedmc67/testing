@@ -33,7 +33,7 @@ export const SIX_PACK_CATEGORIES = [
   },
   {
     id: "chicken",
-    name: "Chicken",
+    name: "Chicken & Fish",
     img: "/products/catalog/chicken_meat_fish/dsh_6377ab70ba0c.webp",
     cat: "Chicken"
   },
@@ -99,17 +99,18 @@ export default function CategoryGridSixPack({ onSelectCategory }) {
           onClick={() => handleCategoryClick(item)}
           className="bg-white border border-slate-200/80 rounded-2xl p-2.5 flex flex-col cursor-pointer shadow-[0_1px_3px_rgba(15,23,42,0.04)] dark:bg-surface-raised dark:border-line/80"
         >
-          {/* Imagery leads, a single label reads underneath — nothing else competes */}
-          <div className="relative w-full h-[70px] bg-gradient-to-b from-slate-50 to-white dark:from-surface-muted dark:to-surface-raised rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 dark:border-line-soft">
+          {/* Imagery leads on clean white background — never cropped, professional packshots */}
+          <div className="relative w-full aspect-square bg-white rounded-xl overflow-hidden flex items-center justify-center border border-slate-100 shadow-2xs dark:border-line-soft">
             <ProductImage
               src={item.img}
               name={item.name}
               fill
+              imgClassName="p-2 object-contain"
               letterClassName="text-xl"
             />
           </div>
 
-          <h4 className="mt-2 text-[11.5px] font-semibold text-[#061838] leading-snug line-clamp-2 tracking-tight dark:text-content">
+          <h4 className="mt-2 text-[12px] font-semibold text-center text-[#061838] leading-tight line-clamp-1 tracking-tight dark:text-content">
             {item.name}
           </h4>
         </motion.div>

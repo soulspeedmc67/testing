@@ -19,19 +19,18 @@ object MapStyle {
     private val light = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0.72f) })
 
     /**
-     * Dark: nearly grey, then brightness turned around with extra contrast, so
-     * land is charcoal, side streets a shade darker, main roads and water a
-     * shade lighter and labels white, with a faint cool tint.
+     * Dark: calm Apple Maps style charcoal map with soft white road labels
+     * and subtle navy water tones, avoiding harsh inverted bright edges.
      */
     private val dark = ColorMatrixColorFilter(
         ColorMatrix().apply {
-            setSaturation(0.15f)
+            setSaturation(0.18f)
             postConcat(
                 ColorMatrix(
                     floatArrayOf(
-                        -1.23f, 0f, 0f, 0f, 330f,
-                        0f, -1.23f, 0f, 0f, 334f,
-                        0f, 0f, -1.23f, 0f, 344f,
+                        -0.78f, 0f, 0f, 0f, 218f,
+                        0f, -0.78f, 0f, 0f, 222f,
+                        0f, 0f, -0.76f, 0f, 230f,
                         0f, 0f, 0f, 1f, 0f
                     )
                 )
@@ -69,9 +68,9 @@ object MapStyle {
 
     fun apply(map: MapView, isDark: Boolean) {
         map.overlayManager.tilesOverlay.setColorFilter(if (isDark) dark else light)
-        map.overlayManager.tilesOverlay.loadingBackgroundColor = if (isDark) 0xFF1A1B1F.toInt() else 0xFFEDEEF0.toInt()
-        map.overlayManager.tilesOverlay.loadingLineColor = if (isDark) 0xFF1A1B1F.toInt() else 0xFFEDEEF0.toInt()
-        map.setBackgroundColor(if (isDark) 0xFF1A1B1F.toInt() else 0xFFEDEEF0.toInt())
+        map.overlayManager.tilesOverlay.loadingBackgroundColor = if (isDark) 0xFF121316.toInt() else 0xFFEDEEF0.toInt()
+        map.overlayManager.tilesOverlay.loadingLineColor = if (isDark) 0xFF121316.toInt() else 0xFFEDEEF0.toInt()
+        map.setBackgroundColor(if (isDark) 0xFF121316.toInt() else 0xFFEDEEF0.toInt())
         map.invalidate()
     }
 }

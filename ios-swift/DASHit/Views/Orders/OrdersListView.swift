@@ -217,6 +217,18 @@ private struct OrderHistoryCard: View {
                 .foregroundColor(.textMuted)
                 .lineLimit(1)
 
+            if stage == .cancelled, let reason = order.rejectionReason, !reason.isEmpty {
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.red)
+                        .font(.system(size: 11))
+                    Text("Rejected: \(reason)")
+                        .font(.system(size: 11.5, weight: .medium))
+                        .foregroundColor(.red)
+                        .lineLimit(2)
+                }
+            }
+
             HStack(spacing: 10) {
                 if !stage.isFinished {
                     Button(action: onTrack) {

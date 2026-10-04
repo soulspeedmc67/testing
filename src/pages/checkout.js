@@ -26,7 +26,7 @@ import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
-import { FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "../components/FreeDeliveryProgress";
+import FreeDeliveryProgress, { calculateDeliveryCharges, HANDLING_FEE, FREE_DELIVERY_THRESHOLD, DELIVERY_FEE } from "../components/FreeDeliveryProgress";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
@@ -231,10 +231,20 @@ export default function CheckoutPage() {
     if (appliedCoupon && !coupon) setAppliedCoupon(null);
   }, [appliedCoupon, coupon]);
 
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD || coupon?.waivesDelivery || coupon?.code === "FREEDEL" ? 0 : DELIVERY_FEE;
+  const userOrdersCount = useMemo(() => {
+    const history = readJson("dashit_orders_history", []);
+    return Array.isArray(history) ? history.length : 0;
+  }, [cartItems]);
+
+  const deliveryCharges = useMemo(() => {
+    return calculateDeliveryCharges(subtotal, userOrdersCount, coupon);
+  }, [subtotal, userOrdersCount, coupon]);
+
+  const deliveryFee = deliveryCharges.fee;
+  const handlingFee = HANDLING_FEE;
   const couponDiscount = coupon ? Math.min(subtotal, Number(coupon.discount) || 0) : 0;
-  const grandTotal = Math.max(0, subtotal + deliveryFee - couponDiscount);
-  const toFreeDelivery = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
+  const grandTotal = Math.max(0, subtotal + deliveryFee + handlingFee - couponDiscount);
+  const toFreeDelivery = deliveryCharges.isFirstFivePromo ? 0 : Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
 
   const eta = calculateDeliveryEta(location);
   const hasAddress = Boolean(location?.address && location?.lat && location?.lng);
@@ -342,12 +352,13 @@ export default function CheckoutPage() {
       items: cartItems,
       subtotal,
       deliveryFee,
+      handlingFee,
       discount: couponDiscount,
       couponCode: coupon?.code || null,
       totalAmount: grandTotal,
       total: grandTotal,
       finalTotal: grandTotal,
-      savings: mrpSavings + couponDiscount + (deliveryFee === 0 ? DELIVERY_FEE : 0),
+      savings: mrpSavings + couponDiscount + (deliveryCharges.standardFee - deliveryFee),
       paymentMethod: "Cash on Delivery",
       location: orderLocation,
       etaMinutes: orderEta.etaMinutes,
@@ -429,7 +440,7 @@ export default function CheckoutPage() {
       ? "Waiting for payment…"
       : "Placing your order…"
     : beforeLaunch
-    ? "Orders open 5 Oct, 5 pm"
+    ? "Orders open 5 Oct, 10 am"
     : !isStoreOpen
     ? "Store closed right now"
     : shortItems.length > 0
@@ -534,18 +545,22 @@ export default function CheckoutPage() {
 
             <div className="px-4 sm:px-5 pb-3">
               <p className="text-[13px] font-medium text-slate-600 dark:text-content-secondary">
-                {toFreeDelivery > 0 ? (
+                {deliveryCharges.isFirstFivePromo ? (
+                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                    Free delivery on your first 5 orders (Order #{deliveryCharges.orderNumber} of 5)
+                  </span>
+                ) : toFreeDelivery > 0 ? (
                   <>
-                    Add <strong className="text-[#061838] dark:text-content">{rupees(toFreeDelivery)}</strong> more for free delivery
+                    Add <strong className="text-[#061838] dark:text-content">{rupees(toFreeDelivery)}</strong> more for lowest ₹25 delivery
                   </>
                 ) : (
-                  <span className="text-emerald-700 dark:text-emerald-400">You get free delivery</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Lowest ₹25 delivery tier unlocked</span>
                 )}
               </p>
               <div className="mt-2 h-1 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-[width] duration-500 ${toFreeDelivery > 0 ? "bg-[#FF5B00]" : "bg-emerald-500"}`}
-                  style={{ width: `${Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` }}
+                  className={`h-full rounded-full transition-[width] duration-500 ${toFreeDelivery > 0 && !deliveryCharges.isFirstFivePromo ? "bg-[#FF5B00]" : "bg-emerald-500"}`}
+                  style={{ width: `${deliveryCharges.isFirstFivePromo ? 100 : Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100)}%` }}
                 />
               </div>
             </div>
@@ -681,31 +696,72 @@ export default function CheckoutPage() {
           </Card>
 
           <Card className="p-4">
-            <h2 className="text-[15px] font-bold text-[#061838] dark:text-content">Bill</h2>
-            <dl className="mt-3 space-y-2 text-[14px]">
+            <h2 className="text-[15px] font-bold text-[#061838] dark:text-content">Bill details</h2>
+            <dl className="mt-3 space-y-2.5 text-[14px]">
               <div className="flex justify-between">
                 <dt className="text-slate-600 dark:text-content-secondary">Items ({itemCount})</dt>
-                <dd className="tabular-nums">{rupees(subtotal)}</dd>
+                <dd className="tabular-nums font-semibold">{rupees(subtotal)}</dd>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-slate-600 dark:text-content-secondary">Delivery</dt>
-                <dd className="tabular-nums">
-                  {deliveryFee === 0 ? <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Free</span> : rupees(deliveryFee)}
+
+              {/* Delivery Fee */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <dt className="text-slate-600 dark:text-content-secondary">Delivery fee</dt>
+                  {deliveryCharges.isFirstFivePromo ? (
+                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block">
+                      Free on first 5 orders (Order #{deliveryCharges.orderNumber} of 5)
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
+                      {deliveryCharges.tierLabel}
+                    </span>
+                  )}
+                </div>
+                <dd className="tabular-nums text-right">
+                  {deliveryFee === 0 ? (
+                    <span className="flex items-center space-x-1.5 justify-end">
+                      {deliveryCharges.standardFee > 0 && (
+                        <span className="line-through text-slate-400 text-xs font-normal">
+                          {rupees(deliveryCharges.standardFee)}
+                        </span>
+                      )}
+                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">Free</span>
+                    </span>
+                  ) : (
+                    <span className="font-semibold">{rupees(deliveryFee)}</span>
+                  )}
                 </dd>
               </div>
+
+              {/* Handling Fee */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <dt className="text-slate-600 dark:text-content-secondary">Handling fee</dt>
+                  <span className="text-[11px] text-slate-400 dark:text-content-faint block">
+                    Fixed fee on every order
+                  </span>
+                </div>
+                <dd className="tabular-nums font-semibold">{rupees(handlingFee)}</dd>
+              </div>
+
               {couponDiscount > 0 && (
                 <div className="flex justify-between">
                   <dt className="text-slate-600 dark:text-content-secondary">Offer {coupon.code}</dt>
-                  <dd className="tabular-nums text-emerald-700 dark:text-emerald-400">−{rupees(couponDiscount)}</dd>
+                  <dd className="tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">−{rupees(couponDiscount)}</dd>
                 </div>
               )}
+
+              <FreeDeliveryProgress subtotal={subtotal} orderCount={userOrdersCount} />
+
               <div className="pt-2.5 mt-1 border-t border-slate-100 dark:border-line flex justify-between text-[16px] font-bold text-[#061838] dark:text-content">
                 <dt>To pay</dt>
                 <dd className="tabular-nums">{rupees(grandTotal)}</dd>
               </div>
             </dl>
-            {mrpSavings + couponDiscount > 0 && (
-              <p className="mt-2 text-[12.5px] font-semibold text-emerald-700 dark:text-emerald-400">You save {rupees(mrpSavings + couponDiscount)} on this order</p>
+            {mrpSavings + couponDiscount + (deliveryCharges.standardFee - deliveryFee) > 0 && (
+              <p className="mt-3 text-[12px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40">
+                You save {rupees(mrpSavings + couponDiscount + (deliveryCharges.standardFee - deliveryFee))} on this order
+              </p>
             )}
           </Card>
 
