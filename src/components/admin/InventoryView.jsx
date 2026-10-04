@@ -19,6 +19,8 @@ import {
   IndianRupee,
   SlidersHorizontal,
   Trash2,
+  PackageX,
+  RotateCcw,
 } from "lucide-react";
 import { generateCsvString, triggerCsvDownload, INVENTORY_CSV_COLUMNS } from "../../lib/csvExport";
 
@@ -28,6 +30,8 @@ export default function InventoryView({
   onQuickStockAdjust,
   onClearAllStock,
   isClearingStock = false,
+  onDeleteAllProducts,
+  isDeletingAllProducts = false,
   onNavigateTab,
   onDeleteProduct,
   selectedDistributor = "All",
@@ -41,6 +45,7 @@ export default function InventoryView({
   const [sortBy, setSortBy] = useState("default");
   const [showDistributorBreakdown, setShowDistributorBreakdown] = useState(true);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [isDeletingProduct, setIsDeletingProduct] = useState(false);
 
@@ -467,13 +472,28 @@ export default function InventoryView({
               disabled={isClearingStock || catalogue.length === 0}
               className={`flex items-center space-x-1.5 px-3 min-h-[38px] rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 darkMode
-                  ? "bg-rose-950/30 hover:bg-rose-950/60 text-rose-300 border-rose-900"
+                  ? "bg-amber-950/30 hover:bg-amber-950/60 text-amber-300 border-amber-900"
+                  : "bg-white hover:bg-amber-50 text-amber-700 border-amber-200 shadow-xs"
+              }`}
+              title="Set every item's stock to zero (keeps products in catalogue)"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+              <span>{isClearingStock ? "Zeroing..." : "Zero stock"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDeleteAllConfirm(true)}
+              disabled={isDeletingAllProducts || catalogue.length === 0}
+              className={`flex items-center space-x-1.5 px-3 min-h-[38px] rounded-xl text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                darkMode
+                  ? "bg-rose-950/40 hover:bg-rose-950/70 text-rose-300 border-rose-900"
                   : "bg-white hover:bg-rose-50 text-rose-600 border-rose-200 shadow-xs"
               }`}
-              title="Set every item's stock to zero"
+              title="Permanently delete all products from store (not just zeroing stock)"
             >
-              <Ban className="w-3.5 h-3.5" />
-              <span>{isClearingStock ? "Clearing..." : "Clear all stock"}</span>
+              <PackageX className="w-3.5 h-3.5 text-rose-500" />
+              <span>{isDeletingAllProducts ? "Deleting..." : "Delete whole stock"}</span>
             </button>
 
             <button
@@ -753,6 +773,74 @@ export default function InventoryView({
                 className="min-h-[48px] rounded-2xl text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-60"
               >
                 {isClearingStock ? "Clearing..." : "Yes, clear all"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRM DELETE ALL PRODUCTS MODAL */}
+      {showDeleteAllConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-all-stock-title"
+          className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => !isDeletingAllProducts && setShowDeleteAllConfirm(false)}
+          />
+
+          <div
+            className={`relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border p-6 z-10 space-y-4 pb-[max(24px,env(safe-area-inset-bottom,24px))] sm:pb-6 ${
+              darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200"
+            }`}
+          >
+            <div className="flex items-start space-x-3.5">
+              <span className="w-10 h-10 shrink-0 rounded-2xl bg-rose-600/15 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <PackageX className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <h3
+                  id="delete-all-stock-title"
+                  className="text-base font-black text-slate-900 dark:text-white leading-tight"
+                >
+                  Delete the whole stock?
+                </h3>
+                <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                  Permanently deletes all {catalogue.length} products from the catalogue and database. This does <strong className="text-rose-600 dark:text-rose-400">NOT</strong> just make stock zero — it gets rid of every product completely so you can start a fresh piece.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs leading-relaxed font-semibold">
+              ⚠️ All products will be permanently removed. You can import your clean catalogue afterwards via CSV or barcode scan.
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAllConfirm(false)}
+                disabled={isDeletingAllProducts}
+                className={`min-h-[48px] rounded-2xl text-sm font-bold border transition-colors cursor-pointer ${
+                  darkMode
+                    ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (onDeleteAllProducts) await onDeleteAllProducts();
+                  setShowDeleteAllConfirm(false);
+                }}
+                disabled={isDeletingAllProducts}
+                className="min-h-[48px] rounded-2xl text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isDeletingAllProducts ? "Deleting..." : "Yes, delete everything"}
               </button>
             </div>
           </div>

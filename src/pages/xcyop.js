@@ -70,6 +70,8 @@ import {
   setStoreConfig,
   clearAllOrders,
   clearAllStock,
+  deleteAllProducts,
+  wipeStoreForFreshStart,
   assignDriver,
   watchDistributors,
   upsertDistributor,
@@ -1106,6 +1108,40 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     }
   };
 
+  const [isDeletingAllProducts, setIsDeletingAllProducts] = useState(false);
+  const handleDeleteAllProducts = async () => {
+    setIsDeletingAllProducts(true);
+    try {
+      const res = await deleteAllProducts(catalogue);
+      setCatalogue([]);
+      showToast(
+        res?.count > 0
+          ? `Deleted all ${res.count} products from the catalogue.`
+          : "Catalogue deleted. Store is completely clean."
+      );
+    } catch (err) {
+      showToast(`Could not delete catalogue: ${err?.message || "please try again"}`);
+    } finally {
+      setIsDeletingAllProducts(false);
+    }
+  };
+
+  const handleWipeStore = async () => {
+    setIsDeletingAllProducts(true);
+    try {
+      const res = await wipeStoreForFreshStart(catalogue);
+      setCatalogue([]);
+      setOrders([]);
+      showToast(
+        `Fresh start complete: Deleted ${res.productsDeleted || 0} products and ${res.ordersDeleted || 0} orders.`
+      );
+    } catch (err) {
+      showToast(`Could not wipe store: ${err?.message || "please try again"}`);
+    } finally {
+      setIsDeletingAllProducts(false);
+    }
+  };
+
   const handleQuickStockAdjust = async (productId, delta) => {
     try {
       const newStock = await adjustSingleProductStock(productId, delta, false);
@@ -1903,6 +1939,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onQuickStockAdjust={handleQuickStockAdjust}
           onClearAllStock={handleClearAllStock}
           isClearingStock={isClearingStock}
+          onDeleteAllProducts={handleDeleteAllProducts}
+          isDeletingAllProducts={isDeletingAllProducts}
           onNavigateTab={setActiveTab}
           onDeleteProduct={handleDeleteProduct}
           selectedDistributor={selectedDistributorForStock}
@@ -1956,6 +1994,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         <CatalogueView
           catalogue={catalogue}
           onDeleteProduct={handleDeleteProduct}
+          onDeleteAllProducts={handleDeleteAllProducts}
+          isDeletingAllProducts={isDeletingAllProducts}
           onNavigateTab={setActiveTab}
           darkMode={darkMode}
         />
@@ -2058,6 +2098,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
             const res = await clearAllStock(catalogue);
             showToast(`Stock reset to 0 across ${res.count || catalogue.length} products.`);
           }}
+          onDeleteAllProducts={handleDeleteAllProducts}
+          onWipeStore={handleWipeStore}
           darkMode={darkMode}
         />
       )}

@@ -889,6 +889,131 @@ export async function clearAllStock(products = null, options = {}) {
 }
 
 /**
+ * Admin action: Permanently deletes all products from the store catalogue.
+ * Unlike clearAllStock which keeps products and sets stock to 0, this completely
+ * removes all products from Firestore, wipes local custom products and catalogue caches,
+ * adds IDs to the deleted registry so seed items don't reappear, and notifies all apps.
+ * @param {Array} [products] List of product objects or IDs. If omitted, collects from catalogue/cache and Firestore.
+ * @param {{ onProgress?: (done: number, total: number) => void }} [options]
+ */
+export async function deleteAllProducts(products = null, options = {}) {
+  const db = getDb();
+  let idsToDelete = [];
+
+  // 1. Gather all product IDs from argument or local caches
+  if (Array.isArray(products) && products.length > 0) {
+    idsToDelete = products.map((p) => String(p?.id || p?.barcode || p)).filter(Boolean);
+  } else if (typeof window !== "undefined") {
+    try {
+      const custom = JSON.parse(localStorage.getItem("dashit_custom_products") || "[]");
+      const catState = JSON.parse(localStorage.getItem(CATALOGUE_KEY) || "null");
+      const catItems = catState?.items ? Object.keys(catState.items) : [];
+      const cached = JSON.parse(localStorage.getItem("dashit_products_cache") || "[]");
+      const fileCat = JSON.parse(localStorage.getItem("dashit_catalog_file_v1") || "null");
+      const fileItems = fileCat?.items ? Object.keys(fileCat.items) : [];
+
+      const set = new Set([
+        ...catItems,
+        ...fileItems,
+        ...custom.map((p) => String(p.id || p.barcode)),
+        ...cached.map((p) => String(p.id || p.barcode)),
+      ]);
+      idsToDelete = Array.from(set).filter(Boolean);
+    } catch (e) {}
+  }
+
+  // Also query Firestore to find any products in database
+  if (db) {
+    try {
+      const snap = await getDocs(collection(db, "products"));
+      const fsIds = snap.docs.map((d) => d.id);
+      const combined = new Set([...idsToDelete, ...fsIds]);
+      idsToDelete = Array.from(combined);
+    } catch (err) {
+      console.warn("deleteAllProducts getDocs warning:", err?.message);
+    }
+  }
+
+  // 2. Wipe local storage and memory caches immediately
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem("dashit_custom_products", JSON.stringify([]));
+      localStorage.removeItem("dashit_local_products");
+      localStorage.removeItem("dashit_products_cache");
+      localStorage.removeItem(CATALOGUE_KEY);
+      localStorage.removeItem("dashit_catalog_file_v1");
+
+      // Register deleted product IDs so default/seed items also stay deleted
+      const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
+      idsToDelete.forEach((id) => deletedIds.add(id));
+      localStorage.setItem("dashit_deleted_products", JSON.stringify(Array.from(deletedIds)));
+
+      catalogueState = { items: {}, syncedAt: Date.now(), fullAt: Date.now() };
+      memoryProductsCache = [];
+
+      window.dispatchEvent(new CustomEvent("dashit_products_updated"));
+      window.dispatchEvent(new CustomEvent("dashit_catalogue_cleared"));
+    } catch (e) {}
+  }
+  invalidateProductCache();
+
+  // 3. Batch delete from Firestore
+  let deletedCount = 0;
+  if (db && idsToDelete.length > 0) {
+    // Pass 1: Mark active: false so any live snapshot or changes query drops them immediately
+    for (let i = 0; i < idsToDelete.length; i += 400) {
+      const chunk = idsToDelete.slice(i, i + 400);
+      try {
+        const batch = writeBatch(db);
+        chunk.forEach((id) => {
+          batch.set(
+            doc(db, "products", id),
+            {
+              active: false,
+              stock: 0,
+              inStock: false,
+              deletedAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        });
+        await batch.commit();
+      } catch (e) {
+        console.warn("deleteAllProducts tombstone batch warning:", e?.message);
+      }
+    }
+
+    // Pass 2: Delete docs from Firestore
+    for (let i = 0; i < idsToDelete.length; i += 400) {
+      const chunk = idsToDelete.slice(i, i + 400);
+      try {
+        const batch = writeBatch(db);
+        chunk.forEach((id) => {
+          batch.delete(doc(db, "products", id));
+        });
+        await batch.commit();
+        deletedCount += chunk.length;
+      } catch (err) {
+        console.warn("deleteAllProducts deleteDoc batch warning:", err?.message);
+        // Fallback: delete one by one
+        for (const id of chunk) {
+          try {
+            await deleteDoc(doc(db, "products", id));
+            deletedCount += 1;
+          } catch (singleErr) {}
+        }
+      }
+      if (typeof options?.onProgress === "function") {
+        options.onProgress(deletedCount, idsToDelete.length);
+      }
+    }
+  }
+
+  return { success: true, count: idsToDelete.length || deletedCount };
+}
+
+/**
  * Deduct inventory for items in an order when shipped/out for delivery.
  */
 export async function deductInventoryForOrder(orderId, items = []) {
@@ -2111,9 +2236,36 @@ export async function updateOrderContent(orderId, updatedFields = {}) {
 }
 
 /**
- * Admin action: Permanently deletes orders (test orders).
- * Clears Firestore orders documents in batches, and purges localStorage test order mirrors.
- * @param {string[]} [orderIds] Optional specific list of IDs. If omitted, queries existing orders.
+ * Helper to delete a list of order IDs from Firestore in batches.
+ */
+async function deleteOrderDocBatch(db, ids) {
+  let count = 0;
+  for (let i = 0; i < ids.length; i += 400) {
+    const chunk = ids.slice(i, i + 400);
+    try {
+      const batch = writeBatch(db);
+      chunk.forEach((id) => {
+        batch.delete(doc(db, "orders", id));
+      });
+      await batch.commit();
+      count += chunk.length;
+    } catch (err) {
+      console.warn("deleteOrderDocBatch batch commit warning:", err?.message);
+      for (const id of chunk) {
+        try {
+          await deleteDoc(doc(db, "orders", id));
+          count += 1;
+        } catch (e) {}
+      }
+    }
+  }
+  return count;
+}
+
+/**
+ * Admin action: Permanently deletes all orders (test records).
+ * Clears Firestore orders documents in batches until none remain, and purges localStorage order mirrors.
+ * @param {string[]} [orderIds] Optional specific list of IDs. If omitted, recursively queries all existing orders.
  */
 export async function clearAllOrders(orderIds = null) {
   const db = getDb();
@@ -2124,7 +2276,15 @@ export async function clearAllOrders(orderIds = null) {
     try {
       localStorage.removeItem("dashit_orders_history");
       localStorage.removeItem("dashit_active_order");
-      window.dispatchEvent(new Event("dashit_orders_updated"));
+      localStorage.removeItem("dashit_admin_orders_cache");
+      sessionStorage.removeItem("dashit_home_order_dismissed");
+      window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: null }));
+      window.dispatchEvent(new CustomEvent("dashit_order_updated", { detail: null }));
+      try {
+        const bc = new BroadcastChannel("dashit_orders_channel");
+        bc.postMessage({ type: "wipe_orders" });
+        bc.close();
+      } catch (e) {}
     } catch (e) {}
   }
 
@@ -2132,46 +2292,48 @@ export async function clearAllOrders(orderIds = null) {
   if (db) {
     let idsToDelete = Array.isArray(orderIds) && orderIds.length > 0 ? [...orderIds] : null;
 
-    if (!idsToDelete) {
-      try {
-        const snap = await getDocs(query(collection(db, "orders"), limit(500)));
-        idsToDelete = snap.docs.map((d) => d.id);
-      } catch (err) {
-        console.warn("clearAllOrders getDocs warning:", err?.message);
-        idsToDelete = [];
-      }
-    }
-
     if (idsToDelete && idsToDelete.length > 0) {
-      const chunks = [];
-      for (let i = 0; i < idsToDelete.length; i += 450) {
-        chunks.push(idsToDelete.slice(i, i + 450));
-      }
-      for (const chunk of chunks) {
+      deletedCount += await deleteOrderDocBatch(db, idsToDelete);
+    } else {
+      let hasMore = true;
+      let passes = 0;
+      while (hasMore && passes < 25) {
+        passes += 1;
         try {
-          const batch = writeBatch(db);
-          chunk.forEach((id) => {
-            batch.delete(doc(db, "orders", id));
-          });
-          await batch.commit();
-          deletedCount += chunk.length;
-        } catch (err) {
-          console.warn("clearAllOrders batch commit warning:", err?.message);
-          // Retry one by one if batch failed
-          for (const id of chunk) {
-            try {
-              await deleteDoc(doc(db, "orders", id));
-              deletedCount += 1;
-            } catch (singleErr) {
-              console.warn("clearAllOrders single delete error:", singleErr?.message);
-            }
+          const snap = await getDocs(query(collection(db, "orders"), limit(400)));
+          if (snap.empty || snap.docs.length === 0) {
+            hasMore = false;
+            break;
           }
+          const batchIds = snap.docs.map((d) => d.id);
+          const count = await deleteOrderDocBatch(db, batchIds);
+          deletedCount += count;
+          if (snap.docs.length < 400) {
+            hasMore = false;
+          }
+        } catch (err) {
+          console.warn("clearAllOrders getDocs warning:", err?.message);
+          hasMore = false;
         }
       }
     }
   }
 
   return { success: true, count: deletedCount };
+}
+
+/**
+ * Admin action: Performs a complete fresh-start wipe of both products and orders.
+ * Ideal before official business launch to clear all test records and starter catalogs.
+ */
+export async function wipeStoreForFreshStart(catalogue = null, options = {}) {
+  const ordersRes = await clearAllOrders(null);
+  const productsRes = await deleteAllProducts(catalogue, options);
+  return {
+    success: true,
+    ordersDeleted: ordersRes.count || 0,
+    productsDeleted: productsRes.count || 0,
+  };
 }
 
 /** Driver claims an unassigned order. */

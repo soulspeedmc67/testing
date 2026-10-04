@@ -92,8 +92,9 @@ async function download() {
     const products = Array.isArray(file?.products) ? file.products : [];
     const live = products.filter((p) => p && p.active !== false).length;
     const before = state ? Object.keys(state.items).length : 0;
+    const isExplicitClear = file?.cleared === true || (Array.isArray(file?.products) && file?.count === 0);
     // A broken or cut-short file never replaces a good copy.
-    if (!(file.version > 0) || live < 50 || (before > 0 && live < before * 0.9)) return false;
+    if (!isExplicitClear && (!(file.version > 0) || (before > 100 && live < before * 0.5))) return false;
     if (state && state.version === file.version) return false;
     state = { version: file.version, items: {} };
     fold(products, file.version);
@@ -142,8 +143,9 @@ async function fetchEverything() {
     if (!res.ok) return false;
     const body = await res.json();
     const products = Array.isArray(body?.products) ? body.products : [];
-    if (products.filter((p) => p && p.active !== false).length < 50) return false;
-    state = { version: 0, items: {} };
+    const isExplicitClear = body?.cleared === true || (Array.isArray(products) && products.length === 0);
+    if (!isExplicitClear && products.filter((p) => p && p.active !== false).length === 0 && !body?.version) return false;
+    state = { version: body.version || 0, items: {} };
     fold(products, body.version);
     save();
     return true;
@@ -210,4 +212,22 @@ export function isSoldOut(product) {
   if (product.inStock === false) return true;
   const stock = product.stock;
   return stock !== undefined && stock !== null && stock !== "" && Number(stock) <= 0;
+}
+
+/** Immediately empties the local catalogue cache and notifies all listeners */
+export function clearShopProductsCache() {
+  state = { version: Date.now(), items: {} };
+  shown = [];
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.removeItem(STORE_KEY);
+    } catch (e) {}
+  }
+  broadcast();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("dashit_catalogue_cleared", () => {
+    clearShopProductsCache();
+  });
 }

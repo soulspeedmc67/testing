@@ -11,6 +11,7 @@ import {
   Image as ImageIcon,
   Sparkles,
   Loader2,
+  PackageX,
 } from "lucide-react";
 import { generateCsvString, triggerCsvDownload, CATALOGUE_CSV_COLUMNS } from "../../lib/csvExport";
 import { photoGaps } from "../../lib/productPhotoMatch";
@@ -23,6 +24,8 @@ import { setManualProductPhotos } from "../../lib/db";
 export default function CatalogueView({
   catalogue = [],
   onDeleteProduct,
+  onDeleteAllProducts,
+  isDeletingAllProducts = false,
   onNavigateTab,
   darkMode = false,
 }) {
@@ -31,6 +34,7 @@ export default function CatalogueView({
   const [isNeedsPhotoOpen, setIsNeedsPhotoOpen] = useState(false);
   const [isAutoResolving, setIsAutoResolving] = useState(false);
   const [autoResolveMsg, setAutoResolveMsg] = useState("");
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   // The listing rule: items without a photo sit at the back of the app until they get one.
   const needsPhoto = useMemo(() => photoGaps(catalogue), [catalogue]);
@@ -151,6 +155,17 @@ export default function CatalogueView({
             >
               <Download className="w-3.5 h-3.5 text-[#FF5B00]" />
               <span>Export CSV</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDeleteAllConfirm(true)}
+              disabled={isDeletingAllProducts || catalogue.length === 0}
+              className="bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-950/70 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-900 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Permanently delete all products from store catalogue"
+            >
+              <PackageX className="w-3.5 h-3.5" />
+              <span>{isDeletingAllProducts ? "Deleting..." : "Delete whole stock"}</span>
             </button>
 
             <button
@@ -310,6 +325,74 @@ export default function CatalogueView({
         isAutoResolving={isAutoResolving}
         darkMode={darkMode}
       />
+
+      {/* CONFIRM DELETE ALL PRODUCTS MODAL */}
+      {showDeleteAllConfirm && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-catalogue-title"
+          className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            onClick={() => !isDeletingAllProducts && setShowDeleteAllConfirm(false)}
+          />
+
+          <div
+            className={`relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl border p-6 z-10 space-y-4 pb-[max(24px,env(safe-area-inset-bottom,24px))] sm:pb-6 ${
+              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <div className="flex items-start space-x-3.5">
+              <span className="w-10 h-10 shrink-0 rounded-2xl bg-rose-600/15 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                <PackageX className="w-5 h-5" />
+              </span>
+              <div className="min-w-0">
+                <h3
+                  id="delete-catalogue-title"
+                  className="text-base font-black leading-tight"
+                >
+                  Delete the entire stock?
+                </h3>
+                <p className="text-xs font-medium text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                  Permanently deletes all {catalogue.length} products from the catalogue and database. This does <strong className="text-rose-600 dark:text-rose-400">NOT</strong> just set stock to 0 — it completely removes every product so you can start a fresh piece.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs leading-relaxed font-semibold">
+              ⚠️ All {catalogue.length} products will be permanently erased. Customers will see an empty store until you import fresh stock.
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAllConfirm(false)}
+                disabled={isDeletingAllProducts}
+                className={`min-h-[48px] rounded-2xl text-sm font-bold border transition-colors cursor-pointer ${
+                  darkMode
+                    ? "border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (onDeleteAllProducts) await onDeleteAllProducts();
+                  setShowDeleteAllConfirm(false);
+                }}
+                disabled={isDeletingAllProducts}
+                className="min-h-[48px] rounded-2xl text-sm font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-60 cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                {isDeletingAllProducts ? "Deleting..." : "Yes, delete everything"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

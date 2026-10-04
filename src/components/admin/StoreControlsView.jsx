@@ -18,7 +18,9 @@ import {
   Trash2,
   RotateCcw,
   Check,
-  Loader2
+  Loader2,
+  PackageX,
+  Sparkles,
 } from "lucide-react";
 
 export default function StoreControlsView({
@@ -35,6 +37,8 @@ export default function StoreControlsView({
   onSaveWeatherAlert,
   onClearAllOrders,
   onResetAllStock,
+  onDeleteAllProducts,
+  onWipeStore,
   darkMode = false,
 }) {
   const [newBlacklistNumber, setNewBlacklistNumber] = useState("");
@@ -51,6 +55,10 @@ export default function StoreControlsView({
   const [isClearingOrders, setIsClearingOrders] = useState(false);
   const [confirmResetStock, setConfirmResetStock] = useState(false);
   const [isResettingStock, setIsResettingStock] = useState(false);
+  const [confirmDeleteProducts, setConfirmDeleteProducts] = useState(false);
+  const [isDeletingProducts, setIsDeletingProducts] = useState(false);
+  const [confirmWipeStore, setConfirmWipeStore] = useState(false);
+  const [isWipingStore, setIsWipingStore] = useState(false);
 
   useEffect(() => {
     if (weatherAlert) {
@@ -96,6 +104,28 @@ export default function StoreControlsView({
       setConfirmResetStock(false);
     } finally {
       setIsResettingStock(false);
+    }
+  };
+
+  const handleDeleteProductsExecute = async () => {
+    if (!onDeleteAllProducts) return;
+    setIsDeletingProducts(true);
+    try {
+      await onDeleteAllProducts();
+      setConfirmDeleteProducts(false);
+    } finally {
+      setIsDeletingProducts(false);
+    }
+  };
+
+  const handleWipeStoreExecute = async () => {
+    if (!onWipeStore) return;
+    setIsWipingStore(true);
+    try {
+      await onWipeStore();
+      setConfirmWipeStore(false);
+    } finally {
+      setIsWipingStore(false);
     }
   };
 
@@ -424,7 +454,7 @@ export default function StoreControlsView({
                 <span>Reset All Stock to 0</span>
               </div>
               <p className="text-[11.5px] text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
-                Sets stock quantity to 0 and marks items Out of Stock across the product catalog until restocked.
+                Sets stock quantity to 0 and marks items Out of Stock across the product catalog without deleting items.
               </p>
             </div>
             <button
@@ -434,6 +464,48 @@ export default function StoreControlsView({
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset All Stock to 0
+            </button>
+          </div>
+
+          {/* Action 3: Delete Entire Product Catalog */}
+          <div className="p-4 rounded-xl border border-rose-300 dark:border-rose-800 bg-white dark:bg-[#161822] flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-600 dark:text-rose-400 font-bold text-xs">
+                <PackageX className="w-4 h-4" />
+                <span>Delete Entire Product Catalog</span>
+              </div>
+              <p className="text-[11.5px] text-slate-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                Permanently deletes all products from Firestore and local catalogue caches. Completely removes everything (not just zeroing stock) so you can start a fresh piece.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteProducts(true)}
+              className="w-full py-2 px-3 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <PackageX className="w-3.5 h-3.5" />
+              Delete Entire Catalog
+            </button>
+          </div>
+
+          {/* Action 4: Fresh Start: Wipe Store (Products & Orders) */}
+          <div className="p-4 rounded-xl border border-rose-400/80 dark:border-rose-700 bg-rose-50/30 dark:bg-rose-950/30 flex flex-col justify-between space-y-3">
+            <div>
+              <div className="flex items-center space-x-2 text-rose-700 dark:text-rose-300 font-bold text-xs">
+                <Sparkles className="w-4 h-4 text-[#FF5B00]" />
+                <span>Fresh Start: Wipe Store</span>
+              </div>
+              <p className="text-[11.5px] text-slate-600 dark:text-zinc-300 mt-1.5 leading-relaxed">
+                Complete clean slate for opening tomorrow. Permanently removes all products/stock and wipes all orders in a single operation.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirmWipeStore(true)}
+              className="w-full py-2 px-3 rounded-lg bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white font-bold text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Wipe Products & Orders
             </button>
           </div>
         </div>
@@ -515,6 +587,94 @@ export default function StoreControlsView({
               >
                 {isResettingStock ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
                 Yes, Reset All Stock
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL: Delete Entire Catalog */}
+      {confirmDeleteProducts && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className={`w-full max-w-md rounded-2xl p-6 border space-y-4 ${
+            darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+          }`}>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center shrink-0">
+                <PackageX className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">Permanently delete all products?</h3>
+                <p className="text-xs text-rose-500 dark:text-rose-400 font-semibold">Everything in the catalog will be deleted.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
+              This will completely remove every product from Firestore and local catalogue caches. This does NOT just set stock to 0 — it gets rid of everything completely so you have a clean slate to import your real stock.
+            </p>
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] leading-relaxed">
+              <strong>Warning:</strong> Customers will see an empty store until you add or import your new catalogue.
+            </div>
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteProducts(false)}
+                disabled={isDeletingProducts}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteProductsExecute}
+                disabled={isDeletingProducts}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {isDeletingProducts ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Yes, Delete Entire Catalog
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL: Wipe Store (Fresh Start) */}
+      {confirmWipeStore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div className={`w-full max-w-md rounded-2xl p-6 border space-y-4 ${
+            darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+          }`}>
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-600/15 text-rose-600 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-[#FF5B00]" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base">Fresh Start: Wipe Store?</h3>
+                <p className="text-xs text-rose-500 dark:text-rose-400 font-semibold">Deletes all products AND wipes all orders.</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
+              Are you sure you want to perform a complete store wipe? This will permanently delete the entire product catalogue (not zeroing stock, but deleting all items) and delete all test orders across the system.
+            </p>
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] leading-relaxed">
+              <strong>Pre-Launch Clean Slate:</strong> You can start fresh tomorrow by inwarding your actual stock and receiving clean customer orders.
+            </div>
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmWipeStore(false)}
+                disabled={isWipingStore}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleWipeStoreExecute}
+                disabled={isWipingStore}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {isWipingStore ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                Yes, Wipe Store for Launch
               </button>
             </div>
           </div>
