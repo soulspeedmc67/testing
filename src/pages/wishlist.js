@@ -5,6 +5,7 @@ import { useRouter } from "next/router";
 import { ChevronLeft, Heart, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import SEO from "../components/SEO";
 import { getWishlist, removeFromWishlist } from "../lib/wishlist";
+import { productImageUrl } from "../components/ProductImage";
 import { hapticLight, hapticCartAdd } from "../lib/haptics";
 
 export default function WishlistPage() {
@@ -132,8 +133,10 @@ export default function WishlistPage() {
                 {/* Product Image */}
                 <div className="relative w-full aspect-square bg-slate-50 rounded-xl overflow-hidden flex items-center justify-center p-2 mb-2 dark:bg-surface-raised">
                   <img
-                    src={item.img}
+                    src={productImageUrl(item.img)}
                     alt={item.name}
+                    loading="lazy"
+                    decoding="async"
                     className="max-h-full max-w-full object-contain"
                   />
                 </div>

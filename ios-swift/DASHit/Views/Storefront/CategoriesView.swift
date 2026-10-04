@@ -154,49 +154,66 @@ struct CategoriesView: View {
     // MARK: - Products
 
     private var productPane: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                if isLoadingCatalogue {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SkeletonBlock(width: 120, height: 17)
-                            .shimmering()
-                        ProductGridSkeleton(columns: 2, count: 6)
-                    }
-                    .padding(12)
-                } else {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(alignment: .firstTextBaseline) {
-                            Text(selectedTile?.name ?? "")
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundColor(.textPrimary)
-                            Spacer()
-                            Text("\(products.count) item\(products.count == 1 ? "" : "s")")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.textMuted)
-                        }
-                        .id("top")
-
-                        PagedProductGrid(products: products, listKey: selectedTile?.id ?? "", columns: gridColumns) { product in
-                            ProductCardView(
-                                product: product,
-                                onOpen: { detailProduct = product },
-                                onRequestAgeConfirmation: { ageGateProduct = product }
-                            )
-                        }
-                    }
-                    .padding(12)
-                    .padding(.bottom, 12)
-                    .drivesTabBarVisibility(in: "categoriesScroll")
-                    .transition(.opacity)
+        // A new scroll view per shelf (the id below), so every shelf opens at
+        // its first item instead of at the old shelf's scroll position.
+        // Nothing scrolls it by hand as well: a scrollTo fired while the lazy
+        // grid under it is being replaced can leave the pane empty until it is
+        // touched, and a fresh scroll view already starts at the top.
+        ScrollView {
+            if isLoadingCatalogue {
+                VStack(alignment: .leading, spacing: 12) {
+                    SkeletonBlock(width: 120, height: 17)
+                        .shimmering()
+                    ProductGridSkeleton(columns: 2, count: 6)
                 }
-            }
-            .coordinateSpace(.named("categoriesScroll"))
-            // A new scroll view per shelf, so every shelf opens at its first item
-            // instead of at the old shelf's scroll position (past a shorter list's end).
-            .id(selectedTile?.id ?? "")
-            .onChange(of: selectedCategoryID) { _, _ in
-                proxy.scrollTo("top", anchor: .top)
+                .padding(12)
+            } else if products.isEmpty {
+                // Never a bare pane: say what is going on.
+                emptyShelf
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(selectedTile?.name ?? "")
+                            .font(.system(size: 17, weight: .bold))
+                            .foregroundColor(.textPrimary)
+                        Spacer()
+                        Text("\(products.count) item\(products.count == 1 ? "" : "s")")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.textMuted)
+                    }
+
+                    PagedProductGrid(products: products, listKey: selectedTile?.id ?? "", columns: gridColumns) { product in
+                        ProductCardView(
+                            product: product,
+                            onOpen: { detailProduct = product },
+                            onRequestAgeConfirmation: { ageGateProduct = product }
+                        )
+                    }
+                }
+                .padding(12)
+                .padding(.bottom, 12)
+                .drivesTabBarVisibility(in: "categoriesScroll")
             }
         }
+        .coordinateSpace(.named("categoriesScroll"))
+        .id(selectedTile?.id ?? "")
+    }
+
+    private var emptyShelf: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "square.grid.2x2")
+                .font(.system(size: 28))
+                .foregroundColor(.textFaint)
+            Text(tiles.isEmpty ? "No categories yet" : "Nothing here right now")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.textSecondary)
+            Text(tiles.isEmpty ? "Products are still on their way. Check back in a moment." : "Pick another category on the left.")
+                .font(.system(size: 13))
+                .foregroundColor(.textMuted)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 60)
     }
 }

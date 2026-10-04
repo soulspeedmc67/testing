@@ -57,26 +57,36 @@ enum CatalogueDerive {
         }
         derived.byCategoryKey = groups
 
-        if remoteCategories.isEmpty {
-            func rank(_ key: String) -> Int { preferredOrder.firstIndex(of: key) ?? Int.max }
-            let ordered = firstSeen.sorted { a, b in
-                let (ra, rb) = (rank(a), rank(b))
-                if ra != rb { return ra < rb }
-                return (groups[a]?.count ?? 0) > (groups[b]?.count ?? 0)
-            }
-            derived.categories = ordered.enumerated().map { index, key in
-                Category(id: key.replacingOccurrences(of: " ", with: "-"), name: names[key] ?? key, icon: nil, sortOrder: index)
-            }
-        } else {
-            derived.categories = remoteCategories
+        // One shelf per product category, familiar aisles first.
+        func rank(_ key: String) -> Int { preferredOrder.firstIndex(of: key) ?? Int.max }
+        let ordered = firstSeen.sorted { a, b in
+            let (ra, rb) = (rank(a), rank(b))
+            if ra != rb { return ra < rb }
+            return (groups[a]?.count ?? 0) > (groups[b]?.count ?? 0)
+        }
+        let ownCategories: [Category] = ordered.enumerated().map { index, key in
+            Category(id: key.replacingOccurrences(of: " ", with: "-"), name: names[key] ?? key, icon: nil, sortOrder: index)
         }
 
-        let filled: [(category: Category, products: [Product])] = derived.categories
-            .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
-            .compactMap { (category: Category) -> (category: Category, products: [Product])? in
-                let list = groups[key(category.name)] ?? []
-                return list.isEmpty ? nil : (category: category, products: list)
-            }
+        /// The shelves that have products, in shelf order.
+        func shelves(_ categories: [Category]) -> [(category: Category, products: [Product])] {
+            categories
+                .sorted { ($0.sortOrder ?? 0) < ($1.sortOrder ?? 0) }
+                .compactMap { (category: Category) -> (category: Category, products: [Product])? in
+                    let list = groups[key(category.name)] ?? []
+                    return list.isEmpty ? nil : (category: category, products: list)
+                }
+        }
+
+        derived.categories = remoteCategories.isEmpty ? ownCategories : remoteCategories
+        var filled = shelves(derived.categories)
+        // Shelves set in Firestore whose names match none of the products would
+        // leave the Categories tab and the home feed empty: fall back to one
+        // shelf per product category.
+        if filled.isEmpty && !remoteCategories.isEmpty {
+            derived.categories = ownCategories
+            filled = shelves(ownCategories)
+        }
 
         derived.categoryTiles = filled.map { entry in
             CategoryTile(

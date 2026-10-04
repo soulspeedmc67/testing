@@ -1323,8 +1323,10 @@ export function watchOrder(orderId, callback) {
         },
         (err) => {
           console.warn("watchOrder snapshot error:", err?.message);
-          // If auth was initializing or network dropped, retry after short backoff
-          if (!isClosed) {
+          /* A dropped network is retried. "Not allowed" is not: asking again
+             every 2 seconds can't change the answer and each attempt is a
+             billed read. A sign-in change re-binds below. */
+          if (!isClosed && err?.code !== "permission-denied") {
             clearTimeout(retryTimer);
             retryTimer = setTimeout(() => {
               bind();
@@ -2614,7 +2616,7 @@ export function watchOrderTracking(orderId, callback) {
         },
         (err) => {
           console.warn("watchOrderTracking Firestore snapshot error:", err?.message);
-          if (!isClosed) {
+          if (!isClosed && err?.code !== "permission-denied") {
             clearTimeout(retryTimer);
             retryTimer = setTimeout(() => {
               bind();

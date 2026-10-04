@@ -232,9 +232,13 @@ export default function CheckoutPage() {
     if (appliedCoupon && !coupon) setAppliedCoupon(null);
   }, [appliedCoupon, coupon]);
 
-  const userOrdersCount = useMemo(() => {
+  /* Read after mount, not during render: the exported HTML has no saved
+     orders, so reading them in the first render made the page disagree with
+     its own HTML ("Order #1" vs "#2") and React rebuilt the whole page. */
+  const [userOrdersCount, setUserOrdersCount] = useState(0);
+  useEffect(() => {
     const history = readJson("dashit_orders_history", []);
-    return Array.isArray(history) ? history.length : 0;
+    setUserOrdersCount(Array.isArray(history) ? history.length : 0);
   }, [cartItems]);
 
   const deliveryCharges = useMemo(() => {
@@ -364,7 +368,7 @@ export default function CheckoutPage() {
       location: orderLocation,
       etaMinutes: orderEta.etaMinutes,
       distanceKm: orderEta.distanceKm,
-      otp: Math.floor(1000 + Math.random() * 9000),
+      otp: String(Math.floor(1000 + Math.random() * 9000)),
       status: "Placed",
       customerName: user.name || "Customer",
       mobile: user.mobile,

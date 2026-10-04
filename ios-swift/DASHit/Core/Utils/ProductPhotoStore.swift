@@ -61,8 +61,11 @@ final class ProductPhotoStore: @unchecked Sendable {
             return absolute(text)
         }
         let resolved = absolute(text).absoluteString
+        // Catalogue photos: the 400px copy (~10 KB instead of ~100 KB). Most
+        // products have no full-size photo on the host at all, so asking for
+        // it first cost each card four failed requests and over a second.
         if resolved.contains(catalogPath) {
-            return URL(string: resolved) ?? url
+            return URL(string: resolved.replacingOccurrences(of: catalogPath, with: thumbPath)) ?? url
         }
         if url.scheme == nil || (!text.hasPrefix("http://") && !text.hasPrefix("https://")) {
             let path = text.hasPrefix("/") ? text : "/\(text)"
@@ -133,36 +136,59 @@ final class ProductPhotoStore: @unchecked Sendable {
 
     // MARK: - Loading
 
-    private func load(_ url: URL, attempt: Int = 0) async -> UIImage? {
-        let file = fileURL(for: url)
-        if let data = try? Data(contentsOf: file), let image = Self.decode(data) {
+    /// The same catalogue photo in its other size: the full photo for a small
+    /// copy, the small copy for a full photo. Nil for photos hosted elsewhere.
+    private static func otherSize(of url: URL) -> URL? {
+        let text = url.absoluteString
+        if text.contains(thumbPath) {
+            return URL(string: text.replacingOccurrences(of: thumbPath, with: catalogPath))
+        }
+        if text.contains(catalogPath) {
+            return URL(string: text.replacingOccurrences(of: catalogPath, with: thumbPath))
+        }
+        return nil
+    }
+
+    /// The other size of this photo, when it is already decoded this session.
+    /// The product page shows it at once while the full photo loads.
+    func standIn(for url: URL) -> UIImage? {
+        guard let other = Self.otherSize(of: url) else { return nil }
+        return memoryImage(other)
+    }
+
+    private func load(_ url: URL) async -> UIImage? {
+        if let image = await fetch(url) {
             remember(image, for: url)
             return image
         }
-        guard let (data, response) = try? await session.data(from: url),
-              Self.isOK(response), let image = Self.decode(data) else {
-            let text = url.absoluteString
-            // No small copy yet (a photo picked after the thumbnails were made): the full one.
-            if attempt == 0, text.contains(Self.thumbPath),
-               let full = URL(string: text.replacingOccurrences(of: Self.thumbPath, with: Self.catalogPath)) {
-                return await load(full, attempt: 1)
-            }
-            // The host sometimes answers a full-size photo with "not found" and then
-            // serves it a moment later: ask again, then settle for the small copy.
-            if text.contains(Self.catalogPath) {
-                if attempt < 3 {
-                    try? await Task.sleep(for: .milliseconds(350))
-                    return await load(url, attempt: attempt + 1)
-                }
-                if attempt == 3, let small = URL(string: text.replacingOccurrences(of: Self.catalogPath, with: Self.thumbPath)) {
-                    return await load(small, attempt: 4)
-                }
-            }
-            return nil
-        }
-        try? data.write(to: file, options: .atomic)
+        // Not on the host in this size: the other size of the same photo stands
+        // in. A photo picked after the small copies were made has only the full
+        // one; most products have only the small one. The host gives the same
+        // answer for a missing photo every time, so it is asked once, not four
+        // times with a wait in between (which is what made photos slow).
+        guard let other = Self.otherSize(of: url), let image = await fetch(other) else { return nil }
         remember(image, for: url)
         return image
+    }
+
+    /// The copy saved on the phone, or a download that is then saved.
+    private func fetch(_ url: URL) async -> UIImage? {
+        let file = fileURL(for: url)
+        if let data = try? Data(contentsOf: file), let image = Self.decode(data) {
+            return image
+        }
+        for attempt in 0..<2 {
+            do {
+                let (data, response) = try await session.data(from: url)
+                // "Not found" is final; only a dropped connection is tried again.
+                guard Self.isOK(response), let image = Self.decode(data) else { return nil }
+                try? data.write(to: file, options: .atomic)
+                return image
+            } catch {
+                if attempt == 0 { try? await Task.sleep(for: .milliseconds(350)) }
+            }
+        }
+        return nil
     }
 
     private func remember(_ image: UIImage, for url: URL) {
@@ -229,8 +255,9 @@ struct CachedAsyncImage<Content: View>: View {
         self.url = url
         self.transaction = transaction
         self.content = content
-        // Already in memory: shown in the very first frame, no flash.
-        if let url, let image = ProductPhotoStore.shared.memoryImage(url) {
+        // Already in memory (this photo, or its small copy from the card that
+        // was tapped): shown in the very first frame, no flash.
+        if let url, let image = ProductPhotoStore.shared.memoryImage(url) ?? ProductPhotoStore.shared.standIn(for: url) {
             _phase = State(initialValue: .success(Image(uiImage: image)))
         } else {
             _phase = State(initialValue: .empty)
@@ -251,9 +278,17 @@ struct CachedAsyncImage<Content: View>: View {
             phase = .success(Image(uiImage: image))
             return
         }
-        phase = .empty
+        // The small copy stays on screen while the full photo loads, and stays
+        // for good when there is no full photo.
+        let standIn = ProductPhotoStore.shared.standIn(for: url)
+        if let standIn {
+            phase = .success(Image(uiImage: standIn))
+        } else {
+            phase = .empty
+        }
         let image = await ProductPhotoStore.shared.image(for: url)
         guard !Task.isCancelled else { return }
+        if image == nil && standIn != nil { return }
         withTransaction(transaction) {
             phase = image.map { .success(Image(uiImage: $0)) } ?? .failure(URLError(.cannotDecodeContentData))
         }

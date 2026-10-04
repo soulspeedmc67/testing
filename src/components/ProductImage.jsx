@@ -1,8 +1,21 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { isPlaceholderImage } from "../lib/productPhotoMatch";
 
+const CATALOG = "dashit.co.in/products/catalog/";
+const THUMBS = "dashit.co.in/products/thumbs/";
+
 /**
- * Open Food Facts keeps each photo as the full original (~0.7 MB) and smaller
+ * The address a photo is loaded from.
+ *
+ * Cards get the small copy: 400px, about 10 KB, and the host lets browsers
+ * keep it for a year, so it is downloaded once per phone. Only the product
+ * page asks for the 1000px original (`size="full"`).
+ *
+ * Cards used to ask for the original first. Most products have no original on
+ * the host, so every card paid for a failed request before falling back to the
+ * small copy: that was the slow photo loading.
+ *
+ * Open Food Facts keeps each photo as the full original (~0.7 MB) with smaller
  * copies at the same path; a card only needs the 400px one. Catalogue photos
  * saved as a path ("/products/catalog/…") live on the website, and load from
  * there in the apps and on every host.
@@ -13,25 +26,23 @@ export function productImageUrl(url, size = "small") {
     return value.replace(/\.full\.(jpg|jpeg|png|webp)$/i, ".400.$1");
   }
   let full = value;
-  if (/^\/?products\/catalog\//.test(value)) {
+  if (/^\/?products\/(catalog|thumbs)\//.test(value)) {
     full = `https://dashit.co.in/${value.replace(/^\//, "")}`;
   }
+  if (size === "small") return full.replace(CATALOG, THUMBS);
   return full;
 }
 
 /**
- * What to try after a photo fails: the small copy may not exist yet (then the
- * full one), and the host sometimes answers a full-size photo with "not found"
- * and serves it a moment later (so once more).
+ * What to try once after a photo fails: a photo picked after the small copies
+ * were made has only the original, and many originals were never uploaded, so
+ * each stands in for the other. (No "ask again with ?r=1": the host answers
+ * any photo address with a query string "not found".)
  */
 function nextAttempt(url, attempt) {
-  if (attempt === 0) {
-    if (url.includes("/products/thumbs/")) return url.replace("/products/thumbs/", "/products/catalog/");
-    if (url.includes("/products/catalog/")) return url.replace("/products/catalog/", "/products/thumbs/");
-  }
-  if (attempt === 1 && (url.includes("/products/catalog/") || url.includes("/products/thumbs/"))) {
-    return `${url}${url.includes("?") ? "&" : "?"}r=1`;
-  }
+  if (attempt !== 0) return null;
+  if (url.includes(THUMBS)) return url.replace(THUMBS, CATALOG);
+  if (url.includes(CATALOG)) return url.replace(CATALOG, THUMBS);
   return null;
 }
 
@@ -56,15 +67,48 @@ export default function ProductImage({
 }) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState({ n: 0, url: "" });
+  const [shown, setShown] = useState(false);
+  const [fullReady, setFullReady] = useState(false);
+  const imgRef = useRef(null);
+
+  const small = productImageUrl(src, "small");
+  const full = size === "small" ? small : productImageUrl(src, size);
+
   useEffect(() => {
     setFailed(false);
     setAttempt({ n: 0, url: "" });
+    setShown(false);
   }, [src]);
 
-  const url = !failed && !isPlaceholderImage(src) ? attempt.url || productImageUrl(src, size) : "";
+  /* The product page shows the small copy at once (it is already on the phone
+     from the card that was tapped) and swaps in the original when, and if, it
+     arrives. It never waits on a blank square for a photo that may not exist. */
+  useEffect(() => {
+    setFullReady(false);
+    if (!full || full === small) return undefined;
+    let alive = true;
+    const probe = new window.Image();
+    probe.onload = () => {
+      if (alive) setFullReady(true);
+    };
+    probe.src = full;
+    return () => {
+      alive = false;
+    };
+  }, [full, small]);
+
+  const url = !failed && !isPlaceholderImage(src) ? attempt.url || (fullReady ? full : small) : "";
+
+  /* A photo already in the browser's cache is complete before React attaches
+     onLoad, so it is shown without the fade (and never left invisible). */
+  useEffect(() => {
+    const el = imgRef.current;
+    if (el && el.complete && el.naturalWidth > 0) setShown(true);
+  }, [url]);
+
   const onError = () => {
     const next = nextAttempt(url, attempt.n);
-    if (next) setTimeout(() => setAttempt({ n: attempt.n + 1, url: next }), attempt.n === 0 ? 0 : 350);
+    if (next) setAttempt({ n: attempt.n + 1, url: next });
     else setFailed(true);
   };
   const letter = (String(name).trim().match(/[A-Za-z0-9]/)?.[0] || "?").toUpperCase();
@@ -85,11 +129,14 @@ export default function ProductImage({
   return (
     <div className={`${frame} overflow-hidden bg-white ${className}`}>
       <img
+        ref={imgRef}
         src={url}
         alt={name}
         loading={loading}
         decoding="async"
+        onLoad={() => setShown(true)}
         onError={onError}
+        style={{ opacity: shown ? 1 : 0, transition: "opacity 180ms ease-out" }}
         className={`absolute inset-0 h-full w-full object-contain p-[8%] ${dimmed ? "grayscale-[40%]" : ""} ${imgClassName}`}
       />
     </div>

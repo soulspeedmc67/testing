@@ -43,6 +43,7 @@ import { calculateDeliveryEta } from "../lib/deliveryEta";
 import ModifyOrderModal from "../components/ModifyOrderModal";
 import CancelOrderModal from "../components/CancelOrderModal";
 import OrderStageAnimation from "../components/OrderStageAnimation";
+import { productImageUrl } from "../components/ProductImage";
 
 const MapTracking = dynamic(() => import("../components/MapTracking"), { ssr: false });
 
@@ -761,8 +762,10 @@ export default function OrdersPage() {
                       <div className="flex items-center space-x-3 min-w-0">
                         <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 border border-white/10 overflow-hidden">
                           <img
-                            src={item.img || item.image || "/favicon.png"}
+                            src={productImageUrl(item.img || item.image || "/favicon.png")}
                             alt={item.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-contain"
                           />
                         </div>
@@ -990,8 +993,10 @@ export default function OrdersPage() {
                             title={item.name}
                           >
                             <img
-                              src={item.img || item.image || "/favicon.png"}
+                              src={productImageUrl(item.img || item.image || "/favicon.png")}
                               alt={item.name}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-contain"
                             />
                           </div>
@@ -1129,8 +1134,10 @@ export default function OrdersPage() {
                       <div className="relative">
                         <div className="w-full aspect-square rounded-xl bg-white flex items-center justify-center p-2 mb-2 overflow-hidden border border-slate-100 dark:border-line-soft relative">
                           <img
-                            src={prod.img}
+                            src={productImageUrl(prod.img)}
                             alt={prod.name}
+                            loading="lazy"
+                            decoding="async"
                             className={`w-full h-full object-contain group-hover:scale-105 transition-transform ${
                               isOutOfStock ? "grayscale-[40%] opacity-60" : ""
                             }`}

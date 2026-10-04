@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   ArrowLeft,
   Shield,
-  Phone,
   ChevronDown,
   ChevronUp,
   MapPin,
@@ -31,6 +30,7 @@ import {
 import { hapticLight, hapticMedium, hapticSuccess } from "../../lib/haptics";
 import ModifyOrderModal from "../../components/ModifyOrderModal";
 import CancelOrderModal from "../../components/CancelOrderModal";
+import { productImageUrl } from "../../components/ProductImage";
 
 const MapTracking = dynamic(() => import("../../components/MapTracking"), { ssr: false });
 
@@ -61,7 +61,7 @@ function getRemainingCancellationSeconds(order) {
 }
 
 function formatDisplayId(id) {
-  if (!id) return "98214";
+  if (!id) return "";
   const cleaned = String(id).replace(/^DASH-?/i, "").replace(/^#/, "").replace(/^-/, "");
   return cleaned.length > 5 ? cleaned.slice(-5).toUpperCase() : cleaned.toUpperCase();
 }
@@ -69,11 +69,16 @@ function formatDisplayId(id) {
 export default function OrderTrackingPage() {
   const router = useRouter();
   const [order, setOrder] = useState(null);
+  /* True once this browser's saved orders have been read. Until then the page
+     shows only its dark ground, never a guess. */
+  const [resolved, setResolved] = useState(false);
+  /* Empty until the rider's phone reports. These used to start as a made-up
+     rider, ETA and distance, shown as if they were real. */
   const [telemetry, setTelemetry] = useState({
-    etaMinutes: 7,
-    distanceKm: "1.7",
-    riderName: "Tariq Ahmad",
-    riderStatus: "On the way on Scooter",
+    etaMinutes: null,
+    distanceKm: null,
+    riderName: "",
+    riderStatus: "",
     queuePosition: 0,
   });
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -115,7 +120,10 @@ export default function OrderTrackingPage() {
       } catch (e) {}
     };
 
+    // The id in the address is only there once the router is ready.
+    if (!router.isReady) return undefined;
     syncOrder();
+    setResolved(true);
     window.addEventListener("dashit_orders_updated", syncOrder);
     window.addEventListener("dashit_order_updated", syncOrder);
     window.addEventListener("storage", syncOrder);
@@ -125,9 +133,9 @@ export default function OrderTrackingPage() {
       window.removeEventListener("dashit_order_updated", syncOrder);
       window.removeEventListener("storage", syncOrder);
     };
-  }, [router.query.id]);
+  }, [router.isReady, router.query.id]);
 
-  const targetOrderId = order?.orderId || order?.id || "DASH-98214";
+  const targetOrderId = order?.orderId || order?.id || null;
 
   // 2. Real-time Firestore sync
   useEffect(() => {
@@ -177,6 +185,18 @@ export default function OrderTrackingPage() {
   // Progress percentage matching Android OrderProgressRail
   const stageProgress = isDelivered ? 1.0 : isOutForDelivery ? 0.75 : isPacking ? 0.45 : 0.18;
 
+  /* The map reports only what it knows; an empty value never wipes one the
+     rider's phone already sent. */
+  const handleMapTelemetry = useCallback((tel) => {
+    setTelemetry((prev) => {
+      const next = { ...prev };
+      for (const [key, value] of Object.entries(tel || {})) {
+        if (value !== null && value !== undefined && value !== "") next[key] = value;
+      }
+      return next;
+    });
+  }, []);
+
   const handleCancelOrder = async () => {
     if (!order) return;
     setIsCancelling(true);
@@ -205,7 +225,35 @@ export default function OrderTrackingPage() {
   const grandTotal = Number(order?.total || order?.grandTotal || order?.amount || 0);
   const items = Array.isArray(order?.items) ? order.items : [];
   const itemCount = items.reduce((sum, it) => sum + (Number(it.qty || it.quantity) || 1), 0);
-  const otpCode = order?.otp || "4289";
+  // The real PIN or nothing: a made-up one here would be read out to the rider.
+  const otpCode = order?.otp ? String(order.otp) : "";
+
+  if (!order) {
+    return (
+      <div className="dark fixed inset-0 w-screen h-screen overflow-hidden bg-[#060709] text-white flex flex-col items-center justify-center px-6 text-center">
+        <SEO title="Track your order - DASHit" noindex={true} />
+        {resolved && (
+          <>
+            <span className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center">
+              <Package className="w-6 h-6 text-white/70" />
+            </span>
+            <h1 className="mt-4 text-[19px] font-bold">No order to track</h1>
+            <p className="mt-1.5 max-w-xs text-[14px] text-white/60">
+              Orders you place on this device show up here while they are on the way.
+            </p>
+            <div className="mt-6 flex items-center gap-3">
+              <Link href="/shop" className="h-11 px-5 rounded-xl bg-[#FF5B00] hover:bg-[#E04E00] text-white text-[15px] font-bold flex items-center">
+                Go to the shop
+              </Link>
+              <Link href="/orders" className="h-11 px-5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-[15px] font-bold flex items-center">
+                My orders
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="dark fixed inset-0 w-screen h-screen overflow-hidden bg-[#060709] text-white select-none">
@@ -223,7 +271,7 @@ export default function OrderTrackingPage() {
           customerLng={order?.location?.lng || order?.deliveryAddress?.longitude || 75.1565}
           destinationName={order?.location?.address || order?.deliveryAddress?.address || "Your Doorstep"}
           fullScreen={true}
-          onTelemetryChange={(tel) => setTelemetry((prev) => ({ ...prev, ...tel }))}
+          onTelemetryChange={handleMapTelemetry}
         />
       </div>
 
@@ -309,7 +357,7 @@ export default function OrderTrackingPage() {
                   : isDelivered
                   ? "Delivered to Doorstep"
                   : isOutForDelivery
-                  ? `${telemetry.riderName || "Tariq"} is on the way`
+                  ? `${telemetry.riderName || "Your rider"} is on the way`
                   : isPacking
                   ? "Packing your order"
                   : "Order received"}
@@ -322,7 +370,7 @@ export default function OrderTrackingPage() {
                 Cancelled
               </span>
             )}
-            {isOutForDelivery && (
+            {isOutForDelivery && telemetry.etaMinutes != null && (
               <span className="text-sm font-black text-[#00D26A] tracking-wider uppercase drop-shadow-[0_0_8px_rgba(0,210,106,0.35)]">
                 ETA {telemetry.etaMinutes} MINS
               </span>
@@ -391,27 +439,18 @@ export default function OrderTrackingPage() {
                 <div className="w-11 h-11 rounded-xl bg-orange-500/15 border border-orange-500/25 p-1 flex items-center justify-center overflow-hidden">
                   <img
                     src="/rider/rider_180.png"
-                    alt={telemetry.riderName}
+                    alt=""
                     className="w-full h-full object-contain filter drop-shadow"
                   />
                 </div>
                 <div>
                   <div className="flex items-center space-x-1.5">
-                    <h4 className="font-extrabold text-sm text-white">{telemetry.riderName}</h4>
+                    <h4 className="font-extrabold text-sm text-white">{telemetry.riderName || "Your rider"}</h4>
                     <span className="w-3.5 h-3.5 rounded-full bg-[#00D26A] text-black flex items-center justify-center text-[9px] font-black">✓</span>
                   </div>
-                  <p className="text-[11px] font-medium text-white/60">{telemetry.riderStatus}</p>
+                  <p className="text-[11px] font-medium text-white/60">{telemetry.riderStatus || "On the way to you"}</p>
                 </div>
               </div>
-
-              <a
-                href="tel:916006990032"
-                onClick={() => hapticLight()}
-                className="px-3.5 py-2 rounded-xl bg-[#00D26A]/20 hover:bg-[#00D26A]/30 text-[#00D26A] border border-[#00D26A]/30 text-xs font-bold flex items-center space-x-1.5 transition-all active:scale-95 cursor-pointer"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                <span>Call</span>
-              </a>
             </div>
           )}
 
@@ -501,7 +540,7 @@ export default function OrderTrackingPage() {
                     <div className="flex items-center space-x-2">
                       <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center overflow-hidden shrink-0">
                         {it.img || it.image ? (
-                          <img src={it.img || it.image} alt={it.name} className="w-full h-full object-cover" />
+                          <img src={productImageUrl(it.img || it.image)} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         ) : (
                           <Package className="w-4 h-4 text-white/40" />
                         )}
@@ -541,7 +580,7 @@ export default function OrderTrackingPage() {
                   type="button"
                   onClick={() => {
                     hapticLight();
-                    const text = encodeURIComponent(`Tracking my DASHit order #${formatDisplayId(targetOrderId)} in Anantnag! Arriving in ${telemetry.etaMinutes || 8} mins. Track live here: https://dashit.co.in/track?id=${targetOrderId}`);
+                    const text = encodeURIComponent(`Tracking my DASHit order #${formatDisplayId(targetOrderId)} in Anantnag!${telemetry.etaMinutes ? ` Arriving in ${telemetry.etaMinutes} mins.` : ""}`);
                     window.open(`https://wa.me/?text=${text}`, "_blank");
                   }}
                   className="flex-1 py-2 px-3 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 border border-[#25D366]/30 text-[#25D366] text-xs font-bold flex items-center justify-center space-x-1.5 transition-all active:scale-95 cursor-pointer"

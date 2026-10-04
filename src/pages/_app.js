@@ -19,6 +19,7 @@ import { setDeviceSystemBars } from '../lib/systemBars';
 import { isNative } from '../lib/platform';
 import CookieConsentBanner from '../components/CookieConsentBanner';
 import LaunchBar from '../components/LaunchBar';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { forceUnlockBodyScroll } from '../lib/useBodyScrollLock';
 
 import { EASE_OUT } from '../lib/motion';
@@ -168,27 +169,30 @@ export default function App({ Component, pageProps }) {
   const currentPathRef = useRef(router.pathname);
 
   /* These start the same on the server and the client, so hydration matches
-     (a first render that asked `window` made the two disagree). The layout
-     effect below sets them right before the first paint: no splash for the
-     driver app, internal consoles, returning visits or the plain website. */
+     (a first render that asked `window` made the two disagree).
+
+     They start OFF. They used to start on, which put the splash and an
+     `opacity:0` page wrapper into every exported HTML file: a website visitor
+     saw nothing of the page until all the JavaScript had downloaded and run.
+     Now the page is readable as soon as the HTML and CSS arrive, and the
+     layout effect below turns the splash on, before the first paint, only for
+     an installed app on its first screen. */
   const [isDriverApp, setIsDriverApp] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashHolding, setSplashHolding] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
+  const [splashHolding, setSplashHolding] = useState(false);
 
   useIsomorphicLayoutEffect(() => {
     const isDrv = detectIsDriverApp();
     if (isDrv) {
       setIsDriverApp(true);
-      setShowSplash(false);
-      setSplashHolding(false);
       if (router.pathname !== "/driver") {
         router.replace("/driver");
       }
       return;
     }
-    if (shouldSkipSplash()) {
-      setShowSplash(false);
-      setSplashHolding(false);
+    if (!shouldSkipSplash()) {
+      setShowSplash(true);
+      setSplashHolding(true);
     }
   }, []);
 
@@ -511,16 +515,34 @@ export default function App({ Component, pageProps }) {
             }
           >
             {SHOP_ROUTES.includes(router.pathname) && <LaunchBar />}
-            <Component {...pageProps} />
+            <ErrorBoundary name="page" resetKey={router.asPath}>
+              <Component {...pageProps} />
+            </ErrorBoundary>
           </motion.div>
         )}
+        {/* Each floating widget fails on its own: a broken tracker must never
+            take the page (or the cart bar) down with it. */}
         {!isDriverApp && SHOP_ROUTES.includes(router.pathname) && (
           <>
-            {!['/login', '/orders', '/track'].some((p) => router.pathname.startsWith(p)) && <LiveOrderFloatingTracker />}
-            {!router.pathname.startsWith('/track') && <FloatingCartBar />}
-            {router.pathname !== '/login' && !router.pathname.startsWith('/track') && <BottomNav />}
-            <FlyingBadgeOverlay />
-            <FreeDeliveryToast />
+            {!['/login', '/orders', '/track'].some((p) => router.pathname.startsWith(p)) && (
+              <ErrorBoundary quiet name="order tracker" resetKey={router.pathname}>
+                <LiveOrderFloatingTracker />
+              </ErrorBoundary>
+            )}
+            {!router.pathname.startsWith('/track') && (
+              <ErrorBoundary quiet name="cart bar" resetKey={router.pathname}>
+                <FloatingCartBar />
+              </ErrorBoundary>
+            )}
+            {router.pathname !== '/login' && !router.pathname.startsWith('/track') && (
+              <ErrorBoundary quiet name="bottom menu" resetKey={router.pathname}>
+                <BottomNav />
+              </ErrorBoundary>
+            )}
+            <ErrorBoundary quiet name="cart effects" resetKey={router.pathname}>
+              <FlyingBadgeOverlay />
+              <FreeDeliveryToast />
+            </ErrorBoundary>
           </>
         )}
         {!isDriverApp && !router.pathname.startsWith('/track') && <CookieConsentBanner />}

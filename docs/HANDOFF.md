@@ -6,6 +6,45 @@
 
 ---
 
+## Oct 4, 2026 (evening): blank pages, slow photos, first paint
+
+Web parts VERIFIED on the production export (`out/`, served locally). iOS parts
+are NOT compiled (no Swift on this machine) and need the GitHub Actions build.
+
+- **Website blank after an order (fixed).** Checkout saved the delivery PIN as a
+  number; `LiveOrderFloatingTracker` called `.trim()` on it and threw, and with
+  no error boundary React emptied the whole page on every shop route while the
+  order was live. Now the PIN is saved as text, the tracker accepts either, and
+  `src/components/ErrorBoundary.jsx` wraps the page and each floating widget
+  (`_app.js`), so one broken widget can't blank a page again.
+- **Pages were invisible until all JavaScript ran (fixed).** `_app.js` started
+  with the splash on, so every exported HTML file had the splash plus an
+  `opacity:0` page wrapper. The splash state now starts off and is turned on in
+  the layout effect only for an installed (Capacitor) app.
+- **Slow photos (fixed on web and iOS).** Measured on dashit.co.in: small copies
+  (`/products/thumbs/`) are 4–16 KB with `max-age` of a year; the 1000px
+  originals (`/products/catalog/`) are missing for most products (404, not
+  intermittent), and any photo address with a query string answers 404. Web
+  cards and the iPhone app asked for the original first (iOS: four tries with
+  waits). Both now ask for the small copy first and fall back once
+  (`productImageUrl` in `ProductImage.jsx`, `ProductPhotoStore.swift`); the
+  product page shows the small copy at once and swaps in the original if it
+  exists. Android already did this.
+- **Tracking page** (`src/pages/track/index.js`, `MapTracking.jsx`): the map is
+  built straight away (it used to wait up to 4 s for the road route, on a black
+  screen), a double-build race is closed, and made-up placeholders are gone
+  (rider "Tariq Ahmad", order #98214, PIN 4289, 7 min / 1.7 km). No order shows
+  "No order to track". The hard-coded `tel:` Call button was removed (owner's
+  no-call-button rule). `watchOrder` / `watchOrderTracking` no longer retry
+  every 2 s when Firestore answers "permission-denied".
+- **Checkout** no longer reads saved orders during render (hydration mismatch
+  that made React rebuild the page).
+- **iOS Categories going blank: cause NOT reproduced.** Hardened instead:
+  `CategoriesView` no longer calls `scrollTo` while the grid is being replaced
+  (the per-shelf `.id` already opens at the top), shows a message instead of an
+  empty pane, and `CatalogueDerive` falls back to one shelf per product category
+  if Firestore `categories` matches no products. Check on a device.
+
 ## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
 
 - **Web shop restored** (pages removed in b7c93f3): /shop, /search, /categories,

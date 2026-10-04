@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import { ShieldCheck, Phone, Navigation, Clock, CheckCircle2, Bike, Layers } from "lucide-react";
+import { ShieldCheck, Navigation, Clock } from "lucide-react";
 import { fetchRoadRoute } from "../lib/maps";
 import { calculateLiveOrderEta } from "../lib/deliveryEta";
 import { watchOrder, watchOrderTracking } from "../lib/db";
@@ -57,7 +57,7 @@ function createHubMarkerIcon(L) {
 }
 
 export default function MapTracking({
-  orderId = "DASH-98214",
+  orderId = null,
   initialLat = 33.748413,
   initialLng = 75.150839,
   customerLat = 33.7385,
@@ -75,19 +75,28 @@ export default function MapTracking({
   const polylineCoreRef = useRef(null);
   const latestRiderPosRef = useRef(null);
 
-  // Delivery radius is 5 km; the ETA is computed dynamically from real-time driver coordinates
-  const [etaMinutes, setEtaMinutes] = useState(7);
-  const [distanceKm, setDistanceKm] = useState(1.7);
+  /* Nothing is shown until it is known: these used to start as a made-up
+     rider ("Tariq Ahmad"), 7 minutes and 1.7 km, which the page displayed as
+     if they were this order's. */
+  const [etaMinutes, setEtaMinutes] = useState(null);
+  const [distanceKm, setDistanceKm] = useState(null);
   const [queuePosition, setQueuePosition] = useState(0);
   const [etaStatusLabel, setEtaStatusLabel] = useState("Shortest road route");
   const [riderLocation, setRiderLocation] = useState({ lat: initialLat, lng: initialLng });
-  const [riderName, setRiderName] = useState("Tariq Ahmad");
-  const [riderStatus, setRiderStatus] = useState("On the way on Scooter");
+  const [riderName, setRiderName] = useState("");
+  const [riderStatus, setRiderStatus] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
+    /* Set by the cleanup. The map is built after an async import, and this
+       effect re-runs when the order arrives; without the flag the first run
+       finished late and built a second map on the same element ("Map container
+       is already initialized"), or built one with the old coordinates. */
+    let cancelled = false;
 
-    import("leaflet").then(async (L) => {
+    import("leaflet").then((L) => {
+      if (cancelled || mapInstanceRef.current || !mapContainerRef.current) return;
+
       delete L.Icon.Default.prototype._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
@@ -95,90 +104,93 @@ export default function MapTracking({
         shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
       });
 
-      if (!mapInstanceRef.current && mapContainerRef.current) {
-        const startPoint = latestRiderPosRef.current
-          ? [latestRiderPosRef.current.lat, latestRiderPosRef.current.lng]
-          : [initialLat, initialLng];
-        const endPoint = [customerLat, customerLng];
+      const startPoint = latestRiderPosRef.current
+        ? [latestRiderPosRef.current.lat, latestRiderPosRef.current.lng]
+        : [initialLat, initialLng];
+      const endPoint = [customerLat, customerLng];
+      const hubPoint = [initialLat, initialLng];
 
-        // Query real turn-by-turn shortest road coordinates across Anantnag
-        const roadRoute = await fetchRoadRoute(initialLat, initialLng, customerLat, customerLng);
-        setEtaMinutes(roadRoute.durationMins);
-        setDistanceKm(roadRoute.distanceKm);
+      /* The map goes up straight away. It used to wait for the road route
+         (a public server that can take its whole 4-second timeout), and the
+         tracking screen stayed black until that answered. */
+      const map = L.map(mapContainerRef.current, {
+        center: [(initialLat + customerLat) / 2, (initialLng + customerLng) / 2],
+        zoom: 15,
+        zoomControl: false,
+        attributionControl: false
+      });
 
-        // Initialize Google Maps styled map container
-        const map = L.map(mapContainerRef.current, {
-          center: [(initialLat + customerLat) / 2, (initialLng + customerLng) / 2],
-          zoom: 15,
-          zoomControl: false,
-          attributionControl: false
-        });
+      L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
+        subdomains: ["0", "1", "2", "3"],
+        maxZoom: 20,
+        attribution: "© Google Maps"
+      }).addTo(map);
 
-        // Official Google Maps Vector Road Tiles
-        L.tileLayer("https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", {
-          subdomains: ["0", "1", "2", "3"],
-          maxZoom: 20,
-          attribution: "© Google Maps"
-        }).addTo(map);
+      // Route: white casing under an orange core. Empty until the route arrives.
+      const casingLine = L.polyline([], {
+        color: "#ffffff",
+        weight: 8,
+        opacity: 0.95,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(map);
 
-        // DASHit Turn-by-Turn Road Route: crisp white casing + vibrant orange navigation core
-        const casingLine = L.polyline(roadRoute.points, {
-          color: "#ffffff",
-          weight: 8,
-          opacity: 0.95,
-          lineCap: "round",
-          lineJoin: "round"
-        }).addTo(map);
+      const coreLine = L.polyline([], {
+        color: "#FF5B00",
+        weight: 5,
+        opacity: 1,
+        lineCap: "round",
+        lineJoin: "round"
+      }).addTo(map);
 
-        const coreLine = L.polyline(roadRoute.points, {
-          color: "#FF5B00",
-          weight: 5,
-          opacity: 1,
-          lineCap: "round",
-          lineJoin: "round"
-        }).addTo(map);
+      const hubMarker = L.marker(hubPoint, { icon: createHubMarkerIcon(L) }).addTo(map);
 
-        // DASHit Dark Store Hub marker matching Android hubMarkerBitmap
-        const hubPoint = [initialLat, initialLng];
-        const hubIcon = createHubMarkerIcon(L);
-        const hubMarker = L.marker(hubPoint, { icon: hubIcon }).addTo(map);
+      const initialBearing = calculateBearing(startPoint[0], startPoint[1], customerLat, customerLng);
+      const riderMarker = L.marker(startPoint, {
+        icon: create3DRiderIcon(L, getRiderAssetForHeading(initialBearing))
+      }).addTo(map);
 
-        // 3D Delivery Rider Scooter Marker facing destination using 3D heading sprite
-        const initialBearing = calculateBearing(startPoint[0], startPoint[1], customerLat, customerLng);
-        const riderIcon = create3DRiderIcon(L, getRiderAssetForHeading(initialBearing));
-        const riderMarker = L.marker(startPoint, { icon: riderIcon }).addTo(map);
+      const destMarker = L.marker(endPoint, { icon: create3DDestinationIcon(L) }).addTo(map);
 
-        // 3D Destination Location Pin
-        const customerIcon = create3DDestinationIcon(L);
-        const destMarker = L.marker(endPoint, { icon: customerIcon }).addTo(map);
+      // Leave room for the order card that covers the bottom of the full-screen map.
+      const bounds = L.latLngBounds([startPoint, endPoint, hubPoint]);
+      const paddingConfig = fullScreen
+        ? { paddingBottomRight: [30, 260], paddingTopLeft: [40, 40], maxZoom: 16 }
+        : { padding: [35, 35] };
+      map.fitBounds(bounds, paddingConfig);
 
-        // Fit map bounds neatly to encompass route with padding, offsetting upward in fullScreen mode
-        const bounds = L.latLngBounds([startPoint, endPoint, hubPoint]);
-        const paddingConfig = fullScreen
-          ? { paddingBottomRight: [30, 260], paddingTopLeft: [40, 40], maxZoom: 16 }
-          : { padding: [35, 35] };
-        map.fitBounds(bounds, paddingConfig);
+      mapInstanceRef.current = map;
+      riderMarkerRef.current = riderMarker;
+      hubMarkerRef.current = hubMarker;
+      destinationMarkerRef.current = destMarker;
+      polylineGlowRef.current = casingLine;
+      polylineCoreRef.current = coreLine;
 
-        mapInstanceRef.current = map;
-        riderMarkerRef.current = riderMarker;
-        hubMarkerRef.current = hubMarker;
-        destinationMarkerRef.current = destMarker;
-        polylineGlowRef.current = casingLine;
-        polylineCoreRef.current = coreLine;
+      setTimeout(() => {
+        if (!cancelled && mapInstanceRef.current) mapInstanceRef.current.invalidateSize();
+      }, 200);
 
-        setTimeout(() => {
-          if (mapInstanceRef.current) {
-            mapInstanceRef.current.invalidateSize();
+      fetchRoadRoute(startPoint[0], startPoint[1], customerLat, customerLng)
+        .then((roadRoute) => {
+          if (cancelled || !roadRoute?.points) return;
+          setEtaMinutes((prev) => prev ?? roadRoute.durationMins);
+          setDistanceKm((prev) => prev ?? roadRoute.distanceKm);
+          // A live rider position may already have drawn a fresher route.
+          if (polylineCoreRef.current && polylineCoreRef.current.getLatLngs().length === 0) {
+            polylineCoreRef.current.setLatLngs(roadRoute.points);
+            polylineGlowRef.current?.setLatLngs(roadRoute.points);
           }
-        }, 200);
-      }
+        })
+        .catch(() => {});
+    }).catch((e) => {
+      console.warn("Map failed to load:", e?.message);
     });
 
     // Realtime Firestore listeners for driver location and order status
     let animationFrameId;
 
     const unsubTracking = watchOrderTracking(orderId, (data) => {
-      if (!data) return;
+      if (!data || cancelled) return;
       const newLat = data.latitude || data.lat;
       const newLng = data.longitude || data.lng;
       if (!newLat || !newLng) return;
@@ -217,7 +229,7 @@ export default function MapTracking({
 
       // Dynamically update road route polyline from live rider position
       fetchRoadRoute(newLat, newLng, customerLat, customerLng).then((route) => {
-        if (route?.points && polylineCoreRef.current && polylineGlowRef.current) {
+        if (!cancelled && route?.points && polylineCoreRef.current && polylineGlowRef.current) {
           polylineCoreRef.current.setLatLngs(route.points);
           polylineGlowRef.current.setLatLngs(route.points);
         }
@@ -265,16 +277,8 @@ export default function MapTracking({
     });
 
     const unsubOrder = watchOrder(orderId, (ord) => {
-      if (!ord) return;
+      if (!ord || cancelled) return;
       if (ord.driverName) setRiderName(ord.driverName);
-      if (ord.status) setRiderStatus(ord.status);
-      onTelemetryChange?.({
-        etaMinutes,
-        distanceKm,
-        riderName: ord.driverName || riderName,
-        riderStatus: ord.status || riderStatus,
-        queuePosition
-      });
     });
 
     const handleWindowResize = () => {
@@ -285,6 +289,7 @@ export default function MapTracking({
     window.addEventListener("resize", handleWindowResize);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("resize", handleWindowResize);
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
       if (typeof unsubTracking === "function") unsubTracking();
@@ -293,8 +298,20 @@ export default function MapTracking({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      riderMarkerRef.current = null;
+      polylineGlowRef.current = null;
+      polylineCoreRef.current = null;
     };
   }, [orderId, initialLat, initialLng, customerLat, customerLng, fullScreen]);
+
+  /* What the page around the map shows. Sent from an effect so it always
+     carries the current numbers (it used to be sent from inside a listener
+     that only ever saw the first render's placeholders). */
+  const telemetryCallbackRef = useRef(onTelemetryChange);
+  telemetryCallbackRef.current = onTelemetryChange;
+  useEffect(() => {
+    telemetryCallbackRef.current?.({ etaMinutes, distanceKm, riderName, riderStatus, queuePosition });
+  }, [etaMinutes, distanceKm, riderName, riderStatus, queuePosition]);
 
   const recenterMap = () => {
     if (mapInstanceRef.current) {
@@ -338,8 +355,8 @@ export default function MapTracking({
           <Clock className="w-4 h-4 text-amber-600 shrink-0 animate-pulse" />
           <span className="font-semibold leading-snug">
             {queuePosition === 1
-              ? "Rider Tariq is completing a nearby delivery before yours."
-              : `Rider Tariq has ${queuePosition} nearby deliveries ahead of yours.`}
+              ? `${riderName || "Your rider"} is completing a nearby delivery before yours.`
+              : `${riderName || "Your rider"} has ${queuePosition} nearby deliveries ahead of yours.`}
           </span>
         </div>
       )}
@@ -354,7 +371,7 @@ export default function MapTracking({
             <span className="w-2.5 h-2.5 rounded-full bg-[#FF5B00] animate-pulse" />
             <div>
               <span className="text-[11px] font-black text-slate-900 tracking-tight block leading-tight dark:text-content">
-                {etaMinutes} min ({distanceKm} km)
+                {etaMinutes ? `${etaMinutes} min${distanceKm ? ` (${distanceKm} km)` : ""}` : "Finding the route…"}
               </span>
               <span className="text-[9px] font-semibold text-emerald-700">
                 {etaStatusLabel}
@@ -380,25 +397,16 @@ export default function MapTracking({
       <div className="bg-slate-50 rounded-2xl p-3 flex items-center justify-between border border-slate-100 dark:bg-surface-raised dark:border-line-soft">
         <div className="flex items-center space-x-2.5">
           <div className="w-11 h-11 bg-orange-500/10 border border-orange-500/20 rounded-2xl flex items-center justify-center p-1 shadow-sm overflow-hidden dark:bg-orange-500/15">
-            <img src="/rider/rider_180.png" alt={riderName} className="w-full h-full object-contain filter drop-shadow-sm" />
+            <img src="/rider/rider_180.png" alt="" className="w-full h-full object-contain filter drop-shadow-sm" />
           </div>
           <div>
             <div className="flex items-center space-x-1.5">
-              <h4 className="font-extrabold text-xs text-slate-900 dark:text-content">{riderName}</h4>
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-content">{riderName || "Your rider"}</h4>
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             </div>
-            <p className="text-[10px] font-medium text-slate-500 dark:text-content-muted">{riderStatus}</p>
+            <p className="text-[10px] font-medium text-slate-500 dark:text-content-muted">{riderStatus || "On the way to you"}</p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => alert("Calling delivery partner...")}
-          className="p-2.5 bg-white hover:bg-orange-50 text-[#FF5B00] rounded-xl border border-slate-200 shadow-sm transition-all active:scale-90 flex items-center space-x-1.5 text-xs font-bold cursor-pointer dark:bg-surface-raised dark:border-line"
-        >
-          <Phone className="w-3.5 h-3.5" />
-          <span className="text-[11px]">Call</span>
-        </button>
       </div>
     </div>
   );

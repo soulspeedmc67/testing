@@ -82,10 +82,6 @@ export default function LiveOrderFloatingTracker() {
   const router = useRouter();
   const { isNavVisible } = useScrollChrome();
 
-  if (router.pathname === "/orders" || router.pathname?.startsWith("/orders")) {
-    return null;
-  }
-
   const [etaMinutes, setEtaMinutes] = useState(null);
   const [progressPct, setProgressPct] = useState(18);
   const [orderStatus, setOrderStatus] = useState("Placed");
@@ -224,7 +220,10 @@ export default function LiveOrderFloatingTracker() {
   if (!isCustomerPage) return null;
 
   const StageIcon = stageIconFor(orderStatus);
-  const otpCode = activeOrder.otp?.trim();
+  /* Checkout saved the PIN as a number and Firestore returns it as text.
+     Calling .trim() on the number threw and blanked every shop page for as
+     long as the order was live. */
+  const otpCode = String(activeOrder.otp ?? "").trim();
   const effectiveProgress = isDelivered ? 1 : Math.max(0.12, Math.min(1, progressPct / 100, statusDetails.progress));
 
   const handleOpenTracking = () => {
