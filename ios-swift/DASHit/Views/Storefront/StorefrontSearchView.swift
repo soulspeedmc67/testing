@@ -17,6 +17,8 @@ struct StorefrontSearchView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var recents = RecentSearches.shared
     @FocusState private var isFieldFocused: Bool
+    /// The small "Categories" button swaps the recent searches for the shop's categories.
+    @State private var showsCategories = false
     #if TOBACCO_SECTION
     @State private var isTobaccoDeclarationOpen = false
     @State private var isTobaccoListOpen = false
@@ -124,18 +126,45 @@ struct StorefrontSearchView: View {
 
     private var idle: some View {
         VStack(alignment: .leading, spacing: 28) {
-            if !recents.terms.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
-                        sectionTitle("Recent searches")
-                        Spacer()
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .center, spacing: 8) {
+                    sectionTitle(showsCategories ? "Categories" : (recents.terms.isEmpty ? "Search the shop" : "Recent searches"))
+                    Spacer()
+                    Button(showsCategories ? "History" : "Categories") {
+                        HapticsManager.shared.tick()
+                        showsCategories.toggle()
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
+                    if !showsCategories && !recents.terms.isEmpty {
                         Button("Clear") {
                             HapticsManager.shared.tick()
                             withAnimation(.dashitSnappy) { recents.clear() }
                         }
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.textMuted)
+                        .foregroundColor(.brandAccent)
                     }
+                }
+                if showsCategories {
+                    ForEach(vm.departments) { department in
+                        Text(department.title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.textMuted)
+                            .padding(.top, 12)
+                        ForEach(department.tiles) { tile in
+                            termRow(icon: "square.grid.2x2", title: Text(verbatim: tile.name), fillText: nil) {
+                                vm.selectedCategory = tile.name
+                                onClose()
+                            }
+                        }
+                    }
+                }
+            }
+            if !showsCategories && !recents.terms.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(recents.terms, id: \.self) { term in
                         termRow(icon: "clock.arrow.circlepath", title: Text(verbatim: term), fillText: term) {
                             run(term)
@@ -145,7 +174,7 @@ struct StorefrontSearchView: View {
             }
 
             let popular = vm.popularProducts
-            if !popular.isEmpty {
+            if !showsCategories && !popular.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     sectionTitle("Popular right now")
                     ForEach(popular) { product in

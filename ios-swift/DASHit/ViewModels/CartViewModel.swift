@@ -255,6 +255,6 @@ final class CartViewModel: ObservableObject {
         let threshold = CartBillBreakdown.freeDeliveryThreshold
         guard previousSubtotal < threshold, bill.subtotal >= threshold, !hasCelebratedFreeDelivery else { return }
         hasCelebratedFreeDelivery = true
-        FreeDeliveryCelebration.shared.celebrate()
+        // No "free delivery unlocked" toast: delivery is charged on every order now.
     }
 }

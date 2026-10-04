@@ -90,7 +90,13 @@ class FirestoreRepository {
         val price = (data["price"] as? Number)?.toDouble() ?: 0.0
         val originalPrice = (data["originalPrice"] as? Number)?.toDouble() ?: (data["mrp"] as? Number)?.toDouble()
         val unit = (data["unit"] as? String) ?: (data["weight"] as? String) ?: ""
-        val cat = shopCategory((data["cat"] as? String) ?: (data["category"] as? String) ?: "Other")
+        // The shelf comes from the product's name (same rules as the website):
+        // the catalogue's own category put cookies in Dairy and cola in Biscuits.
+        val shelf = com.dashit.app.data.Shelves.of(
+            name,
+            shopCategory((data["cat"] as? String) ?: (data["category"] as? String) ?: "Other")
+        )
+        val cat = shelf.cat
         val rawImg = (data["img"] as? String) ?: (data["image"] as? String) ?: ""
         // No photo shows the card's plain tile: a guessed photo could be a
         // different product, and shoppers order what they see.
@@ -130,7 +136,8 @@ class FirestoreRepository {
             variants = variants,
             ageRestricted = ageRestricted,
             minAge = minAge,
-            inStock = inStock
+            inStock = inStock,
+            sub = shelf.sub
         )
     }
 

@@ -100,6 +100,9 @@ export function buildReceiptText(order, { origin = "" } = {}) {
   lines.push(`Subtotal: ${money(subtotal)}`);
   if (discount > 0) lines.push(`Discount: -${money(discount)}`);
   lines.push(`Delivery: ${deliveryFee > 0 ? money(deliveryFee) : "Free"}`);
+  // ₹11 on every order; older orders saved without it show what the total implies.
+  const handlingFee = Number(order.handlingFee ?? Math.max(0, total - subtotal - deliveryFee + discount)) || 0;
+  if (handlingFee > 0) lines.push(`Handling charge: ${money(handlingFee)}`);
   lines.push(
     isPaid ? `*Total paid: ${money(total)}*` : `*To pay on delivery: ${money(total)}*`
   );

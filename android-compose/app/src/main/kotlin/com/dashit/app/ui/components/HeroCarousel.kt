@@ -181,7 +181,6 @@ fun WelcomeHeroBanner(
     modifier: Modifier = Modifier,
     @Suppress("UNUSED_PARAMETER") onTap: () -> Unit = {}
 ) {
-    val threshold = com.dashit.app.data.model.CartBillBreakdown.FREE_DELIVERY_THRESHOLD.toInt()
     Column(modifier = modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(Modifier.size(width = 14.dp, height = 2.dp).background(DashitColors.BrandOrange))
@@ -195,9 +194,9 @@ fun WelcomeHeroBanner(
         }
         Text(
             text = androidx.compose.ui.text.buildAnnotatedString {
-                append("Free delivery on\norders above ")
+                append("Groceries at your\ndoor in ")
                 pushStyle(androidx.compose.ui.text.SpanStyle(color = DashitColors.BrandAccent))
-                append("₹$threshold")
+                append("minutes")
                 pop()
             },
             color = DashitColors.TextPrimary,
@@ -207,7 +206,7 @@ fun WelcomeHeroBanner(
             modifier = Modifier.padding(top = 8.dp)
         )
         Text(
-            text = "Fresh groceries at your door in minutes.",
+            text = "Lowest delivery charge on orders above ₹299.",
             color = DashitColors.TextMuted,
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 6.dp)

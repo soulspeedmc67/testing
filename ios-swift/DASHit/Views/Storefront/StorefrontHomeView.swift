@@ -75,12 +75,10 @@ struct StorefrontHomeView: View {
                                 .padding(.top, 30)
                             }
 
-                            ForEach(vm.departments) { department in
-                                departmentSection(department)
-                                    .padding(.top, 30)
-                            }
-
-                            ForEach(vm.rails) { rail in
+                            // A few everyday categories only: every category
+                            // and a row for each was a wall of choices. The
+                            // rest are on the Categories tab.
+                            ForEach(everydayRails) { rail in
                                 ProductRailView(
                                     title: rail.title,
                                     products: rail.products,
@@ -397,13 +395,13 @@ struct StorefrontHomeView: View {
                     .tracking(1.6)
                     .foregroundColor(.textMuted)
             }
-            (Text("Free delivery on\norders above ")
-                + Text("₹\(Int(CartBillBreakdown.freeDeliveryThreshold))").foregroundColor(.brandAccent))
+            (Text("Groceries at your\ndoor in ")
+                + Text("minutes").foregroundColor(.brandAccent))
                 .font(.system(size: 24, weight: .heavy))
                 .foregroundColor(.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
-            Text("Fresh groceries at your door in minutes.")
+            Text("Lowest delivery charge on orders above ₹299.")
                 .font(.system(size: 13))
                 .foregroundColor(.textMuted)
                 .padding(.top, 6)
@@ -412,6 +410,12 @@ struct StorefrontHomeView: View {
         .padding(.horizontal, 16)
         .padding(.top, 6)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Rows for the everyday categories (all rows if none of them exist).
+    private var everydayRails: [ProductRail] {
+        let picked = vm.rails.filter { CatalogueDerive.everyday.contains(CatalogueDerive.key($0.title)) }
+        return picked.isEmpty ? Array(vm.rails.prefix(7)) : picked
     }
 
     private var categorySection: some View {

@@ -537,9 +537,14 @@ private fun BillDetailsCard(bill: CartBillBreakdown) {
         )
 
         BillRow(
-            label = "Delivery partner fee",
+            label = "Delivery charge",
             value = if (bill.deliveryFee == 0.0) "FREE" else "₹${bill.deliveryFee.toInt()}",
             valueColor = if (bill.deliveryFee == 0.0) DashitColors.Positive else DashitColors.TextPrimary
+        )
+
+        BillRow(
+            label = "Handling charge",
+            value = "₹${bill.handlingFee.toInt()}"
         )
 
         if (bill.couponDiscount > 0) {

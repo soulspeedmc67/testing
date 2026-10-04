@@ -71,6 +71,8 @@ export default function PrintPackingSlip({ order, onClose }) {
   // asserted as free.
   const deliveryFee = Number(order.deliveryFee ?? 0);
   const discount = Number(order.discount ?? order.couponDiscount ?? 0);
+  // ₹11 on every order; older orders saved without it show what the total implies.
+  const handlingFee = Number(order.handlingFee ?? Math.max(0, grandTotal - subtotal - deliveryFee + discount)) || 0;
   const unitCount = items.reduce((n, it) => n + (it.qty || it.quantity || 1), 0);
 
   const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
@@ -78,7 +80,7 @@ export default function PrintPackingSlip({ order, onClose }) {
 
   const slip = {
     orderId, orderTime, isPaid, customerName, customerPhone, address, items,
-    lineTotal, money, subtotal, unitCount, discount, deliveryFee, grandTotal,
+    lineTotal, money, subtotal, unitCount, discount, deliveryFee, handlingFee, grandTotal,
   };
 
   return (
@@ -139,7 +141,7 @@ export default function PrintPackingSlip({ order, onClose }) {
 
 const SLIP_FONT = "ui-monospace, SFMono-Regular, Menlo, monospace";
 
-function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, address, items, lineTotal, money, subtotal, unitCount, discount, deliveryFee, grandTotal }) {
+function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, address, items, lineTotal, money, subtotal, unitCount, discount, deliveryFee, handlingFee, grandTotal }) {
   return (
     <>
           <header className="text-center pb-3 mb-3 border-b border-dashed border-slate-300">
@@ -185,6 +187,7 @@ function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, add
             <Row label={`Subtotal (${unitCount} ${unitCount === 1 ? "unit" : "units"})`} value={money(subtotal)} />
             {discount > 0 && <Row label="Discount" value={"-" + money(discount)} />}
             <Row label="Delivery" value={deliveryFee > 0 ? money(deliveryFee) : "Free"} />
+            {handlingFee > 0 && <Row label="Handling charge" value={money(handlingFee)} />}
             <div className="flex justify-between pt-2 mt-1 border-t border-slate-900 text-sm font-bold">
               <span>{isPaid ? "Total (paid)" : "Collect"}</span>
               <span>{isPaid ? money(0) : money(grandTotal)}</span>

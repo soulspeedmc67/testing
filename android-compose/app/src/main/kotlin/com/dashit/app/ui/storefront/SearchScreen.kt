@@ -98,10 +98,13 @@ fun SearchScreen(
     onOpenProduct: (Product) -> Unit,
     onAdd: (Product) -> Unit,
     onDecrement: (Product) -> Unit,
+    onPickCategory: (String) -> Unit = {},
     onClose: () -> Unit
 ) {
     val view = LocalView.current
     val context = LocalContext.current
+    // The small "Categories" button swaps the recent searches for the shop's categories.
+    var showCategories by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -345,28 +348,84 @@ fun SearchScreen(
                 }
 
                 query.isEmpty() -> {
-                    if (recents.isNotEmpty()) {
-                        item(key = "recent_title") {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                SectionTitle("Recent searches", modifier = Modifier.weight(1f))
+                    item(key = "recent_title") {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            SectionTitle(
+                                when {
+                                    showCategories -> "Categories"
+                                    recents.isNotEmpty() -> "Recent searches"
+                                    else -> "Popular right now"
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = if (showCategories) "History" else "Categories",
+                                color = DashitColors.TextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(1.dp, DashitColors.Hairline, RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        HapticsManager.selection(view)
+                                        showCategories = !showCategories
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 7.dp)
+                            )
+                            if (!showCategories && recents.isNotEmpty()) {
                                 Text(
                                     text = "Clear",
-                                    color = DashitColors.TextMuted,
+                                    color = DashitColors.BrandAccent,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     modifier = Modifier
+                                        .padding(start = 6.dp)
                                         .clip(RoundedCornerShape(8.dp))
                                         .clickable {
                                             HapticsManager.selection(view)
                                             RecentSearches.clear()
                                         }
-                                        .padding(horizontal = 6.dp, vertical = 6.dp)
+                                        .padding(horizontal = 8.dp, vertical = 7.dp)
                                 )
                             }
                         }
+                    }
+                    if (showCategories) {
+                        val departments = com.dashit.app.data.Departments.of(
+                            categories.map { com.dashit.app.data.model.CategoryTile(it.id, it.name, emptyList(), 0) }
+                        )
+                        departments.forEach { dept ->
+                            item(key = "dept_${dept.id}") {
+                                Text(
+                                    text = dept.name,
+                                    color = DashitColors.TextMuted,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(top = 14.dp, bottom = 2.dp)
+                                )
+                            }
+                            items(dept.tiles, key = { "cat_${it.id}" }) { tile ->
+                                Text(
+                                    text = tile.name,
+                                    color = DashitColors.TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            HapticsManager.selection(view)
+                                            onPickCategory(tile.name)
+                                        }
+                                        .padding(vertical = 11.dp)
+                                )
+                            }
+                        }
+                    } else {
+                    if (recents.isNotEmpty()) {
                         items(recents, key = { "recent_$it" }) { term ->
                             TermRow(
                                 icon = Icons.Default.History,
@@ -381,10 +440,11 @@ fun SearchScreen(
                     }
                     val popular = ProductSearch.popular(products)
                     if (popular.isNotEmpty()) {
-                        item(key = "popular_title") {
-                            SectionTitle("Popular right now", top = if (recents.isEmpty()) 0.dp else 24.dp)
+                        if (recents.isNotEmpty()) {
+                            item(key = "popular_title") { SectionTitle("Popular right now", top = 24.dp) }
                         }
                         popular.forEach { productRow(it, "") }
+                    }
                     }
                 }
 

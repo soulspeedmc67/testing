@@ -352,6 +352,7 @@ class OrderRepository(
             },
             "subtotal" to order.subtotal,
             "deliveryFee" to order.deliveryFee,
+            "handlingFee" to CartBillBreakdown.HANDLING_FEE,
             "discount" to order.discount,
             "totalAmount" to order.grandTotal,
             "total" to order.grandTotal,

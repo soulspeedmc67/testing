@@ -1,11 +1,16 @@
 import SwiftUI
 
-/// Categories tab: a vertical category sidebar on the left and the selected
-/// category's products in a two-column grid on the right.
+/// Categories tab: a few departments down the left, and on the right the
+/// picked department's categories as chips, the shelves inside the picked
+/// category as smaller chips, and its products in a two-column grid.
+/// (The sidebar used to list every category, which is a lot to take in.)
 struct CategoriesView: View {
     @StateObject private var vm = StorefrontViewModel()
     @ObservedObject private var cart = CartViewModel.shared
+    @State private var selectedDepartmentID: String? = nil
     @State private var selectedCategoryID: String? = nil
+    /// The shelf inside the category; "" shows all of it.
+    @State private var selectedSub = ""
     @State private var detailProduct: Product? = nil
     @State private var opensCartAfterDetail = false
     @State private var ageGateProduct: Product? = nil
@@ -13,15 +18,41 @@ struct CategoriesView: View {
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 2)
     private static let sidebarWidth: CGFloat = 88
 
-    private var tiles: [CategoryTile] { vm.categoryTiles }
+    private var departments: [Department] { vm.departments }
+
+    private var selectedDepartment: Department? {
+        departments.first(where: { $0.id == selectedDepartmentID }) ?? departments.first
+    }
+
+    /// The categories inside the picked department.
+    private var tiles: [CategoryTile] { selectedDepartment?.tiles ?? [] }
 
     private var selectedTile: CategoryTile? {
         tiles.first(where: { $0.id == selectedCategoryID }) ?? tiles.first
     }
 
-    private var products: [Product] {
+    private var shelfProducts: [Product] {
         guard let name = selectedTile?.name else { return [] }
         return vm.products(inCategory: name)
+    }
+
+    /// The shelves inside the picked category, biggest first.
+    private var subShelves: [String] {
+        var counts: [String: Int] = [:]
+        for product in shelfProducts where !product.sub.isEmpty {
+            counts[product.sub, default: 0] += 1
+        }
+        return counts.sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }.map(\.key)
+    }
+
+    private var products: [Product] {
+        selectedSub.isEmpty ? shelfProducts : shelfProducts.filter { $0.sub == selectedSub }
+    }
+
+    /// One chip in a row of choices.
+    private struct Chip: Identifiable {
+        let id: String
+        let label: String
     }
 
     var body: some View {
@@ -88,8 +119,8 @@ struct CategoriesView: View {
                 CategorySidebarSkeleton()
             } else {
                 LazyVStack(spacing: 2) {
-                    ForEach(tiles) { tile in
-                        sidebarItem(tile)
+                    ForEach(departments) { department in
+                        sidebarItem(department)
                     }
                 }
                 .padding(.vertical, 6)
@@ -100,13 +131,22 @@ struct CategoriesView: View {
         .background(Color.surfaceSunken)
     }
 
-    private func sidebarItem(_ tile: CategoryTile) -> some View {
-        let isSelected = tile.id == selectedTile?.id
+    private func sidebarItem(_ department: Department) -> some View {
+        let isSelected = department.id == selectedDepartment?.id
+        // The department shows its first category's photo.
+        let tile = CategoryTile(
+            id: department.id,
+            name: department.title,
+            previewImages: department.tiles.first?.previewImages ?? [],
+            productCount: department.tiles.reduce(0) { $0 + $1.productCount }
+        )
 
         return Button {
             guard !isSelected else { return }
             HapticsManager.shared.selection()
-            selectedCategoryID = tile.id
+            selectedDepartmentID = department.id
+            selectedCategoryID = nil
+            selectedSub = ""
         } label: {
             VStack(spacing: 6) {
                 Color.surfaceMuted
@@ -167,11 +207,22 @@ struct CategoriesView: View {
                     ProductGridSkeleton(columns: 2, count: 6)
                 }
                 .padding(12)
-            } else if products.isEmpty {
+            } else if shelfProducts.isEmpty {
                 // Never a bare pane: say what is going on.
                 emptyShelf
             } else {
                 VStack(alignment: .leading, spacing: 12) {
+                    chipRow(tiles.map { Chip(id: $0.id, label: $0.name) }, selected: selectedTile?.id ?? "", filled: true) { id in
+                        HapticsManager.shared.selection()
+                        selectedCategoryID = id
+                        selectedSub = ""
+                    }
+                    if subShelves.count > 1 {
+                        chipRow([Chip(id: "", label: "All")] + subShelves.map { Chip(id: $0, label: $0) }, selected: selectedSub, filled: false) { id in
+                            selectedSub = id
+                        }
+                    }
+
                     HStack(alignment: .firstTextBaseline) {
                         Text(selectedTile?.name ?? "")
                             .font(.system(size: 17, weight: .bold))
@@ -182,7 +233,7 @@ struct CategoriesView: View {
                             .foregroundColor(.textMuted)
                     }
 
-                    PagedProductGrid(products: products, listKey: selectedTile?.id ?? "", columns: gridColumns) { product in
+                    PagedProductGrid(products: products, listKey: "\(selectedTile?.id ?? "")|\(selectedSub)", columns: gridColumns) { product in
                         ProductCardView(
                             product: product,
                             onOpen: { detailProduct = product },
@@ -196,7 +247,40 @@ struct CategoriesView: View {
             }
         }
         .coordinateSpace(.named("categoriesScroll"))
-        .id(selectedTile?.id ?? "")
+        .id("\(selectedTile?.id ?? "")|\(selectedSub)")
+    }
+
+    /// A row of chips that scrolls sideways. `filled` marks the picked one
+    /// solid (categories); otherwise with an orange outline (shelves).
+    private func chipRow(_ chips: [Chip], selected: String, filled: Bool, onSelect: @escaping (String) -> Void) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(chips) { chip in
+                    chipButton(chip, isSelected: chip.id == selected, filled: filled, onSelect: onSelect)
+                }
+            }
+        }
+    }
+
+    private func chipButton(_ chip: Chip, isSelected: Bool, filled: Bool, onSelect: @escaping (String) -> Void) -> some View {
+        let shape = RoundedRectangle(cornerRadius: filled ? 12 : 16, style: .continuous)
+        let background: Color = (isSelected && filled) ? .textPrimary : .surfaceRaised
+        let border: Color = isSelected ? (filled ? .textPrimary : .brandOrange) : .hairline
+        let text: Color = isSelected ? (filled ? .surface : .brandAccent) : .textSecondary
+
+        return Button {
+            onSelect(chip.id)
+        } label: {
+            Text(chip.label)
+                .font(.system(size: filled ? 13 : 12, weight: isSelected ? .bold : .medium))
+                .foregroundColor(text)
+                .lineLimit(1)
+                .padding(.horizontal, 12)
+                .padding(.vertical, filled ? 8 : 6)
+                .background(background, in: shape)
+                .overlay(shape.strokeBorder(border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyShelf: some View {
@@ -204,10 +288,10 @@ struct CategoriesView: View {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: 28))
                 .foregroundColor(.textFaint)
-            Text(tiles.isEmpty ? "No categories yet" : "Nothing here right now")
+            Text(departments.isEmpty ? "No categories yet" : "Nothing here right now")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.textSecondary)
-            Text(tiles.isEmpty ? "Products are still on their way. Check back in a moment." : "Pick another category on the left.")
+            Text(departments.isEmpty ? "Products are still on their way. Check back in a moment." : "Pick another category on the left.")
                 .font(.system(size: 13))
                 .foregroundColor(.textMuted)
         }

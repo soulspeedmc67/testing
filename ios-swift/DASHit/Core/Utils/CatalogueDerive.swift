@@ -126,30 +126,31 @@ enum CatalogueDerive {
         return derived
     }
 
-    /// Categories grouped into store departments, Blinkit-style; anything that
-    /// fits none of them lands in "More to explore".
+    /// The few departments the categories sit under, same as the website
+    /// (GROUPS in src/lib/shopAisles.js): a shopper picks one of five, then one
+    /// of the handful of categories inside it. A category not named here goes
+    /// under the last one.
+    private static let departmentGroups: [(id: String, title: String, names: Set<String>)] = [
+        ("fresh", "Fresh & daily", ["dairy", "bakery", "fruits", "vegetables", "chicken", "chicken & fish", "meat & fish"]),
+        ("snacks", "Snacks & drinks", ["snacks", "chips", "biscuits", "beverages", "sweets & chocolates", "ice cream"]),
+        ("cooking", "Cooking & pantry", ["staples", "spices", "sauces & spreads", "instant food", "dry fruits"]),
+        ("care", "Personal & baby care", ["personal care", "baby care", "health & wellness"]),
+        ("home", "Home & more", [])
+    ]
+
+    /// The everyday categories the home screen leads with.
+    static let everyday: Set<String> = ["dairy", "bakery", "snacks", "biscuits", "beverages", "staples", "instant food"]
+
     private static func departments(from tiles: [CategoryTile]) -> [Department] {
-        let groups: [(title: String, keys: [String])] = [
-            ("Fresh & Daily", ["dairy", "fruit", "vegetable", "egg", "chicken", "meat", "fish", "bread"]),
-            ("Grocery & Kitchen", ["staple", "grocery", "atta", "rice", "dal", "oil", "spice", "masala", "instant", "kitchen"]),
-            ("Snacks & Drinks", ["snack", "chip", "namkeen", "biscuit", "cookie", "bakery", "beverage", "drink", "juice", "sweet", "chocolate"]),
-            ("Home & Household", ["home", "clean", "household", "care"])
-        ]
-        var remaining = tiles
-        var result: [Department] = []
-        for group in groups {
-            let matched = remaining.filter { tile in
-                let name = tile.name.lowercased()
-                return group.keys.contains { name.contains($0) }
-            }
-            guard !matched.isEmpty else { continue }
-            let matchedIds = Set(matched.map(\.id))
-            remaining.removeAll { matchedIds.contains($0.id) }
-            result.append(Department(id: group.title, title: group.title, tiles: matched))
+        var buckets: [String: [CategoryTile]] = [:]
+        for tile in tiles {
+            let name = key(tile.name)
+            let id = departmentGroups.first(where: { $0.names.contains(name) })?.id ?? "home"
+            buckets[id, default: []].append(tile)
         }
-        if !remaining.isEmpty {
-            result.append(Department(id: "more", title: "More to explore", tiles: remaining))
+        return departmentGroups.compactMap { group in
+            guard let inside = buckets[group.id], !inside.isEmpty else { return nil }
+            return Department(id: group.id, title: group.title, tiles: inside)
         }
-        return result
     }
 }

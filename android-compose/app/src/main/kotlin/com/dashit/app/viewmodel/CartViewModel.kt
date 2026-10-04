@@ -152,11 +152,8 @@ class CartViewModel : ViewModel() {
         _bill.value = bill
         // Once per cart: emptying it (or placing the order) re-arms the toast.
         if (bill.subtotal == 0.0) celebratedFreeDelivery = false
-        val threshold = CartBillBreakdown.FREE_DELIVERY_THRESHOLD
-        if (previousSubtotal < threshold && bill.subtotal >= threshold && !celebratedFreeDelivery) {
-            celebratedFreeDelivery = true
-            _freeDeliveryCelebration.value += 1
-        }
+        // No "free delivery unlocked" toast: delivery is charged on every order now.
+        @Suppress("UNUSED_VARIABLE") val unused = previousSubtotal
     }
 
     companion object {

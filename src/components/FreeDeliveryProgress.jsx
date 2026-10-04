@@ -8,7 +8,7 @@ export const DELIVERY_FEE = 25;
 /**
  * Calculates delivery fee based on user order history and cart subtotal:
  * 1. First 5 orders of a user: FREE delivery!
- * 2. Orders below ₹180: 30% of subtotal.
+ * 2. Orders below ₹180: 40% of subtotal.
  * 3. Orders between ₹180 and ₹299: ₹35 flat.
  * 4. Orders above ₹299: ₹25 flat.
  * 5. ₹11 handling fee across all orders.

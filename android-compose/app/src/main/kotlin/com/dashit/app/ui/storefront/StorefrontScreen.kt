@@ -394,7 +394,7 @@ fun StorefrontScreen(
                     // "Bestsellers" Blinkit 3-Column Collage Tiles
                     item(key = "bestsellers_title") {
                         Text(
-                            text = "Bestsellers",
+                            text = "Shop by category",
                             color = DashitColors.TextPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.ExtraBold,
@@ -403,7 +403,10 @@ fun StorefrontScreen(
                     }
 
                     // 3-Column Collage Grid in Rows of 3
-                    val chunkedTiles = categoryTiles.chunked(3)
+                    // A few everyday categories, not all of them: the rest are on the Categories tab.
+                    val homeTiles = categoryTiles.filter { com.dashit.app.data.Departments.isEveryday(it.name) }
+                        .ifEmpty { categoryTiles }.take(6)
+                    val chunkedTiles = homeTiles.chunked(3)
                     items(chunkedTiles, key = { it.first().id }) { rowTiles ->
                         Row(
                             modifier = Modifier
@@ -427,7 +430,7 @@ fun StorefrontScreen(
                 }
 
                 // Everyday Rails (Dairy, Snacks, Vegetables, etc.)
-                rails.forEach { rail ->
+                rails.filter { com.dashit.app.data.Departments.isEveryday(it.title) }.ifEmpty { rails.take(7) }.forEach { rail ->
                     item(key = "rail_title_${rail.id}") {
                         Row(
                             modifier = Modifier
@@ -638,6 +641,11 @@ fun StorefrontScreen(
                         onOpenProduct = { detailProduct = it },
                         onAdd = { cartVm.add(it) },
                         onDecrement = { cartVm.decrementLatest(it.id) },
+                        onPickCategory = {
+                            storefrontVm.clearFilter()
+                            storefrontVm.selectCategory(it)
+                            isSearchOpen = false
+                        },
                         onClose = { isSearchOpen = false }
                     )
                 }

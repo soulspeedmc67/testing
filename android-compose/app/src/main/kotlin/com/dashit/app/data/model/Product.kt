@@ -30,7 +30,9 @@ data class Product(
     val minAge: Int? = null,
     val inStock: Boolean? = true,
     val nutrition: List<NutritionFact>? = null,
-    val stock: Int? = null
+    val stock: Int? = null,
+    /** The smaller shelf inside the category ("Juices" inside Beverages); "" when unknown. */
+    val sub: String = ""
 ) {
     val isAvailable: Boolean
         get() = inStock != false && (stock ?: 1) > 0

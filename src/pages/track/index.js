@@ -557,6 +557,29 @@ export default function OrderTrackingPage() {
                 ))}
               </div>
 
+              {/* The bill: every order carries the ₹11 handling charge */}
+              {(() => {
+                const sub = Number(order?.subtotal) || items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.qty || it.quantity) || 1), 0);
+                const delivery = Number(order?.deliveryFee) || 0;
+                const off = Number(order?.discount) || 0;
+                const handling = Number(order?.handlingFee ?? Math.max(0, grandTotal - sub - delivery + off)) || 0;
+                const row = (label, value) => (
+                  <div className="flex items-center justify-between text-xs text-white/75">
+                    <span>{label}</span>
+                    <span className="font-semibold text-white">{value}</span>
+                  </div>
+                );
+                return (
+                  <div className="bg-white/5 rounded-xl p-2.5 space-y-1.5">
+                    {row("Item total", `₹${sub.toFixed(0)}`)}
+                    {row("Delivery charge", delivery > 0 ? `₹${delivery.toFixed(0)}` : "Free")}
+                    {handling > 0 && row("Handling charge", `₹${handling.toFixed(0)}`)}
+                    {off > 0 && row("Discount", `-₹${off.toFixed(0)}`)}
+                    <div className="border-t border-white/10 pt-1.5">{row("Total", `₹${grandTotal.toFixed(0)}`)}</div>
+                  </div>
+                );
+              })()}
+
               {/* Delivery Address */}
               <div className="bg-white/5 rounded-xl p-2.5 flex items-start space-x-2 text-xs">
                 <MapPin className="w-3.5 h-3.5 text-[#FF5B00] shrink-0 mt-0.5" />

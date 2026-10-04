@@ -48,7 +48,9 @@ public struct Product: Codable, Identifiable, Hashable {
     public let stock: Int?
     /// Wholesale supplier or partner shopkeeper attributing this inventory stock.
     public let distributor: String?
-    
+    /// The smaller shelf inside the category ("Juices" inside Beverages); "" when unknown.
+    public let sub: String
+
     public init(
         id: String,
         name: String,
@@ -68,7 +70,8 @@ public struct Product: Codable, Identifiable, Hashable {
         inStock: Bool? = true,
         nutrition: [NutritionFact]? = nil,
         stock: Int? = nil,
-        distributor: String? = nil
+        distributor: String? = nil,
+        sub: String = ""
     ) {
         self.id = id
         self.name = name
@@ -89,6 +92,7 @@ public struct Product: Codable, Identifiable, Hashable {
         self.nutrition = nutrition
         self.stock = stock
         self.distributor = distributor
+        self.sub = sub
     }
     
     /// The same product filed under `distributor`.
@@ -97,7 +101,7 @@ public struct Product: Codable, Identifiable, Hashable {
             id: id, name: name, unit: unit, price: price, originalPrice: originalPrice,
             rating: rating, ratingCount: ratingCount, time: time, options: options, badge: badge,
             img: img, cat: cat, variants: variants, ageRestricted: ageRestricted, minAge: minAge,
-            inStock: inStock, nutrition: nutrition, stock: stock, distributor: distributor
+            inStock: inStock, nutrition: nutrition, stock: stock, distributor: distributor, sub: sub
         )
     }
 
@@ -181,6 +185,15 @@ extension Product {
                 DecodingError.Context(codingPath: c.codingPath, debugDescription: "Product needs an id, a name and a price")
             )
         }
+        let filedUnder = Self.shopCategory(c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "Other")
+        // The shop app puts each product on the shelf its name says (same rules
+        // as the website): the catalogue's own category had cookies in Dairy and
+        // cola in Biscuits. The admin app keeps the category as it was saved.
+        #if ADMIN_APP_TARGET
+        let shelf = Shelves.Shelf(cat: filedUnder, sub: "")
+        #else
+        let shelf = Shelves.of(name: name, currentCat: filedUnder)
+        #endif
         self.init(
             id: id,
             name: name,
@@ -193,14 +206,15 @@ extension Product {
             options: c.flexibleString(.options),
             badge: c.flexibleString(.badge),
             img: Self.realPhoto(c.flexibleString(.img) ?? c.flexibleString(.image) ?? c.flexibleString(.imageUrl) ?? ""),
-            cat: Self.shopCategory(c.flexibleString(.cat) ?? c.flexibleString(.category) ?? "Other"),
+            cat: shelf.cat,
             variants: try? c.decode([ProductVariant].self, forKey: .variants),
             ageRestricted: (try? c.decode(Bool.self, forKey: .ageRestricted)) ?? false,
             minAge: c.flexibleInt(.minAge),
             inStock: try? c.decode(Bool.self, forKey: .inStock),
             nutrition: try? c.decode([NutritionFact].self, forKey: .nutrition),
             stock: c.flexibleInt(.stock),
-            distributor: c.flexibleString(.distributor)
+            distributor: c.flexibleString(.distributor),
+            sub: shelf.sub
         )
     }
 }

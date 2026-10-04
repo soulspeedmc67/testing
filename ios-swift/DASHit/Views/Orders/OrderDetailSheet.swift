@@ -85,7 +85,12 @@ struct OrderDetailSheet: View {
                 section("Bill") {
                     VStack(spacing: 8) {
                         billRow("Item total", CurrencyFormatter.format(order.subtotal))
-                        billRow("Delivery fee", order.deliveryFee == 0 ? "FREE" : CurrencyFormatter.format(order.deliveryFee))
+                        billRow("Delivery charge", order.deliveryFee == 0 ? "FREE" : CurrencyFormatter.format(order.deliveryFee))
+                        // What is left of the total once items, delivery and
+                        // discount are counted: the ₹11 handling charge.
+                        if handlingCharge > 0 {
+                            billRow("Handling charge", CurrencyFormatter.format(handlingCharge))
+                        }
                         if order.discount > 0 {
                             billRow("Discount", "-\(CurrencyFormatter.format(order.discount))")
                         }
@@ -151,6 +156,10 @@ struct OrderDetailSheet: View {
                 .padding(.vertical, 6)
                 .dashitCard(cardShape)
         }
+    }
+
+    private var handlingCharge: Double {
+        max(0, (order.grandTotal - order.subtotal - order.deliveryFee + order.discount).rounded())
     }
 
     private func billRow(_ label: String, _ value: String) -> some View {

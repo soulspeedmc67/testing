@@ -741,7 +741,7 @@ export default function CheckoutPage() {
               {/* Handling Fee */}
               <div className="flex justify-between items-start">
                 <div>
-                  <dt className="text-slate-600 dark:text-content-secondary">Handling fee</dt>
+                  <dt className="text-slate-600 dark:text-content-secondary">Handling charge</dt>
                   <span className="text-[11px] text-slate-400 dark:text-content-faint block">
                     Fixed fee on every order
                   </span>

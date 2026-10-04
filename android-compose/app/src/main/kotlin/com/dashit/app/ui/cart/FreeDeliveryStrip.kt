@@ -72,9 +72,13 @@ import kotlinx.coroutines.delay
 internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
     if (bill.subtotal <= 0) return
 
-    val unlocked = bill.subtotal >= CartBillBreakdown.FREE_DELIVERY_THRESHOLD
+    // Delivery is never free by amount: the bar counts towards the next, lower
+    // fee (₹35 from ₹180, ₹25 above ₹299).
+    val unlocked = bill.subtotal > CartBillBreakdown.FREE_DELIVERY_THRESHOLD
+    val nextStep = if (bill.subtotal < 180) 180.0 else 300.0
+    val nextFee = if (bill.subtotal < 180) 35 else 25
     val progress by animateFloatAsState(
-        targetValue = (bill.subtotal / CartBillBreakdown.FREE_DELIVERY_THRESHOLD).coerceIn(0.0, 1.0).toFloat(),
+        targetValue = (bill.subtotal / nextStep).coerceIn(0.0, 1.0).toFloat(),
         animationSpec = DashitMotion.houseSpring(),
         label = "free_delivery_progress"
     )
@@ -107,7 +111,7 @@ internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
                         modifier = Modifier.size(17.dp)
                     )
                     Text(
-                        text = "You've unlocked free delivery",
+                        text = "Lowest ₹25 delivery charge on this order",
                         color = DashitColors.Positive,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -129,9 +133,9 @@ internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
                             text = buildAnnotatedString {
                                 append("Add ")
                                 withStyle(SpanStyle(color = DashitColors.TextPrimary, fontWeight = FontWeight.Bold)) {
-                                    append("₹${bill.amountNeededForFreeDelivery.toInt()}")
+                                    append("₹${(nextStep - bill.subtotal).toInt().coerceAtLeast(1)}")
                                 }
-                                append(" more for free delivery")
+                                append(" more for ₹$nextFee delivery")
                             },
                             color = DashitColors.TextSecondary,
                             fontSize = 13.sp

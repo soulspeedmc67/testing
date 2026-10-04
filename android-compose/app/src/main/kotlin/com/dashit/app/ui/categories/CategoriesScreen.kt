@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -51,6 +52,7 @@ import coil.request.ImageRequest
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
+import com.dashit.app.data.Departments
 import com.dashit.app.data.model.CategoryTile
 import com.dashit.app.data.model.Product
 import com.dashit.app.ui.components.ProductCard
@@ -72,16 +74,30 @@ fun CategoriesScreen(
         cartItems.groupingBy { it.productId }.fold(0) { total, item -> total + item.qty }
     }
 
-    var selectedTileId by remember(categoryTiles) {
-        mutableStateOf(categoryTiles.firstOrNull()?.id ?: "")
-    }
+    /* A few departments on the left, not every category: the categories of the
+       picked department are chips on the right, and the shelves inside the
+       picked category are chips under those. */
+    val departments = remember(categoryTiles) { Departments.of(categoryTiles) }
+    var selectedDeptId by remember { mutableStateOf("") }
+    val selectedDept = departments.firstOrNull { it.id == selectedDeptId } ?: departments.firstOrNull()
 
-    val selectedTile = categoryTiles.firstOrNull { it.id == selectedTileId }
-        ?: categoryTiles.firstOrNull()
+    var selectedTileId by remember(selectedDept?.id) { mutableStateOf("") }
+    val selectedTile = selectedDept?.tiles?.firstOrNull { it.id == selectedTileId }
+        ?: selectedDept?.tiles?.firstOrNull()
 
-    val filteredProducts = remember(selectedTile, allProducts) {
+    var selectedSub by remember(selectedTile?.id) { mutableStateOf("") }
+
+    val shelfProducts = remember(selectedTile, allProducts) {
         if (selectedTile == null) emptyList()
         else allProducts.filter { it.cat.equals(selectedTile.name, ignoreCase = true) }
+    }
+    // The shelves inside this category, biggest first.
+    val subShelves = remember(shelfProducts) {
+        shelfProducts.filter { it.sub.isNotBlank() }.groupingBy { it.sub }.eachCount()
+            .entries.sortedByDescending { it.value }.map { it.key }
+    }
+    val filteredProducts = remember(shelfProducts, selectedSub) {
+        if (selectedSub.isBlank()) shelfProducts else shelfProducts.filter { it.sub == selectedSub }
     }
 
     Column(
@@ -126,15 +142,20 @@ fun CategoriesScreen(
                     .background(DashitColors.SurfaceRaised),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp)
             ) {
-                items(categoryTiles, key = { it.id }) { tile ->
-                    val isSelected = tile.id == selectedTile?.id
+                items(departments, key = { it.id }) { dept ->
+                    val isSelected = dept.id == selectedDept?.id
                     SidebarItem(
-                        tile = tile,
+                        tile = CategoryTile(
+                            id = dept.id,
+                            name = dept.name,
+                            previewImages = dept.tiles.firstOrNull()?.previewImages.orEmpty(),
+                            productCount = dept.tiles.sumOf { it.productCount }
+                        ),
                         isSelected = isSelected,
                         onSelect = {
                             if (!isSelected) {
                                 HapticsManager.selection(view)
-                                selectedTileId = tile.id
+                                selectedDeptId = dept.id
                             }
                         }
                     )
@@ -161,6 +182,28 @@ fun CategoriesScreen(
                     SkeletonBlock(width = 120.dp, height = 17.dp, modifier = Modifier.padding(top = 14.dp, bottom = 12.dp))
                     ProductGridSkeleton(columns = 2, rows = 3)
                 } else {
+                    // The categories inside the picked department.
+                    ChipRow(
+                        labels = selectedDept?.tiles.orEmpty().map { it.id to it.name },
+                        selectedId = selectedTile?.id.orEmpty(),
+                        filled = true,
+                        modifier = Modifier.padding(top = 10.dp),
+                        onSelect = { id ->
+                            HapticsManager.selection(view)
+                            selectedTileId = id
+                        }
+                    )
+                    // The shelves inside the picked category.
+                    if (subShelves.size > 1) {
+                        ChipRow(
+                            labels = listOf("" to "All") + subShelves.map { it to it },
+                            selectedId = selectedSub,
+                            filled = false,
+                            modifier = Modifier.padding(top = 8.dp),
+                            onSelect = { selectedSub = it }
+                        )
+                    }
+
                     // Header with category name and count
                     Row(
                         modifier = Modifier
@@ -187,7 +230,7 @@ fun CategoriesScreen(
                     // 2-Column Product Grid
                     // Each shelf starts at its first item, not where the last one was left.
                     val gridState = rememberLazyGridState()
-                    LaunchedEffect(selectedTile?.id) { gridState.scrollToItem(0) }
+                    LaunchedEffect(selectedTile?.id, selectedSub) { gridState.scrollToItem(0) }
                     LazyVerticalGrid(
                         state = gridState,
                         columns = GridCells.Fixed(2),
@@ -211,6 +254,53 @@ fun CategoriesScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** A row of chips that scrolls sideways. `filled` marks the picked one in midnight, else in orange outline. */
+@Composable
+private fun ChipRow(
+    labels: List<Pair<String, String>>,
+    selectedId: String,
+    filled: Boolean,
+    modifier: Modifier = Modifier,
+    onSelect: (String) -> Unit
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(labels, key = { it.first }) { (id, label) ->
+            val isSelected = id == selectedId
+            val shape = RoundedCornerShape(if (filled) 12.dp else 50.dp)
+            val background = when {
+                isSelected && filled -> DashitColors.TextPrimary
+                else -> DashitColors.SurfaceRaised
+            }
+            val borderColor = when {
+                isSelected && !filled -> DashitColors.BrandOrange
+                isSelected -> DashitColors.TextPrimary
+                else -> DashitColors.Hairline
+            }
+            val textColor = when {
+                isSelected && filled -> DashitColors.Surface
+                isSelected -> DashitColors.BrandAccent
+                else -> DashitColors.TextSecondary
+            }
+            Text(
+                text = label,
+                color = textColor,
+                fontSize = if (filled) 13.sp else 12.sp,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                maxLines = 1,
+                modifier = Modifier
+                    .clip(shape)
+                    .background(background)
+                    .border(1.dp, borderColor, shape)
+                    .clickable { onSelect(id) }
+                    .padding(horizontal = 12.dp, vertical = if (filled) 8.dp else 6.dp)
+            )
         }
     }
 }

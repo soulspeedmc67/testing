@@ -8,8 +8,12 @@ struct FreeDeliveryStrip: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var isUnlocked: Bool { bill.isFirstFivePromo || bill.subtotal >= CartBillBreakdown.freeDeliveryThreshold }
-    private var progress: CGFloat { CGFloat(min(bill.subtotal / CartBillBreakdown.freeDeliveryThreshold, 1)) }
+    // Delivery is never free by amount: the bar counts towards the next, lower
+    // charge (₹35 from ₹180, ₹25 above ₹299).
+    private var nextStep: Double { bill.subtotal < 180 ? 180 : 300 }
+    private var nextCharge: Int { bill.subtotal < 180 ? 35 : 25 }
+    private var isUnlocked: Bool { bill.isFirstFivePromo || bill.subtotal > CartBillBreakdown.freeDeliveryThreshold }
+    private var progress: CGFloat { CGFloat(min(bill.subtotal / nextStep, 1)) }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -17,7 +21,7 @@ struct FreeDeliveryStrip: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 15, weight: .semibold))
-                    Text(bill.isFirstFivePromo ? "Free delivery on your first 5 orders!" : "You've unlocked free delivery")
+                    Text(bill.isFirstFivePromo ? "Free delivery on your first 5 orders!" : "Lowest ₹25 delivery charge on this order")
                         .font(.system(size: 13, weight: .semibold))
                     Spacer(minLength: 0)
                 }
@@ -30,10 +34,10 @@ struct FreeDeliveryStrip: View {
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.brandOrange)
                         (Text("Add ").foregroundColor(.textSecondary)
-                            + Text(CurrencyFormatter.format(bill.amountNeededForFreeDelivery))
+                            + Text(CurrencyFormatter.format(max(1, nextStep - bill.subtotal)))
                                 .fontWeight(.bold)
                                 .foregroundColor(.textPrimary)
-                            + Text(" more for free delivery").foregroundColor(.textSecondary))
+                            + Text(" more for ₹\(nextCharge) delivery").foregroundColor(.textSecondary))
                             .font(.system(size: 13))
                             .contentTransition(.numericText())
                         Spacer(minLength: 0)

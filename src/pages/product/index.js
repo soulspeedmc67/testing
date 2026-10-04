@@ -568,8 +568,8 @@ export default function ProductDetailPage() {
           <ul className="grid grid-cols-3 gap-2 text-center">
             <li className="p-2">
               <Truck className="w-5 h-5 text-[#FF5B00] mx-auto mb-1" />
-              <span className="text-[11px] font-bold text-slate-800 block dark:text-content">Free delivery</span>
-              <span className="text-[10px] text-slate-500 block dark:text-content-muted">on orders above ₹299</span>
+              <span className="text-[11px] font-bold text-slate-800 block dark:text-content">Fast delivery</span>
+              <span className="text-[10px] text-slate-500 block dark:text-content-muted">lowest charge above ₹299</span>
             </li>
             <li className="p-2">
               <ShieldCheck className="w-5 h-5 text-[#FF5B00] mx-auto mb-1" />
