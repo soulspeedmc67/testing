@@ -68,6 +68,10 @@ export default function ProductImage({
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState({ n: 0, url: "" });
   const [shown, setShown] = useState(false);
+  /* The fade only starts once the page's scripts are running. A photo that is
+     already in the exported HTML must not sit at opacity 0 waiting for them. */
+  const [canFade, setCanFade] = useState(false);
+  useEffect(() => setCanFade(true), []);
   const [fullReady, setFullReady] = useState(false);
   const imgRef = useRef(null);
 
@@ -127,7 +131,13 @@ export default function ProductImage({
   }
 
   return (
-    <div className={`${frame} overflow-hidden bg-white ${className}`}>
+    <div
+      className={`${frame} overflow-hidden ${
+        /* A soft grey square while the photo is on its way, so a slow
+           connection shows "loading", not an empty white box. */
+        shown ? "bg-white" : "bg-slate-100 animate-pulse dark:bg-zinc-800"
+      } ${className}`}
+    >
       <img
         ref={imgRef}
         src={url}
@@ -136,7 +146,7 @@ export default function ProductImage({
         decoding="async"
         onLoad={() => setShown(true)}
         onError={onError}
-        style={{ opacity: shown ? 1 : 0, transition: "opacity 180ms ease-out" }}
+        style={{ opacity: shown || !canFade ? 1 : 0, transition: "opacity 180ms ease-out" }}
         className={`absolute inset-0 h-full w-full object-contain p-[8%] ${dimmed ? "grayscale-[40%]" : ""} ${imgClassName}`}
       />
     </div>

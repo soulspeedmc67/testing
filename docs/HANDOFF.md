@@ -45,6 +45,36 @@ are NOT compiled (no Swift on this machine) and need the GitHub Actions build.
   empty pane, and `CatalogueDerive` falls back to one shelf per product category
   if Firestore `categories` matches no products. Check on a device.
 
+### Later the same evening: fewer categories at once (website only)
+
+VERIFIED on the production export at phone and desktop width. The iPhone and
+Android apps were NOT changed by this; ask the owner before porting it.
+
+- **Departments** (`GROUPS`, `buildAisleGroups`, `featuredAisles` in
+  `src/lib/shopAisles.js`): the ~25 aisles sit under five departments (Fresh &
+  daily, Snacks & drinks, Cooking & pantry, Personal & baby care, Home & more).
+  An aisle not named in `GROUPS` lands in the last one.
+- **Shop home** (`shop.js`): 7 aisles plus an "All categories" tile (was every
+  aisle), the same 7 in the strip plus "More" (and whichever aisle is picked),
+  and a product row for those 7 only. Product photos on the page went from 334
+  to 139. A picked category now shows at once; it used to wait for the old list
+  to fade out (`AnimatePresence mode="wait"`).
+- **Categories page**: five department rows that open to their aisles, the
+  first one open.
+- **Search** (`search.js`, `src/lib/recentSearches.js`): an empty search shows
+  this device's recent searches first (saved after typing pauses on a search
+  that found something, `dashit_recent_searches`), with a small "Categories"
+  button at the top right that swaps in the departments. Under them, two
+  in-stock items from each everyday aisle.
+- `ProductImage` shows a soft grey square while a photo loads, and photos
+  already in the exported HTML are not hidden waiting for scripts.
+- **iOS build 1.0.0 (411)** went to TestFlight from `soulspeedmc67/testing`
+  `ios-release` (run 37217490462, "No errors uploading" for both the shop and
+  admin apps). It has the photo and Categories fixes above, not this redesign.
+  The compliance guard still prints 3 criticals (a localhost string in web
+  files, Razorpay without StoreKit / Play Billing); physical groceries are
+  exempt from in-app purchase, but answer for it before App Store review.
+
 ## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
 
 - **Web shop restored** (pages removed in b7c93f3): /shop, /search, /categories,

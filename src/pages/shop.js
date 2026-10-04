@@ -4,8 +4,8 @@ import { useRouter } from "next/router";
 import SEO from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/JsonLd";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Mic, Sparkles, Flame, Tag, ArrowRight } from "lucide-react";
-import { buildAisles, aisleFor } from "../lib/shopAisles";
+import { Search, Mic, Sparkles, Flame, Tag, ArrowRight, LayoutGrid } from "lucide-react";
+import { buildAisles, aisleFor, featuredAisles } from "../lib/shopAisles";
 import AppHeader from "../components/AppHeader";
 import CategoryScroller from "../components/CategoryScroller";
 import ProductCard from "../components/ProductCard";
@@ -177,6 +177,10 @@ export default function ShopPage() {
   // The grid grows as the shopper scrolls: 4,600 cards at once would stall the page.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const moreRef = useRef(null);
+  const isFirstPaint = useRef(true);
+  useEffect(() => {
+    isFirstPaint.current = false;
+  }, []);
 
   useEffect(() => {
     const unsub = watchProducts((liveProducts) => {
@@ -272,14 +276,22 @@ export default function ShopPage() {
 
   const shopProducts = useMemo(() => browseable(productsList), [productsList]);
   const aisles = useMemo(() => buildAisles(shopProducts), [shopProducts]);
-  const aisleStrip = useMemo(
-    () => [
+  /* The home page leads with a few aisles, not all of them: twenty-five tiles,
+     a twenty-five-item strip and a product row for each was a wall of choices.
+     The rest are one tap away on the Categories page. */
+  const featured = useMemo(() => featuredAisles(aisles, 7), [aisles]);
+  const aisleStrip = useMemo(() => {
+    const shown = [...featured];
+    // An aisle opened from Categories or search stays in the strip while it is picked.
+    const picked = aisles.find((a) => a.cat === activeCategory);
+    if (picked && !shown.includes(picked)) shown.push(picked);
+    return [
       { id: "All", label: "All", icon: Flame },
       { id: "Offers", label: "Offers", icon: Tag, route: "/offers", highlight: true },
-      ...aisles.map((a) => ({ id: a.cat, label: a.label, icon: a.icon })),
-    ],
-    [aisles]
-  );
+      ...shown.map((a) => ({ id: a.cat, label: a.label, icon: a.icon })),
+      { id: "More", label: "More", icon: LayoutGrid, route: "/categories" },
+    ];
+  }, [aisles, featured, activeCategory]);
 
   const filteredProducts = useMemo(() => {
     // Tobacco is never listed on the website (browseable drops it).
@@ -424,16 +436,14 @@ export default function ShopPage() {
 
       {/* MAIN BODY CONTENT (Responsive: max-w-md on mobile, expands to max-w-7xl on desktop) */}
       <main className="max-w-md md:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
-        <AnimatePresence mode="wait">
+        {/* A picked category shows straight away with a short fade-in. It used
+            to wait for the old list to fade out first, which added half a
+            second to every tap. No fade on the very first paint. */}
           <motion.div
             key={activeCategory}
-            initial={{ opacity: 0, y: 8 }}
+            initial={isFirstPaint.current ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{
-              duration: 0.28,
-              ease: EASE_OUT,
-            }}
+            transition={{ duration: 0.2, ease: EASE_OUT }}
             className="space-y-6"
           >
             {/* Selected Category Header (when activeCategory !== 'All') */}
@@ -488,21 +498,27 @@ export default function ShopPage() {
               </div>
             )}
 
-            {/* Aisles, each with a real product from its shelf. */}
+            {/* A few aisles, each with a real product from its shelf, and one
+                tile for the rest. */}
             {activeCategory === "All" && (
               <section className="space-y-3">
-                <h2 className="px-1 font-bold text-[16px] md:text-lg text-[#061838] tracking-tight dark:text-content">
-                  Shop by aisle
-                </h2>
+                <div className="flex items-baseline justify-between px-1">
+                  <h2 className="font-bold text-[16px] md:text-lg text-[#061838] tracking-tight dark:text-content">
+                    Shop by category
+                  </h2>
+                  <Link href="/categories" className="text-[12.5px] font-semibold text-[#FF5B00] hover:underline">
+                    See all
+                  </Link>
+                </div>
                 {isLoadingProducts ? (
-                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3" aria-hidden="true">
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-2.5 sm:gap-3" aria-hidden="true">
                     {[...Array(8)].map((_, i) => (
                       <div key={i} className="aspect-[4/5] rounded-2xl bg-slate-100 dark:bg-surface-raised animate-pulse" />
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2.5 sm:gap-3">
-                    {aisles.filter((a) => a.cover).map((aisle) => (
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-2.5 sm:gap-3">
+                    {featured.map((aisle) => (
                       <button
                         key={aisle.cat}
                         type="button"
@@ -520,14 +536,25 @@ export default function ShopPage() {
                         </span>
                       </button>
                     ))}
+                    <Link
+                      href="/categories"
+                      className="group flex flex-col items-center text-center rounded-2xl p-1.5 sm:p-2 transition-colors hover:bg-white dark:hover:bg-surface-raised focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF5B00]"
+                    >
+                      <span className="w-full aspect-square rounded-2xl border border-slate-200/80 bg-white flex items-center justify-center text-[#061838] dark:bg-surface-raised dark:border-line dark:text-content">
+                        <LayoutGrid className="w-6 h-6 stroke-[1.8]" />
+                      </span>
+                      <span className="mt-1.5 text-[11px] sm:text-[12.5px] font-semibold leading-tight text-[#061838] dark:text-content line-clamp-2">
+                        All categories
+                      </span>
+                    </Link>
                   </div>
                 )}
               </section>
             )}
 
-            {/* A row per aisle: what's in stock, with photos. */}
+            {/* A row for each of those aisles: what's in stock, with photos. */}
             {activeCategory === "All" && !activeDealPromo &&
-              aisles.filter((a) => a.rail.length >= 4).map((aisle) => (
+              featured.map((aisle) => (
                 <section key={aisle.cat} className="space-y-3">
                   <div className="flex items-baseline justify-between px-1">
                     <h2 className="font-bold text-[16px] md:text-lg text-[#061838] tracking-tight dark:text-content">
@@ -706,7 +733,6 @@ export default function ShopPage() {
               )}
             </section>
           </motion.div>
-        </AnimatePresence>
       </main>
 
       {/* 7. QUICK PRODUCT SHEET (Vaul gesture sheet) */}

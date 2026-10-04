@@ -1,14 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { motion, AnimatePresence } from "framer-motion";
-import { Search, ArrowLeft, X, Plus, Minus, Heart, Mic, ShoppingBag, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import { Search, ArrowLeft, X, Mic, History, LayoutGrid } from "lucide-react";
 import SEO from "../components/SEO";
 import confetti from "canvas-confetti";
-import BottomNav from "../components/BottomNav";
 import ProductCardStepper from "../components/ProductCardStepper";
 import ProductImage from "../components/ProductImage";
-import FloatingCartBar from "../components/FloatingCartBar";
 import QuickProductSheet from "../components/QuickProductSheet";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { EmptySearchState } from "../components/ui/EmptyState";
@@ -21,6 +19,8 @@ import { goBack } from "../lib/navigation";
 import { watchShopProducts as watchProducts, isSoldOut } from "../lib/catalogueFile";
 import { browseable, isTobaccoSectionEnabled, tobaccoMatches, TOBACCO_ROUTE } from "../lib/tobacco";
 import { isPlaceholderImage } from "../lib/productPhotoMatch";
+import { buildAisles, buildAisleGroups, featuredAisles } from "../lib/shopAisles";
+import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from "../lib/recentSearches";
 
 const POPULAR_SEARCH_CHIPS = ["Milk", "Lavas Bread", "Chips", "Apples", "Silk Chocolate", "Maggi", "Butter", "Biscuits"];
 
@@ -34,6 +34,15 @@ export default function SearchPage() {
   const [allProducts, setAllProducts] = useState(ALL_PRODUCTS || []);
   const [tobaccoEnabled, setTobaccoEnabled] = useState(false);
   const { requestTobaccoAccess } = useAgeGate();
+  /* What an empty search box shows: this shopper's recent searches first, and
+     the categories behind the small button on the right. */
+  const [recent, setRecent] = useState([]);
+  const [showCategories, setShowCategories] = useState(false);
+
+  // Read after mount: the exported page has no saved searches.
+  useEffect(() => {
+    setRecent(getRecentSearches());
+  }, []);
 
   // Platform-dependent (off in the iOS app), so it is only known after mount.
   useEffect(() => {
@@ -74,7 +83,11 @@ export default function SearchPage() {
       try { confetti({ particleCount: 80, spread: 60, origin: { y: 0.85 } }); } catch (e) {}
     }
     setCart(newCart);
-    localStorage.setItem("dashit_cart", JSON.stringify(newCart));
+    try {
+      localStorage.setItem("dashit_cart", JSON.stringify(newCart));
+      // Tells the cart bar straight away, instead of on its next 3-second check.
+      window.dispatchEvent(new Event("dashit_cart_updated"));
+    } catch (e) {}
   };
 
   const addToCart = (product) => {
@@ -109,11 +122,26 @@ export default function SearchPage() {
   /* When the user opens search, only products with verified pictures are shown
      at the top. When searching, in-stock products with genuine photos strictly rank
      ahead of items without photos, followed by prefix and length match. */
+  const aisles = useMemo(() => buildAisles(browseProducts), [browseProducts]);
+
+  /* What an empty search shows under the recent searches: a couple of in-stock
+     items from each everyday aisle (milk, bread, snacks…), not simply the
+     first twelve products in the catalogue, which were whatever sorted first. */
+  const everydayPicks = useMemo(() => {
+    const rails = featuredAisles(aisles, 6).map((a) => a.rail);
+    const picks = [];
+    for (let i = 0; i < 2; i += 1) {
+      for (const rail of rails) if (rail[i]) picks.push(rail[i]);
+    }
+    return picks;
+  }, [aisles]);
+
   const filteredProducts = useMemo(() => {
     if (!cleanQuery) {
+      if (everydayPicks.length > 0) return everydayPicks;
       return browseProducts
         .filter((p) => hasValidPhoto(p) && !isSoldOut(p))
-        .slice(0, 24);
+        .slice(0, 12);
     }
     const words = cleanQuery.split(/\s+/).filter(Boolean);
     const hits = [];
@@ -129,7 +157,22 @@ export default function SearchPage() {
     }
     hits.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
     return hits.slice(0, 120).map((h) => h[2]);
-  }, [browseProducts, cleanQuery]);
+  }, [browseProducts, cleanQuery, everydayPicks]);
+
+  /* A search is remembered once typing has paused and it found something, so
+     half-typed words don't fill the list. */
+  useEffect(() => {
+    if (cleanQuery.length < 2 || filteredProducts.length === 0) return undefined;
+    const timer = setTimeout(() => setRecent(addRecentSearch(query)), 1200);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cleanQuery, filteredProducts.length]);
+
+  // Only worked out when the shopper asks to see the categories.
+  const categoryGroups = useMemo(
+    () => (showCategories ? buildAisleGroups(aisles) : []),
+    [showCategories, aisles]
+  );
 
   const tobaccoHits = tobaccoEnabled ? tobaccoMatches(cleanQuery, allProducts) : [];
   const showTobaccoPrompt = tobaccoHits.length > 0;
@@ -156,10 +199,7 @@ export default function SearchPage() {
         noindex="follow"
       />
       {/* Search Header Bar with Smooth Entry Animation & Safe Area */}
-      <motion.header
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+      <header
         className="sticky top-0 z-40 bg-[#061838] px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3.5 shadow-md dark:bg-surface-raised dark:border-b dark:border-line/80"
       >
         <div className="max-w-md md:max-w-4xl mx-auto flex items-center space-x-3">
@@ -172,10 +212,7 @@ export default function SearchPage() {
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </motion.button>
 
-          <motion.div
-            initial={{ scale: 0.94, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 380, damping: 26, delay: 0.05 }}
+          <div
             className={`relative grow flex items-center bg-white rounded-full px-4 py-2 shadow-inner transition-all dark:bg-surface-muted dark:border dark:border-line-strong ${
               isInputFocused ? "ring-2 ring-[#FF5B00]" : ""
             }`}
@@ -200,7 +237,7 @@ export default function SearchPage() {
                 <X className="w-4 h-4" />
               </button>
             )}
-          </motion.div>
+          </div>
 
           <motion.button
             whileTap={{ scale: 0.88 }}
@@ -211,7 +248,7 @@ export default function SearchPage() {
             <Mic className="w-5 h-5" />
           </motion.button>
         </div>
-      </motion.header>
+      </header>
 
       {/* Voice Search Modal Component */}
       <VoiceSearchModal
@@ -223,22 +260,106 @@ export default function SearchPage() {
       />
 
       <main className="max-w-md md:max-w-4xl mx-auto px-4 mt-4 space-y-4">
-        {/* Popular Quick Search Chips */}
+        {/* Nothing typed yet: recent searches, with the categories one tap away. */}
         {!query && (
-          <div className="space-y-2">
-            <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">Popular Searches</h3>
-            <div className="flex flex-wrap gap-2">
-              {POPULAR_SEARCH_CHIPS.map((chip, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setQuery(chip)}
-                  className="bg-white border border-slate-200 hover:border-[#FF5B00] text-xs font-bold text-slate-700 px-3.5 py-1.5 rounded-full shadow-sm active:scale-95 transition-all dark:bg-surface-raised dark:border-line dark:text-content-secondary"
-                >
-                  {chip}
-                </button>
-              ))}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[14px] font-bold text-[#061838] dark:text-content">
+                {showCategories ? "Categories" : recent.length > 0 ? "Recent searches" : "Popular searches"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  hapticLight();
+                  setShowCategories((v) => !v);
+                }}
+                aria-pressed={showCategories}
+                className="h-9 px-3 shrink-0 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-[#061838] inline-flex items-center gap-1.5 hover:border-slate-300 active:scale-[0.98] transition cursor-pointer dark:bg-surface-raised dark:border-line dark:text-content"
+              >
+                {showCategories ? <History className="w-4 h-4" /> : <LayoutGrid className="w-4 h-4" />}
+                {showCategories ? "Recent searches" : "Categories"}
+              </button>
             </div>
-          </div>
+
+            {showCategories ? (
+              <div className="space-y-4">
+                {categoryGroups.map((group) => (
+                  <div key={group.id} className="space-y-2">
+                    <h3 className="text-[12px] font-semibold text-slate-500 dark:text-content-muted">{group.label}</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {group.aisles.map((aisle) => {
+                        const AisleIcon = aisle.icon;
+                        return (
+                          <Link
+                            key={aisle.cat}
+                            href={`/shop/?cat=${encodeURIComponent(aisle.cat)}`}
+                            className="h-10 px-3 rounded-xl bg-white border border-slate-200 text-[13px] font-semibold text-[#061838] inline-flex items-center gap-1.5 hover:border-slate-300 active:scale-[0.98] transition dark:bg-surface-raised dark:border-line dark:text-content"
+                          >
+                            <AisleIcon className="w-4 h-4 text-slate-500 dark:text-content-muted" />
+                            {aisle.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <>
+                {recent.length > 0 && (
+                  <div className="space-y-2">
+                    <ul className="rounded-2xl bg-white border border-slate-200/80 divide-y divide-slate-100 overflow-hidden dark:bg-surface-raised dark:border-line dark:divide-line-soft">
+                      {recent.map((term) => (
+                        <li key={term} className="flex items-center">
+                          <button
+                            type="button"
+                            onClick={() => setQuery(term)}
+                            className="grow min-w-0 h-11 pl-3.5 pr-2 flex items-center gap-3 text-left cursor-pointer"
+                          >
+                            <History className="w-4 h-4 shrink-0 text-slate-400 dark:text-content-faint" />
+                            <span className="truncate text-[14px] font-medium text-slate-800 dark:text-content">{term}</span>
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Remove ${term} from recent searches`}
+                            onClick={() => setRecent(removeRecentSearch(term))}
+                            className="w-11 h-11 shrink-0 flex items-center justify-center text-slate-400 hover:text-slate-700 cursor-pointer dark:text-content-faint dark:hover:text-content"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => setRecent(clearRecentSearches())}
+                      className="text-[12.5px] font-semibold text-slate-500 hover:text-slate-800 cursor-pointer dark:text-content-muted dark:hover:text-content"
+                    >
+                      Clear recent searches
+                    </button>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {recent.length > 0 && (
+                    <h3 className="pt-1 text-[14px] font-bold text-[#061838] dark:text-content">Popular searches</h3>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {POPULAR_SEARCH_CHIPS.map((chip) => (
+                      <button
+                        key={chip}
+                        type="button"
+                        onClick={() => setQuery(chip)}
+                        className="h-9 px-3.5 rounded-xl bg-white border border-slate-200 text-[13px] font-semibold text-slate-700 hover:border-slate-300 active:scale-[0.98] transition cursor-pointer dark:bg-surface-raised dark:border-line dark:text-content-secondary"
+                      >
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
         )}
 
         {showTobaccoPrompt && (
@@ -250,6 +371,7 @@ export default function SearchPage() {
         )}
 
         {/* Live Filtered Search Results */}
+        {(query || !showCategories) && (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider dark:text-content-faint">
@@ -257,7 +379,7 @@ export default function SearchPage() {
                 ? "Showing popular products"
                 : query
                   ? `Search Results for "${query}" (${filteredProducts.length})`
-                  : "All Products"}
+                  : "Everyday items"}
             </h3>
           </div>
 
@@ -320,6 +442,7 @@ export default function SearchPage() {
             </div>
           )}
         </div>
+        )}
       </main>
 
       {/* Quick Interactive Product Detail Sheet */}

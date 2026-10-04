@@ -73,6 +73,20 @@ const COVER_HINTS = {
 const OTHER = { label: "Everything else", icon: Package };
 const RAIL_SIZE = 12;
 
+/**
+ * The few departments the aisles sit under. A shopper picks one of five, then
+ * one of the handful of aisles inside it, instead of facing every aisle at
+ * once. An aisle not named here (a new shelf, or "Everything else") goes under
+ * the last one.
+ */
+const GROUPS = [
+  { id: "fresh", label: "Fresh & daily", icon: Milk, cats: ["Dairy", "Bakery", "Fruits", "Vegetables", "Chicken", "Chicken & Fish", "Meat & Fish"] },
+  { id: "snacks", label: "Snacks & drinks", icon: Popcorn, cats: ["Snacks", "Chips", "Biscuits", "Beverages", "Sweets & Chocolates", "Ice Cream"] },
+  { id: "cooking", label: "Cooking & pantry", icon: Wheat, cats: ["Staples", "Spices", "Sauces & Spreads", "Instant Food", "Dry Fruits"] },
+  { id: "care", label: "Personal & baby care", icon: Sparkles, cats: ["Personal Care", "Baby Care", "Health & Wellness"] },
+  { id: "home", label: "Home & more", icon: SprayCan, cats: ["Home Care", "Kitchen Care", "Pet Care", "Stationery", "Electronics", "Toys & Games"] },
+];
+
 function photoOf(p) {
   return p && typeof p.img === "string" && p.img.trim() ? p.img : "";
 }
@@ -115,4 +129,32 @@ export function buildAisles(products = []) {
 /** The aisle a shelf name belongs to, for the label and icon. */
 export function aisleFor(cat) {
   return AISLES.find((a) => a.cat === cat) || (cat === "Others" ? { cat, ...OTHER } : { cat, label: cat, icon: Package });
+}
+
+/**
+ * The aisles (from buildAisles) sorted into the departments above:
+ * [{ id, label, icon, count, aisles }], only the departments that have aisles.
+ */
+export function buildAisleGroups(aisles = []) {
+  const groupOf = new Map();
+  GROUPS.forEach((group) => group.cats.forEach((cat) => groupOf.set(cat, group.id)));
+  const fallback = GROUPS[GROUPS.length - 1].id;
+  return GROUPS.map((group) => {
+    const inside = aisles.filter((a) => (groupOf.get(a.cat) || fallback) === group.id);
+    return {
+      id: group.id,
+      label: group.label,
+      icon: group.icon,
+      aisles: inside,
+      count: inside.reduce((sum, a) => sum + (a.count || 0), 0),
+    };
+  }).filter((group) => group.aisles.length > 0);
+}
+
+/**
+ * The few aisles the home page leads with: the first well-stocked ones in
+ * grocery-run order. Everything else is one tap away under "All categories".
+ */
+export function featuredAisles(aisles = [], limit = 7) {
+  return aisles.filter((a) => a.cover && a.rail.length >= 4 && a.cat !== "Others").slice(0, limit);
 }
