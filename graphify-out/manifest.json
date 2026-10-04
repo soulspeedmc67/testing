@@ -144,9 +144,9 @@
     "semantic_hash": ""
   },
   "src/components/AppHeader.jsx": {
-    "mtime": 1790057347.548212,
-    "seen": 1791130252.2858062,
-    "ast_hash": "f63f8fc4858e87e5574c4636aa9b677f",
+    "mtime": 1791133725.526055,
+    "seen": 1791134030.6406994,
+    "ast_hash": "57204cd0f129cf370cafff1b11ee5082",
     "semantic_hash": ""
   },
   "src/components/BklitAreaChart.jsx": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "src/components/CategoryScroller.jsx": {
-    "mtime": 1791003486.149988,
-    "seen": 1791130252.2858307,
-    "ast_hash": "4cc7c55002676c33ed4077b22341aa42",
+    "mtime": 1791133725.5258045,
+    "seen": 1791134030.6409853,
+    "ast_hash": "07d72ce18830e83f14c905e4f4a9f8bf",
     "semantic_hash": ""
   },
   "src/components/CheckoutLoginModal.jsx": {
@@ -210,15 +210,15 @@
     "semantic_hash": ""
   },
   "src/components/FloatingCartBar.jsx": {
-    "mtime": 1791006517.430695,
-    "seen": 1791130252.285847,
-    "ast_hash": "7ad59deedee3629e717be94f7a3d7ce7",
+    "mtime": 1791133725.5254657,
+    "seen": 1791134030.6411724,
+    "ast_hash": "48b422fc60a4f986af22e78588c78cc7",
     "semantic_hash": ""
   },
   "src/components/FloatingDeliveryBanner.jsx": {
-    "mtime": 1791120454.0775666,
-    "seen": 1791130252.285849,
-    "ast_hash": "1788c9c51b7275bc0260fee716af4a6a",
+    "mtime": 1791133725.5226831,
+    "seen": 1791134030.6411738,
+    "ast_hash": "080cbb33c8778b9eb81b6c3c486b4888",
     "semantic_hash": ""
   },
   "src/components/FlyingBadgeOverlay.jsx": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "src/components/LiveOrderFloatingTracker.jsx": {
-    "mtime": 1791128819.4686162,
-    "seen": 1791130252.2858713,
-    "ast_hash": "68566730c12c83aa30c6b8f6c0eab7e0",
+    "mtime": 1791133767.4013088,
+    "seen": 1791134030.6414144,
+    "ast_hash": "095ccff2532fcb52e757fc5e3cc11d0d",
     "semantic_hash": ""
   },
   "src/components/LocationPermissionModal.jsx": {
@@ -486,9 +486,9 @@
     "semantic_hash": "87431c6a95ea83162d97e0e7156bf760"
   },
   "src/pages/_app.js": {
-    "mtime": 1791128839.9328141,
-    "seen": 1791130252.2866793,
-    "ast_hash": "72a753927ac5b7454a9b757fcaaa31c4",
+    "mtime": 1791133767.402022,
+    "seen": 1791134030.6445105,
+    "ast_hash": "f1e62239c846a4ca569941b1c544d6e1",
     "semantic_hash": ""
   },
   "src/pages/account.js": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "src/pages/categories.js": {
-    "mtime": 1791132206.7775722,
-    "seen": 1791132939.3565953,
-    "ast_hash": "796e701218626ea00ae5bf9e14d49366",
+    "mtime": 1791133725.5280852,
+    "seen": 1791134030.6446173,
+    "ast_hash": "cd05f741f642a0141cde333a43fff1a1",
     "semantic_hash": ""
   },
   "src/pages/checkout.js": {
@@ -558,9 +558,9 @@
     "semantic_hash": ""
   },
   "src/pages/search.js": {
-    "mtime": 1791132732.7210474,
-    "seen": 1791132939.35845,
-    "ast_hash": "33833fe84100df594f028ca273304f91",
+    "mtime": 1791133751.9020574,
+    "seen": 1791134030.6450486,
+    "ast_hash": "8a2067836e89af3864660f8636dc4eb4",
     "semantic_hash": ""
   },
   "src/pages/wishlist.js": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1791132893.1514852,
-    "seen": 1791132939.3657115,
-    "ast_hash": "451e12f5446fbdd364cb3269815509d1",
+    "mtime": 1791133977.5018053,
+    "seen": 1791134030.6484013,
+    "ast_hash": "d8531646f4402b3df67963e48a5bc847",
     "semantic_hash": ""
   },
   "ios/App/CapApp-SPM/README.md": {
@@ -1194,9 +1194,9 @@
     "semantic_hash": ""
   },
   "src/pages/shop.js": {
-    "mtime": 1791132551.444878,
-    "seen": 1791132939.3584552,
-    "ast_hash": "64c32f2dd92e35f2cd411a740dbce209",
+    "mtime": 1791133751.903341,
+    "seen": 1791134030.64505,
+    "ast_hash": "732228db3eaef2c2b6f05b700fdc03f6",
     "semantic_hash": ""
   },
   "src/pages/terms.js": {
@@ -2406,9 +2406,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Models/Cart.swift": {
-    "mtime": 1791107329.2101395,
-    "seen": 1791130252.2847874,
-    "ast_hash": "8049cca26fabf00a26ac5942adc767ba",
+    "mtime": 1791133725.5224397,
+    "seen": 1791134030.6359355,
+    "ast_hash": "98d55a2a67f439ea5e54475c8b927fe1",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Models/CatalogSeed.swift": {
@@ -3300,9 +3300,9 @@
     "semantic_hash": ""
   },
   "src/components/FreeDeliveryProgress.jsx": {
-    "mtime": 1791100323.4378996,
-    "seen": 1791130252.285853,
-    "ast_hash": "7ba852019eda194cdb9d68b6cadd87c0",
+    "mtime": 1791133725.5218518,
+    "seen": 1791134030.6412015,
+    "ast_hash": "d1add45d3e2458da18ed6ccb1ad49423",
     "semantic_hash": ""
   },
   "src/components/FreeDeliveryToast.jsx": {
@@ -3360,9 +3360,9 @@
     "semantic_hash": ""
   },
   "src/components/WhatsAppSupportButton.jsx": {
-    "mtime": 1791119849.082902,
-    "seen": 1791130252.286009,
-    "ast_hash": "1d6ba4d2a255754f43667e68948e4321",
+    "mtime": 1791133725.5244765,
+    "seen": 1791134030.6420784,
+    "ast_hash": "aa44250635de353305488404ac3bdc16",
     "semantic_hash": ""
   },
   "src/components/admin/AdminSheet.jsx": {
@@ -3462,9 +3462,9 @@
     "semantic_hash": ""
   },
   "src/lib/catalogueFile.js": {
-    "mtime": 1791006250.84787,
-    "seen": 1791130252.286358,
-    "ast_hash": "13d0b74faba33f33f5f58d84f09a1366",
+    "mtime": 1791133725.5213892,
+    "seen": 1791134030.6434605,
+    "ast_hash": "3295f1455fa105a1be8d8f901e36986d",
     "semantic_hash": ""
   },
   "src/lib/coupons.js": {
@@ -3534,9 +3534,9 @@
     "semantic_hash": ""
   },
   "src/lib/shopAisles.js": {
-    "mtime": 1791132009.7533948,
-    "seen": 1791132939.3557427,
-    "ast_hash": "79a6ff6f53cd4242de11e6c29fbf9b02",
+    "mtime": 1791133725.521667,
+    "seen": 1791134030.644199,
+    "ast_hash": "01a653bb0390352d4a36285083a58ed2",
     "semantic_hash": ""
   },
   "src/lib/shopperAuth.js": {
@@ -7575,6 +7575,12 @@
     "mtime": 1791132103.4890087,
     "seen": 1791132939.355699,
     "ast_hash": "292ee9563e844529b913d0ee8ff1525c",
+    "semantic_hash": ""
+  },
+  "src/lib/categorize.js": {
+    "mtime": 1791133725.5200696,
+    "seen": 1791134030.643463,
+    "ast_hash": "923e90973625f8cd6f1ca66bd6bb21e9",
     "semantic_hash": ""
   }
 }
