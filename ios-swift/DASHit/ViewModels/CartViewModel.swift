@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if !ADMIN_APP_TARGET
+import FirebaseFirestore
+#endif
 
 @MainActor
 final class CartViewModel: ObservableObject {
@@ -31,6 +34,11 @@ final class CartViewModel: ObservableObject {
     /// True while `init` restores the saved cart, which is not the shopper adding items.
     private var isRestoringCart = true
 
+    #if !ADMIN_APP_TARGET
+    /// Live listener for the admin-managed coupon list from Firestore `config/coupons`.
+    private var couponListener: ListenerRegistration?
+    #endif
+
     private init() {
         self.items = LocalStorage.shared.loadCartItems()
         #if DEBUG
@@ -44,7 +52,51 @@ final class CartViewModel: ObservableObject {
         recalculate()
         isRestoringCart = false
         hasCelebratedFreeDelivery = bill.subtotal >= CartBillBreakdown.freeDeliveryThreshold
+        #if !ADMIN_APP_TARGET
+        listenToCoupons()
+        #endif
     }
+
+    #if !ADMIN_APP_TARGET
+    /// Subscribes to `config/coupons` so the cart reflects any coupon changes
+    /// the admin makes without needing an app update.
+    private func listenToCoupons() {
+        couponListener = Firestore.firestore()
+            .collection("config").document("coupons")
+            .addSnapshotListener { [weak self] doc, error in
+                guard let self, let doc, doc.exists, error == nil,
+                      let data = doc.data(),
+                      let list = data["list"] as? [[String: Any]] else { return }
+                let decoded: [Coupon] = list.compactMap { item in
+                    let code = (item["code"] as? String)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .uppercased() ?? ""
+                    guard !code.isEmpty else { return nil }
+                    let active = item["active"] as? Bool ?? true
+                    guard active else { return nil }       // skip disabled codes
+                    return Coupon(
+                        id: code,
+                        code: code,
+                        title: item["title"] as? String ?? "",
+                        description: item["description"] as? String ?? "",
+                        discount: (item["discount"] as? Double) ?? Double(item["discount"] as? Int ?? 0),
+                        minOrder: (item["minOrder"] as? Double) ?? Double(item["minOrder"] as? Int ?? 0),
+                        waivesDelivery: (item["waivesDelivery"] as? Bool) ?? (code == "FREEDEL"),
+                        condition: item["condition"] as? String ?? "",
+                        active: true
+                    )
+                }
+                Task { @MainActor in
+                    Coupon.dynamicCatalog = decoded.isEmpty ? nil : decoded
+                    // If the applied coupon was removed by admin, clear it.
+                    if let applied = self.appliedCoupon,
+                       !(Coupon.catalog.contains(where: { $0.code == applied.code })) {
+                        self.appliedCoupon = nil
+                    }
+                }
+            }
+    }
+    #endif
 
     var totalQuantity: Int {
         items.reduce(0) { $0 + $1.qty }

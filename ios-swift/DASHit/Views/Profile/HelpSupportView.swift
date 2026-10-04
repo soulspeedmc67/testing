@@ -72,8 +72,9 @@ struct HelpSupportView: View {
         ),
         Question(
             question: "Is there a delivery fee?",
-            answer: "Delivery is free on orders of \(CurrencyFormatter.format(CartBillBreakdown.freeDeliveryThreshold)) or more. "
-                + "Below that it's \(CurrencyFormatter.format(CartBillBreakdown.standardDeliveryFee)). There's no minimum order."
+            answer: "Delivery is free on your first 5 orders and on carts of ₹300 or more. "
+                + "Under ₹180 it's 30% of your cart total. Orders from ₹180–₹299 carry a flat ₹35 fee. "
+                + "Above ₹299 it's only ₹25. Plus a small ₹11 handling charge applies to every order."
         ),
         Question(
             question: "Something is missing, damaged or wrong",

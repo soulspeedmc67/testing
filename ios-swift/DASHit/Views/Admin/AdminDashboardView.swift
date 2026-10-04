@@ -8,6 +8,7 @@ public struct AdminDashboardView: View {
     @State private var selectedOrderForDetail: Order? = nil
     @State private var selectedOrderForDriver: Order? = nil
     @State private var orderToReject: Order? = nil
+    @State private var orderToCancel: Order? = nil
     @State private var isAddSupplierSheetOpen: Bool = false
     @State private var isAddProductSheetOpen: Bool = false
     @State private var isAddDriverSheetOpen: Bool = false
@@ -91,6 +92,9 @@ public struct AdminDashboardView: View {
             }
             .sheet(item: $orderToReject) { order in
                 RejectOrderSheetView(order: order, vm: vm)
+            }
+            .sheet(item: $orderToCancel) { order in
+                CancelOrderSheetView(order: order, vm: vm)
             }
             .sheet(isPresented: $isAddSupplierSheetOpen) {
                 AddSupplierSheetView { name, phone, address, notes in
@@ -464,7 +468,7 @@ public struct AdminDashboardView: View {
                     Button(role: .destructive, action: {
                         orderToReject = order
                     }) {
-                        Label("Reject", systemImage: "xmark.circle")
+                        Label("Cancel", systemImage: "xmark.circle")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.red)
                             .padding(.horizontal, 10)
@@ -485,7 +489,7 @@ public struct AdminDashboardView: View {
                     Button(role: .destructive, action: {
                         orderToReject = order
                     }) {
-                        Label("Reject", systemImage: "xmark.circle")
+                        Label("Cancel", systemImage: "xmark.circle")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(.red)
                             .padding(.horizontal, 10)
@@ -501,6 +505,17 @@ public struct AdminDashboardView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(Color.green)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                    Button(role: .destructive, action: {
+                        orderToReject = order
+                    }) {
+                        Label("Cancel", systemImage: "xmark.circle")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Color.red.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
@@ -1461,7 +1476,7 @@ struct OrderDetailSheetView: View {
                 Button(role: .destructive) {
                     isRejectSheetOpen = true
                 } label: {
-                    Label("Reject order with reason", systemImage: "xmark.circle.fill")
+                    Label("Cancel or reject order with reason", systemImage: "xmark.circle.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
@@ -2306,6 +2321,7 @@ struct BatchInwardSheetView: View {
 struct RejectOrderSheetView: View {
     let order: Order
     @ObservedObject var vm: AdminDashboardViewModel
+    var title: String = "Cancel / Reject Order"
     var onDone: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
@@ -2336,7 +2352,7 @@ struct RejectOrderSheetView: View {
                 }
 
                 Section(
-                    header: Text("Reason for Rejection"),
+                    header: Text("Reason for Cancellation / Rejection"),
                     footer: Text("The customer will see this reason in their live tracking and order history.")
                 ) {
                     ForEach(presets, id: \.self) { preset in
@@ -2372,14 +2388,14 @@ struct RejectOrderSheetView: View {
                     }) {
                         HStack {
                             Spacer()
-                            Label("Confirm Rejection", systemImage: "xmark.circle.fill")
+                            Label("Confirm Cancellation / Rejection", systemImage: "xmark.circle.fill")
                                 .font(.system(size: 15, weight: .bold))
                             Spacer()
                         }
                     }
                 }
             }
-            .navigationTitle("Reject Order")
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -2391,4 +2407,6 @@ struct RejectOrderSheetView: View {
         .presentationDragIndicator(.visible)
     }
 }
+
+typealias CancelOrderSheetView = RejectOrderSheetView
 

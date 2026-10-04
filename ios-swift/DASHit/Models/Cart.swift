@@ -159,10 +159,15 @@ extension Coupon {
     func saving(onSubtotal subtotal: Double) -> Double {
         guard (active ?? true) && subtotal >= minOrder else { return 0 }
         if waivesDelivery == true || code == "FREEDEL" {
-            return subtotal >= CartBillBreakdown.freeDeliveryThreshold ? 0 : CartBillBreakdown.standardDeliveryFee
+            guard subtotal < CartBillBreakdown.freeDeliveryThreshold else { return 0 }
+            // Compute the tiered delivery fee this order would incur.
+            let tieredFee: Double = subtotal < 180 ? (subtotal * 0.30).rounded()
+                                  : subtotal <= 299 ? 35.0 : 25.0
+            return tieredFee
         }
         return min(subtotal, discount)
     }
+
 
     /// The code that saves the most on this subtotal, if any saves anything.
     static func best(forSubtotal subtotal: Double) -> Coupon? {
@@ -188,6 +193,10 @@ public struct CartBillBreakdown {
     public static let minOrderValue: Double = 0.0
     public static let freeDeliveryThreshold: Double = 300.0
     public static let handlingFeeAmount: Double = 11.0
+    /// Representative delivery fee shown in help text and celebration toasts.
+    /// Reflects the ₹299+ tier (cheapest paid rate); per-order `standardDeliveryFee`
+    /// on each `CartBillBreakdown` instance holds the exact tiered amount.
+    public static let standardDeliveryFee: Double = 25.0
 
     public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0) -> CartBillBreakdown {
         let subtotal = items.reduce(0.0) { $0 + ($1.price * Double($1.qty)) }

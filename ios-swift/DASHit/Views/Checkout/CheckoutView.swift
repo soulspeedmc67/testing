@@ -12,93 +12,108 @@ struct CheckoutView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Color.surface.ignoresSafeArea()
-
-                ScrollView {
-                    VStack(spacing: 16) {
-                        // 1. Delivery Address Card
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Image(systemName: "mappin.and.ellipse")
-                                    .foregroundColor(.brandAccent)
-                                Text("Delivering to \(vm.selectedAddress.nickname)")
-                                    .font(.dashitBodyBold)
-                                    .foregroundColor(.textPrimary)
-                                Spacer()
-                                Button("Change") {
-                                    isAddressSheetOpen = true
-                                }
-                                .font(.dashitCaptionBold)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // 1. Delivery Address Card
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Image(systemName: "mappin.and.ellipse")
                                 .foregroundColor(.brandAccent)
+                            Text("Delivering to \(vm.selectedAddress.nickname)")
+                                .font(.dashitBodyBold)
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                            Button("Change") {
+                                isAddressSheetOpen = true
                             }
+                            .font(.dashitCaptionBold)
+                            .foregroundColor(.brandAccent)
+                        }
 
-                            Text(vm.selectedAddress.formattedSummary)
-                                .font(.dashitCaption)
+                        Text(vm.selectedAddress.formattedSummary)
+                            .font(.dashitCaption)
+                            .foregroundColor(.textMuted)
+                    }
+                    .padding(14)
+                    .background(Color.surfaceRaised)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.hairline, lineWidth: 1)
+                    )
+
+                    // 2. Delivery Time Guarantee
+                    HStack(spacing: 12) {
+                        Image(systemName: "bolt.badge.clock.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.caution)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(deliveryHeadline)
+                                .font(.dashitBodyBold)
+                                .foregroundColor(vm.deliveryQuote.isDeliverable ? .textPrimary : .danger)
+                            Text(vm.deliveryQuote.isDeliverable
+                                 ? "\(vm.deliveryQuote.distanceText) · Fulfilled from DASHit Anantnag Dark Store"
+                                 : "\(vm.deliveryQuote.distanceText) · We deliver within 5 km of our Anantnag hub")
+                                .font(.dashitMicro)
                                 .foregroundColor(.textMuted)
                         }
-                        .padding(14)
-                        .background(Color.surfaceRaised)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.hairline, lineWidth: 1)
-                        )
-
-                        // 2. Delivery Time Guarantee
-                        HStack(spacing: 12) {
-                            Image(systemName: "bolt.badge.clock.fill")
-                                .font(.system(size: 24))
-                                .foregroundColor(.caution)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(deliveryHeadline)
-                                    .font(.dashitBodyBold)
-                                    .foregroundColor(vm.deliveryQuote.isDeliverable ? .textPrimary : .danger)
-                                Text(vm.deliveryQuote.isDeliverable
-                                     ? "\(vm.deliveryQuote.distanceText) · Fulfilled from DASHit Anantnag Dark Store"
-                                     : "\(vm.deliveryQuote.distanceText) · We deliver within 5 km of our Anantnag hub")
-                                    .font(.dashitMicro)
-                                    .foregroundColor(.textMuted)
-                            }
-                            Spacer()
-                        }
-                        .padding(14)
-                        .background(Color.surfaceRaised)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.hairline, lineWidth: 1)
-                        )
-
-                        // 3. How to pay: UPI apps as logo tiles, then the other online ways, then cash.
-                        paymentSection
-
-                        // 4. Order Bill Summary
-                        VStack(spacing: 8) {
-                            HStack {
-                                Text("Order Total")
-                                    .font(.dashitBodyBold)
-                                    .foregroundColor(.textPrimary)
-                                Spacer()
-                                Text(CurrencyFormatter.format(cart.bill.grandTotal))
-                                    .font(.dashitHeadline)
-                                    .foregroundColor(.textPrimary)
-                            }
-                        }
-                        .padding(14)
-                        .background(Color.surfaceRaised)
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.hairline, lineWidth: 1)
-                        )
+                        Spacer()
                     }
-                    .padding(16)
-                }
+                    .padding(14)
+                    .background(Color.surfaceRaised)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.hairline, lineWidth: 1)
+                    )
 
-                // Bottom Fixed CTA
-                VStack(spacing: 10) {
-                    Spacer()
+                    // 3. How to pay: UPI apps as logo tiles, then the other online ways, then cash.
+                    paymentSection
+
+                    // 4. Order Bill Summary – fully visible above the Place Order button
+                    VStack(spacing: 8) {
+                        let bill = cart.bill
+                        billRow("Items total", value: CurrencyFormatter.format(bill.subtotal))
+                        billRow(
+                            bill.isFirstFivePromo ? "Delivery (free – first 5 orders)" : "Delivery fee",
+                            value: bill.deliveryFee == 0 ? "FREE" : CurrencyFormatter.format(bill.deliveryFee),
+                            accent: bill.deliveryFee == 0
+                        )
+                        if !bill.tierLabel.isEmpty && bill.deliveryFee > 0 {
+                            Text(bill.tierLabel)
+                                .font(.system(size: 11))
+                                .foregroundColor(.textFaint)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        billRow("Handling charge", value: CurrencyFormatter.format(bill.handlingFee))
+                        if bill.couponDiscount > 0 {
+                            billRow("Coupon discount", value: "-\(CurrencyFormatter.format(bill.couponDiscount))", accent: true)
+                        }
+                        Divider()
+                        HStack {
+                            Text("Order Total")
+                                .font(.dashitBodyBold)
+                                .foregroundColor(.textPrimary)
+                            Spacer()
+                            Text(CurrencyFormatter.format(bill.grandTotal))
+                                .font(.dashitHeadline)
+                                .foregroundColor(.textPrimary)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.surfaceRaised)
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.hairline, lineWidth: 1)
+                    )
+                }
+                .padding(16)
+            }
+            .background(Color.surface.ignoresSafeArea())
+            // Place Order button sits in the safe area – scroll content is NEVER hidden behind it.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 8) {
                     if let error = vm.orderError {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "exclamationmark.circle.fill")
@@ -122,8 +137,6 @@ struct CheckoutView: View {
                             }
                             let success = await vm.placeOrder(cart: cart, auth: auth)
                             if success {
-                                // Closing the cart sheet closes checkout with it; RootView
-                                // then opens live tracking for the new order.
                                 cart.isCartSheetPresented = false
                             }
                         }
@@ -153,6 +166,7 @@ struct CheckoutView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                 }
+                .background(Color.surface.ignoresSafeArea(edges: .bottom))
                 .animation(.dashitSpring, value: vm.orderError)
             }
             .navigationTitle("Checkout")
@@ -181,6 +195,19 @@ struct CheckoutView: View {
             }
         }
     }
+
+    private func billRow(_ label: String, value: String, accent: Bool = false) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13))
+                .foregroundColor(.textMuted)
+            Spacer()
+            Text(value)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(accent ? .positive : .textPrimary)
+        }
+    }
+
 
     /// How to pay, laid out the way shoppers expect from Blinkit or Zomato:
     /// the UPI apps on this phone first as logo tiles, then cards and the
