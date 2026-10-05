@@ -6,6 +6,30 @@
 
 ---
 
+## Oct 5, 2026 (night): sales analytics, night-order fixes
+
+Web VERIFIED (production build, tests, screenshots of checkout at a faked
+9 pm and of the analytics screen with sample orders). iOS NOT compiled here
+(no Swift): needs the GitHub Actions build.
+
+- **Sales & analytics** (`/xcyop` → "Sales & analytics", and the iOS admin's
+  "Sales & analytics" tab, `AdminAnalyticsView.swift`): sales, orders
+  delivered, average order, cancelled, booked, customers for Today /
+  Yesterday / 7 days / 30 days / This month / Lifetime; a daily chart,
+  best sellers, busy hours, online vs cash, a lifetime card and a day-by-day
+  table (CSV on web). Rules in `src/lib/salesAnalytics.js` (tests in
+  `tests/salesAnalytics.test.mjs`): India days, by date placed, sales =
+  delivered orders, orders replaced by an add-items change are left out.
+  It reads every order once on open and on Refresh (one read per order).
+  The console's top "Sales today" tile replaced the old all-orders "GMV".
+- **Night orders**: while the distance charge is on, it is the whole
+  delivery fee (no 40% / ₹35 / ₹25 tier) and free delivery (first 5 orders,
+  FREEDEL) neither applies nor is mentioned; night orders don't use up a
+  free order. Track page, receipt, packing slip and add-items show one
+  "by distance" line. Web only: the native apps still add the tier fee.
+- **No cash on delivery after 8 pm** (India time, to 6 am): greyed out at
+  checkout with "Not available after 8 pm. Please pay online." Web only.
+
 ## Oct 5, 2026 (evening): night delivery charge, rider's petrol, order map
 
 Web VERIFIED on the local dev build (checkout at a faked 9 pm, the settings

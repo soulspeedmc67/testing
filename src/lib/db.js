@@ -1507,6 +1507,19 @@ export function watchOrder(orderId, callback) {
 }
 
 /** Admin console: every live order, newest first, with resilient cross-tab local fallback. */
+/**
+ * Every order, read once (staff only): the analytics screen's lifetime
+ * numbers. One document read per order, so it is fetched when the screen
+ * opens or its Refresh is pressed, never on a timer. Signed out or offline,
+ * the orders this browser saved are returned.
+ */
+export async function fetchAllOrders() {
+  const db = getDb();
+  if (!db) return [];
+  const snap = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc")));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 export function watchAllOrders(callback, max = 100) {
   const getLocalOrders = () => {
     if (typeof window !== "undefined") {

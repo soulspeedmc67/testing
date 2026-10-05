@@ -303,6 +303,8 @@ public struct AdminDashboardView: View {
                     addProductDirectContent
                 case .riders:
                     ridersTabContent
+                case .analytics:
+                    AdminAnalyticsView()
                 case .notify:
                     AdminNotifyView()
                 case .distributors:

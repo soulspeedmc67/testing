@@ -13,6 +13,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     case orders = "Orders"
     case inventory = "Stock"
     case riders = "Riders"
+    case analytics = "Sales & analytics"
     case notify = "Notify customers"
     case addProduct = "Add an item"
     case distributors = "Distributors"
@@ -31,7 +32,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
 
     public var group: NavGroup {
         switch self {
-        case .home, .orders, .inventory, .riders, .notify: return .everyDay
+        case .home, .orders, .inventory, .riders, .analytics, .notify: return .everyDay
         case .addProduct, .distributors, .offers, .storeControls, .batchInward, .importCSV: return .more
         }
     }
@@ -44,6 +45,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .inventory: return "How many of each item you have. Tap − or + to change the number."
         case .addProduct: return "Put a new item in the shop."
         case .riders: return "The people who deliver your orders."
+        case .analytics: return "Sales and orders delivered, day by day, and everything since the first order."
         case .notify: return "Send one notification to every customer with the app: offers, new items, shop news."
         case .distributors: return "The people and companies you buy stock from."
         case .offers: return "Coupon codes your customers can use."
@@ -60,6 +62,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .inventory: return "square.grid.2x2.fill"
         case .addProduct: return "plus.circle.fill"
         case .riders: return "scooter"
+        case .analytics: return "chart.bar.xaxis"
         case .notify: return "megaphone.fill"
         case .distributors: return "building.2.fill"
         case .storeControls: return "storefront.fill"

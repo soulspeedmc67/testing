@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Package,
   Boxes,
+  BarChart3,
   Camera,
   ArrowDownToLine,
   Tag,
@@ -82,6 +83,11 @@ export default function AdminLayout({
           id: "drivers",
           label: "Riders",
           icon: Truck,
+        },
+        {
+          id: "analytics",
+          label: "Sales & analytics",
+          icon: BarChart3,
         },
         {
           id: "notify",

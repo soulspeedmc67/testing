@@ -27,6 +27,8 @@ import {
 import AdminLayout from "../components/admin/AdminLayout";
 import OrderProcessingView from "../components/admin/OrderProcessingView";
 import DriversView from "../components/admin/DriversView";
+import { summarize, rangeKeys } from "../lib/salesAnalytics";
+import AnalyticsView from "../components/admin/AnalyticsView";
 import LiveDeliveriesPanel from "../components/admin/LiveDeliveriesPanel";
 import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
@@ -1818,7 +1820,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     (o) => o.status !== ORDER_STATUS.DELIVERED && o.status !== ORDER_STATUS.CANCELLED
   ).length;
 
-  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.totalAmount || o.total) || 0), 0);
+  // Delivered orders placed today (India time); the Analytics screen has the rest.
+  const today = useMemo(() => summarize(orders, rangeKeys("today")).totals, [orders]);
 
   return (
     <AdminLayout
@@ -1920,7 +1923,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Processed Volume (GMV)
+              Sales today
             </span>
             <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
               <IndianRupee className="w-4 h-4" />
@@ -1928,7 +1931,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           </div>
           <div className="flex items-baseline justify-between mt-1">
             <div className="text-2xl font-black text-slate-900 dark:text-white">
-              ₹{totalRevenue.toLocaleString("en-IN")}
+              ₹{Math.round(today.sales).toLocaleString("en-IN")}
             </div>
             <button
               type="button"
@@ -1941,7 +1944,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
             </button>
           </div>
           <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-semibold mt-1">
-            Total sales processed &middot; Click GST Bill for tax report
+            <button type="button" onClick={() => setActiveTab("analytics")} className="hover:text-[#FF5B00] cursor-pointer">
+              {today.delivered} delivered &middot; {today.orders} placed &middot; <span className="font-black text-[#FF5B00]">See analytics</span>
+            </button>
           </p>
         </div>
       </div>
@@ -1988,6 +1993,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           darkMode={darkMode}
         />
       )}
+
+      {activeTab === "analytics" && <AnalyticsView orders={orders} darkMode={darkMode} />}
 
       {activeTab === "drivers" && <LiveDeliveriesPanel orders={orders} darkMode={darkMode} />}
 
