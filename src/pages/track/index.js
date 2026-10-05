@@ -654,8 +654,14 @@ export default function OrderTrackingPage() {
                 return (
                   <div className="bg-white/5 rounded-xl p-2.5 space-y-1.5">
                     {row("Item total", `₹${sub.toFixed(0)}`)}
-                    {row("Delivery charge", fee.base > 0 ? `₹${fee.base.toFixed(0)}` : "Free")}
-                    {fee.night > 0 && row("Distance delivery charge", `₹${fee.night.toFixed(0)}`)}
+                    {fee.night > 0 && fee.base === 0 ? (
+                      row("Delivery charge (by distance)", `₹${fee.night.toFixed(0)}`)
+                    ) : (
+                      <>
+                        {row("Delivery charge", fee.base > 0 ? `₹${fee.base.toFixed(0)}` : "Free")}
+                        {fee.night > 0 && row("Distance delivery charge", `₹${fee.night.toFixed(0)}`)}
+                      </>
+                    )}
                     {handling > 0 && row("Handling charge", `₹${handling.toFixed(0)}`)}
                     {off > 0 && row("Discount", `-₹${off.toFixed(0)}`)}
                     <div className="border-t border-white/10 pt-1.5">{row("Total", `₹${grandTotal.toFixed(0)}`)}</div>

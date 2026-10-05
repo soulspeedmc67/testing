@@ -286,17 +286,18 @@ export default function CheckoutPage() {
     }
   }, [cartItems, appliedCoupon, couponManuallyRemoved, nightChargeOn]);
 
-  // At night the first-5 promo is skipped: the normal tier fee applies.
+  /* While the distance charge is on it is the whole delivery fee: the
+     subtotal tiers (40% / ₹35 / ₹25) and free delivery don't apply. */
   const deliveryCharges = useMemo(() => {
-    return calculateDeliveryCharges(subtotal, nightChargeOn ? Math.max(5, userOrdersCount) : userOrdersCount, coupon);
+    if (nightChargeOn) return { fee: 0, standardFee: 0, isFree: false, isFirstFivePromo: false, tierLabel: "" };
+    return calculateDeliveryCharges(subtotal, userOrdersCount, coupon);
   }, [subtotal, userOrdersCount, coupon, nightChargeOn]);
 
   const eta = calculateDeliveryEta(location);
   const hasAddress = Boolean(location?.address && location?.lat && location?.lng);
 
-  // The night charge is its own line on the bill: it pays for the rider's petrol.
+  // By distance from the store: it pays for the rider's petrol.
   const nightFee = clock && hasAddress ? nightChargeFor(eta.distanceKm, storeConfig, clock) : 0;
-  const nightChargeLabel = clock && isNightHours(clock) ? "Night delivery charge" : "Distance delivery charge";
 
   const deliveryFee = deliveryCharges.fee;
   const handlingFee = HANDLING_FEE;
@@ -797,7 +798,20 @@ export default function CheckoutPage() {
                 <dd className="tabular-nums font-semibold">{rupees(subtotal)}</dd>
               </div>
 
-              {/* Delivery Fee */}
+              {/* Delivery Fee (by subtotal; by distance while the distance charge is on) */}
+              {nightChargeOn ? (
+                <div className="flex justify-between items-start">
+                  <div>
+                    <dt className="text-slate-600 dark:text-content-secondary">Delivery fee</dt>
+                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
+                      {hasAddress ? `By distance: ${eta.distanceKm} km from our store` : "By distance from our store. Add your address to see it."}
+                    </span>
+                  </div>
+                  <dd className={`tabular-nums ${hasAddress ? "font-semibold" : "text-slate-400 dark:text-content-faint"}`}>
+                    {hasAddress ? rupees(nightFee) : "—"}
+                  </dd>
+                </div>
+              ) : (
               <div className="flex justify-between items-start">
                 <div>
                   <dt className="text-slate-600 dark:text-content-secondary">Delivery fee</dt>
@@ -826,30 +840,6 @@ export default function CheckoutPage() {
                   )}
                 </dd>
               </div>
-
-              {nightFee > 0 ? (
-                <div className="flex justify-between items-start">
-                  <div>
-                    <dt className="text-slate-600 dark:text-content-secondary">{nightChargeLabel}</dt>
-                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
-                      {nightChargeLabel.startsWith("Night") ? "After 8 pm, by distance" : "By distance"}: {eta.distanceKm} km from our store
-                    </span>
-                  </div>
-                  <dd className="tabular-nums font-semibold">{rupees(nightFee)}</dd>
-                </div>
-              ) : (
-                nightChargeOn &&
-                !hasAddress && (
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <dt className="text-slate-600 dark:text-content-secondary">{nightChargeLabel}</dt>
-                      <span className="text-[11px] text-slate-400 dark:text-content-faint block">
-                        By distance from our store. Add your address to see it.
-                      </span>
-                    </div>
-                    <dd className="tabular-nums text-slate-400 dark:text-content-faint">—</dd>
-                  </div>
-                )
               )}
 
               {/* Handling Fee */}

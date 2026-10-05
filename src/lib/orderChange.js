@@ -154,7 +154,8 @@ function couponDiscount(order, subtotal, coupon) {
  *
  * - Delivery charge: the fee for the new item total. Delivery that was free
  *   on the original (the first-orders offer, or a free-delivery code) stays free.
- * - Night distance charge: kept as it was. Same trip, same address.
+ * - Night distance charge: kept as it was. Same trip, same address. Orders
+ *   placed with the distance charge as their whole fee stay that way.
  * - Handling charge: kept.
  * - Discount: the order's code applied to the new item total; `coupon` is that
  *   code from the shop's list, or null when it isn't there.
@@ -166,8 +167,9 @@ export function billForChangedOrder(order, items, coupon = null) {
   // What an order this size pays with no offer and no code.
   const standardFee = calculateDeliveryCharges(subtotal, Infinity).fee;
   const standardFeeBefore = calculateDeliveryCharges(subtotalBefore, Infinity).fee;
+  const distanceOnly = before.night > 0 && before.base === 0;
   const deliveryWaived = before.base === 0 && standardFeeBefore > 0;
-  const baseDeliveryFee = deliveryWaived ? 0 : standardFee;
+  const baseDeliveryFee = distanceOnly || deliveryWaived ? 0 : standardFee;
 
   const handlingFee = rupees(order?.handlingFee ?? HANDLING_FEE);
   const discount = couponDiscount(order, subtotal, coupon);
@@ -184,11 +186,12 @@ export function billForChangedOrder(order, items, coupon = null) {
     subtotal,
     baseDeliveryFee,
     nightDeliveryFee: before.night,
+    distanceOnly,
     deliveryFee,
     handlingFee,
     discount,
     total,
-    savings: mrpSavings + discount + (standardFee - baseDeliveryFee),
+    savings: mrpSavings + discount + (distanceOnly ? 0 : standardFee - baseDeliveryFee),
   };
 }
 

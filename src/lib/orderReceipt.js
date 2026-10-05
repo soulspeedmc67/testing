@@ -101,8 +101,13 @@ export function buildReceiptText(order, { origin = "" } = {}) {
   lines.push(`Subtotal: ${money(subtotal)}`);
   if (discount > 0) lines.push(`Discount: -${money(discount)}`);
   const fee = deliveryFeeParts(order);
-  lines.push(`Delivery: ${fee.base > 0 ? money(fee.base) : "Free"}`);
-  if (fee.night > 0) lines.push(`Distance delivery charge: ${money(fee.night)}`);
+  if (fee.night > 0 && fee.base === 0) {
+    // Charged by distance alone (night orders): never "Free".
+    lines.push(`Delivery (by distance): ${money(fee.night)}`);
+  } else {
+    lines.push(`Delivery: ${fee.base > 0 ? money(fee.base) : "Free"}`);
+    if (fee.night > 0) lines.push(`Distance delivery charge: ${money(fee.night)}`);
+  }
   // ₹11 on every order; older orders saved without it show what the total implies.
   const handlingFee = Number(order.handlingFee ?? Math.max(0, total - subtotal - deliveryFee + discount)) || 0;
   if (handlingFee > 0) lines.push(`Handling charge: ${money(handlingFee)}`);

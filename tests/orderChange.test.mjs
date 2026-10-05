@@ -177,6 +177,15 @@ test("the night distance charge is kept as it was", () => {
   assert.equal(freeBill.deliveryFee, 18);
 });
 
+test("a night order charged by distance alone stays that way", () => {
+  const night = { ...paidDelivery, deliveryFee: 18, nightDeliveryFee: 18, couponCode: null };
+  const bill = billForChangedOrder(night, mergeAdditions(night.items, [rice]));
+  assert.equal(bill.distanceOnly, true);
+  assert.equal(bill.baseDeliveryFee, 0);
+  assert.equal(bill.deliveryFee, 18);
+  assert.equal(bill.total, 525 + 18 + 11);
+});
+
 test("the order's code is applied to the new item total", () => {
   const half = { code: "FLAT50", discount: 50, discountType: "percent", isPercent: true, minOrder: 799 };
   const big = { ...paidDelivery, items: [{ ...rice, qty: 2 }], subtotal: 840, deliveryFee: 25, discount: 420, couponCode: "FLAT50", total: 456 };

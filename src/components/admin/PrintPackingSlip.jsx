@@ -189,8 +189,14 @@ function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, add
           <section className="text-[11px] space-y-1">
             <Row label={`Subtotal (${unitCount} ${unitCount === 1 ? "unit" : "units"})`} value={money(subtotal)} />
             {discount > 0 && <Row label="Discount" value={"-" + money(discount)} />}
-            <Row label="Delivery" value={deliveryFee - nightFee > 0 ? money(deliveryFee - nightFee) : "Free"} />
-            {nightFee > 0 && <Row label="Distance charge" value={money(nightFee)} />}
+            {nightFee > 0 && deliveryFee - nightFee <= 0 ? (
+              <Row label="Delivery (by distance)" value={money(nightFee)} />
+            ) : (
+              <>
+                <Row label="Delivery" value={deliveryFee - nightFee > 0 ? money(deliveryFee - nightFee) : "Free"} />
+                {nightFee > 0 && <Row label="Distance charge" value={money(nightFee)} />}
+              </>
+            )}
             {handlingFee > 0 && <Row label="Handling charge" value={money(handlingFee)} />}
             <div className="flex justify-between pt-2 mt-1 border-t border-slate-900 text-sm font-bold">
               <span>{isPaid ? "Total (paid)" : "Collect"}</span>
