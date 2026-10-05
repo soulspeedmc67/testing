@@ -189,6 +189,9 @@ public struct CartBillBreakdown {
     public let subtotal: Double
     public let deliveryFee: Double
     public let standardDeliveryFee: Double
+    /// Charged by distance after 8 pm (`NightCharge`), on top of `deliveryFee`
+    /// and not waived with it: it pays for the rider's petrol.
+    public let nightDeliveryFee: Double
     public let handlingFee: Double
     public let couponDiscount: Double
     public let grandTotal: Double
@@ -206,13 +209,14 @@ public struct CartBillBreakdown {
     /// on each `CartBillBreakdown` instance holds the exact tiered amount.
     public static let standardDeliveryFee: Double = 25.0
 
-    public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0) -> CartBillBreakdown {
+    public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0, nightDeliveryFee: Double = 0) -> CartBillBreakdown {
         let subtotal = items.reduce(0.0) { $0 + ($1.price * Double($1.qty)) }
         guard subtotal > 0 else {
             return CartBillBreakdown(
                 subtotal: 0,
                 deliveryFee: 0,
                 standardDeliveryFee: 0,
+                nightDeliveryFee: 0,
                 handlingFee: 0,
                 couponDiscount: 0,
                 grandTotal: 0,
@@ -246,12 +250,13 @@ public struct CartBillBreakdown {
         let deliveryFee: Double = (isWaivedByCoupon || isFirstFive) ? 0.0 : standardFee
         let handlingFee = handlingFeeAmount
         let discount = effectiveCoupon != nil ? min(subtotal, effectiveCoupon!.discount) : 0.0
-        let grandTotal = max(0.0, subtotal + deliveryFee + handlingFee - discount)
+        let grandTotal = max(0.0, subtotal + deliveryFee + nightDeliveryFee + handlingFee - discount)
 
         return CartBillBreakdown(
             subtotal: subtotal,
             deliveryFee: deliveryFee,
             standardDeliveryFee: standardFee,
+            nightDeliveryFee: nightDeliveryFee,
             handlingFee: handlingFee,
             couponDiscount: discount,
             grandTotal: grandTotal,

@@ -31,8 +31,9 @@ import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
 import { showOrderPlacedNotification } from "../lib/notifications";
-import { useStoreDetails } from "../lib/storeStatus";
+import { useStoreDetails, useStoreConfig } from "../lib/storeStatus";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
+import { nightChargeFor, isNightChargeOn, isNightHours } from "../lib/nightCharge";
 import { browseable } from "../lib/tobacco";
 import { watchShopProducts, isSoldOut } from "../lib/catalogueFile";
 import { payOnline } from "../lib/razorpayWeb";
@@ -93,6 +94,10 @@ function Card({ children, className = "" }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
+  const storeConfig = useStoreConfig();
+  /* The time, read after mount (the exported HTML has none) and refreshed so
+     the night charge starts at 8 pm on a page that was opened before it. */
+  const [clock, setClock] = useState(null);
   const [cartItems, setCartItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [liveProducts, setLiveProducts] = useState([]);
@@ -148,6 +153,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     setLaunchGate(isBeforeLaunch());
     const timer = setInterval(() => setLaunchGate(isBeforeLaunch()), 30 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    setClock(new Date());
+    const timer = setInterval(() => setClock(new Date()), 30 * 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -263,6 +274,17 @@ export default function CheckoutPage() {
     return calculateDeliveryCharges(subtotal, userOrdersCount, coupon);
   }, [subtotal, userOrdersCount, coupon]);
 
+  const eta = calculateDeliveryEta(location);
+  const hasAddress = Boolean(location?.address && location?.lat && location?.lng);
+
+  /* After 8 pm, or whenever the shop switches it on, delivery is also charged
+     by distance (config/store, src/lib/nightCharge.js). It is its own line on
+     the bill and is not waived by free delivery: it pays for the rider's
+     petrol. */
+  const nightChargeOn = Boolean(clock) && isNightChargeOn(storeConfig, clock);
+  const nightFee = clock && hasAddress ? nightChargeFor(eta.distanceKm, storeConfig, clock) : 0;
+  const nightChargeLabel = clock && isNightHours(clock) ? "Night delivery charge" : "Distance delivery charge";
+
   const deliveryFee = deliveryCharges.fee;
   const handlingFee = HANDLING_FEE;
   const couponDiscount = coupon
@@ -270,11 +292,9 @@ export default function CheckoutPage() {
       ? Math.round(subtotal * ((Number(coupon.discount) || 0) / 100))
       : Math.min(subtotal, Number(coupon.discount) || 0)
     : 0;
-  const grandTotal = Math.max(0, subtotal + deliveryFee + handlingFee - couponDiscount);
+  const grandTotal = Math.max(0, subtotal + deliveryFee + nightFee + handlingFee - couponDiscount);
   const toFreeDelivery = deliveryCharges.isFirstFivePromo ? 0 : Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
 
-  const eta = calculateDeliveryEta(location);
-  const hasAddress = Boolean(location?.address && location?.lat && location?.lng);
   const shortItems = cartItems.filter(shortOf);
   const isSignedIn = Boolean(shopper?.mobile);
 
@@ -373,6 +393,13 @@ export default function CheckoutPage() {
       );
     }
     const orderEta = calculateDeliveryEta(orderLocation);
+    /* The bill on screen is at most 30 seconds old. If the night charge came
+       on or went off in that time, show the new bill before taking the order. */
+    const now = new Date();
+    if (nightChargeFor(orderEta.distanceKm, storeConfig, now) !== nightFee) {
+      setClock(now);
+      return alert("The delivery charge has just changed. Please check the bill and place your order again.");
+    }
 
     placingRef.current = true;
     setIsProcessing(true);
@@ -385,7 +412,9 @@ export default function CheckoutPage() {
       createdAt: new Date().toISOString(),
       items: cartItems,
       subtotal,
-      deliveryFee,
+      // The night charge is part of the delivery fee; its share is kept beside it.
+      deliveryFee: deliveryFee + nightFee,
+      ...(nightFee > 0 ? { nightDeliveryFee: nightFee } : {}),
       handlingFee,
       discount: couponDiscount,
       couponCode: coupon?.code || null,
@@ -715,7 +744,7 @@ export default function CheckoutPage() {
                     <>
                       <span className="block text-[14px] font-semibold text-slate-900 dark:text-content">{coupon.code} applied</span>
                       <span className="block text-[12.5px] text-emerald-700 dark:text-emerald-400">
-                        {couponDiscount > 0 ? `You save ${rupees(couponDiscount)}` : "Delivery is free"}
+                        {couponDiscount > 0 ? `You save ${rupees(couponDiscount)}` : nightFee > 0 ? "Delivery fee is free" : "Delivery is free"}
                       </span>
                     </>
                   ) : (
@@ -777,6 +806,31 @@ export default function CheckoutPage() {
                   )}
                 </dd>
               </div>
+
+              {nightFee > 0 ? (
+                <div className="flex justify-between items-start">
+                  <div>
+                    <dt className="text-slate-600 dark:text-content-secondary">{nightChargeLabel}</dt>
+                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
+                      {nightChargeLabel.startsWith("Night") ? "After 8 pm, by distance" : "By distance"}: {eta.distanceKm} km from our store
+                    </span>
+                  </div>
+                  <dd className="tabular-nums font-semibold">{rupees(nightFee)}</dd>
+                </div>
+              ) : (
+                nightChargeOn &&
+                !hasAddress && (
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <dt className="text-slate-600 dark:text-content-secondary">{nightChargeLabel}</dt>
+                      <span className="text-[11px] text-slate-400 dark:text-content-faint block">
+                        By distance from our store. Add your address to see it.
+                      </span>
+                    </div>
+                    <dd className="tabular-nums text-slate-400 dark:text-content-faint">—</dd>
+                  </div>
+                )
+              )}
 
               {/* Handling Fee */}
               <div className="flex justify-between items-start">

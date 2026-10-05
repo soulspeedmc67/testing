@@ -234,6 +234,23 @@ final class CartViewModel: ObservableObject {
 
     @Published var userOrdersCount: Int = 0
 
+    /// The distance charge on the bill right now (`NightCharge`).
+    private(set) var nightDeliveryFee: Double = 0
+
+    /// Brings the distance charge up to date for `address`: it changes with
+    /// the hour, the address and the shop's switch. The cart and the checkout
+    /// call this when they open, and the checkout keeps calling it.
+    func refreshNightFee(for address: DeliveryAddress?, settings: NightCharge.Settings) {
+        var fee = 0.0
+        if let address {
+            let distanceKm = DeliveryEta.quote(for: address.coordinate).distanceKm
+            fee = NightCharge.fee(distanceKm: distanceKm, settings: settings)
+        }
+        guard fee != nightDeliveryFee else { return }
+        nightDeliveryFee = fee
+        recalculate()
+    }
+
     func setUserOrdersCount(_ count: Int) {
         userOrdersCount = count
         recalculate()
@@ -249,7 +266,7 @@ final class CartViewModel: ObservableObject {
         }
 
         let previousSubtotal = bill.subtotal
-        self.bill = CartBillBreakdown.calculate(items: items, appliedCoupon: appliedCoupon, userOrdersCount: userOrdersCount)
+        self.bill = CartBillBreakdown.calculate(items: items, appliedCoupon: appliedCoupon, userOrdersCount: userOrdersCount, nightDeliveryFee: nightDeliveryFee)
         noteFreeDeliveryCrossing(from: previousSubtotal)
     }
 

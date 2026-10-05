@@ -127,6 +127,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published public var offers: [Offer] = Offer.defaults
     @Published public var coupons: [Coupon] = Coupon.defaultCatalog
     @Published public var storeConfig: StoreConfig = StoreConfig.default
+    /// The night delivery charge and the petrol figures on `config/store` (`NightCharge`).
+    @Published var nightCharge = NightCharge.Settings()
     @Published public var isLoading: Bool = false
     /// Set when the database refuses a change; the dashboard shows it as an alert.
     @Published public var saveError: String? = nil
@@ -310,8 +312,10 @@ public final class AdminDashboardViewModel: ObservableObject {
             let highDemand = (data["isHighDemand"] as? Bool) ?? false
             let maxOrders = (data["maxOrdersPerHour"] as? Int) ?? 120
             let radius = (data["deliveryRadiusKm"] as? Double) ?? 8.5
+            let nightCharge = NightCharge.Settings(data: data)
 
             Task { @MainActor in
+                self.nightCharge = nightCharge
                 self.storeConfig = StoreConfig(
                     isOpen: isOpen,
                     closeReason: reason,
@@ -1184,6 +1188,27 @@ public final class AdminDashboardViewModel: ObservableObject {
             "updatedAt": FieldValue.serverTimestamp()
         ], merge: true, completion: saveResult("The busy-hours setting") { [weak self] in
             self?.storeConfig.isHighDemand = previous
+        })
+    }
+
+    /// The night delivery charge switch (automatic from 8 pm, on now, or off),
+    /// its rate, and the petrol figures the rider's cost is worked out from.
+    /// Every shop app reads them from `config/store`.
+    func saveNightCharge(_ settings: NightCharge.Settings) {
+        guard settings != nightCharge else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let previous = nightCharge
+        nightCharge = settings
+
+        db.collection("config").document("store").setData([
+            "nightChargeMode": settings.mode.rawValue,
+            "nightChargePerKm": settings.perKm,
+            "nightChargeMin": settings.minFee,
+            "petrolPrice": settings.petrolPrice,
+            "bikeMileage": settings.mileage,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true, completion: saveResult("The night delivery charge") { [weak self] in
+            self?.nightCharge = previous
         })
     }
 

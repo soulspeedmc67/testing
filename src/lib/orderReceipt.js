@@ -1,3 +1,4 @@
+import { deliveryFeeParts } from "./nightCharge.js";
 
 /* Node and the browser default to different time zones, so an unpinned
    toLocaleString renders one time on the server and another on the client —
@@ -99,7 +100,9 @@ export function buildReceiptText(order, { origin = "" } = {}) {
   lines.push("");
   lines.push(`Subtotal: ${money(subtotal)}`);
   if (discount > 0) lines.push(`Discount: -${money(discount)}`);
-  lines.push(`Delivery: ${deliveryFee > 0 ? money(deliveryFee) : "Free"}`);
+  const fee = deliveryFeeParts(order);
+  lines.push(`Delivery: ${fee.base > 0 ? money(fee.base) : "Free"}`);
+  if (fee.night > 0) lines.push(`Distance delivery charge: ${money(fee.night)}`);
   // ₹11 on every order; older orders saved without it show what the total implies.
   const handlingFee = Number(order.handlingFee ?? Math.max(0, total - subtotal - deliveryFee + discount)) || 0;
   if (handlingFee > 0) lines.push(`Handling charge: ${money(handlingFee)}`);

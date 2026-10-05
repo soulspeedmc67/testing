@@ -25,7 +25,8 @@ import PrintPackingSlip from "./PrintPackingSlip";
 import PrintGstTaxInvoice from "./PrintGstTaxInvoice";
 import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
-import { orderAddress } from "../../lib/orderReceipt";
+import { orderAddress, orderCoords } from "../../lib/orderReceipt";
+import OrderLocationCard from "./OrderLocationCard";
 
 export default function OrderDetailDrawer({
   order,
@@ -35,6 +36,7 @@ export default function OrderDetailDrawer({
   onUpdateStatus,
   onAssignDriver,
   catalogue = [],
+  storeConfig = null,
   darkMode = false,
 }) {
   const [showPrintSlip, setShowPrintSlip] = useState(false);
@@ -92,6 +94,7 @@ export default function OrderDetailDrawer({
   const customerName = order?.customerName || order?.userAddress?.name || "Customer";
   const customerPhone = order?.customerPhone || order?.userAddress?.phone || "";
   const address = orderAddress(order, "No address on this order");
+  const pin = orderCoords(order);
   const receiver = order?.receiverContact;
   const totalAmount = order?.totalAmount || order?.total || 0;
   const paymentMethod = order?.paymentMethod || "COD (Cash on Delivery)";
@@ -317,6 +320,15 @@ export default function OrderDetailDrawer({
                 Goal: Deliver in 10 min
               </span>
             </div>
+
+            {/* The drop on a map, before the shop commits to packing it */}
+            <OrderLocationCard
+              order={order}
+              storeConfig={storeConfig}
+              darkMode={darkMode}
+              canReject={!isDelivered && !isCancelled}
+              onReject={() => onUpdateStatus(orderId, ORDER_STATUS.CANCELLED, order)}
+            />
 
             {/* 2. Order Progress Steps */}
             <div
@@ -825,7 +837,7 @@ export default function OrderDetailDrawer({
                 )}
 
                 <a
-                  href={"https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address)}
+                  href={"https://www.google.com/maps/search/?api=1&query=" + (pin ? pin.lat + "," + pin.lng : encodeURIComponent(address))}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={"flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl font-black text-xs border transition-colors " + (

@@ -75,6 +75,7 @@ import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.DeliveryEta
+import com.dashit.app.data.NightCharge
 import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.Order
@@ -127,6 +128,23 @@ fun CheckoutSheet(
     var isSignInOpen by remember { mutableStateOf(false) }
     var placedEta by remember { mutableStateOf(8) }
 
+    // After 8 pm, or whenever the shop switches it on, delivery is also charged
+    // by distance (NightCharge). The time is refreshed so the charge starts at
+    // 8 pm on a sheet that was opened before it.
+    val storeState by StoreStatus.state.collectAsState()
+    var nowMillis by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            nowMillis = System.currentTimeMillis()
+        }
+    }
+    val distanceKm = remember(address.latitude, address.longitude) {
+        DeliveryEta.quote(address.latitude, address.longitude).distanceKm
+    }
+    val nightFee = if (bill.subtotal > 0) NightCharge.feeFor(distanceKm, storeState, nowMillis) else 0.0
+    val totalToPay = bill.grandTotal + nightFee
+
     /** Same gates as the web and iOS checkouts, then the real order write. */
     fun placeOrder(customer: UserProfile) {
         errorMessage = null
@@ -146,6 +164,15 @@ fun CheckoutSheet(
             return
         }
         val quote = DeliveryEta.quote(address.latitude, address.longitude)
+        // The total on screen is at most 30 seconds old. If the night charge came
+        // on or went off in that time, show the new total before taking the order.
+        val timeNow = System.currentTimeMillis()
+        if (NightCharge.feeFor(quote.distanceKm, StoreStatus.state.value, timeNow) != nightFee) {
+            nowMillis = timeNow
+            errorMessage = "The delivery charge has just changed. Check the total and place your order again."
+            HapticsManager.warning(view)
+            return
+        }
         val eta = StoreStatus.etaMinutes(quote) ?: 8
         val code = Order.newCode()
         val order = Order(
@@ -153,9 +180,11 @@ fun CheckoutSheet(
             userId = customer.id,
             items = items.map { it.copy() },
             subtotal = bill.subtotal,
-            deliveryFee = bill.deliveryFee,
+            // The night charge is part of the delivery fee; its share is kept beside it.
+            deliveryFee = bill.deliveryFee + nightFee,
             discount = bill.couponDiscount,
-            grandTotal = bill.grandTotal,
+            grandTotal = totalToPay,
+            nightDeliveryFee = nightFee,
             deliveryAddress = address,
             paymentMethod = if (paysOnline) "Paid online" else "Cash on Delivery",
             paymentStatus = if (paysOnline) "paid" else "pending",
@@ -177,7 +206,7 @@ fun CheckoutSheet(
                 val activity = context.findActivity()
                 try {
                     if (activity == null) throw OnlinePayment.PaymentException("Online payment isn't available right now. Choose cash on delivery.")
-                    receipt = OnlinePayment.pay(activity, code, bill.grandTotal, customer, payOption) {
+                    receipt = OnlinePayment.pay(activity, code, order.grandTotal, customer, payOption) {
                         progressText = "Confirming payment..."
                     }
                     progressText = "Placing order..."
@@ -347,7 +376,12 @@ fun CheckoutSheet(
                     )
 
                     // 4. Order Total Card
-                    OrderTotalCard(total = bill.grandTotal)
+                    OrderTotalCard(
+                        total = totalToPay,
+                        nightFee = nightFee,
+                        distanceKm = distanceKm,
+                        isNight = NightCharge.isNightHours(nowMillis)
+                    )
 
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -456,9 +490,9 @@ fun CheckoutSheet(
                                 Text(
                                     text = when {
                                         isLaunchLocked -> com.dashit.app.data.LaunchGate.LAUNCH_LABEL
-                                        !paysOnline -> "Place order · ₹${bill.grandTotal.toInt()} cash"
-                                        payOption?.upiApp != null -> "Pay ₹${bill.grandTotal.toInt()} with ${payOption.title}"
-                                        else -> "Pay ₹${bill.grandTotal.toInt()}"
+                                        !paysOnline -> "Place order · ₹${totalToPay.toInt()} cash"
+                                        payOption?.upiApp != null -> "Pay ₹${totalToPay.toInt()} with ${payOption.title}"
+                                        else -> "Pay ₹${totalToPay.toInt()}"
                                     },
                                     color = if (isLaunchLocked) DashitColors.BrandOrange else Color.White,
                                     fontSize = 16.sp,
@@ -791,31 +825,65 @@ private fun OnlineOptionRow(option: PayOption, selected: Boolean, onClick: () ->
 }
 
 @Composable
-private fun OrderTotalCard(total: Double) {
+private fun OrderTotalCard(total: Double, nightFee: Double = 0.0, distanceKm: Double = 0.0, isNight: Boolean = true) {
     val cardShape = RoundedCornerShape(14.dp)
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(cardShape)
             .background(DashitColors.SurfaceRaised)
             .border(1.dp, DashitColors.Hairline, cardShape)
             .padding(14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Text(
-            text = "Order Total",
-            color = DashitColors.TextPrimary,
-            fontSize = 14.5.sp,
-            fontWeight = FontWeight.Bold
-        )
+        // The distance charge is not in the cart's bill: it depends on the address and the hour.
+        if (nightFee > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (isNight) "Night delivery charge" else "Distance delivery charge",
+                        color = DashitColors.TextPrimary,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${if (isNight) "After 8 pm, by distance" else "By distance"}: ${"%.1f".format(distanceKm)} km from our store",
+                        color = DashitColors.TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Text(
+                    text = "₹${nightFee.toInt()}",
+                    color = DashitColors.TextPrimary,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
 
-        Text(
-            text = "₹${total.toInt()}",
-            color = DashitColors.TextPrimary,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Order Total",
+                color = DashitColors.TextPrimary,
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "₹${total.toInt()}",
+                color = DashitColors.TextPrimary,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+        }
     }
 }
 

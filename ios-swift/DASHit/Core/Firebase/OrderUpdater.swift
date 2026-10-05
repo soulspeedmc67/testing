@@ -66,9 +66,10 @@ enum OrderUpdater {
             userId: uid,
             items: items,
             subtotal: bill.subtotal,
-            deliveryFee: bill.deliveryFee,
+            // The distance charge of the original order is kept: same trip, same address.
+            deliveryFee: bill.deliveryFee + order.nightDeliveryFee,
             discount: bill.couponDiscount,
-            grandTotal: bill.grandTotal,
+            grandTotal: bill.grandTotal + order.nightDeliveryFee,
             status: .placed,
             deliveryAddress: order.deliveryAddress,
             paymentMethod: order.paymentMethod,
@@ -78,7 +79,8 @@ enum OrderUpdater {
             otp: order.otp ?? Order.newDeliveryCode(),
             couponCode: order.couponCode,
             modifyWindowEndsAt: order.modifyWindowEnd.timeIntervalSince1970,
-            replacesOrderId: order.id
+            replacesOrderId: order.id,
+            nightDeliveryFee: order.nightDeliveryFee
         )
         let distance = DeliveryEta.quote(for: order.deliveryAddress.coordinate).distanceKm
 

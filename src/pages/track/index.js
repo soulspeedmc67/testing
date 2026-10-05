@@ -37,6 +37,7 @@ import { hapticLight, hapticMedium, hapticSuccess } from "../../lib/haptics";
 import ModifyOrderModal from "../../components/ModifyOrderModal";
 import CancelOrderModal from "../../components/CancelOrderModal";
 import { productImageUrl } from "../../components/ProductImage";
+import { deliveryFeeParts } from "../../lib/nightCharge";
 
 const MapTracking = dynamic(() => import("../../components/MapTracking"), { ssr: false });
 
@@ -641,6 +642,7 @@ export default function OrderTrackingPage() {
               {(() => {
                 const sub = Number(order?.subtotal) || items.reduce((s, it) => s + (Number(it.price) || 0) * (Number(it.qty || it.quantity) || 1), 0);
                 const delivery = Number(order?.deliveryFee) || 0;
+                const fee = deliveryFeeParts(order);
                 const off = Number(order?.discount) || 0;
                 const handling = Number(order?.handlingFee ?? Math.max(0, grandTotal - sub - delivery + off)) || 0;
                 const row = (label, value) => (
@@ -652,7 +654,8 @@ export default function OrderTrackingPage() {
                 return (
                   <div className="bg-white/5 rounded-xl p-2.5 space-y-1.5">
                     {row("Item total", `₹${sub.toFixed(0)}`)}
-                    {row("Delivery charge", delivery > 0 ? `₹${delivery.toFixed(0)}` : "Free")}
+                    {row("Delivery charge", fee.base > 0 ? `₹${fee.base.toFixed(0)}` : "Free")}
+                    {fee.night > 0 && row("Distance delivery charge", `₹${fee.night.toFixed(0)}`)}
                     {handling > 0 && row("Handling charge", `₹${handling.toFixed(0)}`)}
                     {off > 0 && row("Discount", `-₹${off.toFixed(0)}`)}
                     <div className="border-t border-white/10 pt-1.5">{row("Total", `₹${grandTotal.toFixed(0)}`)}</div>

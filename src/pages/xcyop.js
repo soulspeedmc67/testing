@@ -581,6 +581,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   const [activeTab, setActiveTab] = useState("orders");
   const [isStoreOpen, setIsStoreOpen] = useState(true);
   const [weatherAlert, setWeatherAlert] = useState(null);
+  // The whole config/store document: night charge and petrol settings are read from it.
+  const [storeConfig, setStoreConfigDoc] = useState(null);
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
@@ -914,6 +916,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     if (isFirebaseConfigured) {
       const unsub = watchStoreConfig((cfg) => {
         if (cfg) {
+          setStoreConfigDoc(cfg);
           if (typeof cfg.isOpen === "boolean") {
             setIsStoreOpen(cfg.isOpen);
             try {
@@ -1981,6 +1984,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onAssignDriver={handleAssignDriver}
           onNavigateTab={setActiveTab}
           onOpenGstModal={() => setShowGstModal(true)}
+          storeConfig={storeConfig}
           darkMode={darkMode}
         />
       )}
@@ -2148,6 +2152,16 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           soundEnabled={soundEnabled}
           onToggleSound={() => setSoundEnabled(!soundEnabled)}
           onTestChime={handleTestChime}
+          storeConfig={storeConfig}
+          onSaveDeliverySettings={async (patch, message) => {
+            try {
+              await setStoreConfig(patch);
+              showToast(message);
+            } catch (err) {
+              showToast("Not saved. Check your connection and try again.");
+              throw err;
+            }
+          }}
           weatherAlert={weatherAlert}
           onSaveWeatherAlert={async (alert) => {
             await setStoreConfig({ weatherAlert: alert });

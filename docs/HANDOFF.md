@@ -6,6 +6,50 @@
 
 ---
 
+## Oct 5, 2026 (evening): night delivery charge, rider's petrol, order map
+
+Web VERIFIED on the local dev build (checkout at a faked 9 pm, the settings
+cards, the order map). Android VERIFIED to compile (`compileDebugKotlin`), not
+run on the Pixel. iOS NOT compiled (no Swift here): needs the GitHub Actions
+build. Nothing is deployed and nothing was written to the live `config/store`.
+
+- **Night delivery charge**: from 8 pm to 6 am India time, delivery is also
+  charged by distance: ₹6 for each straight-line km from the store, at least
+  ₹10 (5 km is ₹30, 8 km is ₹48). Rules in `src/lib/nightCharge.js`, ported to
+  `android-compose/.../data/NightCharge.kt` and
+  `ios-swift/DASHit/Core/Utils/NightCharge.swift`: keep the three in step.
+  The hour is India's whatever zone the phone is set to.
+- **The switch** is `nightChargeMode` on `config/store`: `auto` (8 pm to 6 am),
+  `on` (now, all day, until changed) or `off`. A missing field means `auto`,
+  so the charge starts by itself the first night after a client is updated.
+  Set it in `/xcyop` → Settings → "Night delivery charge" (saves at once) or
+  the iOS admin → Shop settings (Save). Rate and minimum are editable there.
+- **On the order** the charge is inside `deliveryFee` (so every receipt, the
+  GST report and older builds still add up) and its share is saved beside it
+  as `nightDeliveryFee`. Checkout, the tracking page, the WhatsApp receipt and
+  the packing slip list it as its own line.
+- **It is NOT waived by free delivery** (first 5 orders, FREEDEL): at launch
+  every shopper is on their first 5 orders, so a waived charge would never be
+  paid. Owner to confirm; to waive it, zero `nightFee` in `checkout.js`,
+  `CheckoutSheet.kt` and `CartViewModel.refreshNightFee` when delivery is free.
+- **Old builds don't charge it.** An installed Android or iOS app from before
+  this change, and the live website until the next zip, place night orders
+  without it. The admin order card shows the charge only when it was paid.
+- **Rider's petrol**: each order in the staff console (list, board and the
+  order drawer) and in the iOS admin shows what the trip costs in petrol: the
+  road there and back (straight line x 1.25 x 2) at `petrolPrice` /
+  `bikeMileage` on `config/store`. Defaults ₹107 a litre (Anantnag was ₹106.04
+  to ₹108.35 on 5 Oct 2026) and 45 km a litre; both editable in the same
+  settings. The ₹6 a km charge is that petrol cost, rounded.
+- **Order map**: the order drawer (`OrderLocationCard.jsx`,
+  `OrderLocationMap.jsx`) and the iOS admin order sheet
+  (`AdminOrderLocationCard.swift`) open with a map of the store, the customer's
+  pin, the straight line and the 8 km circle, the distance, the petrol, a
+  route link and "Too far? Reject/Cancel", which opens the usual reason sheet.
+- **Found, not fixed**: the iOS admin's "Busy-hours delivery fee (+₹20)"
+  switch writes `isHighDemand`, the shop apps read `highDemand`, and no client
+  adds ₹20. The web "Modify order" total leaves out the ₹11 handling charge.
+
 ## Oct 5, 2026 (launch morning): photos after the re-import, coupons, cigarettes
 
 Web parts VERIFIED on the production export. Android VERIFIED to compile; the

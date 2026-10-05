@@ -97,6 +97,8 @@ data class Order(
     val deliveryFee: Double,
     val discount: Double,
     val grandTotal: Double,
+    /** The distance charge inside [deliveryFee] (after 8 pm); 0 when there was none. */
+    val nightDeliveryFee: Double = 0.0,
     val status: OrderStatus = OrderStatus.PLACED,
     /** Epoch milliseconds. */
     val createdAt: Long = System.currentTimeMillis(),

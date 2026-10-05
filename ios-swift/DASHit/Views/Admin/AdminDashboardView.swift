@@ -1206,6 +1206,15 @@ struct OrderDetailSheetView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     progressHeader
 
+                    // The drop on a map, before the shop commits to packing it.
+                    AdminOrderLocationCard(
+                        order: live,
+                        settings: vm.nightCharge,
+                        onCancel: [DeliveryStage.placed, .packing, .onTheWay].contains(live.status.stage)
+                            ? { isRejectSheetOpen = true }
+                            : nil
+                    )
+
                     ForEach(vm.itemsByDistributor(order)) { group in
                         VStack(alignment: .leading, spacing: 0) {
                             Text("From \(group.distributor)")
@@ -1954,6 +1963,11 @@ struct StoreControlSheetView: View {
     @State private var isOpen: Bool = true
     @State private var closeReason: String = "Normal Operations"
     @State private var isSurge: Bool = false
+    @State private var nightMode: NightCharge.Mode = .auto
+    @State private var perKmText = ""
+    @State private var minFeeText = ""
+    @State private var petrolText = ""
+    @State private var mileageText = ""
 
     let reasons = ["Normal Operations", "Heavy Rain & Flooding", "Late Night Shift", "Power Outage", "Restocking Inventory"]
 
@@ -1987,6 +2001,29 @@ struct StoreControlSheetView: View {
                 } footer: {
                     Text("Turn on when there are too many orders or not enough riders.")
                 }
+
+                Section {
+                    Picker("Charge by distance", selection: $nightMode) {
+                        ForEach(NightCharge.Mode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    numberRow("Charge per km (₹)", text: $perKmText)
+                    numberRow("Minimum charge (₹)", text: $minFeeText)
+                } header: {
+                    Text("Night delivery charge")
+                } footer: {
+                    Text(nightChargeNote)
+                }
+
+                Section {
+                    numberRow("Petrol (₹ a litre)", text: $petrolText)
+                    numberRow("Bike mileage (km a litre)", text: $mileageText)
+                } header: {
+                    Text("Rider's petrol")
+                } footer: {
+                    Text("Every order shows what the trip costs the rider in petrol: the road from the store to the door and back, at these figures. Change the price when the pump price changes.")
+                }
             }
             .navigationTitle(isEmbedded ? AdminTab.storeControls.rawValue : "Shop settings")
             .navigationBarTitleDisplayMode(isEmbedded ? .large : .inline)
@@ -1994,17 +2031,77 @@ struct StoreControlSheetView: View {
                 isOpen = vm.storeConfig.isOpen
                 closeReason = vm.storeConfig.closeReason
                 isSurge = vm.storeConfig.isHighDemand
+                showNightCharge(vm.nightCharge)
+            }
+            // The saved figures arrive a moment after this page opens.
+            .onChange(of: vm.nightCharge) { _, saved in
+                showNightCharge(saved)
             }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         vm.toggleStore(isOpen: isOpen, reason: closeReason)
                         vm.toggleSurgePricing(enabled: isSurge)
+                        vm.saveNightCharge(editedNightCharge)
                         if !isEmbedded { dismiss() }
                     }
                     .font(.system(size: 17, weight: .bold))
                 }
             }
+        }
+    }
+
+    // MARK: - Night delivery charge
+
+    private func numberRow(_ label: String, text: Binding<String>) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("0", text: text)
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 90)
+        }
+    }
+
+    private func showNightCharge(_ saved: NightCharge.Settings) {
+        nightMode = saved.mode
+        perKmText = Self.plain(saved.perKm)
+        minFeeText = Self.plain(saved.minFee)
+        petrolText = Self.plain(saved.petrolPrice)
+        mileageText = Self.plain(saved.mileage)
+    }
+
+    /// 6 rather than 6.0, 106.04 as it is.
+    private static func plain(_ value: Double) -> String {
+        value == value.rounded() ? String(Int(value)) : String(value)
+    }
+
+    private static func number(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
+    }
+
+    /// What is on the page; a blank or out-of-range field keeps the saved figure.
+    private var editedNightCharge: NightCharge.Settings {
+        var edited = vm.nightCharge
+        edited.mode = nightMode
+        if let value = Self.number(perKmText), (0...100).contains(value) { edited.perKm = value }
+        if let value = Self.number(minFeeText), (0...500).contains(value) { edited.minFee = value }
+        if let value = Self.number(petrolText), (50...300).contains(value) { edited.petrolPrice = value }
+        if let value = Self.number(mileageText), (10...100).contains(value) { edited.mileage = value }
+        return edited
+    }
+
+    private var nightChargeNote: String {
+        let edited = editedNightCharge
+        let example = "5 km is ₹\(Int(max(edited.minFee, (5 * edited.perKm).rounded())))"
+        switch nightMode {
+        case .auto:
+            return "From 8 pm to 6 am every day, customers also pay for delivery by distance from the store (\(example)). It is added to the normal delivery fee and charged on free delivery too. Tap Save."
+        case .on:
+            return "On now and all day, until you change it (\(example)). Tap Save."
+        case .off:
+            return "Off: customers pay only the normal delivery fee, day and night. Tap Save."
         }
     }
 }

@@ -135,14 +135,15 @@ final class FirestoreService {
     private static let decodeQueue = DispatchQueue(label: "dashit.catalogue.decode", qos: .userInitiated)
 
     /// `config/store`, which the admin console writes: open/closed, the reason
-    /// shown while closed, and the high-demand flag.
-    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool) -> Void) -> ListenerRegistration {
+    /// shown while closed, the high-demand flag and the night delivery charge.
+    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool, _ nightCharge: NightCharge.Settings) -> Void) -> ListenerRegistration {
         return db.collection("config").document("store").addSnapshotListener { snapshot, _ in
             let data = snapshot?.data() ?? [:]
             completion(
                 (data["isOpen"] as? Bool) ?? true,
                 (data["closeReason"] as? String) ?? "",
-                (data["highDemand"] as? Bool) ?? false
+                (data["highDemand"] as? Bool) ?? false,
+                NightCharge.Settings(data: data)
             )
         }
     }
@@ -252,6 +253,10 @@ final class FirestoreService {
         ]
         if let distanceKm {
             payload["distanceKm"] = distanceKm
+        }
+        // The part of deliveryFee that is the night distance charge, for the store's screens.
+        if order.nightDeliveryFee > 0 {
+            payload["nightDeliveryFee"] = order.nightDeliveryFee
         }
         // Paid online: what Razorpay confirmed, so the store can match it up.
         if let payment {

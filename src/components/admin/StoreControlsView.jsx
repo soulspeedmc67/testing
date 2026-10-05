@@ -22,6 +22,7 @@ import {
   PackageX,
   Sparkles,
 } from "lucide-react";
+import DeliveryChargeSettings from "./DeliveryChargeSettings";
 
 export default function StoreControlsView({
   isStoreOpen = true,
@@ -35,6 +36,8 @@ export default function StoreControlsView({
   onTestChime,
   weatherAlert = null,
   onSaveWeatherAlert,
+  storeConfig = null,
+  onSaveDeliverySettings,
   onClearAllOrders,
   onResetAllStock,
   onDeleteAllProducts,
@@ -241,6 +244,9 @@ export default function StoreControlsView({
           </div>
         </div>
       </div>
+
+      {/* Night delivery charge and the rider's petrol figures */}
+      <DeliveryChargeSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* 3. COD Fraud Prevention Blacklist */}
       <div

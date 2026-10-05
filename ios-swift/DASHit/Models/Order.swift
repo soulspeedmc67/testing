@@ -146,6 +146,10 @@ public struct Order: Identifiable, Hashable {
     public var modifyWindowEndsAt: Double?
     public var replacesOrderId: String?
     public var rejectionReason: String?
+    /// The distance charge inside `deliveryFee` (after 8 pm); 0 when there was none.
+    public var nightDeliveryFee: Double
+    /// Straight-line km from the store, as saved at checkout.
+    public var distanceKm: Double?
 
     public init(
         id: String,
@@ -169,7 +173,9 @@ public struct Order: Identifiable, Hashable {
         couponCode: String? = nil,
         modifyWindowEndsAt: Double? = nil,
         replacesOrderId: String? = nil,
-        rejectionReason: String? = nil
+        rejectionReason: String? = nil,
+        nightDeliveryFee: Double = 0,
+        distanceKm: Double? = nil
     ) {
         self.id = id
         self.userId = userId
@@ -193,6 +199,8 @@ public struct Order: Identifiable, Hashable {
         self.modifyWindowEndsAt = modifyWindowEndsAt
         self.replacesOrderId = replacesOrderId
         self.rejectionReason = rejectionReason
+        self.nightDeliveryFee = nightDeliveryFee
+        self.distanceKm = distanceKm
     }
 
     /// A rider has the order but hasn't collected it from the store yet: it
@@ -261,6 +269,7 @@ extension Order: Decodable {
         case driverId, driverName, driverPhone, etaMinutes, tracking
         case otp, couponCode, modifyWindowEndsAt, replacesOrderId
         case rejectionReason, cancelledReason, rejectReason, cancelReason
+        case nightDeliveryFee, distanceKm
     }
 
     public init(from decoder: Decoder) throws {
@@ -316,7 +325,9 @@ extension Order: Decodable {
             rejectionReason: c.flexibleString(.rejectionReason)
                 ?? c.flexibleString(.cancelledReason)
                 ?? c.flexibleString(.rejectReason)
-                ?? c.flexibleString(.cancelReason)
+                ?? c.flexibleString(.cancelReason),
+            nightDeliveryFee: c.flexibleDouble(.nightDeliveryFee) ?? 0,
+            distanceKm: c.flexibleDouble(.distanceKm)
         )
     }
 }

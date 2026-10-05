@@ -35,6 +35,7 @@ import OrderDetailDrawer from "./OrderDetailDrawer";
 import PrintPackingSlip from "./PrintPackingSlip";
 import { whatsappReceiptLink, orderAddress } from "../../lib/orderReceipt";
 import { generateCsvString, triggerCsvDownload, ORDERS_CSV_COLUMNS } from "../../lib/csvExport";
+import { fuelCostFor } from "../../lib/nightCharge";
 
 /* Node and the browser default to different time zones, so an unpinned
    toLocaleString renders one time on the server and another on the client —
@@ -58,8 +59,15 @@ export default function OrderProcessingView({
   onAssignDriver,
   onNavigateTab,
   onOpenGstModal,
+  storeConfig = null,
   darkMode = false,
 }) {
+  // What the trip costs the rider in petrol, beside the distance on each order.
+  const petrolNote = (ord) => {
+    const fuel = fuelCostFor(ord.distanceKm, storeConfig);
+    return fuel ? ` · petrol ~₹${fuel.cost}` : "";
+  };
+
   /* The chronological list is the default. The board was the default before, and
      every status change made the card jump to a different column — the order the
      operator had just touched disappeared from where they were looking. */
@@ -879,7 +887,7 @@ export default function OrderProcessingView({
                                     ? "text-amber-500"
                                     : "text-emerald-600 dark:text-emerald-400"
                                 }`}>
-                                  📍 {Number(ord.distanceKm).toFixed(1)} km {Number(ord.distanceKm) > 8 ? "· Beyond 8 km" : ""}
+                                  📍 {Number(ord.distanceKm).toFixed(1)} km {Number(ord.distanceKm) > 8 ? "· Beyond 8 km" : ""}{petrolNote(ord)}
                                 </span>
                               )}
                               {receiver && (
@@ -1313,7 +1321,7 @@ export default function OrderProcessingView({
                                     ? "text-amber-600 dark:text-amber-400"
                                     : "text-emerald-600 dark:text-emerald-400"
                                 }`}>
-                                  📍 {Number(ord.distanceKm).toFixed(1)} km {Number(ord.distanceKm) > 8 ? "(Beyond 8 km)" : ""}
+                                  📍 {Number(ord.distanceKm).toFixed(1)} km {Number(ord.distanceKm) > 8 ? "(Beyond 8 km)" : ""}{petrolNote(ord)}
                                 </span>
                               )}
                               {ord.driverName && (
@@ -1860,6 +1868,7 @@ export default function OrderProcessingView({
         onClose={() => setSelectedOrderId(null)}
         onUpdateStatus={handleStatusChange}
         onAssignDriver={onAssignDriver}
+        storeConfig={storeConfig}
         darkMode={darkMode}
       />
 

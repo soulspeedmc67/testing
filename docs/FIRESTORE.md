@@ -65,6 +65,9 @@ offers/{offerId}
 
 config/store                           # single doc
   isOpen, highDemand, updatedAt
+  nightChargeMode                      # "auto" (8 pm to 6 am IST) | "on" | "off"; missing = auto
+  nightChargePerKm, nightChargeMin     # ₹ per straight-line km, and the least charged (6, 10)
+  petrolPrice, bikeMileage             # ₹ a litre, km a litre (107, 45): rider's petrol per order
 ```
 
 ### Why live tracking is a subcollection, not fields on the order

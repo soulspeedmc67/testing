@@ -57,6 +57,8 @@ struct CartSheetView: View {
                     .dashitSheet([.fraction(0.85), .large])
             }
             .task {
+                // The distance charge for the saved address, as of now.
+                cart.refreshNightFee(for: LocalStorage.shared.loadAddress(), settings: StoreStatusStore.shared.nightCharge)
                 #if DEBUG
                 if ScreenshotHooks.openCoupons {
                     try? await Task.sleep(for: .seconds(1))
@@ -249,6 +251,12 @@ struct CartSheetView: View {
                 value: bill.deliveryFee == 0 ? (bill.isFirstFivePromo ? "FREE (First 5 orders)" : "FREE") : CurrencyFormatter.format(bill.deliveryFee),
                 valueColor: bill.deliveryFee == 0 ? .positive : .textPrimary
             )
+            if bill.nightDeliveryFee > 0 {
+                billRow(
+                    NightCharge.isNightHours() ? "Night delivery charge" : "Distance delivery charge",
+                    value: CurrencyFormatter.format(bill.nightDeliveryFee)
+                )
+            }
             billRow(
                 "Handling charge",
                 value: CurrencyFormatter.format(bill.handlingFee)

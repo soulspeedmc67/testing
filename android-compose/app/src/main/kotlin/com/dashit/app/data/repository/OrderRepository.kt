@@ -282,9 +282,11 @@ class OrderRepository(
             userId = customer.id,
             items = items,
             subtotal = bill.subtotal,
-            deliveryFee = bill.deliveryFee,
+            // The distance charge of the original order is kept: same trip, same address.
+            deliveryFee = bill.deliveryFee + order.nightDeliveryFee,
             discount = bill.couponDiscount,
-            grandTotal = bill.grandTotal,
+            grandTotal = bill.grandTotal + order.nightDeliveryFee,
+            nightDeliveryFee = order.nightDeliveryFee,
             status = OrderStatus.PLACED,
             deliveryAddress = order.deliveryAddress,
             paymentMethod = order.paymentMethod,
@@ -379,6 +381,8 @@ class OrderRepository(
             "platform" to "android"
         )
         distanceKm?.let { payload["distanceKm"] = it }
+        // The part of deliveryFee that is the night distance charge, for the store's screens.
+        if (order.nightDeliveryFee > 0) payload["nightDeliveryFee"] = order.nightDeliveryFee
         // Paid online: what Razorpay confirmed, so the store can match it up.
         payment?.let {
             payload["razorpayOrderId"] = it.razorpayOrderId
@@ -430,6 +434,7 @@ class OrderRepository(
             deliveryFee = (doc.get("deliveryFee") as? Number)?.toDouble() ?: 0.0,
             discount = (doc.get("discount") as? Number)?.toDouble() ?: 0.0,
             grandTotal = total,
+            nightDeliveryFee = (doc.get("nightDeliveryFee") as? Number)?.toDouble() ?: 0.0,
             status = OrderStatus.fromString(doc.getString("status") ?: "Placed"),
             createdAt = timestampMillis(doc, "createdAt") ?: System.currentTimeMillis(),
             deliveryAddress = DeliveryAddress(

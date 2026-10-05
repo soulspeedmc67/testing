@@ -107,3 +107,18 @@ export function useStoreDetails() {
 
   return details;
 }
+
+/**
+ * The whole `config/store` document, or null until it arrives. Rides on the
+ * same shared listener as the open/closed status, so it costs no extra read.
+ */
+export function useStoreConfig() {
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return undefined;
+    return watchStoreConfig((cfg) => setConfig(cfg || null));
+  }, []);
+
+  return config;
+}

@@ -5,6 +5,7 @@ struct CheckoutView: View {
     @StateObject private var vm = CheckoutViewModel()
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var auth = AuthService.shared
+    @ObservedObject private var storeStatus = StoreStatusStore.shared
     @State private var isAddressSheetOpen = false
     @State private var isAuthModalOpen = false
     /// The list of ways to pay online, opened from "Pay online".
@@ -81,6 +82,17 @@ struct CheckoutView: View {
                         )
                         if !bill.tierLabel.isEmpty && bill.deliveryFee > 0 {
                             Text(bill.tierLabel)
+                                .font(.system(size: 11))
+                                .foregroundColor(.textFaint)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        // Charged by distance after 8 pm, or whenever the shop switches it on.
+                        if bill.nightDeliveryFee > 0 {
+                            billRow(
+                                NightCharge.isNightHours() ? "Night delivery charge" : "Distance delivery charge",
+                                value: CurrencyFormatter.format(bill.nightDeliveryFee)
+                            )
+                            Text(nightChargeNote)
                                 .font(.system(size: 11))
                                 .foregroundColor(.textFaint)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -193,7 +205,26 @@ struct CheckoutView: View {
                     isAuthModalOpen = false
                 }
             }
+            // The night charge changes with the hour, the address and the
+            // shop's switch, so the bill is brought up to date for all three.
+            .task {
+                while !Task.isCancelled {
+                    cart.refreshNightFee(for: vm.selectedAddress, settings: storeStatus.nightCharge)
+                    try? await Task.sleep(for: .seconds(30))
+                }
+            }
+            .onChange(of: vm.selectedAddress) { _, address in
+                cart.refreshNightFee(for: address, settings: storeStatus.nightCharge)
+            }
+            .onChange(of: storeStatus.nightCharge) { _, settings in
+                cart.refreshNightFee(for: vm.selectedAddress, settings: settings)
+            }
         }
+    }
+
+    private var nightChargeNote: String {
+        let rule = NightCharge.isNightHours() ? "After 8 pm, by distance" : "By distance"
+        return "\(rule): \(vm.deliveryQuote.shortDistanceText) from our store"
     }
 
     private func billRow(_ label: String, value: String, accent: Bool = false) -> some View {

@@ -290,7 +290,7 @@ fun AddItemsSheet(
                         val label = when {
                             addedCount == 0 -> "Pick items to add"
                             !windowOpen -> "Add to cart instead"
-                            else -> "Update order · +$addedCount · ₹${newBill.grandTotal.toInt()}"
+                            else -> "Update order · +$addedCount · ₹${(newBill.grandTotal + order.nightDeliveryFee).toInt()}"
                         }
                         Text(label, color = if (enabled) Color.White else DashitColors.TextMuted, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     }

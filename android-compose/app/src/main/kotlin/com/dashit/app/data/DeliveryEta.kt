@@ -67,9 +67,17 @@ object DeliveryEta {
     }
 }
 
-/** `config/store`: the admin's open/closed switch and high-demand flag, readable by everyone. */
+/** `config/store`: the admin's open/closed switch, high-demand flag and night charge, readable by everyone. */
 object StoreStatus {
-    data class State(val isOpen: Boolean = true, val closeReason: String = "", val highDemand: Boolean = false)
+    data class State(
+        val isOpen: Boolean = true,
+        val closeReason: String = "",
+        val highDemand: Boolean = false,
+        /** "auto" (8 pm to 6 am), "on" or "off": see [NightCharge]. */
+        val nightChargeMode: String = "auto",
+        val nightChargePerKm: Double = NightCharge.DEFAULT_PER_KM,
+        val nightChargeMin: Double = NightCharge.DEFAULT_MIN_FEE
+    )
 
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
@@ -83,7 +91,10 @@ object StoreStatus {
                 _state.value = State(
                     isOpen = snapshot.getBoolean("isOpen") ?: true,
                     closeReason = snapshot.getString("closeReason") ?: "",
-                    highDemand = snapshot.getBoolean("highDemand") ?: false
+                    highDemand = snapshot.getBoolean("highDemand") ?: false,
+                    nightChargeMode = snapshot.getString("nightChargeMode") ?: "auto",
+                    nightChargePerKm = snapshot.getDouble("nightChargePerKm")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_PER_KM,
+                    nightChargeMin = snapshot.getDouble("nightChargeMin")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_MIN_FEE
                 )
             }
     }

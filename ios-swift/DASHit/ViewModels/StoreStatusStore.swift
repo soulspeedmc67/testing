@@ -11,6 +11,8 @@ final class StoreStatusStore: ObservableObject {
     @Published private(set) var isOpen = true
     @Published private(set) var closeReason = ""
     @Published private(set) var highDemand = false
+    /// The night delivery charge the shop has set (`NightCharge`).
+    @Published private(set) var nightCharge = NightCharge.Settings()
 
     private var listener: ListenerRegistration?
 
@@ -18,13 +20,14 @@ final class StoreStatusStore: ObservableObject {
     static let defaultCloseReason = "Night hours — reopening tomorrow at 7:00 AM"
 
     private init() {
-        listener = FirestoreService.shared.listenStoreConfig { [weak self] isOpen, closeReason, highDemand in
+        listener = FirestoreService.shared.listenStoreConfig { [weak self] isOpen, closeReason, highDemand, nightCharge in
             guard let self = self else { return }
             withAnimation(.dashitSpring) {
                 self.isOpen = isOpen
                 self.closeReason = closeReason.isEmpty ? Self.defaultCloseReason : closeReason
                 self.highDemand = highDemand
             }
+            self.nightCharge = nightCharge
         }
     }
 

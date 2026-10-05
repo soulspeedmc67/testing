@@ -83,6 +83,16 @@ final class CheckoutViewModel: ObservableObject {
         }
         let quote = deliveryQuote
 
+        // The bill on screen is at most 30 seconds old. If the night charge came
+        // on or went off in that time, show the new bill before taking the order.
+        let shownNightFee = cart.nightDeliveryFee
+        cart.refreshNightFee(for: selectedAddress, settings: store.nightCharge)
+        guard cart.nightDeliveryFee == shownNightFee else {
+            orderError = "The delivery charge has just changed. Check the bill and place your order again."
+            HapticsManager.shared.warning()
+            return false
+        }
+
         isSubmitting = true
         progressText = paysOnline ? "Opening payment..." : "Placing Order..."
         UserDefaults.standard.set(paymentMethod, forKey: Self.lastPaymentKey)
@@ -114,7 +124,8 @@ final class CheckoutViewModel: ObservableObject {
             userId: uid,
             items: cart.items,
             subtotal: cart.bill.subtotal,
-            deliveryFee: cart.bill.deliveryFee,
+            // The night charge is part of the delivery fee; its share is kept beside it.
+            deliveryFee: cart.bill.deliveryFee + cart.bill.nightDeliveryFee,
             discount: cart.bill.couponDiscount,
             grandTotal: cart.bill.grandTotal,
             status: .placed,
@@ -123,7 +134,9 @@ final class CheckoutViewModel: ObservableObject {
             paymentStatus: receipt == nil ? "pending" : "paid",
             etaMinutes: store.etaMinutes(for: quote) ?? 8,
             otp: Order.newDeliveryCode(),
-            couponCode: cart.appliedCoupon?.code
+            couponCode: cart.appliedCoupon?.code,
+            nightDeliveryFee: cart.bill.nightDeliveryFee,
+            distanceKm: quote.distanceKm
         )
 
         do {
