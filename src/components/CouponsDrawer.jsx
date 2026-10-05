@@ -7,7 +7,7 @@ import { hapticLight, hapticMedium } from "../lib/haptics";
 import { DEFAULT_COUPONS, watchActiveCoupons } from "../lib/coupons";
 
 export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupon, onApplyCoupon }) {
-  const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
+  const [coupons, setCoupons] = useState([]);
   const [customCode, setCustomCode] = useState("");
   const [codeError, setCodeError] = useState("");
 

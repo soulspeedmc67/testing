@@ -22,7 +22,7 @@ const discountOf = (p) => {
 /** The real offer codes, and everything sold below its MRP right now. */
 export default function OffersPage() {
   const router = useRouter();
-  const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
+  const [coupons, setCoupons] = useState([]);
   const [productsList, setProductsList] = useState([]);
   const [cart, setCart] = useState([]);
   const [copiedCode, setCopiedCode] = useState(null);

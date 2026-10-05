@@ -141,6 +141,15 @@ class CartViewModel : ViewModel() {
         recalculateBill()
     }
 
+    /** The shop changed its offer codes: a code that is no longer on comes off the cart. */
+    fun couponsChanged() {
+        val applied = _coupon.value ?: return
+        if (Coupon.find(applied.code) == null) {
+            _coupon.value = null
+            recalculateBill()
+        }
+    }
+
     fun applyCoupon(coupon: Coupon?) {
         _coupon.value = coupon
         recalculateBill()

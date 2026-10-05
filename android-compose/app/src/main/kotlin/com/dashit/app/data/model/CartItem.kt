@@ -30,12 +30,15 @@ data class Coupon(
     }
 
     companion object {
-        /** The web's coupon drawer (`src/components/CouponsDrawer.jsx`), so a code works everywhere. */
-        val catalog = listOf(
-            Coupon("get30", "GET30", "₹30 off on orders of ₹199 or more", "Valid on all grocery and fresh items in Anantnag", 30.0, 199.0),
-            Coupon("dashit50", "DASHIT50", "Flat ₹50 off on orders above ₹299", "Launch offer for DASHit customers in Anantnag", 50.0, 299.0),
-            Coupon("freedel", "FREEDEL", "Free delivery on your order", "The delivery fee is waived", 0.0, 99.0, waivesDelivery = true)
-        )
+        /**
+         * The offer codes the shop has switched on in the admin console
+         * (Firestore config/coupons), kept current by `Coupons`. Empty until
+         * that list arrives and when every code is off: nothing is built in.
+         * (GET30, DASHIT50 and FREEDEL used to be hard-coded here, so they
+         * worked in the app even after the shop had switched them off.)
+         */
+        @Volatile
+        var catalog: List<Coupon> = emptyList()
 
         fun find(code: String?): Coupon? = catalog.firstOrNull { it.code.equals(code?.trim(), ignoreCase = true) }
 

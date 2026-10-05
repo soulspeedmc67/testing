@@ -106,10 +106,18 @@ extension Coupon {
     /// Dynamically fetched coupons from Firestore `config/coupons`, if loaded.
     public static var dynamicCatalog: [Coupon]? = nil
 
-    /// The active store's offer codes. If Firestore config/coupons has custom
-    /// codes, uses those; otherwise falls back to the default trio.
+    /// The offer codes shoppers can use: exactly the ones the shop has
+    /// switched on in the admin (Firestore config/coupons). Until that list
+    /// has arrived, and when every code in it is off, there are none. It used
+    /// to fall back to the built-in three, so switching every code off in the
+    /// admin left ₹30 off, ₹50 off and free delivery usable in the app.
+    /// (The admin app still starts from the built-in set.)
     public static var catalog: [Coupon] {
-        dynamicCatalog ?? defaultCatalog
+        #if ADMIN_APP_TARGET
+        return dynamicCatalog ?? defaultCatalog
+        #else
+        return dynamicCatalog ?? []
+        #endif
     }
 
     /// The store's default offer codes, matching web DEFAULT_COUPONS.

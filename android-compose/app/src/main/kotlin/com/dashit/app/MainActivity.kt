@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         }
         OrderRepository.shared.init(this)
         StoreStatus.start()
+        com.dashit.app.data.Coupons.start()
         OrderNotifications.createChannel(this)
         // Razorpay's checkout, warmed up so it opens at once at "Pay".
         com.dashit.app.data.OnlinePayment.preload(this)

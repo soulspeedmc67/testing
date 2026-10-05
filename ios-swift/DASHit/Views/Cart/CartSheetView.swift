@@ -195,7 +195,7 @@ struct CartSheetView: View {
                         Text("Apply a coupon")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.textPrimary)
-                        Text("\(Coupon.catalog.count) offers available")
+                        Text(Coupon.catalog.isEmpty ? "No offers right now" : "\(Coupon.catalog.count) offers available")
                             .font(.system(size: 12))
                             .foregroundColor(.textMuted)
                     }

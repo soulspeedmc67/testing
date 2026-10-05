@@ -271,20 +271,23 @@ fun CartSheet(
                                 onDecrement = { cartVm.decrement(it) }
                             )
 
-                            // 3. Coupon Row
-                            CouponCard(
-                                appliedCoupon = coupon,
-                                savedAmount = bill.couponDiscount,
-                                onApply = {
-                                    HapticsManager.selection(view)
-                                    // The web's coupons: the one that saves the most on this cart.
-                                    cartVm.applyCoupon(Coupon.best(bill.subtotal) ?: Coupon.catalog.first())
-                                },
-                                onRemove = {
-                                    HapticsManager.light(view)
-                                    cartVm.applyCoupon(null)
-                                }
-                            )
+                            // 3. Coupon Row: only when the shop has an offer code switched on.
+                            val offers by com.dashit.app.data.Coupons.active.collectAsState()
+                            if (offers.isNotEmpty() || coupon != null) {
+                                CouponCard(
+                                    appliedCoupon = coupon,
+                                    savedAmount = bill.couponDiscount,
+                                    onApply = {
+                                        HapticsManager.selection(view)
+                                        // The code that saves the most on this cart.
+                                        (Coupon.best(bill.subtotal) ?: offers.firstOrNull())?.let { cartVm.applyCoupon(it) }
+                                    },
+                                    onRemove = {
+                                        HapticsManager.light(view)
+                                        cartVm.applyCoupon(null)
+                                    }
+                                )
+                            }
 
                             // 4. Bill Details Card
                             BillDetailsCard(bill = bill)

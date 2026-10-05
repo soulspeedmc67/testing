@@ -1,8 +1,9 @@
 import { watchCoupons } from "./db";
 
 /**
- * Default offer codes honoured if Firestore config/coupons has not been customized yet.
- * Consistent with iOS and Android app defaults.
+ * The admin console's starting set of offer codes ("Reset to defaults").
+ * Shoppers only ever get the codes the admin has saved and switched on
+ * (watchActiveCoupons); these are never applied on their own.
  */
 export const DEFAULT_COUPONS = [
   {
@@ -31,16 +32,19 @@ export const DEFAULT_COUPONS = [
 export const AVAILABLE_COUPONS = DEFAULT_COUPONS;
 
 /**
- * Watch active coupons for checkout and the storefront offers page.
- * Falls back to DEFAULT_COUPONS if no dynamic list is configured yet.
- * Strips legacy removed codes (GET30, DASHIT50).
+ * The offer codes shoppers can use: exactly the ones the shop has switched on
+ * in the admin console (Firestore config/coupons).
+ *
+ * Nothing is assumed. Before the list has arrived, when it can't be read, or
+ * when every code in it is switched off, there are no codes. This used to
+ * fall back to DEFAULT_COUPONS in all three cases, so turning every code off
+ * in the admin switched "50% off above ₹799" and free delivery ON for
+ * shoppers, and so did a browser that blocks Firestore.
  */
 export function watchActiveCoupons(callback) {
   return watchCoupons((list) => {
-    const raw = Array.isArray(list) && list.length > 0 ? list : DEFAULT_COUPONS;
-    const sanitized = raw.filter((c) => c && c.code !== "GET30" && c.code !== "DASHIT50");
-    const active = sanitized.filter((c) => c && c.active !== false);
-    callback(active.length > 0 ? active : DEFAULT_COUPONS);
+    if (!Array.isArray(list)) return callback([]);
+    callback(list.filter((c) => c && c.active !== false && c.code !== "GET30" && c.code !== "DASHIT50"));
   });
 }
 

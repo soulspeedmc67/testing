@@ -74,6 +74,9 @@ final class CartViewModel: ObservableObject {
                     guard !code.isEmpty else { return nil }
                     let active = item["active"] as? Bool ?? true
                     guard active else { return nil }       // skip disabled codes
+                    // Percent codes aren't understood by this app yet: left
+                    // out rather than applied as rupees off.
+                    if (item["discountType"] as? String) == "percent" || (item["isPercent"] as? Bool) == true { return nil }
                     return Coupon(
                         id: code,
                         code: code,
@@ -87,7 +90,8 @@ final class CartViewModel: ObservableObject {
                     )
                 }
                 Task { @MainActor in
-                    Coupon.dynamicCatalog = decoded.isEmpty ? nil : decoded
+                    // An empty list stays empty: no codes on means no codes.
+                    Coupon.dynamicCatalog = decoded
                     // If the applied coupon was removed by admin, clear it.
                     if let applied = self.appliedCoupon,
                        !(Coupon.catalog.contains(where: { $0.code == applied.code })) {
