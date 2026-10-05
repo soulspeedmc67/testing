@@ -43,6 +43,25 @@ installed release build is from 08:30. iOS parts are NOT compiled here.
   (Google Play billing check). It was not overridden; `installRelease` is not
   stopped. The Android name-list change of this morning is therefore not in an
   APK yet (the Firestore flags cover the same 15 items).
+- **Most photo links made overnight were wrong or damaged.** Checked every
+  link against the name its photo is filed under in
+  `data/dashit_master_catalog.json`: of 1,998 nameable links only 308 pass the
+  strict rule in `photoFromCatalog`. Taken off at 09:03: 690 where a word of
+  the shop's name is not in the photo's name (Amul Buttermilk on Amul Butter,
+  rajma on Kiwi shoe polish) and 432 damaged files (black bars and streaks,
+  from the "enrich" pipeline, whose files are not in the master catalogue).
+  1,435 products keep a photo. Lists with the old link and the reason:
+  `data/photo-matches/photo-links-cleared-2026-10-05-c.json` (and
+  `…-amul-butter.json`); `node scripts/clear-photo-links.mjs <list> --undo
+  --write` puts them back. NOT done, waiting for the owner: about 138 links
+  where the photo is another brand's product ("TIDE" shows a Mars kajal), and
+  the ~600 remaining links nobody has checked one by one.
+- **A missing photo was remembered as missing.** The 404 page inherited the
+  HTML cache rule (`stale-while-revalidate=86400`), so photos uploaded after a
+  visit showed as letter tiles on the next view. `public/.htaccess` now sends
+  `no-store` for `404.html` (goes live with the next website zip).
+- **Hostinger's CDN answers scripted bursts with a "checking your browser"
+  403.** Check the live site from a browser, or one request at a time.
 - **Still open:** first-5-orders free delivery is still on (web, iOS);
   gift-box photos on some Dairy Milk / Hide & Seek / KitKat / Bournville items;
   ~435 photos damaged at source; iOS has no 5 km road check and no tobacco.

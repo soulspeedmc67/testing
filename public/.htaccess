@@ -47,6 +47,13 @@
   <FilesMatch "\.html$">
     Header always set Cache-Control "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400"
   </FilesMatch>
+
+  # A missing file answers with 404.html, which must never be remembered: a
+  # photo uploaded after someone had asked for it stayed "missing" in that
+  # person's browser for up to a day.
+  <Files "404.html">
+    Header always set Cache-Control "no-store"
+  </Files>
 </IfModule>
 
 # Never serve dotfiles (.env, .git config, editor leftovers).
