@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -25,40 +25,20 @@ import {
   watchOrder,
   watchOrderTracking,
   ORDER_CHANGE_WINDOW_SECONDS,
-  updateOrderStatus
+  cancelPlacedOrder,
+  addItemsToOrder,
+  adoptReplacementOrder
 } from "../../lib/db";
+import { orderChangeSecondsLeft, isPaidOnline, replacementIdOf } from "../../lib/orderChange";
+import { watchShopProducts } from "../../lib/catalogueFile";
+import { watchActiveCoupons } from "../../lib/coupons";
+import { browseable } from "../../lib/tobacco";
 import { hapticLight, hapticMedium, hapticSuccess } from "../../lib/haptics";
 import ModifyOrderModal from "../../components/ModifyOrderModal";
 import CancelOrderModal from "../../components/CancelOrderModal";
 import { productImageUrl } from "../../components/ProductImage";
 
 const MapTracking = dynamic(() => import("../../components/MapTracking"), { ssr: false });
-
-function orderTimestampMs(order) {
-  const ts = order?.createdAt ?? order?.timestamp;
-  if (!ts) return 0;
-  if (typeof ts === "number") return ts;
-  if (typeof ts === "string") {
-    const parsed = Date.parse(ts);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  if (typeof ts.toMillis === "function") return ts.toMillis();
-  if (typeof ts.seconds === "number") return ts.seconds * 1000;
-  if (ts instanceof Date) return ts.getTime();
-  return 0;
-}
-
-function getRemainingCancellationSeconds(order) {
-  if (!order) return 0;
-  const status = String(order.status || "").toLowerCase();
-  if (status && status !== "placed") return 0;
-
-  const orderTime = orderTimestampMs(order);
-  if (!orderTime) return 0;
-
-  const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
-  return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
-}
 
 function formatDisplayId(id) {
   if (!id) return "";
@@ -86,6 +66,10 @@ export default function OrderTrackingPage() {
   const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [productsList, setProductsList] = useState([]);
+  const [orderCoupon, setOrderCoupon] = useState(null);
+  const [changeNotice, setChangeNotice] = useState("");
+  const [cancelError, setCancelError] = useState("");
 
   // 1. Resolve target order from router query or localStorage
   useEffect(() => {
@@ -141,9 +125,17 @@ export default function OrderTrackingPage() {
   useEffect(() => {
     if (!targetOrderId) return;
     const unsubOrder = watchOrder(targetOrderId, (data) => {
-      if (data) {
-        setOrder((prev) => ({ ...(prev || {}), ...data }));
-      }
+      if (!data) return;
+      /* The device's own copy of an order the server hasn't stamped yet has no
+         createdAt: keep the time already known, or the countdown reads 0. */
+      const fresh = { ...data };
+      if (fresh.createdAt == null) delete fresh.createdAt;
+      setOrder((prev) => {
+        // A late answer for an order this page has already moved on from.
+        const shown = prev?.orderId || prev?.id;
+        if (shown && String(shown) !== String(targetOrderId)) return prev;
+        return { ...(prev || {}), ...fresh };
+      });
     });
 
     const unsubTracking = watchOrderTracking(targetOrderId, (track) => {
@@ -168,11 +160,62 @@ export default function OrderTrackingPage() {
   // 3. Countdown timer for cancellation/modification
   useEffect(() => {
     if (!order) return;
-    const updateTime = () => setCancellationSeconds(getRemainingCancellationSeconds(order));
+    const updateTime = () => setCancellationSeconds(orderChangeSecondsLeft(order));
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [order]);
+
+  /* 4. "Add items": the shop's items, from the catalogue file the shop pages
+     use. Only asked for while the order can still be changed. */
+  const canChange = cancellationSeconds > 0;
+  useEffect(() => {
+    if (!canChange && !isModifyModalOpen) return undefined;
+    const unsub = watchShopProducts((list) => {
+      if (list && list.length > 0) setProductsList(list);
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [canChange, isModifyModalOpen]);
+  const addableProducts = useMemo(() => browseable(productsList), [productsList]);
+
+  /* The order's offer code, to work its discount out again for the new item
+     total. A code that took nothing off (free delivery) needs no lookup. */
+  const couponCode = Number(order?.discount) > 0 ? String(order?.couponCode || "").trim().toLowerCase() : "";
+  useEffect(() => {
+    if (!couponCode || !canChange) return undefined;
+    const unsub = watchActiveCoupons((list) => {
+      setOrderCoupon(list.find((c) => String(c.code || "").trim().toLowerCase() === couponCode) || null);
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [couponCode, canChange]);
+
+  /* 5. Items added from the app or another tab: this order was cancelled as
+     "Replaced by <id>". Follow the order that took its place. */
+  const replacedById = replacementIdOf(order);
+  useEffect(() => {
+    if (!replacedById || !targetOrderId) return undefined;
+    const unsub = watchOrder(replacedById, (data) => {
+      if (!data) return;
+      const replacement = JSON.parse(JSON.stringify({ ...data, orderId: data.orderId || data.id }));
+      if (adoptReplacementOrder(targetOrderId, replacement)) {
+        router.replace(`/track?id=${replacedById}`).catch(() => {});
+      }
+    });
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replacedById, targetOrderId]);
+
+  useEffect(() => {
+    if (!changeNotice) return undefined;
+    const timer = setTimeout(() => setChangeNotice(""), 8000);
+    return () => clearTimeout(timer);
+  }, [changeNotice]);
 
   // Normalized order status
   const currentStatus = String(order?.status || "Placed");
@@ -197,20 +240,36 @@ export default function OrderTrackingPage() {
     });
   }, []);
 
-  const handleCancelOrder = async () => {
-    if (!order) return;
+  /* The shopper is only told "cancelled" once the store has it. */
+  const handleCancelOrder = async ({ restoreCart } = {}) => {
+    if (!order || isCancelling) return;
     setIsCancelling(true);
+    setCancelError("");
     try {
-      await updateOrderStatus(targetOrderId, "cancelled");
-      localStorage.removeItem("dashit_active_order");
+      await cancelPlacedOrder(targetOrderId);
+      if (restoreCart && items.length > 0) {
+        localStorage.setItem("dashit_cart", JSON.stringify(items));
+        window.dispatchEvent(new Event("dashit_cart_updated"));
+      }
       hapticSuccess();
       setIsCancelModalOpen(false);
       router.push("/orders");
     } catch (e) {
-      alert("Error cancelling order: " + (e?.message || "Please call store support"));
+      setIsCancelModalOpen(false);
+      setCancelError(e?.message || "We couldn't cancel this order. Please try again.");
     } finally {
       setIsCancelling(false);
     }
+  };
+
+  /* Resolves only once the store has the new order (addItemsToOrder throws an
+     OrderChangeError otherwise, which the sheet shows). By then this browser's
+     saved orders already point at it. */
+  const handleAddItems = async (additions, expectedTotal) => {
+    const result = await addItemsToOrder(targetOrderId, additions, { coupon: orderCoupon, expectedTotal });
+    const total = Number(result.order?.total) || 0;
+    setChangeNotice(`Added to your order. Your new total is ₹${total.toFixed(0)}.`);
+    router.replace(`/track?id=${result.orderId}`).catch(() => {});
   };
 
   const handleBack = () => {
@@ -227,6 +286,7 @@ export default function OrderTrackingPage() {
   const itemCount = items.reduce((sum, it) => sum + (Number(it.qty || it.quantity) || 1), 0);
   // The real PIN or nothing: a made-up one here would be read out to the rider.
   const otpCode = order?.otp ? String(order.otp) : "";
+  const paidOnline = isPaidOnline(order);
 
   if (!order) {
     return (
@@ -477,13 +537,20 @@ export default function OrderTrackingPage() {
             </div>
           )}
 
-          {/* Change Window Actions (Modify / Cancel during 60s) */}
+          {/* Change Window Actions (add items / cancel, for 30 seconds) */}
           {cancellationSeconds > 0 && (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-3 flex items-center justify-between gap-2">
-              <div className="leading-tight">
-                <span className="text-xs font-semibold text-white block">Forgot something?</span>
-                <span className="text-[10px] text-white/60">Add or cancel before packing</span>
-              </div>
+              {paidOnline ? (
+                <div className="leading-tight">
+                  <span className="text-xs font-semibold text-white block">Paid online</span>
+                  <span className="text-[10px] text-white/60">Items can't be added to a paid order</span>
+                </div>
+              ) : (
+                <div className="leading-tight">
+                  <span className="text-xs font-semibold text-white block">Forgot something?</span>
+                  <span className="text-[10px] text-white/60">Add or cancel before packing</span>
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
@@ -492,16 +559,29 @@ export default function OrderTrackingPage() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsModifyModalOpen(true)}
-                  className="px-3 py-1.5 rounded-full bg-[#FF5B00] hover:bg-[#e04f00] text-white text-xs font-bold flex items-center space-x-1 active:scale-95 transition-all cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Add items</span>
-                </button>
+                {!paidOnline && (
+                  <button
+                    type="button"
+                    onClick={() => setIsModifyModalOpen(true)}
+                    className="px-3 py-1.5 rounded-full bg-[#FF5B00] hover:bg-[#e04f00] text-white text-xs font-bold flex items-center space-x-1 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add items</span>
+                  </button>
+                )}
               </div>
             </div>
+          )}
+
+          {cancelError && (
+            <p role="alert" className="text-xs font-medium text-red-400">{cancelError}</p>
+          )}
+
+          {changeNotice && (
+            <p role="status" className="flex items-center space-x-2 text-xs font-semibold text-white">
+              <Check className="w-3.5 h-3.5 text-[#00D26A] stroke-[3] shrink-0" />
+              <span>{changeNotice}</span>
+            </p>
           )}
 
           {/* Divider & Items Summary with Expandable Drawer */}
@@ -637,7 +717,7 @@ export default function OrderTrackingPage() {
           isOpen={isCancelModalOpen}
           order={order}
           isCancelling={isCancelling}
-          onConfirm={handleCancelOrder}
+          onConfirmCancel={handleCancelOrder}
           onClose={() => setIsCancelModalOpen(false)}
         />
       )}
@@ -646,11 +726,11 @@ export default function OrderTrackingPage() {
         <ModifyOrderModal
           isOpen={isModifyModalOpen}
           order={order}
+          productsList={addableProducts}
+          coupon={orderCoupon}
+          remainingSeconds={cancellationSeconds}
+          onSaveOrder={handleAddItems}
           onClose={() => setIsModifyModalOpen(false)}
-          onSuccess={() => {
-            setIsModifyModalOpen(false);
-            hapticSuccess();
-          }}
         />
       )}
     </div>

@@ -15,7 +15,6 @@ import {
   ShoppingBag,
   Bike,
   Shield,
-  Plus,
   Minus,
   X,
   XCircle,
@@ -31,7 +30,6 @@ import {
   watchOrder,
   watchOrderTracking,
   updateOrderStatus,
-  updateOrderContent,
   retireFinishedOrder,
   ORDER_STATUS,
   ORDER_CHANGE_WINDOW_SECONDS
@@ -40,7 +38,6 @@ import { watchShopProducts as watchProducts } from "../lib/catalogueFile";
 import { browseable } from "../lib/tobacco";
 import { hapticLight, hapticMedium, hapticCartAdd } from "../lib/haptics";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
-import ModifyOrderModal from "../components/ModifyOrderModal";
 import CancelOrderModal from "../components/CancelOrderModal";
 import OrderStageAnimation from "../components/OrderStageAnimation";
 import { productImageUrl } from "../components/ProductImage";
@@ -98,7 +95,6 @@ export default function OrdersPage() {
   const [viewMode, setViewMode] = useState("tracking"); // "tracking" | "history"
   const [liveEta, setLiveEta] = useState(null);
   const [cancellationSeconds, setCancellationSeconds] = useState(0);
-  const [isModifyModalOpen, setIsModifyModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [modifyToast, setModifyToast] = useState(null);
@@ -362,19 +358,6 @@ export default function OrdersPage() {
     const loc = displayedOrder.location || displayedOrder.userAddress || null;
     return calculateDeliveryEta(loc);
   }, [displayedOrder, liveEta]);
-
-  const handleSaveModifiedOrder = async (updatedFields) => {
-    if (!displayedOrder) return;
-    const orderId = displayedOrder.orderId || displayedOrder.id;
-    const res = await updateOrderContent(orderId, updatedFields);
-    setSelectedOrder((prev) => ({ ...prev, ...updatedFields }));
-    if (activeOrder && String(activeOrder.orderId || activeOrder.id) === String(orderId)) {
-      setActiveOrder((prev) => ({ ...prev, ...updatedFields }));
-    }
-    setModifyToast("Order items updated successfully!");
-    setTimeout(() => setModifyToast(null), 3500);
-    return res;
-  };
 
   const handleConfirmCancellation = async ({ restoreCart }) => {
     if (!displayedOrder || isCancelling) return;
@@ -707,10 +690,10 @@ export default function OrdersPage() {
                   <div className="bg-white/[0.06] border border-white/[0.08] rounded-2xl p-3.5 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <span className="block text-xs font-bold text-white truncate">
-                        Forgot something?
+                        Changed your mind?
                       </span>
                       <span className="block text-[11px] font-medium text-white/60 truncate mt-0.5">
-                        Add or cancel before packing
+                        Cancel before packing
                       </span>
                     </div>
 
@@ -722,15 +705,6 @@ export default function OrdersPage() {
                         className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                       >
                         Cancel
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setIsModifyModalOpen(true)}
-                        className="px-3.5 py-1.5 rounded-full bg-[#FF5B00] hover:bg-[#E04E00] text-white text-xs font-bold flex items-center space-x-1 shadow-sm transition-all active:scale-95 cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[3]" />
-                        <span>Add items</span>
                       </button>
                     </div>
                   </div>
@@ -1214,16 +1188,6 @@ export default function OrdersPage() {
           <BottomNav />
         </div>
       )}
-
-      {/* 30s Order Content Modifier Modal */}
-      <ModifyOrderModal
-        isOpen={isModifyModalOpen}
-        onClose={() => setIsModifyModalOpen(false)}
-        order={displayedOrder}
-        productsList={browseable(productsList)}
-        onSaveOrder={handleSaveModifiedOrder}
-        remainingSeconds={cancellationSeconds}
-      />
 
       {/* 30s Frictionless Cancellation Modal */}
       <CancelOrderModal

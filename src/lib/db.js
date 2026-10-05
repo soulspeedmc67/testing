@@ -21,6 +21,16 @@ import {
 } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import {
+  ORDER_CHANGE_WINDOW_SECONDS,
+  OrderChangeError,
+  orderChangeDeadlineMs,
+  orderChangeSecondsLeft,
+  isPaidOnline,
+  mergeAdditions,
+  billForChangedOrder,
+  buildReplacementOrder,
+} from "./orderChange";
 
 /**
  * Firestore data layer.
@@ -2149,89 +2159,252 @@ export function getOrderTimestampMs(order) {
   return 0;
 }
 
+// The window itself (30 seconds) and its rules are in orderChange.js.
+export { ORDER_CHANGE_WINDOW_SECONDS };
+
 /**
  * Returns remaining seconds (0 to 30) for a newly placed order's grace period.
+ * An order that replaced another keeps the first order's deadline.
  */
-/** How long a customer can add items or cancel after placing an order. Same as
- * `Order.modifyWindowSeconds` (iOS) and `MODIFY_WINDOW_MS` (Android). */
-export const ORDER_CHANGE_WINDOW_SECONDS = 30;
-
 export function getOrderGracePeriodSeconds(order) {
-  if (!order) return 0;
-  const status = String(order.status || "").toLowerCase();
-  if (status && status !== "placed") return 0;
-
-  const orderTime = getOrderTimestampMs(order);
-  if (!orderTime) return 0;
-
-  const elapsedSec = Math.floor((Date.now() - orderTime) / 1000);
-  return Math.max(0, ORDER_CHANGE_WINDOW_SECONDS - elapsedSec);
+  return orderChangeSecondsLeft(order);
 }
 
 /**
- * Modifies an existing order's content (items, total, savings) during the grace period.
+ * Puts the order that replaced `originalId` in its place in this browser's
+ * saved orders, so the tracker, the home card and "My orders" follow it.
+ * The shopper sees one order: the cancelled original is not kept as an entry
+ * of its own (the store still has it, cancelled as "Replaced by <id>").
+ *
+ * @param {object} replacement the new order, in the shape checkout saves.
+ * @returns {boolean} whether anything was changed.
  */
-export async function updateOrderContent(orderId, updatedFields = {}) {
-  const targetId = String(orderId);
-  const nowIso = new Date().toISOString();
-
-  // 1. Update local storage & broadcast immediately
-  if (typeof window !== "undefined") {
-    try {
-      const activeStr = localStorage.getItem("dashit_active_order");
-      if (activeStr) {
-        const ord = JSON.parse(activeStr);
-        if (String(ord.orderId) === targetId || String(ord.id) === targetId) {
-          const merged = { ...ord, ...updatedFields, updatedAt: nowIso };
-          localStorage.setItem("dashit_active_order", JSON.stringify(merged));
-        }
-      }
-
-      const histStr = localStorage.getItem("dashit_orders_history");
-      if (histStr) {
-        const list = JSON.parse(histStr);
-        const updatedList = list.map((o) =>
-          String(o.orderId) === targetId || String(o.id) === targetId
-            ? { ...o, ...updatedFields, updatedAt: nowIso }
-            : o
-        );
-        localStorage.setItem("dashit_orders_history", JSON.stringify(updatedList));
-      }
-
-      window.dispatchEvent(
-        new CustomEvent("dashit_orders_updated", { detail: { orderId: targetId, ...updatedFields } })
-      );
-      window.dispatchEvent(
-        new CustomEvent("dashit_order_updated", { detail: { orderId: targetId, ...updatedFields } })
-      );
-      window.dispatchEvent(new Event("storage"));
-
-      if (window.BroadcastChannel) {
-        try {
-          const bc = new BroadcastChannel("dashit_orders_channel");
-          bc.postMessage({ type: "ORDER_UPDATED", orderId: targetId, ...updatedFields });
-        } catch (e) {}
-      }
-    } catch (e) {
-      console.warn("updateOrderContent localStorage error:", e);
-    }
-  }
-
-  // 2. Sync to Firestore
-  const db = getDb();
-  if (!db) return { success: true, localUpdated: true };
+export function adoptReplacementOrder(originalId, replacement) {
+  if (typeof window === "undefined") return false;
+  const fromId = String(originalId || "");
+  const toId = String(replacement?.orderId || replacement?.id || "");
+  if (!fromId || !toId || fromId === toId) return false;
+  const isOrder = (id) => (o) => String(o?.orderId) === id || String(o?.id) === id;
 
   try {
-    const payload = {
-      ...updatedFields,
-      updatedAt: serverTimestamp(),
-    };
-    await updateDoc(doc(db, "orders", targetId), payload);
-    if (payload.status) requestOrderPush(targetId);
-    return { success: true, firestoreSynced: true };
+    const active = JSON.parse(localStorage.getItem("dashit_active_order") || "null");
+    const history = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+    const list = Array.isArray(history) ? history : [];
+    const at = list.findIndex(isOrder(fromId));
+    const wasActive = Boolean(active) && isOrder(fromId)(active);
+    if (!wasActive && at < 0) return false;
+
+    /* The tracker may already have filed the cancelled original under history
+       and emptied the active slot; the replacement is live either way. Another
+       order in the slot is left alone. */
+    if (wasActive || !active) {
+      localStorage.setItem("dashit_active_order", JSON.stringify(replacement));
+    }
+    const rest = list.filter((o) => !isOrder(fromId)(o) && !isOrder(toId)(o));
+    rest.splice(at < 0 ? 0 : Math.min(at, rest.length), 0, replacement);
+    localStorage.setItem("dashit_orders_history", JSON.stringify(rest.slice(0, 20)));
+
+    localStorage.removeItem(`dashit_tracking_${fromId}`);
+    sessionStorage.removeItem(`dashit_tracker_minimized_${fromId}`);
+
+    window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: replacement }));
+    window.dispatchEvent(new CustomEvent("dashit_order_updated", { detail: replacement }));
+    window.dispatchEvent(new Event("storage"));
+    if (window.BroadcastChannel) {
+      try {
+        const bc = new BroadcastChannel("dashit_orders_channel");
+        bc.postMessage({ type: "NEW_ORDER", order: replacement });
+      } catch (e) {}
+    }
+    return true;
+  } catch (e) {
+    console.warn("adoptReplacementOrder localStorage error:", e);
+    return false;
+  }
+}
+
+// An offline write would otherwise wait for the network forever.
+const ORDER_CHANGE_TIMEOUT_MS = 15000;
+
+/**
+ * Cancels the shopper's own order while it is still "Placed". The store is
+ * told first; this browser's saved orders change only once Firestore has
+ * accepted it, so the shopper is never shown a cancellation the store
+ * doesn't have. Throws an OrderChangeError otherwise.
+ */
+export async function cancelPlacedOrder(orderId, reason = "Customer cancelled") {
+  const db = getDb();
+  if (!db || !orderId) throw new OrderChangeError("network");
+  const id = String(orderId);
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new OrderChangeError("network")), ORDER_CHANGE_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([
+      updateDoc(doc(db, "orders", id), {
+        status: ORDER_STATUS.CANCELLED,
+        cancelReason: reason,
+        updatedAt: serverTimestamp(),
+        statusHistory: arrayUnion({ status: ORDER_STATUS.CANCELLED, at: new Date().toISOString() }),
+      }),
+      timeout,
+    ]);
   } catch (err) {
-    console.warn("Firestore updateOrderContent sync note:", err?.message || err);
-    return { success: false, localUpdated: true, firestoreSynced: false, error: err?.message };
+    if (err instanceof OrderChangeError) throw err;
+    console.warn("cancelPlacedOrder:", err?.code || "", err?.message || err);
+    // The rules only refuse this once the store has moved the order on.
+    throw new OrderChangeError(err?.code === "permission-denied" ? "cancelTooLate" : "network");
+  } finally {
+    clearTimeout(timer);
+  }
+  requestOrderPush(id);
+  if (typeof window !== "undefined") {
+    try {
+      const history = JSON.parse(localStorage.getItem("dashit_orders_history") || "[]");
+      localStorage.setItem(
+        "dashit_orders_history",
+        JSON.stringify(
+          history.map((o) =>
+            String(o.orderId) === id || String(o.id) === id
+              ? { ...o, status: ORDER_STATUS.CANCELLED, cancelReason: reason }
+              : o
+          )
+        )
+      );
+    } catch (e) {}
+    if (!retireFinishedOrder(id, ORDER_STATUS.CANCELLED)) {
+      window.dispatchEvent(new CustomEvent("dashit_orders_updated", { detail: { orderId: id, status: ORDER_STATUS.CANCELLED } }));
+    }
+  }
+  return { success: true };
+}
+
+/**
+ * Adds items to an order during its 30-second window.
+ *
+ * firestore.rules never lets a customer edit an order's items or totals, only
+ * cancel one that is still "Placed". So, as the apps do (OrderUpdater.swift,
+ * OrderRepository.addItems), the change is an order with everything in it,
+ * and the original cancelled as "Replaced by <id>".
+ *
+ * Both writes go in one transaction, so they happen together or not at all:
+ * two orders can never stand side by side, and if the store has started
+ * packing (the original is no longer "Placed") nothing is written. A
+ * transaction also needs the server there and then; unlike a plain write it
+ * is never queued on the device to arrive later.
+ *
+ * Nothing in this browser is touched until Firestore has accepted the change.
+ *
+ * @param {string} orderId the order to add to.
+ * @param {object[]} additions products with a `qty`, as the cart holds them.
+ * @param {object} [options]
+ * @param {object|null} [options.coupon] the order's offer code from the shop's list, if it is there.
+ * @param {number|null} [options.expectedTotal] the new total the shopper was shown; a different one stops the change.
+ * @returns {Promise<{ success: true, orderId: string, order: object }>}
+ * @throws {OrderChangeError} with the sentence to show the shopper.
+ */
+export async function addItemsToOrder(orderId, additions = [], { coupon = null, expectedTotal = null } = {}) {
+  const added = JSON.parse(JSON.stringify(additions || [])).filter(
+    (item) => item && (Number(item.qty ?? item.quantity) || 0) > 0
+  );
+  if (added.length === 0) throw new OrderChangeError("nothingAdded");
+
+  const db = getDb();
+  if (!db || !orderId) throw new OrderChangeError("network");
+
+  const auth = getFirebaseAuth();
+  if (auth && typeof auth.authStateReady === "function") {
+    try {
+      await auth.authStateReady();
+    } catch (e) {}
+  }
+  const uid = auth?.currentUser && !auth.currentUser.isAnonymous ? auth.currentUser.uid : null;
+  if (!uid) throw new OrderChangeError("notSignedIn");
+
+  const originalId = String(orderId);
+  const replacementId = newOrderCode();
+  const originalRef = doc(db, "orders", originalId);
+  const replacementRef = doc(db, "orders", replacementId);
+  let saved = null;
+
+  const change = runTransaction(db, async (tx) => {
+    const snap = await tx.get(originalRef);
+    if (!snap.exists()) throw new OrderChangeError("refused");
+    const original = { id: snap.id, ...snap.data() };
+    const status = String(original.status || "");
+    if (original.userId !== uid) throw new OrderChangeError("notSignedIn");
+    if (status === ORDER_STATUS.CANCELLED) throw new OrderChangeError("cancelled");
+    if (status !== ORDER_STATUS.PLACED) throw new OrderChangeError("storeStartedPacking");
+    if (isPaidOnline(original)) throw new OrderChangeError("alreadyPaid");
+    // Checked on every attempt, so a slow retry can't land after the window.
+    const deadline = orderChangeDeadlineMs(original);
+    if (!deadline || deadline <= Date.now()) throw new OrderChangeError("windowClosed");
+
+    const items = mergeAdditions(original.items, added);
+    if (items.length > 100) throw new OrderChangeError("tooManyItems");
+    const bill = billForChangedOrder(original, items, coupon);
+    if (expectedTotal !== null && bill.total !== expectedTotal) throw new OrderChangeError("billChanged");
+
+    const now = new Date();
+    const fields = {
+      ...buildReplacementOrder(original, items, bill, now),
+      orderId: replacementId,
+      userId: uid,
+      status: ORDER_STATUS.PLACED,
+      // Same code at the door.
+      otp: original.otp ?? String(Math.floor(1000 + Math.random() * 9000)),
+      driverId: null, // Strictly null on creation as required by rules
+      driverName: "",
+      statusHistory: [{ status: ORDER_STATUS.PLACED, at: now.toISOString() }],
+    };
+
+    tx.set(replacementRef, {
+      ...fields,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      // The window keeps the original deadline.
+      modifyWindowEndsAt: Timestamp.fromMillis(deadline),
+    });
+    // Exactly the fields the customer cancel rule allows.
+    tx.update(originalRef, {
+      status: ORDER_STATUS.CANCELLED,
+      cancelReason: `Replaced by ${replacementId}`,
+      updatedAt: serverTimestamp(),
+      statusHistory: arrayUnion({ status: ORDER_STATUS.CANCELLED, at: now.toISOString() }),
+    });
+
+    // What this browser keeps, in the shape checkout saves: plain values only.
+    saved = JSON.parse(
+      JSON.stringify({ ...fields, createdAt: now.toISOString(), modifyWindowEndsAt: deadline })
+    );
+  });
+
+  const settled = change.then(() => {
+    adoptReplacementOrder(originalId, saved);
+    /* The server reads both orders itself: nothing is sent to the shopper for
+       a replaced order, and the store hears "Order updated", not "New order". */
+    requestOrderPush(originalId);
+    requestOrderPush(replacementId);
+    return { success: true, orderId: replacementId, order: saved };
+  });
+
+  let timer = null;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new OrderChangeError("network")), ORDER_CHANGE_TIMEOUT_MS);
+  });
+  /* If the answer comes after we stopped waiting, `settled` still puts the new
+     order in place here, so the screen never shows less than the store has. */
+  settled.catch(() => {});
+
+  try {
+    return await Promise.race([settled, timeout]);
+  } catch (err) {
+    if (err instanceof OrderChangeError) throw err;
+    console.warn("addItemsToOrder:", err?.code || "", err?.message || err);
+    throw new OrderChangeError(err?.code === "permission-denied" ? "refused" : "network");
+  } finally {
+    clearTimeout(timer);
   }
 }
 
