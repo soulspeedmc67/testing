@@ -6,6 +6,47 @@
 
 ---
 
+## Oct 5, 2026 (launch morning): photos after the re-import, coupons, cigarettes
+
+Web parts VERIFIED on the production export. Android VERIFIED to compile; the
+installed release build is from 08:30. iOS parts are NOT compiled here.
+
+- **Stock was re-imported, so every product got a new id** (`csv-<slug>`); the
+  photo links stayed on the old records (now nameless `CSV-…` stubs in the
+  catalogue file). `scripts/restore-photos-from-catalog.mjs <earlier.json>
+  [--write] [--replace]` puts each product's photo back by exact name (1,632
+  restored). 55 wrong or dead links were cleared (all ALPHABET items among
+  them). Records of every change are in `data/photo-matches/`.
+- **Most photo files are not on the host.** About 2,040 products link a photo
+  but only ~476 files answered on dashit.co.in. The website zip of this morning
+  carries the 2,042 small copies under `products/thumbs/`; until it is
+  extracted into `public_html` those products show the grey placeholder. The
+  1000px originals are in `dashit-product-photos-full.zip` (not uploaded).
+- **`npm run export:zip` leaves out `catalog/catalog.json`** so a website zip
+  can't roll the live product list back. It also leaves out `*.apk`: add
+  `DASHit.apk` (the release APK) to the zip by hand.
+- **Imported categories:** 2,656 of 4,624 products arrive as `cat: "Other"`.
+  `src/lib/categorize.js` files them by name. `Shelves.kt` and `Shelves.swift`
+  are generated from it: regenerate, never hand-edit.
+- **Coupons:** every client now shows only the codes switched on in
+  `config/coupons` (web `watchActiveCoupons`, Android `data/Coupons.kt`, iOS
+  `Coupon.dynamicCatalog`). No built-in fallback codes for shoppers.
+- **Cigarettes are on for the website and Android**, off for iPhone
+  (`src/lib/tobacco.js`). Search → "Looking for tobacco products?" → 18+
+  declaration → `/tobacco`, one plain pack photo for every item
+  (`public/art/tobacco-plain-pack.png`). 15 products carry `ageRestricted:
+  true, minAge: 18` in Firestore (list in
+  `data/photo-matches/tobacco-flagged-2026-10-05.json`); flag new tobacco stock
+  the same way, the name list in `ageGate.js` / `Product.kt` / `Product.swift`
+  is only a backstop.
+- **`./gradlew :app:assembleRelease` is stopped by the owner's compliance hook**
+  (Google Play billing check). It was not overridden; `installRelease` is not
+  stopped. The Android name-list change of this morning is therefore not in an
+  APK yet (the Firestore flags cover the same 15 items).
+- **Still open:** first-5-orders free delivery is still on (web, iOS);
+  gift-box photos on some Dairy Milk / Hide & Seek / KitKat / Bournville items;
+  ~435 photos damaged at source; iOS has no 5 km road check and no tobacco.
+
 ## Oct 4, 2026 (evening): blank pages, slow photos, first paint
 
 Web parts VERIFIED on the production export (`out/`, served locally). iOS parts
