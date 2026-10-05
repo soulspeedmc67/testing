@@ -19,12 +19,11 @@ object DeliveryEta {
     /** Anantnag Central Dark Store Hub. */
     const val HUB_LAT = 33.748413
     const val HUB_LNG = 75.150839
-    const val MAX_RADIUS_KM = 5.0
+    const val MAX_RADIUS_KM = 8.0
 
     data class Quote(
-        /** null when the address is outside the delivery area. */
         val etaMinutes: Int?,
-        /** Road distance (straight line × 1.25) for deliverable addresses. */
+        /** Straight line from the store: the distance the 8 km area is measured by. */
         val distanceKm: Double,
         val isDeliverable: Boolean
     ) {
@@ -43,60 +42,28 @@ object DeliveryEta {
     }
 
     /**
-     * Shortest driving distance from the store, by point, once measured
-     * (see [measure]). Compose state, so a screen showing a quote redraws when
-     * the measurement arrives.
-     */
-    private val measuredRoadKm = androidx.compose.runtime.mutableStateMapOf<String, Double>()
-
-    private fun pointKey(lat: Double, lng: Double) = "%.5f,%.5f".format(java.util.Locale.US, lat, lng)
-
-    /**
-     * Asks the road router for the shortest driving distance from the store
-     * to this point and remembers it. Nothing changes if the router can't be
-     * reached: the straight-line estimate stands.
+     * Shortest road distance calculation via OSRM is disabled per store policy:
+     * distance is calculated straight-line, and the store admin decides
+     * order delivery directly.
      */
     suspend fun measure(lat: Double, lng: Double) {
-        val key = pointKey(lat, lng)
-        if (measuredRoadKm.containsKey(key)) return
-        val km = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            runCatching {
-                val url = java.net.URL(
-                    "https://router.project-osrm.org/route/v1/driving/$HUB_LNG,$HUB_LAT;$lng,$lat?overview=false"
-                )
-                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                    connectTimeout = 6000
-                    readTimeout = 6000
-                }
-                try {
-                    if (connection.responseCode != 200) return@runCatching null
-                    val body = org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-                    if (body.optString("code") != "Ok") return@runCatching null
-                    body.optJSONArray("routes")?.optJSONObject(0)?.optDouble("distance")
-                        ?.takeIf { !it.isNaN() }?.let { it / 1000.0 }
-                } finally {
-                    connection.disconnect()
-                }
-            }.getOrNull()
-        }
-        if (km != null) measuredRoadKm[key] = km
+        // No-op: external OSRM shortest distance calculation disabled
     }
 
     /**
      * Hub → customer: 3 min packing + ride at ~18 km/h + 3 min buffer, never
-     * under 8. The 5 km limit is by road: the measured shortest route when
-     * known, else 1.25× the straight line.
+     * under 8. The standard delivery area is 8 km straight line.
      */
     fun quote(lat: Double, lng: Double): Quote {
         val straightKm = haversineKm(HUB_LAT, HUB_LNG, lat, lng)
-        val byRoad = measuredRoadKm[pointKey(lat, lng)] ?: (straightKm * 1.25)
-        if (byRoad > MAX_RADIUS_KM) {
-            return Quote(null, (byRoad * 10).roundToInt() / 10.0, false)
-        }
-        val roadKm = maxOf(0.4, byRoad)
+        // Shown and saved as measured (straight line), so the shopper, the order and
+        // the staff console agree on which side of 8 km it is. Streets run about
+        // 1.25× that; the road figure only sets the time.
+        val distanceKm = (straightKm * 10).roundToInt() / 10.0
+        val roadKm = maxOf(0.4, straightKm * 1.25)
         val ridingMinutes = roadKm / 18 * 60
         val total = maxOf(8, (3 + ridingMinutes + 3).roundToInt())
-        return Quote(total, (roadKm * 10).roundToInt() / 10.0, true)
+        return Quote(total, distanceKm, distanceKm <= MAX_RADIUS_KM)
     }
 }
 

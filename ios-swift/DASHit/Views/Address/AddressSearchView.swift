@@ -218,7 +218,7 @@ struct AddressSearchView: View {
         return resultRow(
             symbol: "mappin.circle.fill",
             title: locality.name,
-            subtitle: "Anantnag · \(quote.isDeliverable ? quote.distanceText : "outside our 5 km area")",
+            subtitle: "Anantnag · \(quote.isDeliverable ? quote.distanceText : "outside our 8 km area")",
             isDimmed: !quote.isDeliverable,
             isLoading: false
         ) {

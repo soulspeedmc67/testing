@@ -778,6 +778,18 @@ export default function OrderDetailDrawer({
                   <span className="leading-relaxed">{address}</span>
                 </div>
 
+                {order.distanceKm != null && (
+                  <div className="flex items-center space-x-2 text-xs pt-1">
+                    <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] ${
+                      Number(order.distanceKm) > 8
+                        ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                        : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                    }`}>
+                      📍 {Number(order.distanceKm).toFixed(1)} km from store {Number(order.distanceKm) > 8 ? "· Beyond 8 km, you decide" : "· Within 8 km"}
+                    </span>
+                  </div>
+                )}
+
                 {receiver && (
                   <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-300 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-bold">
                     Recipient: {receiver.name} ({receiver.phone})

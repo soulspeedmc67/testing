@@ -393,19 +393,19 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
           </div>
         </div>
 
-        {/* 5.0 KM STRICT DELIVERY RADIUS BADGE */}
+        {/* 8.0 KM STANDARD DELIVERY RADIUS BADGE */}
         {(() => {
           const deliveryData = calculateDeliveryEta(selectedPos, HUB_POS);
           if (!deliveryData.isDeliverable) {
             return (
-              <div className="border border-slate-200 rounded-xl p-3 flex items-start space-x-2.5 dark:border-line">
-                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+              <div className="border border-amber-200 bg-amber-50/50 rounded-xl p-3 flex items-start space-x-2.5 dark:border-amber-900/40 dark:bg-amber-950/20">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="min-w-0 text-left">
-                  <p className="text-[12px] font-semibold leading-snug text-slate-900 dark:text-content">
-                    Not available in your area yet
+                  <p className="text-[12px] font-semibold leading-snug text-amber-900 dark:text-amber-300">
+                    Beyond standard 8 km area ({deliveryData.distanceKm} km away)
                   </p>
-                  <p className="text-[11px] text-slate-500 leading-snug mt-0.5 dark:text-content-muted">
-                    We are expanding across Anantnag and will reach you soon.
+                  <p className="text-[11px] text-amber-700/80 leading-snug mt-0.5 dark:text-amber-400/80">
+                    You can still order. The store will confirm if it can deliver.
                   </p>
                 </div>
               </div>
@@ -572,17 +572,12 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
           return (
             <button
               onClick={handleConfirm}
-              disabled={isOutside}
-              className={`w-full py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all ${
-                isOutside
-                  ? "bg-slate-300 text-slate-500 cursor-not-allowed border border-slate-300 dark:text-content-muted dark:border-line-strong"
-                  : "bg-[#061838] hover:bg-slate-900 text-white"
-              }`}
+              className="w-full py-3.5 rounded-2xl font-black text-xs flex items-center justify-center space-x-1.5 shadow-md active:scale-98 transition-all bg-[#061838] hover:bg-slate-900 text-white"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>
                 {isOutside
-                  ? `Cannot Deliver Beyond 5 km (${deliveryData.distanceKm} km)`
+                  ? `Save & Deliver to ${activeAlias} (${deliveryData.distanceKm} km, store will confirm)`
                   : `Save & Deliver to ${activeAlias}`}
               </span>
             </button>

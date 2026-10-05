@@ -873,6 +873,15 @@ export default function OrderProcessingView({
                                 <MapPin className="w-3 h-3 shrink-0 text-slate-400" />
                                 <span className="truncate">{address}</span>
                               </span>
+                              {ord.distanceKm != null && (
+                                <span className={`text-[10px] font-bold block ${
+                                  Number(ord.distanceKm) > 8
+                                    ? "text-amber-500"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                                }`}>
+                                  📍 {Number(ord.distanceKm).toFixed(1)} km {Number(ord.distanceKm) > 8 ? "· Beyond 8 km" : ""}
+                                </span>
+                              )}
                               {receiver && (
                                 <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold block">
                                   Deliver to: {receiver.name} ({receiver.phone})
@@ -1298,6 +1307,15 @@ export default function OrderProcessingView({
                               <span className="text-[10px] text-slate-400 font-mono block">
                                 {phone ? "+91 " + phone : "No phone"}
                               </span>
+                              {ord.distanceKm != null && (
+                                <span className={`text-[10px] font-bold block ${
+                                  Number(ord.distanceKm) > 8
+                                    ? "text-amber-600 dark:text-amber-400"
+                                    : "text-emerald-600 dark:text-emerald-400"
+                                }`}>
+                                  📍 {Number(ord.distanceKm).toFixed(1)} km {Number(ord.distanceKm) > 8 ? "(Beyond 8 km)" : ""}
+                                </span>
+                              )}
                               {ord.driverName && (
                                 <span className="text-[10px] font-bold text-sky-600 dark:text-sky-400 block truncate">
                                   Rider: {ord.driverName}

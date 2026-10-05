@@ -352,7 +352,7 @@ export default function AppHeader({
                   ) : (
                     <span className="inline-flex items-center space-x-1 bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900/50 dark:text-rose-300">
                       <AlertTriangle className="w-2.5 h-2.5 stroke-[2.5] shrink-0 text-rose-600 dark:text-rose-400" />
-                      <span>Beyond 5km</span>
+                      <span>Beyond 8km</span>
                     </span>
                   )
                 )}

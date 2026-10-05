@@ -56,7 +56,7 @@ struct HelpSupportView: View {
     private static let questions: [Question] = [
         Question(
             question: "Where do you deliver?",
-            answer: "Anywhere within 5 km of our store in Anantnag. Set your address at the top of the Home screen and we'll tell you straight away if we can reach you."
+            answer: "Anywhere within 8 km of our store in Anantnag. Set your address at the top of the Home screen and we'll tell you straight away if we can reach you."
         ),
         Question(
             question: "How long will my order take?",

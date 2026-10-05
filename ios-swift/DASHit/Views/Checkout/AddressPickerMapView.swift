@@ -235,7 +235,7 @@ struct AddressPinPicker: View {
             }
 
             Button(action: save) {
-                Text(quote.isDeliverable ? "Confirm location" : "Outside our delivery area")
+                Text(quote.isDeliverable ? "Confirm location" : "Confirm location (\(quote.distanceText))")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(canSave ? .white : .textFaint)
                     .frame(maxWidth: .infinity)
@@ -260,9 +260,9 @@ struct AddressPinPicker: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.positive)
         } else {
-            Text("\(quote.distanceText) from our hub — we deliver within 5 km")
+            Text("\(quote.distanceText) from our hub — standard delivery is within 8 km")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.danger)
+                .foregroundColor(.brandOrange)
         }
     }
 
@@ -277,7 +277,7 @@ struct AddressPinPicker: View {
     }
 
     private var canSave: Bool {
-        quote.isDeliverable && !isMoving && !isResolving
+        !isMoving && !isResolving
     }
 
     // MARK: - Actions

@@ -10,12 +10,12 @@ import { goBack } from "../lib/navigation";
 const SUPPORT_EMAIL = "support@dashit.co.in";
 const WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order";
 
-/* Answers follow the app's real rules (5 km area, 30-second change window,
+/* Answers follow the app's real rules (8 km area, 30-second change window,
    delivery code, ₹25 fee under ₹299 in checkout.js) and the Terms. */
 const QUESTIONS = [
   {
     q: "Where do you deliver?",
-    a: "Anywhere within 5 km of our store in Anantnag. Set your address at the top of the shop and we'll tell you straight away if we can reach you.",
+    a: "Anywhere within 8 km of our store in Anantnag. Further out you can still order, and the store confirms each of those orders before sending it.",
   },
   {
     q: "How long will my order take?",

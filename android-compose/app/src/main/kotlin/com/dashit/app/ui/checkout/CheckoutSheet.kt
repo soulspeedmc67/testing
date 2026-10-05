@@ -146,11 +146,6 @@ fun CheckoutSheet(
             return
         }
         val quote = DeliveryEta.quote(address.latitude, address.longitude)
-        if (!quote.isDeliverable) {
-            errorMessage = "Delivery isn't available at this address yet. It's ${quote.distanceText} from our Anantnag hub, and we deliver within 5 km."
-            HapticsManager.warning(view)
-            return
-        }
         val eta = StoreStatus.etaMinutes(quote) ?: 8
         val code = Order.newCode()
         val order = Order(

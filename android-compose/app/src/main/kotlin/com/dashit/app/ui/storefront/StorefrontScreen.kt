@@ -220,25 +220,11 @@ fun StorefrontScreen(
     val checkoutSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
 
-    /* Tell the shopper early whether we deliver to them: with no address yet,
-       a sheet explains why we want their location before Android asks for it;
-       an address further than 5 km by road gets a plain "can't deliver" sheet,
-       once per address. */
+    /* With no address yet, a sheet explains why we want their location before Android asks for it. */
     var isLocationAskOpen by remember { mutableStateOf(false) }
-    var outsideAreaFor by remember { mutableStateOf<String?>(null) }
-    var toldOutsideFor by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(1500)
         if (AddressBook.current.value == null) isLocationAskOpen = true
-    }
-    LaunchedEffect(savedCurrentAddress?.latitude, savedCurrentAddress?.longitude) {
-        val address = savedCurrentAddress ?: return@LaunchedEffect
-        DeliveryEta.measure(address.latitude, address.longitude)
-        val key = "${address.latitude},${address.longitude}"
-        if (!DeliveryEta.quote(address.latitude, address.longitude).isDeliverable && toldOutsideFor != key) {
-            toldOutsideFor = key
-            outsideAreaFor = key
-        }
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -843,7 +829,7 @@ fun StorefrontScreen(
         if (isLocationAskOpen) {
             DeliveryAreaSheet(
                 title = "Where should we deliver?",
-                message = "We deliver within 5 km of our store in Anantnag. Share your location and we'll tell you straight away if we reach you.",
+                message = "We deliver within 8 km of our store in Anantnag. Share your location and we'll tell you straight away if we reach you.",
                 primary = "Use my current location",
                 secondary = "Not now",
                 onPrimary = {
@@ -851,20 +837,6 @@ fun StorefrontScreen(
                     pinStart = PinStart(locateOnOpen = true, isNew = true)
                 },
                 onDismiss = { isLocationAskOpen = false }
-            )
-        }
-        if (outsideAreaFor != null) {
-            val far = savedCurrentAddress?.let { DeliveryEta.quote(it.latitude, it.longitude) }
-            DeliveryAreaSheet(
-                title = "We can't deliver to this address yet",
-                message = "It is ${far?.shortDistanceText ?: "more than 5 km"} from our store by road. We deliver up to 5 km for now.",
-                primary = "Choose another address",
-                secondary = "Keep browsing",
-                onPrimary = {
-                    outsideAreaFor = null
-                    pinStart = PinStart(locateOnOpen = false, isNew = true)
-                },
-                onDismiss = { outsideAreaFor = null }
             )
         }
         AnimatedVisibility(

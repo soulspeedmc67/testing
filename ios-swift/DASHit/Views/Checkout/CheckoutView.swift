@@ -50,10 +50,10 @@ struct CheckoutView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(deliveryHeadline)
                                 .font(.dashitBodyBold)
-                                .foregroundColor(vm.deliveryQuote.isDeliverable ? .textPrimary : .danger)
+                                .foregroundColor(vm.deliveryQuote.isDeliverable ? .textPrimary : .brandOrange)
                             Text(vm.deliveryQuote.isDeliverable
                                  ? "\(vm.deliveryQuote.distanceText) · Fulfilled from DASHit Anantnag Dark Store"
-                                 : "\(vm.deliveryQuote.distanceText) · We deliver within 5 km of our Anantnag hub")
+                                 : "\(vm.deliveryQuote.distanceText) · Standard delivery is within 8 km (Store will confirm)")
                                 .font(.dashitMicro)
                                 .foregroundColor(.textMuted)
                         }

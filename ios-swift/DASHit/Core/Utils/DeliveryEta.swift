@@ -2,17 +2,16 @@ import Foundation
 import CoreLocation
 
 /// Delivery ETA and serviceability, ported from `src/lib/deliveryEta.js` so the
-/// iOS app promises the same times and the same 5 km area as web and Android.
+/// iOS app promises the same times and the same 8 km area as web and Android.
 enum DeliveryEta {
     /// Anantnag Central Dark Store Hub.
     static let hub = CLLocationCoordinate2D(latitude: 33.748413, longitude: 75.150839)
     static let hubName = "DASHit Express Hub · Anantnag"
-    static let maxRadiusKm = 5.0
+    static let maxRadiusKm = 8.0
 
     struct Quote: Equatable {
-        /// nil when the address is outside the delivery area.
         let etaMinutes: Int?
-        /// Road distance (straight line × 1.25) for deliverable addresses.
+        /// Straight line from the store: the distance the 8 km area is measured by.
         let distanceKm: Double
         let isDeliverable: Bool
 
@@ -38,12 +37,13 @@ enum DeliveryEta {
     /// straight line + 3 min buffer, never under 8 minutes.
     static func quote(for destination: CLLocationCoordinate2D) -> Quote {
         let straightKm = haversineKm(from: hub, to: destination)
-        guard straightKm <= maxRadiusKm else {
-            return Quote(etaMinutes: nil, distanceKm: (straightKm * 10).rounded() / 10, isDeliverable: false)
-        }
+        // Shown and saved as measured (straight line), so the shopper, the order and
+        // the staff console agree on which side of 8 km it is. The 1.25× road
+        // figure only sets the time.
+        let distanceKm = (straightKm * 10).rounded() / 10
         let roadKm = max(0.4, straightKm * 1.25)
         let ridingMinutes = roadKm / 18 * 60
         let total = max(8, Int((3 + ridingMinutes + 3).rounded()))
-        return Quote(etaMinutes: total, distanceKm: (roadKm * 10).rounded() / 10, isDeliverable: true)
+        return Quote(etaMinutes: total, distanceKm: distanceKm, isDeliverable: distanceKm <= maxRadiusKm)
     }
 }

@@ -30,15 +30,15 @@ export function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// Maximum delivery radius strictly enforced from the Central Dark Store
-export const MAX_DELIVERY_RADIUS_KM = 5.0;
+// Maximum standard delivery radius from the Central Dark Store
+export const MAX_DELIVERY_RADIUS_KM = 8.0;
 
 /**
  * Calculates delivery ETA in minutes from the hub to customer location.
  *
  * Real-world modeling:
- * 1. Delivery restricted strictly within 5.0 km radius.
- * 2. Road distance is ~1.25x straight-line distance in town streets.
+ * 1. Standard delivery area is within 8.0 km radius.
+ * 2. Road distance is modeled as ~1.25x straight-line distance in town streets.
  * 3. Courier scooter speed in Anantnag traffic is ~18-20 km/h (~3.3 mins per km).
  * 4. Store bag picking & packing time: 3 mins.
  * 5. Safety buffer: +3 mins (ensures couriers never miss promised ETA).
@@ -68,48 +68,43 @@ export function calculateDeliveryEta(targetCoords, hubCoords = DARK_STORE_HUB) {
     tLng
   );
 
-  /* The 5 km limit is by road, not as the crow flies. `roadKm` is the
-     shortest driving route from the store, measured once for the address
-     (see roadDistance.js); until it is known, town streets run about 1.25x
-     the straight line. */
-  // A measured distance only counts for the point it was measured for.
-  const measuredHere = targetCoords.roadFor === `${tLat.toFixed(5)},${tLng.toFixed(5)}`;
-  const measured = measuredHere ? Number(targetCoords.roadKm) : NaN;
-  const roadKmExact = Number.isFinite(measured) && measured > 0 ? measured : rawDistKm * 1.25;
-  const isDeliverable = roadKmExact <= MAX_DELIVERY_RADIUS_KM;
-
-  if (!isDeliverable) {
-    const formatted = `${roadKmExact.toFixed(1)} km away`;
-    return {
-      etaMinutes: null,
-      distanceKm: parseFloat(roadKmExact.toFixed(1)),
-      distanceFormatted: formatted,
-      displayText: "Not available here yet",
-      pillText: "Beyond 5km",
-      isAccurate: true,
-      isDeliverable: false,
-      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
-      warningText: `We can't deliver to this address yet. It is ${roadKmExact.toFixed(1)} km from our store by road; we deliver up to ${MAX_DELIVERY_RADIUS_KM} km.`,
-    };
-  }
-
-  const roadDistKm = Math.max(0.4, roadKmExact);
+  /* The 8 km area is measured in a straight line from the store, and that is
+     the distance shown to the shopper and saved on the order, so the shopper,
+     the order and the staff console all agree on which side of 8 km it is.
+     Streets run about 1.25x the straight line; that only sets the time. */
+  const distanceKm = Math.round(rawDistKm * 10) / 10;
+  const roadDistKm = Math.max(0.4, rawDistKm * 1.25);
+  const isDeliverable = distanceKm <= MAX_DELIVERY_RADIUS_KM;
 
   // Speed: ~18 km/h -> 1 km takes ~3.33 mins
   const drivingMinutes = (roadDistKm / 18) * 60;
   const packingMinutes = 3;
-  const safetyBuffer = 3; // +2-3 extra minutes buffer as requested by user
+  const safetyBuffer = 3;
 
   const totalMinutes = Math.max(8, Math.round(packingMinutes + drivingMinutes + safetyBuffer));
 
   const distanceFormatted =
-    roadDistKm < 1
-      ? `${Math.round(roadDistKm * 1000)} m away`
-      : `${roadDistKm.toFixed(1)} km away`;
+    rawDistKm < 1
+      ? `${Math.round(rawDistKm * 1000)} m away`
+      : `${distanceKm.toFixed(1)} km away`;
+
+  if (!isDeliverable) {
+    return {
+      etaMinutes: totalMinutes,
+      distanceKm,
+      distanceFormatted,
+      displayText: `${totalMinutes} mins (Beyond 8 km)`,
+      pillText: "Beyond 8km",
+      isAccurate: true,
+      isDeliverable: false,
+      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
+      warningText: `This address is ${distanceKm.toFixed(1)} km from our store, outside our usual ${MAX_DELIVERY_RADIUS_KM} km. You can still order; the store will confirm if it can deliver.`,
+    };
+  }
 
   return {
     etaMinutes: totalMinutes,
-    distanceKm: parseFloat(roadDistKm.toFixed(1)),
+    distanceKm,
     distanceFormatted,
     displayText: `${totalMinutes} minutes`,
     pillText: `${totalMinutes} Mins`,

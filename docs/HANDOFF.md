@@ -188,20 +188,29 @@ Android apps were NOT changed by this; ask the owner before porting it.
   WhatsApp receipt and the packing slip (derived from the total for orders
   saved without `handlingFee`).
 
-### Delivery area by road (website and Android only; iOS not done)
+### Delivery area (8 km radius, straight-line, admin decision)
 
-- The 5 km limit is the shortest driving route from the store (OSRM), not the
-  straight line. Until a route is measured the estimate is straight line x 1.25.
-- Web: `src/lib/roadDistance.js` measures; `DeliveryAreaCheck.jsx` (in `_app`)
-  saves `roadKm` + `roadFor` on the address, asks for location on opening the
-  shop with no address (our own sheet first, then the browser prompt), and
-  shows "We can't deliver to this address yet" once per address.
-  `calculateDeliveryEta` reads `roadKm`.
-- Android: `DeliveryEta.measure()` + the same two sheets in `StorefrontScreen`.
-  Compiles and runs on the Pixel; the sheets themselves were not seen there
-  (the phone has a saved in-area address).
-- iOS build 1.0.0 (412) on TestFlight has the charges, shelves and categories
-  work, not this road check (iOS still uses the straight-line 5 km).
+- The standard delivery radius is 8.0 km straight-line (Haversine) from the
+  Central Dark Store, modeled with standard town street winding (1.25x) for ETA
+  transit time.
+- External shortest road distance router calculation (OSRM) was removed so
+  customers are not blocked by algorithmic road route estimates.
+- Frontend blocking sheets ("We can't deliver to this address yet") and hard
+  checkout disables were removed. Orders display their exact distance from
+  store in the Admin Console (within 8 km vs beyond 8 km), empowering the store
+  admin to decide whether to 1-Click Accept & Pack or Reject.
+- Reviewed Oct 5, 13:30: the distance shown to the shopper and saved on the
+  order (`distanceKm`) is now the straight line, the same figure the 8 km test
+  uses, on web, Android and iOS. Before, the saved figure was 1.25x the
+  straight line while the test used the straight line, so a 7 km address read
+  "8.8 km, within 8 km" to the shopper and "Beyond 8 km" to the admin. The
+  1.25x figure now only sets the delivery time.
+- There is NO outer limit: an address at any distance can order, and can pay
+  online before the store has confirmed. Owner to decide on a hard limit
+  and/or cash-only beyond 8 km.
+- Web VERIFIED on the local build at 3, 6.5 and 8.5 km. Android compiles
+  (`compileReleaseKotlin`) but is in no APK yet (the compliance hook stops
+  `assembleRelease`). iOS not compiled.
 
 ## Oct 3, 2026: web shop back for launch (5 Oct, 5 pm), iOS admin rider fix
 

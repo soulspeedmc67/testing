@@ -205,7 +205,7 @@ export default function LocationPickerModal({
               <h3 className="text-xs font-bold text-slate-500 tracking-tight dark:text-content-muted">
                 Your saved addresses ({savedAddresses.length})
               </h3>
-              <span className="text-[10px] font-bold text-[#FF5B00]">Max 5 km radius</span>
+              <span className="text-[10px] font-bold text-[#FF5B00]">Max 8 km radius</span>
             </div>
 
             {savedAddresses.length > 0 ? (
@@ -215,17 +215,17 @@ export default function LocationPickerModal({
                   const isActive = activeAddressId === addrKey;
                   const alias = addr.alias || addr.nickname || "Home";
                   const deliveryData = calculateDeliveryEta(addr);
-                  const isWithin5km = deliveryData.isDeliverable;
+                  const isWithin8km = deliveryData.isDeliverable;
 
                   return (
                     <div
                       key={addrKey}
-                      onClick={() => isWithin5km && handleSelectAddress(addr)}
-                      className={`bg-white border rounded-3xl p-3.5 space-y-2.5 relative transition-all ${
+                      onClick={() => handleSelectAddress(addr)}
+                      className={`bg-white border rounded-3xl p-3.5 space-y-2.5 relative transition-all cursor-pointer ${
                         isActive
                           ? "border-[#061838] ring-2 ring-[#061838]/10 shadow-sm"
                           : "border-slate-200/90 hover:border-slate-300 dark:border-line/90 dark:hover:border-line-strong"
-                      } ${!isWithin5km ? "opacity-75 bg-slate-50/50 cursor-not-allowed" : "cursor-pointer"} dark:bg-surface-raised`}
+                      } dark:bg-surface-raised`}
                     >
                       <div className="flex items-start justify-between gap-2.5">
                         <div className="flex items-start space-x-3 min-w-0 flex-1">
@@ -256,17 +256,17 @@ export default function LocationPickerModal({
                               {addr.address}
                             </p>
 
-                            {/* 5 km Deliverability & ETA Badge */}
+                            {/* 8 km Deliverability & ETA Badge */}
                             <div className="pt-1">
-                              {isWithin5km ? (
+                              {isWithin8km ? (
                                 <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                                  <span>Within 5 km ({deliveryData.distanceFormatted}) • ~{deliveryData.etaMinutes} mins</span>
+                                  <span>Within 8 km ({deliveryData.distanceFormatted}) • ~{deliveryData.etaMinutes} mins</span>
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200/60">
-                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                  <span>Beyond 5 km ({deliveryData.distanceKm} km away) • Outside Service Area</span>
+                                <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                  <span>Beyond 8 km ({deliveryData.distanceKm} km away) • Store will confirm</span>
                                 </span>
                               )}
                             </div>
@@ -288,17 +288,14 @@ export default function LocationPickerModal({
                       <div className="flex items-center justify-end pt-1.5 border-t border-slate-100 dark:border-line-soft">
                         <button
                           type="button"
-                          disabled={!isWithin5km}
                           onClick={() => handleSelectAddress(addr)}
                           className={`font-black text-xs px-4 py-2 rounded-xl transition-all shadow-2xs active:scale-95 ${
-                            !isWithin5km
-                              ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-surface-muted dark:text-content-faint"
-                              : isActive
+                            isActive
                               ? "bg-emerald-600 text-white"
                               : "bg-[#061838] text-white hover:bg-slate-900"
                           }`}
                         >
-                          {isActive ? "Delivering Here" : isWithin5km ? "Deliver Here" : "Outside 5km"}
+                          {isActive ? "Delivering Here" : isWithin8km ? "Deliver Here" : "Deliver Here (Beyond 8km)"}
                         </button>
                       </div>
                     </div>

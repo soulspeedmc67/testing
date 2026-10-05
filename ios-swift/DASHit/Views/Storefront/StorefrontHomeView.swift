@@ -293,10 +293,10 @@ struct StorefrontHomeView: View {
     }
 
     /// "12 minutes" from the web ETA model for the saved address; the web's
-    /// fixed 18 under high demand; a plain notice outside the 5 km area.
+    /// fixed 18 under high demand; a plain notice outside the 8 km area.
     private var headerEta: String {
         let quote = DeliveryEta.quote(for: address?.coordinate ?? DeliveryEta.hub)
-        guard let eta = storeStatus.etaMinutes(for: quote) else { return "Not here yet" }
+        guard let eta = storeStatus.etaMinutes(for: quote) else { return "Store to confirm" }
         return "\(eta) minutes"
     }
 
@@ -311,6 +311,8 @@ struct StorefrontHomeView: View {
             chip(text: "Closed", symbol: "moon.zzz.fill", tint: .caution)
         } else if deliveryQuote.isDeliverable {
             chip(text: deliveryQuote.shortDistanceText, symbol: "storefront", tint: .textSecondary)
+        } else {
+            chip(text: "\(deliveryQuote.shortDistanceText) · Beyond 8km", symbol: "storefront", tint: .caution)
         }
     }
 

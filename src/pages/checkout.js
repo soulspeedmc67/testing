@@ -358,7 +358,7 @@ export default function CheckoutPage() {
       return;
     }
     /* No pin, no order: a missing pin used to default to the store's own
-       position, which made the ETA and the 5 km check meaningless. */
+       position, which made the ETA and the 8 km check meaningless. */
     const orderLocation = location;
     if (!orderLocation?.address || !orderLocation.lat || !orderLocation.lng) {
       setIsLocationOpen(true);
@@ -373,9 +373,6 @@ export default function CheckoutPage() {
       );
     }
     const orderEta = calculateDeliveryEta(orderLocation);
-    if (!orderEta.isDeliverable) {
-      return alert("We don't deliver to this address yet. Please choose an address in Anantnag town.");
-    }
 
     placingRef.current = true;
     setIsProcessing(true);
@@ -471,7 +468,7 @@ export default function CheckoutPage() {
 
   // ---- The button ------------------------------------------------------------
 
-  const blocked = beforeLaunch || !isStoreOpen || (hasAddress && !eta.isDeliverable) || shortItems.length > 0;
+  const blocked = beforeLaunch || !isStoreOpen || shortItems.length > 0;
   const buttonLabel = isProcessing
     ? method === "online"
       ? "Waiting for payment…"
@@ -487,7 +484,7 @@ export default function CheckoutPage() {
     : !hasAddress
     ? "Add delivery address"
     : !eta.isDeliverable
-    ? "Outside our delivery area"
+    ? (method === "online" ? `Pay ${rupees(grandTotal)}` : "Place order")
     : method === "online"
     ? `Pay ${rupees(grandTotal)}`
     : "Place order";
@@ -572,7 +569,11 @@ export default function CheckoutPage() {
               <div>
                 <h2 className="text-[15px] font-bold text-[#061838] dark:text-content">Items</h2>
                 <p className="text-[12.5px] text-slate-500 dark:text-content-muted">
-                  {hasAddress && eta.isDeliverable ? `Delivery in about ${eta.etaMinutes} minutes` : "From our Anantnag store"}
+                  {hasAddress && eta.isDeliverable
+                    ? `Delivery in about ${eta.etaMinutes} minutes`
+                    : hasAddress
+                    ? "The store will confirm delivery to this address"
+                    : "From our Anantnag store"}
                 </p>
               </div>
               <button type="button" onClick={clearCart} className="text-[13px] font-semibold text-slate-500 hover:text-slate-900 dark:text-content-muted dark:hover:text-content">
@@ -681,7 +682,11 @@ export default function CheckoutPage() {
                 {hasAddress ? (
                   <>
                     <p className="text-[14px] font-semibold text-slate-900 line-clamp-2 dark:text-content">{location.address}</p>
-                    {!eta.isDeliverable && <p className="mt-0.5 text-[12.5px] font-semibold text-red-600 dark:text-red-400">We don&apos;t deliver here yet</p>}
+                    {!eta.isDeliverable && (
+                      <p className="mt-0.5 text-[12.5px] font-semibold text-amber-600 dark:text-amber-400">
+                        {eta.distanceKm} km from our store, outside our usual 8 km. You can still order; the store will confirm if it can deliver.
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="text-[14px] font-semibold text-slate-900 dark:text-content">No address yet</p>

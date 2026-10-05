@@ -92,12 +92,12 @@ object SupportContact {
 
 private data class Question(val question: String, val answer: String)
 
-/* Answers follow the app's real rules (5 km area, 30-second change window,
+/* Answers follow the app's real rules (8 km area, 30-second change window,
    delivery code, ₹25 fee under ₹299) and the Terms. */
 private val QUESTIONS = listOf(
     Question(
         "Where do you deliver?",
-        "Anywhere within 5 km of our store in Anantnag. Set your address at the top of the Home screen and we'll tell you straight away if we can reach you."
+        "Anywhere within 8 km of our store in Anantnag. Set your address at the top of the Home screen and we'll tell you straight away if we can reach you."
     ),
     Question(
         "How long will my order take?",

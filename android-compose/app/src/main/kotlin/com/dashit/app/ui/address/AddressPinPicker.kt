@@ -136,13 +136,8 @@ fun AddressPinPicker(
     var map by remember { mutableStateOf<MapView?>(null) }
     var meMarker by remember { mutableStateOf<Marker?>(null) }
 
-    // Measured by road for where the pin rests; the quote redraws when it arrives.
-    LaunchedEffect(pin) {
-        kotlinx.coroutines.delay(500)
-        DeliveryEta.measure(pin.latitude, pin.longitude)
-    }
     val quote = DeliveryEta.quote(pin.latitude, pin.longitude)
-    val canSave = quote.isDeliverable && !isMoving && !isResolving
+    val canSave = !isMoving && !isResolving
 
     BackHandler(onBack = onBack)
 
@@ -327,9 +322,9 @@ fun AddressPinPicker(
                         text = when {
                             isMoving -> " "
                             quote.isDeliverable && eta != null -> "Delivery in $eta minutes · ${quote.distanceText}"
-                            else -> "${quote.distanceText} from our store — we deliver within 5 km"
+                            else -> "${quote.distanceText} from our store — standard delivery is within 8 km"
                         },
-                        color = if (quote.isDeliverable) DashitColors.Positive else DashitColors.Danger,
+                        color = if (quote.isDeliverable) DashitColors.Positive else DashitColors.BrandOrange,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -384,7 +379,7 @@ fun AddressPinPicker(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (quote.isDeliverable) "Confirm location" else "Outside our delivery area",
+                    text = if (quote.isDeliverable) "Confirm location" else "Confirm location (${quote.distanceText})",
                     color = if (canSave) Color.White else DashitColors.TextFaint,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold

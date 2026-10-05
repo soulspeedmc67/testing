@@ -82,11 +82,6 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
         let quote = deliveryQuote
-        guard quote.isDeliverable else {
-            orderError = "Delivery isn't available at this address yet. It's \(quote.distanceText) from our Anantnag hub, and we deliver within 5 km."
-            HapticsManager.shared.warning()
-            return false
-        }
 
         isSubmitting = true
         progressText = paysOnline ? "Opening payment..." : "Placing Order..."
