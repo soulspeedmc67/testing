@@ -14,6 +14,8 @@
  */
 
 // [aisle, shelf inside it, what the name must contain]
+import { isAgeRestricted, TOBACCO_CATEGORY } from "./ageGate";
+
 const RULES = [
   // ---- Decided first: their names borrow words from other shelves ----------
   ["Pet Care", "Cat & dog food", /\b(whiskas|whi|pedigree|drools?|drolls|me ?o|meow|pure ?pet|kitekat|sheba|grainzero|kitty yums|kitten|temptation dry)\b/],
@@ -128,6 +130,11 @@ export function categorize(name, currentCat = "") {
 /** The same product, on the shelf its name says it belongs on. */
 export function withShelf(product) {
   if (!product || !product.name) return product;
+  // Tobacco has its own shelf, so staff can find it under Stock. Shoppers
+  // never browse it: every shop list drops age-restricted items first.
+  if (isAgeRestricted(product)) {
+    return product.cat === TOBACCO_CATEGORY ? product : { ...product, cat: TOBACCO_CATEGORY, sub: "" };
+  }
   const { cat, sub } = categorize(product.name, product.cat || product.category);
   if (cat === product.cat && sub === (product.sub || "")) return product;
   return { ...product, cat, sub };

@@ -10,13 +10,14 @@ import { Component } from "react";
  * `quiet` hides just the broken part (the floating widgets). Without it the
  * page is replaced by a short message and a way back to the shop.
  * `resetKey` clears the error when it changes, so moving to another page
- * gives the screen a fresh start.
+ * gives the screen a fresh start. `fallback({ error, retry })` draws something
+ * else in the broken part's place.
  */
 export default class ErrorBoundary extends Component {
-  state = { failed: false };
+  state = { failed: false, error: null };
 
-  static getDerivedStateFromError() {
-    return { failed: true };
+  static getDerivedStateFromError(error) {
+    return { failed: true, error };
   }
 
   componentDidCatch(error, info) {
@@ -25,13 +26,18 @@ export default class ErrorBoundary extends Component {
 
   componentDidUpdate(prev) {
     if (this.state.failed && prev.resetKey !== this.props.resetKey) {
-      this.setState({ failed: false });
+      this.setState({ failed: false, error: null });
     }
   }
+
+  retry = () => this.setState({ failed: false, error: null });
 
   render() {
     if (!this.state.failed) return this.props.children;
     if (this.props.quiet) return null;
+    // A part of a screen with its own message (the staff console's screens):
+    // drawn in place, with a retry that doesn't reload the page.
+    if (this.props.fallback) return this.props.fallback({ error: this.state.error, retry: this.retry });
 
     return (
       <div className="min-h-screen bg-[#F6F5F1] dark:bg-surface flex flex-col items-center justify-center px-6 text-center">

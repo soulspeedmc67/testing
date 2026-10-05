@@ -49,6 +49,8 @@ import { findInIndianCatalog } from "../lib/barcodeCatalog";
 import { findProductPhotos } from "../lib/productPhotoFinder";
 import PhotoSearchStatus from "../components/admin/PhotoSearchStatus";
 import { isPlaceholderImage } from "../lib/productPhotoMatch";
+import { TOBACCO_CATEGORY } from "../lib/ageGate";
+import ErrorBoundary from "../components/ErrorBoundary";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { watchAuth, getStaffRole, signInWithEmail, signInWithGoogle, completeGoogleRedirect, signOut } from "../lib/auth";
 import { watchShopProducts as watchProducts } from "../lib/catalogueFile";
@@ -232,7 +234,8 @@ const CATEGORIES = [
   "Household Items",
   "Fruits",
   "Vegetables",
-  "Bakery"
+  "Bakery",
+  TOBACCO_CATEGORY
 ];
 
 function GoogleMark() {
@@ -249,6 +252,9 @@ function GoogleMark() {
 export default function AdminAccessGate() {
   const [currentUid, setCurrentUid] = useState("");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // True until the saved sign-in has been read back. Without it a reload showed
+  // the sign-in form for a moment, which looks like being signed out.
+  const [isRestoring, setIsRestoring] = useState(isFirebaseConfigured);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -271,10 +277,13 @@ export default function AdminAccessGate() {
     }
     if (!isFirebaseConfigured) return;
     completeGoogleRedirect().catch(() => {});
+    // Never wait on a slow connection for ever: after this the form shows.
+    const giveUp = setTimeout(() => setIsRestoring(false), 8000);
     const unsub = watchAuth(async (user) => {
       if (!user) {
         setCurrentUid("");
         setIsAuthenticated(false);
+        setIsRestoring(false);
         return;
       }
       setCurrentUid(user.uid);
@@ -287,8 +296,12 @@ export default function AdminAccessGate() {
       } else {
         setIsAuthenticated(false);
       }
+      setIsRestoring(false);
     });
-    return unsub;
+    return () => {
+      clearTimeout(giveUp);
+      if (typeof unsub === "function") unsub();
+    };
   }, []);
 
   const handleGoogleLogin = async () => {
@@ -404,6 +417,18 @@ export default function AdminAccessGate() {
 
   if (isAuthenticated) {
     return <ProfessionalAdminDashboard isSandbox={false} currentUid={currentUid} />;
+  }
+
+  if (isRestoring) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] w-full bg-[#090A0F] flex items-center justify-center p-4">
+        <Head>
+          <title>DASHIT Partner Console</title>
+          <meta name="robots" content="noindex, nofollow, noarchive" />
+        </Head>
+        <p className="text-sm font-semibold text-zinc-400">Opening the console…</p>
+      </div>
+    );
   }
 
   return (
@@ -1163,8 +1188,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       alert("Please enter a valid price.");
       return;
     }
+    // Tobacco is sold with one plain pack photo, never a brand's own.
+    const isTobacco = productForm.cat === TOBACCO_CATEGORY;
     // The listing rule: nothing goes on the app without a photo.
-    if (isPlaceholderImage(productForm.img)) {
+    if (!isTobacco && isPlaceholderImage(productForm.img)) {
       alert("Add a photo first. Scan the barcode to find one, or paste a link to a photo of the pack.");
       return;
     }
@@ -1189,6 +1216,11 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       stock: Number(productForm.stock) || 100,
       updatedAt: Date.now()
     };
+    if (isTobacco) {
+      newProduct.ageRestricted = true;
+      newProduct.minAge = 18;
+      newProduct.img = "";
+    }
 
     try {
       if (isFirebaseConfigured) {
@@ -1910,7 +1942,36 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         </div>
       </div>
 
-      {/* ACTIVE TAB RENDER */}
+      {/* ACTIVE TAB RENDER. A screen that fails to draw shows a short note in
+          its place; the menu, the other screens and the sign-in all stay. */}
+      <ErrorBoundary
+        name={`console: ${activeTab}`}
+        resetKey={activeTab}
+        fallback={({ error, retry }) => (
+          <div
+            className={`rounded-2xl border p-6 text-center space-y-3 ${
+              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
+            }`}
+          >
+            <h2 className="text-base font-black">This screen didn&apos;t open</h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-sm mx-auto">
+              You are still signed in and the other screens work. Try again, or pick another screen from the menu.
+            </p>
+            <button
+              type="button"
+              onClick={retry}
+              className="bg-[#FF5B00] hover:bg-[#E04E00] text-white px-4 py-2 rounded-xl text-xs font-black cursor-pointer"
+            >
+              Try again
+            </button>
+            {error?.message && (
+              <p className="text-[11px] font-mono text-slate-400 break-words max-w-md mx-auto select-all">
+                For support: {String(error.message).slice(0, 240)}
+              </p>
+            )}
+          </div>
+        )}
+      >
       {activeTab === "orders" && (
         <OrderProcessingView
           orders={orders}
@@ -2104,6 +2165,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           darkMode={darkMode}
         />
       )}
+      </ErrorBoundary>
 
       {/* PAUSE STORE REASONS MODAL */}
       {/* Confirm before putting the store live. Mobile-first sizing: full-width

@@ -64,7 +64,10 @@ const RESTRICTED_KEYWORDS = [
   "vimal pan",
 ];
 
-export const AGE_RESTRICTED_CATEGORIES = ["Tobacco", "Tobacco & Smoking", "Smoking"];
+/** The shelf every age-restricted product is filed under (staff console only; shoppers never browse it). */
+export const TOBACCO_CATEGORY = "Cigarettes & tobacco";
+
+export const AGE_RESTRICTED_CATEGORIES = [TOBACCO_CATEGORY, "Tobacco", "Tobacco & Smoking", "Smoking"];
 
 export const MIN_AGE = 18;
 

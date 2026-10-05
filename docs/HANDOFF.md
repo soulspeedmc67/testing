@@ -62,6 +62,20 @@ installed release build is from 08:30. iOS parts are NOT compiled here.
   `no-store` for `404.html` (goes live with the next website zip).
 - **Hostinger's CDN answers scripted bursts with a "checking your browser"
   403.** Check the live site from a browser, or one request at a time.
+- **Staff console (`/xcyop`), 09:25.** (1) Tobacco has its own shelf,
+  "Cigarettes & tobacco" (`TOBACCO_CATEGORY` in `ageGate.js`): `withShelf`
+  files every age-restricted product there, so Stock and All items show it as
+  a category; shoppers never see it because every shop list runs `browseable`
+  first. Add an item with that category and it is saved `ageRestricted`,
+  `minAge: 18`, no photo needed (the shop shows the plain pack). (2) The owner
+  reported "This page didn't load" when switching screens, then the sign-in
+  form. NOT reproduced: every screen opens on the local build with the shop's
+  real order and rider shapes. Each screen now sits in its own `ErrorBoundary`
+  (`fallback` prop): a failure shows "This screen didn't open" in place with
+  the error text under "For support:", the menu stays and nobody is signed
+  out. Ask for that text if it happens again. (3) A reload showed the sign-in
+  form until Firebase had read the saved sign-in back; it now shows "Opening
+  the console…" (`isRestoring`, gives up after 8 s).
 - **Still open:** first-5-orders free delivery is still on (web, iOS);
   gift-box photos on some Dairy Milk / Hide & Seek / KitKat / Bournville items;
   ~435 photos damaged at source; iOS has no 5 km road check and no tobacco.
