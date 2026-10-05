@@ -327,8 +327,16 @@ export default function ShopPage() {
     const inStock = list.filter((p) => !isSoldOut(p));
     const soldOut = list.filter(isSoldOut);
     const hasPhoto = (p) => Boolean(p && typeof p.img === "string" && p.img.trim());
-    return [...inStock.filter(hasPhoto), ...inStock.filter((p) => !hasPhoto(p)), ...soldOut];
-  }, [shopProducts, activeCategory, personalCareSubCat, activeDealPromo]);
+    /* On the front page the long list follows the aisles (dairy, bakery,
+       snacks…) instead of the alphabet, so everyday groceries lead and items
+       the shop couldn't sort ("Other") come last. It used to open on whatever
+       sorted first by name, which is how 25 "ALPHABET B…Y" cards led the page. */
+    const rank = new Map(aisles.map((a, i) => [a.cat, /^others?$/i.test(a.cat) ? 9999 : i]));
+    const rankOf = (p) => rank.get(String(p.cat || p.category || "Others").trim()) ?? 9998;
+    const byAisle = (items) =>
+      activeCategory === "All" && !activeDealPromo ? [...items].sort((x, y) => rankOf(x) - rankOf(y)) : items;
+    return [...byAisle(inStock.filter(hasPhoto)), ...byAisle(inStock.filter((p) => !hasPhoto(p))), ...soldOut];
+  }, [shopProducts, aisles, activeCategory, personalCareSubCat, activeDealPromo]);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);

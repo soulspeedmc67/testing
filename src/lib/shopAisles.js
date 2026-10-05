@@ -145,7 +145,10 @@ export function buildAisles(products = []) {
   const order = [...AISLES, ...extra, { cat: "Others", ...OTHER }];
 
   return order
-    .filter((a) => byCat.has(a.cat) || a.cat === "Vegetables" || DEFAULT_CATEGORY_COVERS[a.cat])
+    // Only aisles that have products (plus Vegetables, shown as "arriving
+    // soon"). Listing every aisle that merely has a stock cover put three
+    // empty "Chicken & fish" aisles and an empty "Fruits" on the front page.
+    .filter((a) => byCat.has(a.cat) || a.cat === "Vegetables")
     .map((a) => {
       const items = byCat.get(a.cat) || [];
       const stocked = items.filter((p) => hasValidPhoto(p) && !isSoldOut(p));
@@ -196,6 +199,7 @@ export function buildAisleGroups(aisles = []) {
  * grocery-run order. Everything else is one tap away under "All categories".
  */
 export function featuredAisles(aisles = [], limit = 7) {
-  return aisles.filter((a) => a.cover && a.cat !== "Others").slice(0, limit);
+  // At least four in-stock items with photos, or its row on the home page is empty.
+  return aisles.filter((a) => a.cover && a.rail.length >= 4 && a.cat !== "Others").slice(0, limit);
 }
 

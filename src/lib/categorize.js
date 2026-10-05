@@ -120,7 +120,9 @@ export function categorize(name, currentCat = "") {
   for (const [cat, sub, pattern] of RULES) {
     if (pattern.test(text)) return { cat, sub };
   }
-  return { cat: String(currentCat || "").trim() || "Others", sub: "" };
+  // One catch-all shelf: a stock import files unknown items under "Other".
+  const kept = String(currentCat || "").trim();
+  return { cat: !kept || /^other$/i.test(kept) ? "Others" : kept, sub: "" };
 }
 
 /** The same product, on the shelf its name says it belongs on. */
