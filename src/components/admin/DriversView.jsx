@@ -134,14 +134,30 @@ export default function DriversView({
       }
     }
 
-    const res = await fetch("/api/staff/add-driver.php", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ ...payload, id_token: token }),
-    });
+    const send = () =>
+      fetch("/api/staff/add-driver.php", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ ...payload, id_token: token }),
+      });
+    // The request never reaching the server (Safari words it "Load failed")
+    // is a connection problem, not a refusal: try once more, then say so.
+    let res;
+    try {
+      res = await send();
+    } catch (e) {
+      await new Promise((r) => setTimeout(r, 1200));
+      try {
+        res = await send();
+      } catch (e2) {
+        throw new Error(
+          "Couldn't reach the shop's server from this phone or browser. Check the internet connection, turn off any ad blocker or VPN for dashit.co.in, and try again."
+        );
+      }
+    }
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.error) {
