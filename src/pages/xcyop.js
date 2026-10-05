@@ -27,6 +27,7 @@ import {
 import AdminLayout from "../components/admin/AdminLayout";
 import OrderProcessingView from "../components/admin/OrderProcessingView";
 import DriversView from "../components/admin/DriversView";
+import LiveDeliveriesPanel from "../components/admin/LiveDeliveriesPanel";
 import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
@@ -1983,6 +1984,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           darkMode={darkMode}
         />
       )}
+
+      {activeTab === "drivers" && <LiveDeliveriesPanel orders={orders} darkMode={darkMode} />}
 
       {activeTab === "drivers" && (
         <DriversView
