@@ -81,12 +81,12 @@ Options -Indexes
 
   # The web shop is back (launch, 5 October 2026). Product pages are one page
   # now, /product/?id=<id>; older /product/<id>/ links (bookmarks, search
-  # results, shared links) are sent there. Tobacco is never sold on the
-  # website, and the 3D demo is gone: both go to the shop.
+  # results, shared links) are sent there. The tobacco section (/tobacco/) is
+  # a real page again; the old 3D demo goes to the shop.
   # (Not for real files: /product/index.html itself must still be served.)
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteRule ^product/([^/?]+)/?$ /product/?id=$1 [R=302,L,QSD]
-  RewriteRule ^(tobacco|hero-3d-demo)(/.*)?$ /shop/ [R=302,L]
+  RewriteRule ^hero-3d-demo(/.*)?$ /shop/ [R=302,L]
 
   # Serve existing files or directories directly
   RewriteCond %{REQUEST_FILENAME} -f [OR]

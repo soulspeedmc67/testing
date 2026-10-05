@@ -152,7 +152,7 @@ public struct Product: Codable, Identifiable, Hashable {
         "cigarette", "cigar", "tobacco", "bidi", "beedi", "hookah", "shisha", "vape",
         "e-cigarette", "nicotine", "rolling paper", "gutkha", "paan masala", "snuff", "zarda",
         // Brand names: a pack listed as just "Gold Flake Kings" is still tobacco.
-        "gold flake", "goldflake", "marlboro", "navy cut", "wills classic", "classic milds",
+        "gold flake", "goldflake", "marlboro", "navy cut", "wills classic", "classic mild", "black n more", "pre roll", "ripper tipper", "magic coal",
         "classic ice burst", "classic regular", "benson & hedges", "benson and hedges", "four square", "capstan",
         "davidoff classic", "davidoff gold", "davidoff lights", "classic connect", "classic verve", "classic double burst", "dunhill", "red & white", "red and white", "berkeley", "india kings",
         "flake excel", "cigarillo", "khaini", "pan masala", "rajnigandha", "pan bahar",

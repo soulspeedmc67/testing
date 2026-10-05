@@ -27,7 +27,7 @@ import { EASE_OUT } from '../lib/motion';
 /* The web shop's chrome: cart bar, bottom menu, order tracker. Loaded only on
    shop pages, so the landing page, legal pages and staff consoles don't
    download it. The tracker is the one piece that reaches Firestore. */
-const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout', '/offers', '/orders', '/track', '/wishlist', '/account', '/add-address', '/confirm-location', '/login'];
+const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout', '/offers', '/orders', '/track', '/wishlist', '/account', '/add-address', '/confirm-location', '/login', '/tobacco'];
 const FloatingCartBar = dynamic(() => import('../components/FloatingCartBar'), { ssr: false });
 const BottomNav = dynamic(() => import('../components/BottomNav'), { ssr: false });
 const FlyingBadgeOverlay = dynamic(() => import('../components/FlyingBadgeOverlay'), { ssr: false });

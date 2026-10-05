@@ -11,7 +11,7 @@ import { productImageUrl } from "./ProductImage";
 /* Stable identity so an empty cart does not produce a new array each render. */
 const EMPTY_CART = [];
 
-const STOREFRONT_ROUTES = ["/shop", "/order-again", "/categories", "/wishlist", "/search", "/offers", "/product"];
+const STOREFRONT_ROUTES = ["/shop", "/order-again", "/categories", "/wishlist", "/search", "/offers", "/product", "/tobacco"];
 const NAVBAR_ROUTES = ["/shop", "/order-again", "/categories"];
 
 export default function FloatingCartBar() {

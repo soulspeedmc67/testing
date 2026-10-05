@@ -31,8 +31,8 @@ const IOS_FLAG = process.env.NEXT_PUBLIC_TOBACCO_IOS;
 
 export const TOBACCO_ROUTE = "/tobacco";
 
-/** Plain, unbranded pack art used for every tobacco item in the section. */
-export const PLAIN_PACK_IMG = "/art/tobacco-plain-pack.svg";
+/** Plain, unbranded pack photo used for every tobacco item in the section. */
+export const PLAIN_PACK_IMG = "/art/tobacco-plain-pack.png";
 
 /**
  * Reads the platform, so it is only meaningful on the client. Call it from an
@@ -40,8 +40,9 @@ export const PLAIN_PACK_IMG = "/art/tobacco-plain-pack.svg";
  */
 export function isTobaccoSectionEnabled() {
   if (SECTION_FLAG === "off") return false;
-  // The website never lists tobacco (COTPA §5; the Terms promise it isn't promoted).
-  if (!isNative()) return false;
+  /* On for the website and Android (owner's decision, 5 Oct 2026). It is still
+     never promoted: nothing shows while browsing, only after a shopper
+     searches for it and makes the 18+ declaration. Off in the iPhone app. */
   if (isNative() && isIOS() && IOS_FLAG !== "on") return false;
   return true;
 }
