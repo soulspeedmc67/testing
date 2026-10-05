@@ -239,10 +239,25 @@ export default function CheckoutPage() {
   /* The coupon is re-checked against the live subtotal on every render, so
      removing items after applying it can't keep a discount the cart no longer
      earns. */
-  const coupon = appliedCoupon && subtotal >= (Number(appliedCoupon.minOrder) || 0) ? appliedCoupon : null;
+  const couponFits = Boolean(appliedCoupon) && subtotal >= (Number(appliedCoupon.minOrder) || 0);
   useEffect(() => {
-    if (appliedCoupon && !coupon) setAppliedCoupon(null);
-  }, [appliedCoupon, coupon]);
+    if (appliedCoupon && !couponFits) setAppliedCoupon(null);
+  }, [appliedCoupon, couponFits]);
+
+  /* After 8 pm, or whenever the shop switches it on, delivery is also charged
+     by distance (config/store, src/lib/nightCharge.js). Free delivery (the
+     first-5-orders promo and FREEDEL-type codes) does not apply to these
+     orders, and checkout doesn't mention it while the charge is on. */
+  const nightChargeOn = Boolean(clock) && isNightChargeOn(storeConfig, clock);
+  const isFreeDeliveryCoupon = (c) => Boolean(c?.waivesDelivery || c?.code === "FREEDEL");
+  const coupon = couponFits && !(nightChargeOn && isFreeDeliveryCoupon(appliedCoupon)) ? appliedCoupon : null;
+
+  /* No cash on delivery after 8 pm. The option stays on screen, greyed out,
+     so the shopper knows why. */
+  const codBlocked = Boolean(clock) && isNightHours(clock);
+  useEffect(() => {
+    if (codBlocked && method === "cod") setMethod("online");
+  }, [codBlocked, method]);
 
   /* Read after mount, not during render: the exported HTML has no saved
      orders, so reading them in the first render made the page disagree with
@@ -252,11 +267,12 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const history = readJson("dashit_orders_history", []);
-    const count = Array.isArray(history) ? history.length : 0;
+    // Night orders paid for their delivery, so they don't use up a free one.
+    const count = Array.isArray(history) ? history.filter((o) => !(Number(o?.nightDeliveryFee) > 0)).length : 0;
     setUserOrdersCount(count);
 
-    // Auto-apply 100% Free Delivery on the shopper's first 5 orders
-    if (count < 5 && !appliedCoupon && !couponManuallyRemoved) {
+    // Auto-apply 100% Free Delivery on the shopper's first 5 orders (not at night)
+    if (count < 5 && !nightChargeOn && !appliedCoupon && !couponManuallyRemoved) {
       setAppliedCoupon({
         code: "FREEDEL",
         title: "100% Free Delivery on your order",
@@ -268,20 +284,17 @@ export default function CheckoutPage() {
         active: true,
       });
     }
-  }, [cartItems, appliedCoupon, couponManuallyRemoved]);
+  }, [cartItems, appliedCoupon, couponManuallyRemoved, nightChargeOn]);
 
+  // At night the first-5 promo is skipped: the normal tier fee applies.
   const deliveryCharges = useMemo(() => {
-    return calculateDeliveryCharges(subtotal, userOrdersCount, coupon);
-  }, [subtotal, userOrdersCount, coupon]);
+    return calculateDeliveryCharges(subtotal, nightChargeOn ? Math.max(5, userOrdersCount) : userOrdersCount, coupon);
+  }, [subtotal, userOrdersCount, coupon, nightChargeOn]);
 
   const eta = calculateDeliveryEta(location);
   const hasAddress = Boolean(location?.address && location?.lat && location?.lng);
 
-  /* After 8 pm, or whenever the shop switches it on, delivery is also charged
-     by distance (config/store, src/lib/nightCharge.js). It is its own line on
-     the bill and is not waived by free delivery: it pays for the rider's
-     petrol. */
-  const nightChargeOn = Boolean(clock) && isNightChargeOn(storeConfig, clock);
+  // The night charge is its own line on the bill: it pays for the rider's petrol.
   const nightFee = clock && hasAddress ? nightChargeFor(eta.distanceKm, storeConfig, clock) : 0;
   const nightChargeLabel = clock && isNightHours(clock) ? "Night delivery charge" : "Distance delivery charge";
 
@@ -399,6 +412,11 @@ export default function CheckoutPage() {
     if (nightChargeFor(orderEta.distanceKm, storeConfig, now) !== nightFee) {
       setClock(now);
       return alert("The delivery charge has just changed. Please check the bill and place your order again.");
+    }
+    if (method !== "online" && isNightHours(now)) {
+      setClock(now);
+      setMethod("online");
+      return alert("Cash on delivery isn't available after 8 pm. Please pay online to place your order.");
     }
 
     placingRef.current = true;
@@ -610,6 +628,7 @@ export default function CheckoutPage() {
               </button>
             </div>
 
+            {!nightChargeOn && (
             <div className="px-4 sm:px-5 pb-3">
               <p className="text-[13px] font-medium text-slate-600 dark:text-content-secondary">
                 {deliveryCharges.isFirstFivePromo ? (
@@ -631,6 +650,7 @@ export default function CheckoutPage() {
                 />
               </div>
             </div>
+            )}
 
             <ul className="divide-y divide-slate-100 dark:divide-line border-t border-slate-100 dark:border-line">
               {cartItems.map((item) => {
@@ -744,7 +764,7 @@ export default function CheckoutPage() {
                     <>
                       <span className="block text-[14px] font-semibold text-slate-900 dark:text-content">{coupon.code} applied</span>
                       <span className="block text-[12.5px] text-emerald-700 dark:text-emerald-400">
-                        {couponDiscount > 0 ? `You save ${rupees(couponDiscount)}` : nightFee > 0 ? "Delivery fee is free" : "Delivery is free"}
+                        {couponDiscount > 0 ? `You save ${rupees(couponDiscount)}` : "Delivery is free"}
                       </span>
                     </>
                   ) : (
@@ -850,7 +870,7 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              <FreeDeliveryProgress subtotal={subtotal} orderCount={userOrdersCount} />
+              {!nightChargeOn && <FreeDeliveryProgress subtotal={subtotal} orderCount={userOrdersCount} />}
 
               <div className="pt-2.5 mt-1 border-t border-slate-100 dark:border-line flex justify-between text-[16px] font-bold text-[#061838] dark:text-content">
                 <dt>To pay</dt>
@@ -869,25 +889,35 @@ export default function CheckoutPage() {
             <div className="mt-3 space-y-2" role="radiogroup" aria-label="Payment method">
               {PAYMENTS.map((p) => {
                 const Icon = p.icon;
-                const active = method === p.id;
+                const off = p.id === "cod" && codBlocked;
+                const active = !off && method === p.id;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     role="radio"
                     aria-checked={active}
+                    disabled={off}
+                    aria-disabled={off}
                     onClick={() => {
+                      if (off) return;
                       hapticLight();
                       setMethod(p.id);
                     }}
                     className={`w-full flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors ${
-                      active ? "border-[#FF5B00] bg-[#FF5B00]/[0.05]" : "border-slate-200 hover:border-slate-300 dark:border-line dark:hover:border-line-strong"
+                      off
+                        ? "border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed dark:border-line dark:bg-white/[0.03]"
+                        : active
+                        ? "border-[#FF5B00] bg-[#FF5B00]/[0.05]"
+                        : "border-slate-200 hover:border-slate-300 dark:border-line dark:hover:border-line-strong"
                     }`}
                   >
-                    <Icon className="w-5 h-5 text-[#061838] shrink-0 dark:text-content" />
+                    <Icon className={`w-5 h-5 shrink-0 ${off ? "text-slate-400 dark:text-content-faint" : "text-[#061838] dark:text-content"}`} />
                     <span className="grow min-w-0">
-                      <span className="block text-[14px] font-semibold text-slate-900 dark:text-content">{p.title}</span>
-                      <span className="block text-[12.5px] text-slate-500 dark:text-content-muted">{p.detail}</span>
+                      <span className={`block text-[14px] font-semibold ${off ? "text-slate-500 dark:text-content-muted" : "text-slate-900 dark:text-content"}`}>{p.title}</span>
+                      <span className={`block text-[12.5px] ${off ? "font-semibold text-amber-700 dark:text-amber-400" : "text-slate-500 dark:text-content-muted"}`}>
+                        {off ? "Not available after 8 pm. Please pay online." : p.detail}
+                      </span>
                     </span>
                     {active ? <CheckCircle2 className="w-5 h-5 text-[#FF5B00] shrink-0" /> : <Circle className="w-5 h-5 text-slate-300 shrink-0 dark:text-content-faint" />}
                   </button>
@@ -933,7 +963,8 @@ export default function CheckoutPage() {
         isOpen={isCouponsOpen}
         onClose={() => setIsCouponsOpen(false)}
         cartTotal={subtotal}
-        appliedCoupon={appliedCoupon}
+        appliedCoupon={coupon}
+        hideFreeDelivery={nightChargeOn}
         onApplyCoupon={(c) => {
           setAppliedCoupon(c);
           if (!c) setCouponManuallyRemoved(true);

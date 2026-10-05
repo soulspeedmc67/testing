@@ -6,8 +6,13 @@ import { hapticLight, hapticMedium } from "../lib/haptics";
 
 import { DEFAULT_COUPONS, watchActiveCoupons } from "../lib/coupons";
 
-export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupon, onApplyCoupon }) {
-  const [coupons, setCoupons] = useState([]);
+const waivesDelivery = (c) => Boolean(c?.waivesDelivery || c?.code === "FREEDEL");
+
+/* `hideFreeDelivery`: free-delivery codes don't apply to night orders, so
+   they aren't offered while the night charge is on. */
+export default function CouponsDrawer({ isOpen, onClose, cartTotal, appliedCoupon, onApplyCoupon, hideFreeDelivery = false }) {
+  const [allCoupons, setCoupons] = useState([]);
+  const coupons = hideFreeDelivery ? allCoupons.filter((c) => !waivesDelivery(c)) : allCoupons;
   const [customCode, setCustomCode] = useState("");
   const [codeError, setCodeError] = useState("");
 
