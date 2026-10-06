@@ -252,8 +252,71 @@ final class CartViewModel: ObservableObject {
     }
 
     func setUserOrdersCount(_ count: Int) {
+        guard count != userOrdersCount else { return }
         userOrdersCount = count
         recalculate()
+    }
+
+    /// The shop changed its minimum order or its fees (`ShopRules.current`).
+    func shopRulesChanged() {
+        recalculate()
+    }
+
+    // MARK: - Free first orders
+
+    /// Whose orders `userOrdersCount` was counted from.
+    private var ordersCountUid: String?
+
+    private static func ordersCountKey(_ uid: String) -> String { "dashit_orders_count_\(uid)" }
+
+    /// An order that used one of the shopper's free deliveries: not cancelled,
+    /// and not a night order (those pay by distance instead).
+    private static func usesFreeDelivery(_ order: Order) -> Bool {
+        order.status.stage != .cancelled && order.nightDeliveryFee <= 0
+    }
+
+    /// How many orders the shopper has had decides whether delivery is still
+    /// free (`ShopRules.freeDeliveryOrders`). The count is kept on the device
+    /// and, the first time for an account, counted from its orders.
+    func loadOrdersCount(uid: String?) async {
+        guard let uid, !uid.isEmpty else {
+            ordersCountUid = nil
+            setUserOrdersCount(0)
+            return
+        }
+        guard uid != ordersCountUid else { return }
+        if let saved = UserDefaults.standard.object(forKey: Self.ordersCountKey(uid)) as? Int {
+            ordersCountUid = uid
+            setUserOrdersCount(saved)
+            return
+        }
+        let orders = await FirestoreService.shared.fetchUserOrders(userId: uid)
+        // Nothing back can also mean no connection, so it is asked again next time.
+        guard !orders.isEmpty else {
+            setUserOrdersCount(0)
+            return
+        }
+        ordersCountUid = uid
+        saveOrdersCount(orders.filter { Self.usesFreeDelivery($0) }.count, uid: uid)
+    }
+
+    /// The shopper's live order list (the Orders tab) is the last word on the count.
+    func noteOrderHistory(_ orders: [Order], uid: String) {
+        guard !orders.isEmpty else { return }
+        ordersCountUid = uid
+        saveOrdersCount(orders.filter { Self.usesFreeDelivery($0) }.count, uid: uid)
+    }
+
+    /// Checkout placed this order.
+    func noteOrderPlaced(_ order: Order) {
+        guard Self.usesFreeDelivery(order) else { return }
+        ordersCountUid = order.userId
+        saveOrdersCount(userOrdersCount + 1, uid: order.userId)
+    }
+
+    private func saveOrdersCount(_ count: Int, uid: String) {
+        UserDefaults.standard.set(count, forKey: Self.ordersCountKey(uid))
+        setUserOrdersCount(count)
     }
 
     private func recalculate() {

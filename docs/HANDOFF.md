@@ -6,6 +6,55 @@
 
 ---
 
+## Oct 6, 2026: shop rules the owner changes without a new build
+
+Web VERIFIED (86 tests, production build, checkout and the settings card on
+the local dev build). Android VERIFIED to compile and assemble; not run on the
+Pixel. iOS NOT compiled here (no Swift): the GitHub Actions build is the check.
+Nothing was written to the live `config/store`, and the website is NOT deployed.
+
+- **One set of rules on `config/store`, read live by all three clients**
+  (`src/lib/deliveryCharges.js`, `android-compose/.../data/ShopRules.kt`,
+  `ios-swift/DASHit/Core/Utils/ShopRules.swift`: keep the three in step). A
+  missing field means the built-in value, so nothing changes until the owner
+  saves something:
+  `minOrderValue` 100, `handlingFee` 11, `deliverySmallBelow` 180,
+  `deliverySmallPercent` 40, `deliveryMidFee` 35, `deliveryLowFrom` 300,
+  `deliveryLowFee` 25, `freeDeliveryOrders` 5, `codEnabled` true,
+  `codAtNight` false. No extra Firestore reads: it is the same document and
+  listener as open/closed (`watchStoreConfig`, `StoreStatus`, `StoreStatusStore`).
+- **Where the owner changes them**: `/xcyop` → Settings → "Cash on delivery"
+  and "Minimum order and fees" (`ShopRulesSettings.jsx`), or the iOS admin →
+  Shop settings → Payment / Orders / Delivery fee (Save). Prices and stock
+  already reach every client from the catalogue file, with no build.
+- **Minimum order** (items total, before fees): the cart says "Add ₹X more to
+  place your order", the button is greyed out and checkout refuses, on web,
+  iOS and Android. Web also shows it on the floating cart bar.
+- **Cash on delivery**: `codEnabled` off greys the option out everywhere with
+  "Not available right now. Please pay online." `codAtNight` false (the
+  default) stops cash from 8 pm to 6 am: this was web only, and is now in both
+  apps too.
+- **Free first orders**: Android now has the offer (it had none), counted from
+  the shopper's own orders (`OrderRepository.orders`), not cancelled and not
+  night orders. **iOS never counted orders** (`setUserOrdersCount` had no
+  caller), so every iPhone order was delivered free; it now counts
+  (`CartViewModel.loadOrdersCount`: saved per account in UserDefaults, first
+  time read from the account's orders, corrected by the Orders tab, +1 on
+  each order placed). Web still counts from this browser's saved orders.
+- **Cancelled orders**: the reason the admin gives was already saved
+  (`rejectionReason` / `cancelledReason`) and shown on web. iOS now shows it on
+  the tracking screen and in its own notification; iOS and Android no longer
+  label an order the customer cancelled as "rejected by store"
+  (`storeCancelReason`).
+- **Old builds keep their fixed numbers.** An installed app from before this
+  change has no minimum order, ignores the switches and uses 40% / ₹35 / ₹25
+  and ₹11. Nothing on the server refuses such an order (`firestore.rules`
+  checks the totals agree, not the fees).
+- **Still different between clients**: at night the website charges the
+  distance fee alone; both apps add it to the fee by order size.
+- **Not done**: the website deploy. The server pushes for a cancelled order
+  were not checked (their code is not in this repo).
+
 ## Oct 5, 2026 (night): sales analytics, night-order fixes
 
 Web VERIFIED (production build, tests, screenshots of checkout at a faked

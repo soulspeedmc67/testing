@@ -1,4 +1,4 @@
-import { calculateDeliveryCharges, HANDLING_FEE } from "./deliveryCharges.js";
+import { calculateDeliveryCharges, SHOP_RULE_DEFAULTS } from "./deliveryCharges.js";
 
 /**
  * Adding items to an order during its change window.
@@ -159,19 +159,21 @@ function couponDiscount(order, subtotal, coupon) {
  * - Handling charge: kept.
  * - Discount: the order's code applied to the new item total; `coupon` is that
  *   code from the shop's list, or null when it isn't there.
+ *
+ * `rules` are the shop's current delivery fees (`shopRules`).
  */
-export function billForChangedOrder(order, items, coupon = null) {
+export function billForChangedOrder(order, items, coupon = null, rules = SHOP_RULE_DEFAULTS) {
   const subtotal = itemsSubtotal(items);
   const before = deliveryFeeParts(order);
   const subtotalBefore = rupees(order?.subtotal) || itemsSubtotal(order?.items);
   // What an order this size pays with no offer and no code.
-  const standardFee = calculateDeliveryCharges(subtotal, Infinity).fee;
-  const standardFeeBefore = calculateDeliveryCharges(subtotalBefore, Infinity).fee;
+  const standardFee = calculateDeliveryCharges(subtotal, Infinity, null, rules).fee;
+  const standardFeeBefore = calculateDeliveryCharges(subtotalBefore, Infinity, null, rules).fee;
   const distanceOnly = before.night > 0 && before.base === 0;
   const deliveryWaived = before.base === 0 && standardFeeBefore > 0;
   const baseDeliveryFee = distanceOnly || deliveryWaived ? 0 : standardFee;
 
-  const handlingFee = rupees(order?.handlingFee ?? HANDLING_FEE);
+  const handlingFee = rupees(order?.handlingFee ?? rules.handlingFee);
   const discount = couponDiscount(order, subtotal, coupon);
   const deliveryFee = baseDeliveryFee + before.night;
   const total = Math.max(0, subtotal + deliveryFee + handlingFee - discount);

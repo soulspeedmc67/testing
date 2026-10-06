@@ -59,26 +59,45 @@ import androidx.compose.ui.unit.sp
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.DashitMotion
 import com.dashit.app.core.design.HapticsManager
+import com.dashit.app.data.ShopRules
+import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.model.CartBillBreakdown
 import com.dashit.app.viewmodel.CartViewModel
 import kotlinx.coroutines.delay
 
 /**
- * Free-delivery progress at the top of the cart: one line of copy over a
- * hairline bar. It never blocks checkout; under ₹299 the order just carries
- * the ₹25 fee.
+ * Progress at the top of the cart: one line of copy over a hairline bar. Under
+ * the shop's minimum order it counts up to that; after it, towards the next,
+ * lower delivery fee. The amounts are the shop's ([ShopRules]).
  */
 @Composable
 internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
     if (bill.subtotal <= 0) return
 
-    // Delivery is never free by amount: the bar counts towards the next, lower
-    // fee (₹35 from ₹180, ₹25 above ₹299).
-    val unlocked = bill.subtotal > CartBillBreakdown.FREE_DELIVERY_THRESHOLD
-    val nextStep = if (bill.subtotal < 180) 180.0 else 300.0
-    val nextFee = if (bill.subtotal < 180) 35 else 25
+    val storeState by StoreStatus.state.collectAsState()
+    val rules = storeState.rules
+    val belowMinimum = !bill.isMinOrderSatisfied
+    val isSmallOrder = bill.subtotal < rules.deliverySmallBelow
+    val unlocked = !belowMinimum && (bill.isFirstOrdersPromo || bill.subtotal >= rules.deliveryLowFrom)
+    val nextStep = when {
+        belowMinimum -> rules.minOrderValue
+        isSmallOrder -> rules.deliverySmallBelow
+        else -> rules.deliveryLowFrom
+    }
+    val nextFee = if (isSmallOrder) rules.deliveryMidFee else rules.deliveryLowFee
+    // What the bar is counting towards.
+    val goal = when {
+        belowMinimum -> " more to place your order"
+        nextFee > 0 -> " more for ₹${ShopRules.whole(nextFee)} delivery"
+        else -> " more for free delivery"
+    }
+    val unlockedLine = when {
+        bill.isFirstOrdersPromo -> "Free delivery on your first ${rules.freeDeliveryOrders} orders!"
+        rules.deliveryLowFee > 0 -> "Lowest ₹${ShopRules.whole(rules.deliveryLowFee)} delivery charge on this order"
+        else -> "Free delivery on this order"
+    }
     val progress by animateFloatAsState(
-        targetValue = (bill.subtotal / nextStep).coerceIn(0.0, 1.0).toFloat(),
+        targetValue = (bill.subtotal / nextStep.coerceAtLeast(1.0)).coerceIn(0.0, 1.0).toFloat(),
         animationSpec = DashitMotion.houseSpring(),
         label = "free_delivery_progress"
     )
@@ -111,7 +130,7 @@ internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
                         modifier = Modifier.size(17.dp)
                     )
                     Text(
-                        text = "Lowest ₹25 delivery charge on this order",
+                        text = unlockedLine,
                         color = DashitColors.Positive,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
@@ -135,7 +154,7 @@ internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
                                 withStyle(SpanStyle(color = DashitColors.TextPrimary, fontWeight = FontWeight.Bold)) {
                                     append("₹${(nextStep - bill.subtotal).toInt().coerceAtLeast(1)}")
                                 }
-                                append(" more for ₹$nextFee delivery")
+                                append(goal)
                             },
                             color = DashitColors.TextSecondary,
                             fontSize = 13.sp
@@ -154,6 +173,13 @@ internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
                                 .fillMaxHeight()
                                 .clip(CircleShape)
                                 .background(DashitColors.BrandOrange)
+                        )
+                    }
+                    if (belowMinimum) {
+                        Text(
+                            text = "We deliver orders of ₹${ShopRules.whole(rules.minOrderValue)} or more.",
+                            color = DashitColors.TextMuted,
+                            fontSize = 12.sp
                         )
                     }
                 }
@@ -266,7 +292,7 @@ private fun FreeDeliveryToast() {
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "You're saving ₹${CartBillBreakdown.STANDARD_DELIVERY_FEE.toInt()} on this order",
+                text = "You're saving ₹${ShopRules.whole(StoreStatus.state.value.rules.deliveryLowFee)} on this order",
                 color = DashitColors.TextMuted,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium

@@ -168,10 +168,8 @@ extension Coupon {
         guard (active ?? true) && subtotal >= minOrder else { return 0 }
         if waivesDelivery == true || code == "FREEDEL" {
             guard subtotal < CartBillBreakdown.freeDeliveryThreshold else { return 0 }
-            // Compute the tiered delivery fee this order would incur.
-            let tieredFee: Double = subtotal < 180 ? (subtotal * 0.40).rounded()
-                                  : subtotal <= 299 ? 35.0 : 25.0
-            return tieredFee
+            // The delivery fee this order would otherwise pay.
+            return ShopRules.current.standardDeliveryFee(forSubtotal: subtotal)
         }
         return min(subtotal, discount)
     }
@@ -201,15 +199,18 @@ public struct CartBillBreakdown {
     public let isFirstFivePromo: Bool
     public let tierLabel: String
 
-    public static let minOrderValue: Double = 0.0
-    public static let freeDeliveryThreshold: Double = 300.0
-    public static let handlingFeeAmount: Double = 11.0
-    /// Representative delivery fee shown in help text and celebration toasts.
-    /// Reflects the ₹299+ tier (cheapest paid rate); per-order `standardDeliveryFee`
-    /// on each `CartBillBreakdown` instance holds the exact tiered amount.
-    public static let standardDeliveryFee: Double = 25.0
+    // The shop sets these (`ShopRules`, on `config/store`); they change
+    // without a new build.
+    public static var minOrderValue: Double { ShopRules.current.minOrderValue }
+    /// From this items total up, the delivery fee is at its lowest.
+    public static var freeDeliveryThreshold: Double { ShopRules.current.deliveryLowFrom }
+    public static var handlingFeeAmount: Double { ShopRules.current.handlingFee }
+    /// The lowest delivery fee, shown in help text; per-order `standardDeliveryFee`
+    /// on each `CartBillBreakdown` instance holds the exact amount for its size.
+    public static var standardDeliveryFee: Double { ShopRules.current.deliveryLowFee }
 
     public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0, nightDeliveryFee: Double = 0) -> CartBillBreakdown {
+        let rules = ShopRules.current
         let subtotal = items.reduce(0.0) { $0 + ($1.price * Double($1.qty)) }
         guard subtotal > 0 else {
             return CartBillBreakdown(
@@ -231,24 +232,17 @@ public struct CartBillBreakdown {
         let isCouponValid = appliedCoupon != nil && subtotal >= (appliedCoupon?.minOrder ?? 0)
         let effectiveCoupon = isCouponValid ? appliedCoupon : nil
 
-        let standardFee: Double
-        let tierLabel: String
-        if subtotal < 180 {
-            standardFee = (subtotal * 0.40).rounded()
-            tierLabel = "40% delivery charge (orders under ₹180)"
-        } else if subtotal <= 299 {
-            standardFee = 35.0
-            tierLabel = "₹35 delivery charge (orders ₹180 - ₹299)"
-        } else {
-            standardFee = 25.0
-            tierLabel = "₹25 delivery charge (orders above ₹299)"
-        }
+        let standardFee = rules.standardDeliveryFee(forSubtotal: subtotal)
+        let tierLabel = rules.tierLabel(forSubtotal: subtotal)
 
-        let isFirstFive = userOrdersCount < 5
+        // The shopper's first orders are delivered free (`freeDeliveryOrders`).
+        let isFirstFive = userOrdersCount < rules.freeDeliveryOrders
         let isWaivedByCoupon = effectiveCoupon?.waivesDelivery == true || effectiveCoupon?.code == "FREEDEL"
 
         let deliveryFee: Double = (isWaivedByCoupon || isFirstFive) ? 0.0 : standardFee
-        let handlingFee = handlingFeeAmount
+        let handlingFee = rules.handlingFee
+        // Orders start at the shop's minimum; fees and offers don't count towards it.
+        let neededForMinOrder = max(0.0, rules.minOrderValue - subtotal)
         let discount = effectiveCoupon != nil ? min(subtotal, effectiveCoupon!.discount) : 0.0
         let grandTotal = max(0.0, subtotal + deliveryFee + nightDeliveryFee + handlingFee - discount)
 
@@ -260,9 +254,9 @@ public struct CartBillBreakdown {
             handlingFee: handlingFee,
             couponDiscount: discount,
             grandTotal: grandTotal,
-            isMinOrderSatisfied: true,
-            amountNeededForMinOrder: 0.0,
-            amountNeededForFreeDelivery: isFirstFive ? 0.0 : max(0.0, freeDeliveryThreshold - subtotal),
+            isMinOrderSatisfied: neededForMinOrder <= 0,
+            amountNeededForMinOrder: neededForMinOrder,
+            amountNeededForFreeDelivery: isFirstFive ? 0.0 : max(0.0, rules.deliveryLowFrom - subtotal),
             isFirstFivePromo: isFirstFive,
             tierLabel: tierLabel
         )

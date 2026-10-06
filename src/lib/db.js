@@ -31,6 +31,7 @@ import {
   billForChangedOrder,
   buildReplacementOrder,
 } from "./orderChange";
+import { shopRules } from "./deliveryCharges";
 
 /**
  * Firestore data layer.
@@ -2317,7 +2318,7 @@ export async function cancelPlacedOrder(orderId, reason = "Customer cancelled") 
  * @returns {Promise<{ success: true, orderId: string, order: object }>}
  * @throws {OrderChangeError} with the sentence to show the shopper.
  */
-export async function addItemsToOrder(orderId, additions = [], { coupon = null, expectedTotal = null } = {}) {
+export async function addItemsToOrder(orderId, additions = [], { coupon = null, expectedTotal = null, rules = null } = {}) {
   const added = JSON.parse(JSON.stringify(additions || [])).filter(
     (item) => item && (Number(item.qty ?? item.quantity) || 0) > 0
   );
@@ -2356,7 +2357,7 @@ export async function addItemsToOrder(orderId, additions = [], { coupon = null, 
 
     const items = mergeAdditions(original.items, added);
     if (items.length > 100) throw new OrderChangeError("tooManyItems");
-    const bill = billForChangedOrder(original, items, coupon);
+    const bill = billForChangedOrder(original, items, coupon, rules || shopRules(memoryStoreConfig));
     if (expectedTotal !== null && bill.total !== expectedTotal) throw new OrderChangeError("billChanged");
 
     const now = new Date();

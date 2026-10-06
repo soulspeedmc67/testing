@@ -1,5 +1,6 @@
 package com.dashit.app.ui.cart
 
+import kotlin.math.ceil
 import com.dashit.app.data.model.isAgeRestricted
 import com.dashit.app.ui.storefront.PlainPackArt
 import androidx.compose.animation.AnimatedVisibility
@@ -300,7 +301,7 @@ fun CartSheet(
                     ProceedBottomBar(
                         bill = bill,
                         onProceed = {
-                            if (bill.subtotal > 0) {
+                            if (bill.subtotal > 0 && bill.isMinOrderSatisfied) {
                                 HapticsManager.medium(view)
                                 onProceedToCheckout()
                             } else {
@@ -618,7 +619,9 @@ private fun ProceedBottomBar(
     bill: CartBillBreakdown,
     onProceed: () -> Unit
 ) {
-    val canProceed = bill.subtotal > 0
+    // Under the shop's minimum order the button says how much is left.
+    val belowMinimum = bill.subtotal > 0 && !bill.isMinOrderSatisfied
+    val canProceed = bill.subtotal > 0 && !belowMinimum
 
     Column(
         modifier = Modifier
@@ -643,7 +646,14 @@ private fun ProceedBottomBar(
                     .fillMaxWidth()
                     .height(58.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (canProceed) DashitColors.BrandOrange else DashitColors.SurfaceMuted)
+                    .background(
+                        when {
+                            canProceed -> DashitColors.BrandOrange
+                            // Grey that white text still reads on, in both themes.
+                            belowMinimum -> Color(0xFF6B7280)
+                            else -> DashitColors.SurfaceMuted
+                        }
+                    )
                     .pressable(scale = if (canProceed) 0.98f else 1f) {
                         onProceed()
                     }
@@ -672,17 +682,19 @@ private fun ProceedBottomBar(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "Proceed to checkout",
+                        text = if (belowMinimum) "Add ₹${ceil(bill.amountNeededForMinOrder).toInt()} more to order" else "Proceed to checkout",
                         color = Color.White,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(15.dp)
-                    )
+                    if (!belowMinimum) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
                 }
             }
         }

@@ -132,6 +132,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published public var storeConfig: StoreConfig = StoreConfig.default
     /// The night delivery charge and the petrol figures on `config/store` (`NightCharge`).
     @Published var nightCharge = NightCharge.Settings()
+    /// The minimum order, the fees and cash on delivery on `config/store` (`ShopRules`).
+    @Published var shopRules = ShopRules()
     @Published public var isLoading: Bool = false
     /// Set when the database refuses a change; the dashboard shows it as an alert.
     @Published public var saveError: String? = nil
@@ -316,9 +318,11 @@ public final class AdminDashboardViewModel: ObservableObject {
             let maxOrders = (data["maxOrdersPerHour"] as? Int) ?? 120
             let radius = (data["deliveryRadiusKm"] as? Double) ?? 8.5
             let nightCharge = NightCharge.Settings(data: data)
+            let shopRules = ShopRules(data: data)
 
             Task { @MainActor in
                 self.nightCharge = nightCharge
+                self.shopRules = shopRules
                 self.storeConfig = StoreConfig(
                     isOpen: isOpen,
                     closeReason: reason,
@@ -1192,6 +1196,26 @@ public final class AdminDashboardViewModel: ObservableObject {
         ], merge: true, completion: saveResult("The busy-hours setting") { [weak self] in
             self?.storeConfig.isHighDemand = previous
         })
+    }
+
+    /// The minimum order, the handling charge, the delivery fee by order size,
+    /// the free first orders and cash on delivery. Every shop app and the
+    /// website read them from `config/store` and follow at once, with no new build.
+    func saveShopRules(_ rules: ShopRules) {
+        guard rules != shopRules else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let previous = shopRules
+        shopRules = rules
+
+        var fields = rules.fields
+        fields["updatedAt"] = FieldValue.serverTimestamp()
+        db.collection("config").document("store").setData(
+            fields,
+            merge: true,
+            completion: saveResult("The order rules") { [weak self] in
+                self?.shopRules = previous
+            }
+        )
     }
 
     /// The night delivery charge switch (automatic from 8 pm, on now, or off),

@@ -136,14 +136,16 @@ final class FirestoreService {
 
     /// `config/store`, which the admin console writes: open/closed, the reason
     /// shown while closed, the high-demand flag and the night delivery charge.
-    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool, _ nightCharge: NightCharge.Settings) -> Void) -> ListenerRegistration {
+    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool, _ nightCharge: NightCharge.Settings, _ rules: ShopRules) -> Void) -> ListenerRegistration {
         return db.collection("config").document("store").addSnapshotListener { snapshot, _ in
             let data = snapshot?.data() ?? [:]
             completion(
                 (data["isOpen"] as? Bool) ?? true,
                 (data["closeReason"] as? String) ?? "",
                 (data["highDemand"] as? Bool) ?? false,
-                NightCharge.Settings(data: data)
+                NightCharge.Settings(data: data),
+                // Minimum order, fees and cash on delivery, as the shop has set them.
+                ShopRules(data: data)
             )
         }
     }
@@ -234,7 +236,7 @@ final class FirestoreService {
             "items": items,
             "subtotal": order.subtotal,
             "deliveryFee": order.deliveryFee,
-            "handlingFee": 11.0,
+            "handlingFee": CartBillBreakdown.handlingFeeAmount,
             "discount": order.discount,
             "totalAmount": order.grandTotal,
             "total": order.grandTotal,

@@ -1,5 +1,6 @@
 package com.dashit.app.ui.checkout
 
+import kotlin.math.ceil
 import androidx.compose.ui.platform.LocalContext
 import com.dashit.app.data.OnlinePayment
 import com.dashit.app.data.PayOption
@@ -63,6 +64,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
@@ -76,6 +78,7 @@ import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
 import com.dashit.app.data.DeliveryEta
 import com.dashit.app.data.NightCharge
+import com.dashit.app.data.ShopRules
 import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.Order
@@ -143,6 +146,17 @@ fun CheckoutSheet(
         DeliveryEta.quote(address.latitude, address.longitude).distanceKm
     }
     val nightFee = if (bill.subtotal > 0) NightCharge.feeFor(distanceKm, storeState, nowMillis) else 0.0
+    // Cash on delivery as the shop has set it (ShopRules): on or off, and
+    // whether it is taken at night. When it isn't being taken, move to the
+    // first way to pay online.
+    val cashNote = storeState.rules.cashUnavailableNote(nowMillis)
+    LaunchedEffect(cashNote) {
+        if (cashNote != null && paymentMethod == "cod") {
+            payOptions.firstOrNull()?.let { paymentMethod = it.id }
+        }
+    }
+    // The cart is under the shop's minimum order.
+    val belowMinimum = bill.subtotal > 0 && !bill.isMinOrderSatisfied
     val totalToPay = bill.grandTotal + nightFee
 
     /** Same gates as the web and iOS checkouts, then the real order write. */
@@ -160,6 +174,20 @@ fun CheckoutSheet(
         val store = StoreStatus.state.value
         if (!store.isOpen) {
             errorMessage = "The store is closed right now. ${store.closeReason}".trim()
+            HapticsManager.warning(view)
+            return
+        }
+        if (!bill.isMinOrderSatisfied) {
+            errorMessage = "Add ₹${ceil(bill.amountNeededForMinOrder).toInt()} more to place your order. We deliver orders of ₹${ShopRules.whole(store.rules.minOrderValue)} or more."
+            HapticsManager.warning(view)
+            return
+        }
+        if (!paysOnline && !store.rules.allowsCash(System.currentTimeMillis())) {
+            errorMessage = if (store.rules.codEnabled) {
+                "Cash on delivery isn't available after 8 pm. Please pay online to place your order."
+            } else {
+                "Cash on delivery isn't available right now. Please pay online to place your order."
+            }
             HapticsManager.warning(view)
             return
         }
@@ -369,6 +397,7 @@ fun CheckoutSheet(
                     PaymentCard(
                         options = payOptions,
                         selectedMethod = paymentMethod,
+                        cashNote = cashNote,
                         onSelectMethod = {
                             HapticsManager.selection(view)
                             paymentMethod = it
@@ -444,6 +473,8 @@ fun CheckoutSheet(
                                     when {
                                         isSubmitting -> DashitColors.SurfaceMuted
                                         isLaunchLocked -> DashitColors.SurfaceRaised
+                                        // Grey that white text still reads on, in both themes.
+                                        belowMinimum -> Color(0xFF6B7280)
                                         else -> DashitColors.BrandOrange
                                     }
                                 )
@@ -490,6 +521,7 @@ fun CheckoutSheet(
                                 Text(
                                     text = when {
                                         isLaunchLocked -> com.dashit.app.data.LaunchGate.LAUNCH_LABEL
+                                        belowMinimum -> "Add ₹${ceil(bill.amountNeededForMinOrder).toInt()} more to order"
                                         !paysOnline -> "Place order · ₹${totalToPay.toInt()} cash"
                                         payOption?.upiApp != null -> "Pay ₹${totalToPay.toInt()} with ${payOption.title}"
                                         else -> "Pay ₹${totalToPay.toInt()}"
@@ -618,9 +650,12 @@ private fun GuaranteeCard(address: DeliveryAddress) {
 private fun PaymentCard(
     options: List<PayOption>,
     selectedMethod: String,
+    /** Why cash on delivery can't be chosen right now; null when it can. */
+    cashNote: String? = null,
     onSelectMethod: (String) -> Unit
 ) {
     val view = LocalView.current
+    val codEnabled = cashNote == null
     val upiApps = options.filter { it.upiApp != null }
     val others = options.filter { it.upiApp == null }
     // Cards and UPI ID up front; wallets, Pay Later and EMI one tap away.
@@ -678,7 +713,8 @@ private fun PaymentCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { pick("cod") }
+                    .clickable(enabled = codEnabled) { pick("cod") }
+                    .alpha(if (codEnabled) 1f else 0.5f)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -686,9 +722,13 @@ private fun PaymentCard(
                 MethodBadge(Icons.Default.Payments)
                 Column(Modifier.weight(1f)) {
                     Text("Cash on delivery", color = DashitColors.TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Pay the rider in cash or by UPI at your door", color = DashitColors.TextMuted, fontSize = 12.sp)
+                    Text(
+                        cashNote ?: "Pay the rider in cash or by UPI at your door",
+                        color = DashitColors.TextMuted,
+                        fontSize = 12.sp
+                    )
                 }
-                SelectionMark(selectedMethod == "cod")
+                SelectionMark(codEnabled && selectedMethod == "cod")
             }
         }
     }

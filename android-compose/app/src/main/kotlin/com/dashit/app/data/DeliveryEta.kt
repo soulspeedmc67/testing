@@ -76,7 +76,9 @@ object StoreStatus {
         /** "auto" (8 pm to 6 am), "on" or "off": see [NightCharge]. */
         val nightChargeMode: String = "auto",
         val nightChargePerKm: Double = NightCharge.DEFAULT_PER_KM,
-        val nightChargeMin: Double = NightCharge.DEFAULT_MIN_FEE
+        val nightChargeMin: Double = NightCharge.DEFAULT_MIN_FEE,
+        /** The minimum order, the fees and cash on delivery, as the shop has set them. */
+        val rules: ShopRules = ShopRules()
     )
 
     private val _state = MutableStateFlow(State())
@@ -94,7 +96,8 @@ object StoreStatus {
                     highDemand = snapshot.getBoolean("highDemand") ?: false,
                     nightChargeMode = snapshot.getString("nightChargeMode") ?: "auto",
                     nightChargePerKm = snapshot.getDouble("nightChargePerKm")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_PER_KM,
-                    nightChargeMin = snapshot.getDouble("nightChargeMin")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_MIN_FEE
+                    nightChargeMin = snapshot.getDouble("nightChargeMin")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_MIN_FEE,
+                    rules = ShopRules.from(snapshot)
                 )
             }
     }

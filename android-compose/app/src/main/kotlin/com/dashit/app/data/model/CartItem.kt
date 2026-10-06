@@ -1,5 +1,8 @@
 package com.dashit.app.data.model
 
+import com.dashit.app.data.ShopRules
+import com.dashit.app.data.StoreStatus
+
 data class CartItem(
     val id: String,
     val productId: String,
@@ -25,7 +28,7 @@ data class Coupon(
     /** What this coupon takes off a cart of [subtotal], counting a waived delivery fee. */
     fun saving(onSubtotal: Double): Double {
         if (onSubtotal < minOrder) return 0.0
-        val waived = if (waivesDelivery == true) CartBillBreakdown.deliveryFeeFor(onSubtotal) else 0.0
+        val waived = if (waivesDelivery == true) StoreStatus.state.value.rules.standardDeliveryFee(onSubtotal) else 0.0
         return minOf(onSubtotal, discount) + waived
     }
 
@@ -51,50 +54,51 @@ data class Coupon(
 data class CartBillBreakdown(
     val subtotal: Double,
     val deliveryFee: Double,
-    /** ₹11 on every order, whatever its size. */
+    /** On every order, whatever its size ([ShopRules.handlingFee]). */
     val handlingFee: Double,
     val couponDiscount: Double,
     val grandTotal: Double,
     val isMinOrderSatisfied: Boolean,
     val amountNeededForMinOrder: Double,
-    val amountNeededForFreeDelivery: Double
+    val amountNeededForFreeDelivery: Double,
+    /** Delivery is free because this is one of the shopper's first orders. */
+    val isFirstOrdersPromo: Boolean = false
 ) {
     companion object {
-        const val MIN_ORDER_VALUE: Double = 0.0
-        /** Above this the delivery fee is at its lowest (₹25). Delivery is never free by amount. */
-        const val FREE_DELIVERY_THRESHOLD: Double = 299.0
-        const val STANDARD_DELIVERY_FEE: Double = 25.0
-        const val HANDLING_FEE: Double = 11.0
-
         /**
-         * The shop's delivery fee, same as the website and the iPhone app:
-         * 40% of the order under ₹180, ₹35 from ₹180 to ₹299, ₹25 above ₹299.
+         * The bill for a cart, by the shop's [rules] (minimum order, delivery fee
+         * by order size, handling charge, free first orders): the same sums as
+         * the website and the iPhone app. The shop changes the rules on
+         * `config/store` and they apply here without a new build.
+         *
+         * [userOrdersCount] is how many orders the shopper has had; the default
+         * leaves the free first orders out.
          */
-        fun deliveryFeeFor(subtotal: Double): Double = when {
-            subtotal <= 0 -> 0.0
-            subtotal < 180 -> Math.round(subtotal * 0.40).toDouble()
-            subtotal <= 299 -> 35.0
-            else -> STANDARD_DELIVERY_FEE
-        }
-
-        fun calculate(items: List<CartItem>, appliedCoupon: Coupon? = null): CartBillBreakdown {
+        fun calculate(
+            items: List<CartItem>,
+            appliedCoupon: Coupon? = null,
+            userOrdersCount: Int = Int.MAX_VALUE,
+            rules: ShopRules = StoreStatus.state.value.rules
+        ): CartBillBreakdown {
             val subtotal = items.fold(0.0) { acc, item -> acc + (item.price * item.qty) }
 
             val isCouponValid = appliedCoupon != null && subtotal >= appliedCoupon.minOrder
             val effectiveCoupon = if (isCouponValid) appliedCoupon else null
 
+            val isFirstOrdersPromo = subtotal > 0 && userOrdersCount < rules.freeDeliveryOrders
             val deliveryFee = when {
                 effectiveCoupon?.waivesDelivery == true || effectiveCoupon?.code == "FREEDEL" -> 0.0
-                else -> deliveryFeeFor(subtotal)
+                isFirstOrdersPromo -> 0.0
+                else -> rules.standardDeliveryFee(subtotal)
             }
-            val handlingFee = if (subtotal > 0) HANDLING_FEE else 0.0
+            val handlingFee = if (subtotal > 0) rules.handlingFee else 0.0
 
             val discount = if (effectiveCoupon != null) minOf(subtotal, effectiveCoupon.discount) else 0.0
             val grandTotal = maxOf(0.0, subtotal + deliveryFee + handlingFee - discount)
 
-            val isMinOrder = true
-            val neededForMin = 0.0
-            val neededForFreeDel = maxOf(0.0, FREE_DELIVERY_THRESHOLD - subtotal)
+            // Orders start at the shop's minimum; fees and offers don't count towards it.
+            val neededForMin = if (subtotal > 0) maxOf(0.0, rules.minOrderValue - subtotal) else 0.0
+            val neededForFreeDel = maxOf(0.0, rules.deliveryLowFrom - subtotal)
 
             return CartBillBreakdown(
                 subtotal = subtotal,
@@ -102,9 +106,10 @@ data class CartBillBreakdown(
                 handlingFee = handlingFee,
                 couponDiscount = discount,
                 grandTotal = grandTotal,
-                isMinOrderSatisfied = isMinOrder,
+                isMinOrderSatisfied = neededForMin <= 0,
                 amountNeededForMinOrder = neededForMin,
-                amountNeededForFreeDelivery = neededForFreeDel
+                amountNeededForFreeDelivery = neededForFreeDel,
+                isFirstOrdersPromo = isFirstOrdersPromo
             )
         }
     }

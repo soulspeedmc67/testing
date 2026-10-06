@@ -35,6 +35,7 @@ import { watchActiveCoupons } from "../../lib/coupons";
 import { browseable } from "../../lib/tobacco";
 import { hapticLight, hapticMedium, hapticSuccess } from "../../lib/haptics";
 import ModifyOrderModal from "../../components/ModifyOrderModal";
+import { useShopRules } from "../../lib/storeStatus";
 import CancelOrderModal from "../../components/CancelOrderModal";
 import { productImageUrl } from "../../components/ProductImage";
 import { deliveryFeeParts } from "../../lib/nightCharge";
@@ -69,6 +70,8 @@ export default function OrderTrackingPage() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [productsList, setProductsList] = useState([]);
   const [orderCoupon, setOrderCoupon] = useState(null);
+  // The shop's current delivery fees, for the bill when items are added.
+  const shopRulesNow = useShopRules();
   const [changeNotice, setChangeNotice] = useState("");
   const [cancelError, setCancelError] = useState("");
 
@@ -267,7 +270,7 @@ export default function OrderTrackingPage() {
      OrderChangeError otherwise, which the sheet shows). By then this browser's
      saved orders already point at it. */
   const handleAddItems = async (additions, expectedTotal) => {
-    const result = await addItemsToOrder(targetOrderId, additions, { coupon: orderCoupon, expectedTotal });
+    const result = await addItemsToOrder(targetOrderId, additions, { coupon: orderCoupon, expectedTotal, rules: shopRulesNow });
     const total = Number(result.order?.total) || 0;
     setChangeNotice(`Added to your order. Your new total is ₹${total.toFixed(0)}.`);
     router.replace(`/track?id=${result.orderId}`).catch(() => {});
@@ -737,6 +740,7 @@ export default function OrderTrackingPage() {
           order={order}
           productsList={addableProducts}
           coupon={orderCoupon}
+          rules={shopRulesNow}
           remainingSeconds={cancellationSeconds}
           onSaveOrder={handleAddItems}
           onClose={() => setIsModifyModalOpen(false)}

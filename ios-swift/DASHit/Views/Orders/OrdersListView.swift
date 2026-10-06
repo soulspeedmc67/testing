@@ -26,6 +26,8 @@ final class OrderHistoryStore: ObservableObject {
                 self.orders = orders
                 self.isLoading = false
             }
+            // Keeps the free-first-orders count right (`CartViewModel`).
+            CartViewModel.shared.noteOrderHistory(orders, uid: uid)
         }
     }
 
@@ -217,12 +219,12 @@ private struct OrderHistoryCard: View {
                 .foregroundColor(.textMuted)
                 .lineLimit(1)
 
-            if stage == .cancelled, let reason = order.rejectionReason, !reason.isEmpty {
+            if stage == .cancelled, let reason = order.storeCancelReason {
                 HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.red)
                         .font(.system(size: 11))
-                    Text("Rejected: \(reason)")
+                    Text("Cancelled by the store: \(reason)")
                         .font(.system(size: 11.5, weight: .medium))
                         .foregroundColor(.red)
                         .lineLimit(2)

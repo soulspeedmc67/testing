@@ -92,7 +92,7 @@ struct LiveTrackingMapView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     if let order {
-                        OrderStageHero(stage: order.status.stage, isAwaitingPickup: order.isAwaitingPickup, canStillChange: vm.isModificationWindowActive, canAddItems: !order.isPaidOnline)
+                        OrderStageHero(stage: order.status.stage, isAwaitingPickup: order.isAwaitingPickup, canStillChange: vm.isModificationWindowActive, canAddItems: !order.isPaidOnline, cancelReason: order.storeCancelReason)
                             .padding(.top, 6)
                         orderCard(order)
                         itemsList(order)
@@ -394,6 +394,8 @@ private struct OrderStageHero: View {
     var isAwaitingPickup = false
     let canStillChange: Bool
     let canAddItems: Bool
+    /// Why the store cancelled it, when it did.
+    var cancelReason: String? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var openedAt = Date()
@@ -403,7 +405,7 @@ private struct OrderStageHero: View {
         switch stage {
         case .placed: return "Order received"
         case .packing: return "Packing your order"
-        case .cancelled: return "Order cancelled"
+        case .cancelled: return cancelReason != nil ? "Cancelled by the store" : "Order cancelled"
         default: return stage.headline(riderName: nil)
         }
     }
@@ -421,6 +423,7 @@ private struct OrderStageHero: View {
         case .packing:
             return "Your items are being picked and packed. The map opens as soon as a rider is on the way."
         case .cancelled:
+            if let cancelReason { return "Reason: \(cancelReason)" }
             return "This order won't be delivered."
         default:
             return ""

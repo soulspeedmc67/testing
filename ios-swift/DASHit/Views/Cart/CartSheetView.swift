@@ -59,6 +59,8 @@ struct CartSheetView: View {
             .task {
                 // The distance charge for the saved address, as of now.
                 cart.refreshNightFee(for: LocalStorage.shared.loadAddress(), settings: StoreStatusStore.shared.nightCharge)
+                // Free first orders depend on how many this account has had.
+                await cart.loadOrdersCount(uid: AuthService.shared.firebaseUID)
                 #if DEBUG
                 if ScreenshotHooks.openCoupons {
                     try? await Task.sleep(for: .seconds(1))
@@ -298,12 +300,18 @@ struct CartSheetView: View {
 
     private var proceedBar: some View {
         let bill = cart.bill
+        // Under the shop's minimum order the button says how much is left.
+        let belowMinimum = !bill.isMinOrderSatisfied
 
         return VStack(spacing: 0) {
             Rectangle()
                 .fill(Color.hairline)
                 .frame(height: 1)
             Button {
+                guard !belowMinimum else {
+                    HapticsManager.shared.warning()
+                    return
+                }
                 HapticsManager.shared.medium()
                 isCheckoutOpen = true
             } label: {
@@ -319,17 +327,21 @@ struct CartSheetView: View {
                             .foregroundColor(Color.white.opacity(0.75))
                     }
                     Spacer()
-                    Text("Proceed to checkout")
+                    Text(belowMinimum
+                         ? "Add \(CurrencyFormatter.format(bill.amountNeededForMinOrder)) more to order"
+                         : "Proceed to checkout")
                         .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.white)
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
+                    if !belowMinimum {
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                    }
                 }
                 .padding(.horizontal, 18)
                 .frame(height: 58)
                 .background(
-                    Color.brandOrange,
+                    belowMinimum ? Color.gray : Color.brandOrange,
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }

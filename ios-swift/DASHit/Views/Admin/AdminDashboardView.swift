@@ -1965,6 +1965,16 @@ struct StoreControlSheetView: View {
     @State private var isOpen: Bool = true
     @State private var closeReason: String = "Normal Operations"
     @State private var isSurge: Bool = false
+    @State private var codEnabled: Bool = true
+    @State private var codAtNight: Bool = false
+    @State private var minOrderText = ""
+    @State private var handlingText = ""
+    @State private var smallBelowText = ""
+    @State private var smallPercentText = ""
+    @State private var midFeeText = ""
+    @State private var lowFromText = ""
+    @State private var lowFeeText = ""
+    @State private var freeOrdersText = ""
     @State private var nightMode: NightCharge.Mode = .auto
     @State private var perKmText = ""
     @State private var minFeeText = ""
@@ -1994,6 +2004,39 @@ struct StoreControlSheetView: View {
                     Text("Shop")
                 } footer: {
                     Text(isOpen ? "Customers can order now." : "Customers see that the shop is closed, and why.")
+                }
+
+                Section {
+                    Toggle("Cash on delivery", isOn: $codEnabled)
+                    if codEnabled {
+                        Toggle("Also after 8 pm", isOn: $codAtNight)
+                    }
+                } header: {
+                    Text("Payment")
+                } footer: {
+                    Text(cashNote)
+                }
+
+                Section {
+                    numberRow("Minimum order (₹)", text: $minOrderText)
+                    numberRow("Handling charge (₹)", text: $handlingText)
+                } header: {
+                    Text("Orders")
+                } footer: {
+                    Text("The minimum counts the items only, not the fees. Put 0 for no minimum. The handling charge is on every order.")
+                }
+
+                Section {
+                    numberRow("Small orders: under (₹)", text: $smallBelowText)
+                    numberRow("Small orders pay (% of items)", text: $smallPercentText)
+                    numberRow("Orders in between pay (₹)", text: $midFeeText)
+                    numberRow("Bigger orders: from (₹)", text: $lowFromText)
+                    numberRow("Bigger orders pay (₹)", text: $lowFeeText)
+                    numberRow("Free delivery on first orders", text: $freeOrdersText)
+                } header: {
+                    Text("Delivery fee")
+                } footer: {
+                    Text(deliveryFeeNote)
                 }
 
                 Section {
@@ -2033,7 +2076,11 @@ struct StoreControlSheetView: View {
                 isOpen = vm.storeConfig.isOpen
                 closeReason = vm.storeConfig.closeReason
                 isSurge = vm.storeConfig.isHighDemand
+                showShopRules(vm.shopRules)
                 showNightCharge(vm.nightCharge)
+            }
+            .onChange(of: vm.shopRules) { _, saved in
+                showShopRules(saved)
             }
             // The saved figures arrive a moment after this page opens.
             .onChange(of: vm.nightCharge) { _, saved in
@@ -2044,6 +2091,7 @@ struct StoreControlSheetView: View {
                     Button("Save") {
                         vm.toggleStore(isOpen: isOpen, reason: closeReason)
                         vm.toggleSurgePricing(enabled: isSurge)
+                        vm.saveShopRules(editedShopRules)
                         vm.saveNightCharge(editedNightCharge)
                         if !isEmbedded { dismiss() }
                     }
@@ -2064,6 +2112,56 @@ struct StoreControlSheetView: View {
                 .multilineTextAlignment(.trailing)
                 .frame(width: 90)
         }
+    }
+
+    // MARK: - Minimum order, fees and cash on delivery
+
+    private func showShopRules(_ saved: ShopRules) {
+        codEnabled = saved.codEnabled
+        codAtNight = saved.codAtNight
+        minOrderText = Self.plain(saved.minOrderValue)
+        handlingText = Self.plain(saved.handlingFee)
+        smallBelowText = Self.plain(saved.deliverySmallBelow)
+        smallPercentText = Self.plain(saved.deliverySmallPercent)
+        midFeeText = Self.plain(saved.deliveryMidFee)
+        lowFromText = Self.plain(saved.deliveryLowFrom)
+        lowFeeText = Self.plain(saved.deliveryLowFee)
+        freeOrdersText = String(saved.freeDeliveryOrders)
+    }
+
+    /// What is on the page; a blank or out-of-range field keeps the saved figure.
+    private var editedShopRules: ShopRules {
+        var edited = vm.shopRules
+        edited.codEnabled = codEnabled
+        edited.codAtNight = codAtNight
+        if let value = Self.number(minOrderText), (0...5000).contains(value) { edited.minOrderValue = value }
+        if let value = Self.number(handlingText), (0...500).contains(value) { edited.handlingFee = value }
+        if let value = Self.number(smallBelowText), (0...100000).contains(value) { edited.deliverySmallBelow = value }
+        if let value = Self.number(smallPercentText), (0...100).contains(value) { edited.deliverySmallPercent = value }
+        if let value = Self.number(midFeeText), (0...1000).contains(value) { edited.deliveryMidFee = value }
+        if let value = Self.number(lowFromText), (0...100000).contains(value) { edited.deliveryLowFrom = value }
+        if let value = Self.number(lowFeeText), (0...1000).contains(value) { edited.deliveryLowFee = value }
+        if let value = Self.number(freeOrdersText), (0...1000).contains(value) { edited.freeDeliveryOrders = Int(value) }
+        // The lowest fee can't start below the small-order amount.
+        if edited.deliveryLowFrom < edited.deliverySmallBelow { edited.deliveryLowFrom = edited.deliverySmallBelow }
+        return edited
+    }
+
+    private var cashNote: String {
+        if !codEnabled {
+            return "Customers can only pay online. They see that cash on delivery isn't available right now. Tap Save."
+        }
+        return codAtNight
+            ? "Customers can pay the rider at the door, day and night. Tap Save."
+            : "Customers can pay the rider at the door. From 8 pm to 6 am they pay online only. Tap Save."
+    }
+
+    private var deliveryFeeNote: String {
+        let edited = editedShopRules
+        let examples = [120.0, 200.0, 400.0]
+            .map { "a ₹\(Int($0)) order pays ₹\(Self.plain(edited.standardDeliveryFee(forSubtotal: $0)))" }
+            .joined(separator: ", ")
+        return "With these numbers \(examples). Put 0 in a fee to make that size free, and 0 in free first orders to end that offer. The website and both apps follow as soon as you tap Save. At night the charge by distance replaces these fees."
     }
 
     private func showNightCharge(_ saved: NightCharge.Settings) {

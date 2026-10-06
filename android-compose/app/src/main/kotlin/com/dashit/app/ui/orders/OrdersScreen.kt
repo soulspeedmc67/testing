@@ -271,7 +271,7 @@ private fun OrderCard(
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "Reason: ${order.rejectionReason?.takeIf { it.isNotBlank() } ?: "Cancelled by customer/store"}",
+                    text = order.storeCancelReason?.let { "Cancelled by the store: $it" } ?: if (order.rejectionReason.isNullOrBlank()) "This order was cancelled" else "You cancelled this order",
                     color = DashitColors.Danger,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium

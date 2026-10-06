@@ -1,6 +1,10 @@
 package com.dashit.app.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.dashit.app.data.StoreStatus
+import com.dashit.app.data.model.OrderStatus
+import com.dashit.app.data.repository.OrderRepository
 import com.dashit.app.data.model.CartBillBreakdown
 import com.dashit.app.data.model.CartItem
 import com.dashit.app.data.model.Coupon
@@ -9,6 +13,9 @@ import com.dashit.app.data.model.ProductVariant
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class CartViewModel : ViewModel() {
     private val _items = MutableStateFlow<List<CartItem>>(emptyList())
@@ -157,12 +164,32 @@ class CartViewModel : ViewModel() {
 
     private fun recalculateBill() {
         val previousSubtotal = _bill.value.subtotal
-        val bill = CartBillBreakdown.calculate(_items.value, _coupon.value)
+        val bill = CartBillBreakdown.calculate(_items.value, _coupon.value, userOrdersCount())
         _bill.value = bill
         // Once per cart: emptying it (or placing the order) re-arms the toast.
         if (bill.subtotal == 0.0) celebratedFreeDelivery = false
         // No "free delivery unlocked" toast: delivery is charged on every order now.
         @Suppress("UNUSED_VARIABLE") val unused = previousSubtotal
+    }
+
+    /**
+     * Orders that used one of the shopper's free deliveries
+     * ([com.dashit.app.data.ShopRules.freeDeliveryOrders]): not cancelled, and
+     * not a night order (those pay by distance instead).
+     */
+    private fun userOrdersCount(): Int =
+        OrderRepository.shared.orders.value.count { it.status != OrderStatus.CANCELLED && it.nightDeliveryFee <= 0 }
+
+    // After every property above, since collecting starts straight away: the
+    // bill is worked out again when the shop changes its rules (minimum order,
+    // fees) and when the shopper's orders load or change.
+    init {
+        viewModelScope.launch {
+            StoreStatus.state.map { it.rules }.distinctUntilChanged().collect { recalculateBill() }
+        }
+        viewModelScope.launch {
+            OrderRepository.shared.orders.collect { recalculateBill() }
+        }
     }
 
     companion object {

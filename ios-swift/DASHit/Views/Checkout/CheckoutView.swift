@@ -10,6 +10,26 @@ struct CheckoutView: View {
     @State private var isAuthModalOpen = false
     /// The list of ways to pay online, opened from "Pay online".
     @State private var isOnlineOpen = false
+    /// Refreshed every 30 seconds, so cash on delivery stops at 8 pm on a
+    /// checkout that was opened before it.
+    @State private var clock = Date()
+
+    /// Cash on delivery as the shop has set it (`ShopRules`): on or off, and
+    /// whether it is taken at night.
+    private var cashAllowed: Bool { storeStatus.rules.allowsCash(at: clock) }
+    /// The cart is under the shop's minimum order.
+    private var belowMinimum: Bool { !cart.items.isEmpty && !cart.bill.isMinOrderSatisfied }
+
+    private var placeOrderLabel: String {
+        if vm.isSubmitting { return vm.progressText }
+        if belowMinimum {
+            return "Add \(CurrencyFormatter.format(cart.bill.amountNeededForMinOrder)) more to order"
+        }
+        let total = CurrencyFormatter.format(cart.bill.grandTotal)
+        if !vm.paysOnline { return "Place order · \(total) cash" }
+        if vm.payOption?.upiApp != nil { return "Pay \(total) with \(vm.payOption?.title ?? "")" }
+        return "Pay \(total)"
+    }
 
     var body: some View {
         NavigationStack {
@@ -159,22 +179,16 @@ struct CheckoutView: View {
                                     .tint(.white)
                                     .padding(.trailing, 8)
                             }
-                            Text(vm.isSubmitting
-                                 ? vm.progressText
-                                 : !vm.paysOnline
-                                    ? "Place order · \(CurrencyFormatter.format(cart.bill.grandTotal)) cash"
-                                    : vm.payOption?.upiApp != nil
-                                        ? "Pay \(CurrencyFormatter.format(cart.bill.grandTotal)) with \(vm.payOption?.title ?? "")"
-                                        : "Pay \(CurrencyFormatter.format(cart.bill.grandTotal))")
+                            Text(placeOrderLabel)
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.white)
                         }
                         .frame(maxWidth: .infinity)
                         .padding(16)
-                        .background(vm.isSubmitting ? Color.gray : Color.brandOrange)
+                        .background(vm.isSubmitting || belowMinimum ? Color.gray : Color.brandOrange)
                         .cornerRadius(14)
                     }
-                    .disabled(vm.isSubmitting || cart.items.isEmpty)
+                    .disabled(vm.isSubmitting || cart.items.isEmpty || belowMinimum)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                 }
@@ -203,12 +217,19 @@ struct CheckoutView: View {
             .onChange(of: auth.isReadyToOrder) { _, isReady in
                 if isReady {
                     isAuthModalOpen = false
+                    // Free first orders depend on how many this account has had.
+                    Task { await cart.loadOrdersCount(uid: auth.firebaseUID) }
                 }
+            }
+            // Free first orders depend on how many this account has had.
+            .task {
+                await cart.loadOrdersCount(uid: auth.firebaseUID)
             }
             // The night charge changes with the hour, the address and the
             // shop's switch, so the bill is brought up to date for all three.
             .task {
                 while !Task.isCancelled {
+                    clock = Date()
                     cart.refreshNightFee(for: vm.selectedAddress, settings: storeStatus.nightCharge)
                     try? await Task.sleep(for: .seconds(30))
                 }
@@ -302,24 +323,31 @@ struct CheckoutView: View {
                             Text("Cash on delivery")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.textPrimary)
-                            Text("Pay the rider in cash or by UPI at your door")
+                            Text(storeStatus.rules.cashUnavailableNote(at: clock)
+                                 ?? "Pay the rider in cash or by UPI at your door")
                                 .font(.system(size: 12))
                                 .foregroundColor(.textMuted)
                         }
                         Spacer()
-                        selectionMark(vm.paymentMethod == "cod")
+                        selectionMark(cashAllowed && vm.paymentMethod == "cod")
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 12)
                     .contentShape(Rectangle())
+                    .opacity(cashAllowed ? 1 : 0.5)
                 }
                 .buttonStyle(.plain)
+                .disabled(!cashAllowed)
             }
         }
         .disabled(vm.isSubmitting)
         .onAppear {
+            leaveCashIfOff()
             // Open already when the saved choice is one of the folded-away ways.
             if more.contains(where: { $0.id == vm.paymentMethod }) { isOnlineOpen = true }
+        }
+        .onChange(of: cashAllowed) { _, _ in
+            leaveCashIfOff()
         }
     }
 
@@ -352,6 +380,13 @@ struct CheckoutView: View {
             .fill(Color.hairlineSoft)
             .frame(height: 1)
             .padding(.leading, 62)
+    }
+
+    /// Cash on delivery isn't being taken (switched off, or it is night): move
+    /// to the first way to pay online.
+    private func leaveCashIfOff() {
+        guard !cashAllowed, vm.paymentMethod == "cod", let first = vm.payOptions.first else { return }
+        withAnimation(.dashitSpring) { vm.paymentMethod = first.id }
     }
 
     private func choose(id: String) {

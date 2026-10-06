@@ -7,6 +7,7 @@ import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticMedium } from "../lib/haptics";
 import { useStoredJson } from "../lib/useStoredJson";
 import { productImageUrl } from "./ProductImage";
+import { useShopRules } from "../lib/storeStatus";
 
 /* Stable identity so an empty cart does not produce a new array each render. */
 const EMPTY_CART = [];
@@ -102,6 +103,9 @@ export default function FloatingCartBar() {
     0
   );
   const isStorefront = STOREFRONT_ROUTES.includes(router.pathname);
+  // The shop's minimum order (config/store), read only while the bar is on screen.
+  const rules = useShopRules(isStorefront && itemCount > 0);
+  const toMinimum = Math.max(0, rules.minOrderValue - subtotal);
 
   // Determine if this is a "first appearance" (from 0 items or from non-storefront page)
   const isFirstAppearance =
@@ -147,7 +151,7 @@ export default function FloatingCartBar() {
         }}
         role="button"
         tabIndex={0}
-        aria-label={`View cart: ${itemCount} ${itemCount === 1 ? "item" : "items"}, ₹${subtotal}`}
+        aria-label={`View cart: ${itemCount} ${itemCount === 1 ? "item" : "items"}, ₹${subtotal}${toMinimum > 0 ? `. Add ₹${toMinimum} more to order` : ""}`}
         className="pointer-events-auto bg-[#FF5B00] hover:bg-[#E04E00] text-white rounded-full pl-2 pr-4 py-2 shadow-[0_12px_32px_-6px_rgba(255,91,0,0.55),0_4px_12px_rgba(0,0,0,0.15)] border border-white/25 flex items-center gap-3 min-w-[240px] transition-all active:scale-[0.97] cursor-pointer select-none"
       >
         {/* The last few things added, as small white packshots */}
@@ -171,6 +175,7 @@ export default function FloatingCartBar() {
           <span className="block text-[15px] font-bold">View cart</span>
           <span className="block text-[12px] font-medium text-white/85 tabular-nums">
             <AnimatedCounter value={itemCount} /> {itemCount === 1 ? "item" : "items"} · ₹{subtotal}
+            {toMinimum > 0 && <> · ₹{toMinimum} more to order</>}
           </span>
         </div>
 

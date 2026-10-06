@@ -373,7 +373,7 @@ private fun OrderStageScreen(
                     isAwaitingPickup = order.isAwaitingPickup,
                     canStillChange = seconds > 0,
                     canAddItems = !order.isPaidOnline,
-                    rejectionReason = order.rejectionReason
+                    rejectionReason = order.storeCancelReason
                 )
                 OrderCard(
                     order = order,
@@ -414,7 +414,7 @@ private fun OrderStageHero(
         OrderStatus.PACKING -> "Packing your order" to
             "Your items are being picked and packed. The map opens as soon as a rider is on the way."
         OrderStatus.CANCELLED -> {
-            val headline = if (!rejectionReason.isNullOrBlank()) "Order rejected by store" else "Order cancelled"
+            val headline = if (!rejectionReason.isNullOrBlank()) "Cancelled by the store" else "Order cancelled"
             val sub = if (!rejectionReason.isNullOrBlank()) "Reason: $rejectionReason" else "This order won't be delivered."
             headline to sub
         }
@@ -576,7 +576,7 @@ private fun OrderCard(
                         letterSpacing = 0.5.sp
                     )
                     Text(
-                        order.rejectionReason?.takeIf { it.isNotBlank() }
+                        order.storeCancelReason
                             ?: "This order was cancelled and will not be delivered.",
                         color = Color.White,
                         fontSize = 13.5.sp,

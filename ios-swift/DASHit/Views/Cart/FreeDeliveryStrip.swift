@@ -1,19 +1,36 @@
 import SwiftUI
 
-/// Free-delivery progress at the top of the cart: one line of copy over a
-/// hairline bar. It never blocks checkout; under ₹299 the order just carries
-/// the ₹25 fee.
+/// Progress at the top of the cart: one line of copy over a hairline bar.
+/// Under the shop's minimum order it counts up to that; after it, towards the
+/// next, lower delivery charge. The amounts are the shop's (`ShopRules`).
 struct FreeDeliveryStrip: View {
     let bill: CartBillBreakdown
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Delivery is never free by amount: the bar counts towards the next, lower
-    // charge (₹35 from ₹180, ₹25 above ₹299).
-    private var nextStep: Double { bill.subtotal < 180 ? 180 : 300 }
-    private var nextCharge: Int { bill.subtotal < 180 ? 35 : 25 }
-    private var isUnlocked: Bool { bill.isFirstFivePromo || bill.subtotal > CartBillBreakdown.freeDeliveryThreshold }
-    private var progress: CGFloat { CGFloat(min(bill.subtotal / nextStep, 1)) }
+    private var rules: ShopRules { ShopRules.current }
+    private var belowMinimum: Bool { !bill.isMinOrderSatisfied }
+    private var isSmallOrder: Bool { bill.subtotal < rules.deliverySmallBelow }
+    private var nextStep: Double {
+        if belowMinimum { return rules.minOrderValue }
+        return isSmallOrder ? rules.deliverySmallBelow : rules.deliveryLowFrom
+    }
+    private var nextCharge: Double { isSmallOrder ? rules.deliveryMidFee : rules.deliveryLowFee }
+    private var isUnlocked: Bool {
+        !belowMinimum && (bill.isFirstFivePromo || bill.subtotal >= rules.deliveryLowFrom)
+    }
+    private var progress: CGFloat { CGFloat(min(bill.subtotal / max(nextStep, 1), 1)) }
+    /// What the bar is counting towards.
+    private var goal: String {
+        if belowMinimum { return " more to place your order" }
+        return nextCharge > 0 ? " more for ₹\(ShopRules.whole(nextCharge)) delivery" : " more for free delivery"
+    }
+    private var unlockedLine: String {
+        if bill.isFirstFivePromo { return "Free delivery on your first \(rules.freeDeliveryOrders) orders!" }
+        return rules.deliveryLowFee > 0
+            ? "Lowest ₹\(ShopRules.whole(rules.deliveryLowFee)) delivery charge on this order"
+            : "Free delivery on this order"
+    }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -21,7 +38,7 @@ struct FreeDeliveryStrip: View {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle")
                         .font(.system(size: 15, weight: .semibold))
-                    Text(bill.isFirstFivePromo ? "Free delivery on your first 5 orders!" : "Lowest ₹25 delivery charge on this order")
+                    Text(unlockedLine)
                         .font(.system(size: 13, weight: .semibold))
                     Spacer(minLength: 0)
                 }
@@ -37,7 +54,7 @@ struct FreeDeliveryStrip: View {
                             + Text(CurrencyFormatter.format(max(1, nextStep - bill.subtotal)))
                                 .fontWeight(.bold)
                                 .foregroundColor(.textPrimary)
-                            + Text(" more for ₹\(nextCharge) delivery").foregroundColor(.textSecondary))
+                            + Text(goal).foregroundColor(.textSecondary))
                             .font(.system(size: 13))
                             .contentTransition(.numericText())
                         Spacer(minLength: 0)
@@ -51,6 +68,11 @@ struct FreeDeliveryStrip: View {
                         }
                     }
                     .frame(height: 3)
+                    if belowMinimum {
+                        Text("We deliver orders of \(CurrencyFormatter.format(rules.minOrderValue)) or more.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textMuted)
+                    }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }

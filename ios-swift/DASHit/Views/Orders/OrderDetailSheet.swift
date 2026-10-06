@@ -26,12 +26,12 @@ struct OrderDetailSheet: View {
                         HStack(spacing: 6) {
                             Image(systemName: "xmark.octagon.fill")
                                 .foregroundColor(.red)
-                            Text(order.rejectionReason != nil ? "Order Rejected by Store" : "Order Cancelled")
+                            Text(order.storeCancelReason != nil ? "Cancelled by the store" : "Order cancelled")
                                 .font(.system(size: 14, weight: .bold))
                                 .foregroundColor(.red)
                         }
-                        if let reason = order.rejectionReason, !reason.isEmpty {
-                            Text("Reason: \(reason)")
+                        if let reason = order.storeCancelReason ?? (order.cancelledByCustomer ? "You cancelled this order." : nil) {
+                            Text(order.cancelledByCustomer ? reason : "Reason: \(reason)")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(.secondary)
                         }

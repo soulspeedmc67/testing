@@ -366,3 +366,17 @@ private struct OrderLocation: Decodable {
         )
     }
 }
+
+extension Order {
+    /// The customer cancelled it themselves, or replaced it by adding items.
+    public var cancelledByCustomer: Bool {
+        let reason = (rejectionReason ?? "").trimmingCharacters(in: .whitespaces).lowercased()
+        return reason.hasPrefix("customer cancelled") || reason.hasPrefix("replaced by")
+    }
+
+    /// Why the store cancelled the order, to show the customer; nil when it didn't.
+    public var storeCancelReason: String? {
+        let reason = (rejectionReason ?? "").trimmingCharacters(in: .whitespaces)
+        return reason.isEmpty || cancelledByCustomer ? nil : reason
+    }
+}

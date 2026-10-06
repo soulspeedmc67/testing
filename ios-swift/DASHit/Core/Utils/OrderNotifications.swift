@@ -34,7 +34,11 @@ enum OrderNotifications {
             content.body = body
         case .cancelled:
             content.title = "Your order was cancelled"
-            content.body = "It won't be delivered. Tap to see what happened."
+            if let reason = order.storeCancelReason {
+                content.body = "The store cancelled it: \(reason)"
+            } else {
+                content.body = "It won't be delivered."
+            }
         default:
             return
         }

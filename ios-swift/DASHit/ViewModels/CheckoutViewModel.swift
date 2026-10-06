@@ -81,13 +81,30 @@ final class CheckoutViewModel: ObservableObject {
             HapticsManager.shared.warning()
             return false
         }
+        // The shop can switch cash on delivery off, and it stops at 8 pm
+        // unless the shop takes it at night too (`ShopRules`).
+        if !paysOnline && !store.rules.allowsCash() {
+            orderError = store.rules.codEnabled
+                ? "Cash on delivery isn't available after 8 pm. Please pay online to place your order."
+                : "Cash on delivery isn't available right now. Please pay online to place your order."
+            HapticsManager.shared.warning()
+            return false
+        }
+        // The shop's minimum order (`ShopRules`): the items total, before fees.
+        guard cart.bill.isMinOrderSatisfied else {
+            orderError = "Add \(CurrencyFormatter.format(cart.bill.amountNeededForMinOrder)) more to place your order. We deliver orders of \(CurrencyFormatter.format(CartBillBreakdown.minOrderValue)) or more."
+            HapticsManager.shared.warning()
+            return false
+        }
         let quote = deliveryQuote
 
-        // The bill on screen is at most 30 seconds old. If the night charge came
-        // on or went off in that time, show the new bill before taking the order.
-        let shownNightFee = cart.nightDeliveryFee
+        // The bill on screen is at most 30 seconds old, and the free first
+        // orders depend on how many this account has had. If the night charge
+        // or the delivery fee has changed, show the new bill before taking the order.
+        let shownTotal = cart.bill.grandTotal
+        await cart.loadOrdersCount(uid: uid)
         cart.refreshNightFee(for: selectedAddress, settings: store.nightCharge)
-        guard cart.nightDeliveryFee == shownNightFee else {
+        guard cart.bill.grandTotal == shownTotal else {
             orderError = "The delivery charge has just changed. Check the bill and place your order again."
             HapticsManager.shared.warning()
             return false
@@ -159,6 +176,7 @@ final class CheckoutViewModel: ObservableObject {
             // Now the reason is obvious: ask to tell them when it's delivered.
             OrderNotifications.requestPermissionIfNeeded()
 
+            cart.noteOrderPlaced(order)
             cart.clearCart()
             HapticsManager.shared.success()
             SoundManager.shared.playOrderSuccess()

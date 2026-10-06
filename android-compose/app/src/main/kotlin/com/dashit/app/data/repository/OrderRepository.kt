@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.dashit.app.data.DeliveryEta
 import com.dashit.app.data.OrderNotifications
+import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.CartBillBreakdown
 import com.dashit.app.data.model.CartItem
@@ -276,7 +277,13 @@ class OrderRepository(
             if (index >= 0) items[index] = items[index].copy(qty = items[index].qty + addition.qty)
             else items.add(addition)
         }
-        val bill = CartBillBreakdown.calculate(items, Coupon.find(order.couponCode))
+        // Delivery that was free on the original (the first-orders offer) stays
+        // free; otherwise it is the fee for the new items total.
+        val bill = CartBillBreakdown.calculate(
+            items,
+            Coupon.find(order.couponCode),
+            userOrdersCount = if (order.deliveryFee - order.nightDeliveryFee > 0) Int.MAX_VALUE else 0
+        )
         val replacement = Order(
             id = Order.newCode(),
             userId = customer.id,
@@ -354,7 +361,7 @@ class OrderRepository(
             },
             "subtotal" to order.subtotal,
             "deliveryFee" to order.deliveryFee,
-            "handlingFee" to CartBillBreakdown.HANDLING_FEE,
+            "handlingFee" to StoreStatus.state.value.rules.handlingFee,
             "discount" to order.discount,
             "totalAmount" to order.grandTotal,
             "total" to order.grandTotal,

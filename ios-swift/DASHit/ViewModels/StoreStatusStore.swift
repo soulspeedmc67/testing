@@ -13,6 +13,8 @@ final class StoreStatusStore: ObservableObject {
     @Published private(set) var highDemand = false
     /// The night delivery charge the shop has set (`NightCharge`).
     @Published private(set) var nightCharge = NightCharge.Settings()
+    /// The minimum order, the fees and cash on delivery, as the shop has set them (`ShopRules`).
+    @Published private(set) var rules = ShopRules()
 
     private var listener: ListenerRegistration?
 
@@ -20,7 +22,7 @@ final class StoreStatusStore: ObservableObject {
     static let defaultCloseReason = "Night hours — reopening tomorrow at 7:00 AM"
 
     private init() {
-        listener = FirestoreService.shared.listenStoreConfig { [weak self] isOpen, closeReason, highDemand, nightCharge in
+        listener = FirestoreService.shared.listenStoreConfig { [weak self] isOpen, closeReason, highDemand, nightCharge, rules in
             guard let self = self else { return }
             withAnimation(.dashitSpring) {
                 self.isOpen = isOpen
@@ -28,6 +30,12 @@ final class StoreStatusStore: ObservableObject {
                 self.highDemand = highDemand
             }
             self.nightCharge = nightCharge
+            if rules != self.rules {
+                // The bill reads `ShopRules.current`, so the cart is worked out again.
+                ShopRules.current = rules
+                self.rules = rules
+                CartViewModel.shared.shopRulesChanged()
+            }
         }
     }
 

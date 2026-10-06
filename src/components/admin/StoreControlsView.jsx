@@ -23,6 +23,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import DeliveryChargeSettings from "./DeliveryChargeSettings";
+import ShopRulesSettings from "./ShopRulesSettings";
 
 export default function StoreControlsView({
   isStoreOpen = true,
@@ -244,6 +245,9 @@ export default function StoreControlsView({
           </div>
         </div>
       </div>
+
+      {/* Cash on delivery, the minimum order and the fees: every shop app follows them live */}
+      <ShopRulesSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* Night delivery charge and the rider's petrol figures */}
       <DeliveryChargeSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />

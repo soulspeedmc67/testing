@@ -58,7 +58,10 @@ struct AddItemsSheet: View {
         }
         return CartBillBreakdown.calculate(
             items: items,
-            appliedCoupon: liveOrder.couponCode.flatMap { Coupon.find(code: $0) }
+            appliedCoupon: liveOrder.couponCode.flatMap { Coupon.find(code: $0) },
+            // Delivery that was free on the original (the first-orders offer)
+            // stays free; otherwise it is the fee for the new items total.
+            userOrdersCount: liveOrder.deliveryFee - liveOrder.nightDeliveryFee > 0 ? Int.max : 0
         )
     }
 

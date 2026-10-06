@@ -27,6 +27,7 @@ export default function ModifyOrderModal({
   order,
   productsList = [],
   coupon = null,
+  rules,
   onSaveOrder,
   remainingSeconds = 0,
 }) {
@@ -57,7 +58,7 @@ export default function ModifyOrderModal({
   const orderItems = useMemo(() => (Array.isArray(order?.items) ? order.items : []), [order?.items]);
   const items = useMemo(() => mergeAdditions(orderItems, additions), [orderItems, additions]);
   // The same sum the save makes, so the total on the button is the total placed.
-  const bill = useMemo(() => billForChangedOrder(order, items, coupon), [order, items, coupon]);
+  const bill = useMemo(() => billForChangedOrder(order, items, coupon, rules), [order, items, coupon, rules]);
   const totalBefore = Number(order?.total ?? order?.totalAmount ?? order?.finalTotal) || 0;
   const addedCount = additions.reduce((sum, item) => sum + qtyOf(item), 0);
 

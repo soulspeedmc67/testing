@@ -99,7 +99,12 @@ fun AddItemsSheet(
     val addedCount = picked.sumOf { it.qty }
     val merged = order.items.map { line -> line.copy(qty = line.qty + (additions[line.id] ?: 0)) } +
         picked.filter { add -> order.items.none { it.id == add.id } }
-    val newBill = CartBillBreakdown.calculate(merged, Coupon.find(order.couponCode))
+    // The same sum the save makes (OrderRepository.addItems).
+    val newBill = CartBillBreakdown.calculate(
+        merged,
+        Coupon.find(order.couponCode),
+        userOrdersCount = if (order.deliveryFee - order.nightDeliveryFee > 0) Int.MAX_VALUE else 0
+    )
 
     ModalBottomSheet(
         onDismissRequest = { if (!isSaving) onDismiss() },

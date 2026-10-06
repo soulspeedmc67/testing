@@ -118,6 +118,12 @@ data class Order(
     val replacesOrderId: String? = null,
     val rejectionReason: String? = null
 ) {
+    /** Why the store cancelled the order; null when the customer cancelled it or replaced it by adding items. */
+    val storeCancelReason: String?
+        get() = rejectionReason?.trim()?.takeIf {
+            it.isNotEmpty() && !it.startsWith("customer cancelled", ignoreCase = true) && !it.startsWith("replaced by", ignoreCase = true)
+        }
+
     /**
      * A rider has the order but hasn't collected it from the store yet: it goes
      * out for delivery when they tap "Start delivery" in the rider app.

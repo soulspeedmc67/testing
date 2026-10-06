@@ -5,13 +5,15 @@ import { ArrowLeft, Mail, ChevronDown, ArrowUpRight } from "lucide-react";
 import SEO from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/JsonLd";
 import { goBack } from "../lib/navigation";
+import { useShopRules } from "../lib/storeStatus";
 
 /* Same numbers and addresses as the Terms (section 6) and the site footer. */
 const SUPPORT_EMAIL = "support@dashit.co.in";
 const WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%20help%20with%20my%20order";
 
 /* Answers follow the app's real rules (8 km area, 30-second change window,
-   delivery code, ₹25 fee under ₹299 in checkout.js) and the Terms. */
+   delivery code) and the Terms. An answer that quotes the shop's fees is a
+   function of its current rules (useShopRules), so it never goes stale. */
 const QUESTIONS = [
   {
     q: "Where do you deliver?",
@@ -31,7 +33,18 @@ const QUESTIONS = [
   },
   {
     q: "Is there a delivery fee?",
-    a: "Delivery is free on orders of ₹299 or more. Below that it's ₹25. There's no minimum order.",
+    a: (rules) => {
+      const fee = (amount) => (amount > 0 ? `₹${amount}` : "free");
+      return [
+        rules.freeDeliveryOrders > 0 ? `Delivery is free on your first ${rules.freeDeliveryOrders} orders.` : "",
+        `${rules.freeDeliveryOrders > 0 ? "After that it" : "Delivery"} depends on the size of your order: ${fee(rules.deliveryLowFee)} on orders of ₹${rules.deliveryLowFrom} or more, ${fee(rules.deliveryMidFee)} from ₹${rules.deliverySmallBelow}, and ${rules.deliverySmallPercent}% of the items total below that.`,
+        rules.handlingFee > 0 ? `Every order also has a ₹${rules.handlingFee} handling charge.` : "",
+        "After 8 pm delivery can be charged by distance instead; checkout shows the exact fee before you order.",
+        rules.minOrderValue > 0 ? `We deliver orders of ₹${rules.minOrderValue} or more.` : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+    },
   },
   {
     q: "Something is missing, damaged or wrong",
@@ -54,6 +67,7 @@ function WhatsAppGlyph({ className = "w-5 h-5" }) {
 export default function HelpPage() {
   const router = useRouter();
   const [open, setOpen] = useState(null);
+  const rules = useShopRules();
 
   const contacts = [
     {
@@ -175,7 +189,7 @@ export default function HelpPage() {
                         transition={{ duration: 0.2 }}
                         className="px-4 text-[13px] leading-relaxed text-slate-600 overflow-hidden dark:text-content-secondary"
                       >
-                        <span className="block pb-4">{item.a}</span>
+                        <span className="block pb-4">{typeof item.a === "function" ? item.a(rules) : item.a}</span>
                       </motion.p>
                     )}
                   </AnimatePresence>
