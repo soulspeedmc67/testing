@@ -35,7 +35,7 @@ import { watchActiveCoupons } from "../../lib/coupons";
 import { browseable } from "../../lib/tobacco";
 import { hapticLight, hapticMedium, hapticSuccess } from "../../lib/haptics";
 import ModifyOrderModal from "../../components/ModifyOrderModal";
-import { useShopRules } from "../../lib/storeStatus";
+import { useShopRules } from "../../lib/useShopRules";
 import CancelOrderModal from "../../components/CancelOrderModal";
 import { productImageUrl } from "../../components/ProductImage";
 import { deliveryFeeParts } from "../../lib/nightCharge";

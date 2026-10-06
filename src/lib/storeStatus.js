@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { watchStoreConfig } from "./db";
 import { isFirebaseConfigured } from "./firebase";
-import { SHOP_RULE_DEFAULTS, shopRules, sameShopRules } from "./deliveryCharges";
 
 /**
  * Realtime hook providing store open/closed status.
@@ -117,38 +116,6 @@ export function isCodEnabled(config) {
 /** Cash on delivery stops at 8 pm unless the shop allows it at night (`codAtNight` on config/store). */
 export function isCodAllowedAtNight(config) {
   return config?.codAtNight === true;
-}
-
-const RULES_CACHE_KEY = "dashit_shop_rules";
-
-/**
- * The shop's order rules (minimum order, delivery fees, handling charge) from
- * `config/store`, on the same shared listener as the open/closed status.
- * Starts from the built-in defaults so the first render matches the exported
- * HTML, then takes the rules this browser last saw, then the live ones.
- * Pass `false` to stay off the listener on screens that don't show them.
- */
-export function useShopRules(enabled = true) {
-  const [rules, setRules] = useState(SHOP_RULE_DEFAULTS);
-
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const adopt = (next) => setRules((prev) => (sameShopRules(prev, next) ? prev : next));
-    try {
-      const cached = JSON.parse(localStorage.getItem(RULES_CACHE_KEY) || "null");
-      if (cached) adopt(shopRules(cached));
-    } catch (e) {}
-    if (!isFirebaseConfigured) return undefined;
-    return watchStoreConfig((cfg) => {
-      const next = shopRules(cfg);
-      adopt(next);
-      try {
-        localStorage.setItem(RULES_CACHE_KEY, JSON.stringify(next));
-      } catch (e) {}
-    });
-  }, [enabled]);
-
-  return rules;
 }
 
 /**

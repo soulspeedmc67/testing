@@ -7,7 +7,7 @@ import { useScrollChrome } from "../context/ScrollChromeContext";
 import { hapticMedium } from "../lib/haptics";
 import { useStoredJson } from "../lib/useStoredJson";
 import { productImageUrl } from "./ProductImage";
-import { useShopRules } from "../lib/storeStatus";
+import { useShopRules } from "../lib/useShopRules";
 
 /* Stable identity so an empty cart does not produce a new array each render. */
 const EMPTY_CART = [];

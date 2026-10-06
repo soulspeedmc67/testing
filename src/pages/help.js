@@ -5,7 +5,7 @@ import { ArrowLeft, Mail, ChevronDown, ArrowUpRight } from "lucide-react";
 import SEO from "../components/SEO";
 import { BreadcrumbJsonLd } from "../components/JsonLd";
 import { goBack } from "../lib/navigation";
-import { useShopRules } from "../lib/storeStatus";
+import { useShopRules } from "../lib/useShopRules";
 
 /* Same numbers and addresses as the Terms (section 6) and the site footer. */
 const SUPPORT_EMAIL = "support@dashit.co.in";
