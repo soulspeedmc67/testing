@@ -51,7 +51,7 @@ targets:
       properties:
         CFBundleDisplayName: DASHit
         CFBundleIdentifier: com.dashit.app
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "1.0.1"
         CFBundleVersion: "1"
         # Plain midnight while the app starts; SplashView then reveals the logo.
         UILaunchScreen:
@@ -110,7 +110,7 @@ targets:
       path: DASHitWidgets/Info.plist
       properties:
         CFBundleDisplayName: DASHit
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "1.0.1"
         CFBundleVersion: "1"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
@@ -175,7 +175,7 @@ targets:
         CFBundleIdentifier: com.dashit.admin
         # New-order alerts by push (Firebase Cloud Messaging).
         UIBackgroundModes: [remote-notification]
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "1.0.1"
         CFBundleVersion: "1"
         UILaunchScreen:
           UIColorName: LaunchBackground
