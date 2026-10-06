@@ -24,11 +24,11 @@ const IST = "Asia/Kolkata";
  *    discount line, so a slip could not be reconciled against the order.
  */
 export default function PrintPackingSlip({ order, onClose }) {
-  if (!order) return null;
-
   // createPortal needs a DOM target, which does not exist during prerender.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  // After the hooks, so they run the same number of times on every render.
+  if (!order) return null;
 
   const orderId = order.orderId || order.id || "DSH";
   const items = order.items || [];

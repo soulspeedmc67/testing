@@ -25,7 +25,8 @@ import PrintPackingSlip from "./PrintPackingSlip";
 import PrintGstTaxInvoice from "./PrintGstTaxInvoice";
 import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
-import { orderAddress, orderCoords } from "../../lib/orderReceipt";
+import { orderAddress, orderCoords, orderTimeMs } from "../../lib/orderReceipt";
+import { deliveryFeeParts } from "../../lib/nightCharge";
 import OrderLocationCard from "./OrderLocationCard";
 
 export default function OrderDetailDrawer({
@@ -92,7 +93,12 @@ export default function OrderDetailDrawer({
   const isCancelled = status === ORDER_STATUS.CANCELLED;
 
   const customerName = order?.customerName || order?.userAddress?.name || "Customer";
-  const customerPhone = order?.customerPhone || order?.userAddress?.phone || "";
+  // Checkout saves the shopper's number as `mobile`; older orders used the others.
+  const customerPhone = String(
+    order?.mobile || order?.customerPhone || order?.phone || order?.userAddress?.phone || order?.location?.phone || ""
+  ).trim();
+  const phoneDigits = customerPhone.replace(/\D/g, "").slice(-10);
+  const customerEmail = order?.email || order?.customerEmail || "";
   const address = orderAddress(order, "No address on this order");
   const pin = orderCoords(order);
   const receiver = order?.receiverContact;
@@ -104,9 +110,8 @@ export default function OrderDetailDrawer({
     paymentMethod.toLowerCase().includes("card");
 
   // SLA calculation against the quick-commerce dispatch benchmark
-  const createdTimestamp = order?.createdAt?.seconds
-    ? order.createdAt.seconds * 1000
-    : order?.createdAt || Date.now();
+  // Timestamp, ISO text or a number: all three are on real orders.
+  const createdTimestamp = orderTimeMs(order) ?? Date.now();
   const elapsedMinutes = Math.max(0, Math.floor((Date.now() - createdTimestamp) / 60000));
 
   // All hooks must be called before any early returns (Rules of Hooks)
@@ -146,7 +151,11 @@ export default function OrderDetailDrawer({
     };
   }, [elapsedMinutes, isDelivered, isCancelled]);
 
-  // Early return AFTER all hooks — correct per React Rules of Hooks
+  const driverLoads = useMemo(() => getDriverActiveOrderCounts(orders), [orders]);
+  const activeDrivers = useMemo(() => (driverRoster || []).filter((d) => d && d.id && d.active !== false), [driverRoster]);
+
+  /* Every hook above this line. A hook below it ran only while the drawer
+     was open, so opening an order crashed the drawer (React error #310). */
   if (!isOpen || !order) return null;
 
   // Checklist counts
@@ -174,9 +183,6 @@ export default function OrderDetailDrawer({
       (assignedDriverName && d.name && d.name.toLowerCase() === assignedDriverName.toLowerCase())
   );
   const assignedDriverPhone = matchedDriver?.phone || "";
-
-  const driverLoads = useMemo(() => getDriverActiveOrderCounts(orders), [orders]);
-  const activeDrivers = useMemo(() => (driverRoster || []).filter((d) => d && d.id && d.active !== false), [driverRoster]);
 
   const handleAssignDriver = async (drv) => {
     if (!drv || !onAssignDriver) return;
@@ -779,9 +785,9 @@ export default function OrderDetailDrawer({
                     {customerName}
                   </span>
                   {customerPhone && (
-                    <span className="font-mono text-xs font-bold text-slate-500">
-                      +91 {customerPhone}
-                    </span>
+                    <a href={"tel:+91" + phoneDigits} className="font-mono text-xs font-bold text-slate-500 hover:text-[#FF5B00]">
+                      +91 {phoneDigits || customerPhone}
+                    </a>
                   )}
                 </div>
 
@@ -789,6 +795,35 @@ export default function OrderDetailDrawer({
                   <MapPin className="w-4 h-4 text-[#FF5B00] shrink-0 mt-0.5" />
                   <span className="leading-relaxed">{address}</span>
                 </div>
+
+                <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-xs pt-1">
+                  {customerEmail && (
+                    <>
+                      <dt className="text-slate-400 font-semibold">Email</dt>
+                      <dd className="font-semibold text-slate-700 dark:text-zinc-300 break-all">{customerEmail}</dd>
+                    </>
+                  )}
+                  <dt className="text-slate-400 font-semibold">Placed</dt>
+                  <dd className="font-semibold text-slate-700 dark:text-zinc-300">
+                    {orderTimeMs(order)
+                      ? new Date(orderTimeMs(order)).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })
+                      : "—"}
+                  </dd>
+                  {pin && (
+                    <>
+                      <dt className="text-slate-400 font-semibold">Pin</dt>
+                      <dd className="font-mono font-semibold text-slate-700 dark:text-zinc-300 select-all">
+                        {pin.lat.toFixed(6)}, {pin.lng.toFixed(6)}
+                      </dd>
+                    </>
+                  )}
+                  {order.etaMinutes != null && (
+                    <>
+                      <dt className="text-slate-400 font-semibold">Promised</dt>
+                      <dd className="font-semibold text-slate-700 dark:text-zinc-300">about {order.etaMinutes} min</dd>
+                    </>
+                  )}
+                </dl>
 
                 {order.distanceKm != null && (
                   <div className="flex items-center space-x-2 text-xs pt-1">
@@ -814,14 +849,14 @@ export default function OrderDetailDrawer({
                 {customerPhone ? (
                   <>
                     <a
-                      href={"tel:" + customerPhone}
+                      href={"tel:+91" + phoneDigits}
                       className="flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-black text-xs hover:bg-emerald-500/25 transition-colors"
                     >
                       <PhoneCall className="w-3.5 h-3.5" />
                       <span>Call</span>
                     </a>
                     <a
-                      href={"https://wa.me/91" + customerPhone.replace(/\D/g, "").slice(-10)}
+                      href={"https://wa.me/91" + phoneDigits}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 transition-colors shadow-xs"
@@ -852,6 +887,42 @@ export default function OrderDetailDrawer({
                 </a>
               </div>
             </div>
+
+            {/* 4b. The bill, as the customer saw it */}
+            {(() => {
+              const fee = deliveryFeeParts(order);
+              const sub = Number(order?.subtotal) || items.reduce((t, it) => t + (Number(it.price) || 0) * (Number(it.qty || it.quantity) || 1), 0);
+              const off = Number(order?.discount ?? order?.couponDiscount) || 0;
+              const handling = Number(order?.handlingFee ?? Math.max(0, Number(totalAmount) - sub - (Number(order?.deliveryFee) || 0) + off)) || 0;
+              const rows = [
+                ["Items (" + items.reduce((t, it) => t + (Number(it.qty || it.quantity) || 1), 0) + ")", "₹" + sub],
+                ...(fee.night > 0 && fee.base === 0
+                  ? [["Delivery (by distance)", "₹" + fee.night]]
+                  : [["Delivery", fee.base > 0 ? "₹" + fee.base : "Free"], ...(fee.night > 0 ? [["Distance charge", "₹" + fee.night]] : [])]),
+                ...(handling > 0 ? [["Handling", "₹" + handling]] : []),
+                ...(off > 0 ? [["Discount" + (order.couponCode ? " (" + order.couponCode + ")" : ""), "−₹" + off]] : []),
+              ];
+              return (
+                <div className={"p-4 rounded-2xl border " + (darkMode ? "bg-[#161822] border-zinc-800" : "bg-white border-slate-200 shadow-xs")}>
+                  <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider block mb-2">Bill</span>
+                  <dl className="space-y-1 text-xs">
+                    {rows.map(([k, v]) => (
+                      <div key={k} className="flex justify-between">
+                        <dt className="text-slate-500 dark:text-zinc-400 font-semibold">{k}</dt>
+                        <dd className="font-bold tabular-nums text-slate-800 dark:text-zinc-200">{v}</dd>
+                      </div>
+                    ))}
+                    <div className="flex justify-between pt-1.5 mt-1 border-t border-slate-200/60 dark:border-zinc-800">
+                      <dt className="font-black text-slate-900 dark:text-white">Total</dt>
+                      <dd className="font-black tabular-nums text-slate-900 dark:text-white">₹{totalAmount}</dd>
+                    </div>
+                  </dl>
+                  {order.razorpayPaymentId && (
+                    <p className="mt-2 text-[11px] text-slate-400 font-mono select-all break-all">Payment ref: {order.razorpayPaymentId}</p>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* 5. Payment & delivery OTP */}
             <div
