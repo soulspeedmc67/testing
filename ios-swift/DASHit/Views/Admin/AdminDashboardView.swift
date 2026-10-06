@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import AudioToolbox
 
 public struct AdminDashboardView: View {
@@ -1606,6 +1607,12 @@ struct AddProductSheetView: View {
     @State private var lookedUpBarcode: String?
     @State private var packSite: String?
     @State private var isAddingToOpenFacts = false
+    // The shop's own photo of the item: picked or taken here, then sent to the website.
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var isCameraOpen = false
+    @State private var isUploadingPhoto = false
+    @State private var photoError: String?
+    @State private var photoPromptCopied = false
 
     private var priceValue: Double? {
         Double(price.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
@@ -1622,7 +1629,7 @@ struct AddProductSheetView: View {
         value == value.rounded() ? String(Int(value)) : String(value)
     }
 
-    let categories = ["Staples", "Dairy", "Bakery", "Fruits", "Snacks", "Biscuits", "Beverages", "Instant Food", "Spices", "Personal Care"]
+    let categories = ["Staples", "Dairy", "Bakery", "Fruits", "Snacks", "Biscuits", "Beverages", "Instant Food", "Spices", "Personal Care", "Home Care", "Kitchen Care", "Toys & Games", "Stationery", "Other"]
 
     var body: some View {
         OptionalNavigationStack(enabled: !isEmbedded) {
@@ -1731,7 +1738,38 @@ struct AddProductSheetView: View {
                 }
 
                 Section {
-                    TextField("Photo link, starting with https://", text: $img)
+                    PhotosPicker(selection: $pickedPhoto, matching: .images) {
+                        Label("Choose a photo from this phone", systemImage: "photo.on.rectangle")
+                    }
+                    .disabled(isUploadingPhoto)
+                    #if ADMIN_APP_TARGET
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button {
+                            isCameraOpen = true
+                        } label: {
+                            Label("Take a photo", systemImage: "camera")
+                        }
+                        .disabled(isUploadingPhoto)
+                        .fullScreenCover(isPresented: $isCameraOpen) {
+                            CameraCapture(onImage: { upload($0) }, onClose: { isCameraOpen = false })
+                                .ignoresSafeArea()
+                        }
+                    }
+                    #endif
+                    if isUploadingPhoto {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Adding the photo…")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    if let photoError {
+                        Text(photoError)
+                            .font(.system(size: 14))
+                            .foregroundColor(.red)
+                    }
+                    TextField("Or paste a photo link, starting with https://", text: $img)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -1746,8 +1784,35 @@ struct AddProductSheetView: View {
                     Text(existingItem == nil ? "Photo" : "Photo (optional)")
                 } footer: {
                     if existingItem == nil {
-                        Text("Every item on the app needs a photo of the pack. Scan the barcode to find one, or paste a link.")
+                        Text(ProductPhotoRule.isRealPhoto(img)
+                             ? "The photo is on the item. Check it's the right pack, then tap Save."
+                             : "Save turns on once the item has a name, a price and a photo. Choose or take a photo here, scan the barcode, or paste a link.")
                     }
+                }
+                .onChange(of: pickedPhoto) { _, item in
+                    loadPicked(item)
+                }
+
+                Section {
+                    Text(photoPrompt)
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                        .textSelection(.enabled)
+                    Button {
+                        UIPasteboard.general.string = photoPrompt
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        photoPromptCopied = true
+                    } label: {
+                        Label(photoPromptCopied ? "Copied" : "Copy this prompt", systemImage: photoPromptCopied ? "checkmark" : "doc.on.doc")
+                    }
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                } header: {
+                    Text("Prompt for making a photo")
+                } footer: {
+                    Text("Written from the name, pack size and category above. Paste it into an image maker, save the picture to this phone, then choose it here. Only use a picture that shows the real pack.")
+                }
+                .onChange(of: photoPrompt) { _, _ in
+                    photoPromptCopied = false
                 }
             }
             .barcodeScanner(isPresented: $isScannerOpen) { code in
@@ -1805,6 +1870,49 @@ struct AddProductSheetView: View {
 }
 
 extension AddProductSheetView {
+    /// A prompt for an image maker, written from what the form says about the item.
+    private var photoPrompt: String {
+        let itemName = name.trimmingCharacters(in: .whitespaces)
+        guard !itemName.isEmpty else { return "Type the item's name first, and the prompt is written for you." }
+        let size = unit.trimmingCharacters(in: .whitespaces)
+        var subject = itemName
+        if !size.isEmpty { subject += ", \(size)" }
+        let setting: String
+        switch cat {
+        case "Fruits": setting = "fresh, whole and clean, as sold loose in a shop"
+        case "Bakery": setting = "fresh, in its shop packaging if it has one"
+        default: setting = "in its real retail pack as sold in India, front of the pack facing the camera, label sharp and readable"
+        }
+        return "Product photo for an online grocery shop: \(subject) (\(cat.lowercased())), \(setting). One item only, centred, filling most of the frame. Plain pure white background, soft even studio light, a faint shadow under it. No hands, no props, no extra text, no watermark. Square picture, 1000 by 1000 pixels, true colours."
+    }
+
+    /// The photo chosen from the phone's library.
+    private func loadPicked(_ item: PhotosPickerItem?) {
+        guard let item else { return }
+        Task {
+            if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                upload(image)
+            } else {
+                photoError = "That photo couldn't be read. Try another one."
+            }
+            pickedPhoto = nil
+        }
+    }
+
+    /// Sends the photo to the website and puts its link on the item.
+    private func upload(_ image: UIImage) {
+        isUploadingPhoto = true
+        photoError = nil
+        Task {
+            defer { isUploadingPhoto = false }
+            do {
+                img = try await vm.uploadProductPhoto(image)
+            } catch {
+                photoError = error.localizedDescription
+            }
+        }
+    }
+
     /// Starts the form from an item already in the shop.
     private func fill(from p: Product) {
         name = p.name

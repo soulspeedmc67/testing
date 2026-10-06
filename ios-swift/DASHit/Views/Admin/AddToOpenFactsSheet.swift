@@ -192,8 +192,8 @@ struct AddToOpenFactsSheet: View {
     }
 }
 
-/// The camera, for one photo.
-private struct CameraCapture: UIViewControllerRepresentable {
+/// The camera, for one photo. Also used by the "Add an item" page.
+struct CameraCapture: UIViewControllerRepresentable {
     var onImage: (UIImage) -> Void
     var onClose: () -> Void
 

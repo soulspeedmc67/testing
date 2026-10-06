@@ -10,7 +10,7 @@ import { withShelf } from "./categorize";
  *  1. This browser's saved copy, at once.
  *  2. The file. It is served "no-cache" with an ETag, so the browser asks
  *     "changed?" and gets a 304 with no download when it hasn't.
- *  3. While the tab is visible, /api/catalog/changes.php every 60 seconds for
+ *  3. While the tab is visible, /api/catalog/changes.php every 30 seconds for
  *     what changed since our version (price, stock). That answer is shared for
  *     30 s on the server and cached by the CDN, so Firestore is read about
  *     twice a minute in total, not per visitor.
@@ -27,7 +27,7 @@ const ORIGIN =
 const FILE_URL = `${ORIGIN}/catalog/catalog.json`;
 const CHANGES_URL = `${ORIGIN}/api/catalog/changes.php`;
 const STORE_KEY = "dashit_catalog_file_v1";
-const POLL_MS = 60 * 1000;
+const POLL_MS = 30 * 1000;
 
 let state = null; // { version, items: { id: entry } }
 let shown = null; // memoised list for subscribers

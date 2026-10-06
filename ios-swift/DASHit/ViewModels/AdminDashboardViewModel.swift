@@ -1154,6 +1154,53 @@ public final class AdminDashboardViewModel: ObservableObject {
         return message ?? "That didn't work. Try again."
     }
 
+    /// What went wrong sending a photo to the website, in words for the owner.
+    struct PhotoUploadError: LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
+
+    /// Puts a photo the shop took itself on the website
+    /// (public/api/staff/upload-photo.php) and returns its link, for the
+    /// item's photo. Product photos are hosted on dashit.co.in, never in
+    /// Firebase Storage. The photo is shrunk to 1000 px first, so it is small.
+    func uploadProductPhoto(_ image: UIImage) async throws -> String {
+        guard let user = Auth.auth().currentUser, let token = try? await user.getIDToken() else {
+            throw PhotoUploadError(message: "Please sign in again.")
+        }
+        let longest = max(image.size.width, image.size.height)
+        let scale = longest > 1000 ? 1000 / longest : 1
+        let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let small = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            image.draw(in: CGRect(origin: .zero, size: size))
+        }
+        guard let jpeg = small.jpegData(compressionQuality: 0.82) else {
+            throw PhotoUploadError(message: "That photo couldn't be read. Try another one.")
+        }
+
+        var request = URLRequest(url: URL(string: "https://dashit.co.in/api/staff/upload-photo.php")!)
+        request.httpMethod = "POST"
+        request.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 40
+        guard let (data, response) = try? await URLSession.shared.upload(for: request, from: jpeg) else {
+            throw PhotoUploadError(message: "No internet. Try again.")
+        }
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        if (200..<300).contains(status), let link = json?["url"] as? String, !link.isEmpty {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            return link
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
+        throw PhotoUploadError(message: (json?["error"] as? String) ?? "The photo couldn't be added. Try again.")
+    }
+
     /// A new rider: they sign in to the rider app with this phone number and 4-digit PIN.
     public func addDriver(name: String, phone: String, pin: String) async -> String? {
         await riderAction(["action": "create", "name": name, "phone": phone, "pin": pin])
