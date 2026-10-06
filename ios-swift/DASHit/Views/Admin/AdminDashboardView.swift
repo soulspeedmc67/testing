@@ -105,7 +105,11 @@ public struct AdminDashboardView: View {
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $isAddProductSheetOpen) {
-                AddProductSheetView(vm: vm, editingProduct: productToEdit)
+                AddProductSheetView(vm: vm, editingProduct: nil)
+            }
+            // Tapping an item in Stock opens it here: price, MRP, count, photo, details.
+            .sheet(item: $productToEdit) { product in
+                AddProductSheetView(vm: vm, editingProduct: product)
             }
             .sheet(isPresented: $isAddDriverSheetOpen) {
                 AddRiderSheet(vm: vm)
@@ -682,32 +686,49 @@ public struct AdminDashboardView: View {
 
     private func inventoryRow(product: Product) -> some View {
         HStack(spacing: 12) {
-            AsyncImage(url: URL(string: product.img)) { phase in
-                if let img = phase.image {
-                    img.resizable().scaledToFill()
-                } else {
-                    Color.gray.opacity(0.2)
+            // The photo and the details open the item, to change its price,
+            // MRP, count, photo or anything else.
+            Button {
+                productToEdit = product
+            } label: {
+                HStack(spacing: 12) {
+                    AsyncImage(url: URL(string: product.img)) { phase in
+                        if let img = phase.image {
+                            img.resizable().scaledToFill()
+                        } else {
+                            Color.gray.opacity(0.2)
+                        }
+                    }
+                    .frame(width: 50, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(product.name)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+
+                        Text(Distributor.resolvedName(product.distributor))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+
+                        HStack(spacing: 6) {
+                            Text("₹\(Int(product.price)) • \(product.unit)")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.orange)
+                                .lineLimit(1)
+                            Label("Edit", systemImage: "pencil")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 0)
                 }
+                .contentShape(Rectangle())
             }
-            .frame(width: 50, height: 50)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(product.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .lineLimit(1)
-
-                Text(Distributor.resolvedName(product.distributor))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-
-                Text("₹\(Int(product.price)) • \(product.unit)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.orange)
-            }
-
-            Spacer()
+            .buttonStyle(.plain)
+            .accessibilityLabel("Edit \(product.name), ₹\(Int(product.price))")
 
             // Stock Steppers
             HStack(spacing: 8) {
