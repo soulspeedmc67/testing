@@ -23,6 +23,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { generateCsvString, triggerCsvDownload, INVENTORY_CSV_COLUMNS } from "../../lib/csvExport";
+import { isPlaceholderImage } from "../../lib/productPhotoMatch";
 
 export default function InventoryView({
   catalogue = [],
@@ -154,6 +155,9 @@ export default function InventoryView({
       result.sort((a, b) => (Number(b.stock) || 0) - (Number(a.stock) || 0));
     } else if (sortBy === "value-desc") {
       result.sort((a, b) => ((Number(b.stock) || 0) * (Number(b.price) || 0)) - ((Number(a.stock) || 0) * (Number(a.price) || 0)));
+    } else if (sortBy === "no-photo") {
+      const noPhoto = (p) => (isPlaceholderImage(p.img) ? 0 : 1);
+      result.sort((a, b) => noPhoto(a) - noPhoto(b) || String(a.name || "").localeCompare(String(b.name || "")));
     } else if (sortBy === "name-asc") {
       result.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
     }
@@ -397,6 +401,9 @@ export default function InventoryView({
                 </option>
                 <option value="name-asc" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
                   Sort: Name (A → Z)
+                </option>
+                <option value="no-photo" className="bg-white text-slate-900 dark:bg-zinc-900 dark:text-white">
+                  Sort: Photo not added first
                 </option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-60" />

@@ -107,6 +107,13 @@ public struct Product: Codable, Identifiable, Hashable {
 
     /// Out of stock when the admin marks it so or the stock count hits zero.
     public var isAvailable: Bool { inStock != false && (stock ?? 1) > 0 }
+
+    /// The owner's own stock ("Myself" or untagged), which the shop lists
+    /// before a distributor's.
+    public var isOwnStock: Bool {
+        let name = (distributor ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty || name == "Myself"
+    }
     
     /// Tobacco and other 18+ items, detected the same way as the web
     /// (`src/lib/ageGate.js`): the flag, the category, or a keyword in the name,
@@ -173,7 +180,7 @@ extension Product {
     private enum DecodingKeys: String, CodingKey {
         case id, barcode, name, title, unit, weight, price, originalPrice, mrp
         case rating, ratingCount, time, options, badge, img, image, imageUrl
-        case cat, category, variants, ageRestricted, minAge, inStock, nutrition, stock, distributor
+        case cat, category, variants, ageRestricted, minAge, inStock, nutrition, stock, distributor, supplied
     }
     
     public init(from decoder: Decoder) throws {
@@ -213,7 +220,10 @@ extension Product {
             inStock: try? c.decode(Bool.self, forKey: .inStock),
             nutrition: try? c.decode([NutritionFact].self, forKey: .nutrition),
             stock: c.flexibleInt(.stock),
-            distributor: c.flexibleString(.distributor),
+            // The shop's catalogue file says only that the stock is a
+            // distributor's (`supplied`), not whose.
+            distributor: c.flexibleString(.distributor)
+                ?? ((try? c.decode(Bool.self, forKey: .supplied)) == true ? "Distributor" : nil),
             sub: shelf.sub
         )
     }

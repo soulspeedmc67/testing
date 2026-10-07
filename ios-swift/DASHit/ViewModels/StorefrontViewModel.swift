@@ -90,16 +90,21 @@ final class CatalogueStore: ObservableObject {
         }
     }
 
-    /// Items with a clean white photo first, then other photos, then none;
-    /// otherwise in the order they came.
+    /// Items with a photo first, then those without. Inside each, the owner's
+    /// own stock comes before a distributor's, and a clean white photo before
+    /// other photos; otherwise in the order they came.
     private func photoOrder(_ list: [Product]) -> [Product] {
         let clean = cleanPhotos
-        var buckets: [[Product]] = [[], [], []]
+        var buckets: [[Product]] = [[], [], [], [], [], []]
         for product in list {
             let rank: Int = CleanPhotos.rank(product.img, in: clean)
-            buckets[rank].append(product)
+            if rank == 2 {
+                buckets[product.isOwnStock ? 4 : 5].append(product)
+            } else {
+                buckets[(product.isOwnStock ? 0 : 2) + rank].append(product)
+            }
         }
-        return buckets[0] + buckets[1] + buckets[2]
+        return buckets.flatMap { $0 }
     }
 
     /// Products filed under a category, looked up instead of searched for.

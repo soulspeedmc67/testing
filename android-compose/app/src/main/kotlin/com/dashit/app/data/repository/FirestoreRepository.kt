@@ -137,7 +137,8 @@ class FirestoreRepository {
             ageRestricted = ageRestricted,
             minAge = minAge,
             inStock = inStock,
-            sub = shelf.sub
+            sub = shelf.sub,
+            supplied = data["supplied"] == true
         )
     }
 

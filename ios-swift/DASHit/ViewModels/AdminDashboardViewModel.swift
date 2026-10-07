@@ -80,6 +80,7 @@ public enum AdminSortOption: String, CaseIterable, Identifiable {
     case stockDesc = "Highest stock first"
     case valueDesc = "Highest value first"
     case nameAsc = "Name (A → Z)"
+    case noPhotoFirst = "Photo not added first"
 
     public var id: String { rawValue }
 }
@@ -408,6 +409,11 @@ public final class AdminDashboardViewModel: ObservableObject {
             result.sort { (Double($0.stock ?? 0) * $0.price) > (Double($1.stock ?? 0) * $1.price) }
         case .nameAsc:
             result.sort { $0.name.lowercased() < $1.name.lowercased() }
+        case .noPhotoFirst:
+            result.sort {
+                if $0.img.isEmpty != $1.img.isEmpty { return $0.img.isEmpty }
+                return $0.name.lowercased() < $1.name.lowercased()
+            }
         }
 
         return result

@@ -34,13 +34,14 @@ class StorefrontViewModel(
 
     /**
      * Browseable products: in stock before sold out (a sold-out item never
-     * leads a list), then items with a clean white photo first, then other
-     * photos, then items without one. Sorted and grouped off the main thread:
+     * leads a list), then items with a photo before items without one, then
+     * the owner's own stock before a distributor's, then a clean white photo
+     * before other photos. Sorted and grouped off the main thread:
      * with ~4,600 items, doing it on the main thread dropped frames each time
      * the catalogue or a stock level changed.
      */
     val products: StateFlow<List<Product>> = _rawProducts.combine(CleanPhotos.names) { prods, clean ->
-        prods.sortedWith(compareBy({ !it.isAvailable }, { CleanPhotos.rank(it.img, clean) }))
+        prods.sortedWith(compareBy({ !it.isAvailable }, { it.img.isBlank() }, { it.supplied }, { CleanPhotos.rank(it.img, clean) }))
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 

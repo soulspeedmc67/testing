@@ -56,9 +56,12 @@ function list() {
   if (!shown) {
     // Each product goes on the shelf its name says (see categorize.js); the
     // saved copy keeps the catalogue's own category.
+    // The owner's own stock comes before a distributor's (`supplied`), so
+    // every list built from this one leads with it.
     shown = Object.values(state?.items || {})
       .filter((p) => p && p.active !== false && p.name)
-      .map(withShelf);
+      .map(withShelf)
+      .sort((a, b) => Number(a.supplied === true) - Number(b.supplied === true));
   }
   return shown;
 }

@@ -23,6 +23,19 @@ const DASHIT_CATALOG_FIELDS = [
     'ageRestricted', 'minAge', 'inStock', 'stock', 'nutrition',
 ];
 
+/** The made-up example distributors (src/lib/db.js); stock tagged with one is the owner's own. */
+const DASHIT_DEMO_DISTRIBUTORS = [
+    'Kashmir Wholesale FMCG', 'Amul Valley Dairy Logistics', 'Local Kandur Bakeries',
+    'Anantnag Fresh Farm Orchards', 'Hindustan Unilever Direct', 'ITC & Nestlé Supply Hub',
+];
+
+/** True when the stock came from a distributor rather than the owner ("Myself" or untagged). */
+function dashit_catalog_supplied(array $fields): bool
+{
+    $name = trim((string) ($fields['distributor']['stringValue'] ?? ''));
+    return $name !== '' && $name !== 'Myself' && !in_array($name, DASHIT_DEMO_DISTRIBUTORS, true);
+}
+
 /** public_html/catalog, from the web or from the command line (cron). */
 function dashit_catalog_dir(): string
 {
@@ -66,6 +79,9 @@ function dashit_catalog_entry(array $document): array
             $entry[$name] = dashit_firestore_plain($fields[$name]);
         }
     }
+    // The shops list the owner's own stock first. Only this flag is public,
+    // never who the distributor is.
+    if (dashit_catalog_supplied($fields)) $entry['supplied'] = true;
     $entry['updatedAt'] = $updated;
     return $entry;
 }
@@ -124,7 +140,7 @@ function dashit_catalog_everything(array $account): ?array
         $endpoint = dashit_firestore_endpoint($account, 'products');
         if ($endpoint === null) return null;
         $url = $endpoint[0] . '?pageSize=300' . ($pageToken !== '' ? '&pageToken=' . rawurlencode($pageToken) : '');
-        foreach (array_merge(['updatedAt', 'active'], DASHIT_CATALOG_FIELDS) as $field) {
+        foreach (array_merge(['updatedAt', 'active', 'distributor'], DASHIT_CATALOG_FIELDS) as $field) {
             $url .= '&mask.fieldPaths=' . rawurlencode($field);
         }
         [$status, $reply] = dashit_firestore_request('GET', $url, $endpoint[1]);
