@@ -1,27 +1,27 @@
 # Graph Report - Blinkit  (2026-10-08)
 
 ## Corpus Check
-- 611 files · ~3,201,717 words
+- 613 files · ~3,204,057 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5857 nodes · 12225 edges · 342 communities (310 shown, 32 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 501 edges (avg confidence: 0.84)
+- 5875 nodes · 12269 edges · 340 communities (307 shown, 33 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 503 edges (avg confidence: 0.84)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e3f24740`
+- Built from commit: `ecc2d0fa`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- AdminDashboardView
+- View
 - AdminDashboardViewModel
 - db.js
 - pages/index.js
 - CartViewModel.swift
 - _firebase.php
-- MapTracking.jsx
+- track/index.js
 - package.json
 - StorefrontViewModel
 - RemotionDeliveryBadge.jsx
@@ -30,7 +30,7 @@
 - MainActivity
 - build-app.sh
 - gradlew
-- AdminAnalyticsView
+- AnalyticsSummary
 - AnimatedSearchBar.jsx
 - CategoryNavigationTabs.jsx
 - PromoCardsCarousel.jsx
@@ -55,10 +55,10 @@
 - DASHit — Firestore Backend
 - .remember
 - StorefrontScreen.kt
-- DASHitAdminApp.swift
+- HelpSupportView
 - .format
 - shop.js
-- deliveryCharges.js
+- checkout.js
 - CategoryCollageTile
 - ProductPhotoStore
 - AddressSearchView
@@ -79,17 +79,17 @@
 - OnlinePayment
 - ProductDetailSheet
 - OrderStatus
-- process_and_save_catalog_image
+- normalize_to_square
 - OrderRepository
 - VoiceSearchRecognizer
-- normalize_to_square
+- AdminAnalyticsView
 - ShimmerView.swift
 - deliveryEta.js
 - test_motion.js
 - salesAnalytics.js
-- Distributor
+- AdminCSVImportView
 - CouponTicket
-- AddItemsSheet
+- AgeGateSheet
 - AuthView
 - FreeDeliveryCelebration
 - AddressPinPicker
@@ -107,17 +107,17 @@
 - EnrichmentDatabase
 - FirestoreService
 - CandidateSourceCollector
-- Mode
+- ShopRules
 - DecodingKeys
 - shopperAuth.js
 - driver.js
 - DeliveryStage
 - look.py
-- View
+- CheckoutView
 - HapticsManager
 - LiveTrackingMapView
 - orderChange.js
-- useBodyScrollLock
+- ModifyOrderModal.jsx
 - AddressMenuPopup
 - Hashable
 - NSObject
@@ -128,10 +128,10 @@
 - CatalogueFile
 - CheckoutSheet.kt
 - HelpSupportScreen.kt
-- PressableButtonStyle
+- QuantityStepper
 - FirestoreRepository.kt
 - nightCharge.js
-- Outcome
+- AddToOpenFactsSheet
 - DeliveredCelebrationSheet
 - StorefrontSearchView
 - probe.py
@@ -140,7 +140,7 @@
 - Push
 - ScreenshotHooks
 - productCatalog.js
-- checkout.js
+- .path
 - hapticLight
 - English
 - AuthError
@@ -148,25 +148,25 @@
 - OnlinePayment
 - ProfileScreen.kt
 - LiveActivityManager
-- .add
+- CachedAsyncImage
 - Coupon
-- CameraCapture
+- Distributor
 - suggest-store-photos.mjs
 - CurrentLocation
 - DASHit iOS — Native Swift (SwiftUI) Migration Plan & Architecture Blueprint
 - OrderStageIcon
-- LocalStorage
+- AddressBook
 - DecodingKeys
 - AddProductSheetView
 - HapticsManager
 - AddressBook
-- AppleSignInButton.swift
+- DeleteAccountView
 - EnrichmentApiHandler
 - vo_tools.py
 - test-seo-output.mjs
-- PayOption
-- AddToOpenFactsSheet
-- DriverLiveTracking
+- AdminOrderLocationCard
+- OrderDetailSheet
+- Order
 - OrderStageIcon.kt
 - xcyop.js
 - Carry — the three cuts of Pocket Weather Club
@@ -175,7 +175,7 @@
 - DASHit — Driver Fleet Multi-Drop Tracking & Admin CSV Suite Specification
 - CatalogueDerived
 - CategoriesView
-- ObservableObject
+- PressableButtonStyle
 - Tobacco
 - AppDelegate
 - verify_promo.py
@@ -187,16 +187,16 @@
 - darkify.py
 - csvInventory.js
 - gst.js
-- HomeScreenLiveOrderCard.jsx
+- button.jsx
 - UpdateError
-- Quote
+- catalog-starter-csv.mjs
 - build-catalog-index.mjs
 - AdminNotifyView
 - DashitLogo3D.jsx
 - OrderStageAnimation.jsx
-- .scene
+- UIKit
 - MapStyle
-- StartupLocation
+- .listenStoreConfig
 - Dark Mode — Handoff
 - RiderMapMarker
 - CatalogueSync
@@ -206,7 +206,7 @@
 - render.mjs
 - ThemePreference
 - StorefrontSearchField
-- CheckoutViewModel
+- ObservableObject
 - clearing-15s — the one-take dive through scale
 - knockon-15s — the chain-reaction film
 - pith-21s — the window grew out of the terminal
@@ -216,19 +216,19 @@
 - DASHitLiveActivityWidget
 - Shelves
 - one-dot-15s — the concept film
-- AddressSearchModel
+- .body
 - BarcodeCamera
 - Offer
 - clean-photo-index.py
 - validate-seo.mjs
 - extract_all_blinkit_sitemaps.py
-- fetchProducts
+- NotifyCustomersView.jsx
 - PayOption
 - Reading a reference in numbers
-- OrderLocationCard.jsx
+- .decode
 - AuthService
 - generate_splash_screens.py
-- Order
+- fetch_blinkit_photos_live.py
 - Tobacco
 - StoreConfig
 - broad_photo_suggestions.py
@@ -241,11 +241,11 @@
 - CameraBarcodeReader
 - FreeDeliveryStrip
 - ProductPhotoSheets.jsx
-- track/index.js
+- match-store-photos.mjs
 - storage.js
 - OrderProcessingView.jsx
-- ShopRules
-- FirebaseManager.swift
+- AnalyticsRange
+- State
 - String
 - DASHit Agent Instructions
 - android-compose/gradlew
@@ -260,7 +260,7 @@
 - unbroken 15s
 - catalogueFile.js
 - apply-shelf-fixes.mjs
-- OrderStatus
+- suggest-shelves-by-brand.mjs
 - obfuscate_filenames.py
 - sanitize_catalog.py
 - seed-emulator-admin.mjs
@@ -273,39 +273,37 @@
 - run-antigravity.sh
 - sync-and-push.sh
 - TabBarVisibility
-- csvExport.js
-- .checkCurrentSession
-- CameraPreviewController
+- PagedProductGrid
+- LocalStorage
+- normaliseName
 - RootView
 - NightCharge
 - @capacitor/status-bar
 - CategoryTabsView
-- AdminSignInView
-- CleanPhotos
+- SoundManager
+- FirestoreService.swift
 - product/index.js
-- DashitApp.kt
-- .loadAddress
+- Decodable
+- AddProductView.jsx
 - clear-photo-links.mjs
 - MainActivity.kt
 - UIColor
 - OnlinePaymentError
 - CatalogEnricherView.jsx
-- State
+- sort-matched-photos.mjs
 - OrderProgressRail
-- FreeDeliveryToast.jsx
+- canvas-confetti
+- @capacitor/cli
 - scripts
 - OrderNotifications
-- SplashLockup
-- DeleteAccountView
-- leaflet
+- react-dom
+- @remotion/player
+- vaul
 - Category
 - AdminSession
-- Kind
 - .dashitCard
-- StoreStatus
+- Foundation
 - OtpCodeBoxes
-- tailwind-merge
-- three
 - generate_app_icons.py
 - @react-three/fiber
 - BklitAreaChart.jsx
@@ -315,7 +313,7 @@
 - build-release.sh
 
 ## God Nodes (most connected - your core abstractions)
-1. `AdminDashboardViewModel` - 116 edges
+1. `AdminDashboardViewModel` - 118 edges
 2. `Keys` - 56 edges
 3. `hapticLight()` - 55 edges
 4. `getDb()` - 54 edges
@@ -327,6 +325,8 @@
 10. `StorefrontHomeView` - 38 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `picked` --calls--> `catalogItem()`  [EXTRACTED]
+  scripts/catalog-starter-csv.mjs → src/lib/productCatalog.js
 - `masterCatalog()` --calls--> `prepareCatalog()`  [EXTRACTED]
   scripts/match-store-photos.mjs → src/lib/productCatalog.js
 - `needPhoto` --calls--> `isAgeRestricted()`  [EXTRACTED]
@@ -335,41 +335,39 @@
   ios-swift/DASHit/Views/Cart/CouponsSheetView.swift → android-compose/app/src/main/kotlin/com/dashit/app/ui/storefront/StorefrontScreen.kt
 - `CheckmarkShape` --implements--> `Shape`  [EXTRACTED]
   ios-swift/DASHit/Views/Orders/DeliveredCelebrationSheet.swift → android-compose/app/src/main/kotlin/com/dashit/app/ui/storefront/StorefrontScreen.kt
-- `Triangle` --implements--> `Shape`  [EXTRACTED]
-  ios-swift/DASHit/Views/Orders/RiderArtwork.swift → android-compose/app/src/main/kotlin/com/dashit/app/ui/storefront/StorefrontScreen.kt
 
 ## Import Cycles
 - None detected.
 
-## Communities (342 total, 32 thin omitted)
+## Communities (340 total, 33 thin omitted)
 
-### Community 0 - "AdminDashboardView"
-Cohesion: 0.09
-Nodes (16): Coupon, .body, AdminDashboardView, .distributorsTabContent, .emptyCount, .metricsStripView, .offersTabContent, .ordersTabContent (+8 more)
+### Community 0 - "View"
+Cohesion: 0.10
+Nodes (17): .body, Coupon, .body, AdminDashboardView, .distributorsTabContent, .emptyCount, .metricsStripView, .offersTabContent (+9 more)
 
 ### Community 1 - "AdminDashboardViewModel"
 Cohesion: 0.05
-Nodes (57): .body, AdminDashboardViewModel, .activeOrdersCount, .approvedDrivers, .bestSellers, .deletedProductIds, .filteredOrders, .filteredProducts (+49 more)
+Nodes (47): AdminDashboardViewModel, .activeOrdersCount, .approvedDrivers, .bestSellers, .deletedProductIds, .filteredOrders, .lowStockCount, .ordersByHourToday (+39 more)
 
 ### Community 2 - "db.js"
-Cohesion: 0.08
-Nodes (62): adjustSingleProductStock(), assignDriver(), broadcastCoupons(), broadcastStoreConfig(), bulkUpdateProductStock(), cancelPlacedOrder(), claimOrder(), clearAllOrders() (+54 more)
+Cohesion: 0.06
+Nodes (78): DistributorsView(), fetchCatalogue(), updateAdminOrderStatus(), watchAllCoupons(), adjustSingleProductStock(), assignDefaultDistributor(), assignDriver(), broadcastCoupons() (+70 more)
 
 ### Community 3 - "pages/index.js"
 Cohesion: 0.06
-Nodes (22): InfoPage(), InfoSection(), BreadcrumbJsonLd(), GroceryStoreJsonLd(), OrganizationJsonLd(), ProductJsonLd(), WebSiteJsonLd(), LaunchBar() (+14 more)
+Nodes (25): InfoPage(), InfoSection(), BreadcrumbJsonLd(), GroceryStoreJsonLd(), OrganizationJsonLd(), ProductJsonLd(), WebSiteJsonLd(), LaunchBar() (+17 more)
 
 ### Community 4 - "CartViewModel.swift"
-Cohesion: 0.11
-Nodes (33): items, applyCoupon(), decrement(), decrementLatest(), increment(), init(), listenToCoupons(), loadOrdersCount() (+25 more)
+Cohesion: 0.05
+Nodes (60): items, applyCoupon(), decrement(), decrementLatest(), increment(), init(), listenToCoupons(), loadOrdersCount() (+52 more)
 
 ### Community 5 - "_firebase.php"
 Cohesion: 0.06
 Nodes (58): dashit_otp_caller(), dashit_otp_config(), dashit_otp_open_ticket(), dashit_otp_secret(), dashit_otp_store(), dashit_otp_ticket(), dashit_catalog_build(), dashit_catalog_changed_since() (+50 more)
 
-### Community 6 - "MapTracking.jsx"
-Cohesion: 0.21
-Nodes (17): MapTracking, ANANTNAG_ROUTE_COORDS, createDashitRiderIcon(), createDestinationIcon(), createStoreIcon(), LiveDeliveryMapPreview(), create3DDestinationIcon(), create3DRiderIcon() (+9 more)
+### Community 6 - "track/index.js"
+Cohesion: 0.15
+Nodes (21): MapTracking, ANANTNAG_ROUTE_COORDS, createDashitRiderIcon(), createDestinationIcon(), createStoreIcon(), LiveDeliveryMapPreview(), create3DDestinationIcon(), create3DRiderIcon() (+13 more)
 
 ### Community 7 - "package.json"
 Cohesion: 0.18
@@ -403,21 +401,21 @@ Nodes (4): ANDROID_HOME, JAVA_HOME, PATH, build-app.sh script
 Cohesion: 0.83
 Nodes (3): gradlew script, die(), warn()
 
-### Community 15 - "AdminAnalyticsView"
-Cohesion: 0.09
-Nodes (33): Calendar, Charts, AdminAnalyticsModel, AdminAnalyticsView, .body, .isWide, .rangePicker, .statColumns (+25 more)
+### Community 15 - "AnalyticsSummary"
+Cohesion: 0.20
+Nodes (15): Calendar, Charts, AdminAnalyticsModel, AnalyticsCalendar, AnalyticsDay, .id, AnalyticsProduct, AnalyticsSummary (+7 more)
 
 ### Community 20 - "auth.js"
-Cohesion: 0.08
-Nodes (48): CookieConsentBanner(), currentUid(), ensureAuthenticatedUid(), fetchAdminOrders(), fetchUserOrderHistory(), readLocal(), submitOrder(), updateAdminOrderStatus() (+40 more)
+Cohesion: 0.10
+Nodes (43): currentUid(), ensureAuthenticatedUid(), fetchAdminOrders(), fetchUserOrderHistory(), readLocal(), submitOrder(), writeLocal(), cacheLocalUser() (+35 more)
 
 ### Community 21 - "SwiftUI"
-Cohesion: 0.07
-Nodes (17): ActivityKit, AVFoundation, Capacitor, Combine, CoreLocation, FirebaseFirestore, Foundation, CatalogSeed (+9 more)
+Cohesion: 0.15
+Nodes (6): AudioToolbox, Combine, CoreLocation, FirebaseCore, FirebaseFirestore, SwiftUI
 
 ### Community 22 - "dependencies"
 Cohesion: 0.05
-Nodes (41): animejs, canvas-confetti, @capacitor/android, @capacitor/app, @capacitor/cli, @capacitor/core, @capacitor/haptics, @capacitor/ios (+33 more)
+Nodes (37): animejs, @capacitor/android, @capacitor/app, @capacitor/core, @capacitor/haptics, @capacitor/ios, @capacitor/local-notifications, @capacitor/splash-screen (+29 more)
 
 ### Community 23 - "📋 Master Client Discovery & Setup Checklist"
 Cohesion: 0.18
@@ -428,8 +426,8 @@ Cohesion: 0.08
 Nodes (26): DashitMotion, ListenerRegistration, StateFlow, State, StoreStatus, isAgeRestricted(), NutritionFact, DocumentSnapshot (+18 more)
 
 ### Community 25 - "productPhotoMatch.js"
-Cohesion: 0.11
-Nodes (40): findInIndianCatalog(), VERIFIED_INDIAN_BARCODES, saveFoundProductPhotos(), classifyCategory(), createRateLimiter(), fetchOffProduct(), getJson(), QUEUES (+32 more)
+Cohesion: 0.09
+Nodes (49): findInIndianCatalog(), VERIFIED_INDIAN_BARCODES, saveFoundProductPhotos(), classifyCategory(), createRateLimiter(), fetchOffProduct(), getJson(), QUEUES (+41 more)
 
 ### Community 26 - "AuthRepository"
 Cohesion: 0.07
@@ -460,16 +458,16 @@ Cohesion: 0.10
 Nodes (41): bearing(), ChangeWindowRow(), destinationMarkerBitmap(), dp(), fetchRoadRoute(), hubMarkerBitmap(), Context, DriverLiveTracking (+33 more)
 
 ### Community 36 - "LiveTrackingViewModel"
-Cohesion: 0.06
-Nodes (40): RoadRouter, CLLocationCoordinate2D, MKMapRect, OnPath, RouteGeometry, CLLocationCoordinate2D, Double, Int (+32 more)
+Cohesion: 0.12
+Nodes (18): LiveTrackingViewModel, .distanceLine, .etaMinutes, .progressPercent, Bool, CLLocationCoordinate2D, Double, DriverLiveTracking (+10 more)
 
 ### Community 37 - "Identifiable"
 Cohesion: 0.08
 Nodes (35): AnyCancellable, Identifiable, CatalogueStore, .searchEntries, CategoryTile, Department, ProductRail, StorefrontViewModel (+27 more)
 
 ### Community 38 - "SplashLockupView"
-Cohesion: 0.18
-Nodes (14): CALayer, CAMediaTimingFunction, CATransform3D, CFTimeInterval, SplashLockupView, .tucked, Bool, CGFloat (+6 more)
+Cohesion: 0.08
+Nodes (26): CALayer, CAMediaTimingFunction, CATransform3D, CFTimeInterval, CLLocationManagerDelegate, .body, SplashLockup, SplashLockupView (+18 more)
 
 ### Community 39 - "DASHit — Firestore Backend"
 Cohesion: 0.22
@@ -483,41 +481,41 @@ Nodes (37): ActionTile(), AddressMenuPopup(), AddressSearchScreen(), iconFor(), 
 Cohesion: 0.10
 Nodes (30): DeliveryEta, Quote, FloatingCartBar(), CartBillBreakdown, CartItem, Modifier, HeroBanner(), Modifier (+22 more)
 
-### Community 42 - "DASHitAdminApp.swift"
-Cohesion: 0.22
-Nodes (9): App, FirebaseCore, DASHitAdminApp, .body, DASHitAdminAppView, Scene, DASHitApp, Bool (+1 more)
+### Community 42 - "HelpSupportView"
+Cohesion: 0.15
+Nodes (16): HelpSupportView, .body, .header, LegalPage, .id, Question, .id, SafariView (+8 more)
 
 ### Community 43 - ".format"
-Cohesion: 0.06
-Nodes (46): AsyncImagePhase, CryptoKit, ImageIO, CurrencyFormatter, Double, Int, String, CachedAsyncImage (+38 more)
+Cohesion: 0.07
+Nodes (30): CurrencyFormatter, Double, Int, String, CartLineRow, CartSheetView, .billCard, .cardShape (+22 more)
 
 ### Community 44 - "shop.js"
 Cohesion: 0.10
-Nodes (27): AppFeatureShowcase(), FEATURES, LiveDeliveryMapPreview, CategoryGridSixPack(), SIX_PACK_CATEGORIES, CATEGORY_STRIP, CategoryScroller(), ProductCardSkeleton() (+19 more)
+Nodes (28): AppFeatureShowcase(), FEATURES, LiveDeliveryMapPreview, CategoryGridSixPack(), SIX_PACK_CATEGORIES, CATEGORY_STRIP, CategoryScroller(), triggerFlyToCart() (+20 more)
 
-### Community 45 - "deliveryCharges.js"
-Cohesion: 0.12
-Nodes (28): ExtraChargeSettings(), QUICK_AMOUNTS, QUICK_NAMES, EMPTY_COUPON, OffersView(), asText(), EXAMPLE_ORDERS, FIELDS (+20 more)
+### Community 45 - "checkout.js"
+Cohesion: 0.09
+Nodes (45): ExtraChargeSettings(), QUICK_AMOUNTS, QUICK_NAMES, EMPTY_COUPON, OffersView(), asText(), EXAMPLE_ORDERS, FIELDS (+37 more)
 
 ### Community 46 - "CategoryCollageTile"
-Cohesion: 0.20
-Nodes (13): CategoryCard, .tileShape, CategoryCollageTile, .collage, .extraCount, .shownCount, .tileShape, CategoryTile (+5 more)
+Cohesion: 0.18
+Nodes (14): CategoryCard, .tileShape, CategoryCollageTile, .body, .collage, .extraCount, .shownCount, .tileShape (+6 more)
 
 ### Community 48 - "ProductPhotoStore"
-Cohesion: 0.11
-Nodes (17): ProductPhotoStore, Bool, CGFloat, Data, Never, String, Task, UIImage (+9 more)
+Cohesion: 0.17
+Nodes (11): ProductPhotoStore, Bool, CGFloat, Never, String, Task, UIImage, URL (+3 more)
 
 ### Community 49 - "AddressSearchView"
-Cohesion: 0.22
-Nodes (12): AddressSearchView, .field, .noResults, .results, PickedPlace, .coordinate, Bool, CLLocationCoordinate2D (+4 more)
+Cohesion: 0.08
+Nodes (27): AnantnagLocality, .coordinate, .id, CLLocationCoordinate2D, Double, String, AddressSearchModel, .localities (+19 more)
 
 ### Community 50 - "AdminHomeView"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (31): AdminHomeView, .bestSellersChart, .body, .chartColumns, .greeting, .greetingText, .hourChart, .isWide (+23 more)
 
 ### Community 51 - "ProfileView"
-Cohesion: 0.08
-Nodes (33): HelpSupportView, .body, .header, LegalPage, .id, Question, .id, SafariView (+25 more)
+Cohesion: 0.14
+Nodes (18): AppearanceSetting, .body, AuthView.Mode, .id, ProfileView, .body, .cardShape, .rowDivider (+10 more)
 
 ### Community 64 - "DASHit — Claude OS & Architecture Constitution"
 Cohesion: 0.18
@@ -557,47 +555,47 @@ Nodes (31): HeaderBackdrop, .body, HomeChromeState, PinnedSearchBackdrop, .body,
 
 ### Community 73 - "Session Handoff & Implementation Status"
 Cohesion: 0.05
-Nodes (39): 0. Where the work stopped (read this first), 0a. Security audit (2026-09-30, after the Blaze upgrade), 1. Backend: Express + Socket.io → Firestore, 1. Overview & Low-Literacy Design, 2. How auth works now, 2. Workflow & Screens, 3. Backend, Admin & Security Rules, 3. What the USER must do (blocked on them, not on you) (+31 more)
+Nodes (40): 0. Where the work stopped (read this first), 0a. Security audit (2026-09-30, after the Blaze upgrade), 1. Backend: Express + Socket.io → Firestore, 1. Overview & Low-Literacy Design, 2. How auth works now, 2. Workflow & Screens, 3. Backend, Admin & Security Rules, 3. What the USER must do (blocked on them, not on you) (+32 more)
 
 ### Community 74 - "seed-firestore.mjs"
 Cohesion: 0.43
 Nodes (6): chunk(), here, loadEnv(), main(), readJson(), root
 
 ### Community 76 - "OnlinePayment"
-Cohesion: 0.10
-Nodes (33): AnyHashable, CheckedContinuation, Decodable, Int32, CreatedOrder, OnlinePayment, .isAvailable, Outcome (+25 more)
+Cohesion: 0.11
+Nodes (27): AnyHashable, CheckedContinuation, Int32, CreatedOrder, OnlinePayment, .isAvailable, Outcome, failed (+19 more)
 
 ### Community 77 - "ProductDetailSheet"
-Cohesion: 0.07
-Nodes (29): AgeGateSheet, .body, Product, Void, TobaccoDeclarationSheet, .body, .body, ProductDetailSheet (+21 more)
+Cohesion: 0.09
+Nodes (22): ProductDetailSheet, .body, .detailsList, .discountPercent, .lineId, .originalPrice, .price, .selectedVariant (+14 more)
 
 ### Community 78 - "OrderStatus"
 Cohesion: 0.10
 Nodes (26): DriverLiveTracking, Order, OrderStatus, CANCELLED, DELIVERED, OUT_FOR_DELIVERY, PACKING, PLACED (+18 more)
 
-### Community 79 - "process_and_save_catalog_image"
-Cohesion: 0.16
-Nodes (16): build_packshot_prompt(), generate_and_assign_ai_packshot(), generate_fallback_studio_packshot(), generate_with_google_imagen(), get_curated_studio_packshot(), Any, Constructs an optimized commercial e-commerce studio packshot prompt., Generates a commercial-grade 1024x1024 studio packshot on seamless pure white… (+8 more)
+### Community 79 - "normalize_to_square"
+Cohesion: 0.10
+Nodes (29): build_packshot_prompt(), generate_and_assign_ai_packshot(), generate_fallback_studio_packshot(), generate_with_google_imagen(), get_curated_studio_packshot(), Any, Constructs an optimized commercial e-commerce studio packshot prompt., Generates a commercial-grade 1024x1024 studio packshot on seamless pure white… (+21 more)
 
 ### Community 80 - "OrderRepository"
 Cohesion: 0.12
 Nodes (18): AlreadyPaid, CartItem, Context, DocumentSnapshot, DriverLiveTracking, Exception, ListenerRegistration, Order (+10 more)
 
 ### Community 81 - "VoiceSearchRecognizer"
-Cohesion: 0.11
-Nodes (21): AVAudioPCMBuffer, Phase, denied, finished, idle, listening, unavailable, Bool (+13 more)
+Cohesion: 0.14
+Nodes (16): AVAudioPCMBuffer, Bool, CGFloat, String, TimeInterval, Timer, Void, VoiceSearchRecognizer (+8 more)
 
-### Community 82 - "normalize_to_square"
-Cohesion: 0.13
-Nodes (22): build_packshot_library(), Build script for DASHit Curated Master FMCG Asset Bank. Downloads source…, compile_all(), Compiles and bundles photos for ALL products in DASHit directly inside the app.…, get_rembg_session(), normalize_to_square(), Image, Image Normalization, Background Cleanup, and Standardized Multi-Resolution WebP… (+14 more)
+### Community 82 - "AdminAnalyticsView"
+Cohesion: 0.23
+Nodes (8): AdminAnalyticsView, .body, .isWide, .rangePicker, .statColumns, Bool, GridItem, String
 
 ### Community 83 - "ShimmerView.swift"
-Cohesion: 0.15
-Nodes (22): CategorySidebarSkeleton, .body, HomeFeedSkeleton, .body, OrderListSkeleton, .body, ProductCardSkeleton, .body (+14 more)
+Cohesion: 0.16
+Nodes (21): CategorySidebarSkeleton, .body, HomeFeedSkeleton, .body, OrderListSkeleton, .body, ProductCardSkeleton, .body (+13 more)
 
 ### Community 84 - "deliveryEta.js"
-Cohesion: 0.11
-Nodes (26): DeliveryAreaCheck(), saveAddress(), ALIAS_PRESETS, HUB_POS, InteractiveMapModal(), MapWithPin, POPULAR_AREAS, LocationPickerModal() (+18 more)
+Cohesion: 0.07
+Nodes (35): orderDistanceKm(), OrderLocationCard(), OrderLocationMap, doorIcon, storeIcon, AppHeader(), DeliveryAreaCheck(), saveAddress() (+27 more)
 
 ### Community 85 - "test_motion.js"
 Cohesion: 0.06
@@ -607,17 +605,17 @@ Nodes (26): [ax, ay], badEnds, [bx, by], c2, calls(), card, curves, g1 (+18 more
 Cohesion: 0.16
 Nodes (31): AnalyticsView(), dayLabel(), hourLabel(), inr(), RANGES, shortInr(), fetchAllOrders(), add() (+23 more)
 
-### Community 87 - "Distributor"
-Cohesion: 0.09
-Nodes (21): Distributor, .isReal, .isSelf, Bool, Decoder, Set, String, AdminCSVImportView (+13 more)
+### Community 87 - "AdminCSVImportView"
+Cohesion: 0.15
+Nodes (14): AdminCSVImportView, .aiPromptCard, .body, .chooser, .isPresentingSomething, StockSourceSheetView, .body, .canContinue (+6 more)
 
 ### Community 88 - "CouponTicket"
 Cohesion: 0.09
 Nodes (27): InsettableShape, CouponsSheetView, .bestCode, .body, .codeField, .orderedCoupons, .subtotal, CouponTicket (+19 more)
 
-### Community 89 - "AddItemsSheet"
-Cohesion: 0.10
-Nodes (26): AddableLine, .name, .originalPrice, .price, .unit, AddItemsSheet, .addedCount, .aisleChips (+18 more)
+### Community 89 - "AgeGateSheet"
+Cohesion: 0.12
+Nodes (18): .imageWell, AgeGateSheet, .body, Product, Void, TobaccoDeclarationSheet, .body, .body (+10 more)
 
 ### Community 90 - "AuthView"
 Cohesion: 0.11
@@ -628,16 +626,16 @@ Cohesion: 0.18
 Nodes (12): FreeDeliveryCelebration, .interfaceStyle, FreeDeliveryToast, .body, FreeDeliveryToastModel, FreeDeliveryToastOverlay, .body, Never (+4 more)
 
 ### Community 92 - "AddressPinPicker"
-Cohesion: 0.14
-Nodes (18): .body, AddressPinPicker, .body, .canSave, .centrePin, .form, .map, .quote (+10 more)
+Cohesion: 0.10
+Nodes (22): LocationProvider, CLLocation, CLLocationCoordinate2D, CLLocationManager, Error, AddressPinPicker, .body, .canSave (+14 more)
 
 ### Community 93 - ".dismiss"
-Cohesion: 0.09
-Nodes (22): Driver, Any, Bool, String, Any, .body, .body, .ridersTabContent (+14 more)
+Cohesion: 0.10
+Nodes (24): List, Driver, Any, Bool, String, .body, .body, .ridersTabContent (+16 more)
 
 ### Community 94 - "ProductCardView"
-Cohesion: 0.07
-Nodes (27): PagedProductGrid, .body, .pageSize, GridItem, Int, Product, String, ProductCardView (+19 more)
+Cohesion: 0.13
+Nodes (15): ProductCardView, .ageTag, .body, .discountTag, .hasVariants, .tileShape, Bool, Product (+7 more)
 
 ### Community 95 - "CatalogEnrichmentPipeline"
 Cohesion: 0.09
@@ -648,12 +646,12 @@ Cohesion: 0.19
 Nodes (14): DeliveryAddress, AddressPinPicker(), MapListener, CentrePin(), dot(), FormField(), android, ImageVector (+6 more)
 
 ### Community 97 - "String"
-Cohesion: 0.10
-Nodes (23): CSVStockImport, Item, .currentStock, .hasNewPhoto, .isNew, .shownPrice, Mode, add (+15 more)
+Cohesion: 0.09
+Nodes (27): CSVStockImport, Item, .currentStock, .hasNewPhoto, .isNew, .shownPrice, Mode, add (+19 more)
 
 ### Community 98 - "BlinkitClient"
-Cohesion: 0.10
-Nodes (19): BlinkitClient, Searches for products by keyword on Blinkit., Fetches all grocery categories and collection UUIDs from the homepage feed., Fetches products for a specific category collection., Extracts and normalizes product items from Blinkit snippet response., Transforms a Grofers/Blinkit CDN image URL into high-resolution studio packshot., Downloads raw bytes and PIL Image for a product URL., Client for interacting with Blinkit web & CDN endpoints. (+11 more)
+Cohesion: 0.11
+Nodes (19): BlinkitClient, extract_all_categories(), extract_app_catalog(), main(), Searches for products by keyword on Blinkit., Fetches all grocery categories and collection UUIDs from the homepage feed., Fetches products for a specific category collection., Extracts and normalizes product items from Blinkit snippet response. (+11 more)
 
 ### Community 99 - "DASHitLiveActivityWidget.swift"
 Cohesion: 0.13
@@ -664,8 +662,8 @@ Cohesion: 0.14
 Nodes (21): air(), bp(), bubble(), demo(), glass(), hp(), impulse(), lp() (+13 more)
 
 ### Community 101 - "search.js"
-Cohesion: 0.10
-Nodes (34): CartDrawerSheet(), nextAttempt(), ProductImage(), QuickProductSheet(), TobaccoSearchBanner(), EmptyCartState(), EmptySearchState(), SUGGESTED_SEARCH_CHIPS (+26 more)
+Cohesion: 0.08
+Nodes (39): AppHomeScreenMock(), CATEGORY_RAIL, ESSENTIAL_RAILS, CartDrawerSheet(), FlyingBadgeOverlay(), LoginProductMarquee(), ROW1, ROW2 (+31 more)
 
 ### Community 102 - "InterviewComposition.tsx"
 Cohesion: 0.10
@@ -673,35 +671,35 @@ Nodes (15): CinematicOverlay(), ExpressDeliveryBadge(), FounderCard(), GroceryPo
 
 ### Community 103 - "AdminTab"
 Cohesion: 0.07
-Nodes (30): CaseIterable, AdminSortOption, distributorAsc, distributorDesc, .id, nameAsc, noPhotoFirst, stockAsc (+22 more)
+Nodes (31): CaseIterable, AdminSortOption, distributorAsc, distributorDesc, .id, nameAsc, noPhotoFirst, stockAsc (+23 more)
 
 ### Community 104 - "EnrichmentDatabase"
 Cohesion: 0.16
 Nodes (7): Connection, EnrichmentDatabase, Any, Look up previously verified product to avoid redundant processing., Saves or updates enriched product in persistent catalog., SQLite-backed persistent catalog, candidate registry, and caching engine., Recounts status numbers for a job from actual items and updates job record.
 
 ### Community 105 - "FirestoreService"
-Cohesion: 0.11
-Nodes (16): FirestoreService, Any, Bool, Category, Double, DriverLiveTracking, ListenerRegistration, NightCharge (+8 more)
+Cohesion: 0.18
+Nodes (8): FirestoreService, Any, Double, Order, String, UserProfile, .fields, patch
 
 ### Community 106 - "CandidateSourceCollector"
 Cohesion: 0.10
 Nodes (16): CandidateSourceCollector, _fetch_json(), _is_safe_url(), MasterAssetBankRegistry, Any, Path, _rate_limit(), Multi-Source Candidate Image & Metadata Retrieval for DASHit. Source Priority:… (+8 more)
 
-### Community 107 - "Mode"
-Cohesion: 0.17
-Nodes (15): Equatable, FuelCost, Mode, auto, .id, off, on, .title (+7 more)
+### Community 107 - "ShopRules"
+Cohesion: 0.05
+Nodes (45): Equatable, DeliveryEta, Quote, .distanceText, .shortDistanceText, Bool, CLLocationCoordinate2D, Double (+37 more)
 
 ### Community 108 - "DecodingKeys"
 Cohesion: 0.07
 Nodes (27): DecodingKeys, ageRestricted, badge, barcode, cat, category, distributor, id (+19 more)
 
 ### Community 109 - "shopperAuth.js"
-Cohesion: 0.19
-Nodes (20): CheckoutLoginModal(), checkPaid(), loadScript(), payOnline(), post(), wait(), API_ORIGIN, cleanMobile() (+12 more)
+Cohesion: 0.18
+Nodes (21): CheckoutLoginModal(), checkPaid(), loadScript(), payOnline(), post(), wait(), API_ORIGIN, cleanMobile() (+13 more)
 
 ### Community 110 - "driver.js"
 Cohesion: 0.17
-Nodes (14): getDriverStatus(), watchDriverOrders(), DRIVER_LANGUAGES, DRIVER_STRINGS, ANANTNAG_LOCALITIES, releaseScreenWakeLock(), requestScreenWakeLock(), areaOf() (+6 more)
+Nodes (14): pushDriverTelemetryToQueue(), watchDriverOrders(), DRIVER_LANGUAGES, DRIVER_STRINGS, ANANTNAG_LOCALITIES, releaseScreenWakeLock(), requestScreenWakeLock(), areaOf() (+6 more)
 
 ### Community 111 - "DeliveryStage"
 Cohesion: 0.15
@@ -711,25 +709,25 @@ Nodes (21): ActivityAttributes, ContentState, .isAwaitingPickup, .stage, DASHitO
 Cohesion: 0.19
 Nodes (24): build_faces(), check(), cmd_apply(), cmd_check(), cmd_from_shot(), cmd_list(), cmd_sheet(), comp_chars() (+16 more)
 
-### Community 113 - "View"
-Cohesion: 0.08
-Nodes (30): CheckoutView, .belowMinimum, .body, .nightChargeNote, .payDivider, .paymentSection, Bool, Content (+22 more)
+### Community 113 - "CheckoutView"
+Cohesion: 0.25
+Nodes (9): CheckoutView, .belowMinimum, .nightChargeNote, .payDivider, .paymentSection, Bool, Content, PayOption (+1 more)
 
 ### Community 114 - "HapticsManager"
 Cohesion: 0.13
 Nodes (7): CHHapticEngine, CHHapticEvent, CoreHaptics, HapticsManager, Bool, Float, TimeInterval
 
 ### Community 115 - "LiveTrackingMapView"
-Cohesion: 0.11
-Nodes (22): BrandMapMarker, .body, DeliveryCodeRow, .body, LiveTrackingMapView, .body, .map, .mapScreen (+14 more)
+Cohesion: 0.16
+Nodes (16): BrandMapMarker, .body, DeliveryCodeRow, .body, LiveTrackingMapView, .body, .mapScreen, .shownOrder (+8 more)
 
 ### Community 116 - "orderChange.js"
 Cohesion: 0.15
 Nodes (24): addItemsToOrder(), adoptReplacementOrder(), billForChangedOrder(), buildReplacementOrder(), CARRIED_FIELDS, couponDiscount(), deliveryFeeParts(), idOf() (+16 more)
 
-### Community 117 - "useBodyScrollLock"
-Cohesion: 0.24
-Nodes (9): LocationPermissionModal(), PAYMENT_METHODS, PaymentMethodModal(), DECLARATIONS, TobaccoDeclarationSheet(), DraggableSheet(), lockBodyScroll(), unlockBodyScroll() (+1 more)
+### Community 117 - "ModifyOrderModal.jsx"
+Cohesion: 0.13
+Nodes (20): CouponsDrawer(), waivesDelivery(), LocationPermissionModal(), clock(), idOf(), ModifyOrderModal(), qtyOf(), rupees() (+12 more)
 
 ### Community 118 - "AddressMenuPopup"
 Cohesion: 0.17
@@ -745,15 +743,15 @@ Nodes (10): FirebaseMessaging, ForegroundPresenter, Void, PushAppDelegate, NSObj
 
 ### Community 121 - "ActiveOrderStore"
 Cohesion: 0.18
-Nodes (8): .body, String, ActiveOrderStore, Bool, DriverLiveTracking, ListenerRegistration, Order, String
+Nodes (7): String, ActiveOrderStore, Bool, DriverLiveTracking, ListenerRegistration, Order, String
 
 ### Community 122 - "Field"
 Cohesion: 0.10
-Nodes (20): CleanPhotos, .savedFile, List, Data, Int, MainActor, Set, String (+12 more)
+Nodes (18): CleanPhotos, .savedFile, Data, Int, MainActor, Set, String, URL (+10 more)
 
 ### Community 123 - "apply-photo-suggestions.mjs"
-Cohesion: 0.38
-Nodes (10): BLACKLIST_PATTERNS, cleanName(), DRY_RUN, getAccessToken(), isBlacklisted(), main(), add(), norm() (+2 more)
+Cohesion: 0.33
+Nodes (11): BLACKLIST_PATTERNS, cleanName(), DRY_RUN, getAccessToken(), isBlacklisted(), main(), add(), norm() (+3 more)
 
 ### Community 124 - "restore-photos-from-catalog.mjs"
 Cohesion: 0.18
@@ -771,29 +769,29 @@ Nodes (19): AddressCard(), AppLogo(), CheckoutSheet(), findActivity(), Guarantee
 Cohesion: 0.19
 Nodes (11): Context, Order, OrderNotifications, ContactRow(), HelpSupportScreen(), Color, Context, ImageVector (+3 more)
 
-### Community 128 - "PressableButtonStyle"
-Cohesion: 0.08
-Nodes (26): ButtonStyle, .pressable, PressableButtonStyle, CGFloat, Font, .topBar, .body, .trailing (+18 more)
+### Community 128 - "QuantityStepper"
+Cohesion: 0.12
+Nodes (17): Font, QuantityStepper, .body, .glyphWidth, .height, .labelFont, .shape, .width (+9 more)
 
 ### Community 129 - "FirestoreRepository.kt"
-Cohesion: 0.08
-Nodes (22): productImageUrl(), shopCategory(), Context, ProductPhotos, SmallerOpenFoodFactsPhotos, CatalogueFile, JSONObject, plain() (+14 more)
+Cohesion: 0.05
+Nodes (29): DashitApp, CleanPhotos, Context, StateFlow, productImageUrl(), shopCategory(), Context, ProductPhotos (+21 more)
 
 ### Community 130 - "nightCharge.js"
-Cohesion: 0.19
-Nodes (19): DeliveryChargeSettings(), EXAMPLE_KM, MODE_SAVED, MODES, FUEL_DEFAULTS, fuelCostFor(), fuelSettings(), isNightChargeOn() (+11 more)
+Cohesion: 0.12
+Nodes (29): DeliveryChargeSettings(), EXAMPLE_KM, MODE_SAVED, MODES, RefreshWebsiteCard(), when(), StoreControlsView(), BUSY_PATHS (+21 more)
 
-### Community 131 - "Outcome"
-Cohesion: 0.17
-Nodes (14): product, Outcome, busy, found, notAPackBarcode, notFound, offline, .pack (+6 more)
+### Community 131 - "AddToOpenFactsSheet"
+Cohesion: 0.05
+Nodes (47): Failure, .errorDescription, Kind, beauty, food, .id, product, .site (+39 more)
 
 ### Community 132 - "DeliveredCelebrationSheet"
 Cohesion: 0.13
 Nodes (18): CheckmarkShape, ConfettiBurst, .body, DeliveredCelebrationSheet, .body, .emblem, .units, Piece (+10 more)
 
 ### Community 133 - "StorefrontSearchView"
-Cohesion: 0.15
-Nodes (21): StorefrontSearchView, .body, .idle, .isShowingResults, .results, .searchBar, .suggestions, .tobaccoList (+13 more)
+Cohesion: 0.24
+Nodes (14): StorefrontSearchView, .idle, .isShowingResults, .results, .searchBar, .suggestions, .tobaccoList, .trimmedQuery (+6 more)
 
 ### Community 134 - "probe.py"
 Cohesion: 0.19
@@ -804,8 +802,8 @@ Cohesion: 0.12
 Nodes (18): CodingKey, DecodingKeys, createdAt, defaultAddress, displayName, email, id, lastLoginAt (+10 more)
 
 ### Community 136 - "cn"
-Cohesion: 0.18
-Nodes (14): react, react, Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle (+6 more)
+Cohesion: 0.15
+Nodes (16): react, react, Badge(), badgeVariants, Card, CardContent, CardDescription, CardFooter (+8 more)
 
 ### Community 137 - "Push"
 Cohesion: 0.20
@@ -816,24 +814,24 @@ Cohesion: 0.10
 Nodes (20): ScreenshotHooks, .adminDemo, .adminOpenOrder, .adminTab, .demoCart, .demoOrder, .demoOrderPacking, .demoOrderPlaced (+12 more)
 
 ### Community 139 - "productCatalog.js"
-Cohesion: 0.09
-Nodes (46): args, catalog, FILE, picked, ROOT, shelf, cleanNameWithoutUnit(), escapeCsvField() (+38 more)
+Cohesion: 0.22
+Nodes (19): CATALOG_URL, catalogItem(), describedBy(), describingWords(), fillFromCatalog(), guessFromCatalog(), KIND_WORDS, nameNumbers() (+11 more)
 
-### Community 140 - "checkout.js"
-Cohesion: 0.19
-Nodes (18): FloatingDeliveryBanner(), isSoldOut(), hapticOrderPlaced(), showOrderPlacedNotification(), hasLiveSession(), isCodAllowedAtNight(), isCodEnabled(), useStoreConfig() (+10 more)
+### Community 140 - ".path"
+Cohesion: 0.25
+Nodes (8): RoadRouter, CLLocationCoordinate2D, MKMapRect, OnPath, RouteGeometry, CLLocationCoordinate2D, Double, Int
 
 ### Community 141 - "hapticLight"
-Cohesion: 0.08
-Nodes (44): AppearanceSetting(), OPTIONS, BottomNav(), NAV_ITEMS, STOREFRONT_TABS, CancelOrderModal(), CouponsDrawer(), waivesDelivery() (+36 more)
+Cohesion: 0.07
+Nodes (45): AnimatedCounter(), BottomNav(), NAV_ITEMS, STOREFRONT_TABS, CancelOrderModal(), DashitAnimatedLogo(), EMPTY_CART, FloatingCartBar() (+37 more)
 
 ### Community 142 - "English"
 Cohesion: 0.11
 Nodes (18): Continuity is measured, not hoped for, English, 🌟 Films made with it, How a film is made, 📦 Installation, License, onetake 不一样：每个画面都被"接住", The problem: motion that falls apart (+10 more)
 
 ### Community 143 - "AuthError"
-Cohesion: 0.13
-Nodes (12): FirebaseAuth, AuthError, endpointMissing, .errorDescription, invalidMobile, missingName, network, notSignedIn (+4 more)
+Cohesion: 0.12
+Nodes (13): FirebaseAuth, AuthError, endpointMissing, .errorDescription, invalidMobile, missingName, network, notSignedIn (+5 more)
 
 ### Community 144 - "OrderStatusPill"
 Cohesion: 0.11
@@ -851,17 +849,17 @@ Nodes (16): UserProfile, CancelOrderSheet(), IosActionSheet(), Color, SheetActio
 Cohesion: 0.24
 Nodes (8): LiveActivityManager, Activity, Bool, Date, DriverLiveTracking, Int, Order, String
 
-### Community 148 - ".add"
-Cohesion: 0.31
-Nodes (9): Failure, .errorDescription, OpenFactsUpload, Any, Data, Int, String, UIImage (+1 more)
+### Community 148 - "CachedAsyncImage"
+Cohesion: 0.19
+Nodes (16): AsyncImagePhase, CryptoKit, ImageIO, CachedAsyncImage, .body, Content, .body, .body (+8 more)
 
 ### Community 149 - "Coupon"
 Cohesion: 0.20
 Nodes (14): CartBillBreakdown, .freeDeliveryThreshold, .handlingFeeAmount, .minOrderValue, .standardDeliveryFee, CartItem, .quantity, Coupon (+6 more)
 
-### Community 150 - "CameraCapture"
-Cohesion: 0.22
-Nodes (9): CameraCapture, Coordinator, Any, Context, UIImage, Void, UIImagePickerController, UIImagePickerControllerDelegate (+1 more)
+### Community 150 - "Distributor"
+Cohesion: 0.15
+Nodes (11): Distributor, .isReal, .isSelf, Bool, Decoder, Set, String, .filteredProducts (+3 more)
 
 ### Community 151 - "suggest-store-photos.mjs"
 Cohesion: 0.15
@@ -879,17 +877,17 @@ Nodes (15): 1. Executive Summary & Objective, 2. Shared Backend & Data Contract 
 Cohesion: 0.23
 Nodes (9): GraphicsContext, Ease, Kind, packing, received, OrderStageIcon, .body, Color (+1 more)
 
-### Community 155 - "LocalStorage"
-Cohesion: 0.15
-Nodes (7): LocalStorage, CartItem, DeliveryAddress, AddressBook, Bool, DeliveryAddress, String
+### Community 155 - "AddressBook"
+Cohesion: 0.26
+Nodes (5): DeliveryAddress, AddressBook, Bool, DeliveryAddress, String
 
 ### Community 156 - "DecodingKeys"
 Cohesion: 0.12
 Nodes (16): DecodingKeys, barcode, cat, category, id, image, img, maxQuantity (+8 more)
 
 ### Community 157 - "AddProductSheetView"
-Cohesion: 0.18
-Nodes (13): AddProductSheetView, .body, .canSave, .existingItem, .photoPrompt, .priceValue, .addProductDirectContent, .progressHeader (+5 more)
+Cohesion: 0.16
+Nodes (14): AddProductSheetView, .body, .canSave, .existingItem, .photoPrompt, .priceValue, .addProductDirectContent, .stockTabContent (+6 more)
 
 ### Community 158 - "HapticsManager"
 Cohesion: 0.20
@@ -899,9 +897,9 @@ Nodes (11): HapticsManager, Context, View, BottomNavBar(), getTabIcons(), ImageV
 Cohesion: 0.31
 Nodes (5): AddressBook, Context, DeliveryAddress, JSONObject, StateFlow
 
-### Community 160 - "AppleSignInButton.swift"
-Cohesion: 0.27
-Nodes (10): AuthenticationServices, AppleNonce, AppleRevokeButton, .body, AppleSignInButton, .body, Int, String (+2 more)
+### Community 160 - "DeleteAccountView"
+Cohesion: 0.11
+Nodes (17): AuthenticationServices, AppleNonce, AppleRevokeButton, .body, AppleSignInButton, .body, Int, String (+9 more)
 
 ### Community 161 - "EnrichmentApiHandler"
 Cohesion: 0.17
@@ -915,25 +913,25 @@ Nodes (14): chunks(), clauses(), cmd_plan(), cmd_subs(), cmd_tts(), cmd_words(),
 Cohesion: 0.15
 Nodes (11): delHtml, __dirname, __filename, helpHtml, homeHtml, OUT, privHtml, robots (+3 more)
 
-### Community 164 - "PayOption"
-Cohesion: 0.25
-Nodes (7): PayOption, .all, .checkoutConfig, .installedUpiApps, .logo, Any, String
+### Community 164 - "AdminOrderLocationCard"
+Cohesion: 0.16
+Nodes (14): AdminOrderLocationCard, .body, .destination, .distanceKm, .isFar, .region, Bool, CLLocationCoordinate2D (+6 more)
 
-### Community 165 - "AddToOpenFactsSheet"
-Cohesion: 0.23
-Nodes (8): Login, OpenFactsAccount, AddToOpenFactsSheet, .body, .canAdd, Bool, PhotosPickerItem, String
+### Community 165 - "OrderDetailSheet"
+Cohesion: 0.20
+Nodes (11): OrderDetailSheet, .body, .cardShape, .handlingCharge, .stage, Content, Double, Order (+3 more)
 
-### Community 166 - "DriverLiveTracking"
-Cohesion: 0.24
-Nodes (9): DriverLiveTracking, .coordinate, OrderLocation, .deliveryAddress, CartItem, CLLocationCoordinate2D, Decoder, DeliveryAddress (+1 more)
+### Community 166 - "Order"
+Cohesion: 0.09
+Nodes (30): DriverLiveTracking, .coordinate, Order, .baseDeliveryFee, .cancelledByCustomer, .isAwaitingPickup, .isPaidOnline, .modifyWindowEnd (+22 more)
 
 ### Community 167 - "OrderStageIcon.kt"
 Cohesion: 0.32
 Nodes (13): drawPacking(), drawReceived(), easeInOut(), easeOut(), easeOutBack(), Modifier, Offset, OrderStageIcon() (+5 more)
 
 ### Community 168 - "xcyop.js"
-Cohesion: 0.06
-Nodes (34): AdminLayout(), BatchInwardView(), DriversView(), ImporterView(), LiveDeliveriesPanel(), PhotoReviewView(), PhotoSearchStatus(), PhotoResultsSheet() (+26 more)
+Cohesion: 0.09
+Nodes (23): AdminLayout(), BatchInwardView(), ImporterView(), LiveDeliveriesPanel(), ShelfFixView(), BarcodeScannerView(), playBeepSound(), ErrorBoundary (+15 more)
 
 ### Community 169 - "Carry — the three cuts of Pocket Weather Club"
 Cohesion: 0.14
@@ -959,9 +957,9 @@ Nodes (12): CatalogueDerive, CatalogueDerived, Bool, Category, CategoryTile, Dep
 Cohesion: 0.14
 Nodes (20): CategoriesView, .departments, .emptyShelf, .isLoadingCatalogue, .productPane, .products, .selectedDepartment, .selectedTile (+12 more)
 
-### Community 175 - "ObservableObject"
-Cohesion: 0.11
-Nodes (13): Animation, AppReveal, .canPlay, Bool, Set, View, LocationProvider, CLLocation (+5 more)
+### Community 175 - "PressableButtonStyle"
+Cohesion: 0.12
+Nodes (15): Animation, AppReveal, .canPlay, ButtonStyle, .pressable, PressableButtonStyle, Bool, CGFloat (+7 more)
 
 ### Community 176 - "Tobacco"
 Cohesion: 0.36
@@ -1000,24 +998,24 @@ Cohesion: 0.29
 Nodes (11): family(), in_scope(), main(), map_utility(), process_file(), process_literal(), Map a bare utility (no variant prefix) to its dark counterpart., Return the rewritten class-list body, plus the additions made. (+3 more)
 
 ### Community 185 - "csvInventory.js"
-Cohesion: 0.07
-Nodes (36): catalog, found, masterCatalog(), matched, missing, needPhoto, photoCsv(), unmatched (+28 more)
+Cohesion: 0.11
+Nodes (27): CsvInventoryView(), FILTERS, ImportRow, nextFrame(), readLastSource(), rememberSource(), AI_IMPORT_PROMPT, buildImportPlan() (+19 more)
 
 ### Community 186 - "gst.js"
-Cohesion: 0.23
-Nodes (14): GstSalesReportModal(), money(), numberToWords(), OrderInvoiceContent(), PrintGstTaxInvoice(), StatementContent(), computeAggregatedGstReport(), computeOrderGst() (+6 more)
+Cohesion: 0.24
+Nodes (13): GstSalesReportModal(), money(), numberToWords(), OrderInvoiceContent(), PrintGstTaxInvoice(), StatementContent(), computeAggregatedGstReport(), computeOrderGst() (+5 more)
 
-### Community 187 - "HomeScreenLiveOrderCard.jsx"
-Cohesion: 0.21
-Nodes (7): DashitAnimatedLogo(), HomeScreenLiveOrderCard(), Badge(), badgeVariants, Button, buttonSizes, buttonVariants
+### Community 187 - "button.jsx"
+Cohesion: 0.50
+Nodes (3): Button, buttonSizes, buttonVariants
 
 ### Community 188 - "UpdateError"
-Cohesion: 0.14
+Cohesion: 0.13
 Nodes (12): OrderUpdater, CartItem, Order, String, UpdateError, alreadyPaid, .errorDescription, network (+4 more)
 
-### Community 189 - "Quote"
-Cohesion: 0.27
-Nodes (9): DeliveryEta, Quote, .distanceText, .shortDistanceText, Bool, CLLocationCoordinate2D, Double, Int (+1 more)
+### Community 189 - "catalog-starter-csv.mjs"
+Cohesion: 0.21
+Nodes (11): args, catalog, FILE, picked, ROOT, shelf, CatalogPickerView(), catalogStarterCsv() (+3 more)
 
 ### Community 190 - "build-catalog-index.mjs"
 Cohesion: 0.27
@@ -1035,29 +1033,29 @@ Nodes (6): DashitLogo3D(), DASHIT_MARK_SVG, MARK_NAVY, MARK_ORANGE, hasWebGL(), 
 Cohesion: 0.40
 Nodes (10): drawPacking(), drawReceived(), drawTrimmedLine(), drawTrimmedPolyline(), easeInOut(), easeOut(), easeOutBack(), OrderStageAnimation() (+2 more)
 
-### Community 194 - ".scene"
-Cohesion: 0.17
-Nodes (11): CAPBridgeViewController, MainViewController, SceneDelegate, Set, UIScene, UISceneSession, UIWindow, NSUserActivity (+3 more)
+### Community 194 - "UIKit"
+Cohesion: 0.13
+Nodes (13): Capacitor, CAPBridgeViewController, MainViewController, SceneDelegate, Set, UIScene, UISceneSession, UIWindow (+5 more)
 
 ### Community 195 - "MapStyle"
 Cohesion: 0.36
 Nodes (5): Context, MapView, MapStyle, Configuration, View
 
-### Community 196 - "StartupLocation"
-Cohesion: 0.33
-Nodes (5): CLLocationManagerDelegate, StartupLocation, CLLocation, CLLocationManager, Error
+### Community 196 - ".listenStoreConfig"
+Cohesion: 0.19
+Nodes (8): Bool, Category, DriverLiveTracking, ListenerRegistration, NightCharge, Offer, ShopRules, Void
 
 ### Community 197 - "Dark Mode — Handoff"
 Cohesion: 0.20
 Nodes (9): 1. What already exists, 2. What was done, 3. Project constraints you must respect, 4. Commands, Bulk styling (applied and corrected), Dark Mode — Handoff, Still open, Theme engine (done, verified working) (+1 more)
 
 ### Community 198 - "RiderMapMarker"
-Cohesion: 0.27
-Nodes (8): RiderArtwork, RiderMapMarker, .body, .spriteName, CLLocationCoordinate2D, Double, DriverLiveTracking, String
+Cohesion: 0.16
+Nodes (14): .map, DestinationMapMarker, .body, RiderArtwork, RiderMapMarker, .body, .spriteName, CGRect (+6 more)
 
 ### Community 199 - "CatalogueSync"
-Cohesion: 0.16
-Nodes (13): CatalogueSync, .canFetchChangesOnly, .minimumExpectedCount, .syncedAt, DeferredListener, .inner, OrderWriteError, .errorDescription (+5 more)
+Cohesion: 0.27
+Nodes (8): CatalogueSync, .canFetchChangesOnly, .minimumExpectedCount, .syncedAt, Date, Int, Product, TimeInterval
 
 ### Community 200 - "suggest-shelves.mjs"
 Cohesion: 0.29
@@ -1083,9 +1081,9 @@ Nodes (6): Context, Mode, DARK, LIGHT, SYSTEM, ThemePreference
 Cohesion: 0.21
 Nodes (11): FocusState, StorefrontSearchField, .body, .fieldShape, .hint, .searchIcon, Binding, Bool (+3 more)
 
-### Community 206 - "CheckoutViewModel"
-Cohesion: 0.10
-Nodes (16): AVAudioPlayer, SoundManager, CheckoutViewModel, .deliveryQuote, .payOption, .paysOnline, Bool, DeliveryAddress (+8 more)
+### Community 206 - "ObservableObject"
+Cohesion: 0.08
+Nodes (25): CheckoutViewModel, .deliveryQuote, .payOption, .paysOnline, Bool, DeliveryAddress, DeliveryEta, Order (+17 more)
 
 ### Community 207 - "clearing-15s — the one-take dive through scale"
 Cohesion: 0.22
@@ -1123,16 +1121,16 @@ Nodes (5): Rule, Shelf, Shelves, String, NSRegularExpression
 Cohesion: 0.25
 Nodes (7): Beat sheet, Camera, Numbers (the accepted cut), one-dot-15s — the concept film, Sound, Versions, What the film added to the skill
 
-### Community 217 - "AddressSearchModel"
-Cohesion: 0.15
-Nodes (13): AnantnagLocality, .coordinate, .id, CLLocationCoordinate2D, Double, String, AddressSearchModel, .localities (+5 more)
+### Community 217 - ".body"
+Cohesion: 0.23
+Nodes (10): .body, CustomTabBar, .body, Int, TabItem, categories, home, .iconName (+2 more)
 
 ### Community 218 - "BarcodeCamera"
-Cohesion: 0.23
-Nodes (6): AVCaptureConnection, AVCaptureDevice, AVCaptureMetadataOutput, AVCaptureMetadataOutputObjectsDelegate, AVMetadataObject, BarcodeCamera
+Cohesion: 0.17
+Nodes (9): AVCaptureConnection, AVCaptureDevice, AVCaptureMetadataOutput, AVCaptureMetadataOutputObjectsDelegate, AVCaptureVideoPreviewLayer, AVMetadataObject, BarcodeCamera, CameraPreviewController (+1 more)
 
 ### Community 219 - "Offer"
-Cohesion: 0.31
+Cohesion: 0.36
 Nodes (7): Offer, .code, Any, Bool, Double, Int, String
 
 ### Community 220 - "clean-photo-index.py"
@@ -1147,9 +1145,9 @@ Nodes (5): __dirname, errors, __filename, passes, ROOT
 Cohesion: 0.36
 Nodes (7): extract_all(), fetch_single_sitemap(), parse_sitemap_urls(), Converts a URL slug into a clean product title., Fetches all product sub-sitemap URLs from Blinkit's root sitemap., Fetches and parses a single subcategory sitemap XML., slug_to_title()
 
-### Community 223 - "fetchProducts"
-Cohesion: 0.12
-Nodes (24): AdminSheet(), DistributorsView(), EMPTY_FORM, callBroadcast(), NotifyCustomersView(), timeAgo(), StockSourceSheet(), fetchCatalogue() (+16 more)
+### Community 223 - "NotifyCustomersView.jsx"
+Cohesion: 0.27
+Nodes (7): AdminSheet(), EMPTY_FORM, callBroadcast(), NotifyCustomersView(), timeAgo(), StockSourceSheet(), SELF_DISTRIBUTOR_NAME
 
 ### Community 224 - "PayOption"
 Cohesion: 0.48
@@ -1159,24 +1157,24 @@ Nodes (3): Context, JSONObject, PayOption
 Cohesion: 0.29
 Nodes (6): Reading a reference in numbers, Reading a style — take the rule, not the frames, Run, The beat sheet, The contact sheets, The energy map
 
-### Community 226 - "OrderLocationCard.jsx"
-Cohesion: 0.19
-Nodes (8): orderDistanceKm(), OrderLocationCard(), OrderLocationMap, doorIcon, storeIcon, calculateHaversineDistance(), DARK_STORE_HUB, orderCoords()
+### Community 226 - ".decode"
+Cohesion: 0.29
+Nodes (6): Data, KeyedDecodingContainer, Double, Int, String, Key
 
 ### Community 227 - "AuthService"
-Cohesion: 0.14
-Nodes (19): server, AuthService, .firebaseUID, .installID, .isAppleAccount, .isReadyToOrder, .needsMobile, .needsName (+11 more)
+Cohesion: 0.15
+Nodes (18): AuthService, .firebaseUID, .installID, .isAppleAccount, .isReadyToOrder, .needsMobile, .needsName, OtpRequest (+10 more)
 
 ### Community 228 - "generate_splash_screens.py"
 Cohesion: 0.47
 Nodes (5): main(), make_solid_white(), make_transparent_icon(), Creates a pure solid white splash image., Creates a transparent 1x1 icon for the initial OS launch.
 
-### Community 229 - "Order"
-Cohesion: 0.16
-Nodes (11): Order, .baseDeliveryFee, .cancelledByCustomer, .isAwaitingPickup, .isPaidOnline, .modifyWindowEnd, .storeCancelReason, Bool (+3 more)
+### Community 229 - "fetch_blinkit_photos_live.py"
+Cohesion: 0.27
+Nodes (9): are_forms_compatible(), clean_brand(), clean_query(), extract_forms(), get_client(), get_db(), main(), score_match() (+1 more)
 
 ### Community 230 - "Tobacco"
-Cohesion: 0.54
+Cohesion: 0.67
 Nodes (4): Bool, Product, String, Tobacco
 
 ### Community 231 - "StoreConfig"
@@ -1212,40 +1210,40 @@ Cohesion: 0.29
 Nodes (8): HeroBannerView, .copy, HeroCarouselView, .body, CGFloat, Offer, String, Void
 
 ### Community 239 - "CameraBarcodeReader"
-Cohesion: 0.24
-Nodes (11): BarcodeScannerSheet, .body, .guide, CameraBarcodeReader, .hasLight, Binding, Bool, String (+3 more)
+Cohesion: 0.21
+Nodes (11): BarcodeScannerSheet, .body, .guide, CameraBarcodeReader, .hasLight, Binding, Bool, Context (+3 more)
 
 ### Community 240 - "FreeDeliveryStrip"
 Cohesion: 0.12
-Nodes (17): FreeDeliveryStrip, .belowMinimum, .body, .goal, .isSmallOrder, .isUnlocked, .nextCharge, .nextStep (+9 more)
+Nodes (16): FreeDeliveryStrip, .belowMinimum, .goal, .isSmallOrder, .isUnlocked, .nextCharge, .nextStep, .progress (+8 more)
 
 ### Community 241 - "ProductPhotoSheets.jsx"
-Cohesion: 0.19
-Nodes (18): CatalogueView(), NeedsPhotoRow(), NeedsPhotoSheet(), normaliseImageUrl(), setManualProductPhoto(), setManualProductPhotos(), checkPhoto(), findContentBox() (+10 more)
+Cohesion: 0.17
+Nodes (16): CatalogueView(), PhotoReviewView(), PhotoSearchStatus(), NeedsPhotoRow(), NeedsPhotoSheet(), PhotoResultsSheet(), CATALOGUE_CSV_COLUMNS, mirrorProductFieldsLocally() (+8 more)
 
-### Community 242 - "track/index.js"
-Cohesion: 0.08
-Nodes (29): AnimatedCounter(), AppHomeScreenMock(), CATEGORY_RAIL, ESSENTIAL_RAILS, EMPTY_CART, FloatingCartBar(), NAVBAR_ROUTES, STOREFRONT_ROUTES (+21 more)
+### Community 242 - "match-store-photos.mjs"
+Cohesion: 0.18
+Nodes (9): catalog, found, masterCatalog(), matched, missing, needPhoto, photoCsv(), unmatched (+1 more)
 
 ### Community 243 - "storage.js"
 Cohesion: 0.33
 Nodes (3): consentIndexedDB, consentLocalStorage, encryptedStorage
 
 ### Community 244 - "OrderProcessingView.jsx"
-Cohesion: 0.18
-Nodes (18): OrderDetailDrawer(), OrderProcessingView(), REJECTION_PRESETS, PrintPackingSlip(), SlipBody(), getOrderGracePeriodSeconds(), groupOrderItemsByDistributor(), addDriverToRoster() (+10 more)
+Cohesion: 0.12
+Nodes (29): DriversView(), InventoryView(), OrderDetailDrawer(), PLACED_FROM, OrderProcessingView(), REJECTION_PRESETS, PrintPackingSlip(), SlipBody() (+21 more)
 
-### Community 245 - "ShopRules"
-Cohesion: 0.25
-Nodes (8): ShopRules, .extraCharge, Any, Bool, Date, Double, Int, String
+### Community 245 - "AnalyticsRange"
+Cohesion: 0.20
+Nodes (10): AnalyticsRange, .id, .isSingleDay, .label, lifetime, month30, thisMonth, today (+2 more)
 
-### Community 246 - "FirebaseManager.swift"
-Cohesion: 0.22
-Nodes (5): AppCheckProviderFactory, FirebaseAppCheck, DASHitAppCheckProviderFactory, FirebaseManager, Bool
+### Community 246 - "State"
+Cohesion: 0.09
+Nodes (18): App, AppCheckProviderFactory, FirebaseAppCheck, DASHitAdminApp, .body, DASHitAdminAppView, State, checking (+10 more)
 
 ### Community 247 - "String"
 Cohesion: 0.08
-Nodes (42): AudioToolbox, AddCouponSheetView, AddOfferSheetView, AddSupplierSheetView, .trimmedName, .batchInwardTabContent, .body, .detailToolbar (+34 more)
+Nodes (40): AddCouponSheetView, AddOfferSheetView, AddSupplierSheetView, .trimmedName, .batchInwardTabContent, .body, .detailToolbar, AssignDriverSheetView (+32 more)
 
 ### Community 248 - "DASHit Agent Instructions"
 Cohesion: 0.50
@@ -1267,53 +1265,57 @@ Nodes (3): DeliveryStatusIcon(), SIZES, statusToMark()
 Cohesion: 0.20
 Nodes (19): TOBACCO_CATEGORY, broadcast(), clearShopProductsCache(), download(), fetchChanges(), fetchEverything(), fold(), list() (+11 more)
 
-### Community 265 - "OrderStatus"
+### Community 265 - "suggest-shelves-by-brand.mjs"
 Cohesion: 0.20
-Nodes (10): OrderStatus, cancelled, delivered, .iconName, outForDelivery, packing, placed, .progress (+2 more)
+Nodes (6): byFrom, moves, shelfOf, tally, UNSURE, WORDS
 
 ### Community 274 - "DeliveryAddress"
-Cohesion: 0.31
+Cohesion: 0.36
 Nodes (6): DeliveryAddress, .coordinate, .formattedSummary, CLLocationCoordinate2D, Double, String
 
 ### Community 298 - "TabBarVisibility"
 Cohesion: 0.20
 Nodes (6): FollowsTabBar, CGFloat, Content, TabBarVisibility, View, ViewModifier
 
-### Community 300 - "csvExport.js"
-Cohesion: 0.36
-Nodes (7): InventoryView(), CATALOGUE_CSV_COLUMNS, generateCsvString(), INVENTORY_CSV_COLUMNS, RFC-4180, ORDERS_CSV_COLUMNS, triggerCsvDownload()
+### Community 300 - "PagedProductGrid"
+Cohesion: 0.22
+Nodes (8): PagedProductGrid, .body, .pageSize, GridItem, Int, Product, String, .resultsGrid
 
-### Community 302 - "CameraPreviewController"
-Cohesion: 0.32
-Nodes (4): AVCaptureVideoPreviewLayer, CameraPreviewController, Context, UIViewController
+### Community 301 - "LocalStorage"
+Cohesion: 0.18
+Nodes (3): LocalStorage, CartItem, UserProfile
+
+### Community 302 - "normaliseName"
+Cohesion: 0.50
+Nodes (7): cleanNameWithoutUnit(), escapeCsvField(), getAccessToken(), main(), normaliseName(), prepareCatalog(), photoList()
 
 ### Community 303 - "RootView"
-Cohesion: 0.18
-Nodes (11): ColorScheme, .body, RootView, .addressMenu, .colorScheme, .orderPill, .tabSelection, Binding (+3 more)
+Cohesion: 0.22
+Nodes (10): ColorScheme, RootView, .addressMenu, .colorScheme, .orderPill, .tabSelection, Binding, CGRect (+2 more)
 
 ### Community 306 - "CategoryTabsView"
 Cohesion: 0.33
 Nodes (7): CategorySymbol, CategoryTabsView, .body, Bool, Category, String, Void
 
-### Community 307 - "AdminSignInView"
+### Community 307 - "SoundManager"
 Cohesion: 0.29
-Nodes (7): Field, AdminSignInView, .body, .signedInContent, Field, email, password
+Nodes (3): AVAudioPlayer, AVFoundation, SoundManager
 
-### Community 308 - "CleanPhotos"
-Cohesion: 0.43
-Nodes (3): CleanPhotos, Context, StateFlow
+### Community 308 - "FirestoreService.swift"
+Cohesion: 0.33
+Nodes (5): DeferredListener, .inner, OrderWriteError, .errorDescription, timedOut
 
 ### Community 309 - "product/index.js"
-Cohesion: 0.09
-Nodes (35): byFrom, moves, shelfOf, tally, UNSURE, WORDS, CAMPAIGN_CATEGORIES, CAMPAIGN_PRODUCTS (+27 more)
+Cohesion: 0.10
+Nodes (42): CAMPAIGN_CATEGORIES, CAMPAIGN_PRODUCTS, ProductCard(), ProductCardStepper(), QuickProductSheet(), AgeGateContext, AgeGateProvider(), FALLBACK (+34 more)
 
-### Community 310 - "DashitApp.kt"
-Cohesion: 0.33
-Nodes (4): DashitApp, AppCheckProvider, Application, FirebaseApp
+### Community 310 - "Decodable"
+Cohesion: 0.47
+Nodes (6): Decodable, Geometry, OSRMResponse, Route, Double, String
 
-### Community 311 - ".loadAddress"
-Cohesion: 0.40
-Nodes (4): .body, AddressPickerMapView, .body, .newAddressStart
+### Community 311 - "AddProductView.jsx"
+Cohesion: 0.60
+Nodes (5): AddProductView(), catalogPhotoUrl(), loadCatalog(), searchCatalog(), findPhotoFor()
 
 ### Community 312 - "clear-photo-links.mjs"
 Cohesion: 0.22
@@ -1335,17 +1337,13 @@ Nodes (6): OnlinePaymentError, cancelled, .errorDescription, failed, unavailable
 Cohesion: 0.60
 Nodes (3): CatalogEnricherView(), getApiBase(), resolveImageUrl()
 
-### Community 317 - "State"
+### Community 317 - "sort-matched-photos.mjs"
 Cohesion: 0.40
-Nodes (5): State, checking, notOwner, owner, signedOut
+Nodes (4): matches, review, reviewById, sureIds
 
 ### Community 318 - "OrderProgressRail"
 Cohesion: 0.24
 Nodes (8): .title, OrderProgressRail, .body, .endMarker, .marker, CGFloat, Double, String
-
-### Community 319 - "FreeDeliveryToast.jsx"
-Cohesion: 0.60
-Nodes (4): cartSubtotal(), EMPTY_CART, FreeDeliveryToast(), HIDDEN_ON
 
 ### Community 321 - "scripts"
 Cohesion: 0.17
@@ -1355,33 +1353,21 @@ Nodes (12): scripts, build, dev, export:zip, fb:emulate, fb:rules, seed:firestor
 Cohesion: 0.29
 Nodes (3): OrderNotifications, Order, UserNotifications
 
-### Community 323 - "SplashLockup"
-Cohesion: 0.24
-Nodes (6): SplashLockup, SplashView, .body, Context, Void, UIViewRepresentable
-
-### Community 324 - "DeleteAccountView"
-Cohesion: 0.22
-Nodes (6): DeleteAccountView, .body, .isBusy, .isConfirmed, Bool, String
-
 ### Community 327 - "Category"
 Cohesion: 0.60
 Nodes (3): Category, Int, String
 
 ### Community 328 - "AdminSession"
-Cohesion: 0.29
-Nodes (5): AdminSession, AuthStateDidChangeListenerHandle, Bool, String, User
-
-### Community 330 - "Kind"
-Cohesion: 0.29
-Nodes (6): Kind, beauty, food, .id, .site, .title
+Cohesion: 0.16
+Nodes (12): Field, AdminSession, AdminSignInView, .body, .signedInContent, Field, email, password (+4 more)
 
 ### Community 331 - ".dashitCard"
 Cohesion: 0.33
 Nodes (4): CGFloat, Color, View, S
 
-### Community 332 - "StoreStatus"
-Cohesion: 0.53
-Nodes (4): StoreStatus, Bool, Int, String
+### Community 332 - "Foundation"
+Cohesion: 0.13
+Nodes (8): ActivityKit, Foundation, CatalogSeed, Product, StoreStatus, Bool, Int, String
 
 ### Community 333 - "OtpCodeBoxes"
 Cohesion: 0.33
@@ -1400,32 +1386,32 @@ Cohesion: 0.13
 Nodes (17): fs, { handleApiRequest }, http, MIME, path, ROOT, server, dispatchMetaWhatsappOtp() (+9 more)
 
 ### Community 425 - "_app.js"
-Cohesion: 0.11
-Nodes (27): AppHeader(), DASH_SLOT, EASE_IN_OUT, EASE_OUT_EXPO, PremiumSplashScreen(), ScrollChromeContext, ScrollChromeProvider(), ThemeContext (+19 more)
+Cohesion: 0.10
+Nodes (30): AppearanceSetting(), OPTIONS, CookieConsentBanner(), DASH_SLOT, EASE_IN_OUT, EASE_OUT_EXPO, PremiumSplashScreen(), ThemeContext (+22 more)
 
 ### Community 471 - "build-release.sh"
 Cohesion: 0.40
 Nodes (4): ANDROID_HOME, JAVA_HOME, PATH, build-release.sh script
 
 ## Knowledge Gaps
-- **1123 isolated node(s):** `path`, `curves`, `T80`, `ts`, `st` (+1118 more)
+- **1125 isolated node(s):** `path`, `curves`, `T80`, `ts`, `st` (+1120 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **32 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Shape` connect `StorefrontScreen.kt` to `CouponTicket`, `LiveTrackingMapView`, `DeliveredCelebrationSheet`?**
-  _High betweenness centrality (0.060) - this node is a cross-community bridge._
-- **Why does `SwiftUI` connect `SwiftUI` to `PressableButtonStyle`, `CartViewModel.swift`, `DeliveredCelebrationSheet`, `StorefrontSearchView`, `AdminAnalyticsView`, `AuthError`, `OrderStageIcon`, `ProductSearch`, `AppleSignInButton.swift`, `Identifiable`, `AddToOpenFactsSheet`, `DASHitAdminApp.swift`, `.format`, `TabBarVisibility`, `CategoryCollageTile`, `ObservableObject`, `CategoriesView`, `AdminHomeView`, `CategoryTabsView`, `OrderHistoryCard`, `ProfileView`, `UIColor`, `OrderProgressRail`, `SplashLockup`, `DeleteAccountView`, `RiderMapMarker`, `StorefrontHomeView`, `.dashitCard`, `OtpCodeBoxes`, `CheckoutViewModel`, `StorefrontSearchField`, `ProductDetailSheet`, `ShimmerView.swift`, `DASHitLiveActivityWidget`, `Distributor`, `CouponTicket`, `AddItemsSheet`, `AuthView`, `FreeDeliveryCelebration`, `.dismiss`, `ProductCardView`, `DASHitLiveActivityWidget.swift`, `HeroBannerView`, `CameraBarcodeReader`, `FreeDeliveryStrip`, `View`, `LiveTrackingMapView`, `AddressMenuPopup`, `String`?**
-  _High betweenness centrality (0.050) - this node is a cross-community bridge._
-- **Why does `Foundation` connect `SwiftUI` to `Outcome`, `CartViewModel.swift`, `DecodingKeys`, `ScreenshotHooks`, `AuthError`, `DeliveryAddress`, `Coupon`, `LocalStorage`, `ProductSearch`, `Identifiable`, `DriverLiveTracking`, `.format`, `CatalogueDerived`, `ProductPhotoStore`, `OnlinePaymentError`, `UpdateError`, `OrderNotifications`, `CatalogueSync`, `Category`, `StoreStatus`, `CheckoutViewModel`, `Shelves`, `Distributor`, `Offer`, `.dismiss`, `Tobacco`, `StoreConfig`, `Mode`, `FirebaseManager.swift`, `Hashable`, `Field`?**
+- **Why does `Shape` connect `StorefrontScreen.kt` to `CouponTicket`, `DeliveredCelebrationSheet`, `RiderMapMarker`?**
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
+- **Why does `SwiftUI` connect `SwiftUI` to `QuantityStepper`, `AddToOpenFactsSheet`, `CartViewModel.swift`, `DeliveredCelebrationSheet`, `AnalyticsSummary`, `AuthError`, `CachedAsyncImage`, `OrderStageIcon`, `ProductSearch`, `DeleteAccountView`, `Identifiable`, `SplashLockupView`, `OrderDetailSheet`, `TabBarVisibility`, `.format`, `PagedProductGrid`, `HelpSupportView`, `CategoryCollageTile`, `PressableButtonStyle`, `CategoriesView`, `AddressSearchView`, `AdminHomeView`, `CategoryTabsView`, `OrderHistoryCard`, `ProfileView`, `UIColor`, `OrderProgressRail`, `RiderMapMarker`, `StorefrontHomeView`, `.dashitCard`, `Foundation`, `OtpCodeBoxes`, `ObservableObject`, `StorefrontSearchField`, `ProductDetailSheet`, `VoiceSearchRecognizer`, `ShimmerView.swift`, `DASHitLiveActivityWidget`, `AdminCSVImportView`, `CouponTicket`, `AgeGateSheet`, `AuthView`, `FreeDeliveryCelebration`, `.dismiss`, `ProductCardView`, `DASHitLiveActivityWidget.swift`, `HeroBannerView`, `CameraBarcodeReader`, `FreeDeliveryStrip`, `LiveTrackingMapView`, `AddressMenuPopup`, `String`?**
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+- **Why does `Foundation` connect `Foundation` to `CartViewModel.swift`, `DecodingKeys`, `AuthError`, `SwiftUI`, `Coupon`, `Distributor`, `ProductSearch`, `DeleteAccountView`, `Identifiable`, `SplashLockupView`, `Order`, `.format`, `LocalStorage`, `CatalogueDerived`, `AddressSearchView`, `SoundManager`, `FirestoreService.swift`, `OnlinePaymentError`, `UpdateError`, `UIKit`, `OrderNotifications`, `Category`, `ObservableObject`, `Shelves`, `AddressPinPicker`, `.dismiss`, `.decode`, `StoreConfig`, `ShopRules`, `State`, `Hashable`, `Field`?**
   _High betweenness centrality (0.049) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `AdminDashboardViewModel` (e.g. with `.handleScan()` and `.distributorCard()`) actually correct?**
   _`AdminDashboardViewModel` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `path`, `curves`, `T80` to the rest of the system?**
-  _1123 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `AdminDashboardView` be split into smaller, more focused modules?**
-  _Cohesion score 0.09269162210338681 - nodes in this community are weakly interconnected._
+  _1125 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `View` be split into smaller, more focused modules?**
+  _Cohesion score 0.10084033613445378 - nodes in this community are weakly interconnected._
 - **Should `AdminDashboardViewModel` be split into smaller, more focused modules?**
-  _Cohesion score 0.04537037037037037 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0518326545723806 - nodes in this community are weakly interconnected._
