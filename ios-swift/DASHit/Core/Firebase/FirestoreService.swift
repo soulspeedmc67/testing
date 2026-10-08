@@ -169,19 +169,14 @@ final class FirestoreService {
             }
     }
 
+    /// The banners the shop has switched on. An empty list means none is on.
+    /// A read that fails passes nothing on, so the banners on screen stay.
     func listenOffers(completion: @escaping ([Offer]) -> Void) -> ListenerRegistration {
         return db.collection("offers")
             .whereField("active", isEqualTo: true)
             .addSnapshotListener { snapshot, error in
-                guard let documents = snapshot?.documents, error == nil else {
-                    completion([])
-                    return
-                }
-
-                let offers: [Offer] = documents.compactMap { doc in
-                    try? doc.data(as: Offer.self)
-                }
-                completion(offers)
+                guard let documents = snapshot?.documents, error == nil else { return }
+                completion(documents.compactMap { Offer(id: $0.documentID, data: $0.data()) })
             }
     }
 

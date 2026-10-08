@@ -128,7 +128,8 @@ public final class AdminDashboardViewModel: ObservableObject {
 
     /// Signed up in the rider app, waiting for the owner to approve them.
     public var waitingDrivers: [Driver] { drivers.filter(\.isWaiting) }
-    @Published public var offers: [Offer] = Offer.defaults
+    /// The shop's banners (`offers`), switched on or off; none until they arrive.
+    @Published public var offers: [Offer] = []
     @Published public var coupons: [Coupon] = Coupon.defaultCatalog
     @Published public var storeConfig: StoreConfig = StoreConfig.default
     /// The night delivery charge and the petrol figures on `config/store` (`NightCharge`).
@@ -295,18 +296,13 @@ public final class AdminDashboardViewModel: ObservableObject {
             }
 
         // 5. Offers Realtime Listener
+        // The list is exactly what is saved. It used to start from four
+        // built-in banners and ignore an empty list, so they never went away.
         offerListener = db.collection("offers").addSnapshotListener { [weak self] snapshot, error in
-            guard let self = self, let docs = snapshot?.documents, error == nil, !docs.isEmpty else { return }
-            let decoder = Firestore.Decoder()
-            let list: [Offer] = docs.compactMap { doc in
-                var data = doc.data()
-                data["id"] = (data["id"] as? String) ?? doc.documentID
-                return try? decoder.decode(Offer.self, from: data)
-            }
-            if !list.isEmpty {
-                Task { @MainActor in
-                    self.offers = list
-                }
+            guard let self = self, let docs = snapshot?.documents, error == nil else { return }
+            let list: [Offer] = docs.compactMap { Offer(id: $0.documentID, data: $0.data()) }
+            Task { @MainActor in
+                self.offers = list
             }
         }
 
@@ -1294,7 +1290,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         if let data = toDict(newOffer) {
-            db.collection("offers").document(newOffer.id).setData(data, completion: saveResult("The new discount") { [weak self] in
+            db.collection("offers").document(newOffer.id).setData(data, completion: saveResult("The new banner") { [weak self] in
                 self?.offers.removeAll { $0.id == newOffer.id }
             })
         }
@@ -1303,8 +1299,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     public func toggleOffer(offerId: String, active: Bool) {
         if let idx = offers.firstIndex(where: { $0.id == offerId }) {
             let old = offers[idx]
-            offers[idx] = Offer(id: old.id, code: old.code, title: old.title, discountPercent: old.discountPercent, minOrder: old.minOrder ?? 199.0, active: active)
-            db.collection("offers").document(offerId).setData(["active": active], merge: true, completion: saveResult(active ? "Turning the discount on" : "Turning the discount off") { [weak self] in
+            offers[idx] = old.with(active: active)
+            db.collection("offers").document(offerId).setData(["active": active], merge: true, completion: saveResult(active ? "Turning the banner on" : "Turning the banner off") { [weak self] in
                 guard let self, let i = self.offers.firstIndex(where: { $0.id == offerId }) else { return }
                 self.offers[i] = old
             })
@@ -1314,7 +1310,7 @@ public final class AdminDashboardViewModel: ObservableObject {
     public func deleteOffer(offerId: String) {
         guard let idx = offers.firstIndex(where: { $0.id == offerId }) else { return }
         let removed = offers.remove(at: idx)
-        db.collection("offers").document(offerId).delete(completion: saveResult("Deleting the discount") { [weak self] in
+        db.collection("offers").document(offerId).delete(completion: saveResult("Deleting the banner") { [weak self] in
             guard let self, !self.offers.contains(where: { $0.id == offerId }) else { return }
             self.offers.insert(removed, at: min(idx, self.offers.count))
         })

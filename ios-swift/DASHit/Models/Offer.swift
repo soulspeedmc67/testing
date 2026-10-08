@@ -71,6 +71,57 @@ public struct Offer: Codable, Identifiable, Hashable {
 
     public var code: String { promoCode }
 
+    /// From an `offers` document, whoever saved it: the web console leaves
+    /// out `id`, and a number may have been saved as text. Nil when there is
+    /// no title, which is a leftover and not a banner.
+    public init?(id: String, data: [String: Any]) {
+        guard let title = (data["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !title.isEmpty else { return nil }
+        func text(_ key: String, _ fallback: String = "") -> String {
+            (data[key] as? String) ?? fallback
+        }
+        func number(_ key: String) -> Double? {
+            if let value = data[key] as? NSNumber { return value.doubleValue }
+            if let value = data[key] as? String { return Double(value) }
+            return nil
+        }
+        let percent = number("discountPercent").flatMap { $0.isFinite ? Int(exactly: $0.rounded()) : nil }
+        self.init(
+            id: id,
+            badge: text("badge"),
+            title: title,
+            subtitle: text("subtitle"),
+            priceTag: text("priceTag"),
+            category: text("category", "All"),
+            promoCode: text("promoCode"),
+            discountPercent: percent ?? 0,
+            expiresIn: text("expiresIn"),
+            img: text("img"),
+            active: (data["active"] as? Bool) ?? true,
+            createdAt: number("createdAt"),
+            minOrder: number("minOrder")
+        )
+    }
+
+    /// The same banner, switched on or off.
+    public func with(active: Bool) -> Offer {
+        Offer(
+            id: id,
+            badge: badge,
+            title: title,
+            subtitle: subtitle,
+            priceTag: priceTag,
+            category: category,
+            promoCode: promoCode,
+            discountPercent: discountPercent,
+            expiresIn: expiresIn,
+            img: img,
+            active: active,
+            createdAt: createdAt,
+            minOrder: minOrder
+        )
+    }
+
     public static let defaults: [Offer] = [
         Offer(id: "off_1", code: "DASHIT50", title: "Flat ₹50 OFF on first order above ₹249", discountPercent: 20, minOrder: 249.0, active: true),
         Offer(id: "off_2", code: "VALLEYFRESH", title: "15% OFF on Fresh Kashmiri Apples & Bakery", discountPercent: 15, minOrder: 199.0, active: true),

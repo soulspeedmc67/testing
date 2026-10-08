@@ -41,7 +41,8 @@ final class CatalogueStore: ObservableObject {
     /// section after the declaration (see Tobacco.swift).
     @Published private(set) var tobaccoProducts: [Product] = []
     #endif
-    @Published private(set) var offers: [Offer] = CatalogueStore.defaultOffers
+    /// The banners the shop has switched on (`offers`); none until they arrive.
+    @Published private(set) var offers: [Offer] = []
     /// The `categories` collection, when the rules let it be read.
     @Published private var remoteCategories: [Category] = []
 
@@ -197,54 +198,12 @@ final class CatalogueStore: ObservableObject {
             }
         }
 
+        // With every banner switched off the list is empty and the app shows
+        // none. It used to keep three built-in ones, which couldn't be turned off.
         offerListener = FirestoreService.shared.listenOffers { [weak self] fetched in
-            guard let self = self else { return }
-            if !fetched.isEmpty {
-                self.offers = fetched
-            }
+            self?.offers = fetched
         }
     }
-
-    /// The web's built-in deals (`DEFAULT_OFFERS` in src/lib/offers.js), shown
-    /// until the admin publishes offers in Firestore.
-    private static let defaultOffers: [Offer] = [
-        Offer(
-            id: "offer-snacks-01",
-            badge: "DASHIT EXCLUSIVE",
-            title: "Gourmet Snacks & Chilled Sips",
-            subtitle: "Artisanal crisps, premium chocolates & chilled sodas with fastest delivery.",
-            priceTag: "Starting ₹20",
-            category: "Snacks",
-            promoCode: "CRISP20",
-            discountPercent: 20,
-            expiresIn: "Ends in 3 hours",
-            img: "https://images.unsplash.com/photo-1566478989037-eec170784d0b?w=600&auto=format&fit=crop&q=80"
-        ),
-        Offer(
-            id: "offer-bakery-02",
-            badge: "FRESH FROM OVEN",
-            title: "Artisan Breads & Morning Bakes",
-            subtitle: "Authentic Kashmiri lavas, soft croissants & golden rolls delivered warm.",
-            priceTag: "Starting ₹30",
-            category: "Bakery",
-            promoCode: "BAKE15",
-            discountPercent: 15,
-            expiresIn: "Ends at 12:00 PM",
-            img: "https://images.unsplash.com/photo-1608198093002-ad4e005484ec?w=600&auto=format&fit=crop&q=80"
-        ),
-        Offer(
-            id: "offer-dairy-03",
-            badge: "FARM TO DOORSTEP",
-            title: "Fresh Milk, Butter & Kashmiri Apples",
-            subtitle: "Chilled Amul dairy, creamy butter & crisp valley apples in minutes.",
-            priceTag: "Save up to 25%",
-            category: "Dairy",
-            promoCode: "FRESH25",
-            discountPercent: 25,
-            expiresIn: "Active Today",
-            img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80"
-        )
-    ]
 }
 
 /// One screen's view of the shared catalogue: its own picked category and

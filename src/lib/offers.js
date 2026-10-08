@@ -58,7 +58,8 @@ export function getExclusiveOffers() {
       return DEFAULT_OFFERS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_OFFERS;
+    // An empty list is the shop's choice (every banner removed), not a missing one.
+    return Array.isArray(parsed) ? parsed : DEFAULT_OFFERS;
   } catch (e) {
     return DEFAULT_OFFERS;
   }

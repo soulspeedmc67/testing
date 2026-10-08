@@ -100,7 +100,6 @@ import {
   toggleOfferActive,
   deleteExclusiveOffer,
   saveExclusiveOffers,
-  DEFAULT_OFFERS
 } from "../lib/offers";
 
 const QUICK_TEMPLATES = [
@@ -697,7 +696,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   const [coupons, setCoupons] = useState(DEFAULT_COUPONS);
   const [showGstModal, setShowGstModal] = useState(false);
   const [businessGstInfo, setBusinessGstInfo] = useState(DEFAULT_BUSINESS_GST_INFO);
-  const [exclusiveOffers, setExclusiveOffers] = useState(DEFAULT_OFFERS);
+  const [exclusiveOffers, setExclusiveOffers] = useState([]);
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerForm, setOfferForm] = useState({
     title: "",
@@ -951,13 +950,13 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       setExclusiveOffers(getExclusiveOffers());
       return;
     }
-    const unsubOffers = watchOffers((firestoreOffers) => {
-      if (firestoreOffers && firestoreOffers.length > 0) {
-        setExclusiveOffers(firestoreOffers);
-      } else {
-        setExclusiveOffers(getExclusiveOffers());
-      }
-    });
+    /* The list is exactly what is saved, switched on or off. It used to fall
+       back to three built-in banners whenever none was on, so they could
+       never be removed. A banner with no title is a leftover, not a banner. */
+    const unsubOffers = watchOffers(
+      (firestoreOffers) => setExclusiveOffers((firestoreOffers || []).filter((o) => String(o?.title || "").trim())),
+      { includeOff: true }
+    );
 
     const unsubCoupons = watchCoupons((firestoreCoupons) => {
       if (Array.isArray(firestoreCoupons) && firestoreCoupons.length > 0) {
@@ -1656,10 +1655,12 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     };
     try {
       if (isFirebaseConfigured) {
+        // The list above follows the database by itself.
         await saveOffer(newOffer);
+      } else {
+        addExclusiveOffer(newOffer);
+        setExclusiveOffers(getExclusiveOffers());
       }
-      addExclusiveOffer(newOffer);
-      setExclusiveOffers(getExclusiveOffers());
       setShowOfferModal(false);
       showToast(`Banner offer "${newOffer.title}" published.`);
     } catch (err) {
@@ -1678,6 +1679,21 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       showToast("Offer removed.");
     } catch (err) {
       showToast(`Delete notice: ${err?.message}`);
+    }
+  };
+
+  // Switch one banner on or off. Customers see only the ones that are on.
+  const handleToggleOffer = async (offer) => {
+    const turnOn = offer.active === false;
+    try {
+      if (isFirebaseConfigured) {
+        await saveOffer({ id: offer.id, active: turnOn });
+      } else {
+        setExclusiveOffers(toggleOfferActive(offer.id));
+      }
+      showToast(turnOn ? `Banner "${offer.title}" is on.` : `Banner "${offer.title}" is off. Customers no longer see it.`);
+    } catch (err) {
+      showToast("Not saved. Check your connection and try again.");
     }
   };
 
@@ -2087,6 +2103,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           exclusiveOffers={exclusiveOffers}
           onOpenOfferModal={() => setShowOfferModal(true)}
           onDeleteOffer={handleDeleteOffer}
+          onToggleOffer={handleToggleOffer}
           darkMode={darkMode}
         />
       )}

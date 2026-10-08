@@ -1111,12 +1111,19 @@ export async function deductInventoryForOrder(orderId, items = []) {
 
 /* -------------------------------------------------------------------- offers */
 
-export function watchOffers(callback) {
+/**
+ * The shop's banners (`offers`). Shoppers get the ones switched on; the staff
+ * console passes `includeOff` to list the ones switched off too, so they can
+ * be switched back on. An empty list means there are none: nothing built in
+ * stands in for them.
+ */
+export function watchOffers(callback, { includeOff = false } = {}) {
   const db = getDb();
   if (!db) return () => {};
   return onSnapshot(
-    query(collection(db, "offers"), where("active", "==", true)),
-    (snap) => callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    includeOff ? collection(db, "offers") : query(collection(db, "offers"), where("active", "==", true)),
+    (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
+    (err) => console.warn("watchOffers snapshot error:", err?.message)
   );
 }
 

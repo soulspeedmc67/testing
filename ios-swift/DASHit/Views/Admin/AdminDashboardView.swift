@@ -1024,7 +1024,7 @@ public struct AdminDashboardView: View {
                                 Text("Banner Promotions (\(vm.offers.count))")
                                     .font(.system(size: 17, weight: .bold))
                             }
-                            Text("Marketing banners shown in app feeds")
+                            Text("Customers see the ones that are on. With none on, they see no banner.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
@@ -1038,7 +1038,7 @@ public struct AdminDashboardView: View {
                     .padding(.horizontal, 16)
 
                     if vm.offers.isEmpty {
-                        Text("No banner promotions added yet")
+                        Text("No banners. Customers see none until you add one.")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity)

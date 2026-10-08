@@ -6,6 +6,34 @@
 
 ---
 
+## Oct 8, 2026 (evening): banners can be switched off
+
+Web VERIFIED (tests, production build, the banner list on a local dev build
+with sample banners). Android VERIFIED to compile. iOS checked by the GitHub
+Actions build.
+
+- **The bug**: with no banner switched on, every client fell back to built-in
+  sample banners (three in the iPhone shop and on the web, two on Android,
+  four in the iOS admin's own list), so switching banners off never stuck and
+  the samples could not be removed. Their promo codes (CRISP20, BAKE15 ...)
+  were never real offer codes.
+- **Now**: the banners are exactly the documents in `offers` with
+  `active: true`. None on means none shown ("Deals for you" disappears in the
+  iPhone app). A failed read leaves what is on screen. The built-in lists are
+  gone from the shop apps (`Offer.defaults` is only used by the admin's demo data).
+- **Switching one on or off**: `/xcyop` → Offers → each banner has a switch
+  (the console lists banners that are off too: `watchOffers(cb, { includeOff: true })`);
+  the iOS admin → Discounts → Banner Promotions, where the switch now keeps
+  the banner whole (it used to rebuild it from four fields).
+- **Reading a banner** on iOS goes through `Offer(id:data:)`: the web console
+  saves no `id` field and the strict decoder dropped those banners, so a banner
+  made on the web never showed in the iPhone app. A document with no title is
+  ignored (older switch attempts left `{active: false}` stubs in `offers`).
+- **Still open**: a banner made in the iOS admin shows a code and a % off but
+  does not create that offer code (codes live in `config/coupons`).
+- The list of prices, fees and discounts still fixed in code was given to the
+  owner on this date; nothing on it has been changed yet.
+
 ## Oct 8, 2026: extra delivery charge for rain, snow or a rush
 
 Web VERIFIED (91 tests, production build, the checkout bill and the settings

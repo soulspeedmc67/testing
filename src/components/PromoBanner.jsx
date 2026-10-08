@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight } from "lucide-react";
-import { getExclusiveOffers, DEFAULT_OFFERS } from "../lib/offers";
+import { getExclusiveOffers } from "../lib/offers";
 import { hapticLight, hapticMedium } from "../lib/haptics";
 import {
   stagger,
@@ -49,12 +49,12 @@ const CURATED_RAILS = [
 
 export default function PromoBanner({ onSelectPromo }) {
   const router = useRouter();
-  const [offers, setOffers] = useState(DEFAULT_OFFERS);
+  const [offers, setOffers] = useState([]);
   const [slideIdx, setSlideIdx] = useState(0);
 
   const loadOffers = () => {
-    const list = getExclusiveOffers().filter((o) => o.active !== false);
-    setOffers(list.length > 0 ? list : DEFAULT_OFFERS);
+    // With every banner switched off there is none: the built-in ones don't come back.
+    setOffers(getExclusiveOffers().filter((o) => o.active !== false));
   };
 
   useEffect(() => {

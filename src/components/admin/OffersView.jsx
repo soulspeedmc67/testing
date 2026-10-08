@@ -13,6 +13,7 @@ import {
   X,
   Check
 } from "lucide-react";
+import { Switch } from "./ShopRulesSettings";
 
 const EMPTY_COUPON = {
   code: "",
@@ -34,9 +35,11 @@ export default function OffersView({
   exclusiveOffers = [],
   onOpenOfferModal,
   onDeleteOffer,
+  onToggleOffer,
   darkMode = false,
 }) {
   const [showCouponModal, setShowCouponModal] = useState(false);
+  const [togglingOfferId, setTogglingOfferId] = useState(null);
   const [editingCouponCode, setEditingCouponCode] = useState(null);
   const [couponForm, setCouponForm] = useState(EMPTY_COUPON);
 
@@ -300,11 +303,12 @@ export default function OffersView({
             <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center space-x-2">
               <span>Storefront Banner Drops</span>
               <span className="text-xs font-mono font-bold text-slate-400">
-                ({exclusiveOffers.length} offers)
+                ({exclusiveOffers.filter((o) => o.active !== false).length} on, {exclusiveOffers.filter((o) => o.active === false).length} off)
               </span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              Top promo hero cards displayed on the customer mobile app and web home feed.
+              The banners customers see in the app. Switch one off to hide it, and back on whenever you like. With none
+              on, customers see no banner.
             </p>
           </div>
 
@@ -322,13 +326,15 @@ export default function OffersView({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {exclusiveOffers.length === 0 ? (
             <div className="col-span-full py-16 text-center text-slate-400 text-xs">
-              No banner offers active. Click &quot;New Banner Offer&quot; to publish one.
+              No banners. Customers see none until you add one with &quot;New Banner Offer&quot;.
             </div>
           ) : (
             exclusiveOffers.map((off) => (
               <div
                 key={off.id}
-                className="rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-xs bg-slate-950 text-white flex flex-col justify-between p-4 relative min-h-[170px]"
+                className={`rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-xs bg-slate-950 text-white flex flex-col justify-between p-4 relative min-h-[170px] ${
+                  off.active === false ? "opacity-60" : ""
+                }`}
               >
                 <img
                   src={off.img}
@@ -361,6 +367,28 @@ export default function OffersView({
                     {off.promoCode}
                   </span>
                 </div>
+
+                {onToggleOffer && (
+                  <div className="relative z-10 flex items-center justify-between gap-3 pt-3 mt-3 border-t border-white/10">
+                    <span className="text-[11px] font-bold text-slate-200">
+                      {off.active === false ? "Off. Customers don't see it." : "On. Customers see it."}
+                    </span>
+                    <Switch
+                      on={off.active !== false}
+                      label={`Show the banner ${off.title}`}
+                      busy={togglingOfferId === off.id}
+                      disabled={Boolean(togglingOfferId)}
+                      onChange={async () => {
+                        setTogglingOfferId(off.id);
+                        try {
+                          await onToggleOffer(off);
+                        } finally {
+                          setTogglingOfferId(null);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             ))
           )}

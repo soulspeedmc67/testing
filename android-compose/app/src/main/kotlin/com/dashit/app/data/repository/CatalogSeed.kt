@@ -2,7 +2,6 @@ package com.dashit.app.data.repository
 
 import com.dashit.app.data.model.Category
 import com.dashit.app.data.model.CategoryTile
-import com.dashit.app.data.model.Offer
 import com.dashit.app.data.model.Product
 import com.dashit.app.data.model.ProductVariant
 
@@ -96,33 +95,6 @@ object CatalogSeed {
         Category(id = "kitchen_care", name = "Kitchen Care", icon = "kitchen"),
         Category(id = "home_care", name = "Home Care", icon = "cleaning_services"),
         Category(id = "chicken", name = "Chicken", icon = "restaurant")
-    )
-
-    val offers = listOf(
-        Offer(
-            id = "offer_1",
-            badge = "DASHIT EXCLUSIVE",
-            title = "Gourmet Snacks & Chilled Sips",
-            subtitle = "Artisanal crisps, premium chocolates & chilled sodas with fast delivery.",
-            priceTag = "From ₹20",
-            category = "Snacks",
-            promoCode = "CRISP20",
-            discountPercent = 20,
-            expiresIn = "Ends in 3 hours",
-            img = "https://dashit.co.in/products/catalog/munchies/dsh_064717045ec8.webp"
-        ),
-        Offer(
-            id = "offer_2",
-            badge = "DAILY ESSENTIALS",
-            title = "Fresh Dairy & Farm Milk",
-            subtitle = "Fresh morning milk, artisan paneer and farm butter in 8 mins.",
-            priceTag = "Up to 15% OFF",
-            category = "Dairy",
-            promoCode = "DAIRY15",
-            discountPercent = 15,
-            expiresIn = "Valid today",
-            img = "https://dashit.co.in/products/catalog/dairy_breakfast/dsh_3452dfc18e6f.webp"
-        )
     )
 
     val products = listOf(

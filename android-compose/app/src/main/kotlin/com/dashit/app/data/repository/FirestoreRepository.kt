@@ -185,11 +185,16 @@ class FirestoreRepository {
         awaitClose { listener?.remove() }
     }
 
+    /**
+     * The banners the shop has switched on (`offers`). An empty list means none
+     * is on: there are no built-in ones standing in for them, so switching
+     * every banner off in the admin leaves the app with none. A read that
+     * fails sends nothing, so what is on screen stays.
+     */
     fun observeOffers(): Flow<List<Offer>> = callbackFlow {
-        trySend(CatalogSeed.offers)
-
         val db = firestore
         if (db == null) {
+            trySend(emptyList())
             awaitClose { }
             return@callbackFlow
         }
@@ -197,10 +202,7 @@ class FirestoreRepository {
         var listener: ListenerRegistration? = null
         try {
             listener = db.collection("offers").addSnapshotListener { snapshot, error ->
-                if (error != null || snapshot == null || snapshot.isEmpty) {
-                    trySend(CatalogSeed.offers)
-                    return@addSnapshotListener
-                }
+                if (error != null || snapshot == null) return@addSnapshotListener
 
                 val list = snapshot.documents.mapNotNull { doc ->
                     val data = doc.data ?: return@mapNotNull null
@@ -230,14 +232,10 @@ class FirestoreRepository {
                     )
                 }
 
-                if (list.isNotEmpty()) {
-                    trySend(list)
-                } else {
-                    trySend(CatalogSeed.offers)
-                }
+                trySend(list)
             }
         } catch (_: Exception) {
-            trySend(CatalogSeed.offers)
+            trySend(emptyList())
         }
 
         awaitClose { listener?.remove() }
