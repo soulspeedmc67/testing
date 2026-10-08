@@ -31,6 +31,7 @@ import {
   LayoutGrid,
   Megaphone,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -45,6 +46,7 @@ export default function AdminLayout({
   onToggleSound,
   onTestChime,
   onSignOut,
+  onClearCache,
   activeOrdersCount = 0,
   lowStockCount = 0,
   catalogueCount = 0,
@@ -284,6 +286,25 @@ export default function AdminLayout({
             {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
+          {/* Clear cache: this screen reloads fresh, and so does every customer's
+              open website. A phone's top bar has no room for it, so there it is
+              in the menu. */}
+          {onClearCache && (
+            <button
+              type="button"
+              onClick={onClearCache}
+              title="Clear cache: reload this screen and refresh the website for every customer"
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                darkMode
+                  ? "border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                  : "border-slate-200 text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Clear cache</span>
+            </button>
+          )}
+
           {/* Customer Storefront External Link */}
           <Link
             href="/shop"
@@ -489,6 +510,20 @@ export default function AdminLayout({
                   </div>
                 ))}
               </div>
+
+              {onClearCache && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onClearCache();
+                  }}
+                  className="sm:hidden w-full flex items-center space-x-2.5 px-3 py-2.5 mb-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 text-slate-400" />
+                  <span>Clear cache</span>
+                </button>
+              )}
 
               <div className="pt-3 border-t border-slate-200/50 flex items-center justify-between">
                 <div className="text-xs">

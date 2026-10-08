@@ -42,6 +42,10 @@ app on the Pixel. iOS checked by the GitHub Actions build.
   today, and `extraChargeOn` was false with the amount still 20 and no name.
 - **Still true**: an app installed before today doesn't know the extra charge
   at all. Nothing can make it charge; those customers have to update.
+- **Clear cache in the console's top bar** (owner's request): the same action
+  as the Settings card, after a confirm. From 640 px wide it is a button in the
+  top bar (`AdminLayout`); on a phone the top bar has no room (it squeezed the
+  logo), so it is in the menu.
 - **Handling charge wording** (owner's request, same evening): the line under
   it on the bill reads "May vary with weather and unforeseen conditions" (web
   checkout, iOS cart and checkout, Android cart), in place of "Fixed fee on

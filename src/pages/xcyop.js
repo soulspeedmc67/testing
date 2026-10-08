@@ -55,6 +55,7 @@ import { isPlaceholderImage } from "../lib/productPhotoMatch";
 import { TOBACCO_CATEGORY } from "../lib/ageGate";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { isFirebaseConfigured } from "../lib/firebase";
+import { clearSavedCopies, rememberCacheVersion } from "../lib/cacheRefresh";
 import { watchAuth, getStaffRole, signInWithEmail, signInWithGoogle, completeGoogleRedirect, signOut } from "../lib/auth";
 import { watchShopProducts as watchProducts } from "../lib/catalogueFile";
 import {
@@ -593,6 +594,28 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   }, [router.query?.tab]);
 
   // Logout Handler
+  /* "Clear cache" in the top bar. This browser drops its saved copies and
+     reloads; every customer's open website is told to do the same at its next
+     safe moment (a new cacheVersion on config/store, src/lib/cacheRefresh.js).
+     The Settings screen has the same action with its explanation. */
+  const handleClearCache = async () => {
+    const sure = confirm(
+      "Clear the website's cache?\n\nThis screen reloads now. Every customer's open website loads fresh the next time they move to another page. Carts, addresses and sign-ins are kept."
+    );
+    if (!sure) return;
+    const version = Date.now();
+    // This browser is on the new version already, so it isn't asked to reload twice.
+    rememberCacheVersion(version);
+    try {
+      if (isFirebaseConfigured) await setStoreConfig({ cacheVersion: version });
+    } catch (err) {
+      rememberCacheVersion(storeConfig?.cacheVersion ?? null);
+      alert("Customers' websites couldn't be reached, so only this screen is being cleared. Check your connection and try again.");
+    }
+    clearSavedCopies();
+    window.location.reload();
+  };
+
   const handleAdminSignOut = async () => {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("dashit_admin_email");
@@ -1852,6 +1875,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       onToggleSound={() => setSoundEnabled(!soundEnabled)}
       onTestChime={handleTestChime}
       onSignOut={handleAdminSignOut}
+      onClearCache={handleClearCache}
       activeOrdersCount={activeOrdersCount}
       lowStockCount={inventorySummary.lowStockCount}
       catalogueCount={catalogue.length}
