@@ -132,3 +132,20 @@ export function useStoreConfig() {
 
   return config;
 }
+
+/**
+ * True once `config/store` has come from the server on this visit. A returning
+ * shopper's browser first shows the copy it saved last time, so a fee or a
+ * charge the shop switched on since then is missing for a moment. Checkout
+ * doesn't take an order until this is true. Same shared listener, no extra read.
+ */
+export function useStoreConfigLive() {
+  const [live, setLive] = useState(false);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured) return undefined;
+    return watchStoreConfig((_cfg, isLive) => setLive(Boolean(isLive)));
+  }, []);
+
+  return live;
+}

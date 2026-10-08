@@ -136,6 +136,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published var nightCharge = NightCharge.Settings()
     /// The minimum order, the fees and cash on delivery on `config/store` (`ShopRules`).
     @Published var shopRules = ShopRules()
+    /// When "Refresh the website for everyone" was last tapped on this phone; nil if it wasn't, or it failed.
+    @Published var websiteRefreshedAt: Date?
     @Published public var isLoading: Bool = false
     /// Set when the database refuses a change; the dashboard shows it as an alert.
     @Published public var saveError: String? = nil
@@ -1253,6 +1255,20 @@ public final class AdminDashboardViewModel: ObservableObject {
                 self?.shopRules = previous
             }
         )
+    }
+
+    /// "Refresh the website for everyone": a new `cacheVersion` on
+    /// `config/store`. Every open website that hears it drops the copies it
+    /// saved and loads fresh (web: `src/lib/cacheRefresh.js`).
+    func refreshWebsite() {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        websiteRefreshedAt = Date()
+        db.collection("config").document("store").setData([
+            "cacheVersion": Int64(Date().timeIntervalSince1970 * 1000),
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true, completion: saveResult("The website refresh") { [weak self] in
+            self?.websiteRefreshedAt = nil
+        })
     }
 
     /// The night delivery charge switch (automatic from 8 pm, on now, or off),

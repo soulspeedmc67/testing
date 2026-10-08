@@ -32,6 +32,7 @@ import {
   buildReplacementOrder,
 } from "./orderChange";
 import { shopRules } from "./deliveryCharges";
+import { noteCacheVersion } from "./cacheRefresh";
 
 /**
  * Firestore data layer.
@@ -3037,14 +3038,20 @@ export function watchOrderTracking(orderId, callback) {
 /* ------------------------------------------------------------ store config */
 
 let memoryStoreConfig = null;
+/* Whether memoryStoreConfig has come from the server on this listener. The
+   first answer is usually the copy this browser saved on the last visit, which
+   can be hours old: a fee or a charge the shop switched on since then is not in
+   it. Checkout waits for the server's answer before it takes an order. */
+let memoryStoreConfigLive = false;
 const storeConfigSubscribers = new Set();
 let sharedStoreConfigUnsub = null;
 let sharedConfigCleanupTimer = null;
 
-function broadcastStoreConfig(cfg) {
+function broadcastStoreConfig(cfg, live = memoryStoreConfigLive) {
   memoryStoreConfig = cfg;
+  memoryStoreConfigLive = live;
   storeConfigSubscribers.forEach((cb) => {
-    try { cb(cfg); } catch (e) {}
+    try { cb(cfg, live); } catch (e) {}
   });
 }
 
@@ -3058,10 +3065,16 @@ function startSharedStoreConfigWatcher() {
   const db = getDb();
   if (!db) return;
   try {
+    /* With metadata changes, the listener also fires when the server confirms
+       that the saved copy is still right, which is the only sign that it is. */
     sharedStoreConfigUnsub = onSnapshot(
       doc(db, "config", "store"),
+      { includeMetadataChanges: true },
       (snap) => {
-        broadcastStoreConfig(snap.exists() ? snap.data() : { isOpen: true, highDemand: false });
+        const live = !snap.metadata.fromCache;
+        // The shop's "refresh the website for everyone" button (cacheRefresh.js).
+        if (live && snap.exists()) noteCacheVersion(snap.data().cacheVersion);
+        broadcastStoreConfig(snap.exists() ? snap.data() : { isOpen: true, highDemand: false }, live);
       },
       (err) => {
         console.warn("watchStoreConfig snapshot error:", err?.message);
@@ -3072,10 +3085,14 @@ function startSharedStoreConfigWatcher() {
   }
 }
 
+/**
+ * `callback(config, live)`: `live` is true once the settings have come from the
+ * server, false while they are the copy this browser saved earlier.
+ */
 export function watchStoreConfig(callback) {
   storeConfigSubscribers.add(callback);
   if (memoryStoreConfig) {
-    callback(memoryStoreConfig);
+    callback(memoryStoreConfig, memoryStoreConfigLive);
   }
   startSharedStoreConfigWatcher();
 
@@ -3087,6 +3104,8 @@ export function watchStoreConfig(callback) {
         if (storeConfigSubscribers.size === 0 && typeof sharedStoreConfigUnsub === "function") {
           sharedStoreConfigUnsub();
           sharedStoreConfigUnsub = null;
+          // Nothing is listening now, so what is kept can go out of date.
+          memoryStoreConfigLive = false;
         }
       }, 30000);
     }

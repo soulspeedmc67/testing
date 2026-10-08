@@ -2,6 +2,7 @@ package com.dashit.app.data
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.MetadataChanges
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -78,7 +79,13 @@ object StoreStatus {
         val nightChargePerKm: Double = NightCharge.DEFAULT_PER_KM,
         val nightChargeMin: Double = NightCharge.DEFAULT_MIN_FEE,
         /** The minimum order, the fees and cash on delivery, as the shop has set them. */
-        val rules: ShopRules = ShopRules()
+        val rules: ShopRules = ShopRules(),
+        /**
+         * True once these settings have come from the server. Until then they are
+         * the copy the phone saved last time, so a charge the shop switched on
+         * since then is missing: checkout doesn't take an order before this is true.
+         */
+        val isLive: Boolean = false
     )
 
     private val _state = MutableStateFlow(State())
@@ -87,8 +94,10 @@ object StoreStatus {
 
     fun start() {
         if (registration != null) return
+        // Metadata changes are included: when the saved copy turns out to be
+        // still right, that is the only sign the server has answered.
         registration = FirebaseFirestore.getInstance().collection("config").document("store")
-            .addSnapshotListener { snapshot, _ ->
+            .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, _ ->
                 if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
                 _state.value = State(
                     isOpen = snapshot.getBoolean("isOpen") ?: true,
@@ -97,7 +106,8 @@ object StoreStatus {
                     nightChargeMode = snapshot.getString("nightChargeMode") ?: "auto",
                     nightChargePerKm = snapshot.getDouble("nightChargePerKm")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_PER_KM,
                     nightChargeMin = snapshot.getDouble("nightChargeMin")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_MIN_FEE,
-                    rules = ShopRules.from(snapshot)
+                    rules = ShopRules.from(snapshot),
+                    isLive = !snapshot.metadata.isFromCache
                 )
             }
     }

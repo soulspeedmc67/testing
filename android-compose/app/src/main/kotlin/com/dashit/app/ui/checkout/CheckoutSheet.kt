@@ -177,6 +177,14 @@ fun CheckoutSheet(
             HapticsManager.warning(view)
             return
         }
+        // The fees and the extra charge must have come from the server, not from
+        // the copy the phone saved last time: an order placed on that copy went
+        // through without a charge the shop had switched on since.
+        if (!store.isLive) {
+            errorMessage = "Still checking today's charges with the shop. Check your internet and try again in a moment."
+            HapticsManager.warning(view)
+            return
+        }
         if (!bill.isMinOrderSatisfied) {
             errorMessage = "Add ₹${ceil(bill.amountNeededForMinOrder).toInt()} more to place your order. We deliver orders of ₹${ShopRules.whole(store.rules.minOrderValue)} or more."
             HapticsManager.warning(view)
@@ -479,7 +487,7 @@ fun CheckoutSheet(
                                         isSubmitting -> DashitColors.SurfaceMuted
                                         isLaunchLocked -> DashitColors.SurfaceRaised
                                         // Grey that white text still reads on, in both themes.
-                                        belowMinimum -> Color(0xFF6B7280)
+                                        belowMinimum || !storeState.isLive -> Color(0xFF6B7280)
                                         else -> DashitColors.BrandOrange
                                     }
                                 )
@@ -526,6 +534,7 @@ fun CheckoutSheet(
                                 Text(
                                     text = when {
                                         isLaunchLocked -> com.dashit.app.data.LaunchGate.LAUNCH_LABEL
+                                        !storeState.isLive -> "Checking today's charges…"
                                         belowMinimum -> "Add ₹${ceil(bill.amountNeededForMinOrder).toInt()} more to order"
                                         !paysOnline -> "Place order · ₹${totalToPay.toInt()} cash"
                                         payOption?.upiApp != null -> "Pay ₹${totalToPay.toInt()} with ${payOption.title}"

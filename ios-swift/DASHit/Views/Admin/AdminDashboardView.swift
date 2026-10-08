@@ -2223,6 +2223,21 @@ struct StoreControlSheetView: View {
                 } footer: {
                     Text("Every order shows what the trip costs the rider in petrol: the road from the store to the door and back, at these figures. Change the price when the pump price changes.")
                 }
+
+                Section {
+                    Button {
+                        vm.refreshWebsite()
+                    } label: {
+                        Label("Refresh the website for everyone", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(vm.websiteRefreshedAt != nil)
+                } header: {
+                    Text("Website")
+                } footer: {
+                    Text(vm.websiteRefreshedAt != nil
+                        ? "Done. Every open website loads fresh the next time the customer moves to another page or comes back to it."
+                        : "Tap this if customers see old prices, old fees or an old screen on the website. Every open website drops what it had saved and loads fresh. Carts, addresses and sign-ins are kept. It works at once, without Save, and does not reach the phone apps.")
+                }
             }
             .navigationTitle(isEmbedded ? AdminTab.storeControls.rawValue : "Shop settings")
             .navigationBarTitleDisplayMode(isEmbedded ? .large : .inline)

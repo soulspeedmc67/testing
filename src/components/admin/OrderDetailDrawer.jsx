@@ -27,6 +27,8 @@ import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor 
 import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
 import { orderAddress, orderCoords, orderTimeMs } from "../../lib/orderReceipt";
 import { deliveryFeeParts } from "../../lib/nightCharge";
+
+const PLACED_FROM = { web: "the website", ios: "the iPhone app", android: "the Android app" };
 import OrderLocationCard from "./OrderLocationCard";
 
 export default function OrderDetailDrawer({
@@ -920,6 +922,10 @@ export default function OrderDetailDrawer({
                   </dl>
                   {order.razorpayPaymentId && (
                     <p className="mt-2 text-[11px] text-slate-400 font-mono select-all break-all">Payment ref: {order.razorpayPaymentId}</p>
+                  )}
+                  {/* Where it was placed: an app from before a fee was added doesn't charge it. */}
+                  {PLACED_FROM[order.platform] && (
+                    <p className="mt-2 text-[11px] text-slate-500 dark:text-zinc-400">Placed from {PLACED_FROM[order.platform]}</p>
                   )}
                 </div>
               );

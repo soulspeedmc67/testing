@@ -102,6 +102,20 @@ final class CheckoutViewModel: ObservableObject {
         // orders depend on how many this account has had. If the night charge
         // or the delivery fee has changed, show the new bill before taking the order.
         let shownTotal = cart.bill.grandTotal
+        // The fees and the extra charge must have come from the server, not
+        // from the copy the phone saved last time: an order placed on that
+        // copy went through without a charge the shop had switched on since.
+        if !store.isLive {
+            isSubmitting = true
+            progressText = "Checking today's charges..."
+            let arrived = await store.waitUntilLive(seconds: 8)
+            isSubmitting = false
+            guard arrived else {
+                orderError = "Can't reach the shop to check today's charges. Check your internet and try again."
+                HapticsManager.shared.warning()
+                return false
+            }
+        }
         await cart.loadOrdersCount(uid: uid)
         cart.refreshNightFee(for: selectedAddress, settings: store.nightCharge)
         guard cart.bill.grandTotal == shownTotal else {

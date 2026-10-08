@@ -69,6 +69,7 @@ config/store                           # single doc
   nightChargePerKm, nightChargeMin     # ₹ per straight-line km, and the least charged (6, 10)
   extraChargeOn                        # true while the shop charges extra (rain, snow, a rush); missing = off
   extraChargeAmount, extraChargeLabel  # ₹ on every order while it is on (20), and its name on the bill ("" = "Extra delivery charge")
+  cacheVersion                         # ms timestamp; a new value makes every open website drop its saved copies and reload
   petrolPrice, bikeMileage             # ₹ a litre, km a litre (107, 45): rider's petrol per order
 ```
 

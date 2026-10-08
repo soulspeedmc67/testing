@@ -25,6 +25,7 @@ import {
 import DeliveryChargeSettings from "./DeliveryChargeSettings";
 import ShopRulesSettings from "./ShopRulesSettings";
 import ExtraChargeSettings from "./ExtraChargeSettings";
+import RefreshWebsiteCard from "./RefreshWebsiteCard";
 
 export default function StoreControlsView({
   isStoreOpen = true,
@@ -255,6 +256,9 @@ export default function StoreControlsView({
 
       {/* Night delivery charge and the rider's petrol figures */}
       <DeliveryChargeSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
+
+      {/* One press makes every open website drop its saved copies and load fresh */}
+      <RefreshWebsiteCard storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* 3. COD Fraud Prevention Blacklist */}
       <div

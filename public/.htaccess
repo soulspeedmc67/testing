@@ -43,9 +43,12 @@
     Header always set Content-Disposition "attachment; filename=DASHit.apk"
   </FilesMatch>
 
-  # Static exported HTML: allow CDN & Hostinger LiteSpeed caching with quick revalidation
+  # Static exported HTML: kept for a minute, then checked again. It used to
+  # allow a day-old copy to be shown while a fresh one was fetched
+  # (stale-while-revalidate), so after an upload a returning shopper's first
+  # visit still ran the old pages, without a fee the shop had just added.
   <FilesMatch "\.html$">
-    Header always set Cache-Control "public, max-age=60, s-maxage=3600, stale-while-revalidate=86400"
+    Header always set Cache-Control "public, max-age=60, s-maxage=60"
   </FilesMatch>
 
   # A missing file answers with 404.html, which must never be remembered: a

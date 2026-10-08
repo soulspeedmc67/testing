@@ -27,12 +27,13 @@ import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
 import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
-import { calculateDeliveryCharges, deliveryFeeWords, extraChargeFor, extraChargeLabel } from "../lib/deliveryCharges";
+import { calculateDeliveryCharges, deliveryFeeWords, extraChargeFor, extraChargeLabel, shopRules } from "../lib/deliveryCharges";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
 import { showOrderPlacedNotification } from "../lib/notifications";
-import { useStoreDetails, useStoreConfig, isCodEnabled, isCodAllowedAtNight } from "../lib/storeStatus";
+import { useStoreDetails, useStoreConfig, useStoreConfigLive, isCodEnabled, isCodAllowedAtNight } from "../lib/storeStatus";
+import { isFirebaseConfigured } from "../lib/firebase";
 import { useShopRules } from "../lib/useShopRules";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { nightChargeFor, isNightChargeOn, isNightHours } from "../lib/nightCharge";
@@ -97,9 +98,27 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { isOpen: isStoreOpen, closeReason } = useStoreDetails();
   const storeConfig = useStoreConfig();
-  /* The minimum order, delivery fees and handling charge the shop has set
-     (config/store): they change here without a new build. */
-  const rules = useShopRules();
+  /* The minimum order, delivery fees, handling charge and extra charge the
+     shop has set (config/store): they change here without a new build. Taken
+     straight from the settings once they are here; before that, from what this
+     browser saw last time. */
+  const savedRules = useShopRules();
+  const rules = useMemo(() => (storeConfig ? shopRules(storeConfig) : savedRules), [storeConfig, savedRules]);
+  /* The bill is only right once those settings have come from the server on
+     this visit. Until then it is built on the copy this browser saved last
+     time, so a charge the shop switched on since then is missing from it, and
+     an order placed in that moment went through without it. The button waits. */
+  const settingsLive = useStoreConfigLive();
+  const billReady = settingsLive || !isFirebaseConfigured;
+  const [settingsSlow, setSettingsSlow] = useState(false);
+  useEffect(() => {
+    if (billReady) {
+      setSettingsSlow(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setSettingsSlow(true), 8000);
+    return () => clearTimeout(timer);
+  }, [billReady]);
   /* The time, read after mount (the exported HTML has none) and refreshed so
      the night charge starts at 8 pm on a page that was opened before it. */
   const [clock, setClock] = useState(null);
@@ -408,6 +427,8 @@ export default function CheckoutPage() {
     if (isLaunchBlocked()) return alert(`We start taking orders on ${LAUNCH_LABEL}. Your cart is saved until then.`);
     if (!isStoreOpen) return alert(`The store is closed right now. ${closeReason || "Please check back shortly."}`);
     if (cartItems.length === 0) return;
+    // The button waits for the shop's live settings; this covers the sign-in path.
+    if (!billReady) return alert("Still getting today's charges from the shop. Please try again in a moment.");
     // The button is off below the minimum; this covers the sign-in path.
     if (subtotal < rules.minOrderValue) return;
 
@@ -548,7 +569,7 @@ export default function CheckoutPage() {
 
   // ---- The button ------------------------------------------------------------
 
-  const blocked = beforeLaunch || !isStoreOpen || shortItems.length > 0 || belowMinimum;
+  const blocked = beforeLaunch || !isStoreOpen || !billReady || shortItems.length > 0 || belowMinimum;
   const buttonLabel = isProcessing
     ? method === "online"
       ? "Waiting for payment…"
@@ -557,6 +578,10 @@ export default function CheckoutPage() {
     ? "Orders open 5 Oct, 10 am"
     : !isStoreOpen
     ? "Store closed right now"
+    : !billReady
+    ? settingsSlow
+      ? "Can't reach the shop. Check your internet."
+      : "Checking today's charges…"
     : shortItems.length > 0
     ? "Remove sold-out items"
     : belowMinimum

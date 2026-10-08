@@ -6,6 +6,43 @@
 
 ---
 
+## Oct 8, 2026 (night): orders wait for the shop's live settings; refresh the website
+
+Web VERIFIED on the production build against the live settings (the button
+says "Checking today's charges…" for about 1.5 s, then opens; the refresh logic
+on a test page: saved copies dropped, cart kept, one reload, no loop). Android
+VERIFIED to compile; a debug build can't be installed over the release-signed
+app on the Pixel. iOS checked by the GitHub Actions build.
+
+- **Why an order could miss a charge**: all three clients first show
+  `config/store` from the copy saved on the device at the last visit (the web
+  uses Firestore's persistent cache and `dashit_shop_rules`; the apps cache by
+  default). A fee or the extra charge switched on since then is missing until
+  the server answers, and an order placed in that gap went through on the old
+  bill.
+- **Now**: no order until the settings have come from the server. The
+  listeners include metadata changes and pass on `!fromCache` (web
+  `watchStoreConfig(cb)` gives `(config, live)`, `useStoreConfigLive()`; iOS
+  `StoreStatusStore.isLive`; Android `StoreStatus.State.isLive`). Web: the
+  button reads "Checking today's charges…", then "Can't reach the shop. Check
+  your internet." after 8 s. iOS waits up to 8 s inside `placeOrder`, then
+  compares the total as before. Android greys the button and refuses.
+  Checkout on the web also takes its rules straight from the live document.
+- **Refresh the website for everyone** (`cacheVersion` on `config/store`,
+  `src/lib/cacheRefresh.js`): `/xcyop` → Settings, and the iOS admin → Shop
+  settings → Website. Every open website drops its saved copies (settings,
+  offer codes, banners, the product list) and reloads when it is safe: on the
+  next page move or return to the tab, never on checkout, sign-in or the staff
+  screens. Cart, address, sign-in and orders are kept. Not for the phone apps.
+- **Website pages** are no longer served a day stale after an upload
+  (`.htaccess`: HTML is `max-age=60`, no `stale-while-revalidate`).
+- The order drawer in the console says where an order was placed from (the
+  website, the iPhone app, the Android app).
+- **Seen on the live shop at 7:20 pm IST**: the website had the first zip of
+  today, and `extraChargeOn` was false with the amount still 20 and no name.
+- **Still true**: an app installed before today doesn't know the extra charge
+  at all. Nothing can make it charge; those customers have to update.
+
 ## Oct 8, 2026 (evening): banners can be switched off
 
 Web VERIFIED (tests, production build, the banner list on a local dev build
