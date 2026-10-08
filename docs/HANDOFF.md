@@ -42,6 +42,12 @@ app on the Pixel. iOS checked by the GitHub Actions build.
   today, and `extraChargeOn` was false with the amount still 20 and no name.
 - **Still true**: an app installed before today doesn't know the extra charge
   at all. Nothing can make it charge; those customers have to update.
+- **Handling charge wording** (owner's request, same evening): the line under
+  it on the bill reads "May vary with weather and unforeseen conditions" (web
+  checkout, iOS cart and checkout, Android cart), in place of "Fixed fee on
+  every order". The landing page, web Help and iPhone Help no longer call it a
+  standard ₹11. The owner may raise `handlingFee` in bad weather: it is the one
+  charge that app versions from 6 Oct on already follow.
 
 ## Oct 8, 2026 (evening): banners can be switched off
 

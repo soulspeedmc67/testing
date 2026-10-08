@@ -557,10 +557,17 @@ private fun BillDetailsCard(bill: CartBillBreakdown) {
             )
         }
 
-        BillRow(
-            label = "Handling charge",
-            value = "₹${bill.handlingFee.toInt()}"
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            BillRow(
+                label = "Handling charge",
+                value = "₹${bill.handlingFee.toInt()}"
+            )
+            Text(
+                text = "May vary with weather and unforeseen conditions",
+                color = DashitColors.TextMuted,
+                fontSize = 11.sp
+            )
+        }
 
         if (bill.couponDiscount > 0) {
             BillRow(

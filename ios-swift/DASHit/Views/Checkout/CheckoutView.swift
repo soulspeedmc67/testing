@@ -129,6 +129,10 @@ struct CheckoutView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         billRow("Handling charge", value: CurrencyFormatter.format(bill.handlingFee))
+                        Text("May vary with weather and unforeseen conditions")
+                            .font(.system(size: 11))
+                            .foregroundColor(.textFaint)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         if bill.couponDiscount > 0 {
                             billRow("Coupon discount", value: "-\(CurrencyFormatter.format(bill.couponDiscount))", accent: true)
                         }

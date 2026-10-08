@@ -934,7 +934,7 @@ export default function CheckoutPage() {
                 <div>
                   <dt className="text-slate-600 dark:text-content-secondary">Handling charge</dt>
                   <span className="text-[11px] text-slate-400 dark:text-content-faint block">
-                    Fixed fee on every order
+                    May vary with weather and unforeseen conditions
                   </span>
                 </div>
                 <dd className="tabular-nums font-semibold">{rupees(handlingFee)}</dd>

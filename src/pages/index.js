@@ -32,7 +32,7 @@ const PROMISES = [
   {
     Icon: Truck,
     title: "First 5 orders free delivery",
-    body: "Enjoy free delivery on your first 5 orders! Standard ₹11 handling fee across all orders.",
+    body: "Enjoy free delivery on your first 5 orders! A handling charge applies to every order and may vary with weather and unforeseen conditions.",
   },
   {
     Icon: Wallet,

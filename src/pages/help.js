@@ -38,7 +38,7 @@ const QUESTIONS = [
       return [
         rules.freeDeliveryOrders > 0 ? `Delivery is free on your first ${rules.freeDeliveryOrders} orders.` : "",
         `${rules.freeDeliveryOrders > 0 ? "After that it" : "Delivery"} depends on the size of your order: ${fee(rules.deliveryLowFee)} on orders of ₹${rules.deliveryLowFrom} or more, ${fee(rules.deliveryMidFee)} from ₹${rules.deliverySmallBelow}, and ${rules.deliverySmallPercent}% of the items total below that.`,
-        rules.handlingFee > 0 ? `Every order also has a ₹${rules.handlingFee} handling charge.` : "",
+        rules.handlingFee > 0 ? `Every order also has a ₹${rules.handlingFee} handling charge, which may vary with weather and unforeseen conditions.` : "",
         "After 8 pm delivery can be charged by distance instead; checkout shows the exact fee before you order.",
         rules.minOrderValue > 0 ? `We deliver orders of ₹${rules.minOrderValue} or more.` : "",
       ]
