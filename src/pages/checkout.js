@@ -27,7 +27,7 @@ import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
 import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
-import { calculateDeliveryCharges, deliveryFeeWords } from "../lib/deliveryCharges";
+import { calculateDeliveryCharges, deliveryFeeWords, extraChargeFor, extraChargeLabel } from "../lib/deliveryCharges";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { newOrderCode } from "../lib/db";
@@ -312,6 +312,11 @@ export default function CheckoutPage() {
   // By distance from the store: it pays for the rider's petrol.
   const nightFee = clock && hasAddress ? nightChargeFor(eta.distanceKm, storeConfig, clock) : 0;
 
+  /* The shop's extra charge for rain, snow or a rush (config/store). It is on
+     every order while the shop has it on, free delivery included. */
+  const extraFee = extraChargeFor(rules);
+  const extraLabel = extraChargeLabel(rules.extraChargeLabel);
+
   const deliveryFee = deliveryCharges.fee;
   const handlingFee = rules.handlingFee;
   const couponDiscount = coupon
@@ -319,7 +324,7 @@ export default function CheckoutPage() {
       ? Math.round(subtotal * ((Number(coupon.discount) || 0) / 100))
       : Math.min(subtotal, Number(coupon.discount) || 0)
     : 0;
-  const grandTotal = Math.max(0, subtotal + deliveryFee + nightFee + handlingFee - couponDiscount);
+  const grandTotal = Math.max(0, subtotal + deliveryFee + nightFee + extraFee + handlingFee - couponDiscount);
   // How far the cart is from the lowest delivery fee.
   const toFreeDelivery = deliveryCharges.isFirstFivePromo ? 0 : Math.max(0, rules.deliveryLowFrom - subtotal);
 
@@ -456,9 +461,11 @@ export default function CheckoutPage() {
       createdAt: new Date().toISOString(),
       items: cartItems,
       subtotal,
-      // The night charge is part of the delivery fee; its share is kept beside it.
-      deliveryFee: deliveryFee + nightFee,
+      // The night charge and the extra charge are part of the delivery fee;
+      // the share of each is kept beside it.
+      deliveryFee: deliveryFee + nightFee + extraFee,
       ...(nightFee > 0 ? { nightDeliveryFee: nightFee } : {}),
+      ...(extraFee > 0 ? { extraDeliveryFee: extraFee, extraDeliveryLabel: extraLabel } : {}),
       handlingFee,
       discount: couponDiscount,
       couponCode: coupon?.code || null,
@@ -882,6 +889,19 @@ export default function CheckoutPage() {
                   )}
                 </dd>
               </div>
+              )}
+
+              {/* The shop's extra charge (rain, snow, a rush): on top of free delivery too */}
+              {extraFee > 0 && (
+                <div className="flex justify-between items-start">
+                  <div>
+                    <dt className="text-slate-600 dark:text-content-secondary">{extraLabel}</dt>
+                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
+                      On every order for now, free delivery included
+                    </span>
+                  </div>
+                  <dd className="tabular-nums font-semibold">{rupees(extraFee)}</dd>
+                </div>
               )}
 
               {/* Handling Fee */}

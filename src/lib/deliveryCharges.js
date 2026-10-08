@@ -1,6 +1,7 @@
 /**
  * The shop's order rules: the minimum order, the delivery fee by order size,
- * the handling charge and the free-delivery welcome offer.
+ * the handling charge, the free-delivery welcome offer and the extra charge
+ * for rain, snow or a rush.
  *
  * The shop changes them from the staff console or the iOS admin. They are saved
  * on `config/store`, which the website and both apps already listen to, so a
@@ -27,7 +28,17 @@ export const SHOP_RULE_DEFAULTS = Object.freeze({
   deliveryLowFee: 25,
   // A customer's first orders are delivered free (website and iPhone). 0 ends the offer.
   freeDeliveryOrders: 5,
+  /* The extra charge for rain, snow or a rush. While it is on, every order
+     pays `extraChargeAmount` on top of the bill, free delivery included.
+     `extraChargeLabel` is its name on the bill; blank means EXTRA_CHARGE_LABEL. */
+  extraChargeOn: false,
+  extraChargeAmount: 20,
+  extraChargeLabel: "",
 });
+
+export const EXTRA_CHARGE_LABEL = "Extra delivery charge";
+export const EXTRA_CHARGE_MAX = 500;
+const EXTRA_LABEL_MAX_LENGTH = 40;
 
 // Kept for older imports: the built-in values, not the shop's live settings.
 export const HANDLING_FEE = SHOP_RULE_DEFAULTS.handlingFee;
@@ -52,7 +63,24 @@ export function shopRules(cfg) {
     deliveryLowFrom: zeroOrMore(cfg?.deliveryLowFrom, d.deliveryLowFrom),
     deliveryLowFee: zeroOrMore(cfg?.deliveryLowFee, d.deliveryLowFee),
     freeDeliveryOrders: Math.floor(zeroOrMore(cfg?.freeDeliveryOrders, d.freeDeliveryOrders)),
+    extraChargeOn: cfg?.extraChargeOn === true,
+    extraChargeAmount: Math.min(EXTRA_CHARGE_MAX, Math.round(zeroOrMore(cfg?.extraChargeAmount, d.extraChargeAmount))),
+    extraChargeLabel: cleanExtraLabel(cfg?.extraChargeLabel),
   };
+}
+
+function cleanExtraLabel(text) {
+  return typeof text === "string" ? text.trim().slice(0, EXTRA_LABEL_MAX_LENGTH) : "";
+}
+
+/** The extra charge on an order placed now, in whole rupees; 0 while it is off. */
+export function extraChargeFor(rules = SHOP_RULE_DEFAULTS) {
+  return rules?.extraChargeOn ? Math.max(0, Number(rules.extraChargeAmount) || 0) : 0;
+}
+
+/** The extra charge's name on the bill: what the shop called it, or "Extra delivery charge". */
+export function extraChargeLabel(text) {
+  return cleanExtraLabel(text) || EXTRA_CHARGE_LABEL;
 }
 
 export function sameShopRules(a, b) {
@@ -90,7 +118,8 @@ export function standardDeliveryFee(subtotal, rules = SHOP_RULE_DEFAULTS) {
  * 1. A code that waives delivery: free.
  * 2. The customer's first `freeDeliveryOrders` orders: free.
  * 3. Otherwise the fee for the order's size (`standardDeliveryFee`).
- * The handling charge is separate and on every order.
+ * The handling charge is separate and on every order, and so is the extra
+ * charge (`extraChargeFor`) while the shop has it on.
  */
 export function calculateDeliveryCharges(subtotal, orderCount = 0, coupon = null, rules = SHOP_RULE_DEFAULTS) {
   if (coupon?.waivesDelivery || coupon?.code === "FREEDEL") {

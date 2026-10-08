@@ -190,6 +190,9 @@ public struct CartBillBreakdown {
     /// Charged by distance after 8 pm (`NightCharge`), on top of `deliveryFee`
     /// and not waived with it: it pays for the rider's petrol.
     public let nightDeliveryFee: Double
+    /// The shop's extra charge for rain, snow or a rush (`ShopRules.extraCharge`),
+    /// on top of everything else and not waived by free delivery.
+    public let extraDeliveryFee: Double
     public let handlingFee: Double
     public let couponDiscount: Double
     public let grandTotal: Double
@@ -209,7 +212,9 @@ public struct CartBillBreakdown {
     /// on each `CartBillBreakdown` instance holds the exact amount for its size.
     public static var standardDeliveryFee: Double { ShopRules.current.deliveryLowFee }
 
-    public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0, nightDeliveryFee: Double = 0) -> CartBillBreakdown {
+    /// `extraDeliveryFee` is nil for a cart, which pays the extra charge the
+    /// shop has on right now. A placed order being changed passes what it paid.
+    public static func calculate(items: [CartItem], appliedCoupon: Coupon?, userOrdersCount: Int = 0, nightDeliveryFee: Double = 0, extraDeliveryFee: Double? = nil) -> CartBillBreakdown {
         let rules = ShopRules.current
         let subtotal = items.reduce(0.0) { $0 + ($1.price * Double($1.qty)) }
         guard subtotal > 0 else {
@@ -218,6 +223,7 @@ public struct CartBillBreakdown {
                 deliveryFee: 0,
                 standardDeliveryFee: 0,
                 nightDeliveryFee: 0,
+                extraDeliveryFee: 0,
                 handlingFee: 0,
                 couponDiscount: 0,
                 grandTotal: 0,
@@ -244,13 +250,15 @@ public struct CartBillBreakdown {
         // Orders start at the shop's minimum; fees and offers don't count towards it.
         let neededForMinOrder = max(0.0, rules.minOrderValue - subtotal)
         let discount = effectiveCoupon != nil ? min(subtotal, effectiveCoupon!.discount) : 0.0
-        let grandTotal = max(0.0, subtotal + deliveryFee + nightDeliveryFee + handlingFee - discount)
+        let extraFee = extraDeliveryFee ?? rules.extraCharge
+        let grandTotal = max(0.0, subtotal + deliveryFee + nightDeliveryFee + extraFee + handlingFee - discount)
 
         return CartBillBreakdown(
             subtotal: subtotal,
             deliveryFee: deliveryFee,
             standardDeliveryFee: standardFee,
             nightDeliveryFee: nightDeliveryFee,
+            extraDeliveryFee: extraFee,
             handlingFee: handlingFee,
             couponDiscount: discount,
             grandTotal: grandTotal,

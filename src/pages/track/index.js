@@ -665,6 +665,7 @@ export default function OrderTrackingPage() {
                         {fee.night > 0 && row("Distance delivery charge", `₹${fee.night.toFixed(0)}`)}
                       </>
                     )}
+                    {fee.extra > 0 && row(fee.extraLabel, `₹${fee.extra.toFixed(0)}`)}
                     {handling > 0 && row("Handling charge", `₹${handling.toFixed(0)}`)}
                     {off > 0 && row("Discount", `-₹${off.toFixed(0)}`)}
                     <div className="border-t border-white/10 pt-1.5">{row("Total", `₹${grandTotal.toFixed(0)}`)}</div>

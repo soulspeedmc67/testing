@@ -899,6 +899,7 @@ export default function OrderDetailDrawer({
                 ...(fee.night > 0 && fee.base === 0
                   ? [["Delivery (by distance)", "₹" + fee.night]]
                   : [["Delivery", fee.base > 0 ? "₹" + fee.base : "Free"], ...(fee.night > 0 ? [["Distance charge", "₹" + fee.night]] : [])]),
+                ...(fee.extra > 0 ? [[fee.extraLabel, "₹" + fee.extra]] : []),
                 ...(handling > 0 ? [["Handling", "₹" + handling]] : []),
                 ...(off > 0 ? [["Discount" + (order.couponCode ? " (" + order.couponCode + ")" : ""), "−₹" + off]] : []),
               ];

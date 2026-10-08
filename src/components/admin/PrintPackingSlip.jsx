@@ -71,8 +71,9 @@ export default function PrintPackingSlip({ order, onClose }) {
   // Whatever the order total does not account for, shown honestly rather than
   // asserted as free.
   const deliveryFee = Number(order.deliveryFee ?? 0);
-  // The distance charge is saved inside the delivery fee; the slip lists it apart.
-  const nightFee = deliveryFeeParts(order).night;
+  // The distance charge and the extra charge (rain, a rush) are saved inside
+  // the delivery fee; the slip lists each apart.
+  const { base: baseFee, night: nightFee, extra: extraFee, extraLabel } = deliveryFeeParts(order);
   const discount = Number(order.discount ?? order.couponDiscount ?? 0);
   // ₹11 on every order; older orders saved without it show what the total implies.
   const handlingFee = Number(order.handlingFee ?? Math.max(0, grandTotal - subtotal - deliveryFee + discount)) || 0;
@@ -83,7 +84,7 @@ export default function PrintPackingSlip({ order, onClose }) {
 
   const slip = {
     orderId, orderTime, isPaid, customerName, customerPhone, address, items,
-    lineTotal, money, subtotal, unitCount, discount, deliveryFee, nightFee, handlingFee, grandTotal,
+    lineTotal, money, subtotal, unitCount, discount, baseFee, nightFee, extraFee, extraLabel, handlingFee, grandTotal,
   };
 
   return (
@@ -144,7 +145,7 @@ export default function PrintPackingSlip({ order, onClose }) {
 
 const SLIP_FONT = "ui-monospace, SFMono-Regular, Menlo, monospace";
 
-function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, address, items, lineTotal, money, subtotal, unitCount, discount, deliveryFee, nightFee = 0, handlingFee, grandTotal }) {
+function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, address, items, lineTotal, money, subtotal, unitCount, discount, baseFee = 0, nightFee = 0, extraFee = 0, extraLabel = "", handlingFee, grandTotal }) {
   return (
     <>
           <header className="text-center pb-3 mb-3 border-b border-dashed border-slate-300">
@@ -189,14 +190,15 @@ function SlipBody({ orderId, orderTime, isPaid, customerName, customerPhone, add
           <section className="text-[11px] space-y-1">
             <Row label={`Subtotal (${unitCount} ${unitCount === 1 ? "unit" : "units"})`} value={money(subtotal)} />
             {discount > 0 && <Row label="Discount" value={"-" + money(discount)} />}
-            {nightFee > 0 && deliveryFee - nightFee <= 0 ? (
+            {nightFee > 0 && baseFee <= 0 ? (
               <Row label="Delivery (by distance)" value={money(nightFee)} />
             ) : (
               <>
-                <Row label="Delivery" value={deliveryFee - nightFee > 0 ? money(deliveryFee - nightFee) : "Free"} />
+                <Row label="Delivery" value={baseFee > 0 ? money(baseFee) : "Free"} />
                 {nightFee > 0 && <Row label="Distance charge" value={money(nightFee)} />}
               </>
             )}
+            {extraFee > 0 && <Row label={extraLabel} value={money(extraFee)} />}
             {handlingFee > 0 && <Row label="Handling charge" value={money(handlingFee)} />}
             <div className="flex justify-between pt-2 mt-1 border-t border-slate-900 text-sm font-bold">
               <span>{isPaid ? "Total (paid)" : "Collect"}</span>

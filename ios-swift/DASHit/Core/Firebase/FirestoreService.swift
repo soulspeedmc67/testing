@@ -260,6 +260,11 @@ final class FirestoreService {
         if order.nightDeliveryFee > 0 {
             payload["nightDeliveryFee"] = order.nightDeliveryFee
         }
+        // The part that is the shop's extra charge (rain, a rush), and its name on the bill.
+        if order.extraDeliveryFee > 0 {
+            payload["extraDeliveryFee"] = order.extraDeliveryFee
+            payload["extraDeliveryLabel"] = ShopRules.extraChargeTitle(order.extraDeliveryLabel)
+        }
         // Paid online: what Razorpay confirmed, so the store can match it up.
         if let payment {
             payload["razorpayOrderId"] = payment.razorpayOrderId

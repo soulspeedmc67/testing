@@ -17,7 +17,7 @@ const FIELDS = [
 
 const asText = (rules) => Object.fromEntries(FIELDS.map((key) => [key, String(rules[key])]));
 
-function Switch({ on, label, busy, disabled, onChange }) {
+export function Switch({ on, label, busy, disabled, onChange }) {
   return (
     <button
       type="button"

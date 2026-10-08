@@ -61,7 +61,10 @@ struct AddItemsSheet: View {
             appliedCoupon: liveOrder.couponCode.flatMap { Coupon.find(code: $0) },
             // Delivery that was free on the original (the first-orders offer)
             // stays free; otherwise it is the fee for the new items total.
-            userOrdersCount: liveOrder.deliveryFee - liveOrder.nightDeliveryFee > 0 ? Int.max : 0
+            userOrdersCount: liveOrder.baseDeliveryFee > 0 ? Int.max : 0,
+            // The charges of the original order are kept, as the save does (OrderUpdater).
+            nightDeliveryFee: liveOrder.nightDeliveryFee,
+            extraDeliveryFee: liveOrder.extraDeliveryFee
         )
     }
 

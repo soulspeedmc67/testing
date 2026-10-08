@@ -1,7 +1,8 @@
 import Foundation
 
 /// The shop's order rules: the minimum order, the delivery fee by order size,
-/// the handling charge, the free first orders and cash on delivery.
+/// the handling charge, the free first orders, cash on delivery and the extra
+/// charge for rain, snow or a rush.
 ///
 /// The shop changes them from the staff console or the admin app. They are
 /// saved on `config/store`, which every shop app already listens to, so a
@@ -27,6 +28,15 @@ struct ShopRules: Equatable {
     /// Cash on delivery, and whether it is also taken from 8 pm to 6 am.
     var codEnabled: Bool = true
     var codAtNight: Bool = false
+    /// The extra charge for rain, snow or a rush. While it is on, every order
+    /// pays `extraChargeAmount` on top of the bill, free delivery included.
+    /// `extraChargeLabel` is its name on the bill; blank means `defaultExtraChargeLabel`.
+    var extraChargeOn: Bool = false
+    var extraChargeAmount: Double = 20
+    var extraChargeLabel: String = ""
+
+    static let extraChargeMax: Double = 500
+    static let defaultExtraChargeLabel = "Extra delivery charge"
 
     init() {}
 
@@ -46,6 +56,9 @@ struct ShopRules: Equatable {
         if let value = amount("freeDeliveryOrders") { freeDeliveryOrders = Int(min(value, 100_000)) }
         if let value = data["codEnabled"] as? Bool { codEnabled = value }
         if let value = data["codAtNight"] as? Bool { codAtNight = value }
+        if let value = data["extraChargeOn"] as? Bool { extraChargeOn = value }
+        if let value = amount("extraChargeAmount") { extraChargeAmount = min(Self.extraChargeMax, value.rounded()) }
+        if let value = data["extraChargeLabel"] as? String { extraChargeLabel = Self.cleanExtraLabel(value) }
     }
 
     /// The rules as last heard from `config/store`. `StoreStatusStore` keeps
@@ -74,6 +87,21 @@ struct ShopRules: Equatable {
         return "₹\(Self.whole(deliveryLowFee)) delivery charge (orders above ₹\(Self.whole(deliveryLowFrom - 1)))"
     }
 
+    /// The extra charge on an order placed now, in whole rupees; 0 while it is off.
+    var extraCharge: Double {
+        extraChargeOn ? max(0, extraChargeAmount) : 0
+    }
+
+    /// The extra charge's name on the bill: what the shop called it, or "Extra delivery charge".
+    static func extraChargeTitle(_ label: String?) -> String {
+        let clean = cleanExtraLabel(label ?? "")
+        return clean.isEmpty ? defaultExtraChargeLabel : clean
+    }
+
+    static func cleanExtraLabel(_ text: String) -> String {
+        String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
+    }
+
     /// Whether cash on delivery can be chosen for an order placed at `date`.
     func allowsCash(at date: Date = Date()) -> Bool {
         codEnabled && (codAtNight || !NightCharge.isNightHours(date))
@@ -98,7 +126,10 @@ struct ShopRules: Equatable {
             "deliveryLowFee": deliveryLowFee,
             "freeDeliveryOrders": freeDeliveryOrders,
             "codEnabled": codEnabled,
-            "codAtNight": codAtNight
+            "codAtNight": codAtNight,
+            "extraChargeOn": extraChargeOn,
+            "extraChargeAmount": extraChargeAmount,
+            "extraChargeLabel": extraChargeLabel
         ]
     }
 

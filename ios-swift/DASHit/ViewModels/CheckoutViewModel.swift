@@ -141,8 +141,9 @@ final class CheckoutViewModel: ObservableObject {
             userId: uid,
             items: cart.items,
             subtotal: cart.bill.subtotal,
-            // The night charge is part of the delivery fee; its share is kept beside it.
-            deliveryFee: cart.bill.deliveryFee + cart.bill.nightDeliveryFee,
+            // The night charge and the extra charge are part of the delivery
+            // fee; the share of each is kept beside it.
+            deliveryFee: cart.bill.deliveryFee + cart.bill.nightDeliveryFee + cart.bill.extraDeliveryFee,
             discount: cart.bill.couponDiscount,
             grandTotal: cart.bill.grandTotal,
             status: .placed,
@@ -153,6 +154,8 @@ final class CheckoutViewModel: ObservableObject {
             otp: Order.newDeliveryCode(),
             couponCode: cart.appliedCoupon?.code,
             nightDeliveryFee: cart.bill.nightDeliveryFee,
+            extraDeliveryFee: cart.bill.extraDeliveryFee,
+            extraDeliveryLabel: cart.bill.extraDeliveryFee > 0 ? ShopRules.extraChargeTitle(store.rules.extraChargeLabel) : nil,
             distanceKm: quote.distanceKm
         )
 

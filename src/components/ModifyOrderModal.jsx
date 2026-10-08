@@ -423,6 +423,7 @@ export default function ModifyOrderModal({
                   {bill.nightDeliveryFee > 0 && billRow("Distance delivery charge", rupees(bill.nightDeliveryFee))}
                 </>
               )}
+              {bill.extraDeliveryFee > 0 && billRow(bill.extraDeliveryLabel, rupees(bill.extraDeliveryFee))}
               {bill.handlingFee > 0 && billRow("Handling charge", rupees(bill.handlingFee))}
               {bill.discount > 0 &&
                 billRow("Discount", `−${rupees(bill.discount)}`, "text-emerald-600 dark:text-emerald-400")}

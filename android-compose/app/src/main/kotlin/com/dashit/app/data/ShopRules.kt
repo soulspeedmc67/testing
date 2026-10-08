@@ -4,7 +4,8 @@ import com.google.firebase.firestore.DocumentSnapshot
 
 /**
  * The shop's order rules: the minimum order, the delivery fee by order size,
- * the handling charge, the free first orders and cash on delivery.
+ * the handling charge, the free first orders, cash on delivery and the extra
+ * charge for rain, snow or a rush.
  *
  * The shop changes them from the staff console or the iOS admin. They are saved
  * on `config/store`, which every shop app already listens to ([StoreStatus]),
@@ -30,8 +31,20 @@ data class ShopRules(
     val freeDeliveryOrders: Int = 5,
     /** Cash on delivery, and whether it is also taken from 8 pm to 6 am. */
     val codEnabled: Boolean = true,
-    val codAtNight: Boolean = false
+    val codAtNight: Boolean = false,
+    /**
+     * The extra charge for rain, snow or a rush. While it is on, every order
+     * pays [extraChargeAmount] on top of the bill, free delivery included.
+     * [extraChargeLabel] is its name on the bill; blank means [DEFAULT_EXTRA_CHARGE_LABEL].
+     */
+    val extraChargeOn: Boolean = false,
+    val extraChargeAmount: Double = 20.0,
+    val extraChargeLabel: String = ""
 ) {
+    /** The extra charge on an order placed now, in whole rupees; 0 while it is off. */
+    val extraCharge: Double
+        get() = if (extraChargeOn) maxOf(0.0, extraChargeAmount) else 0.0
+
     /** What an order with this items total pays for delivery with no offer and no code. */
     fun standardDeliveryFee(subtotal: Double): Double = when {
         subtotal <= 0 -> 0.0
@@ -67,9 +80,20 @@ data class ShopRules(
                 deliveryLowFee = amount("deliveryLowFee", d.deliveryLowFee),
                 freeDeliveryOrders = amount("freeDeliveryOrders", d.freeDeliveryOrders.toDouble()).toInt(),
                 codEnabled = snapshot.get("codEnabled") as? Boolean ?: d.codEnabled,
-                codAtNight = snapshot.get("codAtNight") as? Boolean ?: d.codAtNight
+                codAtNight = snapshot.get("codAtNight") as? Boolean ?: d.codAtNight,
+                extraChargeOn = snapshot.get("extraChargeOn") as? Boolean ?: d.extraChargeOn,
+                extraChargeAmount = minOf(EXTRA_CHARGE_MAX, Math.round(amount("extraChargeAmount", d.extraChargeAmount)).toDouble()),
+                extraChargeLabel = cleanExtraLabel(snapshot.get("extraChargeLabel") as? String)
             )
         }
+
+        const val EXTRA_CHARGE_MAX = 500.0
+        const val DEFAULT_EXTRA_CHARGE_LABEL = "Extra delivery charge"
+
+        /** The extra charge's name on the bill: what the shop called it, or "Extra delivery charge". */
+        fun extraChargeTitle(label: String?): String = cleanExtraLabel(label).ifEmpty { DEFAULT_EXTRA_CHARGE_LABEL }
+
+        private fun cleanExtraLabel(text: String?): String = text.orEmpty().trim().take(40)
 
         /** "35" for 35.0, "12.5" for 12.5: amounts as the shop typed them. */
         fun whole(value: Double): String =

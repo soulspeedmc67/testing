@@ -56,6 +56,11 @@ data class CartBillBreakdown(
     val deliveryFee: Double,
     /** On every order, whatever its size ([ShopRules.handlingFee]). */
     val handlingFee: Double,
+    /**
+     * The shop's extra charge for rain, snow or a rush ([ShopRules.extraCharge]),
+     * on top of everything else and not waived by free delivery.
+     */
+    val extraDeliveryFee: Double = 0.0,
     val couponDiscount: Double,
     val grandTotal: Double,
     val isMinOrderSatisfied: Boolean,
@@ -72,13 +77,16 @@ data class CartBillBreakdown(
          * `config/store` and they apply here without a new build.
          *
          * [userOrdersCount] is how many orders the shopper has had; the default
-         * leaves the free first orders out.
+         * leaves the free first orders out. [extraDeliveryFee] is the extra
+         * charge the shop has on right now; a placed order being changed passes
+         * what it paid.
          */
         fun calculate(
             items: List<CartItem>,
             appliedCoupon: Coupon? = null,
             userOrdersCount: Int = Int.MAX_VALUE,
-            rules: ShopRules = StoreStatus.state.value.rules
+            rules: ShopRules = StoreStatus.state.value.rules,
+            extraDeliveryFee: Double = rules.extraCharge
         ): CartBillBreakdown {
             val subtotal = items.fold(0.0) { acc, item -> acc + (item.price * item.qty) }
 
@@ -92,9 +100,10 @@ data class CartBillBreakdown(
                 else -> rules.standardDeliveryFee(subtotal)
             }
             val handlingFee = if (subtotal > 0) rules.handlingFee else 0.0
+            val extraFee = if (subtotal > 0) extraDeliveryFee else 0.0
 
             val discount = if (effectiveCoupon != null) minOf(subtotal, effectiveCoupon.discount) else 0.0
-            val grandTotal = maxOf(0.0, subtotal + deliveryFee + handlingFee - discount)
+            val grandTotal = maxOf(0.0, subtotal + deliveryFee + extraFee + handlingFee - discount)
 
             // Orders start at the shop's minimum; fees and offers don't count towards it.
             val neededForMin = if (subtotal > 0) maxOf(0.0, rules.minOrderValue - subtotal) else 0.0
@@ -104,6 +113,7 @@ data class CartBillBreakdown(
                 subtotal = subtotal,
                 deliveryFee = deliveryFee,
                 handlingFee = handlingFee,
+                extraDeliveryFee = extraFee,
                 couponDiscount = discount,
                 grandTotal = grandTotal,
                 isMinOrderSatisfied = neededForMin <= 0,

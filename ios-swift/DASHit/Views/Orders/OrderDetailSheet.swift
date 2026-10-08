@@ -85,9 +85,12 @@ struct OrderDetailSheet: View {
                 section("Bill") {
                     VStack(spacing: 8) {
                         billRow("Item total", CurrencyFormatter.format(order.subtotal))
-                        billRow("Delivery charge", baseDeliveryFee == 0 ? "FREE" : CurrencyFormatter.format(baseDeliveryFee))
+                        billRow("Delivery charge", order.baseDeliveryFee == 0 ? "FREE" : CurrencyFormatter.format(order.baseDeliveryFee))
                         if order.nightDeliveryFee > 0 {
                             billRow("Distance delivery charge", CurrencyFormatter.format(order.nightDeliveryFee))
+                        }
+                        if order.extraDeliveryFee > 0 {
+                            billRow(ShopRules.extraChargeTitle(order.extraDeliveryLabel), CurrencyFormatter.format(order.extraDeliveryFee))
                         }
                         // What is left of the total once items, delivery and
                         // discount are counted: the ₹11 handling charge.
@@ -159,11 +162,6 @@ struct OrderDetailSheet: View {
                 .padding(.vertical, 6)
                 .dashitCard(cardShape)
         }
-    }
-
-    /// The delivery fee without the distance charge saved inside it.
-    private var baseDeliveryFee: Double {
-        max(0, order.deliveryFee - order.nightDeliveryFee)
     }
 
     private var handlingCharge: Double {

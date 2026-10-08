@@ -117,6 +117,17 @@ struct CheckoutView: View {
                                 .foregroundColor(.textFaint)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        // The shop's extra charge for rain, snow or a rush: on free delivery too.
+                        if bill.extraDeliveryFee > 0 {
+                            billRow(
+                                ShopRules.extraChargeTitle(storeStatus.rules.extraChargeLabel),
+                                value: CurrencyFormatter.format(bill.extraDeliveryFee)
+                            )
+                            Text("On every order for now, free delivery included")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textFaint)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         billRow("Handling charge", value: CurrencyFormatter.format(bill.handlingFee))
                         if bill.couponDiscount > 0 {
                             billRow("Coupon discount", value: "-\(CurrencyFormatter.format(bill.couponDiscount))", accent: true)

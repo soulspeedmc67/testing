@@ -63,6 +63,8 @@ import com.dashit.app.core.design.DashitColors
 import com.dashit.app.core.design.DashitMotion
 import com.dashit.app.core.design.HapticsManager
 import com.dashit.app.core.design.pressable
+import com.dashit.app.data.ShopRules
+import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.model.CartBillBreakdown
 import com.dashit.app.data.model.CartItem
 import com.dashit.app.data.model.Coupon
@@ -517,6 +519,7 @@ private fun CouponCard(
 
 @Composable
 private fun BillDetailsCard(bill: CartBillBreakdown) {
+    val extraLabel = ShopRules.extraChargeTitle(StoreStatus.state.collectAsState().value.rules.extraChargeLabel)
     val cardShape = RoundedCornerShape(14.dp)
 
     Column(
@@ -545,6 +548,14 @@ private fun BillDetailsCard(bill: CartBillBreakdown) {
             value = if (bill.deliveryFee == 0.0) "FREE" else "₹${bill.deliveryFee.toInt()}",
             valueColor = if (bill.deliveryFee == 0.0) DashitColors.Positive else DashitColors.TextPrimary
         )
+
+        // The shop's extra charge for rain, snow or a rush: on free delivery too.
+        if (bill.extraDeliveryFee > 0) {
+            BillRow(
+                label = extraLabel,
+                value = "₹${bill.extraDeliveryFee.toInt()}"
+            )
+        }
 
         BillRow(
             label = "Handling charge",

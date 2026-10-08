@@ -49,7 +49,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .notify: return "Send one notification to every customer with the app: offers, new items, shop news."
         case .distributors: return "The people and companies you buy stock from."
         case .offers: return "Coupon codes your customers can use."
-        case .storeControls: return "Open or close the shop, and turn busy-hours pricing on or off."
+        case .storeControls: return "Open or close the shop, and set the fees and the extra charge for rain or a rush."
         case .batchInward: return "Got a delivery of stock? Add it for many items at once."
         case .importCSV: return "Add or update many items from a file."
         }
@@ -1238,22 +1238,10 @@ public final class AdminDashboardViewModel: ObservableObject {
         })
     }
 
-    public func toggleSurgePricing(enabled: Bool) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        let previous = storeConfig.isHighDemand
-        storeConfig.isHighDemand = enabled
-
-        db.collection("config").document("store").setData([
-            "isHighDemand": enabled,
-            "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveResult("The busy-hours setting") { [weak self] in
-            self?.storeConfig.isHighDemand = previous
-        })
-    }
-
     /// The minimum order, the handling charge, the delivery fee by order size,
-    /// the free first orders and cash on delivery. Every shop app and the
-    /// website read them from `config/store` and follow at once, with no new build.
+    /// the free first orders, cash on delivery and the extra charge for rain
+    /// or a rush. Every shop app and the website read them from `config/store`
+    /// and follow at once, with no new build.
     func saveShopRules(_ rules: ShopRules) {
         guard rules != shopRules else { return }
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.dashit.app.data.DeliveryEta
 import com.dashit.app.data.OrderNotifications
+import com.dashit.app.data.ShopRules
 import com.dashit.app.data.StoreStatus
 import com.dashit.app.data.auth.AuthRepository
 import com.dashit.app.data.model.CartBillBreakdown
@@ -282,7 +283,10 @@ class OrderRepository(
         val bill = CartBillBreakdown.calculate(
             items,
             Coupon.find(order.couponCode),
-            userOrdersCount = if (order.deliveryFee - order.nightDeliveryFee > 0) Int.MAX_VALUE else 0
+            userOrdersCount = if (order.baseDeliveryFee > 0) Int.MAX_VALUE else 0,
+            // The extra charge (rain, a rush) is kept as it was paid, whatever
+            // the shop's switch says now.
+            extraDeliveryFee = order.extraDeliveryFee
         )
         val replacement = Order(
             id = Order.newCode(),
@@ -290,10 +294,12 @@ class OrderRepository(
             items = items,
             subtotal = bill.subtotal,
             // The distance charge of the original order is kept: same trip, same address.
-            deliveryFee = bill.deliveryFee + order.nightDeliveryFee,
+            deliveryFee = bill.deliveryFee + order.nightDeliveryFee + order.extraDeliveryFee,
             discount = bill.couponDiscount,
             grandTotal = bill.grandTotal + order.nightDeliveryFee,
             nightDeliveryFee = order.nightDeliveryFee,
+            extraDeliveryFee = order.extraDeliveryFee,
+            extraDeliveryLabel = order.extraDeliveryLabel,
             status = OrderStatus.PLACED,
             deliveryAddress = order.deliveryAddress,
             paymentMethod = order.paymentMethod,
@@ -390,6 +396,11 @@ class OrderRepository(
         distanceKm?.let { payload["distanceKm"] = it }
         // The part of deliveryFee that is the night distance charge, for the store's screens.
         if (order.nightDeliveryFee > 0) payload["nightDeliveryFee"] = order.nightDeliveryFee
+        // The part that is the shop's extra charge (rain, a rush), and its name on the bill.
+        if (order.extraDeliveryFee > 0) {
+            payload["extraDeliveryFee"] = order.extraDeliveryFee
+            payload["extraDeliveryLabel"] = ShopRules.extraChargeTitle(order.extraDeliveryLabel)
+        }
         // Paid online: what Razorpay confirmed, so the store can match it up.
         payment?.let {
             payload["razorpayOrderId"] = it.razorpayOrderId
@@ -442,6 +453,8 @@ class OrderRepository(
             discount = (doc.get("discount") as? Number)?.toDouble() ?: 0.0,
             grandTotal = total,
             nightDeliveryFee = (doc.get("nightDeliveryFee") as? Number)?.toDouble() ?: 0.0,
+            extraDeliveryFee = maxOf(0.0, (doc.get("extraDeliveryFee") as? Number)?.toDouble() ?: 0.0),
+            extraDeliveryLabel = doc.getString("extraDeliveryLabel"),
             status = OrderStatus.fromString(doc.getString("status") ?: "Placed"),
             createdAt = timestampMillis(doc, "createdAt") ?: System.currentTimeMillis(),
             deliveryAddress = DeliveryAddress(

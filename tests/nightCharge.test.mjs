@@ -69,12 +69,33 @@ test("petrol for a delivery is the road there and back", () => {
 });
 
 test("an order's delivery fee splits into the normal fee and the distance charge inside it", () => {
-  assert.deepEqual(deliveryFeeParts({ deliveryFee: 56, nightDeliveryFee: 31 }), { base: 25, night: 31 });
+  const noExtra = { extra: 0, extraLabel: "Extra delivery charge" };
+  assert.deepEqual(deliveryFeeParts({ deliveryFee: 56, nightDeliveryFee: 31 }), { base: 25, night: 31, ...noExtra });
   // First-5-orders free delivery at night: only the distance charge was paid.
-  assert.deepEqual(deliveryFeeParts({ deliveryFee: 31, nightDeliveryFee: 31 }), { base: 0, night: 31 });
+  assert.deepEqual(deliveryFeeParts({ deliveryFee: 31, nightDeliveryFee: 31 }), { base: 0, night: 31, ...noExtra });
   // Orders from before the charge, and from builds that don't save it.
-  assert.deepEqual(deliveryFeeParts({ deliveryFee: 35 }), { base: 35, night: 0 });
-  assert.deepEqual(deliveryFeeParts(null), { base: 0, night: 0 });
+  assert.deepEqual(deliveryFeeParts({ deliveryFee: 35 }), { base: 35, night: 0, ...noExtra });
+  assert.deepEqual(deliveryFeeParts(null), { base: 0, night: 0, ...noExtra });
   // A share bigger than the fee can't make the normal fee negative.
-  assert.deepEqual(deliveryFeeParts({ deliveryFee: 10, nightDeliveryFee: 40 }), { base: 0, night: 10 });
+  assert.deepEqual(deliveryFeeParts({ deliveryFee: 10, nightDeliveryFee: 40 }), { base: 0, night: 10, ...noExtra });
+});
+
+test("the extra charge for rain or a rush is split out of the delivery fee too", () => {
+  // Free delivery on a rainy day: the extra charge is the whole fee.
+  assert.deepEqual(deliveryFeeParts({ deliveryFee: 20, extraDeliveryFee: 20, extraDeliveryLabel: "Rain charge" }), {
+    base: 0,
+    night: 0,
+    extra: 20,
+    extraLabel: "Rain charge",
+  });
+  // On top of the normal fee and the night distance charge.
+  assert.deepEqual(deliveryFeeParts({ deliveryFee: 25 + 31 + 20, nightDeliveryFee: 31, extraDeliveryFee: 20 }), {
+    base: 25,
+    night: 31,
+    extra: 20,
+    extraLabel: "Extra delivery charge",
+  });
+  // A share bigger than what is left of the fee can't make the normal fee negative.
+  assert.equal(deliveryFeeParts({ deliveryFee: 30, nightDeliveryFee: 20, extraDeliveryFee: 50 }).extra, 10);
+  assert.equal(deliveryFeeParts({ deliveryFee: 30, nightDeliveryFee: 20, extraDeliveryFee: 50 }).base, 0);
 });

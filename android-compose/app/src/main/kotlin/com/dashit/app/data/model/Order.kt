@@ -99,6 +99,12 @@ data class Order(
     val grandTotal: Double,
     /** The distance charge inside [deliveryFee] (after 8 pm); 0 when there was none. */
     val nightDeliveryFee: Double = 0.0,
+    /**
+     * The shop's extra charge for rain, snow or a rush inside [deliveryFee];
+     * 0 when there was none. [extraDeliveryLabel] is its name on the bill.
+     */
+    val extraDeliveryFee: Double = 0.0,
+    val extraDeliveryLabel: String? = null,
     val status: OrderStatus = OrderStatus.PLACED,
     /** Epoch milliseconds. */
     val createdAt: Long = System.currentTimeMillis(),
@@ -118,6 +124,10 @@ data class Order(
     val replacesOrderId: String? = null,
     val rejectionReason: String? = null
 ) {
+    /** The delivery fee without the two charges saved inside it. */
+    val baseDeliveryFee: Double
+        get() = maxOf(0.0, deliveryFee - nightDeliveryFee - extraDeliveryFee)
+
     /** Why the store cancelled the order; null when the customer cancelled it or replaced it by adding items. */
     val storeCancelReason: String?
         get() = rejectionReason?.trim()?.takeIf {

@@ -103,7 +103,8 @@ fun AddItemsSheet(
     val newBill = CartBillBreakdown.calculate(
         merged,
         Coupon.find(order.couponCode),
-        userOrdersCount = if (order.deliveryFee - order.nightDeliveryFee > 0) Int.MAX_VALUE else 0
+        userOrdersCount = if (order.baseDeliveryFee > 0) Int.MAX_VALUE else 0,
+        extraDeliveryFee = order.extraDeliveryFee
     )
 
     ModalBottomSheet(

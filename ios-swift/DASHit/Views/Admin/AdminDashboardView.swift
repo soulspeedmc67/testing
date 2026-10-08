@@ -2093,7 +2093,10 @@ struct StoreControlSheetView: View {
 
     @State private var isOpen: Bool = true
     @State private var closeReason: String = "Normal Operations"
-    @State private var isSurge: Bool = false
+    @State private var extraOn: Bool = false
+    @State private var extraAmountText = ""
+    @State private var extraNameChoice = ShopRules.defaultExtraChargeLabel
+    @State private var extraOwnName = ""
     @State private var codEnabled: Bool = true
     @State private var codAtNight: Bool = false
     @State private var minOrderText = ""
@@ -2111,6 +2114,10 @@ struct StoreControlSheetView: View {
     @State private var mileageText = ""
 
     let reasons = ["Normal Operations", "Heavy Rain & Flooding", "Late Night Shift", "Power Outage", "Restocking Inventory"]
+
+    /// Names the extra charge can go by on the bill; `ownExtraName` opens a box to write another.
+    private static let extraNames = [ShopRules.defaultExtraChargeLabel, "Rain charge", "Snow charge", "Busy-hours charge"]
+    private static let ownExtraName = "Write my own"
 
     var body: some View {
         OptionalNavigationStack(enabled: !isEmbedded) {
@@ -2169,11 +2176,29 @@ struct StoreControlSheetView: View {
                 }
 
                 Section {
-                    Toggle("Busy-hours delivery fee (+₹20)", isOn: $isSurge)
+                    Toggle("Charge extra now", isOn: $extraOn)
+                    HStack {
+                        Text("Extra charge (₹)")
+                        Spacer()
+                        TextField("20", text: $extraAmountText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 60)
+                        Stepper("Extra charge", onIncrement: { stepExtraCharge(by: 5) }, onDecrement: { stepExtraCharge(by: -5) })
+                            .labelsHidden()
+                    }
+                    Picker("Name on the bill", selection: $extraNameChoice) {
+                        ForEach(Self.extraNames + [Self.ownExtraName], id: \.self) { name in
+                            Text(name).tag(name)
+                        }
+                    }
+                    if extraNameChoice == Self.ownExtraName {
+                        TextField("What the customer sees", text: $extraOwnName)
+                    }
                 } header: {
-                    Text("Busy hours")
+                    Text("Extra delivery charge")
                 } footer: {
-                    Text("Turn on when there are too many orders or not enough riders.")
+                    Text(extraChargeNote)
                 }
 
                 Section {
@@ -2204,7 +2229,6 @@ struct StoreControlSheetView: View {
             .onAppear {
                 isOpen = vm.storeConfig.isOpen
                 closeReason = vm.storeConfig.closeReason
-                isSurge = vm.storeConfig.isHighDemand
                 showShopRules(vm.shopRules)
                 showNightCharge(vm.nightCharge)
             }
@@ -2219,7 +2243,6 @@ struct StoreControlSheetView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         vm.toggleStore(isOpen: isOpen, reason: closeReason)
-                        vm.toggleSurgePricing(enabled: isSurge)
                         vm.saveShopRules(editedShopRules)
                         vm.saveNightCharge(editedNightCharge)
                         if !isEmbedded { dismiss() }
@@ -2256,6 +2279,16 @@ struct StoreControlSheetView: View {
         lowFromText = Self.plain(saved.deliveryLowFrom)
         lowFeeText = Self.plain(saved.deliveryLowFee)
         freeOrdersText = String(saved.freeDeliveryOrders)
+        extraOn = saved.extraChargeOn
+        extraAmountText = Self.plain(saved.extraChargeAmount)
+        if saved.extraChargeLabel.isEmpty {
+            extraNameChoice = ShopRules.defaultExtraChargeLabel
+        } else if Self.extraNames.contains(saved.extraChargeLabel) {
+            extraNameChoice = saved.extraChargeLabel
+        } else {
+            extraNameChoice = Self.ownExtraName
+            extraOwnName = saved.extraChargeLabel
+        }
     }
 
     /// What is on the page; a blank or out-of-range field keeps the saved figure.
@@ -2273,7 +2306,29 @@ struct StoreControlSheetView: View {
         if let value = Self.number(freeOrdersText), (0...1000).contains(value) { edited.freeDeliveryOrders = Int(value) }
         // The lowest fee can't start below the small-order amount.
         if edited.deliveryLowFrom < edited.deliverySmallBelow { edited.deliveryLowFrom = edited.deliverySmallBelow }
+        edited.extraChargeOn = extraOn
+        if let value = Self.number(extraAmountText), (1...ShopRules.extraChargeMax).contains(value) { edited.extraChargeAmount = value.rounded() }
+        let extraName = extraNameChoice == Self.ownExtraName ? ShopRules.cleanExtraLabel(extraOwnName) : extraNameChoice
+        // Blank on `config/store` means the built-in name.
+        edited.extraChargeLabel = extraName == ShopRules.defaultExtraChargeLabel ? "" : extraName
         return edited
+    }
+
+    // MARK: - Extra charge for rain, snow or a rush
+
+    /// ₹5 up or down from what is in the box, never under ₹5.
+    private func stepExtraCharge(by amount: Double) {
+        let current = Self.number(extraAmountText) ?? vm.shopRules.extraChargeAmount
+        extraAmountText = Self.plain(min(ShopRules.extraChargeMax, max(5, (current + amount).rounded())))
+    }
+
+    private var extraChargeNote: String {
+        let edited = editedShopRules
+        guard extraOn else {
+            return "For rain, snow, a busy rush or anything else that makes delivery harder. Off: customers pay the normal bill."
+        }
+        let name = ShopRules.extraChargeTitle(edited.extraChargeLabel)
+        return "Every order will pay ₹\(Self.plain(edited.extraChargeAmount)) extra, shown as “\(name)”, on top of the bill and on free delivery too. Turn it off when things are back to normal. Tap Save."
     }
 
     private var cashNote: String {

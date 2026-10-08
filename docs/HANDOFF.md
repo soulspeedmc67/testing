@@ -6,6 +6,42 @@
 
 ---
 
+## Oct 8, 2026: extra delivery charge for rain, snow or a rush
+
+Web VERIFIED (91 tests, production build, the checkout bill and the settings
+card on a local dev build with sample settings). Android VERIFIED to compile
+(`compileDebugKotlin`); not run on the Pixel. iOS NOT compiled here (no Swift):
+the GitHub Actions build is the check. Nothing is deployed, and the live
+`config/store` was NOT changed, so no customer is charged yet.
+
+- **What it is**: a switch the owner turns on when delivery gets harder. While
+  it is on, every order pays a flat amount on top of the bill, **free delivery
+  included** (first orders, FREEDEL) and on top of the night distance charge.
+- **Three fields on `config/store`**, in the shop rules of all three clients
+  (`src/lib/deliveryCharges.js`, `ShopRules.kt`, `ShopRules.swift`: keep in
+  step): `extraChargeOn` (missing = off), `extraChargeAmount` (₹20, whole
+  rupees, at most ₹500) and `extraChargeLabel` (its name on the bill; blank =
+  "Extra delivery charge"). Same listener as the other rules: no extra reads.
+- **Where the owner sets it**: `/xcyop` → Settings → "Extra delivery charge"
+  (`ExtraChargeSettings.jsx`: the switch saves at once; − / + and quick amounts;
+  quick names or their own words), or the iOS admin → Shop settings → "Extra
+  delivery charge" (Save). That iOS section replaces the old "Busy-hours
+  delivery fee (+₹20)" switch, which wrote `isHighDemand` and charged nobody.
+- **On the order** it is inside `deliveryFee`, like the night charge, with its
+  share saved as `extraDeliveryFee` and its name as `extraDeliveryLabel`.
+  Checkout, the cart (apps), the tracking page, the WhatsApp receipt, the
+  packing slip, the admin order drawer and add-items list it as its own line.
+  `deliveryFeeParts` (web) and `Order.baseDeliveryFee` (apps) give the normal
+  fee without the two charges.
+- **Adding items to a placed order** keeps the charge it paid, whatever the
+  switch says by then. An order that paid it still uses up a free delivery.
+- **Old builds don't charge it**: the live website until it is deployed, and
+  any installed app from before this change.
+- **Open**: the landing page still says "No surge pricing, no hidden fees"
+  (`ArtisticBentoFeatures.jsx`). Owner to decide whether that line stays.
+- iOS add-items: the "New total" line now includes the night distance charge
+  too (it was left out of the line, though the saved order had it).
+
 ## Oct 6, 2026: shop rules the owner changes without a new build
 
 Web VERIFIED (86 tests, production build, checkout and the settings card on

@@ -67,6 +67,8 @@ config/store                           # single doc
   isOpen, highDemand, updatedAt
   nightChargeMode                      # "auto" (8 pm to 6 am IST) | "on" | "off"; missing = auto
   nightChargePerKm, nightChargeMin     # ₹ per straight-line km, and the least charged (6, 10)
+  extraChargeOn                        # true while the shop charges extra (rain, snow, a rush); missing = off
+  extraChargeAmount, extraChargeLabel  # ₹ on every order while it is on (20), and its name on the bill ("" = "Extra delivery charge")
   petrolPrice, bikeMileage             # ₹ a litre, km a litre (107, 45): rider's petrol per order
 ```
 

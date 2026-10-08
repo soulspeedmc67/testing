@@ -177,6 +177,40 @@ test("the night distance charge is kept as it was", () => {
   assert.equal(freeBill.deliveryFee, 18);
 });
 
+test("the extra charge for rain or a rush is kept as it was", () => {
+  const rainy = { ...paidDelivery, deliveryFee: 42 + 20, extraDeliveryFee: 20, extraDeliveryLabel: "Rain charge", total: 178 };
+  const items = mergeAdditions(rainy.items, [rice]);
+  const bill = billForChangedOrder(rainy, items);
+  assert.equal(bill.baseDeliveryFee, 25);
+  assert.equal(bill.extraDeliveryFee, 20);
+  assert.equal(bill.extraDeliveryLabel, "Rain charge");
+  assert.equal(bill.deliveryFee, 45);
+  assert.equal(bill.total, 525 + 45 + 11);
+
+  const replacement = buildReplacementOrder(rainy, items, bill, new Date(PLACED_AT + 15000));
+  assert.equal(replacement.extraDeliveryFee, 20);
+  assert.equal(replacement.extraDeliveryLabel, "Rain charge");
+  assert.equal(replacement.subtotal + replacement.deliveryFee + replacement.handlingFee - replacement.discount, replacement.total);
+
+  // Free delivery (the first orders, a code) never waived it, and still doesn't.
+  const freeRainy = { ...paidDelivery, deliveryFee: 20, extraDeliveryFee: 20, couponCode: "FREEDEL" };
+  const freeBill = billForChangedOrder(freeRainy, mergeAdditions(freeRainy.items, [rice]));
+  assert.equal(freeBill.baseDeliveryFee, 0);
+  assert.equal(freeBill.distanceOnly, false);
+  assert.equal(freeBill.deliveryFee, 20);
+
+  // With the night distance charge as well: both are kept, the distance charge stays the whole normal fee.
+  const rainyNight = { ...paidDelivery, deliveryFee: 18 + 20, nightDeliveryFee: 18, extraDeliveryFee: 20, couponCode: null };
+  const nightBill = billForChangedOrder(rainyNight, mergeAdditions(rainyNight.items, [rice]));
+  assert.equal(nightBill.distanceOnly, true);
+  assert.equal(nightBill.deliveryFee, 38);
+
+  // An order with no extra charge doesn't gain the fields.
+  const plain = buildReplacementOrder(paidDelivery, items, billForChangedOrder(paidDelivery, items));
+  assert.equal("extraDeliveryFee" in plain, false);
+  assert.equal("extraDeliveryLabel" in plain, false);
+});
+
 test("a night order charged by distance alone stays that way", () => {
   const night = { ...paidDelivery, deliveryFee: 18, nightDeliveryFee: 18, couponCode: null };
   const bill = billForChangedOrder(night, mergeAdditions(night.items, [rice]));

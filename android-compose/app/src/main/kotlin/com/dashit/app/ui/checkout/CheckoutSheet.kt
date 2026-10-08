@@ -208,11 +208,14 @@ fun CheckoutSheet(
             userId = customer.id,
             items = items.map { it.copy() },
             subtotal = bill.subtotal,
-            // The night charge is part of the delivery fee; its share is kept beside it.
-            deliveryFee = bill.deliveryFee + nightFee,
+            // The night charge and the extra charge are part of the delivery
+            // fee; the share of each is kept beside it.
+            deliveryFee = bill.deliveryFee + nightFee + bill.extraDeliveryFee,
             discount = bill.couponDiscount,
             grandTotal = totalToPay,
             nightDeliveryFee = nightFee,
+            extraDeliveryFee = bill.extraDeliveryFee,
+            extraDeliveryLabel = if (bill.extraDeliveryFee > 0) ShopRules.extraChargeTitle(store.rules.extraChargeLabel) else null,
             deliveryAddress = address,
             paymentMethod = if (paysOnline) "Paid online" else "Cash on Delivery",
             paymentStatus = if (paysOnline) "paid" else "pending",
@@ -409,7 +412,9 @@ fun CheckoutSheet(
                         total = totalToPay,
                         nightFee = nightFee,
                         distanceKm = distanceKm,
-                        isNight = NightCharge.isNightHours(nowMillis)
+                        isNight = NightCharge.isNightHours(nowMillis),
+                        extraFee = bill.extraDeliveryFee,
+                        extraLabel = ShopRules.extraChargeTitle(storeState.rules.extraChargeLabel)
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -865,7 +870,14 @@ private fun OnlineOptionRow(option: PayOption, selected: Boolean, onClick: () ->
 }
 
 @Composable
-private fun OrderTotalCard(total: Double, nightFee: Double = 0.0, distanceKm: Double = 0.0, isNight: Boolean = true) {
+private fun OrderTotalCard(
+    total: Double,
+    nightFee: Double = 0.0,
+    distanceKm: Double = 0.0,
+    isNight: Boolean = true,
+    extraFee: Double = 0.0,
+    extraLabel: String = ShopRules.DEFAULT_EXTRA_CHARGE_LABEL
+) {
     val cardShape = RoundedCornerShape(14.dp)
     Column(
         modifier = Modifier
@@ -898,6 +910,35 @@ private fun OrderTotalCard(total: Double, nightFee: Double = 0.0, distanceKm: Do
                 }
                 Text(
                     text = "₹${nightFee.toInt()}",
+                    color = DashitColors.TextPrimary,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // The shop's extra charge for rain, snow or a rush: on free delivery too.
+        if (extraFee > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = extraLabel,
+                        color = DashitColors.TextPrimary,
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "On every order for now, free delivery included",
+                        color = DashitColors.TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Text(
+                    text = "₹${extraFee.toInt()}",
                     color = DashitColors.TextPrimary,
                     fontSize = 14.5.sp,
                     fontWeight = FontWeight.Bold

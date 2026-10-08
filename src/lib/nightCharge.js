@@ -10,6 +10,8 @@
  * `ios-swift/DASHit/Core/Utils/NightCharge.swift`: keep the three in step.
  */
 
+import { extraChargeLabel } from "./deliveryCharges.js";
+
 // The charge runs from 8 pm to 6 am, India time, every day.
 export const NIGHT_START_HOUR = 20;
 export const NIGHT_END_HOUR = 6;
@@ -76,13 +78,16 @@ export function nightChargeFor(distanceKm, cfg, date = new Date()) {
 }
 
 /**
- * An order's delivery fee as the bill showed it: the normal fee, and the
- * distance charge that is saved inside it (`nightDeliveryFee`).
+ * An order's delivery fee as the bill showed it: the normal fee, and the two
+ * charges saved inside it. `night` is the distance charge (`nightDeliveryFee`);
+ * `extra` is the charge for rain, snow or a rush (`extraDeliveryFee`), under
+ * the name the customer saw (`extraLabel`).
  */
 export function deliveryFeeParts(order) {
   const total = Math.max(0, Number(order?.deliveryFee) || 0);
   const night = Math.min(total, Math.max(0, Number(order?.nightDeliveryFee) || 0));
-  return { base: total - night, night };
+  const extra = Math.min(total - night, Math.max(0, Number(order?.extraDeliveryFee) || 0));
+  return { base: total - night - extra, night, extra, extraLabel: extraChargeLabel(order?.extraDeliveryLabel) };
 }
 
 /** Petrol price (₹ a litre) and the bike's mileage (km a litre), with the defaults filled in. */

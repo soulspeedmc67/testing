@@ -259,6 +259,13 @@ struct CartSheetView: View {
                     value: CurrencyFormatter.format(bill.nightDeliveryFee)
                 )
             }
+            // The shop's extra charge for rain, snow or a rush: on free delivery too.
+            if bill.extraDeliveryFee > 0 {
+                billRow(
+                    ShopRules.extraChargeTitle(ShopRules.current.extraChargeLabel),
+                    value: CurrencyFormatter.format(bill.extraDeliveryFee)
+                )
+            }
             billRow(
                 "Handling charge",
                 value: CurrencyFormatter.format(bill.handlingFee)

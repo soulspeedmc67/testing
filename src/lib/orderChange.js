@@ -1,4 +1,4 @@
-import { calculateDeliveryCharges, SHOP_RULE_DEFAULTS } from "./deliveryCharges.js";
+import { calculateDeliveryCharges, extraChargeLabel, SHOP_RULE_DEFAULTS } from "./deliveryCharges.js";
 
 /**
  * Adding items to an order during its change window.
@@ -126,12 +126,14 @@ export function itemsSubtotal(items = []) {
   return (items || []).reduce((sum, item) => sum + rupees(item.price) * qtyOf(item), 0);
 }
 
-/* The fee as the bill shows it: the normal fee, and the night distance charge
-   that checkout saves inside it (`nightDeliveryFee` is its share). */
+/* The fee as the bill shows it: the normal fee, and the two charges checkout
+   saves inside it: the night distance charge (`nightDeliveryFee` is its share)
+   and the extra charge for rain or a rush (`extraDeliveryFee`). */
 function deliveryFeeParts(order) {
   const total = Math.max(0, rupees(order?.deliveryFee));
   const night = Math.min(total, Math.max(0, rupees(order?.nightDeliveryFee)));
-  return { base: total - night, night };
+  const extra = Math.min(total - night, Math.max(0, rupees(order?.extraDeliveryFee)));
+  return { base: total - night - extra, night, extra };
 }
 
 function couponDiscount(order, subtotal, coupon) {
@@ -156,6 +158,8 @@ function couponDiscount(order, subtotal, coupon) {
  *   on the original (the first-orders offer, or a free-delivery code) stays free.
  * - Night distance charge: kept as it was. Same trip, same address. Orders
  *   placed with the distance charge as their whole fee stay that way.
+ * - Extra charge (rain, a rush): kept as it was, whatever the shop's switch
+ *   says now. It was charged once for this trip.
  * - Handling charge: kept.
  * - Discount: the order's code applied to the new item total; `coupon` is that
  *   code from the shop's list, or null when it isn't there.
@@ -175,7 +179,7 @@ export function billForChangedOrder(order, items, coupon = null, rules = SHOP_RU
 
   const handlingFee = rupees(order?.handlingFee ?? rules.handlingFee);
   const discount = couponDiscount(order, subtotal, coupon);
-  const deliveryFee = baseDeliveryFee + before.night;
+  const deliveryFee = baseDeliveryFee + before.night + before.extra;
   const total = Math.max(0, subtotal + deliveryFee + handlingFee - discount);
 
   const mrpSavings = (items || []).reduce((sum, item) => {
@@ -188,6 +192,8 @@ export function billForChangedOrder(order, items, coupon = null, rules = SHOP_RU
     subtotal,
     baseDeliveryFee,
     nightDeliveryFee: before.night,
+    extraDeliveryFee: before.extra,
+    extraDeliveryLabel: before.extra > 0 ? extraChargeLabel(order?.extraDeliveryLabel) : "",
     distanceOnly,
     deliveryFee,
     handlingFee,
@@ -232,6 +238,9 @@ export function buildReplacementOrder(order, items, bill, now = new Date()) {
     deliveryFee: bill.deliveryFee,
     // The night charge is part of the delivery fee; its share is kept beside it.
     ...(bill.nightDeliveryFee > 0 ? { nightDeliveryFee: bill.nightDeliveryFee } : {}),
+    ...(bill.extraDeliveryFee > 0
+      ? { extraDeliveryFee: bill.extraDeliveryFee, extraDeliveryLabel: bill.extraDeliveryLabel }
+      : {}),
     handlingFee: bill.handlingFee,
     discount: bill.discount,
     totalAmount: bill.total,

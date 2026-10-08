@@ -61,7 +61,10 @@ enum OrderUpdater {
             appliedCoupon: order.couponCode.flatMap { Coupon.find(code: $0) },
             // Delivery that was free on the original (the first-orders offer)
             // stays free; otherwise it is the fee for the new items total.
-            userOrdersCount: order.deliveryFee - order.nightDeliveryFee > 0 ? Int.max : 0
+            userOrdersCount: order.baseDeliveryFee > 0 ? Int.max : 0,
+            // The extra charge (rain, a rush) is kept as it was paid, whatever
+            // the shop's switch says now.
+            extraDeliveryFee: order.extraDeliveryFee
         )
 
         let replacement = Order(
@@ -70,7 +73,7 @@ enum OrderUpdater {
             items: items,
             subtotal: bill.subtotal,
             // The distance charge of the original order is kept: same trip, same address.
-            deliveryFee: bill.deliveryFee + order.nightDeliveryFee,
+            deliveryFee: bill.deliveryFee + order.nightDeliveryFee + order.extraDeliveryFee,
             discount: bill.couponDiscount,
             grandTotal: bill.grandTotal + order.nightDeliveryFee,
             status: .placed,
@@ -83,7 +86,9 @@ enum OrderUpdater {
             couponCode: order.couponCode,
             modifyWindowEndsAt: order.modifyWindowEnd.timeIntervalSince1970,
             replacesOrderId: order.id,
-            nightDeliveryFee: order.nightDeliveryFee
+            nightDeliveryFee: order.nightDeliveryFee,
+            extraDeliveryFee: order.extraDeliveryFee,
+            extraDeliveryLabel: order.extraDeliveryLabel
         )
         let distance = DeliveryEta.quote(for: order.deliveryAddress.coordinate).distanceKm
 

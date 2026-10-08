@@ -148,8 +148,17 @@ public struct Order: Identifiable, Hashable {
     public var rejectionReason: String?
     /// The distance charge inside `deliveryFee` (after 8 pm); 0 when there was none.
     public var nightDeliveryFee: Double
+    /// The shop's extra charge for rain, snow or a rush inside `deliveryFee`;
+    /// 0 when there was none. `extraDeliveryLabel` is its name on the bill.
+    public var extraDeliveryFee: Double
+    public var extraDeliveryLabel: String?
     /// Straight-line km from the store, as saved at checkout.
     public var distanceKm: Double?
+
+    /// The delivery fee without the two charges saved inside it.
+    public var baseDeliveryFee: Double {
+        max(0, deliveryFee - nightDeliveryFee - extraDeliveryFee)
+    }
 
     public init(
         id: String,
@@ -175,6 +184,8 @@ public struct Order: Identifiable, Hashable {
         replacesOrderId: String? = nil,
         rejectionReason: String? = nil,
         nightDeliveryFee: Double = 0,
+        extraDeliveryFee: Double = 0,
+        extraDeliveryLabel: String? = nil,
         distanceKm: Double? = nil
     ) {
         self.id = id
@@ -200,6 +211,8 @@ public struct Order: Identifiable, Hashable {
         self.replacesOrderId = replacesOrderId
         self.rejectionReason = rejectionReason
         self.nightDeliveryFee = nightDeliveryFee
+        self.extraDeliveryFee = extraDeliveryFee
+        self.extraDeliveryLabel = extraDeliveryLabel
         self.distanceKm = distanceKm
     }
 
@@ -269,7 +282,7 @@ extension Order: Decodable {
         case driverId, driverName, driverPhone, etaMinutes, tracking
         case otp, couponCode, modifyWindowEndsAt, replacesOrderId
         case rejectionReason, cancelledReason, rejectReason, cancelReason
-        case nightDeliveryFee, distanceKm
+        case nightDeliveryFee, extraDeliveryFee, extraDeliveryLabel, distanceKm
     }
 
     public init(from decoder: Decoder) throws {
@@ -327,6 +340,8 @@ extension Order: Decodable {
                 ?? c.flexibleString(.rejectReason)
                 ?? c.flexibleString(.cancelReason),
             nightDeliveryFee: c.flexibleDouble(.nightDeliveryFee) ?? 0,
+            extraDeliveryFee: max(0, c.flexibleDouble(.extraDeliveryFee) ?? 0),
+            extraDeliveryLabel: c.flexibleString(.extraDeliveryLabel),
             distanceKm: c.flexibleDouble(.distanceKm)
         )
     }
