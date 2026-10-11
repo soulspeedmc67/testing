@@ -19,3 +19,6 @@ export function isBeforeLaunch(now = Date.now()) {
  * upload zip, not in git); NEXT_PUBLIC_APK_URL points it elsewhere.
  */
 export const APK_URL = process.env.NEXT_PUBLIC_APK_URL || "/DASHit.apk";
+
+/** The iPhone app's page on the App Store (live since version 1.0.1). */
+export const APP_STORE_URL = "https://apps.apple.com/in/app/dashit-fastest-grocery-app/id6815538756";

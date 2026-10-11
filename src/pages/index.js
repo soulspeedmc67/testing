@@ -7,7 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 import { hapticLight } from "../lib/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import { stagger, fadeUp, inViewOnce, EASE_OUT } from "../lib/motion";
-import { LAUNCH_AT, LAUNCH_LABEL, APK_URL, isBeforeLaunch } from "../lib/launch";
+import { LAUNCH_AT, LAUNCH_LABEL, APK_URL, APP_STORE_URL, isBeforeLaunch } from "../lib/launch";
 import { X, Menu, Sun, Moon, ArrowRight, MapPin, Wallet, Truck, Download, Sparkles } from "lucide-react";
 
 const DELIVERY_STEPS = [
@@ -87,31 +87,35 @@ function AppleMark({ className = "w-5 h-5" }) {
   );
 }
 
-/** The two store listings, shown as "coming soon" (not links yet). */
+/** The two store listings: the App Store one is a link; Google Play is "coming soon" (not a link yet). */
 function StoreBadges({ onDark = false }) {
   const tone = onDark
     ? "border-white/15 bg-white/[0.06] text-white"
     : "border-slate-300/80 bg-white text-[#061838] dark:border-slate-700 dark:bg-[#12161F] dark:text-white";
   const small = onDark ? "text-slate-400" : "text-slate-500 dark:text-slate-400";
+  const box = `h-[52px] min-w-0 px-3 sm:px-3.5 rounded-xl border flex items-center gap-2.5 sm:gap-3 select-none ${tone}`;
+  const words = (line, store) => (
+    <span className="leading-tight text-left">
+      <span className={`block text-[10.5px] font-medium ${small}`}>{line}</span>
+      <span className="block text-[14px] sm:text-[15px] font-bold tracking-tight whitespace-nowrap">{store}</span>
+    </span>
+  );
   return (
     <div className="grid grid-cols-2 gap-2.5 max-w-[360px]">
-      {[
-        { mark: <GooglePlayMark />, store: "Google Play" },
-        { mark: <AppleMark />, store: "App Store" },
-      ].map(({ mark, store }) => (
-        <div
-          key={store}
-          role="img"
-          aria-label={`${store}: coming soon`}
-          className={`h-[52px] min-w-0 px-3 sm:px-3.5 rounded-xl border flex items-center gap-2.5 sm:gap-3 select-none ${tone}`}
-        >
-          {mark}
-          <span className="leading-tight text-left">
-            <span className={`block text-[10.5px] font-medium ${small}`}>Coming soon to</span>
-            <span className="block text-[14px] sm:text-[15px] font-bold tracking-tight whitespace-nowrap">{store}</span>
-          </span>
-        </div>
-      ))}
+      <div role="img" aria-label="Google Play: coming soon" className={box}>
+        <GooglePlayMark />
+        {words("Coming soon to", "Google Play")}
+      </div>
+      <a
+        href={APP_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Download DASHit on the App Store"
+        className={`${box} transition-all active:scale-[0.98] ${onDark ? "hover:bg-white/10" : "hover:bg-slate-50 dark:hover:bg-[#181D2A]"}`}
+      >
+        <AppleMark />
+        {words("Download on the", "App Store")}
+      </a>
     </div>
   );
 }
