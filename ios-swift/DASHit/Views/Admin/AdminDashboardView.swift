@@ -616,6 +616,19 @@ public struct AdminDashboardView: View {
                 // Distributor filter
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
+                        // Items still on a photo from the bulk upload, to swap for the shop's own.
+                        if vm.bulkPhotoCount > 0 {
+                            Button(action: { vm.onlyBulkPhotos.toggle() }) {
+                                Text("Photos to replace (\(vm.bulkPhotoCount))")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(vm.onlyBulkPhotos ? .white : .orange)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(vm.onlyBulkPhotos ? Color.orange : Color.orange.opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                        }
+
                         Button(action: { vm.selectedDistributor = nil }) {
                             Text("All")
                                 .font(.system(size: 12, weight: .semibold))

@@ -31,6 +31,17 @@ export function isPlaceholderImage(url) {
 }
 
 /**
+ * A photo from the bulk set put on the website host in one go
+ * (products/catalog, shown as its small copy in products/thumbs). They are
+ * the right product but not the shop's own pictures, so the Stock screens
+ * list them as "Photos to replace". The same test is in the iOS admin
+ * (`AdminDashboardViewModel.hasBulkPhoto`).
+ */
+export function isBulkPhoto(url) {
+  return /\/products\/(catalog|thumbs)\//.test(String(url || ""));
+}
+
+/**
  * The listing rule: items with a real photo are shown before items without
  * one, everywhere a shopper browses. Order inside each group is kept, so any
  * sort done before or after still decides the order among equals.

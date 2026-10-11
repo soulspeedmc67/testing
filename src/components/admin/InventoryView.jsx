@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { isBulkPhoto } from "../../lib/productPhotoMatch";
 import {
   Boxes,
   Search,
@@ -24,6 +25,9 @@ import {
 } from "lucide-react";
 import { generateCsvString, triggerCsvDownload, INVENTORY_CSV_COLUMNS } from "../../lib/csvExport";
 import { isPlaceholderImage } from "../../lib/productPhotoMatch";
+
+// The "Photos to replace" chip, in the place of a category.
+const BULK_PHOTOS = "__bulk_photos__";
 
 export default function InventoryView({
   catalogue = [],
@@ -81,6 +85,9 @@ export default function InventoryView({
     return Array.from(set);
   }, [catalogue]);
 
+  // Items still showing a photo from the bulk set, to swap for the shop's own.
+  const bulkPhotoCount = useMemo(() => catalogue.filter((p) => isBulkPhoto(p.img)).length, [catalogue]);
+
   // Unique Distributors (derived from distributors list + catalogue)
   const allDistributorNames = useMemo(() => {
     const set = new Set();
@@ -130,7 +137,9 @@ export default function InventoryView({
       const matchesSearch = !q || name.includes(q) || brand.includes(q) || barcode.includes(q) || dist.includes(q);
       if (!matchesSearch) return false;
 
-      if (categoryFilter !== "All" && p.cat !== categoryFilter) return false;
+      if (categoryFilter === BULK_PHOTOS) {
+        if (!isBulkPhoto(p.img)) return false;
+      } else if (categoryFilter !== "All" && p.cat !== categoryFilter) return false;
 
       if (distributorFilter !== "All") {
         const itemDist = p.distributor || "Myself";
@@ -528,6 +537,20 @@ export default function InventoryView({
 
         {/* Category Filter Chips */}
         <div className="flex items-center space-x-1 overflow-x-auto scrollbar-none pt-1">
+          {bulkPhotoCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setCategoryFilter(categoryFilter === BULK_PHOTOS ? "All" : BULK_PHOTOS)}
+              title="Items still showing a photo from the bulk upload. Open one to give it your own photo."
+              className={`text-[11px] font-bold px-2.5 py-1 rounded-lg whitespace-nowrap transition-all cursor-pointer border ${
+                categoryFilter === BULK_PHOTOS
+                  ? "bg-[#FF5B00] border-[#FF5B00] text-white font-black"
+                  : "border-[#FF5B00]/40 text-[#FF5B00] hover:bg-[#FF5B00]/10"
+              }`}
+            >
+              Photos to replace ({bulkPhotoCount})
+            </button>
+          )}
           {categories.map((cat) => (
             <button
               key={cat}

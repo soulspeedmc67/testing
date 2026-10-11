@@ -146,6 +146,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published public var searchQuery: String = ""
     @Published public var selectedDistributor: String? = nil
     @Published public var selectedCategory: String = "All"
+    /// Stock shows only items still on a photo from the bulk set ("Photos to replace").
+    @Published public var onlyBulkPhotos: Bool = false
     @Published public var orderFilterStatus: String = "All"
     @Published public var sortOption: AdminSortOption = .distributorAsc
     @Published public var audioChimeEnabled: Bool = true
@@ -374,6 +376,19 @@ public final class AdminDashboardViewModel: ObservableObject {
 
     // MARK: - Filtered Views
 
+    /// A photo from the bulk set put on the website host in one go
+    /// (products/catalog, shown as its small copy in products/thumbs). They
+    /// are the right product but not the shop's own pictures. Same test as
+    /// `isBulkPhoto` in src/lib/productPhotoMatch.js.
+    public static func hasBulkPhoto(_ product: Product) -> Bool {
+        product.img.contains("/products/catalog/") || product.img.contains("/products/thumbs/")
+    }
+
+    /// How many items still show a bulk photo.
+    public var bulkPhotoCount: Int {
+        products.reduce(0) { $0 + (Self.hasBulkPhoto($1) ? 1 : 0) }
+    }
+
     public var filteredProducts: [Product] {
         var result = products
 
@@ -392,6 +407,10 @@ public final class AdminDashboardViewModel: ObservableObject {
 
         if selectedCategory != "All" {
             result = result.filter { $0.cat == selectedCategory }
+        }
+
+        if onlyBulkPhotos {
+            result = result.filter { Self.hasBulkPhoto($0) }
         }
 
         switch sortOption {
