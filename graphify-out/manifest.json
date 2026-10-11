@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1791168062.1814463,
-    "seen": 1791170264.6728845,
-    "ast_hash": "9d5fad3ccc25dd54355c2d324abba455",
+    "mtime": 1791699690.7252784,
+    "seen": 1791699922.333739,
+    "ast_hash": "16e6b7b63ba6554e8403fa3e2d79d124",
     "semantic_hash": ""
   },
   "postcss.config.js": {
@@ -192,9 +192,9 @@
     "semantic_hash": ""
   },
   "src/components/CheckoutLoginModal.jsx": {
-    "mtime": 1791003874.0306807,
-    "seen": 1791130252.2858326,
-    "ast_hash": "054fcefb8650f35dccc148e79ede75db",
+    "mtime": 1791699492.6177673,
+    "seen": 1791699922.3378344,
+    "ast_hash": "151725ea483dca1bb0ef7b5c7bf652e9",
     "semantic_hash": ""
   },
   "src/components/CouponsDrawer.jsx": {
@@ -516,9 +516,9 @@
     "semantic_hash": ""
   },
   "src/pages/checkout.js": {
-    "mtime": 1791468578.6295338,
-    "seen": 1791469509.5966969,
-    "ast_hash": "aabf697627a4237518595a859fc2ae7b",
+    "mtime": 1791699642.6535983,
+    "seen": 1791699922.347679,
+    "ast_hash": "2b45b2de7c7770d3fd1da6f7e886741e",
     "semantic_hash": ""
   },
   "src/pages/confirm-location.js": {
@@ -660,9 +660,9 @@
     "semantic_hash": ""
   },
   "docs/HANDOFF.md": {
-    "mtime": 1791469309.5764186,
-    "seen": 1791469509.600063,
-    "ast_hash": "5caf9060790a5420ddb7569d3eb60e35",
+    "mtime": 1791699903.8196857,
+    "seen": 1791699922.3513184,
+    "ast_hash": "abbb02fc6b174331321024fbf5ab1392",
     "semantic_hash": ""
   },
   "ios/App/CapApp-SPM/README.md": {
@@ -948,9 +948,9 @@
     "semantic_hash": ""
   },
   "src/lib/db.js": {
-    "mtime": 1791466986.4114633,
-    "seen": 1791467488.4624696,
-    "ast_hash": "93e6c790722559a54bab5680013e2a43",
+    "mtime": 1791699642.651398,
+    "seen": 1791699922.3450146,
+    "ast_hash": "4ee22ab31905fb309e82029b946ed71b",
     "semantic_hash": ""
   },
   "src/lib/firebase.js": {
@@ -1098,9 +1098,9 @@
     "semantic_hash": ""
   },
   "src/components/admin/AdminLayout.jsx": {
-    "mtime": 1791469168.968758,
-    "seen": 1791469509.5897856,
-    "ast_hash": "164763071f8d3b9b900092c4314fdd3d",
+    "mtime": 1791699749.61142,
+    "seen": 1791699922.3415043,
+    "ast_hash": "e5a0767b6fb4e8bad66a7e2725ac5bee",
     "semantic_hash": ""
   },
   "src/components/admin/BatchInwardView.jsx": {
@@ -1602,9 +1602,9 @@
     "semantic_hash": ""
   },
   "android-compose/app/build.gradle": {
-    "mtime": 1791007575.756855,
-    "seen": 1791130252.2833076,
-    "ast_hash": "b9e4759badb35db507dcb14440896017",
+    "mtime": 1791552377.290121,
+    "seen": 1791699922.3195639,
+    "ast_hash": "957be1544a38ba7be784c292ce4be7d7",
     "semantic_hash": ""
   },
   "android-compose/app/google-services.json": {
@@ -1680,9 +1680,9 @@
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/data/DeliveryEta.kt": {
-    "mtime": 1791466789.4139075,
-    "seen": 1791467488.4268055,
-    "ast_hash": "fa0cafa239e6be249b77df5f85317ace",
+    "mtime": 1791699680.770092,
+    "seen": 1791699922.3202655,
+    "ast_hash": "0452d3c1533c6cfe6dd461ef7c3ad1a1",
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/data/LaunchGate.kt": {
@@ -1728,9 +1728,9 @@
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/data/auth/AuthRepository.kt": {
-    "mtime": 1791117572.0753248,
-    "seen": 1791130252.2833524,
-    "ast_hash": "e572b114913e5d98c01dfeb5de975259",
+    "mtime": 1791699467.8618293,
+    "seen": 1791699922.3210878,
+    "ast_hash": "9d6f9b5dece0c6dc8fbc5d1e8c48164e",
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/data/model/CartItem.kt": {
@@ -1818,9 +1818,9 @@
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/ui/auth/AuthScreen.kt": {
-    "mtime": 1791119380.1253734,
-    "seen": 1791130252.2833836,
-    "ast_hash": "5aaa9d0b44ffe0970efa0dafebac276b",
+    "mtime": 1791699467.8635578,
+    "seen": 1791699922.3229442,
+    "ast_hash": "c818a19caadd0f12b05107dc5ab029ac",
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/ui/auth/OtpCodeField.kt": {
@@ -1830,9 +1830,9 @@
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/ui/auth/SignInSheet.kt": {
-    "mtime": 1790855063.7865431,
-    "seen": 1791130252.2833881,
-    "ast_hash": "9a5135ea3a827dec564f368a1476a8d0",
+    "mtime": 1791699467.8630936,
+    "seen": 1791699922.3231282,
+    "ast_hash": "51571b6c4f205532712eef724a8631ae",
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/ui/cart/CartSheet.kt": {
@@ -1854,9 +1854,9 @@
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/ui/checkout/CheckoutSheet.kt": {
-    "mtime": 1791466789.415121,
-    "seen": 1791467488.4303606,
-    "ast_hash": "cadd3f35e57de8a84bc444c7b3c5aed3",
+    "mtime": 1791699680.772298,
+    "seen": 1791699922.324002,
+    "ast_hash": "70c866b27310a343e3c3f6de721395b2",
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/ui/components/BottomNavBar.kt": {
@@ -2238,9 +2238,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Core/Firebase/AuthService.swift": {
-    "mtime": 1790855512.4450245,
-    "seen": 1791130252.2846885,
-    "ast_hash": "63689110b76cd6740284cc534b3efe89",
+    "mtime": 1791699492.6170793,
+    "seen": 1791699922.3277738,
+    "ast_hash": "774c4fe1ef5b65a47c6bad3f9e58af4c",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Core/Firebase/CatalogueFile.swift": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Core/Firebase/FirestoreService.swift": {
-    "mtime": 1791466755.1630874,
-    "seen": 1791467488.4387083,
-    "ast_hash": "91968574f7a65ef9adbcf206ae0982ec",
+    "mtime": 1791699492.6163785,
+    "seen": 1791699922.3278828,
+    "ast_hash": "5e1c732d0593f2cd4c90d7ee24f7a196",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Core/Firebase/OrderUpdater.swift": {
@@ -2502,9 +2502,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/ViewModels/CheckoutViewModel.swift": {
-    "mtime": 1791466755.175493,
-    "seen": 1791467488.4426546,
-    "ast_hash": "fe5d6780f74cc942cd6e55fcf1f12c3f",
+    "mtime": 1791699680.7754633,
+    "seen": 1791699922.3303423,
+    "ast_hash": "84f5ed087212140ee53d19557eb7994a",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/ViewModels/LiveTrackingViewModel.swift": {
@@ -2550,9 +2550,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Admin/AdminDashboardView.swift": {
-    "mtime": 1791467006.3733974,
-    "seen": 1791467488.4429753,
-    "ast_hash": "4cc50e88be4a892da9cac33697463207",
+    "mtime": 1791699690.7209122,
+    "seen": 1791699922.331238,
+    "ast_hash": "1665cf29383ad3ce2e9ad136e91d2c6a",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Admin/AdminHomeView.swift": {
@@ -2586,9 +2586,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Auth/AuthView.swift": {
-    "mtime": 1790855222.6114104,
-    "seen": 1791130252.2848635,
-    "ast_hash": "74242b18dbe00d7ef908a74c63373069",
+    "mtime": 1791699492.6174617,
+    "seen": 1791699922.3316941,
+    "ast_hash": "8b6a4e4c85b31aafd871713a8fb9b441",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Auth/OtpCodeBoxes.swift": {
@@ -2628,9 +2628,9 @@
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Checkout/CheckoutView.swift": {
-    "mtime": 1791468578.631511,
-    "seen": 1791469509.5819428,
-    "ast_hash": "97af61cf9cca4f8c319384668c63503c",
+    "mtime": 1791699680.775825,
+    "seen": 1791699922.3319702,
+    "ast_hash": "a6b43dc3a980a6930fca2d0ee93ab929",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Components/CategoryCollageTile.swift": {
@@ -3516,9 +3516,9 @@
     "semantic_hash": ""
   },
   "src/lib/productPhotoMatch.js": {
-    "mtime": 1790667276.7287984,
-    "seen": 1791130252.2865505,
-    "ast_hash": "d4d49c0549d9dd77a39923c4808c4efa",
+    "mtime": 1791699704.013349,
+    "seen": 1791699922.3465137,
+    "ast_hash": "71cc23a0bdb54d4d591b4361efe834b1",
     "semantic_hash": ""
   },
   "src/lib/razorpayWeb.js": {
@@ -3588,9 +3588,9 @@
     "semantic_hash": ""
   },
   "src/pages/help.js": {
-    "mtime": 1791468578.6306322,
-    "seen": 1791469509.5969121,
-    "ast_hash": "cbef7bf1832bce05f4229c01d22f3204",
+    "mtime": 1791699690.7238553,
+    "seen": 1791699922.3479388,
+    "ast_hash": "863d9b2ba3d76cceb4ea80fdae0ca0d7",
     "semantic_hash": ""
   },
   "src/pages/offers.js": {
@@ -7656,15 +7656,15 @@
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/data/NightCharge.kt": {
-    "mtime": 1791210750.739257,
-    "seen": 1791294091.1394815,
-    "ast_hash": "ca8cdc45cda5e462bb50666d2c97ff7f",
+    "mtime": 1791699680.7692568,
+    "seen": 1791699922.320394,
+    "ast_hash": "ed108865f9de3252f568bd92ed8dea4d",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Core/Utils/NightCharge.swift": {
-    "mtime": 1791210750.757257,
-    "seen": 1791294091.1436718,
-    "ast_hash": "16fc295069425edab7cf493b5c19c094",
+    "mtime": 1791699680.7737725,
+    "seen": 1791699922.328423,
+    "ast_hash": "8c99eae79a41c94ac94cde68677d2ee9",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Admin/AdminOrderLocationCard.swift": {
@@ -7674,9 +7674,9 @@
     "semantic_hash": ""
   },
   "src/components/admin/DeliveryChargeSettings.jsx": {
-    "mtime": 1791293194.3491542,
-    "seen": 1791294091.1510215,
-    "ast_hash": "3cd274cf8eb96080945bbadead59ae62",
+    "mtime": 1791699655.2555158,
+    "seen": 1791699922.3419304,
+    "ast_hash": "005cb94f73f9c8a9e5f92374022247e1",
     "semantic_hash": ""
   },
   "src/components/admin/LiveDeliveriesPanel.jsx": {
@@ -7698,27 +7698,27 @@
     "semantic_hash": ""
   },
   "src/lib/nightCharge.js": {
-    "mtime": 1791461157.8912697,
-    "seen": 1791461990.3486114,
-    "ast_hash": "4ff06d26c195900b47a960248ebf094c",
+    "mtime": 1791699642.6470096,
+    "seen": 1791699922.3457851,
+    "ast_hash": "fbbee8308e356d84afed4fc61497c6f8",
     "semantic_hash": ""
   },
   "tests/nightCharge.test.mjs": {
-    "mtime": 1791461287.266179,
-    "seen": 1791461990.3509383,
-    "ast_hash": "c438efd4110bb6c59b90faf03f7ab68e",
+    "mtime": 1791699718.7431557,
+    "seen": 1791699922.3496292,
+    "ast_hash": "6de1bd1ccfdfcf56a10e653ad3516df2",
     "semantic_hash": ""
   },
   "android-compose/app/src/main/kotlin/com/dashit/app/data/ShopRules.kt": {
-    "mtime": 1791461447.0213177,
-    "seen": 1791461990.3291817,
-    "ast_hash": "7806c148aa92d7e3562dbdee2f08cf1c",
+    "mtime": 1791699680.7710392,
+    "seen": 1791699922.3210754,
+    "ast_hash": "8706b69e03224d7c9ae54bfb77d08d07",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Core/Utils/ShopRules.swift": {
-    "mtime": 1791461346.0899105,
-    "seen": 1791461990.3355296,
-    "ast_hash": "bb0542429dc041d76f75b6021ba62dda",
+    "mtime": 1791699680.774885,
+    "seen": 1791699922.3291867,
+    "ast_hash": "569a7b3be812dc0c57e866745999bdf6",
     "semantic_hash": ""
   },
   "ios-swift/DASHit/Views/Admin/AdminAnalyticsView.swift": {
@@ -7734,9 +7734,9 @@
     "semantic_hash": ""
   },
   "src/components/admin/ShopRulesSettings.jsx": {
-    "mtime": 1791461259.234197,
-    "seen": 1791461990.3471777,
-    "ast_hash": "cbec02f65247a78a7059754c6cb9841e",
+    "mtime": 1791699680.7677934,
+    "seen": 1791699922.3430288,
+    "ast_hash": "dc1ae4c51e09f8a6f982137f37d3e952",
     "semantic_hash": ""
   },
   "src/lib/deliveryCharges.js": {
@@ -7809,6 +7809,12 @@
     "mtime": 1791466986.4105659,
     "seen": 1791467488.4620016,
     "ast_hash": "465f9d38f9c0ed77ef79e9be2c76563b",
+    "semantic_hash": ""
+  },
+  "scripts/add-photos-to-export.mjs": {
+    "mtime": 1791699703.9480276,
+    "seen": 1791699922.3353882,
+    "ast_hash": "cfc60b662b29b534c32722d09226522a",
     "semantic_hash": ""
   }
 }
