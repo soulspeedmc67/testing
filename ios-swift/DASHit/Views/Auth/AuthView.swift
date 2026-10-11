@@ -80,6 +80,8 @@ struct AuthView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
             withAnimation(.easeOut(duration: 0.25)) { isKeyboardUp = false }
         }
+        // The number and name are only asked with a working account behind them.
+        .task { await auth.verifySession() }
         .onChange(of: isReady) { _, ready in
             if ready { onClose() }
         }

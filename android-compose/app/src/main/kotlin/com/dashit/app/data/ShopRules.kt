@@ -60,7 +60,7 @@ data class ShopRules(
     /** Why cash on delivery can't be chosen at [nowMillis]; null when it can. */
     fun cashUnavailableNote(nowMillis: Long): String? = when {
         !codEnabled -> "Not available right now. Please pay online."
-        !codAtNight && NightCharge.isNightHours(nowMillis) -> "Not available after 8 pm. Please pay online."
+        !codAtNight && NightCharge.isNightHours(nowMillis) -> "Not available after ${NightCharge.startLabel}. Please pay online."
         else -> null
     }
 

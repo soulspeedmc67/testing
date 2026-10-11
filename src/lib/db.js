@@ -33,6 +33,7 @@ import {
 } from "./orderChange";
 import { shopRules } from "./deliveryCharges";
 import { noteCacheVersion } from "./cacheRefresh";
+import { adoptNightHours } from "./nightCharge";
 
 /**
  * Firestore data layer.
@@ -3050,6 +3051,7 @@ let sharedConfigCleanupTimer = null;
 function broadcastStoreConfig(cfg, live = memoryStoreConfigLive) {
   memoryStoreConfig = cfg;
   memoryStoreConfigLive = live;
+  adoptNightHours(cfg);
   storeConfigSubscribers.forEach((cb) => {
     try { cb(cfg, live); } catch (e) {}
   });

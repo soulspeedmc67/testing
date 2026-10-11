@@ -148,6 +148,23 @@ fun AuthScreen(
     var otpTicket by remember { mutableStateOf<String?>(null) }
     var resendAt by remember { mutableStateOf(0L) }
 
+    /** The saved sign-in stopped working: clear it and start from Google. */
+    fun backToGoogle(e: Exception) {
+        if ((e as? AuthRepository.SignInException)?.signInAgain != true) return
+        AuthRepository.signOut()
+        step = AuthStep.Google
+    }
+
+    // The number and name are only asked with a working account behind them:
+    // a saved sign-in that no longer works goes back to Google first.
+    LaunchedEffect(Unit) {
+        if (step == AuthStep.Google) return@LaunchedEffect
+        isSigningIn = true
+        val works = AuthRepository.refreshSession()
+        isSigningIn = false
+        if (!works) step = AuthStep.Google
+    }
+
     /** After each step: the next thing the account still needs, or done. */
     fun next(profile: com.dashit.app.data.model.UserProfile) {
         when {
@@ -205,6 +222,7 @@ fun AuthScreen(
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
+                backToGoogle(e)
                 e.retryAfterSeconds?.let { resendAt = System.currentTimeMillis() + it * 1_000L }
             } finally {
                 isSigningIn = false
@@ -223,6 +241,7 @@ fun AuthScreen(
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
+                backToGoogle(e)
                 code = ""
             } finally {
                 isSigningIn = false
@@ -242,6 +261,7 @@ fun AuthScreen(
             } catch (e: Exception) {
                 HapticsManager.error(view)
                 error = e.message
+                backToGoogle(e)
             } finally {
                 isSigningIn = false
             }

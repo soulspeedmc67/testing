@@ -85,7 +85,7 @@ final class CheckoutViewModel: ObservableObject {
         // unless the shop takes it at night too (`ShopRules`).
         if !paysOnline && !store.rules.allowsCash() {
             orderError = store.rules.codEnabled
-                ? "Cash on delivery isn't available after 8 pm. Please pay online to place your order."
+                ? "Cash on delivery isn't available after \(NightCharge.startLabel). Please pay online to place your order."
                 : "Cash on delivery isn't available right now. Please pay online to place your order."
             HapticsManager.shared.warning()
             return false

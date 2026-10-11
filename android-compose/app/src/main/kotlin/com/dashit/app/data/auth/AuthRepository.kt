@@ -62,8 +62,43 @@ object AuthRepository {
         message: String,
         val retryAfterSeconds: Int? = null,
         /** The server has no such endpoint (yet): a newer app than the site. */
-        val notFound: Boolean = false
+        val notFound: Boolean = false,
+        /** The saved sign-in no longer works: back to "Continue with Google". */
+        val signInAgain: Boolean = false
     ) : Exception(message)
+
+    private const val SIGN_IN_AGAIN = "Please sign in with Google again."
+
+    /**
+     * Asks Firebase whether this phone's saved sign-in still works. An account
+     * that was deleted, or a sign-in that ran out, is cleared here, so the
+     * number is never asked for (and then refused) without an account behind
+     * it. With no connection the saved sign-in is kept.
+     */
+    suspend fun refreshSession(): Boolean {
+        val current = auth.currentUser
+        if (current == null || current.isAnonymous) {
+            signOut()
+            return false
+        }
+        return try {
+            current.getIdToken(true).await()
+            true
+        } catch (e: com.google.firebase.FirebaseNetworkException) {
+            true
+        } catch (e: Exception) {
+            android.util.Log.w("DashitAuth", "Saved sign-in no longer works: ${e.message}")
+            signOut()
+            false
+        }
+    }
+
+    /** Firestore refused the write because nobody (or the wrong account) is signed in. */
+    private fun isRefused(e: Exception): Boolean {
+        val code = (e as? com.google.firebase.firestore.FirebaseFirestoreException)?.code
+        return code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+            code == com.google.firebase.firestore.FirebaseFirestoreException.Code.UNAUTHENTICATED
+    }
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -177,7 +212,7 @@ object AuthRepository {
     /** Checks the code; the server marks the number verified on the profile. */
     suspend fun verifyOtp(rawMobile: String, code: String, ticket: String): UserProfile {
         val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
-        val current = _user.value ?: throw IllegalStateException("Please sign in first.")
+        val current = _user.value ?: throw SignInException(SIGN_IN_AGAIN, signInAgain = true)
         post(
             "verify-otp.php",
             JSONObject().put("mobile", mobile).put("otp", code).put("ticket", ticket).put("id_token", idToken())
@@ -190,17 +225,18 @@ object AuthRepository {
     /** The signed-in shopper's Firebase ID token: what the server checks to know who is asking. */
     suspend fun idToken(): String =
         runCatching { auth.currentUser?.getIdToken(false)?.await()?.token }.getOrNull()
-            ?: throw SignInException("Please sign in again.")
+            ?: throw SignInException(SIGN_IN_AGAIN, signInAgain = true)
 
     /** Saves the number the delivery person can call (not verified by a code), or changes it. */
     suspend fun saveMobile(rawMobile: String): UserProfile {
         val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
-        val current = _user.value ?: throw IllegalStateException("Please sign in first.")
+        val current = _user.value ?: throw SignInException(SIGN_IN_AGAIN, signInAgain = true)
         try {
             db.collection("users").document(current.id)
                 .set(mapOf("mobile" to mobile, "mobileVerified" to false, "updatedAt" to FieldValue.serverTimestamp()), SetOptions.merge())
                 .await()
         } catch (e: Exception) {
+            if (isRefused(e)) throw SignInException(SIGN_IN_AGAIN, signInAgain = true)
             throw SignInException("We couldn't save your number. Check your connection and try again.")
         }
         val updated = current.copy(mobile = mobile)
@@ -212,13 +248,14 @@ object AuthRepository {
     suspend fun updateName(rawName: String): UserProfile {
         val name = rawName.trim()
         require(name.isNotEmpty()) { "Please enter your name." }
-        val current = _user.value ?: throw IllegalStateException("Please sign in first.")
+        val current = _user.value ?: throw SignInException(SIGN_IN_AGAIN, signInAgain = true)
         try {
             db.collection("users").document(current.id)
                 .set(mapOf("name" to name, "updatedAt" to FieldValue.serverTimestamp()), SetOptions.merge())
                 .await()
         } catch (e: Exception) {
-            throw IllegalStateException("We couldn't save your name. Check your connection and try again.", e)
+            if (isRefused(e)) throw SignInException(SIGN_IN_AGAIN, signInAgain = true)
+            throw SignInException("We couldn't save your name. Check your connection and try again.")
         }
         val updated = current.copy(name = name)
         save(updated)

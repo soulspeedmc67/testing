@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Banknote, ReceiptText, Check, Loader2 } from "lucide-react";
 import { shopRules, standardDeliveryFee, SHOP_RULE_DEFAULTS } from "../../lib/deliveryCharges";
+import { nightHoursOf, hourLabel } from "../../lib/nightCharge";
 
 const EXAMPLE_ORDERS = [120, 200, 400];
 
@@ -171,25 +172,25 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
 
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-zinc-800">
           <div className="min-w-0">
-            <p className="font-semibold text-sm text-slate-900 dark:text-white">Also after 8 pm</p>
+            <p className="font-semibold text-sm text-slate-900 dark:text-white">Also at night</p>
             <p className={hint}>
               {!codOn
                 ? "Cash on delivery is off, so this has no effect."
                 : codAtNight
                 ? "Cash is taken at night as well."
-                : "From 8 pm to 6 am customers pay online only."}
+                : `From ${hourLabel(nightHoursOf(storeConfig).start)} to ${hourLabel(nightHoursOf(storeConfig).end)} customers pay online only.`}
             </p>
           </div>
           <Switch
             on={codOn && codAtNight}
-            label="Cash on delivery after 8 pm"
+            label="Cash on delivery at night"
             busy={saving === "cod-night"}
             disabled={Boolean(saving) || !codOn}
             onChange={() =>
               save(
                 "cod-night",
                 { codAtNight: !codAtNight },
-                codAtNight ? "No cash on delivery after 8 pm." : "Cash on delivery is allowed after 8 pm too."
+                codAtNight ? "No cash on delivery at night." : "Cash on delivery is allowed at night too."
               )
             }
           />

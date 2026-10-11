@@ -36,7 +36,7 @@ import { useStoreDetails, useStoreConfig, useStoreConfigLive, isCodEnabled, isCo
 import { isFirebaseConfigured } from "../lib/firebase";
 import { useShopRules } from "../lib/useShopRules";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
-import { nightChargeFor, isNightChargeOn, isNightHours } from "../lib/nightCharge";
+import { nightChargeFor, isNightChargeOn, isNightHours, currentNightHours, hourLabel } from "../lib/nightCharge";
 import { browseable } from "../lib/tobacco";
 import { watchShopProducts, isSoldOut } from "../lib/catalogueFile";
 import { payOnline } from "../lib/razorpayWeb";
@@ -468,7 +468,7 @@ export default function CheckoutPage() {
     if (method !== "online" && codNightOff && isNightHours(now)) {
       setClock(now);
       setMethod("online");
-      return alert("Cash on delivery isn't available after 8 pm. Please pay online to place your order.");
+      return alert(`Cash on delivery isn't available after ${hourLabel(currentNightHours().start)}. Please pay online to place your order.`);
     }
 
     placingRef.current = true;
@@ -993,7 +993,7 @@ export default function CheckoutPage() {
                     <span className="grow min-w-0">
                       <span className={`block text-[14px] font-semibold ${off ? "text-slate-500 dark:text-content-muted" : "text-slate-900 dark:text-content"}`}>{p.title}</span>
                       <span className={`block text-[12.5px] ${off ? "font-semibold text-amber-700 dark:text-amber-400" : "text-slate-500 dark:text-content-muted"}`}>
-                        {off ? (codSwitchedOff ? "Not available right now. Please pay online." : "Not available after 8 pm. Please pay online.") : p.detail}
+                        {off ? (codSwitchedOff ? "Not available right now. Please pay online." : `Not available after ${hourLabel(currentNightHours().start)}. Please pay online.`) : p.detail}
                       </span>
                     </span>
                     {active ? <CheckCircle2 className="w-5 h-5 text-[#FF5B00] shrink-0" /> : <Circle className="w-5 h-5 text-slate-300 shrink-0 dark:text-content-faint" />}

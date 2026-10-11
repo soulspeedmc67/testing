@@ -61,8 +61,10 @@ export default function AdminLayout({
 
   /* Labels are the words a shopkeeper uses, not warehouse software jargon.
      Up front only what the day needs: orders, stock, riders, and a message to
-     every customer. Everything else waits under "More", folded away until
-     it's opened (or until one of its screens is the one showing). */
+     every customer. "Shop" is what changes week to week: items, discounts
+     and the shop's settings (prices, fees, hours). The rarely used tools wait
+     under "Tools", folded away until it's opened (or until one of its
+     screens is the one showing). */
   const navItems = [
     {
       group: "Every day",
@@ -99,8 +101,7 @@ export default function AdminLayout({
       ],
     },
     {
-      group: "More",
-      collapsible: true,
+      group: "Shop",
       items: [
         { id: "add-product", label: "Add an item", icon: Camera },
         {
@@ -111,6 +112,13 @@ export default function AdminLayout({
           badgeColor: "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300",
         },
         { id: "offers", label: "Discounts", icon: Sparkles },
+        { id: "settings", label: "Shop settings", icon: Store },
+      ],
+    },
+    {
+      group: "Tools",
+      collapsible: true,
+      items: [
         {
           id: "distributors",
           label: "Distributors",
@@ -118,14 +126,13 @@ export default function AdminLayout({
           badge: distributorsCount > 0 ? `${distributorsCount}` : null,
           badgeColor: "bg-blue-500/15 text-blue-500 dark:text-blue-400 font-bold",
         },
-        { id: "settings", label: "Shop settings", icon: Store },
         { id: "batch-inward", label: "Add many at once", icon: ArrowDownToLine },
         { id: "importer", label: "Find by barcode", icon: Barcode },
         { id: "catalog-pick", label: "Pick from product list", icon: ListChecks },
         { id: "csv", label: "Import CSV", icon: FileSpreadsheet },
         { id: "photo-review", label: "Check photos", icon: Images },
         { id: "shelf-fix", label: "Fix shelves", icon: LayoutGrid },
-        { id: "enricher", label: "Auto Image Enricher", icon: Sparkles },
+        { id: "enricher", label: "Find photos automatically", icon: Sparkles },
       ],
     },
   ];
@@ -134,7 +141,7 @@ export default function AdminLayout({
   const isGroupOpen = (grp) => !grp.collapsible || moreOpen || grp.items.some((item) => item.id === activeTab);
   const groupItems = (grp) => (isGroupOpen(grp) ? grp.items : []);
 
-  /** The group's heading; "More" is a button that folds its list open or shut. */
+  /** The group's heading; "Tools" is a button that folds its list open or shut. */
   const groupHeading = (grp, className) =>
     grp.collapsible ? (
       <button

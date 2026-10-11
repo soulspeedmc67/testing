@@ -7,16 +7,20 @@ import {
   nightChargeFor,
   fuelSettings,
   fuelCostFor,
+  nightHoursOf,
+  hourLabel,
 } from "../../lib/nightCharge";
 
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+
 const MODES = [
-  { id: "auto", label: "Automatic", detail: "8 pm to 6 am" },
+  { id: "auto", label: "Automatic", detail: "At night" },
   { id: "on", label: "On now", detail: "Until you change it" },
   { id: "off", label: "Off", detail: "No charge" },
 ];
 
 const MODE_SAVED = {
-  auto: "Night delivery charge is automatic: on from 8 pm to 6 am.",
+  auto: "Night delivery charge is automatic: on during the night hours.",
   on: "Distance charge is on now, until you change it.",
   off: "Night delivery charge is off.",
 };
@@ -31,6 +35,9 @@ const EXAMPLE_KM = [2, 5, 8];
 export default function DeliveryChargeSettings({ storeConfig = null, onSave, darkMode = false }) {
   const night = nightChargeSettings(storeConfig);
   const fuel = fuelSettings(storeConfig);
+  const hours = nightHoursOf(storeConfig);
+  const startsAt = hourLabel(hours.start);
+  const endsAt = hourLabel(hours.end);
 
   const [perKm, setPerKm] = useState(String(night.perKm));
   const [minFee, setMinFee] = useState(String(night.minFee));
@@ -94,7 +101,7 @@ export default function DeliveryChargeSettings({ storeConfig = null, onSave, dar
     ? `Charging now: ₹${night.perKm} for each km from the store, at least ₹${night.minFee}.`
     : night.mode === "off"
     ? "Switched off. Customers pay only the normal delivery fee, day and night."
-    : "Not charging right now. It starts by itself at 8 pm.";
+    : `Not charging right now. It starts by itself at ${startsAt}.`;
 
   // Examples use the saved rate, as if it were night, whatever the switch says.
   const exampleConfig = { ...storeConfig, nightChargeMode: "on" };
@@ -121,7 +128,7 @@ export default function DeliveryChargeSettings({ storeConfig = null, onSave, dar
           <h3 className="font-black text-sm text-slate-900 dark:text-white">Night delivery charge</h3>
         </div>
         <p className="text-xs text-slate-500 dark:text-zinc-400">
-          After 8 pm every day, customers also pay for delivery by how far they are from the store. It is added to the
+          From {startsAt} to {endsAt} every day, customers also pay for delivery by how far they are from the store. It is added to the
           normal delivery fee and is charged on free delivery too, because it pays for the rider&apos;s petrol.
         </p>
 
@@ -157,11 +164,53 @@ export default function DeliveryChargeSettings({ storeConfig = null, onSave, dar
               );
             })}
           </div>
-          {night.mode === "on" && !isNightHours(now) && (
+          {night.mode === "on" && !isNightHours(now, hours) && (
             <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-              It is on by hand, so it stays on all day. Pick Automatic to go back to 8 pm.
+              It is on by hand, so it stays on all day. Pick Automatic to go back to {startsAt}.
             </p>
           )}
+        </div>
+
+        {/* Night hours: also when cash on delivery stops, if that is switched off at night. */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={label} htmlFor="night-start">Night starts at</label>
+            <select
+              id="night-start"
+              value={hours.start}
+              disabled={Boolean(saving)}
+              onChange={(e) => {
+                const h = Number(e.target.value);
+                save("hours", { nightStartHour: h }, `Night now starts at ${hourLabel(h)}.`);
+              }}
+              className={input}
+            >
+              {HOURS.map((h) => (
+                <option key={h} value={h}>{hourLabel(h)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={label} htmlFor="night-end">Night ends at</label>
+            <select
+              id="night-end"
+              value={hours.end}
+              disabled={Boolean(saving)}
+              onChange={(e) => {
+                const h = Number(e.target.value);
+                save("hours", { nightEndHour: h }, `Night now ends at ${hourLabel(h)}.`);
+              }}
+              className={input}
+            >
+              {HOURS.map((h) => (
+                <option key={h} value={h}>{hourLabel(h)}</option>
+              ))}
+            </select>
+          </div>
+          <p className="col-span-2 text-[11px] text-slate-500 dark:text-zinc-400">
+            These hours are also when cash on delivery stops, if you have it off at night. Apps installed before
+            this update keep 8 pm to 6 am.
+          </p>
         </div>
 
         <form onSubmit={saveRate} className="space-y-3">

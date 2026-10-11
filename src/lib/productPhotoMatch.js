@@ -12,6 +12,10 @@
    showing one of these has no real photo. */
 const PLACEHOLDER_HOSTS = ["unsplash.com", "picsum.photos", "placeholder.com", "placehold.co", "dummyimage.com"];
 
+/* Web pages pasted in place of a picture (a search result, a shop's product
+   page). They never load as a photo, so the product counts as having none. */
+const PAGE_HOSTS = ["google.com", "bigbasket.com"];
+
 /** True when a product has no real photo: nothing, a broken value, or a stock placeholder. */
 export function isPlaceholderImage(url) {
   const value = String(url || "").trim();
@@ -23,7 +27,7 @@ export function isPlaceholderImage(url) {
   } catch {
     return true;
   }
-  return PLACEHOLDER_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  return [...PLACEHOLDER_HOSTS, ...PAGE_HOSTS].some((h) => host === h || host.endsWith(`.${h}`));
 }
 
 /**

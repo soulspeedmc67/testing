@@ -69,6 +69,24 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// Asks Firebase whether this phone's saved sign-in still works, before
+    /// the number or name is asked for. An account that was deleted, or a
+    /// sign-in that ran out, is cleared here, so the shopper starts again from
+    /// "Continue with Apple" and is never asked for a number that would then
+    /// be refused. With no connection the saved sign-in is kept.
+    func verifySession() async {
+        guard isAuthenticated, !isReadyToOrder, let user = Auth.auth().currentUser else { return }
+        isAuthenticating = true
+        defer { isAuthenticating = false }
+        do {
+            _ = try await user.getIDTokenResult(forcingRefresh: true)
+        } catch {
+            let nsError = error as NSError
+            if nsError.domain == AuthErrorDomain, nsError.code == 17020 { return } // no connection
+            signOutQuietly()
+        }
+    }
+
     /// Indian mobile: 10 digits starting 6–9. Returns the 10 digits or nil.
     static func normalizedMobile(_ input: String) -> String? {
         let digits = String(input.filter(\.isNumber).suffix(10))
@@ -253,11 +271,15 @@ final class AuthService: ObservableObject {
     // MARK: - Session
 
     func signOut() {
+        signOutQuietly()
+        HapticsManager.shared.light()
+    }
+
+    private func signOutQuietly() {
         try? Auth.auth().signOut()
         LocalStorage.shared.clearUserProfile()
         self.currentUser = nil
         self.isAuthenticated = false
-        HapticsManager.shared.light()
     }
 
     /// Delete user account (App Store 5.1.1(v) Requirement). Call it straight
@@ -311,7 +333,11 @@ final class AuthService: ObservableObject {
         } catch let error as AuthError {
             throw fail(error)
         } catch {
-            throw fail(AuthError.from(firebase: error))
+            let mapped = AuthError.from(firebase: error)
+            // The saved sign-in stopped working: clear it, so the screen goes
+            // back to "Continue with Apple" with the message under it.
+            if case .sessionExpired = mapped { signOutQuietly() }
+            throw fail(mapped)
         }
     }
 }
@@ -322,6 +348,8 @@ enum AuthError: LocalizedError {
     case notSignedIn
     case network
     case signInFailed
+    /// The saved sign-in no longer works (the database refused it).
+    case sessionExpired
     /// The server's own message, and how long it asked to wait, if it did.
     case server(String, retryAfter: Int?)
     /// The server has no such endpoint (yet): a newer app than the site.
@@ -340,6 +368,8 @@ enum AuthError: LocalizedError {
             return "No connection. Check your internet and try again."
         case .signInFailed:
             return "We couldn't sign you in. Please try again."
+        case .sessionExpired:
+            return "Please sign in with Apple again."
         case .server(let message, _):
             return message
         case .endpointMissing:
@@ -358,6 +388,11 @@ enum AuthError: LocalizedError {
     /// Firebase Auth error codes (FIRAuthErrorCode) mapped to plain language.
     static func from(firebase error: Error) -> AuthError {
         let nsError = error as NSError
+        // Firestore: 7 is "permission denied", 16 is "not signed in".
+        if nsError.domain == "FIRFirestoreErrorDomain", nsError.code == 7 || nsError.code == 16 {
+            return .sessionExpired
+        }
+        if nsError.domain == "FIRFirestoreErrorDomain", nsError.code == 14 { return .network }
         guard nsError.domain == AuthErrorDomain else {
             return .other(error.localizedDescription)
         }
@@ -365,6 +400,7 @@ enum AuthError: LocalizedError {
         case 17000, 17002: return .signInFailed
         case 17004: return .other("Sign in with Apple didn't complete. Please try again.") // invalid credential
         case 17020: return .network
+        case 17005, 17011, 17021: return .sessionExpired
         case 17014: return .other("For your safety, confirm with Apple again and try once more.")
         default: return .other(error.localizedDescription)
         }

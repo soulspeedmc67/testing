@@ -6,6 +6,63 @@
 
 ---
 
+## Oct 11, 2026: photos missing on the host, sign-in order, night hours, console menu
+
+Web VERIFIED (92 tests, production build, `npm run export:zip`). Android
+VERIFIED to compile (`compileDebugKotlin`); not run on the Pixel. iOS NOT
+compiled here (no Swift): the GitHub Actions build is the check. Nothing is
+deployed, committed or pushed.
+
+- **Why no product photo loads (website, both apps, both admin apps)**:
+  checked on dashit.co.in on 11 Oct: the folders `products/thumbs/` and
+  `products/catalog/` are not on the host at all (the folder address answers
+  404; `products/uploads/` and `products/enriched/` answer 403, so they
+  exist). 13 of 14 sampled catalogue photos answered 404 in both sizes. All
+  1,340 catalogue photos the live product list links are on this machine
+  (`data/photo-thumbs/products/thumbs/`, `data/products/catalog/`). No client
+  code was wrong: all three already ask for the small copy first.
+- **Fix**: `npm run export:zip` now runs `scripts/add-photos-to-export.mjs`,
+  which copies the small photos into `out/products/thumbs/` (3,670 files; the
+  zip is now about 65 MB). Extracting that zip into `public_html` puts the
+  photos back. `data/` is not in git, so a GitHub Actions deploy would not
+  carry them.
+- **Lost, not recoverable from here**: the 41 photos the shop took itself
+  (`products/uploads/dsh_*.jpg`) answer 404; only `hot-wheels-5-pack.jpg` is
+  left. They have to be taken again in the console. Never empty `public_html`
+  before extracting a zip: that folder is the only copy of those photos.
+- **Photos first** was already the rule in every list (web `photosFirst` in
+  `browseable`, Android `StorefrontViewModel.products`, iOS `photoOrder`),
+  sold-out items last. A pasted web page in place of a picture (google.com,
+  bigbasket.com: 3 products) now counts as no photo on the web.
+- **Sign-in**: the number was asked before Google/Apple when the phone had a
+  saved sign-in with no number yet (the shopper skipped it earlier). If that
+  saved sign-in no longer worked (account deleted in the Firebase console,
+  sign-in run out), saving the number was refused: iOS showed Firestore's own
+  "Missing or insufficient permissions". Now each client asks Firebase first
+  (Android `AuthRepository.refreshSession`, iOS `AuthService.verifySession`,
+  web `hasLiveSession` in `CheckoutLoginModal`): a dead sign-in is cleared and
+  the screen starts from Google/Apple. A refused write does the same, with
+  "Please sign in with Google/Apple again." With a working saved sign-in the
+  number is still asked directly (the account is already there). INFERRED
+  cause: not reproduced on a device.
+- iOS `ensureUserProfile` no longer writes an empty number over a saved one
+  when a profile can't be read (the rules refuse that for a confirmed number).
+- **Night hours are the shop's to set**: `nightStartHour` / `nightEndHour` on
+  `config/store` (whole hours 0 to 23; missing = 20 and 6). They decide the
+  automatic night delivery charge and when cash on delivery stops. Set in
+  `/xcyop` → Shop settings → Night delivery charge. Read by `nightCharge.js`
+  (`adoptNightHours`, called from `broadcastStoreConfig`), `NightCharge.kt`
+  (`adopt`, from `StoreStatus`) and `NightCharge.swift` (`adopt`, from
+  `Settings(data:)`): keep the three in step. The iOS admin shows the hours
+  but has no control for them yet. Installed apps keep 8 pm to 6 am.
+- **Console menu**: "Every day", then "Shop" (Add an item, All items,
+  Discounts, Shop settings: always showing), then "Tools" folded away.
+  "Auto Image Enricher" is now "Find photos automatically".
+- **Not done**: the owner did not say which console bugs they meant; no
+  Android/iOS speed work; still fixed in code: the 8 km radius, the store's
+  position, the 30-second change window (also in `firestore.rules`), the
+  support WhatsApp number.
+
 ## Oct 8, 2026 (night): orders wait for the shop's live settings; refresh the website
 
 Web VERIFIED on the production build against the live settings (the button

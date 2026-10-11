@@ -110,7 +110,7 @@ struct ShopRules: Equatable {
     /// Why cash on delivery can't be chosen at `date`; nil when it can.
     func cashUnavailableNote(at date: Date = Date()) -> String? {
         if !codEnabled { return "Not available right now. Please pay online." }
-        if !codAtNight && NightCharge.isNightHours(date) { return "Not available after 8 pm. Please pay online." }
+        if !codAtNight && NightCharge.isNightHours(date) { return "Not available after \(NightCharge.startLabel). Please pay online." }
         return nil
     }
 

@@ -259,7 +259,7 @@ struct CheckoutView: View {
     }
 
     private var nightChargeNote: String {
-        let rule = NightCharge.isNightHours() ? "After 8 pm, by distance" : "By distance"
+        let rule = NightCharge.isNightHours() ? "After \(NightCharge.startLabel), by distance" : "By distance"
         return "\(rule): \(vm.deliveryQuote.shortDistanceText) from our store"
     }
 

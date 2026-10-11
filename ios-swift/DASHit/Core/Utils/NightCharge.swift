@@ -7,8 +7,34 @@ import Foundation
 /// charged by how far the address is from the store. The settings are on
 /// `config/store`, which the staff console and the admin app write.
 enum NightCharge {
-    static let startHour = 20
-    static let endHour = 6
+    static let defaultStartHour = 20
+    static let defaultEndHour = 6
+    /// The night hours in use: 8 pm to 6 am until the shop's settings arrive,
+    /// then `nightStartHour` and `nightEndHour` from `config/store` (`adopt`).
+    private(set) static var startHour = defaultStartHour
+    private(set) static var endHour = defaultEndHour
+
+    /// Takes the shop's night hours (0 to 23) from the `config/store` document;
+    /// anything else keeps the default.
+    static func adopt(data: [String: Any]) {
+        func hour(_ key: String, _ fallback: Int) -> Int {
+            guard let value = (data[key] as? NSNumber)?.doubleValue,
+                  value == value.rounded(), (0...23).contains(value) else { return fallback }
+            return Int(value)
+        }
+        startHour = hour("nightStartHour", defaultStartHour)
+        endHour = hour("nightEndHour", defaultEndHour)
+    }
+
+    /// 20 is "8 pm", 6 is "6 am", 0 is "12 am".
+    static func hourLabel(_ hour: Int) -> String {
+        let h = ((hour % 24) + 24) % 24
+        return "\(h % 12 == 0 ? 12 : h % 12) \(h < 12 ? "am" : "pm")"
+    }
+
+    /// "8 pm": when night starts, for messages.
+    static var startLabel: String { hourLabel(startHour) }
+    static var endLabel: String { hourLabel(endHour) }
     /// Streets run about 1.25× the straight line (same figure as `DeliveryEta`).
     static let roadFactor = 1.25
 
@@ -24,7 +50,7 @@ enum NightCharge {
 
         var title: String {
             switch self {
-            case .auto: return "Automatic (8 pm to 6 am)"
+            case .auto: return "Automatic (\(NightCharge.startLabel) to \(NightCharge.endLabel))"
             case .on: return "On now"
             case .off: return "Off"
             }
@@ -46,6 +72,7 @@ enum NightCharge {
 
         /// From the `config/store` document; anything missing keeps its default.
         init(data: [String: Any]) {
+            NightCharge.adopt(data: data)
             if let raw = data["nightChargeMode"] as? String, let saved = Mode(rawValue: raw) {
                 mode = saved
             }
@@ -72,7 +99,11 @@ enum NightCharge {
 
     static func isNightHours(_ date: Date = Date()) -> Bool {
         let hour = istHour(date)
-        return hour >= startHour || hour < endHour
+        let start = startHour
+        let end = endHour
+        if start == end { return false }
+        // 20 to 6 runs past midnight; 1 to 5 does not.
+        return start > end ? (hour >= start || hour < end) : (hour >= start && hour < end)
     }
 
     /// Whether the charge applies to an order placed at `date`.

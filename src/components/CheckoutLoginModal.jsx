@@ -7,6 +7,7 @@ import {
   saveNumberUnconfirmed,
   completeShopper,
   cleanMobile,
+  hasLiveSession,
 } from "../lib/shopperAuth";
 
 function GoogleMark() {
@@ -45,6 +46,23 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     setError("");
     setBusy(false);
   }, [isOpen]);
+
+  /* The number is only asked with a Google sign-in behind it. A sheet reopened
+     on the number step after that sign-in ran out goes back to Google, instead
+     of taking a number the shop would then refuse. */
+  useEffect(() => {
+    if (!isOpen || step === "google") return undefined;
+    let alive = true;
+    hasLiveSession().then((live) => {
+      if (alive && !live) {
+        setUser(null);
+        setStep("google");
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [isOpen, step]);
 
   // Back from Google's own page (when the pop-up was blocked): on to the number.
   useEffect(() => {
@@ -88,6 +106,10 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     const clean = cleanMobile(mobile);
     if (!clean) {
       setError("Enter a 10-digit mobile number.");
+      return;
+    }
+    if (!user) {
+      setStep("google");
       return;
     }
     setBusy(true);

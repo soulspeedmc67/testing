@@ -99,3 +99,33 @@ test("the extra charge for rain or a rush is split out of the delivery fee too",
   assert.equal(deliveryFeeParts({ deliveryFee: 30, nightDeliveryFee: 20, extraDeliveryFee: 50 }).extra, 10);
   assert.equal(deliveryFeeParts({ deliveryFee: 30, nightDeliveryFee: 20, extraDeliveryFee: 50 }).base, 0);
 });
+
+test("night hours follow the shop's settings", async () => {
+  const { nightHoursOf, hourLabel, isNightChargeOn, adoptNightHours, currentNightHours } = await import("../src/lib/nightCharge.js");
+  assert.deepEqual(nightHoursOf(null), { start: 20, end: 6 });
+  assert.deepEqual(nightHoursOf({ nightStartHour: 21, nightEndHour: 7 }), { start: 21, end: 7 });
+  // Anything that is not a whole hour from 0 to 23 keeps the default.
+  assert.deepEqual(nightHoursOf({ nightStartHour: 24, nightEndHour: "x" }), { start: 20, end: 6 });
+  assert.equal(hourLabel(20), "8 pm");
+  assert.equal(hourLabel(0), "12 am");
+  assert.equal(hourLabel(12), "12 pm");
+
+  const late = { start: 22, end: 5 };
+  assert.equal(isNightHours(at(21, 30), late), false);
+  assert.equal(isNightHours(at(22, 0), late), true);
+  assert.equal(isNightHours(at(5, 0), late), false);
+  // Hours that do not cross midnight.
+  assert.equal(isNightHours(at(2, 0), { start: 1, end: 5 }), true);
+  assert.equal(isNightHours(at(23, 0), { start: 1, end: 5 }), false);
+  // The same hour twice means no night at all.
+  assert.equal(isNightHours(at(23, 0), { start: 6, end: 6 }), false);
+
+  assert.equal(isNightChargeOn({ nightStartHour: 22 }, at(21, 0)), false);
+  assert.equal(isNightChargeOn({ nightStartHour: 22 }, at(22, 30)), true);
+
+  adoptNightHours({ nightStartHour: 19 });
+  assert.equal(currentNightHours().start, 19);
+  assert.equal(isNightHours(at(19, 30)), true);
+  adoptNightHours(null);
+  assert.equal(isNightHours(at(19, 30)), false);
+});

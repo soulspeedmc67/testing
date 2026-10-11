@@ -2145,7 +2145,7 @@ struct StoreControlSheetView: View {
                 Section {
                     Toggle("Cash on delivery", isOn: $codEnabled)
                     if codEnabled {
-                        Toggle("Also after 8 pm", isOn: $codAtNight)
+                        Toggle("Also at night", isOn: $codAtNight)
                     }
                 } header: {
                     Text("Payment")
@@ -2352,7 +2352,7 @@ struct StoreControlSheetView: View {
         }
         return codAtNight
             ? "Customers can pay the rider at the door, day and night. Tap Save."
-            : "Customers can pay the rider at the door. From 8 pm to 6 am they pay online only. Tap Save."
+            : "Customers can pay the rider at the door. From \(NightCharge.startLabel) to \(NightCharge.endLabel) they pay online only. Tap Save."
     }
 
     private var deliveryFeeNote: String {
@@ -2396,7 +2396,7 @@ struct StoreControlSheetView: View {
         let example = "5 km is ₹\(Int(max(edited.minFee, (5 * edited.perKm).rounded())))"
         switch nightMode {
         case .auto:
-            return "From 8 pm to 6 am every day, customers also pay for delivery by distance from the store (\(example)). It is added to the normal delivery fee and charged on free delivery too. Tap Save."
+            return "From \(NightCharge.startLabel) to \(NightCharge.endLabel) every day, customers also pay for delivery by distance from the store (\(example)). It is added to the normal delivery fee and charged on free delivery too. Tap Save."
         case .on:
             return "On now and all day, until you change it (\(example)). Tap Save."
         case .off:

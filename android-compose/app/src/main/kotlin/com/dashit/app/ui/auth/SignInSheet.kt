@@ -96,6 +96,24 @@ fun SignInSheet(
     val numberFocus = remember { FocusRequester() }
     val nameFocus = remember { FocusRequester() }
 
+    /** The saved sign-in stopped working: clear it and start from Google. */
+    fun backToGoogle(e: Exception): Boolean {
+        if ((e as? AuthRepository.SignInException)?.signInAgain != true) return false
+        AuthRepository.signOut()
+        step = SheetStep.Google
+        return true
+    }
+
+    // The number and name are only asked with a working account behind them:
+    // a saved sign-in that no longer works goes back to Google first.
+    LaunchedEffect(Unit) {
+        if (step == SheetStep.Google) return@LaunchedEffect
+        isBusy = true
+        val works = AuthRepository.refreshSession()
+        isBusy = false
+        if (!works) step = SheetStep.Google
+    }
+
     /** The next thing the account still needs, or hand it back. */
     fun next(profile: UserProfile) {
         val needed = stepFor(profile)
@@ -117,6 +135,7 @@ fun SignInSheet(
             } catch (e: Exception) {
                 HapticsManager.error(view)
                 error = e.message
+                backToGoogle(e)
             } finally {
                 isBusy = false
             }
@@ -142,6 +161,7 @@ fun SignInSheet(
             } catch (e: Exception) {
                 HapticsManager.error(view)
                 error = e.message
+                backToGoogle(e)
                 (e as? AuthRepository.SignInException)?.retryAfterSeconds?.let { resendAt = System.currentTimeMillis() + it * 1_000L }
             } finally {
                 isBusy = false

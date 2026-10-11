@@ -12,9 +12,39 @@
 
 import { extraChargeLabel } from "./deliveryCharges.js";
 
-// The charge runs from 8 pm to 6 am, India time, every day.
+// Night runs from 8 pm to 6 am, India time, every day, unless the shop has set
+// other hours (`nightStartHour` and `nightEndHour` on `config/store`, 0 to 23).
 export const NIGHT_START_HOUR = 20;
 export const NIGHT_END_HOUR = 6;
+export const NIGHT_HOUR_DEFAULTS = Object.freeze({ start: NIGHT_START_HOUR, end: NIGHT_END_HOUR });
+
+const hourOr = (value, fallback) => {
+  const n = Number(value);
+  return value !== null && value !== undefined && value !== "" && Number.isInteger(n) && n >= 0 && n <= 23 ? n : fallback;
+};
+
+/** The night hours on `config/store`, with the defaults filled in. */
+export function nightHoursOf(cfg) {
+  return { start: hourOr(cfg?.nightStartHour, NIGHT_START_HOUR), end: hourOr(cfg?.nightEndHour, NIGHT_END_HOUR) };
+}
+
+/* The hours in use on this page. They start as the defaults and follow the
+   shop's settings as they arrive (db.js calls adoptNightHours). */
+let nightHours = NIGHT_HOUR_DEFAULTS;
+
+export function adoptNightHours(cfg) {
+  nightHours = nightHoursOf(cfg);
+}
+
+export function currentNightHours() {
+  return nightHours;
+}
+
+/** 20 → "8 pm", 6 → "6 am", 0 → "12 am", 12 → "12 pm". */
+export function hourLabel(hour) {
+  const h = ((Number(hour) % 24) + 24) % 24;
+  return `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "am" : "pm"}`;
+}
 
 /* "auto": on during the night hours above. "on": on now, whatever the time,
    until the shop changes it. "off": never. */
@@ -57,15 +87,17 @@ export function istHour(date = new Date()) {
   return new Date(date.getTime() + 330 * 60 * 1000).getUTCHours();
 }
 
-export function isNightHours(date = new Date()) {
+export function isNightHours(date = new Date(), hours = nightHours) {
   const hour = istHour(date);
-  return hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR;
+  if (hours.start === hours.end) return false;
+  // 20 to 6 runs past midnight; 1 to 5 does not.
+  return hours.start > hours.end ? hour >= hours.start || hour < hours.end : hour >= hours.start && hour < hours.end;
 }
 
 /** Whether the charge applies to an order placed at `date`. */
 export function isNightChargeOn(cfg, date = new Date()) {
   const { mode } = nightChargeSettings(cfg);
-  return mode === "on" || (mode === "auto" && isNightHours(date));
+  return mode === "on" || (mode === "auto" && isNightHours(date, cfg ? nightHoursOf(cfg) : nightHours));
 }
 
 /** The charge in whole rupees for an address `distanceKm` from the store; 0 when it doesn't apply. */

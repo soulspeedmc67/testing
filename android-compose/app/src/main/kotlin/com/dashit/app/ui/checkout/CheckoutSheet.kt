@@ -192,7 +192,7 @@ fun CheckoutSheet(
         }
         if (!paysOnline && !store.rules.allowsCash(System.currentTimeMillis())) {
             errorMessage = if (store.rules.codEnabled) {
-                "Cash on delivery isn't available after 8 pm. Please pay online to place your order."
+                "Cash on delivery isn't available after ${NightCharge.startLabel}. Please pay online to place your order."
             } else {
                 "Cash on delivery isn't available right now. Please pay online to place your order."
             }
@@ -912,7 +912,7 @@ private fun OrderTotalCard(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "${if (isNight) "After 8 pm, by distance" else "By distance"}: ${"%.1f".format(distanceKm)} km from our store",
+                        text = "${if (isNight) "After ${NightCharge.startLabel}, by distance" else "By distance"}: ${"%.1f".format(distanceKm)} km from our store",
                         color = DashitColors.TextSecondary,
                         fontSize = 12.sp
                     )

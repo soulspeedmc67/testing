@@ -417,17 +417,25 @@ final class FirestoreService {
             return profile
         }
 
+        // A profile that is there but could not be read keeps its number: an
+        // empty one written over a number the server confirmed is refused by
+        // the rules, and the shopper would be asked for it again.
+        let savedMobile = (data["mobile"] as? String) ?? ""
         var fields: [String: Any] = [
             "uid": uid,
-            "mobile": mobile,
-            "createdAt": FieldValue.serverTimestamp(),
             "lastLoginAt": FieldValue.serverTimestamp()
         ]
+        if !snapshot.exists {
+            fields["mobile"] = mobile
+            fields["createdAt"] = FieldValue.serverTimestamp()
+        } else if savedMobile.isEmpty, !mobile.isEmpty {
+            fields["mobile"] = mobile
+        }
         Self.addDevice(to: &fields, provider: provider, installID: installID)
         if let name, !name.isEmpty { fields["name"] = name }
         if let email, !email.isEmpty { fields["email"] = email }
         try await docRef.setData(fields, merge: true)
-        return UserProfile(id: uid, mobile: mobile, name: name, email: email)
+        return UserProfile(id: uid, mobile: savedMobile.isEmpty ? mobile : savedMobile, name: name, email: email)
     }
 
     /// Notes which phone signed in: a map of random install ids (never a hardware id).

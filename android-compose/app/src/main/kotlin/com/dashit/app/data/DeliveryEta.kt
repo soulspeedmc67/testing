@@ -99,6 +99,8 @@ object StoreStatus {
         registration = FirebaseFirestore.getInstance().collection("config").document("store")
             .addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, _ ->
                 if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
+                // Before the new state, so everything that reads it sees the shop's night hours.
+                NightCharge.adopt(snapshot.get("nightStartHour") as? Number, snapshot.get("nightEndHour") as? Number)
                 _state.value = State(
                     isOpen = snapshot.getBoolean("isOpen") ?: true,
                     closeReason = snapshot.getString("closeReason") ?: "",
