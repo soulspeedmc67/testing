@@ -692,7 +692,8 @@ public struct AdminDashboardView: View {
                 productToEdit = product
             } label: {
                 HStack(spacing: 12) {
-                    AsyncImage(url: URL(string: product.img)) { phase in
+                    // The small copy, as the shop app loads it: most items have no full-size photo on the website.
+                    AsyncImage(url: URL(string: product.img).map(ProductPhotoStore.displayURL)) { phase in
                         if let img = phase.image {
                             img.resizable().scaledToFill()
                         } else {
@@ -1359,7 +1360,7 @@ struct OrderDetailSheetView: View {
                     .contentTransition(.symbolEffect(.replace))
                     .frame(width: 34)
 
-                AsyncImage(url: URL(string: item.img)) { phase in
+                AsyncImage(url: URL(string: item.img).map(ProductPhotoStore.displayURL)) { phase in
                     if let image = phase.image {
                         image.resizable().scaledToFit()
                     } else {
@@ -1795,7 +1796,7 @@ struct AddProductSheetView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     if let url = URL(string: img), !img.isEmpty {
-                        AsyncImage(url: url) { phase in
+                        AsyncImage(url: ProductPhotoStore.displayURL(url)) { phase in
                             if let img = phase.image {
                                 img.resizable().scaledToFit().frame(height: 120)
                             }
