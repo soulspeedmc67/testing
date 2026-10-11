@@ -89,6 +89,12 @@ Options -Indexes
   RewriteCond %{HTTP_REFERER} !^https?://localhost [NC]
   RewriteRule \.(webp|jpg|jpeg|png)$ - [F,L]
 
+  # A photo the shop took itself that is missing from products/uploads (the
+  # website folder was emptied or replaced): api/photo-restore.php answers
+  # with the copy kept beside public_html and puts the file back.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^products/uploads/(dsh_[0-9a-f]{16}\.(?:jpg|png|webp))$ /api/photo-restore.php?f=$1 [L]
+
   # The web shop is back (launch, 5 October 2026). Product pages are one page
   # now, /product/?id=<id>; older /product/<id>/ links (bookmarks, search
   # results, shared links) are sent there. The tobacco section (/tobacco/) is

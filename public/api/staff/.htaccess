@@ -1,0 +1,3 @@
+# Product photos from the admin app are up to 2 MB (upload-photo.php checks the
+# exact size); the 64 KB limit on the rest of api/ would refuse them.
+LimitRequestBody 2200000

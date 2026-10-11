@@ -84,4 +84,12 @@ if (@file_put_contents("$dir/$name", $photo, LOCK_EX) === false) {
 }
 @chmod("$dir/$name", 0644);
 
+/* A second copy beside public_html (domains/dashit.co.in/dashit-photos), where
+   a website upload can't remove it. If the website folder is ever emptied,
+   api/photo-restore.php puts the photo back the first time it is asked for. */
+$keep = dashit_private_dir('dashit-photos');
+if (is_dir($keep) || @mkdir($keep, 0755, true) || is_dir($keep)) {
+    @file_put_contents("$keep/$name", $photo, LOCK_EX);
+}
+
 dashit_respond(200, ['url' => "https://dashit.co.in/products/uploads/$name"]);
