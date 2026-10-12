@@ -6,6 +6,100 @@
 
 ---
 
+## Oct 12, 2026: 2Factor key is live; sign in with a mobile number
+
+Server VERIFIED in a php:8.3 container against a stand-in for 2Factor (send,
+resend wait, wrong code, wrong number, right code, reuse, per-network limit;
+the token's uid, claim and signature). Web VERIFIED (92 tests, production
+build, the sheet on the dev build up to "Send code"). Android VERIFIED to
+compile (`compileDebugKotlin`); not run on the Pixel. iOS NOT compiled here.
+No real SMS was sent in testing. Nothing is deployed, committed or pushed.
+
+- **The owner added the 2Factor key** (`dashit-secrets/sign-in.php`, default
+  template, `otp_daily_cap` 100 suggested). The live `send-otp.php` now asks
+  for a sign-in, so Google/Apple shoppers get a code for their number with no
+  app update. A real code arriving by text has NOT been seen yet.
+- **Second way in, by the owner's request: the mobile number alone.** Android
+  shows Google + "Continue with mobile number", iPhone shows Apple + the same,
+  the website Google + the same. Number → code → signed in; a name is asked
+  once (there is none to take from Google/Apple).
+- **Server**: `auth/number-code.php` (no sign-in needed; 6 an hour and 15 a day
+  per network, plus the per-number and daily limits) and
+  `auth/number-sign-in.php` (returns a Firebase custom token for
+  `ph-91<number>` with the `mobile` claim, and saves the number on the profile
+  as confirmed). The send and check logic shared with `send-otp.php` /
+  `verify-otp.php` moved into `_otp.php`.
+- **`firestore.rules` are unchanged**: they already take a token with the
+  `mobile` claim as a shopper (the "older number account" path). INFERRED from
+  reading the rules; not run in the emulator this time.
+- **Clients**: web `shopperAuth.js` (`requestSignInCode`,
+  `signInWithNumberCode`) and `CheckoutLoginModal.jsx`; Android
+  `AuthRepository` (`requestSignInCode`, `signInWithNumber`), `AuthScreen`,
+  `SignInSheet`; iOS `AuthService` (same two), `AuthView`.
+- **Deleting a number account** asks for a new code to its own number instead
+  of Google/Apple again (Android `SignInSheet(confirmItsYou)`, iOS
+  `DeleteAccountView`). That costs one SMS.
+- **A number account and a Google/Apple account are separate accounts**, even
+  with the same number: orders and addresses don't carry across.
+- **Needs deploying, in this order**: the website zip (PHP + web), then new app
+  builds. An app from before today has no number option and is unaffected.
+- **Not done**: Sign in with Apple on the website (needs an Apple Services ID
+  set up in Firebase); the privacy page doesn't mention number sign-in.
+
+### Later on Oct 12: packing ticks saved on the order, "ordered from", secrets check
+
+Web VERIFIED by tests and production build only (the drawer was not opened
+with a real order). iOS NOT compiled here. `dashit-hostinger-deploy.zip` was
+built with all of today's web and PHP changes; not uploaded.
+
+- **Packing ticks were lost**: the iOS admin kept them on the phone only
+  (UserDefaults) and the web console forgot them each time the drawer opened,
+  so a delivered order, or one opened on another screen, showed nothing
+  crossed off. They are now saved on the order as `packedItems` (a list of
+  line keys: item `id`, else `productId`, else name; web `orderLineKey`, iOS
+  `lineKey`) by `saveOrderPackedItems` (web) and `savePackedItems` (iOS admin),
+  one small write per tap. Orders packed before this have no saved ticks.
+- **Where an order came from** (`platform`: web / ios / android): the iOS admin
+  shows "Ordered from the website / the iPhone app / the Android app" on each
+  order card and in the order sheet; the web console drawer shows it as a
+  chip beside the order number (it was small print under the bill).
+- **Secrets check of the public repo** (soulspeedmc67/testing, every branch
+  and its history): no private keys, service account, Razorpay or 2Factor
+  key. `.env.production` holds only `NEXT_PUBLIC_` values, which ship in the
+  website's JavaScript anyway. The website zip was scanned the same way.
+
+### Night of Oct 12: codes off, 8 km limit, names that wrap
+
+Server VERIFIED in the PHP container (codes off sends nothing). Web VERIFIED
+by tests, production build and a script check of the area rule (8.1 km refused,
+7.9 km allowed, follows `deliveryRadiusKm`); the checkout screen itself was NOT
+seen refusing a far address in a browser. Android VERIFIED to compile. iOS NOT
+compiled here. Nothing is deployed, committed or pushed.
+
+- **2Factor only called, never texted** (no template, the shop's "Dashit"
+  template, `OTP1`, `91…` and `+91…`). The owner chose to skip codes for now.
+  The server sends nothing unless `sign-in.php` has `'send_codes' => true`, so
+  Google/Apple shoppers have their number saved without a code. "Continue with
+  mobile number" is hidden by one switch in each client (`NUMBER_SIGN_IN` in
+  `shopperAuth.js`, `AuthRepository.NUMBER_SIGN_IN`, `AuthService.numberSignIn`);
+  the code behind it is kept. Open with 2Factor support: will they text without
+  the shop's own DLT registration.
+- **Orders only inside the delivery area**: `deliveryRadiusKm` on
+  `config/store` (missing = 8 km, straight line; 0 = no limit; at most 50), in
+  the shop rules of all three clients. Checkout greys the button ("We don't
+  deliver to this address yet") and refuses the order, on web, Android and
+  iOS. Set in `/xcyop` → Shop settings → "Deliver up to (km from the store)";
+  the iOS admin saves the field but has no control for it. This reverses the
+  Oct 5 "admin decides" rule. Apps installed before this have no limit, and
+  `firestore.rules` don't check distance. Static copy elsewhere still says
+  "8 km" whatever the setting.
+- **Item names cut off for the admin**: the iOS admin's packing row limited a
+  name to two lines and the web console drawer cut it to one. Both now show
+  the whole name on as many lines as it needs.
+- **Android text size**: the app follows the phone's text size up to 1.3x
+  (`DashitTheme`), so the largest settings no longer cut names and prices off.
+  The iPhone shop app uses fixed sizes and was not changed.
+
 ## Oct 11, 2026: photos missing on the host, sign-in order, night hours, console menu
 
 Web VERIFIED (92 tests, production build, `npm run export:zip`). Android
@@ -670,7 +764,7 @@ migrated, since they still call it.
 ### Decisions the user made (do not re-litigate)
 | Question | Decision |
 |---|---|
-| Auth | Customers: Google (Android) / Apple (iPhone), then a mobile number confirmed with a 2Factor SMS code (§2). Staff: email |
+| Auth | Customers: Google (Android) / Apple (iPhone), then a mobile number confirmed with a 2Factor SMS code (§2); or the mobile number alone with a code (Oct 12). Staff: email |
 | Roles | `staff/{uid}` collection checked in security rules |
 | Admin app | Separate **web-only** build (not yet done) |
 | Plan | **Blaze** since 2026-09-30 (was Spark). Still no paid SMS; keep costs capped (§0a) |

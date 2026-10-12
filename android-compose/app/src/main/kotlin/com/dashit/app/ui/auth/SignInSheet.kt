@@ -58,13 +58,14 @@ import kotlinx.coroutines.launch
 private enum class SheetStep { Google, Number, Code, Name }
 
 /**
- * Sign-in in a bottom sheet with the same steps as the sign-in screen: Google,
- * then the mobile number the delivery person can call (once, not verified),
- * then a name if Google gave none. Opened at checkout, so the order goes
- * straight on once the account has all three.
+ * Sign-in in a bottom sheet with the same steps as the sign-in screen: Google
+ * and then the mobile number the delivery person can call, or the mobile
+ * number alone with a code texted to it; then a name if there is none. Opened
+ * at checkout, so the order goes straight on once the account has all three.
  *
- * With [confirmItsYou] it only asks for Google again: Firebase wants a fresh
- * sign-in before it deletes an account.
+ * With [confirmItsYou] it only asks for the same sign-in again (Google, or a
+ * new code for a number account): Firebase wants a fresh sign-in before it
+ * deletes an account.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,9 +85,21 @@ fun SignInSheet(
         profile.name.isNullOrBlank() -> SheetStep.Name
         else -> SheetStep.Google
     }
-    var digits by remember { mutableStateOf("") }
+    /** Deleting a number account: a new code to its own number, which can't be changed here. */
+    val confirmNumber = confirmItsYou && AuthRepository.isNumberAccount && signedIn != null
+    var digits by remember { mutableStateOf(if (confirmNumber) signedIn?.mobile.orEmpty() else "") }
     var name by remember { mutableStateOf("") }
-    var step by remember { mutableStateOf(if (confirmItsYou) SheetStep.Google else stepFor(signedIn)) }
+    /** Signing in with the number itself: no Google account behind it. */
+    var byNumber by remember { mutableStateOf(confirmNumber) }
+    var step by remember {
+        mutableStateOf(
+            when {
+                confirmNumber -> SheetStep.Number
+                confirmItsYou -> SheetStep.Google
+                else -> stepFor(signedIn)
+            }
+        )
+    }
     var isBusy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val valid = AuthRepository.normalizedMobile(digits) != null
@@ -100,6 +113,7 @@ fun SignInSheet(
     fun backToGoogle(e: Exception): Boolean {
         if ((e as? AuthRepository.SignInException)?.signInAgain != true) return false
         AuthRepository.signOut()
+        byNumber = false
         step = SheetStep.Google
         return true
     }
@@ -111,7 +125,10 @@ fun SignInSheet(
         isBusy = true
         val works = AuthRepository.refreshSession()
         isBusy = false
-        if (!works) step = SheetStep.Google
+        if (!works) {
+            byNumber = false
+            step = SheetStep.Google
+        }
     }
 
     /** The next thing the account still needs, or hand it back. */
@@ -149,7 +166,7 @@ fun SignInSheet(
         error = null
         scope.launch {
             try {
-                val request = AuthRepository.requestOtp(digits)
+                val request = if (byNumber) AuthRepository.requestSignInCode(digits) else AuthRepository.requestOtp(digits)
                 if (!request.configured) {
                     next(AuthRepository.saveMobile(digits))
                 } else {
@@ -174,7 +191,8 @@ fun SignInSheet(
         if (entered.length != OTP_LENGTH || isBusy) return
         run {
             try {
-                AuthRepository.verifyOtp(digits, entered, ticket)
+                if (byNumber) AuthRepository.signInWithNumber(digits, entered, ticket)
+                else AuthRepository.verifyOtp(digits, entered, ticket)
             } catch (e: Exception) {
                 code = ""
                 throw e
@@ -212,17 +230,36 @@ fun SignInSheet(
                         Heading(
                             if (confirmItsYou) "Confirm it's you" else "Log in to order",
                             if (confirmItsYou) "Sign in with Google again to continue."
-                            else "Your Google account keeps your orders and addresses, on any phone."
+                            else "Your account keeps your orders and addresses, on any phone."
                         )
                         error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
                         GoogleButton(enabled = !isBusy) {
                             HapticsManager.light(view)
                             run { AuthRepository.signInWithGoogle(context) }
                         }
+                        if (!confirmItsYou && AuthRepository.NUMBER_SIGN_IN) {
+                            NumberButton(enabled = !isBusy) {
+                                HapticsManager.light(view)
+                                byNumber = true
+                                error = null
+                                step = SheetStep.Number
+                            }
+                        }
                     }
 
-                    SheetStep.Number -> {
-                        Heading("Your mobile number", "So the delivery person can call you. We only call about your order.")
+                    SheetStep.Number -> if (confirmNumber) {
+                        Heading("Confirm it's you", "We'll text a code to +91 $digits to continue.")
+                        error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
+                        PrimaryButton("Send code", enabled = valid, isBusy = isBusy) {
+                            HapticsManager.light(view)
+                            saveMobile()
+                        }
+                    } else {
+                        Heading(
+                            "Your mobile number",
+                            if (byNumber) "We'll text you a code to sign in. The delivery person can also call this number about your order."
+                            else "So the delivery person can call you. We only call about your order."
+                        )
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -250,9 +287,16 @@ fun SignInSheet(
                         }
                         LaunchedEffect(Unit) { runCatching { numberFocus.requestFocus() } }
                         error?.let { Text(it, color = DashitColors.Danger, fontSize = 13.sp) }
-                        PrimaryButton("Continue", enabled = valid, isBusy = isBusy) {
+                        PrimaryButton(if (byNumber) "Send code" else "Continue", enabled = valid, isBusy = isBusy) {
                             HapticsManager.light(view)
                             saveMobile()
+                        }
+                        if (byNumber) {
+                            TextLink("Use Google instead", enabled = !isBusy) {
+                                byNumber = false
+                                error = null
+                                step = SheetStep.Google
+                            }
                         }
                     }
 
@@ -266,7 +310,7 @@ fun SignInSheet(
                             resendAtMillis = resendAt,
                             onResend = { saveMobile() },
                             onChangeNumber = {
-                                step = SheetStep.Number
+                                if (confirmNumber) onDismiss() else step = SheetStep.Number
                                 error = null
                             },
                             enabled = !isBusy,

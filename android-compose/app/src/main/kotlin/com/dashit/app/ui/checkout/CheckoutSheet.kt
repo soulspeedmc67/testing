@@ -157,6 +157,8 @@ fun CheckoutSheet(
     }
     // The cart is under the shop's minimum order.
     val belowMinimum = bill.subtotal > 0 && !bill.isMinOrderSatisfied
+    // The address is outside the delivery area (ShopRules.deliveryRadiusKm): no order.
+    val tooFar = !storeState.rules.delivers(distanceKm)
     val totalToPay = bill.grandTotal + nightFee
 
     /** Same gates as the web and iOS checkouts, then the real order write. */
@@ -200,6 +202,11 @@ fun CheckoutSheet(
             return
         }
         val quote = DeliveryEta.quote(address.latitude, address.longitude)
+        if (!store.rules.delivers(quote.distanceKm)) {
+            errorMessage = store.rules.outsideAreaMessage(quote.distanceKm) + " Please choose a nearer address."
+            HapticsManager.warning(view)
+            return
+        }
         // The total on screen is at most 30 seconds old. If the night charge came
         // on or went off in that time, show the new total before taking the order.
         val timeNow = System.currentTimeMillis()
@@ -487,7 +494,7 @@ fun CheckoutSheet(
                                         isSubmitting -> DashitColors.SurfaceMuted
                                         isLaunchLocked -> DashitColors.SurfaceRaised
                                         // Grey that white text still reads on, in both themes.
-                                        belowMinimum || !storeState.isLive -> Color(0xFF6B7280)
+                                        belowMinimum || tooFar || !storeState.isLive -> Color(0xFF6B7280)
                                         else -> DashitColors.BrandOrange
                                     }
                                 )
@@ -536,6 +543,7 @@ fun CheckoutSheet(
                                         isLaunchLocked -> com.dashit.app.data.LaunchGate.LAUNCH_LABEL
                                         !storeState.isLive -> "Checking today's charges…"
                                         belowMinimum -> "Add ₹${ceil(bill.amountNeededForMinOrder).toInt()} more to order"
+                                        tooFar -> "We don't deliver here yet"
                                         !paysOnline -> "Place order · ₹${totalToPay.toInt()} cash"
                                         payOption?.upiApp != null -> "Pay ₹${totalToPay.toInt()} with ${payOption.title}"
                                         else -> "Pay ₹${totalToPay.toInt()}"

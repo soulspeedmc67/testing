@@ -97,6 +97,12 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
         let quote = deliveryQuote
+        // Outside the delivery area (`ShopRules.deliveryRadiusKm`): no order.
+        guard quote.isDeliverable else {
+            orderError = store.rules.outsideAreaMessage(distanceKm: quote.distanceKm) + " Please choose a nearer address."
+            HapticsManager.shared.warning()
+            return false
+        }
 
         // The bill on screen is at most 30 seconds old, and the free first
         // orders depend on how many this account has had. If the night charge

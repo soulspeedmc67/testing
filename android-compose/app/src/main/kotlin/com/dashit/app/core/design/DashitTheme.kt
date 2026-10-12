@@ -5,6 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.graphics.Color
 
 /** Material's colours from the current DashitColors (light or dark). */
@@ -41,8 +44,14 @@ fun DashitTheme(
 ) {
     // Set before anything reads a colour, so the first frame is right.
     DashitColors.isDark = darkTheme
-    MaterialTheme(
-        colorScheme = colorScheme(darkTheme),
-        content = content
-    )
+    // The phone's text size is followed up to 1.3x. Past that, names and
+    // prices no longer fit their cards and buttons and get cut off, so the
+    // largest settings show the app at 1.3x instead of breaking it.
+    val density = LocalDensity.current
+    val readable = Density(density.density, density.fontScale.coerceAtMost(MAX_TEXT_SCALE))
+    MaterialTheme(colorScheme = colorScheme(darkTheme)) {
+        CompositionLocalProvider(LocalDensity provides readable, content = content)
+    }
 }
+
+private const val MAX_TEXT_SCALE = 1.3f

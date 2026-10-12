@@ -43,6 +43,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -97,7 +98,10 @@ import kotlinx.coroutines.launch
 /** LogIn and SignUp share one screen; SignUp also asks for a name. */
 enum class AuthMode { LogIn, SignUp }
 
-/** Google first; then the number the rider can call (and its text-message code); then a name if Google gave none. */
+/**
+ * Google first, then the number the rider can call (and its text-message
+ * code); or the number alone, signed in with its code. Then a name if there is none.
+ */
 private enum class AuthStep { Google, Number, Code, Name }
 
 private val HeroTop = Color(0xFF0D2F6E)
@@ -107,10 +111,11 @@ private val ButtonEnd = Color(0xFFFF4D00)
 
 /**
  * Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
- * one headline and "Continue with Google". The Google account is the account:
- * orders and addresses are kept under it. Right after, the shopper gives a
- * mobile number once, so the delivery person can call them (not verified, no
- * code). Same screen as the iOS AuthView, which uses Sign in with Apple.
+ * one headline, "Continue with Google" and "Continue with mobile number".
+ * With Google, the Google account is the account, and right after the shopper
+ * gives a mobile number once, so the delivery person can call them. With the
+ * number, a code is texted to it and the number is the account. Same screen
+ * as the iOS AuthView, which has Sign in with Apple in Google's place.
  *
  * Shown once on first launch with "Skip" (browsing never needs an account)
  * and from Profile. Calls [onClose] once signed in or dismissed.
@@ -147,11 +152,14 @@ fun AuthScreen(
     var code by remember { mutableStateOf("") }
     var otpTicket by remember { mutableStateOf<String?>(null) }
     var resendAt by remember { mutableStateOf(0L) }
+    /** Signing in with the number itself: no Google account behind it. */
+    var byNumber by remember { mutableStateOf(false) }
 
     /** The saved sign-in stopped working: clear it and start from Google. */
     fun backToGoogle(e: Exception) {
         if ((e as? AuthRepository.SignInException)?.signInAgain != true) return
         AuthRepository.signOut()
+        byNumber = false
         step = AuthStep.Google
     }
 
@@ -180,6 +188,10 @@ fun AuthScreen(
     BackHandler(enabled = !isSigningIn) {
         if (step == AuthStep.Code) {
             step = AuthStep.Number
+            error = null
+        } else if (step == AuthStep.Number && byNumber) {
+            byNumber = false
+            step = AuthStep.Google
             error = null
         } else {
             onClose()
@@ -210,7 +222,7 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                val request = AuthRepository.requestOtp(digits)
+                val request = if (byNumber) AuthRepository.requestSignInCode(digits) else AuthRepository.requestOtp(digits)
                 if (!request.configured) {
                     next(AuthRepository.saveMobile(digits))
                 } else {
@@ -237,7 +249,10 @@ fun AuthScreen(
         error = null
         scope.launch {
             try {
-                next(AuthRepository.verifyOtp(digits, entered, ticket))
+                next(
+                    if (byNumber) AuthRepository.signInWithNumber(digits, entered, ticket)
+                    else AuthRepository.verifyOtp(digits, entered, ticket)
+                )
             } catch (e: AuthRepository.SignInException) {
                 HapticsManager.error(view)
                 error = e.message
@@ -444,7 +459,7 @@ fun AuthScreen(
                         when (current) {
                             AuthStep.Google -> {
                                 Text(
-                                    "Your Google account keeps your orders and addresses, on any phone.",
+                                    "Your account keeps your orders and addresses, on any phone.",
                                     color = DashitColors.TextSecondary,
                                     fontSize = 14.sp,
                                     lineHeight = 20.sp,
@@ -452,10 +467,17 @@ fun AuthScreen(
                                     modifier = Modifier.fillMaxWidth()
                                 )
                                 GoogleButton(enabled = !isSigningIn, onClick = ::signInWithGoogle)
+                                if (AuthRepository.NUMBER_SIGN_IN) NumberButton(enabled = !isSigningIn) {
+                                    HapticsManager.light(view)
+                                    byNumber = true
+                                    error = null
+                                    step = AuthStep.Number
+                                }
                             }
                             AuthStep.Number -> {
                                 Text(
-                                    "So the delivery person can call you. We only call about your order.",
+                                    if (byNumber) "We'll text you a code to sign in. The delivery person can also call this number about your order."
+                                    else "So the delivery person can call you. We only call about your order.",
                                     color = DashitColors.TextSecondary,
                                     fontSize = 14.sp,
                                     lineHeight = 20.sp,
@@ -472,9 +494,16 @@ fun AuthScreen(
                                         error = null
                                     }
                                 )
-                                AuthButton("Save and continue", enabled = valid && !isSigningIn, isBusy = isSigningIn) {
+                                AuthButton(if (byNumber) "Send code" else "Save and continue", enabled = valid && !isSigningIn, isBusy = isSigningIn) {
                                     HapticsManager.light(view)
                                     saveMobile()
+                                }
+                                if (byNumber) {
+                                    TextLink("Use Google instead", enabled = !isSigningIn) {
+                                        byNumber = false
+                                        error = null
+                                        step = AuthStep.Google
+                                    }
                                 }
                             }
                             AuthStep.Code -> {
@@ -555,6 +584,43 @@ internal fun GoogleButton(enabled: Boolean, onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Text("Continue with Google", color = Color(0xFF1F1F1F), fontSize = 16.sp, fontWeight = FontWeight.Medium)
     }
+}
+
+/** "Continue with mobile number": the same shape as the Google button, on the panel's own colours. */
+@Composable
+internal fun NumberButton(enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(DashitColors.Surface)
+            .border(1.dp, DashitColors.HairlineStrong, RoundedCornerShape(14.dp))
+            .pressable(scale = 0.98f) { if (enabled) onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Filled.Smartphone, contentDescription = null, tint = DashitColors.TextPrimary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text("Continue with mobile number", color = DashitColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+/** A quiet text button under a form, such as "Use Google instead". */
+@Composable
+internal fun TextLink(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        color = DashitColors.TextSecondary,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .pressable { if (enabled) onClick() }
+            .padding(vertical = 10.dp)
+    )
 }
 
 /** "——  Log in or sign up  ——" */

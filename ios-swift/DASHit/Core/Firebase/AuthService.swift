@@ -12,7 +12,9 @@ import FirebaseAuth
 /// install id on the profile (`devices`), never a hardware identifier. Same
 /// flow as Android (`AuthRepository.kt`).
 ///
-/// Accounts made by the older number sign-in ("ph-91XXXXXXXXXX") keep working.
+/// A shopper can also sign in with the mobile number alone: a code is texted
+/// to it, and the server hands back a sign-in token for the number's account
+/// ("ph-91XXXXXXXXXX"), the same account the older number sign-in made.
 @MainActor
 final class AuthService: ObservableObject {
     static let shared = AuthService()
@@ -26,12 +28,12 @@ final class AuthService: ObservableObject {
         checkCurrentSession()
     }
 
-    /// Older accounts the number sign-in made.
+    /// An account signed in with the mobile number itself.
     static func isNumberAccount(_ uid: String) -> Bool {
         uid.hasPrefix("ph-")
     }
 
-    /// A shopper's account: an Apple ID, or an older number account. Staff
+    /// A shopper's account: an Apple ID, or a number account. Staff
     /// sign in with email in the admin app, which builds this file too, and
     /// don't count.
     private static func isCustomerAccount(_ user: FirebaseAuth.User) -> Bool {
@@ -186,6 +188,58 @@ final class AuthService: ObservableObject {
         }
     }
 
+    // MARK: - Signing in with the number alone
+
+    /// "Continue with mobile number" is hidden until 2Factor texts codes (it
+    /// only called, 12 Oct 2026).
+    static let numberSignIn = false
+
+    private struct NumberSignIn: Decodable {
+        let token: String?
+    }
+
+    private static let noNumberSignIn = "Signing in with a number isn't available right now. Please use Apple."
+
+    /// Texts a code to a number that wants to sign in with the number alone
+    /// (nobody is signed in yet).
+    func requestSignInCode(to mobile: String) async throws -> OtpRequest {
+        guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
+        return try await run {
+            let sent: OtpSent
+            do {
+                sent = try await self.post("number-code.php", body: ["mobile": clean])
+            } catch AuthError.endpointMissing {
+                throw AuthError.other(Self.noNumberSignIn)
+            }
+            guard sent.configured ?? false else { throw AuthError.other(Self.noNumberSignIn) }
+            return OtpRequest(configured: true, ticket: sent.ticket, resendAfter: sent.resend_after ?? 30)
+        }
+    }
+
+    /// Checks the code and signs in to the number's account, a new one the
+    /// first time (no name yet: `needsName`).
+    func signInWithNumber(mobile: String, code: String, ticket: String) async throws {
+        guard let clean = Self.normalizedMobile(mobile) else { throw fail(.invalidMobile) }
+        try await run {
+            let reply: NumberSignIn
+            do {
+                reply = try await self.post("number-sign-in.php", body: ["mobile": clean, "otp": code, "ticket": ticket])
+            } catch AuthError.endpointMissing {
+                throw AuthError.other(Self.noNumberSignIn)
+            }
+            guard let token = reply.token, !token.isEmpty else { throw AuthError.other(Self.noNumberSignIn) }
+            let user = try await Auth.auth().signIn(withCustomToken: token).user
+            var profile = try await FirestoreService.shared.ensureUserProfile(
+                uid: user.uid,
+                mobile: clean,
+                provider: "number",
+                installID: Self.installID
+            )
+            if profile.mobile.isEmpty { profile.mobile = clean }
+            self.finishSignIn(with: profile)
+        }
+    }
+
     /// The signed-in shopper's Firebase ID token: what the server checks to know who is asking.
     func idToken() async throws -> String {
         guard let user = Auth.auth().currentUser else { throw AuthError.notSignedIn }
@@ -243,6 +297,13 @@ final class AuthService: ObservableObject {
         Auth.auth().currentUser?.providerData.contains { $0.providerID == "apple.com" } ?? false
     }
 
+    /// Whether this account signs in with its mobile number and a code alone
+    /// (no Apple ID tied to it). Deleting it asks for a new code.
+    var isNumberOnlyAccount: Bool {
+        guard let user = Auth.auth().currentUser else { return false }
+        return Self.isNumberAccount(user.uid) && !isAppleAccount
+    }
+
     /// Revokes DASHit's Apple tokens with the code from a fresh Apple
     /// confirmation. Needs the Apple key set up in Firebase; the account and
     /// its data are still deleted if Apple refuses.
@@ -283,8 +344,8 @@ final class AuthService: ObservableObject {
     }
 
     /// Delete user account (App Store 5.1.1(v) Requirement). Call it straight
-    /// after `confirmWithApple`: Firebase refuses to delete an account that
-    /// signed in long ago.
+    /// after `confirmWithApple` (or `signInWithNumber` for a number account):
+    /// Firebase refuses to delete an account that signed in long ago.
     func deleteAccount() async throws {
         guard let user = Auth.auth().currentUser else { return }
         let uid = user.uid
@@ -335,7 +396,7 @@ final class AuthService: ObservableObject {
         } catch {
             let mapped = AuthError.from(firebase: error)
             // The saved sign-in stopped working: clear it, so the screen goes
-            // back to "Continue with Apple" with the message under it.
+            // back to the first step with the message under it.
             if case .sessionExpired = mapped { signOutQuietly() }
             throw fail(mapped)
         }
@@ -369,7 +430,7 @@ enum AuthError: LocalizedError {
         case .signInFailed:
             return "We couldn't sign you in. Please try again."
         case .sessionExpired:
-            return "Please sign in with Apple again."
+            return "Please sign in again."
         case .server(let message, _):
             return message
         case .endpointMissing:

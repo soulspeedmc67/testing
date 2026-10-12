@@ -35,7 +35,7 @@ import { showOrderPlacedNotification } from "../lib/notifications";
 import { useStoreDetails, useStoreConfig, useStoreConfigLive, isCodEnabled, isCodAllowedAtNight } from "../lib/storeStatus";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { useShopRules } from "../lib/useShopRules";
-import { calculateDeliveryEta } from "../lib/deliveryEta";
+import { calculateDeliveryEta, outsideAreaMessage } from "../lib/deliveryEta";
 import { nightChargeFor, isNightChargeOn, isNightHours, currentNightHours, hourLabel } from "../lib/nightCharge";
 import { browseable } from "../lib/tobacco";
 import { watchShopProducts, isSoldOut } from "../lib/catalogueFile";
@@ -454,6 +454,8 @@ export default function CheckoutPage() {
       );
     }
     const orderEta = calculateDeliveryEta(orderLocation);
+    // The button is off for an address outside the delivery area; this covers the sign-in path.
+    if (!orderEta.isDeliverable) return alert(outsideAreaMessage(orderEta.distanceKm));
     /* The bill on screen is at most 30 seconds old. If the night charge came
        on or went off in that time, show the new bill before taking the order. */
     const now = new Date();
@@ -569,7 +571,9 @@ export default function CheckoutPage() {
 
   // ---- The button ------------------------------------------------------------
 
-  const blocked = beforeLaunch || !isStoreOpen || !billReady || shortItems.length > 0 || belowMinimum;
+  // Outside the delivery area (the shop's deliveryRadiusKm, 8 km unless it changed it): no order.
+  const tooFar = hasAddress && !eta.isDeliverable;
+  const blocked = beforeLaunch || !isStoreOpen || !billReady || shortItems.length > 0 || belowMinimum || tooFar;
   const buttonLabel = isProcessing
     ? method === "online"
       ? "Waiting for payment…"
@@ -590,8 +594,8 @@ export default function CheckoutPage() {
     ? "Sign in to place order"
     : !hasAddress
     ? "Add delivery address"
-    : !eta.isDeliverable
-    ? (method === "online" ? `Pay ${rupees(grandTotal)}` : "Place order")
+    : tooFar
+    ? "We don't deliver to this address yet"
     : method === "online"
     ? `Pay ${rupees(grandTotal)}`
     : "Place order";
@@ -807,8 +811,8 @@ export default function CheckoutPage() {
                   <>
                     <p className="text-[14px] font-semibold text-slate-900 line-clamp-2 dark:text-content">{location.address}</p>
                     {!eta.isDeliverable && (
-                      <p className="mt-0.5 text-[12.5px] font-semibold text-amber-600 dark:text-amber-400">
-                        {eta.distanceKm} km from our store, outside our usual 8 km. You can still order; the store will confirm if it can deliver.
+                      <p className="mt-0.5 text-[12.5px] font-semibold text-red-600 dark:text-red-400">
+                        {outsideAreaMessage(eta.distanceKm)} Please choose a nearer address.
                       </p>
                     )}
                   </>

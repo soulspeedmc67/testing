@@ -19,12 +19,15 @@ struct CheckoutView: View {
     private var cashAllowed: Bool { storeStatus.rules.allowsCash(at: clock) }
     /// The cart is under the shop's minimum order.
     private var belowMinimum: Bool { !cart.items.isEmpty && !cart.bill.isMinOrderSatisfied }
+    /// The address is outside the delivery area: no order.
+    private var tooFar: Bool { !vm.deliveryQuote.isDeliverable }
 
     private var placeOrderLabel: String {
         if vm.isSubmitting { return vm.progressText }
         if belowMinimum {
             return "Add \(CurrencyFormatter.format(cart.bill.amountNeededForMinOrder)) more to order"
         }
+        if tooFar { return "We don't deliver here yet" }
         let total = CurrencyFormatter.format(cart.bill.grandTotal)
         if !vm.paysOnline { return "Place order · \(total) cash" }
         if vm.payOption?.upiApp != nil { return "Pay \(total) with \(vm.payOption?.title ?? "")" }
@@ -74,7 +77,7 @@ struct CheckoutView: View {
                                 .foregroundColor(vm.deliveryQuote.isDeliverable ? .textPrimary : .brandOrange)
                             Text(vm.deliveryQuote.isDeliverable
                                  ? "\(vm.deliveryQuote.distanceText) · Fulfilled from DASHit Anantnag Dark Store"
-                                 : "\(vm.deliveryQuote.distanceText) · Standard delivery is within 8 km (Store will confirm)")
+                                 : "\(vm.deliveryQuote.distanceText) · Outside our delivery area. Please choose a nearer address.")
                                 .font(.dashitMicro)
                                 .foregroundColor(.textMuted)
                         }
@@ -200,10 +203,10 @@ struct CheckoutView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(16)
-                        .background(vm.isSubmitting || belowMinimum ? Color.gray : Color.brandOrange)
+                        .background(vm.isSubmitting || belowMinimum || tooFar ? Color.gray : Color.brandOrange)
                         .cornerRadius(14)
                     }
-                    .disabled(vm.isSubmitting || cart.items.isEmpty || belowMinimum)
+                    .disabled(vm.isSubmitting || cart.items.isEmpty || belowMinimum || tooFar)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 12)
                 }

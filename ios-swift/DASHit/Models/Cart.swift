@@ -52,7 +52,9 @@ extension CartItem {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: DecodingKeys.self)
-        let id = c.flexibleString(.id) ?? c.flexibleString(.barcode) ?? UUID().uuidString
+        // Never a random id for a saved line: packing ticks are kept by it.
+        let id = c.flexibleString(.id) ?? c.flexibleString(.barcode) ?? c.flexibleString(.productId)
+            ?? c.flexibleString(.name) ?? UUID().uuidString
         self.init(
             id: id,
             productId: c.flexibleString(.productId) ?? id,

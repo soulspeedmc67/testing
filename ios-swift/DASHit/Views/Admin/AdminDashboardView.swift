@@ -443,6 +443,12 @@ public struct AdminDashboardView: View {
                 .foregroundColor(.secondary)
                 .lineLimit(2)
 
+            if let from = order.placedFrom {
+                Text("Ordered from \(from)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+
             HStack {
                 Text("\(order.items.count) items • ₹\(Int(order.grandTotal))")
                     .font(.system(size: 14, weight: .bold))
@@ -1214,8 +1220,8 @@ public struct AdminDashboardView: View {
 // MARK: - Order Detail Sheet View
 
 /// An order opened from the list: a packing checklist first. Tap an item to
-/// tick it off as it goes in the bag; ticks are kept on this device, so
-/// closing the order doesn't lose them. The next step sits at the bottom, and
+/// tick it off as it goes in the bag; ticks are saved on the order, so every
+/// staff screen shows them and a delivered order still has them. The next step sits at the bottom, and
 /// the address, total and cancel are tucked under "More about this order".
 struct OrderDetailSheetView: View {
     let order: Order
@@ -1314,7 +1320,16 @@ struct OrderDetailSheetView: View {
                 }
             }
             .onAppear {
-                packed = Set(UserDefaults.standard.stringArray(forKey: storageKey) ?? [])
+                // Ticks from before they were saved on the order are on this phone.
+                let onThisPhone = Set(UserDefaults.standard.stringArray(forKey: storageKey) ?? [])
+                packed = live.packedItems.isEmpty ? onThisPhone : Set(live.packedItems)
+                if live.packedItems.isEmpty, !onThisPhone.isEmpty {
+                    vm.savePackedItems(orderId: order.id, keys: Array(onThisPhone))
+                }
+            }
+            .onChange(of: live.packedItems) { _, saved in
+                // Ticked on the web console or another phone.
+                if Set(saved) != packed { packed = Set(saved) }
             }
         }
     }
@@ -1353,9 +1368,16 @@ struct OrderDetailSheetView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.orange)
             }
-            Text("Tap an item when it's in the bag.")
-                .font(.system(size: 13))
-                .foregroundColor(.secondary)
+            if let from = live.placedFrom {
+                Label("Ordered from \(from)", systemImage: live.platform?.lowercased() == "web" ? "globe" : "iphone")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            if !live.status.stage.isFinished {
+                Text("Tap an item when it's in the bag.")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: packedCount)
     }
@@ -1390,18 +1412,22 @@ struct OrderDetailSheetView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(isPacked ? .secondary : .primary)
                         .strikethrough(isPacked, color: .secondary)
-                        .lineLimit(2)
+                        // The whole name, on as many lines as it needs: a
+                        // narrow screen or large text must not cut it short.
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                     if !item.unit.isEmpty {
                         Text(item.unit)
                             .font(.system(size: 13))
                             .foregroundColor(.secondary)
                     }
                 }
-                Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .layoutPriority(1)
                 Text("×\(item.quantity)")
                     .font(.system(size: 18, weight: .heavy, design: .rounded))
                     .foregroundColor(isPacked ? .secondary : .primary)
+                    .fixedSize()
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -1417,6 +1443,7 @@ struct OrderDetailSheetView: View {
             if packed.contains(key) { packed.remove(key) } else { packed.insert(key) }
         }
         UserDefaults.standard.set(Array(packed), forKey: storageKey)
+        vm.savePackedItems(orderId: order.id, keys: Array(packed))
         if isAllPacked {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         } else {

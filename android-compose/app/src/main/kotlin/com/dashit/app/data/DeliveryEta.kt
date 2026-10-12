@@ -64,7 +64,8 @@ object DeliveryEta {
         val roadKm = maxOf(0.4, straightKm * 1.25)
         val ridingMinutes = roadKm / 18 * 60
         val total = maxOf(8, (3 + ridingMinutes + 3).roundToInt())
-        return Quote(total, distanceKm, distanceKm <= MAX_RADIUS_KM)
+        // The area is the shop's own setting (ShopRules.deliveryRadiusKm, 8 km unless it changed it).
+        return Quote(total, distanceKm, StoreStatus.state.value.rules.delivers(distanceKm))
     }
 }
 

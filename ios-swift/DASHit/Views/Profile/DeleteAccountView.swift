@@ -4,13 +4,17 @@ import SwiftUI
 /// typing DELETE, the shopper signs in with Apple once more: Firebase only
 /// deletes an account that signed in moments ago, it keeps anyone else holding
 /// the phone from deleting it, and it lets DASHit revoke its Apple tokens, as
-/// Apple requires.
+/// Apple requires. An account signed in with a mobile number confirms with a
+/// new code texted to that number instead.
 struct DeleteAccountView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var auth = AuthService.shared
     @State private var confirmationText = ""
     @State private var isDeleting = false
     @State private var errorMessage: String?
+    /// A number account's confirmation: the code texted to its number.
+    @State private var code = ""
+    @State private var otpTicket: String?
 
     private var isBusy: Bool { isDeleting || auth.isAuthenticating }
     private var isConfirmed: Bool { confirmationText == "DELETE" }
@@ -56,7 +60,11 @@ struct DeleteAccountView: View {
                     }
                     .padding(.top, 8)
 
-                    if isConfirmed {
+                    if isConfirmed && auth.isNumberOnlyAccount {
+                        numberConfirmation
+                            .padding(.top, 8)
+                            .transition(.opacity)
+                    } else if isConfirmed {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Sign in with Apple once more to finish. This also removes DASHit's access to your Apple ID.")
                                 .font(.dashitCaption)
@@ -115,6 +123,56 @@ struct DeleteAccountView: View {
                 }
             }
             .onAppear { auth.errorMessage = nil }
+        }
+    }
+
+    /// For an account signed in with its number: text a new code, then delete
+    /// once the code is right.
+    private var numberConfirmation: some View {
+        let mobile = auth.currentUser?.mobile ?? ""
+        return VStack(alignment: .leading, spacing: 10) {
+            if let ticket = otpTicket {
+                Text("Enter the code we sent to +91 \(mobile) to finish.")
+                    .font(.dashitCaption)
+                    .foregroundColor(.textMuted)
+                OtpCodeBoxes(code: $code) { entered in
+                    guard !isBusy else { return }
+                    Task {
+                        isDeleting = true
+                        errorMessage = nil
+                        do {
+                            try await auth.signInWithNumber(mobile: mobile, code: entered, ticket: ticket)
+                        } catch {
+                            isDeleting = false
+                            code = ""
+                            return // auth.errorMessage says why
+                        }
+                        await finishDeleting()
+                    }
+                }
+            } else {
+                Text("We'll text a code to +91 \(mobile) to finish.")
+                    .font(.dashitCaption)
+                    .foregroundColor(.textMuted)
+                Button {
+                    Task {
+                        errorMessage = nil
+                        if let request = try? await auth.requestSignInCode(to: mobile) {
+                            code = ""
+                            otpTicket = request.ticket
+                        }
+                    }
+                } label: {
+                    Text("Send code")
+                        .font(.dashitBodyBold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 50)
+                        .background(Color.danger, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.pressable)
+                .disabled(isBusy)
+            }
         }
     }
 

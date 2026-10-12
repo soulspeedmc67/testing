@@ -1,11 +1,12 @@
 import SwiftUI
 
 /// Log in or sign up, kept plain: the scooter rider on a deep brand gradient,
-/// one headline and "Continue with Apple". The Apple ID is the account: orders
-/// and addresses are kept under it. Right after, the shopper gives a mobile
-/// number once, so the rider can call them. When the server checks numbers, a
-/// code is texted to it first (2Factor); until then the number is just saved. Same
-/// screen as Android's AuthScreen (which has Google instead).
+/// one headline, "Continue with Apple" and "Continue with mobile number". With
+/// Apple, the Apple ID is the account, and right after the shopper gives a
+/// mobile number once, so the rider can call them (a code is texted to it
+/// first when the server checks numbers). With the number, a code is texted to
+/// it and the number is the account. Same screen as Android's AuthScreen
+/// (which has Google in Apple's place).
 ///
 /// Shown once when the app is first opened (with "Skip", so browsing never
 /// needs an account) and whenever something needs the shopper signed in.
@@ -38,6 +39,8 @@ struct AuthView: View {
     @State private var otpTicket: String? = nil
     @State private var resendAt = Date.distantPast
     @State private var isCodeStep = false
+    /// Signing in with the number itself: no Apple ID behind it.
+    @State private var isNumberSignIn = false
     @State private var legalPage: LegalPage? = nil
     @State private var isFloating = false
     /// While typing, the picture and headline step aside so the whole form
@@ -48,6 +51,8 @@ struct AuthView: View {
     private var isReady: Bool { auth.isReadyToOrder }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var validMobile: String? { AuthService.normalizedMobile(mobile) }
+    /// The number is being asked for: after Apple, or to sign in with it.
+    private var asksMobile: Bool { auth.needsMobile || (isNumberSignIn && !auth.isAuthenticated) }
 
     var body: some View {
         GeometryReader { geo in
@@ -185,10 +190,10 @@ struct AuthView: View {
 
     private var panel: some View {
         VStack(spacing: 16) {
-            if auth.needsMobile && isCodeStep {
+            if asksMobile && isCodeStep {
                 sectionTitle("Enter the code")
                 codeStep
-            } else if auth.needsMobile {
+            } else if asksMobile {
                 sectionTitle("Your mobile number")
                 mobileStep
             } else if auth.needsName {
@@ -196,12 +201,13 @@ struct AuthView: View {
                 nameStep
             } else {
                 sectionTitle("Log in or sign up")
-                Text("Your Apple ID keeps your orders and addresses, on any phone.")
+                Text("Your account keeps your orders and addresses, on any phone.")
                     .font(.system(size: 14))
                     .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 AppleSignInButton(label: .continue)
+                if AuthService.numberSignIn { numberButton }
             }
 
             if let message = auth.errorMessage {
@@ -226,6 +232,33 @@ struct AuthView: View {
         .animation(.dashitSpring, value: auth.errorMessage)
         .animation(.dashitSpring, value: auth.needsName)
         .animation(.dashitSpring, value: auth.needsMobile)
+        .animation(.dashitSpring, value: isNumberSignIn)
+    }
+
+    /// "Continue with mobile number": the same shape as the Apple button, on
+    /// the panel's own colours.
+    private var numberButton: some View {
+        Button {
+            HapticsManager.shared.light()
+            auth.errorMessage = nil
+            isCodeStep = false
+            isNumberSignIn = true
+            isMobileFocused = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "iphone")
+                    .font(.system(size: 17, weight: .medium))
+                Text("Continue with mobile number")
+                    .font(.system(size: 19, weight: .medium))
+            }
+            .foregroundColor(.textPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(Color.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hairlineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.pressable)
+        .disabled(auth.isAuthenticating)
     }
 
     /// Every account must have a name: the rider asks for it at the door.
@@ -256,10 +289,13 @@ struct AuthView: View {
         }
     }
 
-    /// The number the rider can call, asked once. Not verified: no code is sent.
+    /// The number the rider can call, asked once after Apple; or the number
+    /// to sign in with, which gets a code.
     private var mobileStep: some View {
         VStack(spacing: 12) {
-            Text("So the rider can call you. We only call about your order.")
+            Text(isNumberSignIn
+                 ? "We'll text you a code to sign in. The rider can also call this number about your order."
+                 : "So the rider can call you. We only call about your order.")
                 .font(.system(size: 14))
                 .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
@@ -282,10 +318,22 @@ struct AuthView: View {
             }
             .modifier(AuthFieldStyle())
 
-            primaryButton("Continue", enabled: validMobile != nil && !auth.isAuthenticating) {
+            primaryButton(isNumberSignIn ? "Send code" : "Continue", enabled: validMobile != nil && !auth.isAuthenticating) {
                 isMobileFocused = false
                 HapticsManager.shared.light()
                 Task { await continueWithNumber() }
+            }
+            if isNumberSignIn {
+                Button("Use Apple instead") {
+                    HapticsManager.shared.light()
+                    auth.errorMessage = nil
+                    isMobileFocused = false
+                    isNumberSignIn = false
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.textSecondary)
+                .frame(minHeight: 44)
+                .disabled(auth.isAuthenticating)
             }
         }
     }
@@ -329,10 +377,15 @@ struct AuthView: View {
     private func continueWithNumber() async {
         guard let digits = validMobile else { return }
         do {
-            let request = try await auth.requestOtp(to: digits)
-            guard request.configured else {
-                try await auth.saveMobile(digits)
-                return
+            let request: AuthService.OtpRequest
+            if isNumberSignIn {
+                request = try await auth.requestSignInCode(to: digits)
+            } else {
+                request = try await auth.requestOtp(to: digits)
+                guard request.configured else {
+                    try await auth.saveMobile(digits)
+                    return
+                }
             }
             otpTicket = request.ticket
             code = ""
@@ -351,7 +404,13 @@ struct AuthView: View {
               entered.count == OtpCodeBoxes.length, !auth.isAuthenticating else { return }
         Task {
             do {
-                try await auth.verifyOtp(mobile: digits, code: entered, ticket: ticket)
+                if isNumberSignIn {
+                    try await auth.signInWithNumber(mobile: digits, code: entered, ticket: ticket)
+                    isNumberSignIn = false
+                    isCodeStep = false
+                } else {
+                    try await auth.verifyOtp(mobile: digits, code: entered, ticket: ticket)
+                }
             } catch {
                 code = "" // the message is on screen; ready for another try
             }

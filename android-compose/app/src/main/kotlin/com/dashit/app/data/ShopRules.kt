@@ -19,6 +19,8 @@ data class ShopRules(
     val minOrderValue: Double = 100.0,
     /** On every order, whatever its size. */
     val handlingFee: Double = 11.0,
+    /** How far from the store we deliver, in a straight line (km). 0 means no limit. */
+    val deliveryRadiusKm: Double = 8.0,
     /** Orders under this pay [deliverySmallPercent] of the items total. */
     val deliverySmallBelow: Double = 180.0,
     val deliverySmallPercent: Double = 40.0,
@@ -53,6 +55,13 @@ data class ShopRules(
         else -> deliveryLowFee
     }
 
+    /** Whether an address [distanceKm] from the store is inside the delivery area. */
+    fun delivers(distanceKm: Double): Boolean = deliveryRadiusKm <= 0 || distanceKm <= deliveryRadiusKm
+
+    /** Why an order for an address [distanceKm] away is refused. */
+    fun outsideAreaMessage(distanceKm: Double): String =
+        "We deliver within ${whole(deliveryRadiusKm)} km of our store. This address is ${"%.1f".format(distanceKm)} km away, so we can't deliver there yet."
+
     /** Whether cash on delivery can be chosen for an order placed at [nowMillis]. */
     fun allowsCash(nowMillis: Long): Boolean =
         codEnabled && (codAtNight || !NightCharge.isNightHours(nowMillis))
@@ -73,6 +82,7 @@ data class ShopRules(
             return ShopRules(
                 minOrderValue = amount("minOrderValue", d.minOrderValue),
                 handlingFee = amount("handlingFee", d.handlingFee),
+                deliveryRadiusKm = minOf(50.0, amount("deliveryRadiusKm", d.deliveryRadiusKm)),
                 deliverySmallBelow = amount("deliverySmallBelow", d.deliverySmallBelow),
                 deliverySmallPercent = minOf(100.0, amount("deliverySmallPercent", d.deliverySmallPercent)),
                 deliveryMidFee = amount("deliveryMidFee", d.deliveryMidFee),

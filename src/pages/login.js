@@ -6,8 +6,8 @@ import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import { finishRedirectSignIn, readShopper } from "../lib/shopperAuth";
 
 /**
- * Sign in to the web shop: Google, then the mobile number (the same steps as
- * at checkout). Goes back to ?next= (or the shop) when done.
+ * Sign in to the web shop: Google and then the mobile number, or the mobile
+ * number alone (the same steps as at checkout). Goes back to ?next= (or the shop) when done.
  */
 export default function LoginPage() {
   const router = useRouter();

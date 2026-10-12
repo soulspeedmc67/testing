@@ -18,6 +18,8 @@ export const SHOP_RULE_DEFAULTS = Object.freeze({
   minOrderValue: 100,
   // On every order, whatever its size.
   handlingFee: 11,
+  // How far from the store we deliver, in a straight line (km). 0 means no limit.
+  deliveryRadiusKm: 8,
   // Orders under `deliverySmallBelow` pay `deliverySmallPercent` of the items total.
   deliverySmallBelow: 180,
   deliverySmallPercent: 40,
@@ -57,6 +59,7 @@ export function shopRules(cfg) {
   return {
     minOrderValue: zeroOrMore(cfg?.minOrderValue, d.minOrderValue),
     handlingFee: zeroOrMore(cfg?.handlingFee, d.handlingFee),
+    deliveryRadiusKm: Math.min(50, zeroOrMore(cfg?.deliveryRadiusKm, d.deliveryRadiusKm)),
     deliverySmallBelow: zeroOrMore(cfg?.deliverySmallBelow, d.deliverySmallBelow),
     deliverySmallPercent: Math.min(100, zeroOrMore(cfg?.deliverySmallPercent, d.deliverySmallPercent)),
     deliveryMidFee: zeroOrMore(cfg?.deliveryMidFee, d.deliveryMidFee),

@@ -880,6 +880,19 @@ public final class AdminDashboardViewModel: ObservableObject {
         ], merge: true, completion: saveThenNotify("The order update", orderId: order.id))
     }
 
+    /// Saves which lines of an order are ticked off as packed, on the order
+    /// itself: the web console and every admin phone show the same ticks, and
+    /// they are still there after delivery.
+    public func savePackedItems(orderId: String, keys: [String]) {
+        if let idx = recentOrders.firstIndex(where: { $0.id == orderId }) {
+            recentOrders[idx].packedItems = keys
+        }
+        db.collection("orders").document(orderId).updateData(["packedItems": keys]) { [weak self] error in
+            guard let error else { return }
+            Task { @MainActor in self?.saveError = "The packing ticks weren't saved: \(error.localizedDescription)" }
+        }
+    }
+
     public func cancelOrder(order: Order) {
         rejectOrder(order: order, reason: "Customer cancelled")
     }

@@ -266,7 +266,7 @@ export default function LocationPickerModal({
                               ) : (
                                 <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/40">
                                   <AlertTriangle className="w-3 h-3 text-amber-600" />
-                                  <span>Beyond 8 km ({deliveryData.distanceKm} km away) • Store will confirm</span>
+                                  <span>Outside our delivery area ({deliveryData.distanceKm} km away)</span>
                                 </span>
                               )}
                             </div>
@@ -295,7 +295,7 @@ export default function LocationPickerModal({
                               : "bg-[#061838] text-white hover:bg-slate-900"
                           }`}
                         >
-                          {isActive ? "Delivering Here" : isWithin8km ? "Deliver Here" : "Deliver Here (Beyond 8km)"}
+                          {isActive ? "Delivering Here" : isWithin8km ? "Deliver Here" : "Outside our area"}
                         </button>
                       </div>
                     </div>

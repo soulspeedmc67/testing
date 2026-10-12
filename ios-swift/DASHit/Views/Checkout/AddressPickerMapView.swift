@@ -260,7 +260,7 @@ struct AddressPinPicker: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.positive)
         } else {
-            Text("\(quote.distanceText) from our hub — standard delivery is within 8 km")
+            Text("\(quote.distanceText) from our store: outside our delivery area")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.brandOrange)
         }

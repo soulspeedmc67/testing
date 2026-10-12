@@ -34,6 +34,7 @@ import {
 import { shopRules } from "./deliveryCharges";
 import { noteCacheVersion } from "./cacheRefresh";
 import { adoptNightHours } from "./nightCharge";
+import { adoptDeliveryRadius } from "./deliveryEta";
 
 /**
  * Firestore data layer.
@@ -2163,6 +2164,26 @@ export async function updateOrderStatus(orderId, status, extraFields = {}) {
   }
 }
 
+/** The name a packing tick is saved under: the same on the web console and the iOS admin. */
+export function orderLineKey(item) {
+  return String(item?.id ?? item?.productId ?? item?.name ?? "");
+}
+
+/**
+ * Saves which lines of an order are ticked off as packed (`packedItems`, a
+ * list of orderLineKey values), so the ticks show on every staff screen and
+ * are still there after the order is delivered.
+ */
+export async function saveOrderPackedItems(orderId, keys) {
+  const db = getDb();
+  if (!db) return;
+  try {
+    await updateDoc(doc(db, "orders", String(orderId)), { packedItems: keys });
+  } catch (err) {
+    console.warn("Couldn't save the packing ticks:", err?.message || err);
+  }
+}
+
 /**
  * Extract timestamp in milliseconds from an order object reliably,
  * handling Firestore Timestamp, Date, string ISO, or epoch ms.
@@ -3052,6 +3073,7 @@ function broadcastStoreConfig(cfg, live = memoryStoreConfigLive) {
   memoryStoreConfig = cfg;
   memoryStoreConfigLive = live;
   adoptNightHours(cfg);
+  adoptDeliveryRadius(cfg);
   storeConfigSubscribers.forEach((cb) => {
     try { cb(cfg, live); } catch (e) {}
   });

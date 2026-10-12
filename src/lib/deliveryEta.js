@@ -33,6 +33,22 @@ export function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
 // Maximum standard delivery radius from the Central Dark Store
 export const MAX_DELIVERY_RADIUS_KM = 8.0;
 
+/* How far the shop delivers, as it set it on config/store (`deliveryRadiusKm`;
+   0 means no limit). Starts at the built-in 8 km and follows the shop's
+   settings as they arrive (db.js calls adoptDeliveryRadius). */
+let deliveryRadiusKm = MAX_DELIVERY_RADIUS_KM;
+
+export function adoptDeliveryRadius(cfg) {
+  const n = Number(cfg?.deliveryRadiusKm);
+  const set = cfg?.deliveryRadiusKm !== null && cfg?.deliveryRadiusKm !== undefined && cfg?.deliveryRadiusKm !== "";
+  deliveryRadiusKm = set && Number.isFinite(n) && n >= 0 ? Math.min(50, n) : MAX_DELIVERY_RADIUS_KM;
+}
+
+/** Words for an address outside the area: shown wherever an order is refused for it. */
+export function outsideAreaMessage(distanceKm) {
+  return `We deliver within ${deliveryRadiusKm} km of our store. This address is ${Number(distanceKm).toFixed(1)} km away, so we can't deliver there yet.`;
+}
+
 /**
  * Calculates delivery ETA in minutes from the hub to customer location.
  *
@@ -74,7 +90,7 @@ export function calculateDeliveryEta(targetCoords, hubCoords = DARK_STORE_HUB) {
      Streets run about 1.25x the straight line; that only sets the time. */
   const distanceKm = Math.round(rawDistKm * 10) / 10;
   const roadDistKm = Math.max(0.4, rawDistKm * 1.25);
-  const isDeliverable = distanceKm <= MAX_DELIVERY_RADIUS_KM;
+  const isDeliverable = deliveryRadiusKm <= 0 || distanceKm <= deliveryRadiusKm;
 
   // Speed: ~18 km/h -> 1 km takes ~3.33 mins
   const drivingMinutes = (roadDistKm / 18) * 60;
@@ -93,12 +109,12 @@ export function calculateDeliveryEta(targetCoords, hubCoords = DARK_STORE_HUB) {
       etaMinutes: totalMinutes,
       distanceKm,
       distanceFormatted,
-      displayText: `${totalMinutes} mins (Beyond 8 km)`,
-      pillText: "Beyond 8km",
+      displayText: `Outside our ${deliveryRadiusKm} km area`,
+      pillText: `Beyond ${deliveryRadiusKm}km`,
       isAccurate: true,
       isDeliverable: false,
-      maxRadiusKm: MAX_DELIVERY_RADIUS_KM,
-      warningText: `This address is ${distanceKm.toFixed(1)} km from our store, outside our usual ${MAX_DELIVERY_RADIUS_KM} km. You can still order; the store will confirm if it can deliver.`,
+      maxRadiusKm: deliveryRadiusKm,
+      warningText: outsideAreaMessage(distanceKm),
     };
   }
 

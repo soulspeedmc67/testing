@@ -8,6 +8,7 @@ const EXAMPLE_ORDERS = [120, 200, 400];
 const FIELDS = [
   "minOrderValue",
   "handlingFee",
+  "deliveryRadiusKm",
   "freeDeliveryOrders",
   "deliverySmallBelow",
   "deliverySmallPercent",
@@ -86,6 +87,7 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
     }
     if (!Number.isInteger(typed.freeDeliveryOrders)) return "Free first orders has to be a whole number.";
     if (typed.minOrderValue > 5000) return "The minimum order can't be more than ₹5,000.";
+    if (typed.deliveryRadiusKm > 50) return "The delivery distance can't be more than 50 km.";
     return "";
   })();
   const changed = FIELDS.some((key) => typed[key] !== saved[key]);
@@ -214,6 +216,11 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
             {field("handlingFee", "Handling charge on every order (₹)")}
           </div>
           <p className={hint}>The minimum counts the items only, not the fees. Put 0 for no minimum.</p>
+          <div className="grid grid-cols-2 gap-3">{field("deliveryRadiusKm", "Deliver up to (km from the store)")}</div>
+          <p className={hint}>
+            Measured in a straight line. An address further away can't place an order. Put 0 for no limit. Apps
+            installed before 13 Oct 2026 don't have this limit.
+          </p>
 
           <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 space-y-3">
             <p className={groupTitle}>Delivery fee by order size</p>

@@ -41,7 +41,9 @@ import kotlinx.coroutines.withContext
  * random install id on the profile (`devices`), never a hardware identifier.
  * Same flow as iOS (`AuthService.swift`).
  *
- * Accounts made by the older number sign-in ("ph-91XXXXXXXXXX") keep working.
+ * A shopper can also sign in with the mobile number alone: a code is texted
+ * to it, and the server hands back a sign-in token for the number's account
+ * ("ph-91XXXXXXXXXX"), the same account the older number sign-in made.
  */
 object AuthRepository {
     private const val OFFLINE = "Couldn't reach DASHit. Check your connection and try again."
@@ -63,11 +65,18 @@ object AuthRepository {
         val retryAfterSeconds: Int? = null,
         /** The server has no such endpoint (yet): a newer app than the site. */
         val notFound: Boolean = false,
-        /** The saved sign-in no longer works: back to "Continue with Google". */
+        /** The saved sign-in no longer works: back to the first step. */
         val signInAgain: Boolean = false
     ) : Exception(message)
 
-    private const val SIGN_IN_AGAIN = "Please sign in with Google again."
+    private const val SIGN_IN_AGAIN = "Please sign in again."
+    private const val NO_NUMBER_SIGN_IN = "Signing in with a number isn't available right now. Please use Google."
+
+    /** "Continue with mobile number" is hidden until 2Factor texts codes (it only called, 12 Oct 2026). */
+    const val NUMBER_SIGN_IN = false
+
+    /** Signed in with the mobile number itself, not a Google account. */
+    val isNumberAccount: Boolean get() = auth.currentUser?.uid?.startsWith("ph-") == true
 
     /**
      * Asks Firebase whether this phone's saved sign-in still works. An account
@@ -209,6 +218,46 @@ object AuthRepository {
         return OtpRequest(true, reply.optString("ticket").takeIf { it.isNotBlank() }, reply.optInt("resend_after", 30))
     }
 
+    /** Texts a code to a number that wants to sign in with the number alone (nobody is signed in yet). */
+    suspend fun requestSignInCode(rawMobile: String): OtpRequest {
+        val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
+        val reply = try {
+            post("number-code.php", JSONObject().put("mobile", mobile))
+        } catch (e: SignInException) {
+            if (e.notFound) throw SignInException(NO_NUMBER_SIGN_IN)
+            throw e
+        }
+        if (!reply.optBoolean("configured", false)) throw SignInException(NO_NUMBER_SIGN_IN)
+        return OtpRequest(true, reply.optString("ticket").takeIf { it.isNotBlank() }, reply.optInt("resend_after", 30))
+    }
+
+    /** Checks the code and signs in to the number's account, a new one the first time (no name yet). */
+    suspend fun signInWithNumber(rawMobile: String, code: String, ticket: String): UserProfile {
+        val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
+        val reply = try {
+            post("number-sign-in.php", JSONObject().put("mobile", mobile).put("otp", code).put("ticket", ticket))
+        } catch (e: SignInException) {
+            if (e.notFound) throw SignInException(NO_NUMBER_SIGN_IN)
+            throw e
+        }
+        val token = reply.optString("token").takeIf { it.isNotBlank() } ?: throw SignInException(NO_NUMBER_SIGN_IN)
+        val user = try {
+            auth.signInWithCustomToken(token).await().user
+        } catch (e: Exception) {
+            android.util.Log.e("DashitAuth", "FirebaseAuth signInWithCustomToken failed: ${e.message}", e)
+            throw SignInException(OFFLINE)
+        } ?: throw SignInException(OFFLINE)
+
+        val profile = try {
+            ensureUserProfile(uid = user.uid, name = null, email = null, provider = "number", mobile = mobile)
+        } catch (e: Exception) {
+            android.util.Log.e("DashitAuth", "ensureUserProfile failed: ${e.message}", e)
+            throw SignInException("We couldn't sign you in. Check your connection and try again.")
+        }
+        save(profile)
+        return profile
+    }
+
     /** Checks the code; the server marks the number verified on the profile. */
     suspend fun verifyOtp(rawMobile: String, code: String, ticket: String): UserProfile {
         val mobile = normalizedMobile(rawMobile) ?: throw SignInException("Enter a valid 10-digit mobile number.")
@@ -265,8 +314,9 @@ object AuthRepository {
     /**
      * Google Play account deletion: removes the profile and saved addresses,
      * then the Firebase account itself. Orders stay with the store as its
-     * sales records, as on iOS. Call it straight after [signInWithGoogle],
-     * since Firebase refuses to delete an account signed in long ago.
+     * sales records, as on iOS. Call it straight after [signInWithGoogle] or
+     * [signInWithNumber], since Firebase refuses to delete an account signed
+     * in long ago.
      */
     suspend fun deleteAccount() {
         val current = auth.currentUser ?: return
@@ -295,13 +345,20 @@ object AuthRepository {
         return UUID.randomUUID().toString().also { prefs?.edit()?.putString("install_id", it)?.apply() }
     }
 
-    private suspend fun ensureUserProfile(uid: String, name: String?, email: String?): UserProfile {
+    private suspend fun ensureUserProfile(
+        uid: String,
+        name: String?,
+        email: String?,
+        provider: String = "google",
+        /** A number sign-in's own number; the server has usually saved it already. */
+        mobile: String? = null
+    ): UserProfile {
         val ref = db.collection("users").document(uid)
         val snapshot = ref.get().await()
         val device = installId()
         val patch = hashMapOf<String, Any>(
             "uid" to uid,
-            "provider" to "google",
+            "provider" to provider,
             "lastLoginAt" to FieldValue.serverTimestamp(),
             // This phone, kept as a map of install ids so one account can be on several phones.
             "devices" to mapOf(device to mapOf("platform" to "android", "lastSeenAt" to FieldValue.serverTimestamp()))
@@ -310,10 +367,12 @@ object AuthRepository {
         val existingName = snapshot.getString("name")?.takeIf { it.isNotEmpty() }
         if (existingName == null && name != null) patch["name"] = name
         if (snapshot.getString("email").isNullOrEmpty() && email != null) patch["email"] = email
+        val savedMobile = snapshot.getString("mobile").orEmpty()
+        if (savedMobile.isBlank() && mobile != null) patch["mobile"] = mobile
         ref.set(patch, SetOptions.merge()).await()
         return UserProfile(
             id = uid,
-            mobile = snapshot.getString("mobile").orEmpty(),
+            mobile = savedMobile.ifBlank { mobile.orEmpty() },
             name = existingName ?: name,
             email = snapshot.getString("email")?.takeIf { it.isNotEmpty() } ?: email
         )

@@ -17,7 +17,7 @@ const WHATSAPP_URL = "https://wa.me/916006990032?text=Hi%20DASHit%2C%20I%20need%
 const QUESTIONS = [
   {
     q: "Where do you deliver?",
-    a: "Anywhere within 8 km of our store in Anantnag. Further out you can still order, and the store confirms each of those orders before sending it.",
+    a: "Anywhere within 8 km of our store in Anantnag. We can't take orders for addresses further out yet.",
   },
   {
     q: "How long will my order take?",

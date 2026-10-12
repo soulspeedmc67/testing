@@ -15,6 +15,8 @@ struct ShopRules: Equatable {
     var minOrderValue: Double = 100
     /// On every order, whatever its size.
     var handlingFee: Double = 11
+    /// How far from the store we deliver, in a straight line (km). 0 means no limit.
+    var deliveryRadiusKm: Double = 8
     /// Orders under this pay `deliverySmallPercent` of the items total.
     var deliverySmallBelow: Double = 180
     var deliverySmallPercent: Double = 40
@@ -48,6 +50,7 @@ struct ShopRules: Equatable {
         }
         if let value = amount("minOrderValue") { minOrderValue = value }
         if let value = amount("handlingFee") { handlingFee = value }
+        if let value = amount("deliveryRadiusKm") { deliveryRadiusKm = min(50, value) }
         if let value = amount("deliverySmallBelow") { deliverySmallBelow = value }
         if let value = amount("deliverySmallPercent") { deliverySmallPercent = min(100, value) }
         if let value = amount("deliveryMidFee") { deliveryMidFee = value }
@@ -87,6 +90,16 @@ struct ShopRules: Equatable {
         return "₹\(Self.whole(deliveryLowFee)) delivery charge (orders above ₹\(Self.whole(deliveryLowFrom - 1)))"
     }
 
+    /// Whether an address `distanceKm` from the store is inside the delivery area.
+    func delivers(distanceKm: Double) -> Bool {
+        deliveryRadiusKm <= 0 || distanceKm <= deliveryRadiusKm
+    }
+
+    /// Why an order for an address `distanceKm` away is refused.
+    func outsideAreaMessage(distanceKm: Double) -> String {
+        "We deliver within \(Self.whole(deliveryRadiusKm)) km of our store. This address is \(String(format: "%.1f", distanceKm)) km away, so we can't deliver there yet."
+    }
+
     /// The extra charge on an order placed now, in whole rupees; 0 while it is off.
     var extraCharge: Double {
         extraChargeOn ? max(0, extraChargeAmount) : 0
@@ -119,6 +132,7 @@ struct ShopRules: Equatable {
         [
             "minOrderValue": minOrderValue,
             "handlingFee": handlingFee,
+            "deliveryRadiusKm": deliveryRadiusKm,
             "deliverySmallBelow": deliverySmallBelow,
             "deliverySmallPercent": deliverySmallPercent,
             "deliveryMidFee": deliveryMidFee,

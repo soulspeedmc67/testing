@@ -23,7 +23,13 @@ import {
 } from "lucide-react";
 import PrintPackingSlip from "./PrintPackingSlip";
 import PrintGstTaxInvoice from "./PrintGstTaxInvoice";
-import { ORDER_STATUS, getOrderGracePeriodSeconds, groupOrderItemsByDistributor } from "../../lib/db";
+import {
+  ORDER_STATUS,
+  getOrderGracePeriodSeconds,
+  groupOrderItemsByDistributor,
+  orderLineKey,
+  saveOrderPackedItems,
+} from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
 import { orderAddress, orderCoords, orderTimeMs } from "../../lib/orderReceipt";
 import { deliveryFeeParts } from "../../lib/nightCharge";
@@ -78,10 +84,17 @@ export default function OrderDetailDrawer({
   }, []);
 
 
-  // Reset checklist on order change — must stay before early return (Rules of Hooks)
+  /* The ticks saved on the order (packedItems), read when an order is opened:
+     they are still there after it is delivered, and on every staff screen.
+     Must stay before the early return (Rules of Hooks). */
   useEffect(() => {
-    setCheckedItems({});
-  }, [order?.orderId, order?.id]);
+    const saved = new Set(Array.isArray(order?.packedItems) ? order.packedItems.map(String) : []);
+    const ticks = {};
+    (order?.items || []).forEach((item, idx) => {
+      if (saved.has(orderLineKey(item))) ticks[idx] = true;
+    });
+    setCheckedItems(ticks);
+  }, [order?.orderId, order?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const orderId = order?.orderId || order?.id || "DSH";
   const items = order?.items || [];
@@ -165,8 +178,14 @@ export default function OrderDetailDrawer({
   const packedItemsCount = items.filter((_, idx) => checkedItems[idx]).length;
   const allItemsPacked = totalItemsCount > 0 && packedItemsCount === totalItemsCount;
 
+  const saveTicks = (ticks) => {
+    setCheckedItems(ticks);
+    const keys = [...new Set(items.filter((_, idx) => ticks[idx]).map(orderLineKey))];
+    saveOrderPackedItems(order.orderId || order.id, keys);
+  };
+
   const toggleCheckItem = (idx) => {
-    setCheckedItems((prev) => ({ ...prev, [idx]: !prev[idx] }));
+    saveTicks({ ...checkedItems, [idx]: !checkedItems[idx] });
   };
 
   const markAllChecked = () => {
@@ -174,7 +193,7 @@ export default function OrderDetailDrawer({
     items.forEach((_, idx) => {
       all[idx] = true;
     });
-    setCheckedItems(all);
+    saveTicks(all);
   };
 
   const assignedDriverName = order?.driverName || "";
@@ -258,6 +277,11 @@ export default function OrderDetailDrawer({
                 <span className="font-mono font-black text-lg text-slate-900 dark:text-white">
                   Order #{orderId}
                 </span>
+                {PLACED_FROM[order.platform] && (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full border bg-white text-slate-700 border-slate-300 dark:bg-zinc-900 dark:text-zinc-300 dark:border-zinc-700">
+                    From {PLACED_FROM[order.platform]}
+                  </span>
+                )}
                 <span
                   className={"text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border " + (
                     isPlaced
@@ -726,7 +750,7 @@ export default function OrderDetailDrawer({
                         </div>
                         <div className="min-w-0">
                           <span
-                            className={"font-black text-xs block truncate " + (
+                            className={"font-black text-xs block break-words " + (
                               isChecked ? "line-through opacity-60" : ""
                             )}
                           >

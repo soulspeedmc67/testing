@@ -44,6 +44,26 @@ function dashit_signed_jwt(array $account, array $payload): ?string
 }
 
 /**
+ * A Firebase custom token for $uid: a JWT signed with the service account's
+ * key, which an app exchanges for a session with signInWithCustomToken.
+ * $claims ride in that session's ID token, where firestore.rules read them.
+ * Null if the key can't sign.
+ */
+function dashit_firebase_custom_token(array $account, string $uid, array $claims): ?string
+{
+    $now = time();
+    return dashit_signed_jwt($account, [
+        'iss' => $account['client_email'],
+        'sub' => $account['client_email'],
+        'aud' => 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit',
+        'iat' => $now,
+        'exp' => $now + 3600,
+        'uid' => $uid,
+        'claims' => $claims,
+    ]);
+}
+
+/**
  * A Google access token for Firestore and the Firebase Auth admin API, kept
  * for its hour in dashit-data so each request doesn't ask Google for a new
  * one. Null if Google says no.

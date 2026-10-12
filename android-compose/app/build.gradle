@@ -11,11 +11,11 @@ android {
 
     defaultConfig {
         applicationId "com.dashit.app"
-        minSdk 26
+        minSdk 24
         targetSdk 36
         // Well above the old web-wrapper app (android/, same app ID, up to 6), so
         // this native app always installs over it and never the other way round.
-        versionCode 101
+        versionCode 103
         versionName "1.2.1"
 
         // The sign-in server next to the website (public/api/auth/). A test build
@@ -54,6 +54,8 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Crash reports in Play Console name the native function that failed.
+            ndk { debugSymbolLevel 'SYMBOL_TABLE' }
         }
         debug {
             applicationIdSuffix ""

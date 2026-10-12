@@ -154,6 +154,21 @@ public struct Order: Identifiable, Hashable {
     public var extraDeliveryLabel: String?
     /// Straight-line km from the store, as saved at checkout.
     public var distanceKm: Double?
+    /// Where the order was placed: "web", "ios" or "android" (nil on old orders).
+    public var platform: String?
+    /// The lines the shop ticked off while packing (item ids), saved on the
+    /// order so every staff screen shows them, also after delivery.
+    public var packedItems: [String]
+
+    /// "the website", "the iPhone app" or "the Android app"; nil if unknown.
+    public var placedFrom: String? {
+        switch platform?.lowercased() {
+        case "web": return "the website"
+        case "ios": return "the iPhone app"
+        case "android": return "the Android app"
+        default: return nil
+        }
+    }
 
     /// The delivery fee without the two charges saved inside it.
     public var baseDeliveryFee: Double {
@@ -186,7 +201,9 @@ public struct Order: Identifiable, Hashable {
         nightDeliveryFee: Double = 0,
         extraDeliveryFee: Double = 0,
         extraDeliveryLabel: String? = nil,
-        distanceKm: Double? = nil
+        distanceKm: Double? = nil,
+        platform: String? = nil,
+        packedItems: [String] = []
     ) {
         self.id = id
         self.userId = userId
@@ -214,6 +231,8 @@ public struct Order: Identifiable, Hashable {
         self.extraDeliveryFee = extraDeliveryFee
         self.extraDeliveryLabel = extraDeliveryLabel
         self.distanceKm = distanceKm
+        self.platform = platform
+        self.packedItems = packedItems
     }
 
     /// A rider has the order but hasn't collected it from the store yet: it
@@ -283,6 +302,7 @@ extension Order: Decodable {
         case otp, couponCode, modifyWindowEndsAt, replacesOrderId
         case rejectionReason, cancelledReason, rejectReason, cancelReason
         case nightDeliveryFee, extraDeliveryFee, extraDeliveryLabel, distanceKm
+        case platform, packedItems
     }
 
     public init(from decoder: Decoder) throws {
@@ -342,7 +362,9 @@ extension Order: Decodable {
             nightDeliveryFee: c.flexibleDouble(.nightDeliveryFee) ?? 0,
             extraDeliveryFee: max(0, c.flexibleDouble(.extraDeliveryFee) ?? 0),
             extraDeliveryLabel: c.flexibleString(.extraDeliveryLabel),
-            distanceKm: c.flexibleDouble(.distanceKm)
+            distanceKm: c.flexibleDouble(.distanceKm),
+            platform: c.flexibleString(.platform),
+            packedItems: (try? c.decode([String].self, forKey: .packedItems)) ?? []
         )
     }
 }

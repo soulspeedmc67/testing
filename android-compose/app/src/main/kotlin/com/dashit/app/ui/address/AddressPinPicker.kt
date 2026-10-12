@@ -322,7 +322,7 @@ fun AddressPinPicker(
                         text = when {
                             isMoving -> " "
                             quote.isDeliverable && eta != null -> "Delivery in $eta minutes · ${quote.distanceText}"
-                            else -> "${quote.distanceText} from our store — standard delivery is within 8 km"
+                            else -> "${quote.distanceText} from our store: outside our delivery area"
                         },
                         color = if (quote.isDeliverable) DashitColors.Positive else DashitColors.BrandOrange,
                         fontSize = 12.sp,

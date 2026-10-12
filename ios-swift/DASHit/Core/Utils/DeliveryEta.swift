@@ -44,6 +44,7 @@ enum DeliveryEta {
         let roadKm = max(0.4, straightKm * 1.25)
         let ridingMinutes = roadKm / 18 * 60
         let total = max(8, Int((3 + ridingMinutes + 3).rounded()))
-        return Quote(etaMinutes: total, distanceKm: distanceKm, isDeliverable: distanceKm <= maxRadiusKm)
+        // The area is the shop's own setting (ShopRules.deliveryRadiusKm, 8 km unless it changed it).
+        return Quote(etaMinutes: total, distanceKm: distanceKm, isDeliverable: ShopRules.current.delivers(distanceKm: distanceKm))
     }
 }

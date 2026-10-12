@@ -53,8 +53,9 @@ without a code.** Nothing needs an app update to switch it on.
 ```php
 <?php return [
     'twofactor_api_key' => 'PASTE-THE-KEY',
-    'twofactor_template' => '',     // optional: the name of your approved SMS template
+    'twofactor_template' => 'NAME', // the name of your approved SMS OTP template (required)
     'otp_daily_cap' => 400,         // the most codes the shop sends in one day, in all
+    'send_codes' => true,           // codes are sent only with this line
 ];
 ```
 
@@ -64,9 +65,10 @@ without a code.** Nothing needs an app update to switch it on.
 curl -s -X POST https://dashit.co.in/api/auth/send-otp.php -H 'Content-Type: application/json' -d '{"mobile":"9XXXXXXXXX"}'
 ```
 
-   `{"configured":true}` with a 401 about signing in means the key is read and
-   the endpoint is waiting for a signed-in shopper (normal for a bare curl).
-   `{"configured":false}` means the key file isn't being read.
+   `{"error":"Please sign in with Google or Apple first."}` (a 401) means the
+   key is read and the endpoint is waiting for a signed-in shopper (normal for
+   a bare curl; no text is sent). `{"configured":false}` means the key file
+   isn't being read.
 
 Cost is bounded in code (`public/api/auth/_otp.php`): 20 requests an hour per
 network address, 5 codes an hour per account, 5 an hour and 8 a day per number,
@@ -74,9 +76,30 @@ a 30-second wait between codes, 5 wrong guesses per code, and `otp_daily_cap`
 for the whole shop. If the cap is hit the apps say "busy, try tomorrow" and
 the error log records it.
 
-India routes SMS through DLT-registered templates. 2Factor's default OTP
-route works without your own template; if you register one, put its name in
-`twofactor_template`.
+**Signing in with the number alone.** With the key in place, shoppers can
+also sign in with just their mobile number (no Google or Apple account):
+`number-code.php` texts the code and `number-sign-in.php` checks it and hands
+the app a sign-in token for the number's account (`ph-91XXXXXXXXXX`, one
+account per number on every phone). Nobody is signed in when the code is asked
+for, so these are limited harder per network address (6 codes an hour, 15 a
+day) on top of the limits per number and `otp_daily_cap`. Without a key,
+`number-code.php` answers `{"configured":false}` and the apps say number
+sign-in isn't available.
+
+**Codes are off unless `'send_codes' => true` is in `sign-in.php`.** On 12 Oct
+2026 every code arrived as a phone call, with no template, with the shop's own
+"Dashit" template and with `OTP1`. Until 2Factor confirms it will text, leave
+that line out: the server answers `{"configured":false}`, nothing is sent, and
+the apps save the number without a code. "Continue with mobile number" is
+hidden in the website and both apps by one switch each (`NUMBER_SIGN_IN` in
+`shopperAuth.js`, `AuthRepository.NUMBER_SIGN_IN`, `AuthService.numberSignIn`).
+
+**A template name is required.** With no SMS template on the account, 2Factor
+delivers the code as a phone call, not a text (seen on 12 Oct 2026). The shop
+wants texts only, so while `twofactor_template` is empty the server answers
+`{"configured":false}`: nothing is sent, nobody is called, and the apps save the
+number without a code. Put the name of an approved SMS OTP template from the
+2Factor dashboard in `twofactor_template` to switch texts on.
 
 ## 4. Firestore rules
 
@@ -88,7 +111,8 @@ npx firebase-tools@14 deploy --only firestore:rules --project dashit-1ecba
 
 PHP 8 with curl and openssl. Environment variables stand in for the secrets:
 `FIREBASE_SERVICE_ACCOUNT` (path to the key), `RAZORPAY_KEY_ID`,
-`RAZORPAY_KEY_SECRET`, `TWOFACTOR_API_KEY`, `TWOFACTOR_TEMPLATE`,
+`RAZORPAY_KEY_SECRET`, `TWOFACTOR_API_KEY`, `TWOFACTOR_TEMPLATE`, `TWOFACTOR_API`
+(a stand-in for 2Factor's address),
 `OTP_DATA_DIR`, `RATE_LIMIT_DIR`, and `FIREBASE_AUTH_EMULATOR_HOST` (accepts the
 Auth emulator's unsigned tokens; never set this on the server).
 

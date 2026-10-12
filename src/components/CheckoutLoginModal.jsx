@@ -4,6 +4,10 @@ import {
   signInShopper,
   requestNumberCode,
   confirmNumberCode,
+  requestSignInCode,
+  signInWithNumberCode,
+  saveShopperName,
+  NUMBER_SIGN_IN,
   saveNumberUnconfirmed,
   completeShopper,
   cleanMobile,
@@ -21,21 +25,34 @@ function GoogleMark() {
   );
 }
 
+function PhoneMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+      <path d="M11 18.5h2" />
+    </svg>
+  );
+}
+
 const inputClass =
   "w-full h-12 rounded-xl border border-slate-300 bg-white px-3.5 text-[16px] font-semibold text-slate-900 outline-none focus:border-[#061838] focus:ring-2 focus:ring-[#061838]/10 dark:bg-surface dark:border-line dark:text-content dark:focus:border-content-muted";
 const primaryClass =
   "w-full h-12 rounded-xl bg-[#061838] text-white text-[15px] font-bold transition-colors hover:bg-[#0A2449] active:scale-[0.99] disabled:opacity-50 dark:bg-[#FF5B00] dark:hover:bg-[#E04E00]";
 
 /**
- * Sign in to order, as an iOS-style sheet from the bottom: Google, then the
- * number the rider will call, then (when SMS codes are on) the code.
+ * Sign in to order, as an iOS-style sheet from the bottom. Two ways in:
+ * Google, then the number the rider will call, then (when SMS codes are on)
+ * the code; or the mobile number alone, with a code texted to it.
  * Calls onAuthenticated(user) with the finished session.
  */
 export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, resumeUser = null }) {
   const [step, setStep] = useState("google");
   const [user, setUser] = useState(null);
+  /** Signing in with the number itself: no Google account behind it. */
+  const [viaNumber, setViaNumber] = useState(false);
   const [mobile, setMobile] = useState("");
   const [code, setCode] = useState("");
+  const [name, setName] = useState("");
   const [ticket, setTicket] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -47,11 +64,11 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     setBusy(false);
   }, [isOpen]);
 
-  /* The number is only asked with a Google sign-in behind it. A sheet reopened
-     on the number step after that sign-in ran out goes back to Google, instead
-     of taking a number the shop would then refuse. */
+  /* After Google, the number is only asked with that sign-in behind it. A sheet
+     reopened on the number step after the sign-in ran out goes back to the
+     start, instead of taking a number the shop would then refuse. */
   useEffect(() => {
-    if (!isOpen || step === "google") return undefined;
+    if (!isOpen || step === "google" || viaNumber) return undefined;
     let alive = true;
     hasLiveSession().then((live) => {
       if (alive && !live) {
@@ -62,12 +79,13 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     return () => {
       alive = false;
     };
-  }, [isOpen, step]);
+  }, [isOpen, step, viaNumber]);
 
   // Back from Google's own page (when the pop-up was blocked): on to the number.
   useEffect(() => {
     if (!resumeUser) return;
     setUser(resumeUser);
+    setViaNumber(false);
     if (resumeUser.mobile) setMobile(resumeUser.mobile);
     setStep("number");
   }, [resumeUser]);
@@ -79,9 +97,17 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
   const finish = (u, number) => {
     const session = completeShopper(u, number);
     setStep("google");
+    setViaNumber(false);
     setCode("");
     setTicket(null);
     onAuthenticated?.(session);
+  };
+
+  const startOver = () => {
+    setStep("google");
+    setViaNumber(false);
+    setCode("");
+    setError("");
   };
 
   const onGoogle = async () => {
@@ -95,9 +121,16 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
       return;
     }
     setUser(res.user);
+    setViaNumber(false);
     if (res.user.mobile) {
       setMobile(res.user.mobile);
     }
+    setStep("number");
+  };
+
+  const onUseNumber = () => {
+    setViaNumber(true);
+    setError("");
     setStep("number");
   };
 
@@ -106,6 +139,21 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     const clean = cleanMobile(mobile);
     if (!clean) {
       setError("Enter a 10-digit mobile number.");
+      return;
+    }
+    if (viaNumber) {
+      setBusy(true);
+      setError("");
+      try {
+        const sent = await requestSignInCode(clean);
+        setTicket(sent.ticket);
+        setCode("");
+        setStep("code");
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     if (!user) {
@@ -145,8 +193,19 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     setBusy(true);
     setError("");
     try {
-      await confirmNumberCode(clean, code.trim(), ticket);
-      finish(user, clean);
+      if (viaNumber) {
+        const signedIn = await signInWithNumberCode(clean, code.trim(), ticket);
+        if (signedIn.name) {
+          finish(signedIn, clean);
+        } else {
+          // A number comes with no name: ask once, for the rider.
+          setUser(signedIn);
+          setStep("name");
+        }
+      } else {
+        await confirmNumberCode(clean, code.trim(), ticket);
+        finish(user, clean);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -154,9 +213,27 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
     }
   };
 
+  const onName = async (e) => {
+    e.preventDefault();
+    const clean = name.trim().slice(0, 60);
+    if (!clean) {
+      setError("Please enter your name.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    await saveShopperName(user.uid, clean);
+    setBusy(false);
+    setName("");
+    finish({ ...user, name: clean }, cleanMobile(mobile));
+  };
+
   const titles = {
     google: ["Sign in to order", "So we know who the order is for, and you can follow it."],
-    number: ["Your mobile number", "The rider calls this number if they can't find your door."],
+    number: viaNumber
+      ? ["Your mobile number", "We'll text you a code to sign in. The rider also calls this number if they can't find your door."]
+      : ["Your mobile number", "The rider calls this number if they can't find your door."],
+    name: ["What's your name?", "So the rider knows who to hand the order to."],
     code: ["Enter the code", `We sent a code by SMS to +91 ${cleanMobile(mobile) || ""}.`],
   };
   const [title, subtitle] = titles[step];
@@ -183,6 +260,17 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
               Continue with Google
             </button>
           )}
+          {NUMBER_SIGN_IN && step === "google" && (
+            <button
+              type="button"
+              onClick={onUseNumber}
+              disabled={busy}
+              className="mt-3 w-full h-12 rounded-xl border border-slate-300 bg-white flex items-center justify-center gap-3 text-[15px] font-bold text-slate-800 transition-colors hover:bg-slate-50 active:scale-[0.99] disabled:opacity-60 dark:bg-surface dark:border-line dark:text-content dark:hover:bg-surface-muted"
+            >
+              <PhoneMark />
+              Continue with mobile number
+            </button>
+          )}
 
           {step === "number" && (
             <form onSubmit={onNumber} className="space-y-3">
@@ -204,8 +292,17 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
                 />
               </div>
               <button type="submit" disabled={busy} className={primaryClass}>
-                {busy ? "Please wait…" : "Continue"}
+                {busy ? "Please wait…" : viaNumber ? "Send code" : "Continue"}
               </button>
+              {viaNumber && (
+                <button
+                  type="button"
+                  onClick={startOver}
+                  className="w-full h-10 text-[14px] font-semibold text-slate-600 hover:text-slate-900 dark:text-content-muted"
+                >
+                  Use Google instead
+                </button>
+              )}
             </form>
           )}
 
@@ -236,6 +333,25 @@ export default function CheckoutLoginModal({ isOpen, onClose, onAuthenticated, r
                 className="w-full h-10 text-[14px] font-semibold text-slate-600 hover:text-slate-900 dark:text-content-muted"
               >
                 Change number
+              </button>
+            </form>
+          )}
+
+          {step === "name" && (
+            <form onSubmit={onName} className="space-y-3">
+              <input
+                ref={inputRef}
+                type="text"
+                autoComplete="name"
+                maxLength={60}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                aria-label="Your name"
+                className={inputClass}
+              />
+              <button type="submit" disabled={busy} className={primaryClass}>
+                {busy ? "Please wait…" : "Save and continue"}
               </button>
             </form>
           )}
