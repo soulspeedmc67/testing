@@ -26,6 +26,7 @@ import DeliveryChargeSettings from "./DeliveryChargeSettings";
 import ShopRulesSettings from "./ShopRulesSettings";
 import ExtraChargeSettings from "./ExtraChargeSettings";
 import RefreshWebsiteCard from "./RefreshWebsiteCard";
+import AppUpdateSettings from "./AppUpdateSettings";
 
 export default function StoreControlsView({
   isStoreOpen = true,
@@ -256,6 +257,9 @@ export default function StoreControlsView({
 
       {/* Night delivery charge and the rider's petrol figures */}
       <DeliveryChargeSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
+
+      {/* The oldest iPhone app that may still order: older ones have to update first */}
+      <AppUpdateSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* One press makes every open website drop its saved copies and load fresh */}
       <RefreshWebsiteCard storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />

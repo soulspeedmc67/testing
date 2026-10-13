@@ -1,8 +1,10 @@
 import dynamic from "next/dynamic";
-import { MapPin, ExternalLink, XCircle, Fuel, Moon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { MapPin, ExternalLink, XCircle, Fuel, Moon, Bike } from "lucide-react";
 import { orderCoords } from "../../lib/orderReceipt";
 import { DARK_STORE_HUB, MAX_DELIVERY_RADIUS_KM, calculateHaversineDistance } from "../../lib/deliveryEta";
 import { fuelCostFor } from "../../lib/nightCharge";
+import { isRiderLive, riderSeenLabel } from "../../lib/riderPosition";
 
 // Leaflet needs the browser.
 const OrderLocationMap = dynamic(() => import("./OrderLocationMap"), { ssr: false });
@@ -19,9 +21,25 @@ export function orderDistanceKm(order) {
 /**
  * The drop on a map with how far it is and what the trip costs the rider in
  * petrol, so the shop can decide to deliver or reject before packing.
+ * `riderPosition` ({ lat, lng, at }) is where the order's rider is, once their
+ * phone has said; `showRider` is false once the order is finished.
  */
-export default function OrderLocationCard({ order, storeConfig = null, darkMode = false, canReject = false, onReject }) {
+export default function OrderLocationCard({ order, storeConfig = null, darkMode = false, canReject = false, onReject, riderPosition = null, showRider = false }) {
   const pin = orderCoords(order);
+  // Counted again every half minute so "Seen 2 min ago" keeps moving.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!showRider) return undefined;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, [showRider, riderPosition?.at]);
+  const riderName = order?.driverName || "The rider";
+  const riderLive = isRiderLive(riderPosition, now);
+  const riderKm =
+    riderPosition && pin
+      ? calculateHaversineDistance(riderPosition.lat, riderPosition.lng, pin.lat, pin.lng)
+      : null;
   const km = orderDistanceKm(order);
   const fuel = fuelCostFor(km, storeConfig);
   const isFar = km != null && km > MAX_DELIVERY_RADIUS_KM;
@@ -54,7 +72,11 @@ export default function OrderLocationCard({ order, storeConfig = null, darkMode 
 
       {pin ? (
         <div className="h-60 border-y border-slate-200 dark:border-zinc-800">
-          <OrderLocationMap lat={pin.lat} lng={pin.lng} />
+          <OrderLocationMap
+            lat={pin.lat}
+            lng={pin.lng}
+            rider={showRider && riderPosition ? { lat: riderPosition.lat, lng: riderPosition.lng, name: riderName, live: riderLive } : null}
+          />
         </div>
       ) : (
         <p className="mx-4 mb-1 rounded-xl border border-dashed border-slate-300 dark:border-zinc-700 px-3 py-6 text-center text-xs text-slate-500 dark:text-zinc-400">
@@ -80,6 +102,17 @@ export default function OrderLocationCard({ order, storeConfig = null, darkMode 
               <span className={factValue}>about ₹{fuel.cost}</span>
             </div>
           </div>
+        )}
+
+        {showRider && (
+          <p className={"flex items-start gap-1.5 text-xs font-semibold " + (riderLive ? "text-violet-600 dark:text-violet-300" : "text-slate-500 dark:text-zinc-400")}>
+            <Bike className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>
+              {riderPosition
+                ? `${riderName}: ${riderSeenLabel(riderPosition, now).toLowerCase()}${riderKm != null ? `, ${riderKm.toFixed(1)} km from the customer` : ""}`
+                : `${riderName}'s place isn't known yet. It shows once the rider app is open on their phone.`}
+            </span>
+          </p>
         )}
 
         {nightFee > 0 && (

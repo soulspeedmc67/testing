@@ -253,7 +253,10 @@ final class FirestoreService {
             "customerName": customer.name ?? "Customer",
             "mobile": customer.mobile,
             "email": customer.email ?? "",
-            "platform": "ios"
+            "platform": "ios",
+            // Which version placed it: the rules refuse one older than the shop allows.
+            "appVersion": AppVersion.name,
+            "appVersionCode": AppVersion.code
         ]
         if let distanceKm {
             payload["distanceKm"] = distanceKm

@@ -76,6 +76,12 @@ final class CheckoutViewModel: ObservableObject {
         // Same gates as the web checkout: the admin can close the store, and
         // only addresses within 5 km of the hub are served.
         let store = StoreStatusStore.shared
+        // Too old for the shop (`AppVersion`): the update sheet is up; this is the backstop.
+        guard !store.rules.mustUpdate else {
+            orderError = "This version of DASHit is too old to order. Update it from the App Store, then try again."
+            HapticsManager.shared.warning()
+            return false
+        }
         guard store.isOpen else {
             orderError = "The store is closed right now. \(store.closeReason)"
             HapticsManager.shared.warning()
@@ -124,6 +130,12 @@ final class CheckoutViewModel: ObservableObject {
         }
         await cart.loadOrdersCount(uid: uid)
         cart.refreshNightFee(for: selectedAddress, settings: store.nightCharge)
+        // The settings that just arrived may also have raised the oldest version allowed.
+        guard !store.rules.mustUpdate else {
+            orderError = "This version of DASHit is too old to order. Update it from the App Store, then try again."
+            HapticsManager.shared.warning()
+            return false
+        }
         guard cart.bill.grandTotal == shownTotal else {
             orderError = "The delivery charge has just changed. Check the bill and place your order again."
             HapticsManager.shared.warning()

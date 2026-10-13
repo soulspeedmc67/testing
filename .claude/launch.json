@@ -22,6 +22,18 @@
         "out"
       ],
       "port": 3100
+    },
+    {
+      "name": "dashit-emulator",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NEXT_PUBLIC_FIREBASE_EMULATORS=1",
+        "npm",
+        "run",
+        "dev"
+      ],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

@@ -29,6 +29,7 @@ import {
   groupOrderItemsByDistributor,
   orderLineKey,
   saveOrderPackedItems,
+  watchRiderPositions,
 } from "../../lib/db";
 import { getDriverRoster, watchAllDrivers, getDriverActiveOrderCounts } from "../../lib/drivers";
 import { orderAddress, orderCoords, orderTimeMs } from "../../lib/orderReceipt";
@@ -106,6 +107,15 @@ export default function OrderDetailDrawer({
   const isOut = status === ORDER_STATUS.OUT_FOR_DELIVERY;
   const isDelivered = status === ORDER_STATUS.DELIVERED;
   const isCancelled = status === ORDER_STATUS.CANCELLED;
+
+  // Where this order's rider is, while the drawer is open and the order is on its way.
+  const followedRiderId = isOpen && !isDelivered && !isCancelled && order?.driverId ? String(order.driverId) : "";
+  const [riderPosition, setRiderPosition] = useState(null);
+  useEffect(() => {
+    setRiderPosition(null);
+    if (!followedRiderId) return undefined;
+    return watchRiderPositions([followedRiderId], (positions) => setRiderPosition(positions[followedRiderId] || null));
+  }, [followedRiderId]);
 
   const customerName = order?.customerName || order?.userAddress?.name || "Customer";
   // Checkout saves the shopper's number as `mobile`; older orders used the others.
@@ -360,6 +370,8 @@ export default function OrderDetailDrawer({
               darkMode={darkMode}
               canReject={!isDelivered && !isCancelled}
               onReject={() => onUpdateStatus(orderId, ORDER_STATUS.CANCELLED, order)}
+              riderPosition={riderPosition}
+              showRider={!!followedRiderId}
             />
 
             {/* 2. Order Progress Steps */}
@@ -940,10 +952,15 @@ export default function OrderDetailDrawer({
                       </div>
                     ))}
                     <div className="flex justify-between pt-1.5 mt-1 border-t border-slate-200/60 dark:border-zinc-800">
-                      <dt className="font-black text-slate-900 dark:text-white">Total</dt>
+                      <dt className="font-black text-slate-900 dark:text-white">Customer pays</dt>
                       <dd className="font-black tabular-nums text-slate-900 dark:text-white">₹{totalAmount}</dd>
                     </div>
                   </dl>
+                  <p className="mt-1.5 text-[11px] text-slate-500 dark:text-zinc-400">
+                    {isOnlinePaid
+                      ? "Already paid online. The rider collects nothing."
+                      : `The rider collects ₹${totalAmount} at the door.`}
+                  </p>
                   {order.razorpayPaymentId && (
                     <p className="mt-2 text-[11px] text-slate-400 font-mono select-all break-all">Payment ref: {order.razorpayPaymentId}</p>
                   )}

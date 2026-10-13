@@ -6,6 +6,73 @@
 
 ---
 
+## Oct 13, 2026: old iPhone apps must update; full bill and rider's place for the admin
+
+Web VERIFIED (97 tests, production build, and the console on a local build
+against the Firebase emulators with sample orders and riders: the riders map,
+the rider on an order's map, the bill, saving the new setting). The order rule
+VERIFIED in the Firestore emulator (12 cases); `create-order.php` VERIFIED in a
+php:8.3 container with stand-in helpers (10 cases). iOS NOT compiled here (no
+Swift): the GitHub Actions build is the check. Nothing is deployed, committed
+or pushed, and the live `config/store` was NOT changed.
+
+- **The problem**: an installed app keeps the fees it was built with, so iPhone
+  apps from before 8 Oct order without the extra charge (and older ones without
+  the night charge, minimum order or 8 km limit). No setting reaches that code.
+- **The fix is a minimum version**: `minIosVersion` ("1.0.3", as the App Store
+  shows it) and `minIosVersionCode` (10003: major x 10000 + minor x 100 + patch)
+  on `config/store`. Blank / 0 / missing = every version may order, so nothing
+  changes until the owner sets it. Set in `/xcyop` → Shop settings → "iPhone
+  app updates" (`AppUpdateSettings.jsx`, `src/lib/appVersion.js`) or the iOS
+  admin → Shop settings → "iPhone app updates" (Save). iPhone only.
+- **What each app does once it is set**:
+  - **1.0.3 and later**: `UpdateRequiredView` (`Core/Utils/AppVersion.swift`),
+    a sheet from the bottom in its own window above everything, with "Update on
+    the App Store". It can't be closed and the app behind can't be touched. It
+    follows `config/store` live (also the saved copy, so it shows offline) and
+    goes away if the owner lowers the minimum. `placeOrder` refuses too.
+  - **1.0.2 and older** have no such screen and can't be given one. Their
+    orders are refused on the server instead: `firestore.rules` (`appIsCurrent`)
+    refuse an order with `platform: "ios"` whose `appVersionCode` is below the
+    minimum (none sent counts as 0), and `create-order.php` answers 426 before
+    any payment starts, with "This version of DASHit is too old to order.
+    Update it from the App Store…", which those apps show as it is. Cash on
+    delivery from such an app fails with its own "couldn't reach the store"
+    wording: that text can't be changed. INFERRED: the old apps are recognised
+    at `create-order.php` by "CFNetwork" in the User-Agent (they send no
+    `platform`); not seen from a real old build.
+- **Orders now carry** `appVersion` and `appVersionCode` (iOS `createOrder`);
+  the iOS app sends `platform` and `app_version_code` to `create-order.php`,
+  the website sends `platform: "web"`.
+- **Deploy order**: the website zip (PHP) and `npm run fb:rules`, then the new
+  iPhone build (1.0.3, `project.yml`) to the App Store, and only when 1.0.3 is
+  live there set the minimum to 1.0.3. Setting it earlier locks every iPhone
+  out with nothing to update to. The rule costs one extra read (`config/store`)
+  per iPhone order.
+- **Not covered**: Android and the website have no minimum (the website has
+  "Refresh the website for everyone"). An old Android APK still orders on its
+  old fees.
+- **Full bill for the admin**: the iOS admin's order sheet showed only the
+  total. It now has a Bill card (`AdminOrderBillCard.swift`): items, delivery,
+  night distance charge, the extra charge by its name, handling, discount with
+  its code, "Customer pays", and what the rider collects; each packing row
+  shows the price each and the line total. The web drawer already had the
+  lines; its last line now reads "Customer pays" with the same note.
+- **Where the riders are**: read from `drivers/{uid}/telemetry/live`, which the
+  rider app writes about every 20 s while open (staff could already read it;
+  no rule change). Web: `watchRiderPositions` (`db.js`), `src/lib/riderPosition.js`,
+  `RidersMapPanel.jsx` at the top of Riders (one map, a line per rider with
+  "Seen 2 min ago", km from the store and a Google Maps link), and the rider on
+  the order drawer's map with "<name>: seen …, x km from the customer". iOS
+  admin: `RiderPositionsWatcher` (`ViewModels/RiderPositions.swift`), a map at
+  the top of the Riders tab, the same line under each rider and "Open in Maps"
+  on press-and-hold, and the rider on the order sheet's map. Listeners run only
+  while those screens are open (one small document per rider, at most 30).
+  A rider with the app closed shows their last place, faded, or "place not
+  known yet".
+- `.claude/launch.json` has `dashit-emulator` (dev server on the emulators);
+  sign in with the test owner from `scripts/seed-emulator-admin.mjs`.
+
 ## Oct 12, 2026: 2Factor key is live; sign in with a mobile number
 
 Server VERIFIED in a php:8.3 container against a stand-in for 2Factor (send,

@@ -10,6 +10,8 @@ struct AdminOrderLocationCard: View {
     let settings: NightCharge.Settings
     /// Given while the order can still be cancelled.
     var onCancel: (() -> Void)? = nil
+    /// Where the order's rider is, once their phone has said (`RiderPositionsWatcher`).
+    var rider: RiderPosition? = nil
 
     private var destination: CLLocationCoordinate2D { order.deliveryAddress.coordinate }
 
@@ -59,6 +61,12 @@ struct AdminOrderLocationCard: View {
                 Annotation("Customer", coordinate: destination, anchor: .bottom) {
                     DestinationMapMarker()
                 }
+                if let rider {
+                    Annotation(order.driverName ?? "Rider", coordinate: rider.coordinate) {
+                        RiderMapMarker(tracking: rider.tracking, destination: destination)
+                            .opacity(rider.isLive() ? 1 : 0.55)
+                    }
+                }
             }
             .frame(height: 220)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -66,6 +74,8 @@ struct AdminOrderLocationCard: View {
             Text(order.deliveryAddress.formattedSummary)
                 .font(.system(size: 14))
                 .foregroundColor(.secondary)
+
+            riderLine
 
             if let fuel = NightCharge.fuelCost(distanceKm: distanceKm, settings: settings) {
                 HStack(spacing: 8) {
@@ -104,6 +114,29 @@ struct AdminOrderLocationCard: View {
         .padding(16)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    /// Where the rider is, in words; nothing until the order has a rider.
+    @ViewBuilder
+    private var riderLine: some View {
+        if order.driverId?.isEmpty == false, !order.status.stage.isFinished {
+            let name = order.driverName ?? "The rider"
+            // Redrawn every half minute so "Seen 2 min ago" keeps counting.
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                if let rider {
+                    let km = DeliveryEta.haversineKm(from: rider.coordinate, to: destination)
+                    Label(
+                        "\(name): \(rider.seenLabel(at: context.date).lowercased()), \(String(format: "%.1f", km)) km from the customer",
+                        systemImage: "scooter"
+                    )
+                    .foregroundColor(rider.isLive(at: context.date) ? .purple : .secondary)
+                } else {
+                    Label("\(name)'s place isn't known yet. It shows once the rider app is open on their phone.", systemImage: "scooter")
+                        .foregroundColor(.secondary)
+                }
+            }
+            .font(.system(size: 13, weight: .medium))
+        }
     }
 
     private func fact(_ label: String, _ value: String) -> some View {

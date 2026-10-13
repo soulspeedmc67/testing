@@ -3,6 +3,7 @@ import L from "leaflet";
 import { MapContainer, TileLayer, Marker, Polyline, Circle, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { DARK_STORE_HUB, MAX_DELIVERY_RADIUS_KM } from "../../lib/deliveryEta";
+import { riderMapIcon } from "./riderMapIcon";
 
 const storeIcon = L.divIcon({
   className: "order-map-store",
@@ -50,15 +51,23 @@ function FitToPoints({ points }) {
 
 /**
  * Where one order goes: the store, the customer's pin, the straight line the
- * distance is measured along, and the usual 8 km area.
+ * distance is measured along, and the usual 8 km area. `rider` ({ lat, lng,
+ * name, live }) adds the order's rider where their phone last said it was.
  */
-export default function OrderLocationMap({ lat, lng }) {
+export default function OrderLocationMap({ lat, lng, rider = null }) {
   const points = useMemo(
     () => [
       [DARK_STORE_HUB.lat, DARK_STORE_HUB.lng],
       [lat, lng],
     ],
     [lat, lng]
+  );
+  // Rebuilt only when the name or the live/faded look changes, not on every GPS write.
+  const hasRider = !!rider;
+  const riderIcon = useMemo(
+    () => (hasRider ? riderMapIcon(rider.name, rider.live) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hasRider, rider?.name, rider?.live]
   );
 
   return (
@@ -84,6 +93,7 @@ export default function OrderLocationMap({ lat, lng }) {
       <Polyline positions={points} pathOptions={{ color: "#061838", weight: 3, dashArray: "2, 8", lineCap: "round" }} />
       <Marker position={points[0]} icon={storeIcon} interactive={false} />
       <Marker position={points[1]} icon={doorIcon} interactive={false} />
+      {riderIcon && <Marker position={[rider.lat, rider.lng]} icon={riderIcon} interactive={false} zIndexOffset={500} />}
       <FitToPoints points={points} />
     </MapContainer>
   );

@@ -36,6 +36,11 @@ struct ShopRules: Equatable {
     var extraChargeOn: Bool = false
     var extraChargeAmount: Double = 20
     var extraChargeLabel: String = ""
+    /// The oldest iPhone app the shop takes orders from, as the App Store
+    /// writes it ("1.0.3"); blank means every version. iPhone only: an older
+    /// app shows the update sheet (`AppVersion`), and `firestore.rules` refuse
+    /// its orders by `minIosVersionCode`, saved beside it.
+    var minIosVersion: String = ""
 
     static let extraChargeMax: Double = 500
     static let defaultExtraChargeLabel = "Extra delivery charge"
@@ -62,6 +67,7 @@ struct ShopRules: Equatable {
         if let value = data["extraChargeOn"] as? Bool { extraChargeOn = value }
         if let value = amount("extraChargeAmount") { extraChargeAmount = min(Self.extraChargeMax, value.rounded()) }
         if let value = data["extraChargeLabel"] as? String { extraChargeLabel = Self.cleanExtraLabel(value) }
+        if let value = data["minIosVersion"] as? String { minIosVersion = Self.cleanVersion(value) }
     }
 
     /// The rules as last heard from `config/store`. `StoreStatusStore` keeps
@@ -115,6 +121,17 @@ struct ShopRules: Equatable {
         String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40))
     }
 
+    /// Whether this app is too old for the shop: it has to be updated before it can be used.
+    var mustUpdate: Bool {
+        AppVersion.isOlder(than: minIosVersion)
+    }
+
+    /// "1.0.3" as typed, or blank if it isn't a version.
+    static func cleanVersion(_ text: String) -> String {
+        let clean = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return AppVersion.code(from: clean) == nil ? "" : clean
+    }
+
     /// Whether cash on delivery can be chosen for an order placed at `date`.
     func allowsCash(at date: Date = Date()) -> Bool {
         codEnabled && (codAtNight || !NightCharge.isNightHours(date))
@@ -143,7 +160,10 @@ struct ShopRules: Equatable {
             "codAtNight": codAtNight,
             "extraChargeOn": extraChargeOn,
             "extraChargeAmount": extraChargeAmount,
-            "extraChargeLabel": extraChargeLabel
+            "extraChargeLabel": extraChargeLabel,
+            "minIosVersion": minIosVersion,
+            // The same as a number, which is what `firestore.rules` compare.
+            "minIosVersionCode": AppVersion.code(from: minIosVersion) ?? 0
         ]
     }
 

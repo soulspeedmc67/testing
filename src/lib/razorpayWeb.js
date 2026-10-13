@@ -83,7 +83,7 @@ export async function payOnline({ amountRupees, receipt, customer }) {
   const paise = Math.round(Number(amountRupees) * 100);
   const [, created] = await Promise.all([
     loadScript(),
-    post("create-order.php", { amount: paise, receipt, id_token: await idToken() }),
+    post("create-order.php", { amount: paise, receipt, id_token: await idToken(), platform: "web" }),
   ]);
 
   return new Promise((resolve, reject) => {

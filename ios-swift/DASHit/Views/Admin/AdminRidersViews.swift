@@ -1,4 +1,5 @@
 import SwiftUI
+import MapKit
 
 /// The riders tab: who is waiting for approval, every rider with an on/off
 /// switch, and adding a rider. Kept to plain words, so the owner never needs
@@ -9,9 +10,29 @@ struct AdminRidersTab: View {
     @State private var busyId: String?
     @State private var message: String?
     @State private var pinFor: Driver?
+    /// Where each rider is, while this tab is open.
+    @StateObject private var riders = RiderPositionsWatcher()
+    @State private var camera: MapCameraPosition = .automatic
+
+    /// Riders who can deliver: the ones worth following on the map.
+    private var followedIds: [String] { vm.approvedDrivers.map(\.id) }
+    /// The ones whose phone has said where it is.
+    private var placedRiders: [PlacedRider] {
+        vm.approvedDrivers.compactMap { driver in
+            riders.positions[driver.id].map { PlacedRider(driver: driver, place: $0) }
+        }
+    }
+
+    private struct PlacedRider: Identifiable {
+        let driver: Driver
+        let place: RiderPosition
+        var id: String { driver.id }
+    }
 
     var body: some View {
         List {
+            ridersMap
+
             Section {
                 Button {
                     isAddOpen = true
@@ -56,7 +77,7 @@ struct AdminRidersTab: View {
                 ForEach(vm.drivers.filter { !$0.isWaiting }) { driver in
                     HStack(spacing: 12) {
                         riderAvatar(driver)
-                        riderText(driver, load: vm.activeOrderCount(for: driver))
+                        riderText(driver, load: vm.activeOrderCount(for: driver), position: riders.positions[driver.id])
                         Spacer()
                         if busyId == driver.id {
                             ProgressView()
@@ -77,20 +98,55 @@ struct AdminRidersTab: View {
                         if let url = URL(string: "tel:\(driver.phone.filter { "0123456789+".contains($0) })"), !driver.phone.isEmpty {
                             Link(destination: url) { Label("Call \(driver.name)", systemImage: "phone") }
                         }
+                        if let place = riders.positions[driver.id],
+                           let url = URL(string: "http://maps.apple.com/?ll=\(place.latitude),\(place.longitude)&q=\(driver.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "Rider")") {
+                            Link(destination: url) { Label("Open in Maps", systemImage: "map") }
+                        }
                     }
                 }
             } header: {
                 Text("Riders (\(vm.drivers.filter { !$0.isWaiting }.count))")
             } footer: {
-                Text("Switch a rider off and they can't sign in or get orders. Press and hold a rider to give them a new PIN or call them.")
+                Text("Switch a rider off and they can't sign in or get orders. Press and hold a rider to give them a new PIN, call them or open their place in Maps.")
             }
         }
         .listStyle(.insetGrouped)
+        // Each time the tab comes back, and when a rider is added or switched off.
+        .onAppear { riders.watch(followedIds) }
+        .onChange(of: followedIds) { _, ids in
+            riders.watch(ids)
+        }
+        .onDisappear { riders.stop() }
         .sheet(isPresented: $isAddOpen) {
             AddRiderSheet(vm: vm)
         }
         .sheet(item: $pinFor) { driver in
             NewPinSheet(vm: vm, driver: driver)
+        }
+    }
+
+    /// Every rider whose phone has said where it is, on one map with the store.
+    private var ridersMap: some View {
+        Section {
+            Map(position: $camera) {
+                Annotation("Store", coordinate: DeliveryEta.hub) {
+                    BrandMapMarker(size: 30)
+                }
+                ForEach(placedRiders) { rider in
+                    Annotation(rider.driver.name, coordinate: rider.place.coordinate) {
+                        RiderMapMarker(tracking: rider.place.tracking, destination: nil)
+                            .opacity(rider.place.isLive() ? 1 : 0.55)
+                    }
+                }
+            }
+            .frame(height: 260)
+            .listRowInsets(EdgeInsets())
+        } header: {
+            Text("Where the riders are")
+        } footer: {
+            Text(placedRiders.isEmpty
+                ? "No rider's place is known yet. A rider shows here once the rider app is open on their phone."
+                : "A rider's place is sent about every 20 seconds while the rider app is open on their phone. A faded rider hasn't been heard from for a few minutes.")
         }
     }
 
@@ -115,7 +171,7 @@ private func riderAvatar(_ driver: Driver) -> some View {
     .frame(width: 42, height: 42)
 }
 
-private func riderText(_ driver: Driver, load: Int = 0) -> some View {
+private func riderText(_ driver: Driver, load: Int = 0, position: RiderPosition? = nil) -> some View {
     VStack(alignment: .leading, spacing: 2) {
         Text(driver.name).font(.system(size: 16, weight: .semibold))
         Text([driver.phone.isEmpty ? nil : driver.phone,
@@ -123,6 +179,14 @@ private func riderText(_ driver: Driver, load: Int = 0) -> some View {
             .compactMap { $0 }.joined(separator: " · "))
             .font(.system(size: 13))
             .foregroundColor(.secondary)
+        if let position, driver.isApproved {
+            // Redrawn every half minute so "Seen 2 min ago" keeps counting.
+            TimelineView(.periodic(from: .now, by: 30)) { context in
+                Text(position.seenLabel(at: context.date) + String(format: " · %.1f km from the store", DeliveryEta.haversineKm(from: DeliveryEta.hub, to: position.coordinate)))
+                    .font(.system(size: 13))
+                    .foregroundColor(position.isLive(at: context.date) ? .purple : .secondary)
+            }
+        }
     }
 }
 

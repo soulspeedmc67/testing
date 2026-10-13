@@ -103,7 +103,11 @@ final class OnlinePayment: NSObject {
         let paise = Int((amountRupees * 100).rounded())
         // The server only starts a payment for a signed-in shopper, so it needs their token.
         let token = try await AuthService.shared.idToken()
-        let order: CreatedOrder = try await post("create-order.php", body: ["amount": paise, "receipt": orderCode, "id_token": token])
+        let order: CreatedOrder = try await post("create-order.php", body: [
+            "amount": paise, "receipt": orderCode, "id_token": token,
+            // The server starts no payment for an app older than the shop allows.
+            "platform": "ios", "app_version_code": AppVersion.code
+        ])
 
         let outcome = await authorize(order, orderCode: orderCode, customer: customer, option: option)
         release()

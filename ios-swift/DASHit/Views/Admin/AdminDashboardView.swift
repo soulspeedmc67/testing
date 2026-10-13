@@ -1231,8 +1231,15 @@ struct OrderDetailSheetView: View {
     @State private var isRejectSheetOpen = false
     @State private var packed: Set<String> = []
     @State private var isMoreOpen = false
+    /// Where this order's rider is, while the sheet is open.
+    @StateObject private var riders = RiderPositionsWatcher()
 
     private var storageKey: String { "dashit_admin_packed_\(order.id)" }
+
+    /// The rider to follow: the one on the order, until it is delivered or cancelled.
+    private var followedRiderId: String {
+        live.status.stage.isFinished ? "" : (live.driverId ?? "")
+    }
 
     /// The order as it is now: its stage changes while this is open.
     private var live: Order { vm.recentOrders.first { $0.id == order.id } ?? order }
@@ -1256,7 +1263,8 @@ struct OrderDetailSheetView: View {
                         settings: vm.nightCharge,
                         onCancel: [DeliveryStage.placed, .packing, .onTheWay].contains(live.status.stage)
                             ? { isRejectSheetOpen = true }
-                            : nil
+                            : nil,
+                        rider: riders.positions[followedRiderId]
                     )
 
                     ForEach(vm.itemsByDistributor(order)) { group in
@@ -1276,6 +1284,9 @@ struct OrderDetailSheetView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
                     }
+
+                    // Every charge on the order and what the customer pays in all.
+                    AdminOrderBillCard(order: live)
 
                     DisclosureGroup(isExpanded: $isMoreOpen) {
                         moreDetails
@@ -1331,6 +1342,10 @@ struct OrderDetailSheetView: View {
                 // Ticked on the web console or another phone.
                 if Set(saved) != packed { packed = Set(saved) }
             }
+            .onChange(of: followedRiderId, initial: true) { _, riderId in
+                riders.watch([riderId])
+            }
+            .onDisappear { riders.stop() }
         }
     }
 
@@ -1416,25 +1431,30 @@ struct OrderDetailSheetView: View {
                         // narrow screen or large text must not cut it short.
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
-                    if !item.unit.isEmpty {
-                        Text(item.unit)
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                    }
+                    Text([item.unit, "\(CurrencyFormatter.format(item.price)) each"].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .layoutPriority(1)
-                Text("×\(item.quantity)")
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
-                    .foregroundColor(isPacked ? .secondary : .primary)
-                    .fixedSize()
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("×\(item.quantity)")
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .foregroundColor(isPacked ? .secondary : .primary)
+                    // What this line comes to on the bill.
+                    Text(CurrencyFormatter.format(item.price * Double(item.quantity)))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
+                }
+                .fixedSize()
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(item.quantity) \(item.name)")
+        .accessibilityLabel("\(item.quantity) \(item.name), \(CurrencyFormatter.format(item.price * Double(item.quantity)))")
         .accessibilityValue(isPacked ? "Packed" : "Not packed")
     }
 
@@ -1519,14 +1539,6 @@ struct OrderDetailSheetView: View {
                     .foregroundColor(.secondary)
                 Text(order.deliveryAddress.formattedSummary)
                     .font(.system(size: 14))
-            }
-            HStack {
-                Text("Total")
-                    .font(.system(size: 15, weight: .bold))
-                Spacer()
-                Text("₹\(Int(order.grandTotal))")
-                    .font(.system(size: 17, weight: .black))
-                    .foregroundColor(.orange)
             }
             if live.status.stage == .cancelled, let reason = live.rejectionReason, !reason.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
@@ -2153,6 +2165,7 @@ struct StoreControlSheetView: View {
     @State private var minFeeText = ""
     @State private var petrolText = ""
     @State private var mileageText = ""
+    @State private var minIosVersionText = ""
 
     let reasons = ["Normal Operations", "Heavy Rain & Flooding", "Late Night Shift", "Power Outage", "Restocking Inventory"]
 
@@ -2266,6 +2279,22 @@ struct StoreControlSheetView: View {
                 }
 
                 Section {
+                    HStack {
+                        Text("Oldest version allowed")
+                        Spacer()
+                        TextField("Any", text: $minIosVersionText)
+                            .keyboardType(.numbersAndPunctuation)
+                            .autocorrectionDisabled()
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 90)
+                    }
+                } header: {
+                    Text("iPhone app updates")
+                } footer: {
+                    Text(minIosVersionNote)
+                }
+
+                Section {
                     Button {
                         vm.refreshWebsite()
                     } label: {
@@ -2335,6 +2364,7 @@ struct StoreControlSheetView: View {
         lowFromText = Self.plain(saved.deliveryLowFrom)
         lowFeeText = Self.plain(saved.deliveryLowFee)
         freeOrdersText = String(saved.freeDeliveryOrders)
+        minIosVersionText = saved.minIosVersion
         extraOn = saved.extraChargeOn
         extraAmountText = Self.plain(saved.extraChargeAmount)
         if saved.extraChargeLabel.isEmpty {
@@ -2367,7 +2397,23 @@ struct StoreControlSheetView: View {
         let extraName = extraNameChoice == Self.ownExtraName ? ShopRules.cleanExtraLabel(extraOwnName) : extraNameChoice
         // Blank on `config/store` means the built-in name.
         edited.extraChargeLabel = extraName == ShopRules.defaultExtraChargeLabel ? "" : extraName
+        // Blank lets every version order; something that isn't a version keeps what was saved.
+        let version = minIosVersionText.trimmingCharacters(in: .whitespaces)
+        if version.isEmpty || AppVersion.code(from: version) != nil { edited.minIosVersion = version }
         return edited
+    }
+
+    // MARK: - Oldest iPhone app allowed
+
+    private var minIosVersionNote: String {
+        let version = minIosVersionText.trimmingCharacters(in: .whitespaces)
+        if version.isEmpty {
+            return "Blank: every version of the iPhone app can order. An app keeps the fees it was built with, so an old one misses charges added since. Put a version here, like 1.0.3, to make older apps update first."
+        }
+        guard AppVersion.code(from: version) != nil else {
+            return "Write it the way the App Store shows it, like 1.0.3."
+        }
+        return "iPhone apps older than \(version) can't order. Apps from 1.0.3 on show “Update DASHit” and open the App Store; earlier ones are told their order can't be placed. Only put a version that is already on the App Store, or nobody on an iPhone can order. Tap Save."
     }
 
     // MARK: - Extra charge for rain, snow or a rush

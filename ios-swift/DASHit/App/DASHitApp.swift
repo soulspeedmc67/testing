@@ -40,6 +40,8 @@ struct DASHitApp: App {
                 RootView()
                     .environmentObject(auth)
                     .environmentObject(cart)
+                // The "update needed" sheet, when the shop no longer takes orders from this version.
+                UpdateGateWatcher()
                 if isWelcomeAuthVisible {
                     AuthView(isWelcome: true) {
                         UserDefaults.standard.set(true, forKey: Self.welcomeSeenKey)

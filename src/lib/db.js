@@ -35,6 +35,7 @@ import { shopRules } from "./deliveryCharges";
 import { noteCacheVersion } from "./cacheRefresh";
 import { adoptNightHours } from "./nightCharge";
 import { adoptDeliveryRadius } from "./deliveryEta";
+import { riderPositionFrom } from "./riderPosition";
 
 /**
  * Firestore data layer.
@@ -2970,6 +2971,37 @@ export async function pushDriverTelemetryToQueue(driverId, activeOrderIds = [], 
   }
 }
 
+
+/**
+ * Where each of these riders is, live, for the store's screens: one small
+ * document per rider (drivers/{uid}/telemetry/live). The callback gets
+ * { [riderId]: { lat, lng, heading, at } } with only the riders whose phone has
+ * said where it is. Listen only while a screen that shows it is open: every
+ * rider writes about every 20 seconds, and each write is one read here.
+ */
+export function watchRiderPositions(driverIds, callback) {
+  const db = getDb();
+  // More riders than the shop will have; keeps the listeners bounded.
+  const ids = [...new Set((driverIds || []).map((id) => String(id || "")).filter(Boolean))].slice(0, 30);
+  if (!db || ids.length === 0) {
+    callback({});
+    return () => {};
+  }
+  const positions = {};
+  const unsubs = ids.map((id) =>
+    onSnapshot(
+      doc(db, "drivers", id, "telemetry", "live"),
+      (snap) => {
+        const position = riderPositionFrom(snap.data());
+        if (position) positions[id] = position;
+        else delete positions[id];
+        callback({ ...positions });
+      },
+      (err) => console.warn("watchRiderPositions warning:", err?.message)
+    )
+  );
+  return () => unsubs.forEach((stop) => { try { stop(); } catch (e) {} });
+}
 
 /** Replaces `driver_location_changed`. */
 export function watchOrderTracking(orderId, callback) {

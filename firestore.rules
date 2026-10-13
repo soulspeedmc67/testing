@@ -124,6 +124,18 @@ service cloud.firestore {
         && payment.amount >= order.total * 100 - 1;
     }
 
+    /* The shop can stop taking orders from old iPhone apps: an installed app
+       keeps the fees it was built with, so an old one leaves out a charge added
+       since (rain, night distance). config/store holds the oldest version it
+       accepts as minIosVersionCode (1.0.3 is 10003; 0 or missing means any),
+       set in the console's Shop settings, and every iPhone order says which
+       version placed it (appVersionCode; apps from before 1.0.3 send none, which
+       counts as 0). The read of config/store only happens for iPhone orders. */
+    function appIsCurrent(order) {
+      return order.get('platform', '') != 'ios'
+        || order.get('appVersionCode', 0) >= get(/databases/$(database)/documents/config/store).data.get('minIosVersionCode', 0);
+    }
+
     // ---- Catalogue: staff only -------------------------------------------
     // Shoppers don't read products from Firestore: the shop apps get them from
     // one file on the website (public_html/catalog/catalog.json, built by
@@ -217,7 +229,8 @@ service cloud.firestore {
          account); that test comes first so it short-circuits before isStaff()'s read.
          An order that says it was paid online must be backed by a payment the
          server confirmed (paymentCovers); that check costs a read, so it only
-         runs for those orders. */
+         runs for those orders. An iPhone order must come from an app version
+         the shop still accepts (appIsCurrent). */
       allow create: if (isCustomerLogin() || isStaff())
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'Placed'
@@ -228,6 +241,7 @@ service cloud.firestore {
         && request.resource.data.items.size() > 0
         && request.resource.data.items.size() <= 100
         && totalsAgree(request.resource.data)
+        && appIsCurrent(request.resource.data)
         && (!saysPaidOnline(request.resource.data) || paymentCovers(orderId, request.resource.data));
 
       /* Customers may only cancel, only their own order, only while it is still
