@@ -2145,7 +2145,9 @@ struct StoreControlSheetView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var isOpen: Bool = true
-    @State private var closeReason: String = "Normal Operations"
+    @State private var closeReason: String = StoreControlSheetView.closeReasons[0]
+    /// The reason typed in, when "Write my own" is picked.
+    @State private var ownCloseReason = ""
     @State private var extraOn: Bool = false
     @State private var extraAmountText = ""
     @State private var extraNameChoice = ShopRules.defaultExtraChargeLabel
@@ -2167,7 +2169,24 @@ struct StoreControlSheetView: View {
     @State private var mileageText = ""
     @State private var minIosVersionText = ""
 
-    let reasons = ["Normal Operations", "Heavy Rain & Flooding", "Late Night Shift", "Power Outage", "Restocking Inventory"]
+    /// What customers read after "The store is closed right now." (same words as
+    /// the web console's `CLOSE_REASON_PRESETS`). `ownCloseReasonChoice` opens a box to write another.
+    static let closeReasons = [
+        "Too many orders right now. We'll take new orders again in a little while.",
+        "Closed for the night. We open again at 7 am.",
+        "Bad weather. We've stopped deliveries to keep our riders safe.",
+        "Restocking. Back in about 30 minutes.",
+        "A short break. Back soon."
+    ]
+    private static let closeReasonTitles = ["Too many orders", "Closed for the night", "Bad weather", "Restocking", "A short break"]
+    private static let ownCloseReasonChoice = "Write my own"
+
+    /// The reason that is saved: the one picked, or what was typed (the first one if the box is empty).
+    private var chosenCloseReason: String {
+        guard closeReason == Self.ownCloseReasonChoice else { return closeReason }
+        let typed = String(ownCloseReason.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+        return typed.isEmpty ? Self.closeReasons[0] : typed
+    }
 
     /// Names the extra charge can go by on the bill; `ownExtraName` opens a box to write another.
     private static let extraNames = [ShopRules.defaultExtraChargeLabel, "Rain charge", "Snow charge", "Busy-hours charge"]
@@ -2185,15 +2204,22 @@ struct StoreControlSheetView: View {
 
                     if !isOpen {
                         Picker("Why is it closed?", selection: $closeReason) {
-                            ForEach(reasons, id: \.self) { r in
-                                Text(r).tag(r)
+                            ForEach(Array(Self.closeReasons.enumerated()), id: \.offset) { index, reason in
+                                Text(Self.closeReasonTitles[index]).tag(reason)
                             }
+                            Text(Self.ownCloseReasonChoice).tag(Self.ownCloseReasonChoice)
+                        }
+                        if closeReason == Self.ownCloseReasonChoice {
+                            TextField("What customers will read", text: $ownCloseReason, axis: .vertical)
+                                .lineLimit(1...3)
                         }
                     }
                 } header: {
                     Text("Shop")
                 } footer: {
-                    Text(isOpen ? "Customers can order now." : "Customers see that the shop is closed, and why.")
+                    Text(isOpen
+                        ? "Customers can order now."
+                        : "Customers see: “The store is closed right now. \(chosenCloseReason)” Tap Save.")
                 }
 
                 Section {
@@ -2313,7 +2339,7 @@ struct StoreControlSheetView: View {
             .navigationBarTitleDisplayMode(isEmbedded ? .large : .inline)
             .onAppear {
                 isOpen = vm.storeConfig.isOpen
-                closeReason = vm.storeConfig.closeReason
+                showCloseReason(vm.storeConfig.closeReason)
                 showShopRules(vm.shopRules)
                 showNightCharge(vm.nightCharge)
             }
@@ -2327,7 +2353,8 @@ struct StoreControlSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        vm.toggleStore(isOpen: isOpen, reason: closeReason)
+                        // An open shop has no reason to show.
+                        vm.toggleStore(isOpen: isOpen, reason: isOpen ? "" : chosenCloseReason)
                         vm.saveShopRules(editedShopRules)
                         vm.saveNightCharge(editedNightCharge)
                         if !isEmbedded { dismiss() }
@@ -2335,6 +2362,20 @@ struct StoreControlSheetView: View {
                     .font(.system(size: 17, weight: .bold))
                 }
             }
+        }
+    }
+
+    /// Picks the saved reason in the list, or puts it in the "Write my own" box.
+    private func showCloseReason(_ saved: String) {
+        let text = saved.trimmingCharacters(in: .whitespacesAndNewlines)
+        if Self.closeReasons.contains(text) {
+            closeReason = text
+        } else if text.isEmpty || text == "Normal Operations" {
+            // Nothing saved, or the old default that read as nonsense to customers.
+            closeReason = Self.closeReasons[0]
+        } else {
+            closeReason = Self.ownCloseReasonChoice
+            ownCloseReason = text
         }
     }
 

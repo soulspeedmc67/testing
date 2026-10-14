@@ -645,48 +645,50 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   // Store Close Reason Modal & Presets
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showOpenModal, setShowOpenModal] = useState(false);
-  const [selectedReason, setSelectedReason] = useState("Night hours — reopening tomorrow at 7:00 AM");
+  const [selectedReason, setSelectedReason] = useState("Too many orders right now. We'll take new orders again in a little while.");
   const [customReasonText, setCustomReasonText] = useState("");
   const [currentCloseReason, setCurrentCloseReason] = useState("");
 
+  // What customers read after "The store is closed right now." Same words as
+  // the iOS admin (StoreControlSheetView.closeReasons): keep the two in step.
   const CLOSE_REASON_PRESETS = [
     {
-      id: "night",
-      title: "Closed for Night Hours",
-      subtitle: "Reopening tomorrow morning at 7:00 AM",
-      text: "Night hours — reopening tomorrow at 7:00 AM",
-      Icon: Moon,
-      color: "text-indigo-400",
-    },
-    {
-      id: "restocking",
-      title: "Restocking Fresh Inventory",
-      subtitle: "Fresh shipments arriving, available in 30 minutes",
-      text: "Restocking fresh inventory — available in 30 minutes",
-      Icon: Boxes,
-      color: "text-amber-500",
-    },
-    {
-      id: "weather",
-      title: "Severe Weather / Heavy Rain or Snow",
-      subtitle: "Pausing temporarily for delivery partner safety",
-      text: "Severe weather conditions — pausing for delivery partner safety",
-      Icon: CloudRain,
-      color: "text-sky-400",
-    },
-    {
       id: "rush",
-      title: "High Order Rush / Peak Surge",
-      subtitle: "Briefly pausing new orders to clear delivery queue",
-      text: "High order surge — pausing new orders for 20 minutes",
+      title: "Too many orders",
+      subtitle: "Pause new orders while you catch up",
+      text: "Too many orders right now. We'll take new orders again in a little while.",
       Icon: Zap,
       color: "text-orange-500",
     },
     {
-      id: "maintenance",
-      title: "Store Maintenance & Stock Audit",
-      subtitle: "Brief inventory count — back shortly",
-      text: "Routine store maintenance & inventory audit — back shortly",
+      id: "night",
+      title: "Closed for the night",
+      subtitle: "Open again in the morning",
+      text: "Closed for the night. We open again at 7 am.",
+      Icon: Moon,
+      color: "text-indigo-400",
+    },
+    {
+      id: "weather",
+      title: "Bad weather",
+      subtitle: "Rain or snow: keep the riders safe",
+      text: "Bad weather. We've stopped deliveries to keep our riders safe.",
+      Icon: CloudRain,
+      color: "text-sky-400",
+    },
+    {
+      id: "restocking",
+      title: "Restocking",
+      subtitle: "Back in about 30 minutes",
+      text: "Restocking. Back in about 30 minutes.",
+      Icon: Boxes,
+      color: "text-amber-500",
+    },
+    {
+      id: "break",
+      title: "A short break",
+      subtitle: "Back soon",
+      text: "A short break. Back soon.",
       Icon: Wrench,
       color: "text-slate-400",
     },
@@ -1036,7 +1038,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   };
 
   const handleConfirmCloseStore = async () => {
-    const finalReason = selectedReason === "custom" ? customReasonText.trim() : selectedReason;
+    const finalReason =
+      selectedReason === "custom"
+        ? customReasonText.trim().slice(0, 120) || CLOSE_REASON_PRESETS[0].text
+        : selectedReason || CLOSE_REASON_PRESETS[0].text;
     setIsStoreOpen(false);
     setCurrentCloseReason(finalReason);
     setShowCloseModal(false);
@@ -2313,7 +2318,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-zinc-300">
-              Customers in Anantnag will see: <span className="font-bold text-slate-900 dark:text-white">&quot;Store Reopening Schedule: (Reason)&quot;</span> on the app banner. Select a reason or enter a custom one:
+              Customers see <span className="font-bold text-slate-900 dark:text-white">&quot;The store is closed right now.&quot;</span> followed by the reason you pick, and can&apos;t order until you open again.
             </p>
 
             <div className="space-y-2">
@@ -2371,9 +2376,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
                     <Edit3 className="w-4 h-4 text-emerald-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="font-black text-xs text-slate-900 dark:text-white block">Custom / Specific Reason</span>
+                    <span className="font-black text-xs text-slate-900 dark:text-white block">Write my own</span>
                     <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium block mt-0.5">
-                      Type your own custom message to display to customers
+                      Type what customers will read
                     </span>
                   </div>
                   <div
@@ -2389,7 +2394,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
                   <div className="mt-2.5 pt-2 border-t border-orange-200/60 dark:border-zinc-750">
                     <input
                       type="text"
-                      placeholder="e.g. Back in 45 mins after Friday prayers / Stock audit"
+                      placeholder="e.g. Back at 2 pm after Friday prayers"
+                      maxLength={120}
                       value={customReasonText}
                       onChange={(e) => setCustomReasonText(e.target.value)}
                       className={`w-full border rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-[#FF5B00] ${
