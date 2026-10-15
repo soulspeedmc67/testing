@@ -131,6 +131,34 @@ function dashit_catalog_newest(array $account): ?int
     return 0;
 }
 
+/** How many product documents Firestore holds (about one read per 1,000), or null if it didn't answer. */
+function dashit_catalog_count(array $account): ?int
+{
+    $endpoint = dashit_firestore_endpoint($account);
+    if ($endpoint === null) return null;
+    [$status, $reply] = dashit_firestore_request('POST', $endpoint[0] . ':runAggregationQuery', $endpoint[1], [
+        'structuredAggregationQuery' => [
+            'structuredQuery' => ['from' => [['collectionId' => 'products']]],
+            'aggregations' => [['alias' => 'n', 'count' => new stdClass()]],
+        ],
+    ]);
+    if ($status !== 200) return null;
+    foreach ($reply as $row) {
+        $n = $row['result']['aggregateFields']['n']['integerValue'] ?? null;
+        if ($n !== null) return (int) $n;
+    }
+    return null;
+}
+
+/** Entries in the file that still stand for a Firestore document (not ones we marked erased). */
+function dashit_catalog_listed(array $file): int
+{
+    return count(array_filter($file['products'], fn ($p) => empty($p['removed'])));
+}
+
+/** How long an erased product's { active: false } stays in the file, so phones that were away still drop it. */
+const DASHIT_REMOVED_KEEP = 60 * 24 * 3600 * 1000;
+
 /** Every product, page by page (a full read: once a night). Null if Firestore didn't answer. */
 function dashit_catalog_everything(array $account): ?array
 {
@@ -197,6 +225,18 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
     $nowMs = (int) round(microtime(true) * 1000);
     $full = $forceFull || $current === null || $nowMs - (int) ($current['fullAt'] ?? 0) > DASHIT_FULL_EVERY;
 
+    // A product erased from Firestore (the console's "delete all products")
+    // leaves no newer `updatedAt` behind, so only a count shows it: fewer
+    // documents than the file lists means read everything and drop the rest.
+    $stored = null;
+    if (!$full) {
+        $stored = dashit_catalog_count($account);
+        if ($stored !== null && $stored < dashit_catalog_listed($current)) {
+            $out("Firestore holds $stored products, the file lists " . dashit_catalog_listed($current) . ': reading everything.');
+            $full = true;
+        }
+    }
+
     if (!$full) {
         $newest = dashit_catalog_newest($account);
         if ($newest === null) {
@@ -229,14 +269,43 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
             return false;
         }
         $fullAt = $nowMs;
-        $out('Full read: ' . count($products) . ' products.');
+        $read = count($products);
+        $out("Full read: $read products.");
+
+        // Every product in the old file that Firestore no longer has goes out
+        // as { active: false }, newer than any version a phone holds, so the
+        // apps already installed drop it through changes.php.
+        $seen = [];
+        $newest = 0;
+        foreach ($products as $p) {
+            $seen[$p['id']] = true;
+            $newest = max($newest, (int) ($p['updatedAt'] ?? 0));
+        }
+        $removedAt = max($newest, (int) ($current['version'] ?? 0)) + 1;
+        $erased = 0;
+        foreach ($current['products'] ?? [] as $old) {
+            if (isset($seen[$old['id']])) continue;
+            if (!empty($old['removed'])) {
+                if ($nowMs - (int) ($old['removedAt'] ?? 0) < DASHIT_REMOVED_KEEP) $products[] = $old;
+                continue;
+            }
+            $products[] = ['id' => $old['id'], 'active' => false, 'removed' => true, 'removedAt' => $nowMs, 'updatedAt' => $removedAt];
+            $erased += 1;
+        }
+        if ($erased > 0) $out("$erased products erased from Firestore, marked off.");
     }
 
     $active = count(array_filter($products, fn ($p) => ($p['active'] ?? true) !== false));
     $before = $current === null ? 0 : count(array_filter($current['products'], fn ($p) => ($p['active'] ?? true) !== false));
-    if ($active < 50 || ($before > 0 && $active < $before * 0.9 && !$forceFull)) {
-        $out("Refusing: $active products shown, was $before. Keeping the previous file (run --full to accept).");
-        return false;
+    // Changed-only reads are Firestore's own answer for each product, so a
+    // shop that switches products off (or clears its stock list) is shown as
+    // it is. A full read could be cut short, so a big drop must match a count.
+    if ($full && !$forceFull && ($active < 50 || ($before > 0 && $active < $before * 0.9))) {
+        $stored = $stored ?? dashit_catalog_count($account);
+        if ($stored === null || $stored !== $read) {
+            $out("Refusing: $active products shown, was $before; Firestore counts " . ($stored ?? '?') . ", read $read. Keeping the previous file (run --full to accept).");
+            return false;
+        }
     }
 
     $version = 0;
