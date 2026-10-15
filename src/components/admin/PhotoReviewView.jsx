@@ -29,6 +29,8 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
   const [loadError, setLoadError] = useState("");
   const [mode, setMode] = useState("missing"); // "missing" | "all"
   const [showSkipped, setShowSkipped] = useState(false);
+  // Off: only items with a photo to tap, so the owner isn't scrolling past the rest.
+  const [showNoOptions, setShowNoOptions] = useState(false);
   const [query, setQuery] = useState("");
   const [shown, setShown] = useState(PAGE);
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,20 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
   const sureIds = useMemo(() => new Set(sure.map((s) => s.id)), [sure]);
   const sureToAdd = sure.filter((s) => !leftOut.has(s.id));
 
-  const items = useMemo(() => {
+  // Photos to tap for every item without one, worked out once per list.
+  const optionsById = useMemo(() => {
+    const out = new Map();
+    if (loading) return out;
+    for (const p of catalogue) {
+      const id = idOf(p);
+      if (!p.name || !missing(p) || sureIds.has(id)) continue;
+      const options = photoOptions(site, catalog, p, 6).filter((o) => o.img !== p.rejectedPhoto);
+      if (options.length > 0) out.set(id, options);
+    }
+    return out;
+  }, [catalogue, site, catalog, loading, sureIds]);
+
+  const candidates = useMemo(() => {
     const q = query.trim().toLowerCase();
     return catalogue.filter((p) => {
       const id = idOf(p);
@@ -80,6 +95,9 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
       return showSkipped || !p.photoSuggestionsSkipped;
     });
   }, [catalogue, answered, query, mode, sureIds, showSkipped]);
+  const noOptionsCount = mode === "missing" ? candidates.filter((p) => !optionsById.has(idOf(p))).length : 0;
+  const items =
+    mode === "missing" && !showNoOptions ? candidates.filter((p) => optionsById.has(idOf(p))) : candidates;
 
   const skippedCount = useMemo(
     () => catalogue.filter((p) => missing(p) && p.photoSuggestionsSkipped).length,
@@ -291,6 +309,19 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
             className="w-full pl-8 pr-3 py-2 rounded-xl text-sm bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 text-slate-900 dark:text-white"
           />
         </div>
+        {mode === "missing" && noOptionsCount > 0 && (
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showNoOptions}
+              onChange={(e) => {
+                setShowNoOptions(e.target.checked);
+                setShown(PAGE);
+              }}
+            />
+            Show items with no photo to pick ({noOptionsCount.toLocaleString("en-IN")})
+          </label>
+        )}
         {mode === "missing" && skippedCount > 0 && (
           <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-zinc-300 cursor-pointer">
             <input type="checkbox" checked={showSkipped} onChange={(e) => setShowSkipped(e.target.checked)} />
@@ -303,7 +334,13 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
         <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 p-8 text-center">
           <Images className="w-8 h-8 text-emerald-500 mx-auto" />
           <p className="font-bold text-slate-900 dark:text-white mt-2">
-            {query ? "No items match" : mode === "missing" ? "Every item has a photo or an answer" : "No items"}
+            {query
+              ? "No items match"
+              : mode === "missing"
+              ? noOptionsCount > 0
+                ? `No more photos to pick. ${noOptionsCount.toLocaleString("en-IN")} items have no close photo on the website`
+                : "Every item has a photo or an answer"
+              : "No items"}
           </p>
         </div>
       ) : (
@@ -316,6 +353,7 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
             <PhotoChoice
               key={idOf(item)}
               item={item}
+              options={optionsById.get(idOf(item))}
               site={site}
               catalog={catalog}
               keys={index === 0}
@@ -341,14 +379,15 @@ export default function PhotoReviewView({ catalogue = [], showToast = () => {} }
 }
 
 /** One item: its closest photos to tap, a search for any other, and "None of these". */
-function PhotoChoice({ item, site, catalog, keys, allMode, onChoose, onNone, onRemove }) {
+function PhotoChoice({ item, options: given, site, catalog, keys, allMode, onChoose, onNone, onRemove }) {
   const [search, setSearch] = useState("");
   const [broken, setBroken] = useState(() => new Set());
   const hasPhoto = !isPlaceholderImage(item.img);
 
   const options = useMemo(
-    () => photoOptions(site, catalog, item, 6).filter((o) => o.img !== item.img && o.img !== item.rejectedPhoto),
-    [site, catalog, item]
+    () =>
+      (given || photoOptions(site, catalog, item, 6)).filter((o) => o.img !== item.img && o.img !== item.rejectedPhoto),
+    [given, site, catalog, item]
   );
   const found = useMemo(
     () => (search.trim().length >= 2 ? searchSitePhotos(site, catalog, search, 8) : []),
@@ -368,6 +407,9 @@ function PhotoChoice({ item, site, catalog, keys, allMode, onChoose, onNone, onR
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  // Every suggested photo turned out missing on the host: nothing to tap here.
+  if (!allMode && given?.length && shownOptions.length === 0 && !search) return null;
 
   const tile = (option, label) => (
     <button
