@@ -383,9 +383,10 @@ export function photoFromCatalog(catalog, productName) {
 /**
  * Import rows that are new to the shop and came without a category get the
  * shelf (and a missing brand) from the product list. Rows that need a photo
- * get one only when the list has the same product (photoFromCatalog).
+ * get one only when the list has the same product (photoFromCatalog), or
+ * from `findPhoto` when given.
  */
-export function fillFromCatalog(items, catalog) {
+export function fillFromCatalog(items, catalog, findPhoto = null) {
   if (!catalog) return items;
   return items.map((item) => {
     const needsCat = item.action === "new" && !item.catFromCsv;
@@ -394,7 +395,8 @@ export function fillFromCatalog(items, catalog) {
     if (!needsCat && !needsImg) return item;
 
     const guess = guessFromCatalog(catalog, item.name) || {};
-    const photo = needsImg ? photoFromCatalog(catalog, item.name) : null;
+    // `findPhoto(item)` (sitePhotos.photoFromSite) can look further than the list.
+    const photo = needsImg ? (findPhoto ? findPhoto(item) : photoFromCatalog(catalog, item.name)) : null;
 
     let changed = false;
     let newCat = item.cat;

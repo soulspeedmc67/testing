@@ -181,6 +181,63 @@ function dashit_catalog_everything(array $account): ?array
     return $out;
 }
 
+/**
+ * Photo memory: the last photo each product name (and barcode) had, kept in
+ * dashit-data beside public_html, so it outlives a cleared stock list and a
+ * replaced website folder. A product uploaded again under a new id gets its
+ * photo back from here (api/catalog/photos.php, src/lib/sitePhotos.js).
+ */
+function dashit_photo_memory_path(): string
+{
+    return dashit_private_dir('dashit-data') . '/photo-memory.json';
+}
+
+function dashit_photo_memory_read(): array
+{
+    $data = @json_decode((string) @file_get_contents(dashit_photo_memory_path()), true);
+    return [
+        'names' => is_array($data['names'] ?? null) ? $data['names'] : [],
+        'barcodes' => is_array($data['barcodes'] ?? null) ? $data['barcodes'] : [],
+    ];
+}
+
+/** A product's photo link worth remembering, or ''. */
+function dashit_photo_of(array $product): string
+{
+    foreach (['img', 'image', 'imageUrl'] as $field) {
+        $value = trim((string) (is_string($product[$field] ?? null) ? $product[$field] : ''));
+        if ($value !== '' && (str_starts_with($value, 'https://') || str_starts_with($value, '/products/'))) return $value;
+    }
+    return '';
+}
+
+/** Notes the photo of every named product in $products. Writes only when something is new. */
+function dashit_photo_memory_note(array $products): void
+{
+    $memory = dashit_photo_memory_read();
+    $changed = false;
+    foreach ($products as $product) {
+        if (!is_array($product) || ($product['active'] ?? true) === false) continue;
+        $img = dashit_photo_of($product);
+        $name = trim((string) ($product['name'] ?? ''));
+        if ($img === '' || $name === '') continue;
+        if (($memory['names'][$name] ?? '') !== $img) {
+            $memory['names'][$name] = $img;
+            $changed = true;
+        }
+        $id = (string) ($product['id'] ?? '');
+        if (preg_match('/^(\d{8}|\d{12,14})$/', $id) && ($memory['barcodes'][$id] ?? '') !== $img) {
+            $memory['barcodes'][$id] = $img;
+            $changed = true;
+        }
+    }
+    if (!$changed) return;
+    $path = dashit_photo_memory_path();
+    @mkdir(dirname($path), 0700, true);
+    $json = json_encode($memory, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json !== false && @file_put_contents("$path.tmp", $json) !== false) @rename("$path.tmp", $path);
+}
+
 /** The current file, decoded, or null. */
 function dashit_catalog_read(): ?array
 {
@@ -307,6 +364,9 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
             return false;
         }
     }
+
+    // Before anything is dropped: the photos products had, for when they come back.
+    dashit_photo_memory_note(array_merge($current['products'] ?? [], $products));
 
     $version = 0;
     foreach ($products as $p) $version = max($version, (int) ($p['updatedAt'] ?? 0));

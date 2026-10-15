@@ -67,7 +67,7 @@ export default function PhotoSearchStatus({ run, onDismiss, onRetry, darkMode = 
       {!run.running && failed > 0 && (
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className={`text-xs ${subtle}`}>
-            {count(failed)} couldn&apos;t be checked: Open Food Facts was busy.
+            {count(failed)} couldn&apos;t be checked: the website was busy.
           </p>
           <button
             type="button"

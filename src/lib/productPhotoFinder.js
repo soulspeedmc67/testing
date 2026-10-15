@@ -1,7 +1,9 @@
 /**
  * Finds product photos after a stock import, in the background: the stock is
- * saved first, then each product without a photo is looked up on Open Food
- * Facts, by barcode first and by brand + name second (the name match has to be
+ * saved first, then each product without a photo gets the one already on the
+ * website if there is one (sitePhotos). The shop uploads its own photos, so the
+ * automatic search no longer asks Open Food Facts; findPhotoFor (one product,
+ * Add product screen) still does, by barcode first and by brand + name second (the name match has to be
  * clearly the same product, see productPhotoMatch). Found photos are saved in
  * small batches as they come in, with where they came from.
  *
@@ -21,6 +23,8 @@ import {
 } from "./productPhotoMatch";
 import { checkPhoto, qualityReasons } from "./photoQuality";
 import { saveFoundProductPhotos } from "./db";
+import { loadCatalog } from "./productCatalog";
+import { loadSitePhotos, photoFromSite, sitePhotoOpens } from "./sitePhotos";
 
 async function runPool(items, limit, worker) {
   let next = 0;
@@ -88,6 +92,16 @@ async function findOne(item) {
  */
 export async function findProductPhotos(items, { replace = false, onProgress, concurrency = 4 } = {}) {
   const todo = items.filter((item) => needsPhotoLookup(item.current, { replace }));
+  const [catalog, site] =
+    todo.length > 0 ? await Promise.all([loadCatalog().catch(() => null), loadSitePhotos()]) : [null, null];
+
+  /** The website's own photo for this product, if it has one that opens. */
+  const fromSite = async (item) => {
+    if (!catalog && !site) return null;
+    const hit = photoFromSite(site, catalog, item);
+    if (!hit || hit.img === item.current?.rejectedPhoto || !(await sitePhotoOpens(hit.img))) return null;
+    return { status: "found", img: hit.img, source: "website", via: hit.via, weak: false, issues: [] };
+  };
   const results = [];
   const pending = [];
   let done = 0;
@@ -111,7 +125,8 @@ export async function findProductPhotos(items, { replace = false, onProgress, co
   await runPool(todo, concurrency, async (item) => {
     let result;
     try {
-      result = { id: item.id, name: item.name, ...(await findOne(item)) };
+      // Only the shop's own photos on the website: Open Food Facts isn't asked.
+      result = { id: item.id, name: item.name, ...((await fromSite(item)) || { status: "missing" }) };
     } catch (e) {
       result = { id: item.id, name: item.name, status: "error", error: e?.message || "Lookup failed" };
     }

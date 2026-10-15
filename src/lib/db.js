@@ -508,7 +508,8 @@ async function writeProductFields(changes) {
 }
 
 /**
- * Saves photos found on Open Food Facts: `[{ id, img, offBarcode, weak, issues }]`.
+ * Saves photos found on the website or Open Food Facts:
+ * `[{ id, img, source?, offBarcode, weak, issues }]` (`source` "website", else Open Food Facts).
  * `imgSource` records where each came from, so a later import skips them.
  */
 export function saveFoundProductPhotos(found = []) {
@@ -517,7 +518,7 @@ export function saveFoundProductPhotos(found = []) {
       id: f.id,
       fields: {
         img: f.img,
-        imgSource: "openfoodfacts",
+        imgSource: f.source === "website" ? "catalog" : "openfoodfacts",
         offBarcode: f.offBarcode || "",
         photoQuality: f.weak ? "weak" : "good",
         photoIssues: f.issues || [],

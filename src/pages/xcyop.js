@@ -1557,7 +1557,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       )
       .catch(() => setPhotoRun((run) => (run ? { ...run, running: false } : run)));
   };
-  // Only the products Open Food Facts couldn't answer for (it was busy).
+  // Only the products the lookup couldn't answer for (it was busy).
   const retryPhotoSearch = () => {
     if (!photoRun) return;
     const failed = new Set(photoRun.results.filter((r) => r.status === "error").map((r) => r.id));
