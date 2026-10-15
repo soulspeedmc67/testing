@@ -229,8 +229,33 @@ export function clearShopProductsCache() {
   broadcast();
 }
 
+/**
+ * Fields the staff console just saved in Firestore (`[{ id, fields }]`), put on
+ * this browser's copy at once. The website's file brings the same values a few
+ * minutes later; until then a saved photo would look unsaved after a page
+ * change. The version is left alone, so nothing newer from the server is skipped.
+ */
+export function patchShopProducts(changes) {
+  if (!state || !Array.isArray(changes)) return;
+  let touched = false;
+  const items = { ...state.items };
+  for (const change of changes) {
+    const id = String(change?.id || "");
+    if (!id || !items[id] || !change.fields) continue;
+    items[id] = { ...items[id], ...change.fields };
+    touched = true;
+  }
+  if (!touched) return;
+  state = { ...state, items };
+  save();
+  broadcast();
+}
+
 if (typeof window !== "undefined") {
   window.addEventListener("dashit_catalogue_cleared", () => {
     clearShopProductsCache();
+  });
+  window.addEventListener("dashit_products_patched", (e) => {
+    patchShopProducts(e?.detail);
   });
 }
