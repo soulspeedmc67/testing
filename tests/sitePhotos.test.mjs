@@ -41,3 +41,18 @@ test("photoFromSite: a product-list photo only when the file is on the website",
   // No list of files (photos.php didn't answer): the product list as before.
   assert.equal(photoFromSite(null, catalog, { name: "Amul Gold Milk" }).img, "https://dashit.co.in/products/catalog/dairy/gold.webp");
 });
+
+test("photoOptions: close photos to choose from, the closest first, the shop's earlier ones included", async () => {
+  const { photoOptions } = await import("../src/lib/sitePhotos.js");
+  const s = {
+    files: new Set(["dairy/gold.webp", "dairy/taaza.webp"]),
+    names: new Map(),
+    barcodes: new Map(),
+    named: [{ name: "Amul Gold Full Cream Milk", img: "/products/uploads/dsh_g.webp" }],
+  };
+  const options = photoOptions(s, catalog, { name: "Amul Gold Milk 500ml" });
+  assert.equal(options[0].img, "https://dashit.co.in/products/catalog/dairy/gold.webp");
+  assert.ok(options.some((o) => o.img === "/products/uploads/dsh_g.webp" && o.own));
+  // Another brand is never offered.
+  assert.deepEqual(photoOptions(s, catalog, { name: "Nestle Gold Milk" }), []);
+});

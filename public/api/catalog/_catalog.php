@@ -21,6 +21,8 @@ const DASHIT_CATALOG_FIELDS = [
     'name', 'title', 'unit', 'weight', 'price', 'originalPrice', 'mrp', 'rating', 'ratingCount',
     'time', 'options', 'badge', 'img', 'image', 'imageUrl', 'cat', 'category', 'variants',
     'ageRestricted', 'minAge', 'inStock', 'stock', 'nutrition',
+    // Read by the staff console's "Check photos" (its product list is this file).
+    'photoSuggestionsSkipped', 'photoRejected', 'rejectedPhoto',
 ];
 
 /** The made-up example distributors (src/lib/db.js); stock tagged with one is the owner's own. */
