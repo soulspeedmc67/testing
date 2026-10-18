@@ -162,14 +162,30 @@ function dashit_catalog_read(): ?array
     return is_array($data) && isset($data['version'], $data['products']) && is_array($data['products']) ? $data : null;
 }
 
-const DASHIT_FULL_EVERY = 7 * 24 * 3600 * 1000;
+/*
+ * A product erased from Firestore (rather than marked active: false) never
+ * shows up as a change, so only a full read drops it. Nightly keeps such a
+ * product on the shop for a day at most, for about one read per product a
+ * day (well inside the free daily reads).
+ */
+const DASHIT_FULL_EVERY = 24 * 3600 * 1000;
+
+/*
+ * Files written before this format may still list products erased from
+ * Firestore; the first build on seeing one reads everything and accepts the
+ * result even though it is shorter.
+ */
+const DASHIT_CATALOG_FORMAT = 2;
 
 /**
  * Brings catalog.json up to date (see build.php). True when the file is
  * current, false when it couldn't be, null when another build holds the lock.
  * Writes to a temporary file and renames it, so the website never serves a
- * half-written file, and refuses a result that lost more than 10% of the
- * products (a broken read), keeping the previous file.
+ * half-written file. A full read that came back with more than 10% fewer
+ * products (removed ones included) than the file is taken for a broken read
+ * and the previous file is kept. Merged changes are always accepted: each one
+ * is a product Firestore itself reported, so a big clean-up (many products
+ * marked removed at once) goes through.
  */
 function dashit_catalog_build(bool $forceFull, callable $out): ?bool
 {
@@ -195,6 +211,7 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
 
     $current = dashit_catalog_read();
     $nowMs = (int) round(microtime(true) * 1000);
+    if ($current !== null && (int) ($current['format'] ?? 1) < DASHIT_CATALOG_FORMAT) $forceFull = true;
     $full = $forceFull || $current === null || $nowMs - (int) ($current['fullAt'] ?? 0) > DASHIT_FULL_EVERY;
 
     if (!$full) {
@@ -233,17 +250,25 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
     }
 
     $active = count(array_filter($products, fn ($p) => ($p['active'] ?? true) !== false));
-    $before = $current === null ? 0 : count(array_filter($current['products'], fn ($p) => ($p['active'] ?? true) !== false));
-    if ($active < 50 || ($before > 0 && $active < $before * 0.9 && !$forceFull)) {
-        $out("Refusing: $active products shown, was $before. Keeping the previous file (run --full to accept).");
-        return false;
+    if ($full && !$forceFull) {
+        $before = $current === null ? 0 : count($current['products']);
+        if (count($products) < 50 || ($before > 0 && count($products) < $before * 0.9)) {
+            $out('Refusing: the full read found ' . count($products) . " products, the file has $before. Keeping the previous file (run --full to accept).");
+            return false;
+        }
     }
 
     $version = 0;
     foreach ($products as $p) $version = max($version, (int) ($p['updatedAt'] ?? 0));
+    // Products gone from Firestore change no `updatedAt`, so the version moves
+    // on by a millisecond: the apps and the website see a new file and take it.
+    if ($current !== null && count($products) < count($current['products'])) {
+        $version = max($version, (int) $current['version'] + 1);
+    }
     usort($products, fn ($a, $b) => strcmp((string) $a['id'], (string) $b['id']));
     $json = json_encode([
         'version' => $version,
+        'format' => DASHIT_CATALOG_FORMAT,
         'builtAt' => $nowMs,
         'fullAt' => $fullAt,
         'count' => $active,

@@ -26,7 +26,10 @@ const ORIGIN =
     : "";
 const FILE_URL = `${ORIGIN}/catalog/catalog.json`;
 const CHANGES_URL = `${ORIGIN}/api/catalog/changes.php`;
-const STORE_KEY = "dashit_catalog_file_v1";
+// v1 copies could hold the old 9,000-product list, which download() refused
+// to replace with the smaller current one; every browser starts again once.
+const STORE_KEY = "dashit_catalog_file_v2";
+const OLD_STORE_KEY = "dashit_catalog_file_v1";
 const POLL_MS = 30 * 1000;
 
 let state = null; // { version, items: { id: entry } }
@@ -37,6 +40,9 @@ let pollTimer = null;
 
 function readSaved() {
   if (typeof window === "undefined") return null;
+  try {
+    localStorage.removeItem(OLD_STORE_KEY);
+  } catch (e) {}
   try {
     const parsed = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
     if (parsed && parsed.items && typeof parsed.items === "object") return parsed;
@@ -96,8 +102,11 @@ async function download() {
     const live = products.filter((p) => p && p.active !== false).length;
     const before = state ? Object.keys(state.items).length : 0;
     const isExplicitClear = file?.cleared === true || (Array.isArray(file?.products) && file?.count === 0);
-    // A broken or cut-short file never replaces a good copy.
-    if (!isExplicitClear && (!(file.version > 0) || (before > 100 && live < before * 0.5))) return false;
+    // A broken or cut-short file never replaces a good copy. From format 2 the
+    // website checks the file itself, and a shorter one means products were
+    // really removed, so it is taken as it is.
+    const checked = Number(file?.format) >= 2 || !(before > 100 && live < before * 0.5);
+    if (!isExplicitClear && (!(file.version > 0) || !checked)) return false;
     if (state && state.version === file.version) return false;
     state = { version: file.version, items: {} };
     fold(products, file.version);

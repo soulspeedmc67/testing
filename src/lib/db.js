@@ -924,7 +924,7 @@ export async function deleteAllProducts(products = null, options = {}) {
       const catState = JSON.parse(localStorage.getItem(CATALOGUE_KEY) || "null");
       const catItems = catState?.items ? Object.keys(catState.items) : [];
       const cached = JSON.parse(localStorage.getItem("dashit_products_cache") || "[]");
-      const fileCat = JSON.parse(localStorage.getItem("dashit_catalog_file_v1") || "null");
+      const fileCat = JSON.parse(localStorage.getItem("dashit_catalog_file_v2") || "null");
       const fileItems = fileCat?.items ? Object.keys(fileCat.items) : [];
 
       const set = new Set([
@@ -957,6 +957,7 @@ export async function deleteAllProducts(products = null, options = {}) {
       localStorage.removeItem("dashit_products_cache");
       localStorage.removeItem(CATALOGUE_KEY);
       localStorage.removeItem("dashit_catalog_file_v1");
+      localStorage.removeItem("dashit_catalog_file_v2");
 
       // Register deleted product IDs so default/seed items also stay deleted
       const deletedIds = new Set(JSON.parse(localStorage.getItem("dashit_deleted_products") || "[]").map(String));
@@ -972,10 +973,13 @@ export async function deleteAllProducts(products = null, options = {}) {
   }
   invalidateProductCache();
 
-  // 3. Batch delete from Firestore
+  // 3. Mark every product removed in Firestore. The documents are kept, not
+  // erased: the website's product file (public/api/catalog/_catalog.php) and
+  // the apps only learn of a removal from a document that says active: false,
+  // so an erased product stayed on the shop until the next full rebuild.
+  // Saving or importing a product again sets active: true.
   let deletedCount = 0;
   if (db && idsToDelete.length > 0) {
-    // Pass 1: Mark active: false so any live snapshot or changes query drops them immediately
     for (let i = 0; i < idsToDelete.length; i += 400) {
       const chunk = idsToDelete.slice(i, i + 400);
       try {
@@ -994,30 +998,9 @@ export async function deleteAllProducts(products = null, options = {}) {
           );
         });
         await batch.commit();
+        deletedCount += chunk.length;
       } catch (e) {
         console.warn("deleteAllProducts tombstone batch warning:", e?.message);
-      }
-    }
-
-    // Pass 2: Delete docs from Firestore
-    for (let i = 0; i < idsToDelete.length; i += 400) {
-      const chunk = idsToDelete.slice(i, i + 400);
-      try {
-        const batch = writeBatch(db);
-        chunk.forEach((id) => {
-          batch.delete(doc(db, "products", id));
-        });
-        await batch.commit();
-        deletedCount += chunk.length;
-      } catch (err) {
-        console.warn("deleteAllProducts deleteDoc batch warning:", err?.message);
-        // Fallback: delete one by one
-        for (const id of chunk) {
-          try {
-            await deleteDoc(doc(db, "products", id));
-            deletedCount += 1;
-          } catch (singleErr) {}
-        }
       }
       if (typeof options?.onProgress === "function") {
         options.onProgress(deletedCount, idsToDelete.length);

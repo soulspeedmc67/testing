@@ -11,7 +11,6 @@ import QuickProductSheet from "../components/QuickProductSheet";
 import VoiceSearchModal from "../components/VoiceSearchModal";
 import { EmptySearchState } from "../components/ui/EmptyState";
 import ProductCardSkeleton from "../components/ProductCardSkeleton";
-import { ALL_PRODUCTS } from "../data/products";
 import TobaccoSearchBanner from "../components/TobaccoSearchBanner";
 import { useAgeGate } from "../context/AgeGateContext";
 import { hapticLight, hapticMedium } from "../lib/haptics";
@@ -31,7 +30,7 @@ export default function SearchPage() {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [allProducts, setAllProducts] = useState(ALL_PRODUCTS || []);
+  const [allProducts, setAllProducts] = useState([]);
   const [tobaccoEnabled, setTobaccoEnabled] = useState(false);
   const { requestTobaccoAccess } = useAgeGate();
   /* What an empty search box shows: this shopper's recent searches first, and

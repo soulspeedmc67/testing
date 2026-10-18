@@ -114,6 +114,9 @@ jobs:
           # changed, so a routine deploy moves a few hundred KB rather than 18 MB.
           state-name: .ftp-deploy-sync-state.json
           dangerous-clean-slate: false
+          # The shop's product file is built on the server from Firestore
+          # (public/api/catalog/build.php); uploading the copy in the repo would
+          # put old products back on the shop.
           exclude: |
             **/.git*
             **/.git*/**
@@ -121,3 +124,5 @@ jobs:
             **/*.apk
             **/*.ipa
             **/*.zip
+            catalog/catalog.json
+            catalog/catalog-status.json

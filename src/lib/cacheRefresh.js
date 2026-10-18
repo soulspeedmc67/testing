@@ -23,6 +23,7 @@ const SAVED_COPIES = [
   "dashit_store_weather_alert",
   "dashit_exclusive_offers",
   "dashit_catalog_file_v1",
+  "dashit_catalog_file_v2",
   "dashit_catalogue_v2",
 ];
 
