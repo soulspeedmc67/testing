@@ -169,24 +169,29 @@ class SoundAlerts {
       osc.stop(this.ctx.currentTime + duration);
     } catch (e) {}
   }
-  startNewOrderAlarm() {
+  playNewOrderAlert() {
     this.stopAlarm();
     this.init();
-    let step = 0;
-    const tick = () => {
-      this.playTone(step % 2 === 0 ? 880 : 660, 0.25, "square", 0.35);
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        try { navigator.vibrate([300, 150, 300]); } catch (e) {}
-      }
-      step++;
-    };
-    tick();
-    this.repeatingTimer = setInterval(tick, 900);
+    // Play a crisp 2-tone notification chime once (no endless repeating alarm)
+    this.playTone(659.25, 0.18, "sine", 0.3);
+    setTimeout(() => this.playTone(880, 0.25, "sine", 0.35), 150);
+    // Single gentle haptic pulse once
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try { navigator.vibrate([150, 80, 150]); } catch (e) {}
+    }
+  }
+  startNewOrderAlarm() {
+    // Single-shot alert; never loops indefinitely
+    this.playNewOrderAlert();
   }
   stopAlarm() {
     if (this.repeatingTimer) {
       clearInterval(this.repeatingTimer);
       this.repeatingTimer = null;
+    }
+    // Cancel any ongoing device vibration immediately
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try { navigator.vibrate(0); } catch (e) {}
     }
   }
   playSuccess() {
@@ -628,6 +633,7 @@ export default function DashItDriverApp() {
   const [previewItemsOrderId, setPreviewItemsOrderId] = useState(null);
   const [checkedItems, setCheckedItems] = useState({});
   const [isItemsExpanded, setIsItemsExpanded] = useState(true);
+  const alertedOrderIdsRef = useRef(new Set());
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("preview=")) {
@@ -665,6 +671,8 @@ export default function DashItDriverApp() {
       const riderName = inputName.trim() || user?.displayName || `Rider ${user.uid.slice(-4)}`;
       const res = await claimOrder(orderId, user.uid, riderName);
       if (res?.success) {
+        alertedOrderIdsRef.current.add(orderId);
+        soundAlerts.stopAlarm();
         soundAlerts.playSuccess();
         speak(strings.speechAccept || "Order accepted. Check items.");
         setShowAvailableSheet(false);
@@ -788,17 +796,37 @@ export default function DashItDriverApp() {
     if (typeof window !== "undefined" && window.location.search.includes("preview=")) {
       return;
     }
-    if (isOrderPlacedOrPacked && onDuty) {
-      soundAlerts.startNewOrderAlarm();
+    if (!activeOrder || !onDuty) {
+      soundAlerts.stopAlarm();
+      return;
+    }
+
+    const orderId = activeOrder.orderId || activeOrder.id;
+    if (!orderId) {
+      soundAlerts.stopAlarm();
+      return;
+    }
+
+    // While delivering or if already alerted for this order, keep the phone silent
+    if (isOrderOutForDelivery || alertedOrderIdsRef.current.has(orderId)) {
+      soundAlerts.stopAlarm();
+      return;
+    }
+
+    // Alert once when a brand-new assigned order arrives
+    if (isOrderPlacedOrPacked) {
+      alertedOrderIdsRef.current.add(orderId);
+      soundAlerts.playNewOrderAlert();
       requestScreenWakeLock();
       speak(strings.speechNewOrder);
     } else {
       soundAlerts.stopAlarm();
     }
+
     return () => {
       soundAlerts.stopAlarm();
     };
-  }, [isOrderPlacedOrPacked, onDuty, speak, strings.speechNewOrder]);
+  }, [activeOrder?.orderId, activeOrder?.id, isOrderPlacedOrPacked, isOrderOutForDelivery, onDuty, speak, strings.speechNewOrder]);
 
   // Reset internal door states on order switch
   useEffect(() => {
@@ -954,9 +982,10 @@ export default function DashItDriverApp() {
   // START Delivery
   const handleStartDelivery = async () => {
     if (!activeOrder) return;
+    const oId = activeOrder.orderId || activeOrder.id;
+    if (oId) alertedOrderIdsRef.current.add(oId);
     soundAlerts.stopAlarm();
     soundAlerts.playSuccess();
-    const oId = activeOrder.orderId || activeOrder.id;
     await updateOrderStatus(oId, ORDER_STATUS.OUT_FOR_DELIVERY);
     speak(strings.speechReached);
   };
