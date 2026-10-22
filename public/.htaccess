@@ -38,10 +38,14 @@
 
   # The APK is replaced in place with each new version: always revalidate,
   # and download rather than open.
-  <FilesMatch "\.apk$">
+  <Files "DASHit.apk">
     Header always set Cache-Control "public, no-cache"
     Header always set Content-Disposition "attachment; filename=DASHit.apk"
-  </FilesMatch>
+  </Files>
+  <Files "rider.apk">
+    Header always set Cache-Control "public, no-cache"
+    Header always set Content-Disposition "attachment; filename=DASHit-Rider.apk"
+  </Files>
 
   # Static exported HTML: kept for a minute, then checked again. It used to
   # allow a day-old copy to be shown while a fresh one was fetched
