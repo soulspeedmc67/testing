@@ -137,7 +137,8 @@ fun ProductCard(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            // "pcs" on its own says nothing; a size such as "500 g" does.
+            if (product.sizeLabel != null) Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
                     .background(DashitColors.SurfaceMuted)

@@ -25,7 +25,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -91,6 +90,7 @@ fun ProductDetailSheet(
     val activePrice = selectedVariant?.price ?: product.price
     val activeOriginalPrice = (selectedVariant?.originalPrice ?: product.originalPrice)?.takeIf { it > activePrice }
     val activeUnit = selectedVariant?.unit ?: product.unit
+    val activeSize = com.dashit.app.data.model.sizeLabel(activeUnit)
 
     BackHandler {
         onDismiss()
@@ -218,27 +218,8 @@ fun ProductDetailSheet(
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Rating row: only a real rating, never a made-up one.
-                    if (product.rating != null) Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = null,
-                            tint = DashitColors.Caution,
-                            modifier = Modifier.padding(bottom = 1.dp)
-                        )
-                        Text(
-                            text = product.rating,
-                            color = DashitColors.TextPrimary,
-                            fontSize = 13.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        product.ratingCount?.let { count ->
-                            Text(text = "($count ratings)", color = DashitColors.TextMuted, fontSize = 13.5.sp)
-                        }
-                    }
+                    // No star rating: DASHit has no ratings from its own shoppers,
+                    // and the product list's "4.8 (120)" is a placeholder.
 
                     Spacer(modifier = Modifier.height(14.dp))
 
@@ -282,7 +263,7 @@ fun ProductDetailSheet(
                     }
 
                     Text(
-                        text = "$activeUnit · Inclusive of all taxes",
+                        text = listOfNotNull(activeSize, "Inclusive of all taxes").joinToString(" · "),
                         color = DashitColors.TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium
@@ -371,8 +352,10 @@ fun ProductDetailSheet(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        SpecRow(label = "Net quantity", value = activeUnit)
-                        HorizontalDivider(color = DashitColors.HairlineSoft, thickness = 1.dp)
+                        if (activeSize != null) {
+                            SpecRow(label = "Net quantity", value = activeSize)
+                            HorizontalDivider(color = DashitColors.HairlineSoft, thickness = 1.dp)
+                        }
                         SpecRow(label = "Category", value = product.cat)
                         HorizontalDivider(color = DashitColors.HairlineSoft, thickness = 1.dp)
                         SpecRow(label = "Sold by", value = "DASHit Express Hub, Anantnag")
@@ -426,8 +409,8 @@ fun ProductDetailSheet(
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold
                             )
-                            Text(
-                                text = activeUnit,
+                            if (activeSize != null) Text(
+                                text = activeSize,
                                 color = DashitColors.TextSecondary,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium

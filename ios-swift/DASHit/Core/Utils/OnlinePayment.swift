@@ -145,8 +145,8 @@ final class OnlinePayment: NSObject {
     /// Asks the server (which asks Razorpay) whether this order was paid. A UPI
     /// app can confirm a moment after the shopper is back, so it looks twice.
     private func paidReceipt(_ razorpayOrderId: String) async -> PaymentReceipt? {
-        for attempt in 0..<2 {
-            if attempt > 0 { try? await Task.sleep(for: .seconds(2)) }
+        for attempt in 0..<5 {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(2.5)) }
             guard let status: Status = try? await post("payment-status.php", body: ["razorpay_order_id": razorpayOrderId]) else { continue }
             if status.paid, let paymentId = status.razorpay_payment_id, !paymentId.isEmpty {
                 return PaymentReceipt(razorpayOrderId: razorpayOrderId, razorpayPaymentId: paymentId, amountPaidPaise: status.amount_paid)

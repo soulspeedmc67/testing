@@ -488,8 +488,20 @@ function dashit_firestore_delete(array $account, string $path): void
 function dashit_staff_role(array $account, array $claims): array
 {
     $uid = (string) ($claims['sub'] ?? '');
-    $isOwner = $uid === 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-        || (($claims['email'] ?? '') === 'm4k3ditz@gmail.com' && ($claims['email_verified'] ?? false) === true);
+    $email = strtolower(trim((string) ($claims['email'] ?? '')));
+    $ownerUids = [
+        'DOf5enic8SXBZTupGJbxDrNdrOt2',
+        's1jkY9BfGNQBqeykkvFtzsVAqLq1', // kanyualeem416@gmail.com
+        'mWN8b37A5FXMHnUaSf6SbTLiDej1', // soulspeedmc67@gmail.com
+        '06RRC5cz6JUIJPyoP5LUPNLFbeB3', // mirmanal.mm@gmail.com
+    ];
+    $ownerEmails = [
+        'm4k3ditz@gmail.com',
+        'soulspeedmc67@gmail.com',
+        'kanyualeem416@gmail.com',
+        'mirmanal.mm@gmail.com',
+    ];
+    $isOwner = in_array($uid, $ownerUids, true) || in_array($email, $ownerEmails, true);
     if ($isOwner) return [true, 'admin'];
     $staff = $uid === '' ? null : dashit_firestore_get($account, "staff/$uid");
     if (!is_array($staff) || ($staff['active'] ?? false) !== true) return [false, null];

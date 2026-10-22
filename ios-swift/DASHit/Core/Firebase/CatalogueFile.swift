@@ -102,8 +102,11 @@ final class CatalogueFile: NSObject, ListenerRegistration {
         let shownCount = file.products.filter { ($0["active"] as? Bool) != false }.count
         let accepted: Bool = await run {
             let before = self.entries.values.filter { ($0["active"] as? Bool) != false }.count
-            // A broken or truncated file never replaces a good copy.
-            guard file.version > 0, shownCount >= 50, before == 0 || Double(shownCount) >= Double(before) * 0.9 else { return false }
+            // A broken or truncated file never replaces a good copy. From format 2
+            // the website checks the file itself, and a shorter one means products
+            // were really removed, so it is taken as it is.
+            let checked = file.format >= 2 || (shownCount >= 50 && (before == 0 || Double(shownCount) >= Double(before) * 0.9))
+            guard file.version > 0, checked else { return false }
             self.replaceAll(file)
             try? FileManager.default.createDirectory(at: Self.savedURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? data.write(to: Self.savedURL, options: .atomic)
@@ -154,13 +157,18 @@ final class CatalogueFile: NSObject, ListenerRegistration {
 
     private struct File {
         let version: Int64
+        let format: Int
         let products: [[String: Any]]
     }
 
     private static func parse(_ data: Data) -> File? {
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let products = json["products"] as? [[String: Any]] else { return nil }
-        return File(version: (json["version"] as? NSNumber)?.int64Value ?? 0, products: products)
+        return File(
+            version: (json["version"] as? NSNumber)?.int64Value ?? 0,
+            format: (json["format"] as? NSNumber)?.intValue ?? 1,
+            products: products
+        )
     }
 
     private func replaceAll(_ file: File) {

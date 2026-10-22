@@ -29,12 +29,17 @@ import {
   MessageSquare,
   Layers,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ShoppingBag,
   Sparkles,
   User
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import {
   watchDriverOrders,
+  watchAvailableOrders,
+  claimOrder,
   pushDriverTelemetryToQueue,
   updateOrderStatus,
   ORDER_STATUS
@@ -614,9 +619,15 @@ export default function DashItDriverApp() {
     }
   };
 
-  // 4. Assigned Orders Listener (SINGLE listener, only orders assigned to this rider)
+  // 4. Assigned Orders & Available Pool Listeners
   const [assignedOrders, setAssignedOrders] = useState([]);
   const [activeQueueIndex, setActiveQueueIndex] = useState(0);
+  const [availableOrders, setAvailableOrders] = useState([]);
+  const [claimingOrderId, setClaimingOrderId] = useState(null);
+  const [showAvailableSheet, setShowAvailableSheet] = useState(false);
+  const [previewItemsOrderId, setPreviewItemsOrderId] = useState(null);
+  const [checkedItems, setCheckedItems] = useState({});
+  const [isItemsExpanded, setIsItemsExpanded] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("preview=")) {
@@ -631,6 +642,71 @@ export default function DashItDriverApp() {
     });
     return () => unsub();
   }, [user?.uid, isDeactivated, isPendingApproval]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("preview=")) {
+      return;
+    }
+    if (!user?.uid || isDeactivated || isPendingApproval) {
+      setAvailableOrders([]);
+      return;
+    }
+    const unsub = watchAvailableOrders((orders) => {
+      setAvailableOrders(orders || []);
+    });
+    return () => unsub();
+  }, [user?.uid, isDeactivated, isPendingApproval]);
+
+  const handleClaimOrder = async (order) => {
+    if (!order || claimingOrderId) return;
+    const orderId = order.orderId || order.id;
+    setClaimingOrderId(orderId);
+    try {
+      const riderName = inputName.trim() || user?.displayName || `Rider ${user.uid.slice(-4)}`;
+      const res = await claimOrder(orderId, user.uid, riderName);
+      if (res?.success) {
+        soundAlerts.playSuccess();
+        speak(strings.speechAccept || "Order accepted. Check items.");
+        setShowAvailableSheet(false);
+      } else {
+        soundAlerts.playError();
+        alert(res?.message || "Could not accept order");
+      }
+    } catch (e) {
+      soundAlerts.playError();
+      console.warn("Failed to claim order:", e);
+    } finally {
+      setClaimingOrderId(null);
+    }
+  };
+
+  const toggleCheckItem = (idx) => {
+    const orderId = activeOrder?.orderId || activeOrder?.id;
+    if (!orderId) return;
+    setCheckedItems((prev) => {
+      const cur = prev[orderId] || {};
+      return {
+        ...prev,
+        [orderId]: {
+          ...cur,
+          [idx]: !cur[idx],
+        },
+      };
+    });
+  };
+
+  const handleCheckAllItems = (items) => {
+    const orderId = activeOrder?.orderId || activeOrder?.id;
+    if (!orderId || !items) return;
+    const nextChecks = {};
+    items.forEach((_, idx) => {
+      nextChecks[idx] = true;
+    });
+    setCheckedItems((prev) => ({
+      ...prev,
+      [orderId]: nextChecks,
+    }));
+  };
 
   // While waiting, look again every few seconds: the screen opens by itself once approved.
   useEffect(() => {
@@ -1340,28 +1416,151 @@ export default function DashItDriverApp() {
           </div>
         </div>
 
-        {/* Calm Resting Illustration */}
-        <div className="my-auto text-center space-y-6">
-          <div className="w-56 h-56 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center relative">
-            <img
-              src="/rider/rider_180.png"
-              alt=""
-              width={256}
-              height={256}
-              className="w-52 h-52 object-contain"
-            />
-            {onDuty && (
-              <div className="absolute top-6 right-6 w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center">
-                <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+        {/* Available Orders Pool or Calm Resting Illustration */}
+        {onDuty && availableOrders.length > 0 ? (
+          <div className="my-auto space-y-3.5 py-4 overflow-y-auto max-h-[calc(100vh-250px)] no-scrollbar">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <h2 className="text-xl font-black text-white">{strings.availableOrders || "Available Orders"}</h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono text-xs font-black">
+                  {availableOrders.length}
+                </span>
               </div>
-            )}
-          </div>
+              <span className="text-xs text-slate-400 font-medium">Tap to accept</span>
+            </div>
 
-          <div className="space-y-1">
-            <h2 className="text-3xl font-black text-slate-100">{strings.waitingOrder}</h2>
-            <p className="text-slate-400 font-medium text-sm">{strings.todayDeliveries}: {todayDeliveredCount}</p>
+            <div className="space-y-3">
+              {availableOrders.map((ord) => {
+                const ordId = ord.orderId || ord.id;
+                const isClaiming = claimingOrderId === ordId;
+                const isPreviewing = previewItemsOrderId === ordId;
+                const area = areaOf(ord);
+                const itemsCount = ord.items?.length || 0;
+                const unitsCount = (ord.items || []).reduce((sum, it) => sum + (it.qty || it.quantity || 1), 0);
+                const total = ord.totalAmount || ord.total || 0;
+                const cod = isCashOnDelivery(ord);
+
+                return (
+                  <div
+                    key={ordId}
+                    className="p-4 rounded-3xl bg-slate-800/90 border border-slate-700/80 shadow-lg space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-start space-x-3 min-w-0">
+                        <div className="w-10 h-10 rounded-2xl bg-orange-500/15 text-[#FF5B00] flex items-center justify-center shrink-0 mt-0.5">
+                          <MapPin className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-xs font-black text-[#FF5B00]">#{String(ordId).slice(-6).toUpperCase()}</span>
+                            <span className="px-1.5 py-0.5 rounded-md bg-slate-700 text-slate-300 text-[10px] font-bold">
+                              {ord.status || "Placed"}
+                            </span>
+                          </div>
+                          <p className="font-black text-lg text-white truncate mt-0.5">{area}</p>
+                          <p className="text-xs text-slate-400 truncate">{orderAddress(ord, "")}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <span className="block font-black text-xl text-white">₹{total}</span>
+                        <span className={"text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-0.5 " + (
+                          cod ? "bg-amber-500/15 text-amber-300" : "bg-emerald-500/15 text-emerald-300"
+                        )}>
+                          {cod ? "COD" : "Paid ✓"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Items row / preview */}
+                    <div className="pt-2 border-t border-slate-700/50 flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewItemsOrderId(isPreviewing ? null : ordId)}
+                        className="text-xs font-bold text-slate-300 hover:text-white flex items-center space-x-1 active:scale-95 cursor-pointer"
+                      >
+                        <Package className="w-4 h-4 text-orange-400" />
+                        <span>{itemsCount} {strings.items || "Items"} ({unitsCount} {strings.bags || "units"})</span>
+                        {isPreviewing ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isClaiming}
+                        onClick={() => handleClaimOrder(ord)}
+                        className="px-5 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white font-black text-sm flex items-center space-x-2 shadow-md active:scale-95 transition-all cursor-pointer"
+                      >
+                        {isClaiming ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>{strings.accepting || "Accepting..."}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4 stroke-[3]" />
+                            <span>{strings.acceptOrder || "Accept Order"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Expanded Items Preview */}
+                    {isPreviewing && ord.items && ord.items.length > 0 && (
+                      <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-700/60 space-y-2 mt-2">
+                        <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                          {strings.orderItems || "Order Items"}
+                        </p>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                          {ord.items.map((it, idx) => {
+                            const qty = it.qty || it.quantity || 1;
+                            const unit = it.unit || it.pack || it.weight || "";
+                            return (
+                              <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-slate-800/80 last:border-0">
+                                <div className="flex items-center space-x-2 min-w-0">
+                                  <span className="font-mono font-black text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                                    {qty}x
+                                  </span>
+                                  <span className="font-bold text-slate-200 truncate">{it.name}</span>
+                                  {unit && <span className="text-[10px] text-slate-500 shrink-0">({unit})</span>}
+                                </div>
+                                {it.price && (
+                                  <span className="font-mono text-slate-400 shrink-0 ml-2">₹{it.price * qty}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="my-auto text-center space-y-6">
+            <div className="w-56 h-56 rounded-full bg-slate-800/80 mx-auto flex items-center justify-center relative">
+              <img
+                src="/rider/rider_180.png"
+                alt=""
+                width={256}
+                height={256}
+                className="w-52 h-52 object-contain"
+              />
+              {onDuty && (
+                <div className="absolute top-6 right-6 w-6 h-6 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center">
+                  <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <h2 className="text-3xl font-black text-slate-100">{strings.waitingOrder}</h2>
+              <p className="text-slate-400 font-medium text-sm">{strings.todayDeliveries}: {todayDeliveredCount}</p>
+            </div>
+          </div>
+        )}
 
         {/* Bottom On Duty / Off Duty Big Switch */}
         <div className="pb-4 space-y-3">
@@ -1446,6 +1645,16 @@ export default function DashItDriverApp() {
         </button>
 
         <div className="flex items-center gap-2">
+          {availableOrders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowAvailableSheet(true)}
+              className="h-11 px-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-black text-sm flex items-center space-x-1.5 active:scale-95"
+            >
+              <Package className="w-4 h-4" />
+              <span>+{availableOrders.length}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowLangSheet(true)}
@@ -1570,6 +1779,112 @@ export default function DashItDriverApp() {
             </button>
           ))}
         </div>
+
+        {/* Order Items Checklist Card */}
+        {activeOrder?.items && activeOrder.items.length > 0 && (
+          <div className="rounded-3xl bg-slate-900 border border-slate-800 p-3.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div
+                onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+                className="flex items-center space-x-2 cursor-pointer select-none"
+              >
+                <div className="w-8 h-8 rounded-xl bg-orange-500/15 text-[#FF5B00] flex items-center justify-center">
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="font-black text-sm text-white">{strings.orderItems || "Order Items"}</span>
+                    {(() => {
+                      const orderId = activeOrder.orderId || activeOrder.id;
+                      const orderChecks = checkedItems[orderId] || {};
+                      const checkedCount = Object.values(orderChecks).filter(Boolean).length;
+                      const totalCount = activeOrder.items.length;
+                      const allDone = totalCount > 0 && checkedCount === totalCount;
+                      return (
+                        <span className={"px-2 py-0.5 rounded-full text-[10px] font-black " + (
+                          allDone ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-300"
+                        )}>
+                          {allDone ? (strings.allItemsChecked || "All Checked ✓") : `${checkedCount}/${totalCount}`}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => handleCheckAllItems(activeOrder.items)}
+                  className="text-xs font-black text-orange-400 hover:text-orange-300 active:scale-95 px-2 py-1"
+                >
+                  {strings.checkAll || "Check All"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsItemsExpanded(!isItemsExpanded)}
+                  className="p-1 text-slate-400 hover:text-white"
+                >
+                  {isItemsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {isItemsExpanded && (
+              <div className="space-y-2 pt-1 border-t border-slate-800/80 max-h-48 overflow-y-auto no-scrollbar">
+                {activeOrder.items.map((it, idx) => {
+                  const orderId = activeOrder.orderId || activeOrder.id;
+                  const isChecked = !!(checkedItems[orderId]?.[idx]);
+                  const qty = it.qty || it.quantity || 1;
+                  const unit = it.unit || it.pack || it.weight || "";
+                  const img = it.image || it.img || it.photo;
+
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => toggleCheckItem(idx)}
+                      className={"p-2.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all active:scale-[0.99] " + (
+                        isChecked
+                          ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-200"
+                          : "bg-slate-800/60 border-slate-700/60 text-slate-200 hover:bg-slate-800"
+                      )}
+                    >
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <div className={"w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 transition-colors " + (
+                          isChecked ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-500 bg-transparent"
+                        )}>
+                          {isChecked && <Check className="w-4 h-4 stroke-[3]" />}
+                        </div>
+
+                        {img && (
+                          <img
+                            src={img}
+                            alt=""
+                            className="w-9 h-9 rounded-xl object-contain bg-white/5 p-0.5 shrink-0"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                        )}
+
+                        <div className="min-w-0">
+                          <p className={"font-black text-xs leading-snug truncate " + (isChecked ? "line-through opacity-70" : "")}>
+                            {it.name}
+                          </p>
+                          {unit && <p className="text-[10px] text-slate-400">{unit}</p>}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 pl-2">
+                        <span className="font-mono font-black text-xs px-2 py-1 rounded-lg bg-orange-500/20 text-orange-400">
+                          {qty}x
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Dynamic Delivery Flow Action */}
         {isOrderPlacedOrPacked ? (
@@ -1749,6 +2064,139 @@ export default function DashItDriverApp() {
                   {lang === l.id && <Check className="w-7 h-7 stroke-[3]" />}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Available Orders Bottom Sheet (for Multi-Drop Self-Acceptance) */}
+      {showAvailableSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-slate-900 border-t border-slate-800 rounded-t-3xl p-6 space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 shrink-0">
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="font-black text-lg text-white">
+                  {strings.availableOrders || "Available Orders"}
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  {availableOrders.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAvailableSheet(false)}
+                className="p-2 text-slate-400 hover:text-white"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto space-y-3 pr-1 flex-1">
+              {availableOrders.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-sm">
+                  {strings.noAvailableOrders || "No available orders right now"}
+                </div>
+              ) : (
+                availableOrders.map((ord) => {
+                  const ordId = ord.orderId || ord.id;
+                  const isClaiming = claimingOrderId === ordId;
+                  const isCOD = ord.paymentMethod === "COD" || ord.paymentMethod === "cod" || ord.paymentMethod === "cash";
+                  const orderDest = ord.deliveryAddress?.area || ord.deliveryAddress?.street || ord.area || "Anantnag";
+                  const isPreviewing = previewItemsOrderId === ordId;
+                  const itemsCount = ord.items?.length || 0;
+                  const unitsCount = ord.items?.reduce((sum, it) => sum + (it.qty || it.quantity || 1), 0) || 0;
+
+                  return (
+                    <div
+                      key={ordId}
+                      className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono font-black text-emerald-400 text-sm">
+                              #{ordId.slice(-4).toUpperCase()}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-700 text-slate-300">
+                              {ord.status || "Placed"}
+                            </span>
+                          </div>
+                          <p className="text-white font-bold text-base mt-1 flex items-center space-x-1.5">
+                            <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span className="truncate">{orderDest}</span>
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-black text-lg text-white">₹{ord.total || 0}</span>
+                          <p className={`text-[11px] font-bold ${isCOD ? "text-amber-400" : "text-emerald-400"}`}>
+                            {isCOD ? "Cash on Delivery" : "Paid Online"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewItemsOrderId(isPreviewing ? null : ordId)}
+                          className="text-xs font-bold text-slate-300 hover:text-white flex items-center space-x-1 active:scale-95 cursor-pointer"
+                        >
+                          <Package className="w-4 h-4 text-orange-400" />
+                          <span>{itemsCount} {strings.items || "Items"} ({unitsCount} {strings.bags || "units"})</span>
+                          {isPreviewing ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isClaiming}
+                          onClick={() => handleClaimOrder(ord)}
+                          className="px-5 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 text-white font-black text-sm flex items-center space-x-2 shadow-md active:scale-95 transition-all cursor-pointer"
+                        >
+                          {isClaiming ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                              <span>{strings.accepting || "Accepting..."}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4 stroke-[3]" />
+                              <span>{strings.acceptOrder || "Accept Order"}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {isPreviewing && ord.items && ord.items.length > 0 && (
+                        <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-700/60 space-y-2 mt-2">
+                          <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                            {strings.orderItems || "Order Items"}
+                          </p>
+                          <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
+                            {ord.items.map((it, idx) => {
+                              const qty = it.qty || it.quantity || 1;
+                              const unit = it.unit || it.pack || it.weight || "";
+                              return (
+                                <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-slate-800/80 last:border-0">
+                                  <div className="flex items-center space-x-2 min-w-0">
+                                    <span className="font-mono font-black text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                                      {qty}x
+                                    </span>
+                                    <span className="font-bold text-slate-200 truncate">{it.name}</span>
+                                    {unit && <span className="text-[10px] text-slate-500 shrink-0">({unit})</span>}
+                                  </div>
+                                  {it.price && (
+                                    <span className="font-mono text-slate-400 shrink-0 ml-2">₹{it.price * qty}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

@@ -93,11 +93,12 @@ function dashit_push_join_topic(array $account, string $token, string $topic): v
 }
 
 /** Sends one message to one token. Returns 'ok', 'gone' (token no longer valid) or 'failed'. */
-function dashit_push_send(array $account, string $token, string $title, string $text, array $data): string
+function dashit_push_send(array $account, string $token, string $title, string $text, array $data, string $app = 'customer'): string
 {
     $access = dashit_google_access_token($account);
     $project = (string) ($account['project_id'] ?? '');
     if ($access === null || $project === '') return 'failed';
+    $bundleId = $app === 'admin' ? 'com.dashit.admin' : 'com.dashit.app';
     $message = [
         'token' => $token,
         'notification' => ['title' => $title, 'body' => $text],
@@ -107,8 +108,19 @@ function dashit_push_send(array $account, string $token, string $title, string $
             'notification' => ['channel_id' => 'order_updates', 'sound' => 'default', 'tag' => $data['orderId'] ?? 'dashit'],
         ],
         'apns' => [
-            'headers' => ['apns-priority' => '10'],
-            'payload' => ['aps' => ['sound' => 'default', 'thread-id' => $data['orderId'] ?? 'dashit']],
+            'headers' => [
+                'apns-priority' => '10',
+                'apns-push-type' => 'alert',
+                'apns-topic' => $bundleId,
+            ],
+            'payload' => [
+                'aps' => [
+                    'alert' => ['title' => $title, 'body' => $text],
+                    'sound' => 'default',
+                    'badge' => 1,
+                    'thread-id' => $data['orderId'] ?? 'dashit',
+                ],
+            ],
         ],
     ];
     [$status, $reply] = dashit_firestore_request(
@@ -133,7 +145,7 @@ function dashit_push_to(array $account, array $rows, string $app, string $title,
     $sent = 0;
     foreach ($rows as [$id, $fields]) {
         if (($fields['app'] ?? 'customer') !== $app || empty($fields['token'])) continue;
-        $result = dashit_push_send($account, (string) $fields['token'], $title, $text, $data);
+        $result = dashit_push_send($account, (string) $fields['token'], $title, $text, $data, $app);
         if ($result === 'ok') $sent++;
         if ($result === 'gone') dashit_firestore_delete($account, "pushTokens/$id");
     }

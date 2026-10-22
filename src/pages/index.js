@@ -549,7 +549,17 @@ export default function LandingPage() {
 
           <div className="pb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[12px] text-slate-400">
             <p>© {new Date().getFullYear()} DASHIT Technologies · Anantnag 192101</p>
-            <p>Built in Kashmir.</p>
+            <p>
+              Built in Kashmir by{" "}
+              <a
+                href="https://www.northforgelabs.online"
+                target="_blank"
+                rel="noopener"
+                className="text-slate-300 underline decoration-white/25 underline-offset-[3px] hover:text-white hover:decoration-white/60 transition-colors"
+              >
+                Northforge Labs
+              </a>
+            </p>
           </div>
         </div>
       </footer>

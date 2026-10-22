@@ -90,7 +90,7 @@ class StorefrontViewModel(
             CategoryTile(
                 id = cat.id,
                 name = cat.name,
-                previewImages = items.asSequence().map { it.img }.filter { it.isNotBlank() }.distinct().take(4).toList(),
+                previewImages = items.asSequence().map { it.img }.filter { it.isNotBlank() }.distinct().take(8).toList(), // 4 shown, 4 spares for broken links
                 productCount = items.size
             )
         }

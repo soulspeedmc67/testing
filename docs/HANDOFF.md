@@ -6,6 +6,50 @@
 
 ---
 
+## Oct 17, 2026: Android 1.2.2 (104) for Google Play, fake ratings gone, Northforge credit
+
+Android VERIFIED on the Pixel (release build 1.2.2 installed over the old
+one; light and dark on home, categories, search, product sheet, cart,
+profile, order again) and VERIFIED to compile after the later fixes. The
+release APK/AAB must be built again to carry those later fixes (the
+compliance guard blocks the agent from running the release build; the
+owner runs it with `APP_STORE_GUARD_OK=1`). Web VERIFIED by 97 tests and
+the local dev build. Nothing is deployed, committed or uploaded.
+
+- **Website credit**: the landing page's bottom line reads "Built in Kashmir
+  by Northforge Labs", linking to https://www.northforgelabs.online (the
+  owner's studio; checked live on 17 Oct). Waiting on the owner's OK before
+  it goes on the live site.
+- **Made-up star ratings removed** (Android, web; iOS still has them, see
+  below). Every product showed "4.8 (120 ratings)": a default in
+  `Product.kt` / `FirestoreRepository.kt`, and the same pair is baked into
+  all 3,178 rated items of `catalog.json`. DASHit has no ratings, so no
+  client shows one now; the website's Google product markup (`JsonLd.jsx`)
+  no longer claims a rating or guesses "Amul" as the brand. Search's
+  "popular" order used the fake count, so it has no effect now.
+  **iOS** `Models/Product.swift` still defaults `ratingCount` to "120" and
+  `ProductDetailSheet.swift` shows it: remove in the next iPhone build.
+- **Android fixes**: no longer shows over the lock screen or keeps the screen
+  on (only the live tracking map keeps it awake); the window behind the app
+  follows light/dark; switching the phone's dark mode no longer restarts the
+  screen (it closed Profile/cart and reshuffled the shelves; `uiMode` in
+  `configChanges`); "pcs" alone is no longer shown as a size (card, search,
+  product sheet: `Product.sizeLabel`); search puts whole-word matches first
+  ("milk" finds milk before Milka/Milky Mist; iOS still ranks the old way);
+  the search hint reads "milk, curd & paneer" (was "ganesh idol"); category
+  collages and the aisle circles skip a photo that fails to load.
+- **Compliance guard** flags Play Billing (not needed: groceries are physical
+  goods), two Apple-only rules, "SharedPreferences credentials" (only a
+  profile copy, no tokens) and an "unsafe deep link" (`upi://` is only in
+  `<queries>`). Tobacco on Android is allowed by Play's grocery-delivery
+  exception (ID at the door, not promoted).
+- **Play**: Google sign-in for Play installs needs Play's app signing key
+  SHA-1 in Firebase; `CA:06:A2:2E...` is registered and is probably it (not
+  checked against Play Console). Production access needs 12+ testers opted
+  in for 14 days running, with real use and updates during that time.
+- **Product names with typos** come from the product list ("MILKY MIST GREEN
+  APLLE", "MOTHER DIIARY BUTTER"): fix in the console.
+
 ## Oct 13, 2026: old iPhone apps must update; full bill and rider's place for the admin
 
 Web VERIFIED (97 tests, production build, and the console on a local build

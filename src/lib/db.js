@@ -2538,8 +2538,9 @@ export async function wipeStoreForFreshStart(catalogue = null, options = {}) {
 }
 
 /** Driver claims an unassigned order. */
-export async function claimOrder(orderId, driverId, driverName) {
-  const applyLocalClaim = () => {
+export async function claimOrder(orderId, driverId, driverName, targetStatus = null) {
+  const applyLocalClaim = (finalStatus) => {
+    const nextStatus = finalStatus || ORDER_STATUS.PACKED;
     if (typeof window !== "undefined") {
       try {
         const active = localStorage.getItem("dashit_active_order");
@@ -2548,7 +2549,8 @@ export async function claimOrder(orderId, driverId, driverName) {
           if (String(ord.orderId) === String(orderId) || String(ord.id) === String(orderId)) {
             ord.driverId = driverId;
             ord.driverName = driverName || "Delivery Partner";
-            ord.status = ORDER_STATUS.OUT_FOR_DELIVERY;
+            ord.status = nextStatus;
+            ord.assignedAt = new Date().toISOString();
             ord.updatedAt = new Date().toISOString();
             localStorage.setItem("dashit_active_order", JSON.stringify(ord));
           }
@@ -2562,7 +2564,8 @@ export async function claimOrder(orderId, driverId, driverName) {
                   ...o,
                   driverId,
                   driverName: driverName || "Delivery Partner",
-                  status: ORDER_STATUS.OUT_FOR_DELIVERY,
+                  status: nextStatus,
+                  assignedAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                 }
               : o
@@ -2571,7 +2574,7 @@ export async function claimOrder(orderId, driverId, driverName) {
         }
         window.dispatchEvent(
           new CustomEvent("dashit_orders_updated", {
-            detail: { orderId, status: ORDER_STATUS.OUT_FOR_DELIVERY },
+            detail: { orderId, status: nextStatus },
           })
         );
       } catch (e) {}
@@ -2580,13 +2583,14 @@ export async function claimOrder(orderId, driverId, driverName) {
 
   const db = getDb();
   if (!db) {
-    applyLocalClaim();
+    applyLocalClaim(targetStatus || ORDER_STATUS.PACKED);
     return { success: true, localUpdated: true };
   }
 
   /* Claiming is a transaction so two riders tapping "Claim" on the same order
      cannot both win: the second read sees a driverId and aborts. */
   try {
+    let resolvedStatus = targetStatus || ORDER_STATUS.PACKED;
     await runTransaction(db, async (tx) => {
       const ref = doc(db, "orders", String(orderId));
       const snap = await tx.get(ref);
@@ -2595,19 +2599,24 @@ export async function claimOrder(orderId, driverId, driverName) {
       if (existingDriver && existingDriver !== driverId) {
         throw new Error("ORDER_ALREADY_CLAIMED");
       }
+      const curStatus = snap.data().status;
+      resolvedStatus = targetStatus || (curStatus === ORDER_STATUS.PLACED ? ORDER_STATUS.PACKED : (curStatus || ORDER_STATUS.PACKED));
+      const nowIso = new Date().toISOString();
       tx.update(ref, {
         driverId,
         driverName: driverName || "Delivery Partner",
-        status: ORDER_STATUS.OUT_FOR_DELIVERY,
+        status: resolvedStatus,
+        assignedAt: nowIso,
         updatedAt: serverTimestamp(),
-        statusHistory: arrayUnion({ status: ORDER_STATUS.OUT_FOR_DELIVERY, at: new Date().toISOString() }),
+        statusHistory: arrayUnion({ status: resolvedStatus, at: nowIso }),
       });
     });
 
-    // Transaction succeeded: apply local updates safely
-    applyLocalClaim();
+    // Transaction succeeded: apply local updates safely & seed live position
+    applyLocalClaim(resolvedStatus);
+    seedRiderPosition(db, orderId, driverId);
     requestOrderPush(orderId);
-    return { success: true, firestoreSynced: true };
+    return { success: true, firestoreSynced: true, status: resolvedStatus };
   } catch (err) {
     if (err?.message === "ORDER_ALREADY_CLAIMED") {
       return {

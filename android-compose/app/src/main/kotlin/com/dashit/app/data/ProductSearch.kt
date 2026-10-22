@@ -16,9 +16,10 @@ import java.text.Normalizer
 
 /**
  * Search over the catalogue the shopper can see (tobacco and other 18+ items
- * are already left out when the catalogue loads), ranked the same way as the
+ * are already left out when the catalogue loads), ranked like the
  * iOS app: every word typed has to match the name, category or badge; names
- * that start with the text come first, then in-stock and popular items.
+ * with every typed word as a whole word come first, then names that start
+ * with the text, then in-stock and popular items.
  */
 object ProductSearch {
     private val combiningMarks = Regex("\\p{Mn}+")
@@ -105,12 +106,15 @@ object ProductSearch {
         val cat = normalized(product.cat)
         val badge = normalized(product.badge ?: "")
         if (queryWords.any { !(name.contains(it) || cat.contains(it) || badge.contains(it)) }) return null
+        val nameWords = words(name)
         return when {
-            name.startsWith(query) -> 0
-            words(name).any { it.startsWith(query) } -> 1
-            name.contains(query) -> 2
-            queryWords.all { name.contains(it) } -> 3
-            else -> 4
+            // "milk" finds Amul Taaza Milk before Milka or Milky Mist.
+            queryWords.all { it in nameWords } -> 0
+            name.startsWith(query) -> 1
+            nameWords.any { it.startsWith(query) } -> 2
+            name.contains(query) -> 3
+            queryWords.all { name.contains(it) } -> 4
+            else -> 5
         }
     }
 

@@ -57,19 +57,18 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Asks Razorpay (through the server) whether this order was paid. */
 async function checkPaid(razorpayOrderId) {
-  for (let i = 0; i < 4; i += 1) {
+  for (let i = 0; i < 5; i += 1) {
+    if (i > 0) await wait(2500);
     try {
       const status = await post("payment-status.php", { razorpay_order_id: razorpayOrderId });
-      if (status?.paid) {
+      if (status?.paid && status.razorpay_payment_id) {
         return {
           razorpayOrderId,
           razorpayPaymentId: status.razorpay_payment_id,
           amountPaidPaise: status.amount_paid,
         };
       }
-      if (status && status.paid === false) return null;
     } catch (e) {}
-    await wait(1500 * (i + 1));
   }
   return null;
 }

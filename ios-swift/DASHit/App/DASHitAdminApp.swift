@@ -98,6 +98,10 @@ struct DASHitAdminAppView: View {
                 .background(Color(uiColor: .systemGroupedBackground))
         case .owner:
             AdminDashboardView(onSignOut: { session.signOut() })
+                .onAppear {
+                    Push.shared.requestPermission()
+                    Push.shared.register()
+                }
         case .signedOut, .notOwner:
             AdminSignInView(session: session)
         }
@@ -206,6 +210,7 @@ struct DASHitAdminApp: App {
 
     init() {
         FirebaseManager.shared.configure()
+        OrderNotifications.showWhileOpen()
         URLCache.shared = URLCache(memoryCapacity: 64 * 1024 * 1024, diskCapacity: 256 * 1024 * 1024)
     }
 

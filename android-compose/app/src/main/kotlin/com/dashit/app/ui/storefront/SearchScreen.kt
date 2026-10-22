@@ -634,7 +634,7 @@ private fun SearchProductRow(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${product.unit} · ${product.displayPrice}",
+                    text = listOfNotNull(product.sizeLabel, product.displayPrice).joinToString(" · "),
                     color = DashitColors.TextMuted,
                     fontSize = 12.5.sp,
                     fontWeight = FontWeight.Medium,

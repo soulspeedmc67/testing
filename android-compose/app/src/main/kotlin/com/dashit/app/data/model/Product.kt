@@ -18,8 +18,8 @@ data class Product(
     val unit: String,
     val price: Double,
     val originalPrice: Double? = null,
-    val rating: String? = "4.8",
-    val ratingCount: String? = "120",
+    val rating: String? = null,
+    val ratingCount: String? = null,
     val time: String? = "8 mins",
     val options: String? = null,
     val badge: String? = null,
@@ -59,10 +59,20 @@ data class Product(
     val displayPrice: String
         get() = "₹${price.toInt()}"
 
+    /** The pack size ("500 g"), or null when the unit is only "pcs" and says nothing. */
+    val sizeLabel: String?
+        get() = sizeLabel(unit)
+
     /** The MRP, struck through, only when it's really higher than the price. */
     val displayOriginalPrice: String?
         get() = originalPrice?.takeIf { it > price }?.let { "₹${it.toInt()}" }
 }
+
+/** [unit] unless it is a bare count word ("pcs", "unit") with no size in it. */
+fun sizeLabel(unit: String?): String? =
+    unit?.trim()?.takeIf { it.lowercase() !in BareUnits }
+
+private val BareUnits = setOf("", "pcs", "pc", "piece", "pieces", "unit", "units", "nos", "no", "1")
 
 /** One name per aisle: chips and namkeen are filed under Snacks, as on iOS. */
 fun shopCategory(raw: String): String = when (raw.trim().lowercase()) {

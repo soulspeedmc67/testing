@@ -68,8 +68,11 @@ class CatalogueFile(context: Context) {
                     val products = data.getJSONArray("products")
                     val shownCount = (0 until products.length()).count { products.getJSONObject(it).optBoolean("active", true) }
                     val before = shown().size
-                    // A broken or truncated file never replaces a good copy.
-                    if (data.optLong("version") <= 0 || shownCount < 50 || (before > 0 && shownCount < before * 0.9)) {
+                    // A broken or truncated file never replaces a good copy. From format 2
+                    // the website checks the file itself, and a shorter one means products
+                    // were really removed, so it is taken as it is.
+                    val checked = data.optInt("format", 1) >= 2 || (shownCount >= 50 && (before == 0 || shownCount >= before * 0.9))
+                    if (data.optLong("version") <= 0 || !checked) {
                         Log.w(TAG, "Catalogue file refused: $shownCount products (had $before)")
                         return false
                     }

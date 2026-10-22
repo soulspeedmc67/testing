@@ -28,16 +28,16 @@ if ($status !== 200) {
     dashit_respond($status === 404 ? 400 : 502, ['paid' => false, 'error' => 'Couldn\'t check the payment right now.']);
 }
 
-// The order says "paid" once a payment on it is captured; find which one.
+// Check all payments made for this Razorpay order, even if the parent
+// order status has not synced to "paid" yet (e.g. slow UPI callbacks).
 $captured = null;
-if (($order['status'] ?? '') === 'paid' || (int) ($order['amount_paid'] ?? 0) > 0) {
-    [$paymentsStatus, $payments] = dashit_razorpay_request('GET', '/v1/orders/' . rawurlencode($orderId) . '/payments', null, $credentials);
-    if ($paymentsStatus === 200) {
-        foreach (($payments['items'] ?? []) as $payment) {
-            if (($payment['status'] ?? '') === 'captured') {
-                $captured = $payment;
-                break;
-            }
+[$paymentsStatus, $payments] = dashit_razorpay_request('GET', '/v1/orders/' . rawurlencode($orderId) . '/payments', null, $credentials);
+if ($paymentsStatus === 200) {
+    foreach (($payments['items'] ?? []) as $payment) {
+        $pStatus = (string) ($payment['status'] ?? '');
+        if ($pStatus === 'captured' || $pStatus === 'authorized') {
+            $captured = $payment;
+            break;
         }
     }
 }
@@ -45,6 +45,14 @@ if (($order['status'] ?? '') === 'paid' || (int) ($order['amount_paid'] ?? 0) > 
 if ($captured === null) {
     dashit_respond(200, ['paid' => false, 'status' => $order['status'] ?? null]);
 }
+
+if (($order['status'] ?? '') !== 'paid') {
+    $order['status'] = 'paid';
+}
+if ((int) ($order['amount_paid'] ?? 0) === 0 && !empty($captured['amount'])) {
+    $order['amount_paid'] = (int) $captured['amount'];
+}
+
 if (!dashit_record_payment($order, (string) ($captured['id'] ?? ''))) {
     dashit_respond(502, ['paid' => false, 'error' => 'Couldn\'t check the payment right now.']);
 }

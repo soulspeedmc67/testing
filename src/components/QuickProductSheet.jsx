@@ -62,14 +62,8 @@ export default function QuickProductSheet({
 
         {/* Product Name & Details */}
         <div className="space-y-1.5">
-          {product.rating && product.ratingCount ? (
-            <div className="flex items-center space-x-1.5 text-xs text-amber-500 font-bold">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span className="text-slate-800 font-extrabold dark:text-content">{product.rating}</span>
-              <span className="text-slate-400 font-medium dark:text-content-faint">({product.ratingCount} ratings)</span>
-            </div>
-          ) : null}
-
+          {/* No star rating: DASHit has no ratings from its own shoppers,
+              and the product list's "4.8 (120)" is a placeholder. */}
           <h2 className="font-extrabold text-base text-slate-900 leading-snug dark:text-content">
             {product.name}
           </h2>

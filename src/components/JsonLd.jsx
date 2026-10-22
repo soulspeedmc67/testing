@@ -140,8 +140,6 @@ export function ProductJsonLd({ product, url }) {
   const currentPrice = product.price || 0;
   const originalPrice = product.originalPrice || currentPrice;
   const inStock = product.stock === undefined || Number(product.stock) > 0;
-  const ratingValue = product.rating ? String(product.rating) : "4.8";
-  const reviewCount = product.ratingCount ? String(product.ratingCount) : "50";
   const productUrl = url || `${SITE_URL}/product/${product.id}/`;
 
   const schema = {
@@ -154,17 +152,9 @@ export function ProductJsonLd({ product, url }) {
       `Buy fresh ${product.name} online in Anantnag with fastest delivery from DASHIT. Verified quality and best price guarantee.`,
     sku: String(product.barcode || product.id || "DASHIT-PROD"),
     mpn: String(product.id || "DASHIT-MPN"),
-    brand: {
-      "@type": "Brand",
-      name: product.brand || (product.cat === "Dairy" ? "Amul" : "DASHIT"),
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: ratingValue,
-      reviewCount: reviewCount,
-      bestRating: "5",
-      worstRating: "1",
-    },
+    // Only a brand the product list names, and no star rating: DASHit has
+    // no reviews of its own, and Google treats made-up ones as spam.
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand } } : {}),
     offers: {
       "@type": "Offer",
       url: productUrl,

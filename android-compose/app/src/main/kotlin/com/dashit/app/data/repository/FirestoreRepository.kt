@@ -101,8 +101,8 @@ class FirestoreRepository {
         // No photo shows the card's plain tile: a guessed photo could be a
         // different product, and shoppers order what they see.
         val img = if (rawImg.isNotBlank() && !isStockPhoto(rawImg)) productImageUrl(rawImg) else ""
-        val rating = (data["rating"] as? String) ?: "4.8"
-        val ratingCount = (data["ratingCount"] as? String) ?: "120"
+        val rating = data["rating"] as? String
+        val ratingCount = data["ratingCount"] as? String
         val time = (data["time"] as? String) ?: "8 mins"
         val badge = data["badge"] as? String
         val options = data["options"] as? String

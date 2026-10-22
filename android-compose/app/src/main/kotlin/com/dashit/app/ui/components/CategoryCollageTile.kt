@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,7 +68,12 @@ fun CategoryCollageTile(
                     .border(1.dp, DashitColors.Hairline, cardShape)
                     .padding(5.dp)
             ) {
-                if (tile.previewImages.size >= 4) {
+                // A photo that fails to load is skipped and the next spare takes
+                // its cell, so one broken link never leaves a blank square.
+                val failed = remember(tile.previewImages) { mutableStateListOf<String>() }
+                val photos = tile.previewImages.filterNot { it in failed }
+                val onFailed: (String) -> Unit = { if (it !in failed) failed.add(it) }
+                if (photos.size >= 4) {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth()
@@ -75,22 +82,23 @@ fun CategoryCollageTile(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            CollageCell(tile.previewImages[0], Modifier.weight(1f))
-                            CollageCell(tile.previewImages[1], Modifier.weight(1f))
+                            CollageCell(photos[0], Modifier.weight(1f), onFailed = onFailed)
+                            CollageCell(photos[1], Modifier.weight(1f), onFailed = onFailed)
                         }
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            CollageCell(tile.previewImages[2], Modifier.weight(1f))
-                            CollageCell(tile.previewImages[3], Modifier.weight(1f))
+                            CollageCell(photos[2], Modifier.weight(1f), onFailed = onFailed)
+                            CollageCell(photos[3], Modifier.weight(1f), onFailed = onFailed)
                         }
                     }
                 } else {
                     CollageCell(
-                        url = tile.previewImages.firstOrNull(),
+                        url = photos.firstOrNull(),
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 12
+                        cornerRadius = 12,
+                        onFailed = onFailed
                     )
                 }
             }
@@ -138,7 +146,8 @@ fun CategoryCollageTile(
 private fun CollageCell(
     url: String?,
     modifier: Modifier = Modifier,
-    cornerRadius: Int = 10
+    cornerRadius: Int = 10,
+    onFailed: (String) -> Unit = {}
 ) {
     val cellShape = RoundedCornerShape(cornerRadius.dp)
     Box(
@@ -152,6 +161,7 @@ private fun CollageCell(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(url)
                     .crossfade(200)
+                    .listener(onError = { _, _ -> onFailed(url) })
                     .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,

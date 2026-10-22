@@ -14,6 +14,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.dashit.app.ui.SplashOverlay
 import androidx.compose.runtime.LaunchedEffect
@@ -39,11 +40,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             enableEdgeToEdge()
         }
         enableEdgeToEdge()
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Not shown over the lock screen and the screen sleeps as usual: the
+        // live tracking map alone keeps it awake (LiveTrackingMapScreen).
         super.onCreate(savedInstanceState)
 
         // Product photos: saved on the phone after the first download.
@@ -88,7 +86,11 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             DashitTheme {
                 // Status and navigation bar icons follow the app's light or dark look.
                 val isDark = com.dashit.app.core.design.DashitColors.isDark
+                val windowColor = com.dashit.app.core.design.DashitColors.Surface
                 androidx.compose.runtime.SideEffect {
+                    // Behind the app (keyboard opening, sheets settling): the
+                    // light or dark page colour, never a dark flash in light mode.
+                    window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(windowColor.toArgb()))
                     androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
                         isAppearanceLightStatusBars = !isDark
                         isAppearanceLightNavigationBars = !isDark

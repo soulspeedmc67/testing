@@ -248,8 +248,8 @@ object OnlinePayment {
      * app can confirm a moment after it hands back, so it looks twice.
      */
     private suspend fun paidReceipt(razorpayOrderId: String): Receipt? {
-        repeat(2) { attempt ->
-            if (attempt > 0) delay(2000)
+        repeat(5) { attempt ->
+            if (attempt > 0) delay(2500)
             val status = runCatching {
                 post("payment-status.php", JSONObject().put("razorpay_order_id", razorpayOrderId))
             }.getOrNull() ?: return@repeat

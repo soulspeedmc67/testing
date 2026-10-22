@@ -47,3 +47,7 @@ __pycache__/
 pipeline/__pycache__/
 # Scraped catalogues, downloaded photos and backups: local only (GBs).
 /data/
+
+# Release build artifacts
+releases/
+*.aab

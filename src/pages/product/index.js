@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   Heart,
-  Star,
   ShieldCheck,
   Tag,
   Clock,
@@ -399,13 +398,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {product.rating && product.ratingCount ? (
-              <div className="flex items-center space-x-1 text-amber-500 bg-amber-50/80 border border-amber-200/70 px-2 py-1 rounded-xl">
-                <Star className="w-3.5 h-3.5 fill-amber-400 stroke-amber-400" />
-                <span className="text-xs font-black text-slate-900">{product.rating}</span>
-                <span className="text-[10px] font-medium text-slate-400">({product.ratingCount})</span>
-              </div>
-            ) : null}
           </div>
         </div>
 

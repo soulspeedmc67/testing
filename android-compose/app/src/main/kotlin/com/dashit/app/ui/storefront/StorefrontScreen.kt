@@ -163,7 +163,7 @@ fun StorefrontScreen(
     LaunchedEffect(rails, categoryTiles) {
         com.dashit.app.data.ProductPhotos.prefetch(
             photoContext,
-            categoryTiles.flatMap { it.previewImages } + rails.flatMap { rail -> rail.products.take(6).map { it.img } }
+            categoryTiles.flatMap { it.previewImages.take(4) } + rails.flatMap { rail -> rail.products.take(6).map { it.img } }
         )
     }
     val filteredProducts by storefrontVm.filteredProducts.collectAsState()
@@ -1031,7 +1031,7 @@ private fun SearchBarField(
 
             Box(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Search \"ganesh idol\"",
+                    text = "Search \"milk, curd & paneer\"",
                     color = DashitColors.TextMuted,
                     fontSize = 14.sp
                 )

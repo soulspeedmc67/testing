@@ -27,11 +27,33 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
     }
 
+    function isOwnerAuth() {
+      return isSignedIn()
+        && (
+          request.auth.uid in [
+            'DOf5enic8SXBZTupGJbxDrNdrOt2',
+            's1jkY9BfGNQBqeykkvFtzsVAqLq1',
+            'mWN8b37A5FXMHnUaSf6SbTLiDej1',
+            '06RRC5cz6JUIJPyoP5LUPNLFbeB3'
+          ]
+          || (
+            'email' in request.auth.token
+            && request.auth.token.email is string
+            && request.auth.token.email.lower() in [
+              'm4k3ditz@gmail.com',
+              'soulspeedmc67@gmail.com',
+              'kanyualeem416@gmail.com',
+              'mirmanal.mm@gmail.com'
+            ]
+            && request.auth.token.get('email_verified', false) == true
+          )
+        );
+    }
+
     function isStaff() {
       return isSignedIn()
         && (
-          request.auth.uid == 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-          || (request.auth.token.email == 'm4k3ditz@gmail.com' && request.auth.token.email_verified == true)
+          isOwnerAuth()
           || (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) && staffDoc().active == true)
         );
     }
@@ -39,8 +61,7 @@ service cloud.firestore {
     function isAdmin() {
       return isStaff()
         && (
-          request.auth.uid == 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-          || (request.auth.token.email == 'm4k3ditz@gmail.com' && request.auth.token.email_verified == true)
+          isOwnerAuth()
           || (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) && staffDoc().role == 'admin')
         );
     }
@@ -48,8 +69,7 @@ service cloud.firestore {
     function isDriver() {
       return isStaff()
         && (
-          request.auth.uid == 'DOf5enic8SXBZTupGJbxDrNdrOt2'
-          || (request.auth.token.email == 'm4k3ditz@gmail.com' && request.auth.token.email_verified == true)
+          isOwnerAuth()
           || (exists(/databases/$(database)/documents/staff/$(request.auth.uid)) && staffDoc().role == 'driver')
         );
     }
@@ -247,8 +267,9 @@ service cloud.firestore {
       /* Customers may only cancel, only their own order, only while it is still
          'Placed' (once a rider is carrying it, cancellation goes through the
          store), and may change nothing else — not the total, not the address.
-         Drivers may only update orders already assigned to them and move them
-         towards delivery, with delivery code verification when completing.
+         Drivers may claim an unassigned order when admin is absent, or update
+         orders already assigned to them and move them towards delivery, with
+         delivery code verification when completing.
          Admins may edit freely. */
       allow update: if isAdmin()
         || (
@@ -257,6 +278,15 @@ service cloud.firestore {
           && resource.data.status == 'Placed'
           && request.resource.data.status == 'Cancelled'
           && onlyChanges(['status', 'statusHistory', 'updatedAt', 'cancelReason'])
+        )
+        || (
+          isDriver()
+          && (resource.data.driverId == null || resource.data.driverId == '')
+          && request.resource.data.driverId == request.auth.uid
+          && request.resource.data.driverName is string
+          && resource.data.status in ['Placed', 'Packed', 'Packing']
+          && request.resource.data.status in ['Placed', 'Packed', 'Packing', 'Out for Delivery']
+          && onlyChanges(['driverId', 'driverName', 'status', 'statusHistory', 'updatedAt', 'assignedAt'])
         )
         || (
           isDriver()

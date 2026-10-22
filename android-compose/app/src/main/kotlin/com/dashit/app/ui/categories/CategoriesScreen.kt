@@ -312,7 +312,10 @@ private fun SidebarItem(
     onSelect: () -> Unit
 ) {
     val context = LocalContext.current
-    val previewUrl = tile.previewImages.firstOrNull()
+    // A photo that fails to load hands over to the shelf's next one, so the
+    // circle is never left empty by one broken link.
+    var photoIndex by remember(tile.previewImages) { mutableStateOf(0) }
+    val previewUrl = tile.previewImages.getOrNull(photoIndex)
 
     Box(
         modifier = Modifier
@@ -344,6 +347,7 @@ private fun SidebarItem(
                         model = ImageRequest.Builder(context)
                             .data(previewUrl)
                             .crossfade(true)
+                            .listener(onError = { _, _ -> photoIndex++ })
                             .build(),
                         contentDescription = tile.name,
                         contentScale = ContentScale.Crop,

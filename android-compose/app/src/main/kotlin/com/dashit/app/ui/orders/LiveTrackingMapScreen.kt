@@ -161,6 +161,12 @@ fun LiveTrackingMapScreen(
 
     BackHandler { onBack() }
 
+    // The screen stays awake while the shopper watches their order come.
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
+
     val openCancel = {
         HapticsManager.light(view)
         isCancelSheetOpen = true

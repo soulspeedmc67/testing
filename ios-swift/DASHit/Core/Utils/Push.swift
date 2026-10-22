@@ -46,8 +46,21 @@ final class Push: NSObject {
     func requestPermission() {
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
-            guard settings.authorizationStatus == .notDetermined else { return }
-            center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+            guard settings.authorizationStatus == .notDetermined else {
+                if settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+                return
+            }
+            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                if granted {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            }
         }
     }
 
@@ -69,7 +82,11 @@ final class Push: NSObject {
             }
             let key = "\(user.uid)|\(fcm)"
             guard key != lastRegistered, let idToken = try? await user.getIDToken() else { return }
-            if await post("register.php", ["id_token": idToken, "token": fcm, "platform": "ios", "app": Self.app]) {
+            let success = await post("register.php", ["id_token": idToken, "token": fcm, "platform": "ios", "app": Self.app])
+            #if DEBUG
+            print("Push: register.php (app=\(Self.app)) response: \(success)")
+            #endif
+            if success {
                 lastRegistered = key
                 isActive = true
                 UserDefaults.standard.set(true, forKey: "dashit_push_active")
