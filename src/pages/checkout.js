@@ -29,7 +29,7 @@ import CouponsDrawer from "../components/CouponsDrawer";
 import { calculateDeliveryCharges, extraChargeFor, extraChargeLabel, shopRules } from "../lib/deliveryCharges";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
-import { useWalletUsed, walletToUse, fetchWalletUsed } from "../lib/wallet";
+import { useWalletUsed, walletToUse, walletCoverable, fetchWalletUsed } from "../lib/wallet";
 import { newOrderCode } from "../lib/db";
 import { showOrderPlacedNotification } from "../lib/notifications";
 import { useStoreDetails, useStoreConfig, useStoreConfigLive, isCodEnabled, isCodAllowedAtNight } from "../lib/storeStatus";
@@ -344,11 +344,14 @@ export default function CheckoutPage() {
       : Math.min(subtotal, Number(coupon.discount) || 0)
     : 0;
   const beforeWallet = Math.max(0, subtotal + deliveryFee + nightFee + extraFee + handlingFee - couponDiscount);
-  /* The welcome credit in the wallet takes what it can off the bill (up to the
-     shop's per-order limit). It waits for the shop's live settings like the
+  /* The welcome credit in the wallet takes what it can off the delivery and handling
+     charges (up to the shop's per-order limit); the items are never discounted by it. It waits for the shop's live settings like the
      rest of the bill. */
   const walletSpent = useWalletUsed();
-  const walletApplied = billReady ? walletToUse(rules, walletSpent, beforeWallet) : 0;
+  // Only the delivery and handling charges can be covered, never the items.
+  const walletApplied = billReady
+    ? walletToUse(rules, walletSpent, Math.min(beforeWallet, walletCoverable({ deliveryFee, nightFee, extraFee, handlingFee })))
+    : 0;
   const grandTotal = Math.max(0, beforeWallet - walletApplied);
 
   // Orders start at the shop's minimum (₹100 of items unless it has changed it);

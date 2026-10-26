@@ -64,8 +64,6 @@ export default function WalletChip({ size = "md" }) {
     return () => clearTimeout(timer);
   }, [mounted, credit]);
 
-  if (!credit) return null;
-
   const close = () => {
     setOpen(false);
     setCelebrate(false);
@@ -120,7 +118,7 @@ export default function WalletChip({ size = "md" }) {
 
               <p className="mt-4 text-[13.5px] text-slate-600 dark:text-content-secondary">
                 {balance > 0
-                  ? `It comes off your bill by itself when you order, up to ₹${rules.walletMaxPerOrder} each time.`
+                  ? `It comes off your delivery and handling charges by itself when you order, up to ₹${rules.walletMaxPerOrder} each time.`
                   : "You've used your wallet credit. Thanks for ordering with us!"}
               </p>
 

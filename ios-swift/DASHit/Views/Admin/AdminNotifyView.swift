@@ -38,6 +38,13 @@ struct AdminNotifyView: View {
     var body: some View {
         Form {
             Section {
+                // A starting point: fills the boxes, you read it and press Send yourself.
+                Button {
+                    title = "₹50 added to your wallet"
+                    message = "Your DASHit wallet has ₹50. Order now and it comes off your bill."
+                } label: {
+                    Label("Start from: ₹50 wallet credit", systemImage: "wallet.pass")
+                }
                 TextField("Fresh apples are in", text: $title)
                     .onChange(of: title) { _, value in
                         if value.count > Self.titleMax { title = String(value.prefix(Self.titleMax)) }

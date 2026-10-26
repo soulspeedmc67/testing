@@ -32,3 +32,19 @@ export function minIosVersionPatch(text) {
   if (code === null) return null;
   return { minIosVersion: version, minIosVersionCode: code };
 }
+
+export const UPDATE_TITLE_MAX = 60;
+export const UPDATE_MESSAGE_MAX = 300;
+
+/** What the iPhone app's update screen says when the shop hasn't written its own. */
+export const DEFAULT_UPDATE_TITLE = "Update DASHit to keep ordering";
+export const DEFAULT_UPDATE_MESSAGE =
+  "A new version is on the App Store. This one is too old to place orders. Updating takes a minute, and your account, addresses and orders stay as they are.";
+
+/** The two fields to save for the wording of the update screen; blank means the built-in words. */
+export function updateTextPatch(title, message) {
+  return {
+    updateTitle: String(title ?? "").trim().slice(0, UPDATE_TITLE_MAX),
+    updateMessage: String(message ?? "").trim().slice(0, UPDATE_MESSAGE_MAX),
+  };
+}

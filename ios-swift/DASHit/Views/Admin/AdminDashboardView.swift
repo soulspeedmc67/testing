@@ -2243,6 +2243,8 @@ struct StoreControlSheetView: View {
     @State private var petrolText = ""
     @State private var mileageText = ""
     @State private var minIosVersionText = ""
+    @State private var updateTitleText = ""
+    @State private var updateMessageText = ""
     @State private var walletWelcomeText = ""
     @State private var walletMaxText = ""
 
@@ -2383,7 +2385,7 @@ struct StoreControlSheetView: View {
                 } header: {
                     Text("Wallet")
                 } footer: {
-                    Text("Every customer gets this credit in their wallet once, and it comes off their orders by itself. Put 0 to switch the wallet off. The website and the apps follow as soon as you tap Save; apps installed before this setting existed don't show the wallet.")
+                    Text("Every customer gets this credit in their wallet once. It only covers the delivery and handling charges of an order, never the items. Put 0 to switch the wallet off. The website and the apps follow as soon as you tap Save; apps installed before this setting existed don't show the wallet.")
                 }
 
                 Section {
@@ -2419,10 +2421,13 @@ struct StoreControlSheetView: View {
                             .multilineTextAlignment(.trailing)
                             .frame(width: 90)
                     }
+                    TextField("Update DASHit to keep ordering", text: $updateTitleText)
+                    TextField("Your own message, like ₹50 is waiting in your wallet. Update to use it.", text: $updateMessageText, axis: .vertical)
+                        .lineLimit(3...6)
                 } header: {
                     Text("iPhone app updates")
                 } footer: {
-                    Text(minIosVersionNote)
+                    Text(minIosVersionNote + " The title and message above are what the update screen says; leave them empty for the built-in words. Only apps from 1.0.4 on read them.")
                 }
 
                 Section {
@@ -2511,6 +2516,8 @@ struct StoreControlSheetView: View {
         lowFeeText = Self.plain(saved.deliveryLowFee)
         freeOrdersText = String(saved.freeDeliveryOrders)
         minIosVersionText = saved.minIosVersion
+        updateTitleText = saved.updateTitle
+        updateMessageText = saved.updateMessage
         walletWelcomeText = String(saved.walletWelcomeAmount)
         walletMaxText = String(saved.walletMaxPerOrder)
         extraOn = saved.extraChargeOn
@@ -2550,6 +2557,8 @@ struct StoreControlSheetView: View {
         // Blank lets every version order; something that isn't a version keeps what was saved.
         let version = minIosVersionText.trimmingCharacters(in: .whitespaces)
         if version.isEmpty || AppVersion.code(from: version) != nil { edited.minIosVersion = version }
+        edited.updateTitle = String(updateTitleText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(ShopRules.updateTitleMax))
+        edited.updateMessage = String(updateMessageText.trimmingCharacters(in: .whitespacesAndNewlines).prefix(ShopRules.updateMessageMax))
         return edited
     }
 

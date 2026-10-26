@@ -37,7 +37,7 @@ const seed = async (cfg = {}) => {
 
 const orderBody = (uid, extra = {}) => ({
   userId: uid, status: "Placed", driverId: null, createdAt: serverTimestamp(),
-  items: [{ id: "1", name: "Milk", qty: 1, price: 100 }], total: 100, totalAmount: 100, finalTotal: 100,
+  items: [{ id: "1", name: "Milk", qty: 1, price: 100 }], subtotal: 100, deliveryFee: 40, handlingFee: 11, total: 151, totalAmount: 151, finalTotal: 151,
   ...extra,
 });
 
@@ -87,6 +87,14 @@ await check("the shop setting 0 turns the wallet off", async () => {
   await seed({ walletWelcomeAmount: 0 });
   await assertFails(placeWithWallet(asShopper("u7"), "u7", "D1", 10));
   await assertSucceeds(setDoc(doc(asShopper("u7"), "orders", "D2"), orderBody("u7")));
+});
+
+await check("the wallet can't take more than the delivery and handling charges", async () => {
+  await seed({ walletWelcomeAmount: 100, walletMaxPerOrder: 100 });
+  // 40 + 11 = 51 of charges: 60 would be taking off the items.
+  await assertFails(placeWithWallet(asShopper("f1"), "f1", "H1", 60));
+  await assertSucceeds(placeWithWallet(asShopper("f1"), "f1", "H2", 51));
+  await seed();
 });
 
 console.log("wallet document");

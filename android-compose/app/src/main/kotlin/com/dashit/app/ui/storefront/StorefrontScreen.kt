@@ -1017,9 +1017,7 @@ private fun StorefrontHeader(
             val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
             val walletBalance = com.dashit.app.data.Wallet.balance(rules, walletSpent)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (rules.walletWelcomeAmount > 0) {
-                com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = onOpenWallet)
-            }
+            com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = onOpenWallet)
             Box(
                 modifier = Modifier
                     .size(42.dp)

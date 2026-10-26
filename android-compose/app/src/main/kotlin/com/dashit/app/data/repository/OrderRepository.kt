@@ -317,7 +317,9 @@ class OrderRepository(
         )
         // The wallet amount stays on the order; the wallet itself isn't touched.
         val beforeWallet = bill.grandTotal + order.nightDeliveryFee
-        val carriedWallet = minOf(order.walletUsed, kotlin.math.floor(beforeWallet).toInt()).coerceAtLeast(0)
+        // Only the delivery and handling charges can be covered, never the items.
+        val newFees = bill.deliveryFee + order.nightDeliveryFee + order.extraDeliveryFee + bill.handlingFee
+        val carriedWallet = minOf(order.walletUsed, kotlin.math.floor(minOf(beforeWallet, newFees)).toInt()).coerceAtLeast(0)
         val replacement = Order(
             id = Order.newCode(),
             userId = customer.id,

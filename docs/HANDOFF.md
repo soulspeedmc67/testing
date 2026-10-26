@@ -6,6 +6,21 @@
 
 ---
 
+## Oct 26, 2026 (later): wallet off by default and always visible, wallet only covers fees, editable update screen
+
+Web VERIFIED (116 tests, build). Android VERIFIED to compile. iOS NOT compiled (Actions build is the check). Rules NOT redeployed.
+
+- **Why**: the first wallet took ₹50 off the whole bill, so totals came out near the items alone. Now it is OFF by default
+  (credit and per-order limit 0 until set in Shop settings) and it only covers the delivery and handling charges, never the
+  items (`walletCoverable` / `walletToUse`, and `walletOk` in `firestore.rules`). Do NOT deploy those rules until the website
+  with the same cap is live, or a re-enabled wallet on the old site would have its orders refused.
+- **Wallet chip shows at ₹0** on web, Android and iPhone (zero-balance text: "No credit in your wallet right now").
+  The "You got ₹50!" welcome only opens when a credit is set.
+- **Update screen words** (iPhone 1.0.4+): `updateTitle` / `updateMessage` on `config/store`, set in `/xcyop` (iPhone app updates
+  card, with preview) and the iOS admin (same section). Blank = built-in words. 1.0.3 on the App Store keeps its fixed words.
+- **Notify customers** has a "₹50 wallet credit" starter (web and iOS admin); the owner reads it and presses Send.
+- A pending cleanup: orders placed while the wallet took ₹50 off the whole bill (see `WalletOrdersFix.jsx`, not deployed).
+
 ## Oct 26, 2026: movable store location, sale builder with photo upload, plain delivery wording
 
 Web VERIFIED (114 tests incl. `tests/sales.test.mjs`, `tests/storeLocation.test.mjs`; production build; the console against the

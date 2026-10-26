@@ -100,6 +100,8 @@ struct UpdateGateWatcher: View {
 /// The sheet itself: it can't be swiped away, and the app behind it can't be touched.
 struct UpdateRequiredView: View {
     @AppStorage("dashit_theme") private var themePreference = "system"
+    /// The shop's own words for this screen (Shop settings → iPhone app updates).
+    @ObservedObject private var store = StoreStatusStore.shared
     @State private var isShown = false
 
     var body: some View {
@@ -125,12 +127,14 @@ struct UpdateRequiredView: View {
                 .foregroundColor(.brandAccent)
                 .accessibilityHidden(true)
 
-            Text("Update DASHit to keep ordering")
+            Text(store.rules.updateTitle.isEmpty ? "Update DASHit to keep ordering" : store.rules.updateTitle)
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text("A new version is on the App Store. This one is too old to place orders. Updating takes a minute, and your account, addresses and orders stay as they are.")
+            Text(store.rules.updateMessage.isEmpty
+                ? "A new version is on the App Store. This one is too old to place orders. Updating takes a minute, and your account, addresses and orders stay as they are."
+                : store.rules.updateMessage)
                 .font(.system(size: 15))
                 .foregroundColor(.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

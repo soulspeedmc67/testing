@@ -44,12 +44,15 @@ final class CheckoutViewModel: ObservableObject {
         DeliveryEta.quote(for: selectedAddress.coordinate)
     }
 
-    /// The wallet credit this order uses: all it can, up to the shop's per-order
-    /// limit, once the shop's settings are live like the rest of the bill.
+    /// The wallet credit this order uses: all it can of the delivery and handling charges
+    /// (never the items), up to the shop's per-order limit, once the shop's settings are live.
     func walletApplied(for cart: CartViewModel) -> Int {
         let store = StoreStatusStore.shared
         guard store.isLive else { return 0 }
-        return WalletStore.toUse(rules: store.rules, payable: cart.bill.grandTotal, used: WalletStore.shared.used)
+        // Only the delivery and handling charges can be covered, never the items.
+        let bill = cart.bill
+        let fees = min(bill.grandTotal, bill.deliveryFee + bill.nightDeliveryFee + bill.extraDeliveryFee + bill.handlingFee)
+        return WalletStore.toUse(rules: store.rules, fees: fees, used: WalletStore.shared.used)
     }
 
     func reloadSavedAddress() {

@@ -240,10 +240,8 @@ struct StorefrontHomeView: View {
                 Spacer(minLength: 12)
 
                 HStack(spacing: 8) {
-                    if storeStatus.rules.walletWelcomeAmount > 0 {
-                        WalletChip(balance: WalletStore.balance(rules: storeStatus.rules, used: wallet.used)) {
-                            walletSheet = WalletSheetRequest(celebrate: false)
-                        }
+                    WalletChip(balance: WalletStore.balance(rules: storeStatus.rules, used: wallet.used)) {
+                        walletSheet = WalletSheetRequest(celebrate: false)
                     }
                     Button {
                         HapticsManager.shared.light()

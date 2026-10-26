@@ -42,6 +42,12 @@ struct ShopRules: Equatable {
     /// app shows the update sheet (`AppVersion`), and `firestore.rules` refuse
     /// its orders by `minIosVersionCode`, saved beside it.
     var minIosVersion: String = ""
+    /// What the update screen says (`updateTitle`, `updateMessage`): the shop's own
+    /// words; blank means the built-in ones (`UpdateRequiredView`). Apps from 1.0.4 on read them.
+    var updateTitle: String = ""
+    var updateMessage: String = ""
+    static let updateTitleMax = 60
+    static let updateMessageMax = 300
     /// The wallet's welcome credit in whole rupees, and the most one order may use.
     /// Off by default (0): it only works once the shop sets an amount. See `Wallet`.
     var walletWelcomeAmount: Int = 0
@@ -88,6 +94,8 @@ struct ShopRules: Equatable {
         if let value = amount("extraChargeAmount") { extraChargeAmount = min(Self.extraChargeMax, value.rounded()) }
         if let value = data["extraChargeLabel"] as? String { extraChargeLabel = Self.cleanExtraLabel(value) }
         if let value = data["minIosVersion"] as? String { minIosVersion = Self.cleanVersion(value) }
+        if let value = data["updateTitle"] as? String { updateTitle = String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.updateTitleMax)) }
+        if let value = data["updateMessage"] as? String { updateMessage = String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(Self.updateMessageMax)) }
         if let value = amount("walletWelcomeAmount") { walletWelcomeAmount = Int(min(Double(Self.walletMax), value.rounded(.down))) }
         if let lat = (data["storeLat"] as? NSNumber)?.doubleValue,
            let lng = (data["storeLng"] as? NSNumber)?.doubleValue,
@@ -191,6 +199,8 @@ struct ShopRules: Equatable {
             "extraChargeAmount": extraChargeAmount,
             "extraChargeLabel": extraChargeLabel,
             "minIosVersion": minIosVersion,
+            "updateTitle": updateTitle,
+            "updateMessage": updateMessage,
             "walletWelcomeAmount": walletWelcomeAmount,
             "walletMaxPerOrder": walletMaxPerOrder,
             // The same as a number, which is what `firestore.rules` compare.

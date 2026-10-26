@@ -28,6 +28,7 @@ import StoreLocationSettings from "./StoreLocationSettings";
 import ExtraChargeSettings from "./ExtraChargeSettings";
 import RefreshWebsiteCard from "./RefreshWebsiteCard";
 import AppUpdateSettings from "./AppUpdateSettings";
+import WalletOrdersFix from "./WalletOrdersFix";
 
 export default function StoreControlsView({
   isStoreOpen = true,
@@ -268,6 +269,9 @@ export default function StoreControlsView({
       <AppUpdateSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* One press makes every open website drop its saved copies and load fresh */}
+      {/* One-time: orders placed while the wallet credit came off the bill */}
+      <WalletOrdersFix darkMode={darkMode} />
+
       <RefreshWebsiteCard storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* 3. COD Fraud Prevention Blacklist */}

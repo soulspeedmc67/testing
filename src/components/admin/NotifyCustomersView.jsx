@@ -101,6 +101,20 @@ export default function NotifyCustomersView({ darkMode = false, showToast }) {
       </div>
 
       <div className={`rounded-2xl p-5 border space-y-4 ${card}`}>
+        {/* A starting point: fills the boxes, you read it and press Send yourself */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`text-[11px] font-bold uppercase tracking-wider ${subtle}`}>Start from</span>
+          <button
+            type="button"
+            onClick={() => {
+              setTitle("₹50 added to your wallet");
+              setText("Your DASHit wallet has ₹50. Order now and it comes off your bill.");
+            }}
+            className="text-xs font-bold px-3 py-1.5 rounded-full border border-slate-300 dark:border-zinc-700 text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer"
+          >
+            ₹50 wallet credit
+          </button>
+        </div>
         <label className="block space-y-1.5">
           <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">Title</span>
           <input
