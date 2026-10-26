@@ -563,7 +563,7 @@ export default function ProductDetailPage() {
             <li className="p-2">
               <Truck className="w-5 h-5 text-[#FF5B00] mx-auto mb-1" />
               <span className="text-[11px] font-bold text-slate-800 block dark:text-content">Fast delivery</span>
-              <span className="text-[10px] text-slate-500 block dark:text-content-muted">lowest charge above ₹{rules.deliveryLowFrom - 1}</span>
+              <span className="text-[10px] text-slate-500 block dark:text-content-muted">delivered in minutes</span>
             </li>
             <li className="p-2">
               <ShieldCheck className="w-5 h-5 text-[#FF5B00] mx-auto mb-1" />
