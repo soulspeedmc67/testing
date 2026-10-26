@@ -1,3 +1,4 @@
+import { DARK_STORE_HUB } from "../lib/deliveryEta";
 import { useState, useEffect, useRef } from "react";
 import { goBack } from "../lib/navigation";
 import { useRouter } from "next/router";
@@ -8,11 +9,12 @@ import { reverseGeocodeCoords, searchPlacesAutocomplete } from "../lib/maps";
 
 const MapWithPin = dynamic(() => import("../components/MapWithPinInner"), { ssr: false });
 
-const HUB_POS = { lat: 33.748413, lng: 75.150839 }; // Anantnag dark store hub
+// Where the store is now (the shop can move it): read live, never copied.
+const HUB_POS = DARK_STORE_HUB;
 
 export default function ConfirmLocationPage() {
   const router = useRouter();
-  const [selectedPos, setSelectedPos] = useState(HUB_POS);
+  const [selectedPos, setSelectedPos] = useState({ lat: HUB_POS.lat, lng: HUB_POS.lng });
   // Empty until reverse geocoding answers; these held a hardcoded sample address.
   const [areaTitle, setAreaTitle] = useState("");
   const [addressSubtitle, setAddressSubtitle] = useState("");
@@ -131,7 +133,7 @@ export default function ConfirmLocationPage() {
       },
       async () => {
         setIsLocating(false);
-        setSelectedPos(HUB_POS);
+        setSelectedPos({ lat: HUB_POS.lat, lng: HUB_POS.lng });
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([HUB_POS.lat, HUB_POS.lng], 16, { animate: true });
         }

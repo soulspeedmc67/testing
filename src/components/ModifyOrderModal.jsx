@@ -415,13 +415,9 @@ export default function ModifyOrderModal({
             {/* The bill: same lines as checkout and the order receipt */}
             <dl className="space-y-1 text-xs text-slate-500 dark:text-neutral-400 font-medium">
               {billRow("Item total", rupees(bill.subtotal))}
-              {bill.distanceOnly ? (
-                billRow("Delivery charge (by distance)", rupees(bill.nightDeliveryFee))
-              ) : (
-                <>
-                  {billRow("Delivery charge", bill.baseDeliveryFee > 0 ? rupees(bill.baseDeliveryFee) : "Free")}
-                  {bill.nightDeliveryFee > 0 && billRow("Distance delivery charge", rupees(bill.nightDeliveryFee))}
-                </>
+              {billRow(
+                "Delivery charge",
+                bill.baseDeliveryFee + bill.nightDeliveryFee > 0 ? rupees(bill.baseDeliveryFee + bill.nightDeliveryFee) : "Free"
               )}
               {bill.extraDeliveryFee > 0 && billRow(bill.extraDeliveryLabel, rupees(bill.extraDeliveryFee))}
               {bill.handlingFee > 0 && billRow("Handling charge", rupees(bill.handlingFee))}

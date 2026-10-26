@@ -14,6 +14,7 @@ import {
   Check
 } from "lucide-react";
 import { Switch } from "./ShopRulesSettings";
+import { saleStatus, scheduleLine } from "../../lib/sales";
 
 const EMPTY_COUPON = {
   code: "",
@@ -34,6 +35,8 @@ export default function OffersView({
   onResetDefaultCoupons,
   exclusiveOffers = [],
   onOpenOfferModal,
+  onEditOffer,
+  onDuplicateOffer,
   onDeleteOffer,
   onToggleOffer,
   darkMode = false,
@@ -301,24 +304,24 @@ export default function OffersView({
         >
           <div>
             <h2 className="text-base font-black text-slate-900 dark:text-white flex items-center space-x-2">
-              <span>Storefront Banner Drops</span>
+              <span>Sales &amp; banners</span>
               <span className="text-xs font-mono font-bold text-slate-400">
                 ({exclusiveOffers.filter((o) => o.active !== false).length} on, {exclusiveOffers.filter((o) => o.active === false).length} off)
               </span>
             </h2>
             <p className="text-xs text-slate-500 dark:text-zinc-400">
-              The banners customers see in the app. Switch one off to hide it, and back on whenever you like. With none
-              on, customers see no banner.
+              The banners at the top of the shop. Add a photo, say what the sale is and what it applies to, and pick when
+              it runs. A sale with dates appears and goes by itself. Switch one off to hide it.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={onOpenOfferModal}
+            onClick={() => onOpenOfferModal && onOpenOfferModal(null)}
             className="bg-[#FF5B00] hover:bg-[#E04E00] text-white px-4 py-2 rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer flex items-center space-x-1.5 active:scale-95"
           >
             <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span>New Banner Offer</span>
+            <span>New sale</span>
           </button>
         </div>
 
@@ -326,7 +329,7 @@ export default function OffersView({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {exclusiveOffers.length === 0 ? (
             <div className="col-span-full py-16 text-center text-slate-400 text-xs">
-              No banners. Customers see none until you add one with &quot;New Banner Offer&quot;.
+              No sales yet. Customers see no banner until you add one with &quot;New sale&quot;.
             </div>
           ) : (
             exclusiveOffers.map((off) => (
@@ -359,6 +362,23 @@ export default function OffersView({
                   </div>
                   <h4 className="font-black text-sm text-white leading-tight">{off.title}</h4>
                   <p className="text-[11px] text-slate-300 line-clamp-2">{off.subtitle}</p>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {(() => {
+                      const status = saleStatus(off);
+                      const look = {
+                        live: "bg-emerald-500/90 text-white",
+                        scheduled: "bg-sky-500/90 text-white",
+                        ended: "bg-slate-500/90 text-white",
+                        off: "bg-slate-600/90 text-white",
+                      }[status];
+                      const words = { live: "Live", scheduled: "Starts later", ended: "Ended", off: "Off" }[status];
+                      return <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${look}`}>{words}</span>;
+                    })()}
+                    <span className="text-[10px] font-bold text-slate-300">
+                      {off.appliesTo === "category" || (off.category && off.category !== "All" && off.category !== "Deals") ? `On ${off.category}` : "On everything"}
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-slate-400">{scheduleLine(off)}</p>
                 </div>
 
                 <div className="relative z-10 flex items-center justify-between pt-3 border-t border-white/10 mt-3">
@@ -367,6 +387,21 @@ export default function OffersView({
                     {off.promoCode}
                   </span>
                 </div>
+
+                {(onEditOffer || onDuplicateOffer) && (
+                  <div className="relative z-10 flex items-center gap-2 pt-3 mt-3 border-t border-white/10">
+                    {onEditOffer && (
+                      <button type="button" onClick={() => onEditOffer(off)} className="text-[11px] font-black bg-white text-slate-900 px-3 py-1.5 rounded-lg cursor-pointer active:scale-95">
+                        Edit
+                      </button>
+                    )}
+                    {onDuplicateOffer && (
+                      <button type="button" onClick={() => onDuplicateOffer(off)} className="text-[11px] font-bold text-white/90 border border-white/30 px-3 py-1.5 rounded-lg cursor-pointer active:scale-95">
+                        Duplicate
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {onToggleOffer && (
                   <div className="relative z-10 flex items-center justify-between gap-3 pt-3 mt-3 border-t border-white/10">

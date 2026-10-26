@@ -34,7 +34,8 @@ import {
 import { shopRules } from "./deliveryCharges";
 import { noteCacheVersion } from "./cacheRefresh";
 import { adoptNightHours } from "./nightCharge";
-import { adoptDeliveryRadius } from "./deliveryEta";
+import { adoptDeliveryRadius, adoptStoreLocation } from "./deliveryEta";
+import { isSaleLive, nextSaleChange } from "./sales";
 import { riderPositionFrom } from "./riderPosition";
 
 /**
@@ -1107,11 +1108,31 @@ export async function deductInventoryForOrder(orderId, items = []) {
 export function watchOffers(callback, { includeOff = false } = {}) {
   const db = getDb();
   if (!db) return () => {};
-  return onSnapshot(
+  let latest = [];
+  let timer = null;
+  /* Shoppers get the sales that are on and running: a sale with a start date
+     appears when it starts and one with an end date goes when it ends, with the
+     page open too (a timer wakes at the next start or end). */
+  const deliver = () => {
+    clearTimeout(timer);
+    if (includeOff) return callback(latest);
+    const now = Date.now();
+    callback(latest.filter((o) => isSaleLive(o, now)));
+    const next = nextSaleChange(latest, now);
+    if (next) timer = setTimeout(deliver, Math.min(next - now + 500, 2_000_000_000));
+  };
+  const unsub = onSnapshot(
     includeOff ? collection(db, "offers") : query(collection(db, "offers"), where("active", "==", true)),
-    (snap) => callback(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
+    (snap) => {
+      latest = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      deliver();
+    },
     (err) => console.warn("watchOffers snapshot error:", err?.message)
   );
+  return () => {
+    clearTimeout(timer);
+    unsub();
+  };
 }
 
 export async function saveOffer(offer) {
@@ -1123,8 +1144,8 @@ export async function saveOffer(offer) {
     return String(id);
   }
   const ref = await addDoc(collection(db, "offers"), {
-    ...data,
     active: true,
+    ...data,
     createdAt: serverTimestamp(),
   });
   return ref.id;
@@ -3149,6 +3170,7 @@ function broadcastStoreConfig(cfg, live = memoryStoreConfigLive) {
   memoryStoreConfigLive = live;
   adoptNightHours(cfg);
   adoptDeliveryRadius(cfg);
+  adoptStoreLocation(cfg);
   storeConfigSubscribers.forEach((cb) => {
     try { cb(cfg, live); } catch (e) {}
   });

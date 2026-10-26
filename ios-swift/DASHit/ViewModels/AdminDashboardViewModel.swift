@@ -3,6 +3,7 @@ import SwiftUI
 import Combine
 import FirebaseFirestore
 import FirebaseAuth
+import CoreLocation
 import AudioToolbox
 import AVFoundation
 import UserNotifications
@@ -137,6 +138,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published var nightCharge = NightCharge.Settings()
     /// The minimum order, the fees and cash on delivery on `config/store` (`ShopRules`).
     @Published var shopRules = ShopRules()
+    /// The places the shop has saved to deliver from (`StoreLocation`).
+    @Published var storePresets: [StorePreset] = []
     /// When "Refresh the website for everyone" was last tapped on this phone; nil if it wasn't, or it failed.
     @Published var websiteRefreshedAt: Date?
     @Published public var isLoading: Bool = false
@@ -324,10 +327,14 @@ public final class AdminDashboardViewModel: ObservableObject {
             let radius = (data["deliveryRadiusKm"] as? Double) ?? 8.5
             let nightCharge = NightCharge.Settings(data: data)
             let shopRules = ShopRules(data: data)
+            let presets = StoreLocation.presets(from: data)
 
             Task { @MainActor in
                 self.nightCharge = nightCharge
                 self.shopRules = shopRules
+                // The maps and distances in this app follow where the store is now.
+                ShopRules.current = shopRules
+                self.storePresets = presets
                 self.storeConfig = StoreConfig(
                     isOpen: isOpen,
                     closeReason: reason,
@@ -1311,6 +1318,48 @@ public final class AdminDashboardViewModel: ObservableObject {
         )
     }
 
+    // MARK: - Where orders are delivered from
+
+    /// Moves the store to `coordinate`: every distance, delivery time, delivery
+    /// area check and distance charge on the website and both apps follows.
+    func moveStore(to coordinate: CLLocationCoordinate2D, label: String) {
+        guard StoreLocation.isValid(lat: coordinate.latitude, lng: coordinate.longitude) else { return }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        var updated = shopRules
+        updated.storeLat = coordinate.latitude
+        updated.storeLng = coordinate.longitude
+        updated.storeLabel = String(label.trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        let previous = shopRules
+        shopRules = updated
+        ShopRules.current = updated
+        db.collection("config").document("store").setData(
+            [
+                "storeLat": coordinate.latitude,
+                "storeLng": coordinate.longitude,
+                "storeLabel": updated.storeLabel,
+                "updatedAt": FieldValue.serverTimestamp()
+            ],
+            merge: true,
+            completion: saveResult("The store's place") { [weak self] in
+                self?.shopRules = previous
+                ShopRules.current = previous
+            }
+        )
+    }
+
+    /// Saves the list of places the shop switches between.
+    func saveStorePresets(_ list: [StorePreset]) {
+        let previous = storePresets
+        storePresets = list
+        db.collection("config").document("store").setData(
+            ["storePresets": list.map { $0.fields }, "updatedAt": FieldValue.serverTimestamp()],
+            merge: true,
+            completion: saveResult("Your saved places") { [weak self] in
+                self?.storePresets = previous
+            }
+        )
+    }
+
     /// "Refresh the website for everyone": a new `cacheVersion` on
     /// `config/store`. Every open website that hears it drops the copies it
     /// saved and loads fresh (web: `src/lib/cacheRefresh.js`).
@@ -1364,6 +1413,37 @@ public final class AdminDashboardViewModel: ObservableObject {
                 self?.offers.removeAll { $0.id == newOffer.id }
             })
         }
+    }
+
+    /// Saves a sale (new or changed) from the sale editor, in the same fields as
+    /// the staff console's sale editor (`src/lib/sales.js`). The listener above
+    /// brings it back into `offers`.
+    func saveSale(_ draft: SaleDraft) {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        let nowMs = Int(Date().timeIntervalSince1970 * 1000)
+        let id = draft.id ?? "offer-\(nowMs)"
+        let code = String(draft.promoCode.uppercased().filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }.prefix(24))
+        func millis(_ date: Date?) -> Int { date.map { Int($0.timeIntervalSince1970 * 1000) } ?? 0 }
+        var fields: [String: Any] = [
+            "badge": String(draft.badge.trimmingCharacters(in: .whitespaces).uppercased().prefix(24)),
+            "title": String(draft.title.trimmingCharacters(in: .whitespacesAndNewlines).prefix(80)),
+            "subtitle": String(draft.subtitle.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160)),
+            "priceTag": String(draft.priceTag.trimmingCharacters(in: .whitespacesAndNewlines).prefix(40)),
+            "appliesTo": draft.onOneCategory ? "category" : "all",
+            "category": draft.onOneCategory ? draft.category : "All",
+            "promoCode": code,
+            "img": draft.img.isEmpty ? "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600" : draft.img,
+            "startsAt": millis(draft.startsAt),
+            "endsAt": millis(draft.endsAt),
+            "expiresIn": draft.expiresText,
+            "active": draft.active
+        ]
+        if draft.id == nil {
+            fields["createdAt"] = nowMs
+            fields["gradient"] = "from-[#040E22] via-[#061838] to-[#0A2558]"
+            fields["accent"] = "text-amber-400"
+        }
+        db.collection("offers").document(id).setData(fields, merge: true, completion: saveResult(draft.id == nil ? "The new sale" : "The sale"))
     }
 
     public func toggleOffer(offerId: String, active: Bool) {

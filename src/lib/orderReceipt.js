@@ -101,13 +101,7 @@ export function buildReceiptText(order, { origin = "" } = {}) {
   lines.push(`Subtotal: ${money(subtotal)}`);
   if (discount > 0) lines.push(`Discount: -${money(discount)}`);
   const fee = deliveryFeeParts(order);
-  if (fee.night > 0 && fee.base === 0) {
-    // Charged by distance alone (night orders): never "Free".
-    lines.push(`Delivery (by distance): ${money(fee.night)}`);
-  } else {
-    lines.push(`Delivery: ${fee.base > 0 ? money(fee.base) : "Free"}`);
-    if (fee.night > 0) lines.push(`Distance delivery charge: ${money(fee.night)}`);
-  }
+  lines.push(`Delivery charge: ${fee.base + fee.night > 0 ? money(fee.base + fee.night) : "Free"}`);
   // The shop's charge for rain, snow or a rush, under the name the bill gave it.
   if (fee.extra > 0) lines.push(`${fee.extraLabel}: ${money(fee.extra)}`);
   // ₹11 on every order; older orders saved without it show what the total implies.

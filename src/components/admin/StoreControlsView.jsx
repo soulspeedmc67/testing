@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import DeliveryChargeSettings from "./DeliveryChargeSettings";
 import ShopRulesSettings from "./ShopRulesSettings";
+import StoreLocationSettings from "./StoreLocationSettings";
 import ExtraChargeSettings from "./ExtraChargeSettings";
 import RefreshWebsiteCard from "./RefreshWebsiteCard";
 import AppUpdateSettings from "./AppUpdateSettings";
@@ -251,6 +252,11 @@ export default function StoreControlsView({
 
       {/* The extra charge for rain, snow or a rush: a switch, the amount and its name on the bill */}
       <ExtraChargeSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
+
+      {/* Where orders are delivered from: the distance, time and area for every order follow it */}
+      <div className="col-span-full">
+        <StoreLocationSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
+      </div>
 
       {/* Cash on delivery, the minimum order and the fees: every shop app follows them live */}
       <ShopRulesSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />

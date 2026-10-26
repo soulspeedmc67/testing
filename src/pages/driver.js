@@ -53,12 +53,15 @@ import {
 } from "../lib/auth";
 import { isFirebaseConfigured, getFirebaseAuth } from "../lib/firebase";
 import { ANANTNAG_LOCALITIES } from "../lib/maps";
+import { DARK_STORE_HUB as SHARED_STORE_HUB } from "../lib/deliveryEta";
+import { useStoreConfig } from "../lib/storeStatus";
 import { requestScreenWakeLock, releaseScreenWakeLock } from "../lib/wakeLock";
 import { orderAddress } from "../lib/orderReceipt";
 import { DRIVER_LANGUAGES, DRIVER_STRINGS } from "../lib/driverTranslations";
 
 // Lal Chowk Dark Store Hub default coordinates
-const DARK_STORE_HUB = { latitude: 33.748413, longitude: 75.150839 };
+// Where the store is now: the shop can move it (config/store), so it is read when used.
+const darkStoreHub = () => ({ latitude: SHARED_STORE_HUB.lat, longitude: SHARED_STORE_HUB.lng });
 /** Longest gap between position updates, even standing still. */
 const TELEMETRY_PUSH_INTERVAL_MS = 20000;
 /** Shortest gap while riding. */
@@ -741,7 +744,9 @@ export default function DashItDriverApp() {
      taken as 1.3 times the straight line, starting from where the rider is.
      Planned once per set of orders, so stops never reshuffle mid-ride. */
   // Where the rider is (GPS, see section 6); the store until the first fix.
-  const [currentCoords, setCurrentCoords] = useState(DARK_STORE_HUB);
+  // Following the shop's settings keeps the store's spot up to date here too.
+  const storeConfig = useStoreConfig();
+  const [currentCoords, setCurrentCoords] = useState(darkStoreHub);
   const planRef = useRef({ key: "", ids: [] });
   const plannedOrders = useMemo(() => {
     if (assignedOrders.length < 2) return assignedOrders;
@@ -952,7 +957,7 @@ export default function DashItDriverApp() {
   }, [onDuty, startGps, stopGps]);
 
   // 7. Embedded Google Maps Target Resolution & Live Directions URL
-  const targetCoords = useMemo(() => (activeOrder ? dropPoint(activeOrder) : DARK_STORE_HUB), [activeOrder]);
+  const targetCoords = useMemo(() => (activeOrder ? dropPoint(activeOrder) : darkStoreHub()), [activeOrder, storeConfig]);
 
   const targetLat = targetCoords.latitude;
   const targetLng = targetCoords.longitude;

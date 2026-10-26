@@ -107,37 +107,18 @@ struct CheckoutView: View {
                         let bill = cart.bill
                         billRow("Items total", value: CurrencyFormatter.format(bill.subtotal))
                         billRow(
-                            bill.isFirstFivePromo ? "Delivery (free – first 5 orders)" : "Delivery fee",
-                            value: bill.deliveryFee == 0 ? "FREE" : CurrencyFormatter.format(bill.deliveryFee),
-                            accent: bill.deliveryFee == 0
+                            "Delivery charge",
+                            value: bill.deliveryFee + bill.nightDeliveryFee == 0
+                                ? "FREE"
+                                : CurrencyFormatter.format(bill.deliveryFee + bill.nightDeliveryFee),
+                            accent: bill.deliveryFee + bill.nightDeliveryFee == 0
                         )
-                        if !bill.tierLabel.isEmpty && bill.deliveryFee > 0 {
-                            Text(bill.tierLabel)
-                                .font(.system(size: 11))
-                                .foregroundColor(.textFaint)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        // Charged by distance after 8 pm, or whenever the shop switches it on.
-                        if bill.nightDeliveryFee > 0 {
-                            billRow(
-                                NightCharge.isNightHours() ? "Night delivery charge" : "Distance delivery charge",
-                                value: CurrencyFormatter.format(bill.nightDeliveryFee)
-                            )
-                            Text(nightChargeNote)
-                                .font(.system(size: 11))
-                                .foregroundColor(.textFaint)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
                         // The shop's extra charge for rain, snow or a rush: on free delivery too.
                         if bill.extraDeliveryFee > 0 {
                             billRow(
                                 ShopRules.extraChargeTitle(storeStatus.rules.extraChargeLabel),
                                 value: CurrencyFormatter.format(bill.extraDeliveryFee)
                             )
-                            Text("On every order for now, free delivery included")
-                                .font(.system(size: 11))
-                                .foregroundColor(.textFaint)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         billRow("Handling charge", value: CurrencyFormatter.format(bill.handlingFee))
                         Text("May vary with weather and unforeseen conditions")
@@ -270,11 +251,6 @@ struct CheckoutView: View {
                 cart.refreshNightFee(for: vm.selectedAddress, settings: settings)
             }
         }
-    }
-
-    private var nightChargeNote: String {
-        let rule = NightCharge.isNightHours() ? "After \(NightCharge.startLabel), by distance" : "By distance"
-        return "\(rule): \(vm.deliveryQuote.shortDistanceText) from our store"
     }
 
     private func billRow(_ label: String, value: String, accent: Bool = false) -> some View {

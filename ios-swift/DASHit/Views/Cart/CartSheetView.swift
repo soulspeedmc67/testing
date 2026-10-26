@@ -249,16 +249,10 @@ struct CartSheetView: View {
             }
             billRow("Item total", value: CurrencyFormatter.format(bill.subtotal))
             billRow(
-                "Delivery partner fee",
-                value: bill.deliveryFee == 0 ? (bill.isFirstFivePromo ? "FREE (First 5 orders)" : "FREE") : CurrencyFormatter.format(bill.deliveryFee),
-                valueColor: bill.deliveryFee == 0 ? .positive : .textPrimary
+                "Delivery charge",
+                value: bill.deliveryFee + bill.nightDeliveryFee == 0 ? "FREE" : CurrencyFormatter.format(bill.deliveryFee + bill.nightDeliveryFee),
+                valueColor: bill.deliveryFee + bill.nightDeliveryFee == 0 ? .positive : .textPrimary
             )
-            if bill.nightDeliveryFee > 0 {
-                billRow(
-                    NightCharge.isNightHours() ? "Night delivery charge" : "Distance delivery charge",
-                    value: CurrencyFormatter.format(bill.nightDeliveryFee)
-                )
-            }
             // The shop's extra charge for rain, snow or a rush: on free delivery too.
             if bill.extraDeliveryFee > 0 {
                 billRow(

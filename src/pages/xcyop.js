@@ -37,6 +37,7 @@ import AddProductView from "../components/admin/AddProductView";
 import BatchInwardView from "../components/admin/BatchInwardView";
 import CatalogueView from "../components/admin/CatalogueView";
 import OffersView from "../components/admin/OffersView";
+import SaleEditor from "../components/admin/SaleEditor";
 import GstSalesReportModal from "../components/admin/GstSalesReportModal";
 import ImporterView from "../components/admin/ImporterView";
 import CsvInventoryView from "../components/admin/CsvInventoryView";
@@ -723,20 +724,14 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   const [showGstModal, setShowGstModal] = useState(false);
   const [businessGstInfo, setBusinessGstInfo] = useState(DEFAULT_BUSINESS_GST_INFO);
   const [exclusiveOffers, setExclusiveOffers] = useState([]);
-  const [showOfferModal, setShowOfferModal] = useState(false);
-  const [offerForm, setOfferForm] = useState({
-    title: "",
-    badge: "DASHIT EXCLUSIVE",
-    subtitle: "Delivered to your doorstep in 8 minutes.",
-    priceTag: "Flat 20% OFF",
-    category: "Snacks",
-    promoCode: "DASH20",
-    discountPercent: 20,
-    expiresIn: "Active Today",
-    img: VISUAL_IMAGE_PALETTE[4].url,
-    gradient: "from-[#040E22] via-[#061838] to-[#0A2558]",
-    accent: "text-amber-400"
-  });
+  // The categories the shop sells in, for "this sale applies to one category".
+  const saleCategories = useMemo(() => {
+    // Tobacco is never promoted, so its category isn't offered for a sale.
+    const found = [...new Set((catalogue || []).map((p) => String(p?.cat || p?.category || "").trim()).filter((c) => c && !/tobacco|cigarette/i.test(c)))];
+    return found.length > 0 ? found : CATEGORIES.filter((c) => c !== "All");
+  }, [catalogue]);
+  // The sale being made or changed: null when the editor is closed, { offer } when open (offer is null for a new one).
+  const [saleEditor, setSaleEditor] = useState(null);
 
   // Open Food Facts Importer
   const [offSearchQuery, setOffSearchQuery] = useState("");
@@ -1659,43 +1654,30 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
     showToast(`Processed ${count} items from paste list.`);
   };
 
-  // Save Banner Offer
-  const handleSaveOffer = async (e) => {
-    if (e) e.preventDefault();
-    if (!offerForm.title.trim()) {
-      alert("Please enter an offer title.");
-      return;
-    }
-    const newOffer = {
-      id: `offer-${Date.now()}`,
-      badge: offerForm.badge || "DASHIT EXCLUSIVE",
-      title: offerForm.title.trim(),
-      subtitle: offerForm.subtitle.trim(),
-      priceTag: offerForm.priceTag.trim(),
-      category: offerForm.category || "Snacks",
-      promoCode: offerForm.promoCode || "DASHIT",
-      discountPercent: Number(offerForm.discountPercent) || 20,
-      expiresIn: offerForm.expiresIn || "Active Today",
-      img: offerForm.img || VISUAL_IMAGE_PALETTE[4].url,
-      gradient: "from-[#040E22] via-[#061838] to-[#0A2558]",
-      accent: "text-amber-400",
-      active: true,
-      createdAt: Date.now()
-    };
+  // Save a sale (new or changed) from the sale editor.
+  const handleSaveOffer = async (fields, existingId = null) => {
+    const isNew = !existingId;
+    const sale = isNew
+      ? { id: `offer-${Date.now()}`, ...fields, createdAt: Date.now() }
+      : { id: existingId, ...fields };
     try {
       if (isFirebaseConfigured) {
         // The list above follows the database by itself.
-        await saveOffer(newOffer);
+        await saveOffer(sale);
       } else {
-        addExclusiveOffer(newOffer);
+        addExclusiveOffer(sale);
         setExclusiveOffers(getExclusiveOffers());
       }
-      setShowOfferModal(false);
-      showToast(`Banner offer "${newOffer.title}" published.`);
+      setSaleEditor(null);
+      showToast(isNew ? `"${sale.title}" is published.` : `"${sale.title}" is saved.`);
     } catch (err) {
-      showToast(`Offer notice: ${err?.message}`);
+      showToast("Not saved. Check your connection and try again.");
     }
   };
+
+  const openSaleEditor = (offer) => setSaleEditor({ offer: offer || null });
+  const duplicateSale = (offer) =>
+    setSaleEditor({ offer: { ...offer, id: "", title: `${offer.title} (copy)`, startsAt: 0, endsAt: 0, active: false } });
 
   const handleDeleteOffer = async (id) => {
     if (!confirm("Remove this promo banner?")) return;
@@ -2133,7 +2115,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onToggleCouponActive={handleToggleCouponActive}
           onResetDefaultCoupons={handleResetDefaultCoupons}
           exclusiveOffers={exclusiveOffers}
-          onOpenOfferModal={() => setShowOfferModal(true)}
+          onOpenOfferModal={openSaleEditor}
+          onEditOffer={openSaleEditor}
+          onDuplicateOffer={duplicateSale}
           onDeleteOffer={handleDeleteOffer}
           onToggleOffer={handleToggleOffer}
           darkMode={darkMode}
@@ -2517,147 +2501,18 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
         </div>
       )}
 
-      {/* NEW BANNER OFFER MODAL */}
-      {showOfferModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div
-            className={`rounded-3xl p-6 border shadow-2xl max-w-md w-full space-y-4 relative animate-in fade-in zoom-in-95 ${
-              darkMode ? "bg-[#14161E] border-zinc-800 text-white" : "bg-white border-slate-200 text-slate-900"
-            }`}
-          >
-            <div className="flex items-start justify-between border-b pb-3 border-slate-200/50">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center font-black">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-base">New Storefront Banner Drop</h3>
-                  <p className="text-[11px] text-zinc-400 font-medium">Add top promo card to customer homepage</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowOfferModal(false)}
-                className="p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveOffer} className="space-y-3">
-              <div>
-                <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Headline / Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Kashmiri Apples & Fresh Bakes"
-                  value={offerForm.title}
-                  onChange={(e) => setOfferForm((p) => ({ ...p, title: e.target.value }))}
-                  className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
-                    darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                  }`}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Badge</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. DASHIT EXCLUSIVE"
-                    value={offerForm.badge}
-                    onChange={(e) => setOfferForm((p) => ({ ...p, badge: e.target.value }))}
-                    className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
-                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Price Tag</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Flat 20% OFF"
-                    value={offerForm.priceTag}
-                    onChange={(e) => setOfferForm((p) => ({ ...p, priceTag: e.target.value }))}
-                    className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
-                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                    }`}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Promo Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. DASH20"
-                    value={offerForm.promoCode}
-                    onChange={(e) => setOfferForm((p) => ({ ...p, promoCode: e.target.value.toUpperCase() }))}
-                    className={`w-full text-xs font-mono font-bold px-3 py-2 rounded-xl border outline-none ${
-                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Category</label>
-                  <select
-                    value={offerForm.category}
-                    onChange={(e) => setOfferForm((p) => ({ ...p, category: e.target.value }))}
-                    className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
-                      darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                    }`}
-                  >
-                    {CATEGORIES.filter((c) => c !== "All").map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Subtitle</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Delivered to your doorstep in 8 minutes."
-                  value={offerForm.subtitle}
-                  onChange={(e) => setOfferForm((p) => ({ ...p, subtitle: e.target.value }))}
-                  className={`w-full text-xs font-bold px-3 py-2 rounded-xl border outline-none ${
-                    darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-black uppercase text-slate-400 block mb-1">Banner Image URL</label>
-                <input
-                  type="url"
-                  value={offerForm.img}
-                  onChange={(e) => setOfferForm((p) => ({ ...p, img: e.target.value }))}
-                  className={`w-full text-xs font-mono px-3 py-2 rounded-xl border outline-none ${
-                    darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300 text-slate-900"
-                  }`}
-                />
-              </div>
-
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200/50">
-                <button
-                  type="button"
-                  onClick={() => setShowOfferModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-slate-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#FF5B00] hover:bg-[#E04E00] text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer"
-                >
-                  Publish Banner Offer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {/* SALE EDITOR: photo, what it is, what it applies to, a code and when it runs */}
+      {saleEditor && (
+        <SaleEditor
+          key={saleEditor.offer?.id || "new"}
+          initial={saleEditor.offer}
+          categories={saleCategories}
+          coupons={coupons}
+          onSave={handleSaveOffer}
+          onClose={() => setSaleEditor(null)}
+          darkMode={darkMode}
+          fallbackImg={VISUAL_IMAGE_PALETTE[4].url}
+        />
       )}
 
       {/* GST SALES BILL & TAX REPORT MODAL */}

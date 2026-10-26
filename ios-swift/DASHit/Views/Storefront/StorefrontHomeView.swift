@@ -73,7 +73,8 @@ struct StorefrontHomeView: View {
                                 VStack(alignment: .leading, spacing: 12) {
                                     sectionTitle("Deals for you")
                                     HeroCarouselView(offers: vm.offers) { offer in
-                                        vm.selectCategory(offer.category)
+                                        // A sale on everything has no category to open.
+                                        if offer.opensCategory { vm.selectCategory(offer.category) }
                                     }
                                 }
                                 .padding(.top, 30)

@@ -34,12 +34,10 @@ const QUESTIONS = [
   {
     q: "Is there a delivery fee?",
     a: (rules) => {
-      const fee = (amount) => (amount > 0 ? `₹${amount}` : "free");
       return [
         rules.freeDeliveryOrders > 0 ? `Delivery is free on your first ${rules.freeDeliveryOrders} orders.` : "",
-        `${rules.freeDeliveryOrders > 0 ? "After that it" : "Delivery"} depends on the size of your order: ${fee(rules.deliveryLowFee)} on orders of ₹${rules.deliveryLowFrom} or more, ${fee(rules.deliveryMidFee)} from ₹${rules.deliverySmallBelow}, and ${rules.deliverySmallPercent}% of the items total below that.`,
+        "Checkout shows your delivery charge before you order.",
         rules.handlingFee > 0 ? `Every order also has a ₹${rules.handlingFee} handling charge, which may vary with weather and unforeseen conditions.` : "",
-        "At night (usually after 8 pm) delivery can be charged by distance instead; checkout shows the exact fee before you order.",
         rules.minOrderValue > 0 ? `We deliver orders of ₹${rules.minOrderValue} or more.` : "",
       ]
         .filter(Boolean)

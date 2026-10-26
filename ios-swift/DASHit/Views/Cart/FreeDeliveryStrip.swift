@@ -10,29 +10,22 @@ struct FreeDeliveryStrip: View {
 
     private var rules: ShopRules { ShopRules.current }
     private var belowMinimum: Bool { !bill.isMinOrderSatisfied }
-    private var isSmallOrder: Bool { bill.subtotal < rules.deliverySmallBelow }
-    private var nextStep: Double {
-        if belowMinimum { return rules.minOrderValue }
-        return isSmallOrder ? rules.deliverySmallBelow : rules.deliveryLowFrom
-    }
-    private var nextCharge: Double { isSmallOrder ? rules.deliveryMidFee : rules.deliveryLowFee }
-    private var isUnlocked: Bool {
-        !belowMinimum && (bill.isFirstFivePromo || bill.subtotal >= rules.deliveryLowFrom)
-    }
+    // Only the minimum order and the free first orders are talked about here: how a
+    // delivery charge is worked out is not shown to customers.
+    private var nextStep: Double { rules.minOrderValue }
+    private var isUnlocked: Bool { !belowMinimum }
     private var progress: CGFloat { CGFloat(min(bill.subtotal / max(nextStep, 1), 1)) }
     /// What the bar is counting towards.
-    private var goal: String {
-        if belowMinimum { return " more to place your order" }
-        return nextCharge > 0 ? " more for ₹\(ShopRules.whole(nextCharge)) delivery" : " more for free delivery"
-    }
-    private var unlockedLine: String {
-        if bill.isFirstFivePromo { return "Free delivery on your first \(rules.freeDeliveryOrders) orders!" }
-        return rules.deliveryLowFee > 0
-            ? "Lowest ₹\(ShopRules.whole(rules.deliveryLowFee)) delivery charge on this order"
-            : "Free delivery on this order"
-    }
+    private var goal: String { " more to place your order" }
+    private var unlockedLine: String { "Free delivery on your first \(rules.freeDeliveryOrders) orders!" }
 
     var body: some View {
+        if belowMinimum || bill.isFirstFivePromo {
+            content
+        }
+    }
+
+    private var content: some View {
         ZStack(alignment: .leading) {
             if isUnlocked {
                 HStack(spacing: 8) {

@@ -14,6 +14,31 @@ public struct Offer: Codable, Identifiable, Hashable {
     public let active: Bool?
     public let createdAt: Double?
     public let minOrder: Double?
+    /// Epoch seconds; nil means no start / no end (the shop's sales can be scheduled).
+    public let startsAt: Double?
+    public let endsAt: Double?
+
+    /// On screen at `now`: switched on, started and not over. Same rule as the website's `isSaleLive`.
+    public func isLive(at now: Date = Date()) -> Bool {
+        let t = now.timeIntervalSince1970
+        return (active ?? true) && (startsAt.map { t >= $0 } ?? true) && (endsAt.map { t < $0 } ?? true)
+    }
+
+    public enum SaleStatus { case live, scheduled, ended, off }
+
+    /// Where the sale is at `now`, as the staff consoles show it.
+    public func status(at now: Date = Date()) -> SaleStatus {
+        if active == false { return .off }
+        let t = now.timeIntervalSince1970
+        if let endsAt, t >= endsAt { return .ended }
+        if let startsAt, t < startsAt { return .scheduled }
+        return .live
+    }
+
+    /// Opens a category when tapped; a sale on everything has none to open.
+    public var opensCategory: Bool {
+        !["", "all", "deals"].contains(category.trimmingCharacters(in: .whitespaces).lowercased())
+    }
 
     public init(
         id: String,
@@ -28,8 +53,12 @@ public struct Offer: Codable, Identifiable, Hashable {
         img: String,
         active: Bool? = true,
         createdAt: Double? = nil,
-        minOrder: Double? = 199.0
+        minOrder: Double? = 199.0,
+        startsAt: Double? = nil,
+        endsAt: Double? = nil
     ) {
+        self.startsAt = startsAt
+        self.endsAt = endsAt
         self.id = id
         self.badge = badge
         self.title = title
@@ -67,6 +96,8 @@ public struct Offer: Codable, Identifiable, Hashable {
         self.active = active
         self.createdAt = Date().timeIntervalSince1970
         self.minOrder = minOrder
+        self.startsAt = nil
+        self.endsAt = nil
     }
 
     public var code: String { promoCode }
@@ -99,7 +130,10 @@ public struct Offer: Codable, Identifiable, Hashable {
             img: text("img"),
             active: (data["active"] as? Bool) ?? true,
             createdAt: number("createdAt"),
-            minOrder: number("minOrder")
+            minOrder: number("minOrder"),
+            // The console saves milliseconds.
+            startsAt: number("startsAt").flatMap { $0 > 0 ? $0 / 1000 : nil },
+            endsAt: number("endsAt").flatMap { $0 > 0 ? $0 / 1000 : nil }
         )
     }
 
@@ -118,7 +152,9 @@ public struct Offer: Codable, Identifiable, Hashable {
             img: img,
             active: active,
             createdAt: createdAt,
-            minOrder: minOrder
+            minOrder: minOrder,
+            startsAt: startsAt,
+            endsAt: endsAt
         )
     }
 

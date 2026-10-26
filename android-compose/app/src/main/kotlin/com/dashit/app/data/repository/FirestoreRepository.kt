@@ -200,6 +200,20 @@ class FirestoreRepository {
         }
 
         var listener: ListenerRegistration? = null
+        // A sale with a start date appears when it starts and one with an end date goes
+        // when it ends, with the app open too: a timer wakes at the next start or end.
+        var latest = emptyList<Offer>()
+        var timer: kotlinx.coroutines.Job? = null
+        fun deliver() {
+            timer?.cancel()
+            val now = System.currentTimeMillis()
+            trySend(latest.filter { it.isLive(now) })
+            val next = latest.flatMap { listOf(it.startsAt, it.endsAt) }.filter { it > now }.minOrNull()
+            if (next != null) timer = launch {
+                kotlinx.coroutines.delay(minOf(next - now + 500, 2_000_000_000L))
+                deliver()
+            }
+        }
         try {
             listener = db.collection("offers").addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
@@ -228,11 +242,13 @@ class FirestoreRepository {
                         promoCode = promoCode,
                         discountPercent = discountPercent,
                         expiresIn = expiresIn,
-                        img = img
+                        img = img,
+                        startsAt = (data["startsAt"] as? Number)?.toLong() ?: 0L,
+                        endsAt = (data["endsAt"] as? Number)?.toLong() ?: 0L
                     )
                 }
-
-                trySend(list)
+                latest = list
+                deliver()
             }
         } catch (_: Exception) {
             trySend(emptyList())

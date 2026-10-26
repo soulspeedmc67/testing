@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, useMapEvents, useMap, Circle } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { DARK_STORE_HUB, getDeliveryRadiusKm } from "../lib/deliveryEta";
 
 /**
  * Single bridge between the Leaflet instance and React state.
@@ -107,10 +108,10 @@ export default function MapWithPinInner({ pos, onChangePos, onDragStateChange, m
         keepBuffer={6}
         updateWhenIdle={false}
       />
-      {/* 5.0 KM STRICT DELIVERY BOUNDARY CIRCLE */}
+      {/* The delivery area: the shop's distance around where the store is now */}
       <Circle
-        center={[33.748413, 75.150839]}
-        radius={5000}
+        center={[DARK_STORE_HUB.lat, DARK_STORE_HUB.lng]}
+        radius={Math.max(0, getDeliveryRadiusKm()) * 1000}
         pathOptions={{
           color: "#FF5B00",
           fillColor: "#FF5B00",

@@ -17,10 +17,33 @@ import kotlin.math.sqrt
  * the iOS `DeliveryEta`), so every app promises the same times and area.
  */
 object DeliveryEta {
-    /** Anantnag Central Dark Store Hub. */
-    const val HUB_LAT = 33.748413
-    const val HUB_LNG = 75.150839
+    /** The built-in store spot: the Anantnag hub. */
+    const val DEFAULT_HUB_LAT = 33.748413
+    const val DEFAULT_HUB_LNG = 75.150839
     const val MAX_RADIUS_KM = 8.0
+
+    @Volatile private var hubLat = DEFAULT_HUB_LAT
+    @Volatile private var hubLng = DEFAULT_HUB_LNG
+
+    /**
+     * Where the store is now. The shop can move it (`storeLat` and `storeLng` on
+     * `config/store`, set in the staff console or the iOS admin), so every
+     * distance, delivery time, delivery-area check and distance charge reads
+     * it when it is used. Same setting as the website's `DARK_STORE_HUB` and
+     * the iPhone app's `DeliveryEta.hub`.
+     */
+    val HUB_LAT: Double get() = hubLat
+    val HUB_LNG: Double get() = hubLng
+
+    /** Takes the shop's chosen spot; with none set (or an invalid one) it goes back to the built-in spot. */
+    fun adoptHub(lat: Number?, lng: Number?) {
+        val la = lat?.toDouble()
+        val ln = lng?.toDouble()
+        val valid = la != null && ln != null && la.isFinite() && ln.isFinite() &&
+            Math.abs(la) <= 85 && Math.abs(ln) <= 180 && !(la == 0.0 && ln == 0.0)
+        hubLat = if (valid) la!! else DEFAULT_HUB_LAT
+        hubLng = if (valid) ln!! else DEFAULT_HUB_LNG
+    }
 
     data class Quote(
         val etaMinutes: Int?,
@@ -102,6 +125,8 @@ object StoreStatus {
                 if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
                 // Before the new state, so everything that reads it sees the shop's night hours.
                 NightCharge.adopt(snapshot.get("nightStartHour") as? Number, snapshot.get("nightEndHour") as? Number)
+                // Where the store is now, before the new state, so the distances it feeds are right.
+                DeliveryEta.adoptHub(snapshot.get("storeLat") as? Number, snapshot.get("storeLng") as? Number)
                 _state.value = State(
                     isOpen = snapshot.getBoolean("isOpen") ?: true,
                     closeReason = snapshot.getString("closeReason") ?: "",

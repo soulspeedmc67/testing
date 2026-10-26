@@ -4,8 +4,12 @@ import CoreLocation
 /// Delivery ETA and serviceability, ported from `src/lib/deliveryEta.js` so the
 /// iOS app promises the same times and the same 8 km area as web and Android.
 enum DeliveryEta {
-    /// Anantnag Central Dark Store Hub.
-    static let hub = CLLocationCoordinate2D(latitude: 33.748413, longitude: 75.150839)
+    /// The built-in store spot: the Anantnag Central Dark Store Hub.
+    static let defaultHub = CLLocationCoordinate2D(latitude: 33.748413, longitude: 75.150839)
+    /// Where the store is now. The shop can move it (`ShopRules.storeCoordinate`, set
+    /// in the staff console or the admin app), so every distance, delivery time,
+    /// delivery-area check and distance charge reads it when it is used.
+    static var hub: CLLocationCoordinate2D { ShopRules.current.storeCoordinate ?? defaultHub }
     static let hubName = "DASHit Express Hub · Anantnag"
     static let maxRadiusKm = 8.0
 

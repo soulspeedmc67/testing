@@ -6,6 +6,30 @@
 
 ---
 
+## Oct 26, 2026: movable store location, sale builder with photo upload, plain delivery wording
+
+Web VERIFIED (114 tests incl. `tests/sales.test.mjs`, `tests/storeLocation.test.mjs`; production build; the console against the
+local emulators: published a sale, saved a place, moved the store, checked the saved documents). Android VERIFIED to compile.
+iOS NOT compiled (the Actions build is the check). Nothing deployed.
+
+- **Store location** (`config/store`: `storeLat`, `storeLng`, `storeLabel`, `storePresets[{id,name,address,lat,lng}]`).
+  Set in `/xcyop` Shop settings ("Where orders are delivered from": map pin, search, this device's location, name, "Save to
+  my places", one-tap switch) and the iOS admin (Shop settings → Deliver orders from, `AdminStoreLocationView`). Every
+  distance, delivery time, delivery-area check, distance charge and rider map reads the live spot: web `DARK_STORE_HUB`
+  (mutated by `adoptStoreLocation`), Android `DeliveryEta.HUB_LAT/HUB_LNG` (`adoptHub`), iOS `DeliveryEta.hub`
+  (`ShopRules.storeCoordinate`). The rider page (`driver.js`) follows it too. Missing = the built-in Anantnag hub.
+  Old apps keep the old spot. The normal fee tiers are by order size, so only the distance-based parts change.
+- **Sales** (`offers`, now: `appliesTo` "all"|"category", `category`, `startsAt`/`endsAt` in ms, plus the old fields).
+  Web `SaleEditor.jsx` + `src/lib/sales.js` (photo upload to `api/staff/upload-photo.php` via `staffUpload.js`, preview,
+  schedule, applies-to, optional existing discount code), iOS admin `AdminSaleEditorView.swift`. Shoppers get only sales that
+  are on AND running (web `watchOffers`, Android `observeOffers`, iOS `CatalogueStore.refreshOffers`, with a timer for the
+  next start/end). A sale on "everything" has category "All" and opens no category on iPhone. The code on a sale is an
+  ordinary checkout code (config/coupons): the sale does NOT change prices or scope the code to its category.
+  Not built: duplicate on iOS, item-level discounts. Tobacco categories are not offered for a sale.
+- **Customer wording**: carts, checkout, order details, the receipt, help and the add-items sheet say "Delivery charge" and the
+  amount only (no tiers, distance or night explanation); the cart progress strip only talks about the minimum order and the
+  free first orders. Admin screens still show the full breakdown.
+
 ## Oct 26, 2026: admin app got no "New order" push (fix, not deployed)
 
 PHP VERIFIED to parse (php:8.3-cli). iOS NOT compiled (the Actions admin build is the check). Nothing committed or deployed.

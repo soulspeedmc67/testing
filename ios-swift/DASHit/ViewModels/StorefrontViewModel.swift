@@ -43,6 +43,9 @@ final class CatalogueStore: ObservableObject {
     #endif
     /// The banners the shop has switched on (`offers`); none until they arrive.
     @Published private(set) var offers: [Offer] = []
+    /// Every banner the shop has on, with its dates: `offers` is the ones running now.
+    private var scheduledOffers: [Offer] = []
+    private var offerTimer: Task<Void, Never>?
     /// The `categories` collection, when the rules let it be read.
     @Published private var remoteCategories: [Category] = []
 
@@ -201,7 +204,24 @@ final class CatalogueStore: ObservableObject {
         // With every banner switched off the list is empty and the app shows
         // none. It used to keep three built-in ones, which couldn't be turned off.
         offerListener = FirestoreService.shared.listenOffers { [weak self] fetched in
-            self?.offers = fetched
+            self?.scheduledOffers = fetched
+            self?.refreshOffers()
+        }
+    }
+
+    /// A sale with a start date appears when it starts and one with an end date
+    /// goes when it ends, with the app open too: a timer wakes at the next start or end.
+    private func refreshOffers() {
+        offerTimer?.cancel()
+        let now = Date()
+        offers = scheduledOffers.filter { $0.isLive(at: now) }
+        let t = now.timeIntervalSince1970
+        let next = scheduledOffers.flatMap { [$0.startsAt, $0.endsAt] }.compactMap { $0 }.filter { $0 > t }.min()
+        guard let next else { return }
+        offerTimer = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(min(next - t + 0.5, 86_400)))
+            guard !Task.isCancelled else { return }
+            self?.refreshOffers()
         }
     }
 }

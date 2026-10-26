@@ -4,13 +4,62 @@
  * with a realistic traffic model, order packing buffer, and a +2-3 minute safety margin.
  */
 
-// Anantnag Central Dark Store Hub
-export const DARK_STORE_HUB = {
+/* Where the dark store is. The built-in spot is the Anantnag hub; the shop can
+   move it (its owner works from home some days) on config/store: `storeLat`,
+   `storeLng` and `storeLabel`, set in the staff console or the iOS admin. Every
+   distance, delivery time, delivery-area check, distance charge and rider map
+   reads DARK_STORE_HUB, which follows those settings as they arrive (db.js
+   calls adoptStoreLocation). The same setting is read by the Android app
+   (`DeliveryEta.kt`) and the iPhone app (`DeliveryEta.swift`). */
+export const DEFAULT_STORE_HUB = Object.freeze({
   lat: 33.748413,
   lng: 75.150839,
   name: "Anantnag Dark Store",
   address: "Anantnag 192101",
-};
+});
+
+export const DARK_STORE_HUB = { ...DEFAULT_STORE_HUB };
+
+const validPoint = (lat, lng) =>
+  Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 85 && Math.abs(lng) <= 180 && !(lat === 0 && lng === 0);
+
+/** The shop's chosen store spot from `config/store`, or null when it hasn't set one. */
+export function storeLocationOf(cfg) {
+  const lat = Number(cfg?.storeLat);
+  const lng = Number(cfg?.storeLng);
+  if (cfg?.storeLat === null || cfg?.storeLat === undefined || cfg?.storeLng === null || cfg?.storeLng === undefined) return null;
+  if (!validPoint(lat, lng)) return null;
+  const label = typeof cfg?.storeLabel === "string" ? cfg.storeLabel.trim().slice(0, 60) : "";
+  return { lat, lng, label };
+}
+
+/** The saved places the shop can switch the store to (`storePresets` on config/store). */
+export function storePresetsOf(cfg) {
+  const list = Array.isArray(cfg?.storePresets) ? cfg.storePresets : [];
+  return list
+    .map((p, index) => {
+      const lat = Number(p?.lat);
+      const lng = Number(p?.lng);
+      if (!validPoint(lat, lng)) return null;
+      return {
+        id: String(p?.id || `place-${index}`),
+        name: String(p?.name || "Saved place").trim().slice(0, 40) || "Saved place",
+        address: String(p?.address || "").trim().slice(0, 120),
+        lat,
+        lng,
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 20);
+}
+
+/** Moves the store to where the shop says it is now; with nothing set it goes back to the built-in spot. */
+export function adoptStoreLocation(cfg) {
+  const spot = storeLocationOf(cfg);
+  DARK_STORE_HUB.lat = spot ? spot.lat : DEFAULT_STORE_HUB.lat;
+  DARK_STORE_HUB.lng = spot ? spot.lng : DEFAULT_STORE_HUB.lng;
+  DARK_STORE_HUB.name = spot?.label || DEFAULT_STORE_HUB.name;
+}
 
 /**
  * Calculates straight-line distance in kilometers using the Haversine formula
@@ -37,6 +86,10 @@ export const MAX_DELIVERY_RADIUS_KM = 8.0;
    0 means no limit). Starts at the built-in 8 km and follows the shop's
    settings as they arrive (db.js calls adoptDeliveryRadius). */
 let deliveryRadiusKm = MAX_DELIVERY_RADIUS_KM;
+
+export function getDeliveryRadiusKm() {
+  return deliveryRadiusKm;
+}
 
 export function adoptDeliveryRadius(cfg) {
   const n = Number(cfg?.deliveryRadiusKm);

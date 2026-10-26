@@ -26,8 +26,7 @@ import CheckoutLoginModal from "../components/CheckoutLoginModal";
 import OrderProcessingModal from "../components/OrderProcessingModal";
 import OrderingForSomeoneElseModal from "../components/OrderingForSomeoneElseModal";
 import CouponsDrawer from "../components/CouponsDrawer";
-import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
-import { calculateDeliveryCharges, deliveryFeeWords, extraChargeFor, extraChargeLabel, shopRules } from "../lib/deliveryCharges";
+import { calculateDeliveryCharges, extraChargeFor, extraChargeLabel, shopRules } from "../lib/deliveryCharges";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
 import { useWalletUsed, walletToUse, fetchWalletUsed } from "../lib/wallet";
@@ -351,8 +350,6 @@ export default function CheckoutPage() {
   const walletSpent = useWalletUsed();
   const walletApplied = billReady ? walletToUse(rules, walletSpent, beforeWallet) : 0;
   const grandTotal = Math.max(0, beforeWallet - walletApplied);
-  // How far the cart is from the lowest delivery fee.
-  const toFreeDelivery = deliveryCharges.isFirstFivePromo ? 0 : Math.max(0, rules.deliveryLowFrom - subtotal);
 
   // Orders start at the shop's minimum (₹100 of items unless it has changed it);
   // below that the cart says how much is left.
@@ -723,29 +720,17 @@ export default function CheckoutPage() {
               </div>
               <p className="mt-2 text-[12.5px] text-slate-500 dark:text-content-muted">We deliver orders of ₹{rules.minOrderValue} or more.</p>
             </div>
-            ) : !nightChargeOn && (
+            ) : !nightChargeOn && (deliveryCharges.isFirstFivePromo || deliveryCharges.isFree) && (
             <div className="px-4 sm:px-5 pb-3">
-              <p className="text-[13px] font-medium text-slate-600 dark:text-content-secondary">
+              <p className="text-[13px] font-medium">
                 {deliveryCharges.isFirstFivePromo ? (
                   <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
                     Free delivery on your first {rules.freeDeliveryOrders} orders (Order #{deliveryCharges.orderNumber} of {rules.freeDeliveryOrders})
                   </span>
-                ) : deliveryCharges.isFree ? (
-                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Free delivery on this order</span>
-                ) : toFreeDelivery > 0 ? (
-                  <>
-                    Add <strong className="text-[#061838] dark:text-content">{rupees(toFreeDelivery)}</strong> more for {rules.deliveryLowFee > 0 ? `lowest ${deliveryFeeWords(rules.deliveryLowFee)}` : "free delivery"}
-                  </>
                 ) : (
-                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{rules.deliveryLowFee > 0 ? `Lowest ₹${rules.deliveryLowFee} delivery tier unlocked` : "Free delivery unlocked"}</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Free delivery on this order</span>
                 )}
               </p>
-              <div className="mt-2 h-1 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-[width] duration-500 ${toFreeDelivery > 0 && !deliveryCharges.isFree ? "bg-[#FF5B00]" : "bg-emerald-500"}`}
-                  style={{ width: `${deliveryCharges.isFree ? 100 : Math.min(100, (subtotal / Math.max(1, rules.deliveryLowFrom)) * 100)}%` }}
-                />
-              </div>
             </div>
             )}
 
@@ -894,59 +879,26 @@ export default function CheckoutPage() {
                 <dd className="tabular-nums font-semibold">{rupees(subtotal)}</dd>
               </div>
 
-              {/* Delivery Fee (by subtotal; by distance while the distance charge is on) */}
-              {nightChargeOn ? (
-                <div className="flex justify-between items-start">
-                  <div>
-                    <dt className="text-slate-600 dark:text-content-secondary">Delivery fee</dt>
-                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
-                      {hasAddress ? `By distance: ${eta.distanceKm} km from our store` : "By distance from our store. Add your address to see it."}
-                    </span>
-                  </div>
-                  <dd className={`tabular-nums ${hasAddress ? "font-semibold" : "text-slate-400 dark:text-content-faint"}`}>
-                    {hasAddress ? rupees(nightFee) : "—"}
-                  </dd>
-                </div>
-              ) : (
+              {/* The delivery charge: one line, no working shown */}
               <div className="flex justify-between items-start">
-                <div>
-                  <dt className="text-slate-600 dark:text-content-secondary">Delivery fee</dt>
-                  {deliveryCharges.isFirstFivePromo ? (
-                    <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block">
-                      Free on first {rules.freeDeliveryOrders} orders (Order #{deliveryCharges.orderNumber} of {rules.freeDeliveryOrders})
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
-                      {deliveryCharges.tierLabel}
-                    </span>
-                  )}
-                </div>
+                <dt className="text-slate-600 dark:text-content-secondary">Delivery charge</dt>
                 <dd className="tabular-nums text-right">
-                  {deliveryFee === 0 ? (
-                    <span className="flex items-center space-x-1.5 justify-end">
-                      {deliveryCharges.standardFee > 0 && (
-                        <span className="line-through text-slate-400 text-xs font-normal">
-                          {rupees(deliveryCharges.standardFee)}
-                        </span>
-                      )}
-                      <span className="text-emerald-700 dark:text-emerald-400 font-bold">Free</span>
+                  {nightChargeOn ? (
+                    <span className={hasAddress ? "font-semibold" : "text-slate-400 dark:text-content-faint"}>
+                      {hasAddress ? rupees(nightFee) : "—"}
                     </span>
+                  ) : deliveryFee === 0 ? (
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">Free</span>
                   ) : (
                     <span className="font-semibold">{rupees(deliveryFee)}</span>
                   )}
                 </dd>
               </div>
-              )}
 
               {/* The shop's extra charge (rain, snow, a rush): on top of free delivery too */}
               {extraFee > 0 && (
                 <div className="flex justify-between items-start">
-                  <div>
-                    <dt className="text-slate-600 dark:text-content-secondary">{extraLabel}</dt>
-                    <span className="text-[11px] text-slate-400 dark:text-content-faint block">
-                      On every order for now, free delivery included
-                    </span>
-                  </div>
+                  <dt className="text-slate-600 dark:text-content-secondary">{extraLabel}</dt>
                   <dd className="tabular-nums font-semibold">{rupees(extraFee)}</dd>
                 </div>
               )}
@@ -975,8 +927,6 @@ export default function CheckoutPage() {
                   <dd className="tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">−{rupees(walletApplied)}</dd>
                 </div>
               )}
-
-              {!nightChargeOn && !belowMinimum && <FreeDeliveryProgress subtotal={subtotal} orderCount={userOrdersCount} rules={rules} />}
 
               <div className="pt-2.5 mt-1 border-t border-slate-100 dark:border-line flex justify-between text-[16px] font-bold text-[#061838] dark:text-content">
                 <dt>To pay</dt>

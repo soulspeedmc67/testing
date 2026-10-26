@@ -15,6 +15,7 @@ public struct AdminDashboardView: View {
     @State private var isAddDriverSheetOpen: Bool = false
     @State private var isStoreControlSheetOpen: Bool = false
     @State private var isAddOfferSheetOpen: Bool = false
+    @State private var saleToEdit: Offer? = nil
     @State private var isAddCouponSheetOpen: Bool = false
     @State private var couponToEdit: Coupon? = nil
     @State private var isBatchInwardSheetOpen: Bool = false
@@ -118,9 +119,10 @@ public struct AdminDashboardView: View {
                 StoreControlSheetView(vm: vm)
             }
             .sheet(isPresented: $isAddOfferSheetOpen) {
-                AddOfferSheetView { code, title, discount, minOrder in
-                    vm.addOffer(code: code, title: title, discountPercent: discount, minOrder: minOrder)
-                }
+                AdminSaleEditorView(vm: vm)
+            }
+            .sheet(item: $saleToEdit) { sale in
+                AdminSaleEditorView(vm: vm, editing: sale)
             }
             .sheet(isPresented: $isAddCouponSheetOpen) {
                 AddCouponSheetView(vm: vm)
@@ -1041,15 +1043,15 @@ public struct AdminDashboardView: View {
                             HStack(spacing: 6) {
                                 Image(systemName: "sparkles")
                                     .foregroundColor(.orange)
-                                Text("Banner Promotions (\(vm.offers.count))")
+                                Text("Sales & banners (\(vm.offers.count))")
                                     .font(.system(size: 17, weight: .bold))
                             }
-                            Text("Customers see the ones that are on. With none on, they see no banner.")
+                            Text("The banners at the top of the shop, with a photo, what they apply to and when they run.")
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
                         Spacer()
-                        Button("+ Add Banner") {
+                        Button("+ New sale") {
                             isAddOfferSheetOpen = true
                         }
                         .font(.system(size: 12, weight: .bold))
@@ -1058,7 +1060,7 @@ public struct AdminDashboardView: View {
                     .padding(.horizontal, 16)
 
                     if vm.offers.isEmpty {
-                        Text("No banners. Customers see none until you add one.")
+                        Text("No sales yet. Customers see no banner until you add one.")
                             .font(.system(size: 12))
                             .foregroundColor(.secondary)
                             .frame(maxWidth: .infinity)
@@ -1178,36 +1180,109 @@ public struct AdminDashboardView: View {
     }
 
     private func offerCard(offer: Offer) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(offer.code)
-                    .font(.system(size: 15, weight: .black, design: .monospaced))
-                    .foregroundColor(.orange)
-                Text(offer.title)
-                    .font(.system(size: 13))
-                    .foregroundColor(.primary)
-                Text("\(offer.discountPercent)% OFF • Min Order ₹\(Int(offer.minOrder ?? 199.0))")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary)
+        let status = offer.status()
+        let statusText: String = {
+            switch status {
+            case .live: return "Live"
+            case .scheduled: return "Starts later"
+            case .ended: return "Ended"
+            case .off: return "Off"
             }
+        }()
+        let statusColor: Color = {
+            switch status {
+            case .live: return .green
+            case .scheduled: return .blue
+            case .ended, .off: return .gray
+            }
+        }()
+        return HStack(spacing: 12) {
+            Button {
+                saleToEdit = offer
+            } label: {
+                HStack(spacing: 12) {
+                    Group {
+                        if let url = URL(string: offer.img), !offer.img.isEmpty {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable().scaledToFill()
+                                } else {
+                                    Color.gray.opacity(0.15)
+                                }
+                            }
+                        } else {
+                            Color.gray.opacity(0.15)
+                        }
+                    }
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            Spacer()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(offer.title)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        HStack(spacing: 6) {
+                            Text(statusText)
+                                .font(.system(size: 10, weight: .heavy))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(statusColor, in: Capsule())
+                            Text(offer.opensCategory ? "On \(offer.category)" : "On everything")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                            if !offer.promoCode.isEmpty {
+                                Text(offer.promoCode)
+                                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        Text(scheduleLine(for: offer))
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
 
-            Toggle("", isOn: Binding(
-                get: { offer.active ?? true },
-                set: { vm.toggleOffer(offerId: offer.id, active: $0) }
-            ))
-            .labelsHidden()
+            Spacer(minLength: 4)
 
-            Button(action: { vm.deleteOffer(offerId: offer.id) }) {
-                Image(systemName: "trash")
-                    .font(.system(size: 14))
-                    .foregroundColor(.red)
+            VStack(spacing: 10) {
+                Toggle("", isOn: Binding(
+                    get: { offer.active ?? true },
+                    set: { vm.toggleOffer(offerId: offer.id, active: $0) }
+                ))
+                .labelsHidden()
+
+                Button(action: { vm.deleteOffer(offerId: offer.id) }) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red)
+                }
             }
         }
         .padding(14)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// What the card says about when the sale runs.
+    private func scheduleLine(for offer: Offer) -> String {
+        func label(_ seconds: Double) -> String {
+            Date(timeIntervalSince1970: seconds).formatted(.dateTime.day().month(.abbreviated).hour().minute())
+        }
+        switch offer.status() {
+        case .off: return "Switched off. Customers don't see it."
+        case .ended: return "Ended \(offer.endsAt.map(label) ?? "")."
+        case .scheduled:
+            return "Starts \(offer.startsAt.map(label) ?? "")" + (offer.endsAt.map { ", ends \(label($0))" } ?? "") + "."
+        case .live:
+            return offer.endsAt.map { "Running now, ends \(label($0))." } ?? "Running now, with no end date."
+        }
     }
 
     // MARK: - Tab 8: Batch Inward Content
@@ -2222,6 +2297,25 @@ struct StoreControlSheetView: View {
                     Text(isOpen
                         ? "Customers can order now."
                         : "Customers see: “The store is closed right now. \(chosenCloseReason)” Tap Save.")
+                }
+
+                Section {
+                    NavigationLink {
+                        AdminStoreLocationView(vm: vm)
+                    } label: {
+                        HStack {
+                            Label("Deliver orders from", systemImage: "mappin.and.ellipse")
+                            Spacer()
+                            Text(vm.shopRules.storeLabel.isEmpty
+                                ? (vm.shopRules.storeCoordinate == nil ? "DASHit hub" : "Store")
+                                : vm.shopRules.storeLabel)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Store location")
+                } footer: {
+                    Text("Working from home today? Move the store here and every order's distance, delivery time and distance charge follow it. It works at once, without Save.")
                 }
 
                 Section {

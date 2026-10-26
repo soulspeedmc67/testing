@@ -1,3 +1,4 @@
+import { DARK_STORE_HUB } from "../lib/deliveryEta";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Search, Crosshair, MapPin, Check, Loader2, X, AlertTriangle, ShieldCheck, Home, Briefcase, Users, Building2, ChevronDown } from "lucide-react";
@@ -7,7 +8,8 @@ import { calculateDeliveryEta, MAX_DELIVERY_RADIUS_KM } from "../lib/deliveryEta
 
 const MapWithPin = dynamic(() => import("./MapWithPinInner"), { ssr: false });
 
-const HUB_POS = { lat: 33.748413, lng: 75.150839 }; // Lal Chowk hub, Anantnag (https://maps.app.goo.gl/kKouW9fsgyGBJezT7)
+// Where the store is now (the shop can move it): read live, never copied.
+const HUB_POS = DARK_STORE_HUB;
 
 const POPULAR_AREAS = [
   { name: "Lal Chowk", lat: 33.735832, lng: 75.143614 },
@@ -28,7 +30,7 @@ const ALIAS_PRESETS = [
 ];
 
 export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation }) {
-  const [selectedPos, setSelectedPos] = useState(HUB_POS);
+  const [selectedPos, setSelectedPos] = useState({ lat: HUB_POS.lat, lng: HUB_POS.lng });
   /* Empty until a real lookup answers. These were seeded with the dark store's
      own address, so an unfinished or failed geocode left the customer looking at
      "Lal Chowk" as though that were their pin. */
@@ -244,7 +246,7 @@ export default function InteractiveMapModal({ isOpen, onClose, onConfirmLocation
       },
       () => {
         setIsLocating(false);
-        setSelectedPos(HUB_POS);
+        setSelectedPos({ lat: HUB_POS.lat, lng: HUB_POS.lng });
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([HUB_POS.lat, HUB_POS.lng], 16, { animate: true });
         }

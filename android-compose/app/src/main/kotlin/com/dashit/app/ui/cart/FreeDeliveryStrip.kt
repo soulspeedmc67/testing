@@ -77,25 +77,13 @@ internal fun FreeDeliveryStrip(bill: CartBillBreakdown) {
     val storeState by StoreStatus.state.collectAsState()
     val rules = storeState.rules
     val belowMinimum = !bill.isMinOrderSatisfied
-    val isSmallOrder = bill.subtotal < rules.deliverySmallBelow
-    val unlocked = !belowMinimum && (bill.isFirstOrdersPromo || bill.subtotal >= rules.deliveryLowFrom)
-    val nextStep = when {
-        belowMinimum -> rules.minOrderValue
-        isSmallOrder -> rules.deliverySmallBelow
-        else -> rules.deliveryLowFrom
-    }
-    val nextFee = if (isSmallOrder) rules.deliveryMidFee else rules.deliveryLowFee
-    // What the bar is counting towards.
-    val goal = when {
-        belowMinimum -> " more to place your order"
-        nextFee > 0 -> " more for ₹${ShopRules.whole(nextFee)} delivery"
-        else -> " more for free delivery"
-    }
-    val unlockedLine = when {
-        bill.isFirstOrdersPromo -> "Free delivery on your first ${rules.freeDeliveryOrders} orders!"
-        rules.deliveryLowFee > 0 -> "Lowest ₹${ShopRules.whole(rules.deliveryLowFee)} delivery charge on this order"
-        else -> "Free delivery on this order"
-    }
+    // Only the minimum order and the free first orders are talked about here: how a
+    // delivery charge is worked out is not shown to customers.
+    if (!belowMinimum && !bill.isFirstOrdersPromo) return
+    val unlocked = !belowMinimum
+    val nextStep = rules.minOrderValue
+    val goal = " more to place your order"
+    val unlockedLine = "Free delivery on your first ${rules.freeDeliveryOrders} orders!"
     val progress by animateFloatAsState(
         targetValue = (bill.subtotal / nextStep.coerceAtLeast(1.0)).coerceIn(0.0, 1.0).toFloat(),
         animationSpec = DashitMotion.houseSpring(),

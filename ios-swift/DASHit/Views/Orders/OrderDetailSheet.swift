@@ -85,10 +85,10 @@ struct OrderDetailSheet: View {
                 section("Bill") {
                     VStack(spacing: 8) {
                         billRow("Item total", CurrencyFormatter.format(order.subtotal))
-                        billRow("Delivery charge", order.baseDeliveryFee == 0 ? "FREE" : CurrencyFormatter.format(order.baseDeliveryFee))
-                        if order.nightDeliveryFee > 0 {
-                            billRow("Distance delivery charge", CurrencyFormatter.format(order.nightDeliveryFee))
-                        }
+                        billRow(
+                            "Delivery charge",
+                            order.baseDeliveryFee + order.nightDeliveryFee == 0 ? "FREE" : CurrencyFormatter.format(order.baseDeliveryFee + order.nightDeliveryFee)
+                        )
                         if order.extraDeliveryFee > 0 {
                             billRow(ShopRules.extraChargeTitle(order.extraDeliveryLabel), CurrencyFormatter.format(order.extraDeliveryFee))
                         }

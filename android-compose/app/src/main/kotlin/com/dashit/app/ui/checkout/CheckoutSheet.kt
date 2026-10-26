@@ -930,19 +930,13 @@ private fun OrderTotalCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (isNight) "Night delivery charge" else "Distance delivery charge",
-                        color = DashitColors.TextPrimary,
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "${if (isNight) "After ${NightCharge.startLabel}, by distance" else "By distance"}: ${"%.1f".format(distanceKm)} km from our store",
-                        color = DashitColors.TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
+                Text(
+                    text = "Delivery charge",
+                    color = DashitColors.TextPrimary,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
                 Text(
                     text = "₹${nightFee.toInt()}",
                     color = DashitColors.TextPrimary,
@@ -959,19 +953,13 @@ private fun OrderTotalCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = extraLabel,
-                        color = DashitColors.TextPrimary,
-                        fontSize = 13.5.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "On every order for now, free delivery included",
-                        color = DashitColors.TextSecondary,
-                        fontSize = 12.sp
-                    )
-                }
+                Text(
+                    text = extraLabel,
+                    color = DashitColors.TextPrimary,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
                 Text(
                     text = "₹${extraFee.toInt()}",
                     color = DashitColors.TextPrimary,

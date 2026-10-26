@@ -72,9 +72,8 @@ struct HelpSupportView: View {
         ),
         Question(
             question: "Is there a delivery fee?",
-            answer: "Delivery is free on your first 5 orders. "
-                + "After that, under ₹180 it's 40% of your cart total. Orders from ₹180–₹299 carry a flat ₹35 fee. "
-                + "Above ₹299 it's only ₹25. Plus a handling charge on every order, which may vary with weather and unforeseen conditions."
+            answer: "Delivery is free on your first 5 orders. Checkout shows your delivery charge before you order. "
+                + "Every order also has a handling charge, which may vary with weather and unforeseen conditions."
         ),
         Question(
             question: "Something is missing, damaged or wrong",

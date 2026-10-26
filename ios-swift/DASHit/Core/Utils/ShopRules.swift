@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 /// The shop's order rules: the minimum order, the delivery fee by order size,
 /// the handling charge, the free first orders, cash on delivery and the extra
@@ -45,6 +46,20 @@ struct ShopRules: Equatable {
     /// (0 ends it), and the most one order may use. See `Wallet`.
     var walletWelcomeAmount: Int = 50
     var walletMaxPerOrder: Int = 50
+    /// Where the store is now, when the shop has moved it (`storeLat`, `storeLng`,
+    /// `storeLabel` on `config/store`, set in the staff console or this admin app):
+    /// nil means the built-in hub. Read by `DeliveryEta`, so every distance, time,
+    /// delivery-area check and distance charge follows it. Not part of `fields`:
+    /// it is saved by `StoreLocation`, so saving the rules never overwrites it.
+    var storeLat: Double? = nil
+    var storeLng: Double? = nil
+    var storeLabel: String = ""
+
+    /// The shop's chosen store spot, if it set one.
+    var storeCoordinate: CLLocationCoordinate2D? {
+        guard let lat = storeLat, let lng = storeLng else { return nil }
+        return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+    }
 
     static let walletMax = 5000
     static let extraChargeMax: Double = 500
@@ -74,6 +89,13 @@ struct ShopRules: Equatable {
         if let value = data["extraChargeLabel"] as? String { extraChargeLabel = Self.cleanExtraLabel(value) }
         if let value = data["minIosVersion"] as? String { minIosVersion = Self.cleanVersion(value) }
         if let value = amount("walletWelcomeAmount") { walletWelcomeAmount = Int(min(Double(Self.walletMax), value.rounded(.down))) }
+        if let lat = (data["storeLat"] as? NSNumber)?.doubleValue,
+           let lng = (data["storeLng"] as? NSNumber)?.doubleValue,
+           StoreLocation.isValid(lat: lat, lng: lng) {
+            storeLat = lat
+            storeLng = lng
+            storeLabel = String(((data["storeLabel"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
+        }
         if let value = amount("walletMaxPerOrder") { walletMaxPerOrder = Int(min(Double(Self.walletMax), value.rounded(.down))) }
     }
 
