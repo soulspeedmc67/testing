@@ -381,7 +381,7 @@ public final class AdminDashboardViewModel: ObservableObject {
         let shortId = String(order.id.suffix(6)).uppercased()
         let units = order.items.reduce(0) { $0 + $1.qty }
         content.title = "New Order #\(shortId)"
-        let area = order.address.area?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let area = order.deliveryAddress.street.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         content.body = "₹\(Int(order.grandTotal)) · \(units) item\(units == 1 ? "" : "s")\(area.isEmpty ? "" : " · \(area)")"
         content.sound = .default
         content.threadIdentifier = "admin_orders"
