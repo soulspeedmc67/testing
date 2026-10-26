@@ -32,6 +32,11 @@ object Wallet {
     /** The rupees of the credit this shopper has spent: what the phone last read, 0 before that. */
     val used: StateFlow<Int> = _used.asStateFlow()
 
+    private val _introOpen = MutableStateFlow(false)
+    /** The first-launch sign-in screen is up: the welcome waits until it is gone. */
+    val introOpen: StateFlow<Boolean> = _introOpen.asStateFlow()
+    fun setIntroOpen(open: Boolean) { _introOpen.value = open }
+
     private var readUid: String? = null
     private var readAt = 0L
 

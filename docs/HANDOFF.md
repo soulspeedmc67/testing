@@ -6,6 +6,22 @@
 
 ---
 
+## Oct 26, 2026: admin app got no "New order" push (fix, not deployed)
+
+PHP VERIFIED to parse (php:8.3-cli). iOS NOT compiled (the Actions admin build is the check). Nothing committed or deployed.
+
+- **Cause**: `dashit_push_send` deleted a token on ANY `INVALID_ARGUMENT`, which FCM also returns for a refused
+  *message* (the apns headers changed in 1629eec), so every admin token was dropped; the app thought it was still
+  registered (cached key) and never re-sent it. Website orders also never asked for the push.
+- **Fix**: `_push.php` drops a token only for UNREGISTERED / 404 without a code / 400 INVALID_ARGUMENT mentioning
+  "registration token"; `notify.php` frees `pushSent/{id}_{stage}` when nobody received a placed/cancelled push so a
+  later ask retries; `db.js createOrder` calls `requestOrderPush`; iOS `Push.swift` and Android `Push.kt` re-register
+  at least daily (day number in the cached key). The iOS admin no longer shows its own local "New order" banner (it
+  doubled the push); the chime stays.
+- **To deploy (owner)**: upload `public/api/push/_push.php` and `notify.php` to `public_html/api/push/`; deploy the
+  website; install the new admin build and sign out/in once; place a test order with the admin app closed and look for
+  "DASHit push: FCM refused" in the server's PHP error log.
+
 ## Oct 26, 2026: wallet with a ₹50 welcome credit (web, Android, iOS)
 
 Web VERIFIED (103 tests incl. `tests/wallet.test.mjs`, production build, header chip and welcome sheet in the

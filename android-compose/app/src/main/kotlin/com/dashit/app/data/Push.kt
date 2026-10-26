@@ -54,15 +54,17 @@ object Push {
             runCatching {
                 val uid = AuthRepository.user.value?.id ?: return@launch
                 val fcm = token ?: FirebaseMessaging.getInstance().token.await()
-                if (lastRegistered == (uid to fcm)) return@launch
+                // Re-sent at least daily: if the server ever dropped this token, the phone heals itself.
+                val key = "$fcm|${System.currentTimeMillis() / 86_400_000L}"
+                if (lastRegistered == (uid to key)) return@launch
                 post("register.php", JSONObject()
                     .put("id_token", AuthRepository.idToken())
                     .put("token", fcm)
                     .put("platform", "android")
                     .put("app", "customer"))
-                lastRegistered = uid to fcm
+                lastRegistered = uid to key
                 isActive = true
-                prefs?.edit()?.putString("registered", "$uid|$fcm")?.apply()
+                prefs?.edit()?.putString("registered", "$uid|$key")?.apply()
             }.onFailure { Log.w(TAG, "Couldn't register for notifications", it) }
         }
     }

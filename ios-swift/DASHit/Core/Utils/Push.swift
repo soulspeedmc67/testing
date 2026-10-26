@@ -80,7 +80,10 @@ final class Push: NSObject {
             } else {
                 return
             }
-            let key = "\(user.uid)|\(fcm)"
+            // Re-sent at least daily: if the server ever dropped this token, the phone
+            // heals itself instead of staying silent because it "already registered".
+            let day = Int(Date().timeIntervalSince1970 / 86_400)
+            let key = "\(user.uid)|\(fcm)|\(day)"
             guard key != lastRegistered, let idToken = try? await user.getIDToken() else { return }
             let success = await post("register.php", ["id_token": idToken, "token": fcm, "platform": "ios", "app": Self.app])
             #if DEBUG

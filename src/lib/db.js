@@ -1410,6 +1410,9 @@ export async function createOrder(orderData, explicitUid = null) {
         } catch (e) {}
       }
 
+      // "Order placed" to the shopper's phones, "New order" to the store's admin app.
+      requestOrderPush(code);
+
       return { success: true, orderId: code, order: { ...payload, orderId: code } };
     } catch (e) {
       lastError = e;

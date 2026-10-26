@@ -96,4 +96,9 @@ if ($stage === 'placed' || $stage === 'cancelled') {
         : "#$shortId was cancelled.";
     $sent += dashit_push_to($account, dashit_firestore_where($account, 'pushTokens', 'app', 'admin'), 'admin', $title, $text, $data);
 }
+// Nothing reached anyone (FCM down, no token yet): release the once-only mark
+// so the next ask for this status tries again instead of staying silent.
+if ($sent === 0 && ($stage === 'placed' || $stage === 'cancelled')) {
+    dashit_firestore_delete($account, "pushSent/{$orderId}_{$stage}");
+}
 dashit_respond(200, ['stage' => $stage, 'sent' => $sent]);

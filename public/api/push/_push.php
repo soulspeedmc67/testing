@@ -134,7 +134,13 @@ function dashit_push_send(array $account, string $token, string $title, string $
     foreach ($reply['error']['details'] ?? [] as $detail) {
         $code = (string) ($detail['errorCode'] ?? $code);
     }
-    if ($status === 404 || $code === 'UNREGISTERED' || ($status === 400 && $code === 'INVALID_ARGUMENT')) return 'gone';
+    // Only a token FCM itself calls dead is dropped. A refused *message* (bad
+    // header, bad payload) is also INVALID_ARGUMENT, and used to delete every
+    // admin phone's token; the app, thinking it was still registered, never
+    // handed it over again, so new-order alerts stopped for good.
+    $reason = strtolower((string) ($reply['error']['message'] ?? ''));
+    if ($code === 'UNREGISTERED' || ($status === 404 && $code === '')
+        || ($status === 400 && $code === 'INVALID_ARGUMENT' && str_contains($reason, 'registration token'))) return 'gone';
     error_log("DASHit push: FCM refused a message (HTTP $status $code): " . ($reply['error']['message'] ?? ''));
     return 'failed';
 }

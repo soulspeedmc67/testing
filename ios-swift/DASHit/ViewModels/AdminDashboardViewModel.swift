@@ -278,8 +278,10 @@ public final class AdminDashboardViewModel: ObservableObject {
                             !self.knownOrderIds.contains(order.id) && order.status.stage == .placed
                         }
                         if let order = newPlaced {
+                            // The chime only: the "New order" banner comes from the server's push,
+                            // which iOS shows with the app open too (a local one would show twice).
+                            _ = order
                             self.playOrderChime()
-                            self.notifyNewOrder(order)
                         }
                     }
                     self.knownOrderIds = Set(list.map { $0.id })
@@ -374,20 +376,6 @@ public final class AdminDashboardViewModel: ObservableObject {
     public func playOrderChime() {
         AudioServicesPlaySystemSound(1007) // iOS SMS/Notification Chime
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
-
-    public func notifyNewOrder(_ order: Order) {
-        let content = UNMutableNotificationContent()
-        let shortId = String(order.id.suffix(6)).uppercased()
-        let units = order.items.reduce(0) { $0 + $1.qty }
-        content.title = "New Order #\(shortId)"
-        let area = order.deliveryAddress.street.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        content.body = "₹\(Int(order.grandTotal)) · \(units) item\(units == 1 ? "" : "s")\(area.isEmpty ? "" : " · \(area)")"
-        content.sound = .default
-        content.threadIdentifier = "admin_orders"
-        content.userInfo = ["orderId": order.id, "event": "placed"]
-        let request = UNNotificationRequest(identifier: "admin-placed-\(order.id)", content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Filtered Views

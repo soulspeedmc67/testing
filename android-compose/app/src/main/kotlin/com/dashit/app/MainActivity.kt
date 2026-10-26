@@ -105,6 +105,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 }
                 var showSplash by rememberSaveable { mutableStateOf(true) }
                 var showWelcomeAuth by rememberSaveable { mutableStateOf(showWelcomeAtStart) }
+                // The wallet's welcome waits for this first-launch screen to go.
+                LaunchedEffect(showWelcomeAuth) { com.dashit.app.data.Wallet.setIntroOpen(showWelcomeAuth) }
                 // Also covers a restore where neither is showing any more.
                 LaunchedEffect(showSplash, showWelcomeAuth) {
                     if (!showSplash && !showWelcomeAuth) AppReveal.reveal()

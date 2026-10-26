@@ -222,9 +222,30 @@ fun StorefrontScreen(
 
     /* With no address yet, a sheet explains why we want their location before Android asks for it. */
     var isLocationAskOpen by remember { mutableStateOf(false) }
+    var locationAskChecked by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(1500)
         if (AddressBook.current.value == null) isLocationAskOpen = true
+        locationAskChecked = true
+    }
+    // The wallet's welcome waits for the first-launch screens (sign-in, location) to be done.
+    val introOpen by com.dashit.app.data.Wallet.introOpen.collectAsState()
+    val welcomeReady = locationAskChecked && !introOpen && !isLocationAskOpen && pinStart == null
+    // The wallet sheet lives here, not in the header, so scrolling the header away can't close it.
+    val walletRules = com.dashit.app.data.StoreStatus.state.collectAsState().value.rules
+    val walletSpentNow by com.dashit.app.data.Wallet.used.collectAsState()
+    var walletOpen by remember { mutableStateOf(false) }
+    var walletWelcome by remember { mutableStateOf(false) }
+    // The first time DASHit opens on this phone, and the first-launch screens are done, the wallet opens with a welcome.
+    LaunchedEffect(walletRules.walletWelcomeAmount, welcomeReady) {
+        if (welcomeReady && walletRules.walletWelcomeAmount > 0 && !com.dashit.app.data.Wallet.welcomeSeen()) {
+            kotlinx.coroutines.delay(700)
+            if (!com.dashit.app.data.Wallet.welcomeSeen()) {
+                com.dashit.app.data.Wallet.markWelcomeSeen()
+                walletWelcome = true
+                walletOpen = true
+            }
+        }
     }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -349,6 +370,10 @@ fun StorefrontScreen(
                             onOpenProfile = {
                                 HapticsManager.selection(view)
                                 isProfileOpen = true
+                            },
+                            onOpenWallet = {
+                                walletWelcome = false
+                                walletOpen = true
                             }
                         )
                     }
@@ -826,6 +851,18 @@ fun StorefrontScreen(
                 onPick = { place -> pinStart = PinStart(place.lat, place.lng, place.title, isNew = true) }
             )
         }
+        if (walletOpen) {
+            com.dashit.app.ui.wallet.WalletSheet(
+                balance = com.dashit.app.data.Wallet.balance(walletRules, walletSpentNow),
+                maxPerOrder = walletRules.walletMaxPerOrder,
+                credit = walletRules.walletWelcomeAmount,
+                celebrate = walletWelcome,
+                onDismiss = {
+                    walletOpen = false
+                    walletWelcome = false
+                }
+            )
+        }
         if (isLocationAskOpen) {
             DeliveryAreaSheet(
                 title = "Where should we deliver?",
@@ -878,7 +915,8 @@ private fun StorefrontHeader(
     address: DeliveryAddress,
     onOpenAddressPicker: () -> Unit,
     onAddressRowPlaced: (Rect) -> Unit,
-    onOpenProfile: () -> Unit
+    onOpenProfile: () -> Unit,
+    onOpenWallet: () -> Unit
 ) {
     val view = LocalView.current
     val isDark = DashitColors.isDark
@@ -978,37 +1016,9 @@ private fun StorefrontHeader(
             val rules = store.rules
             val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
             val walletBalance = com.dashit.app.data.Wallet.balance(rules, walletSpent)
-            var walletOpen by remember { mutableStateOf(false) }
-            var walletWelcome by remember { mutableStateOf(false) }
-            // The first time DASHit opens on this phone, the wallet opens with a welcome.
-            LaunchedEffect(rules.walletWelcomeAmount) {
-                if (rules.walletWelcomeAmount > 0 && !com.dashit.app.data.Wallet.welcomeSeen()) {
-                    kotlinx.coroutines.delay(1200)
-                    if (!com.dashit.app.data.Wallet.welcomeSeen()) {
-                        com.dashit.app.data.Wallet.markWelcomeSeen()
-                        walletWelcome = true
-                        walletOpen = true
-                    }
-                }
-            }
-            if (walletOpen) {
-                com.dashit.app.ui.wallet.WalletSheet(
-                    balance = walletBalance,
-                    maxPerOrder = rules.walletMaxPerOrder,
-                    credit = rules.walletWelcomeAmount,
-                    celebrate = walletWelcome,
-                    onDismiss = {
-                        walletOpen = false
-                        walletWelcome = false
-                    }
-                )
-            }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (rules.walletWelcomeAmount > 0) {
-                com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = {
-                    walletWelcome = false
-                    walletOpen = true
-                })
+                com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = onOpenWallet)
             }
             Box(
                 modifier = Modifier
