@@ -6,6 +6,7 @@ import { Search, Mic, ChevronDown, Store, Clock, TrendingUp, User, ShoppingBag, 
 import { setDeviceSystemBars } from "../lib/systemBars";
 import { calculateDeliveryEta } from "../lib/deliveryEta";
 import { useTheme } from "../context/ThemeContext";
+import WalletChip from "./WalletChip";
 
 export default function AppHeader({
   location = { nickname: "LOCATION", address: "Select delivery address" },
@@ -248,6 +249,8 @@ export default function AppHeader({
               <span>{cartCount > 0 ? `Cart (${cartCount})` : "My Cart"}</span>
             </button>
 
+            <WalletChip />
+
             {/* Profile Avatar Button */}
             <button
               type="button"
@@ -359,6 +362,8 @@ export default function AppHeader({
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+            <WalletChip size="sm" />
             <button
               type="button"
               onClick={() => router.push("/account")}
@@ -367,6 +372,7 @@ export default function AppHeader({
             >
               <User className="w-5 h-5 fill-slate-800 text-slate-800 stroke-none dark:fill-white dark:text-white" />
             </button>
+            </div>
           </div>
 
           {/* Alias-Only Mobile Location Pill */}

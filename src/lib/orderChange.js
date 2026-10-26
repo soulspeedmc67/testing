@@ -180,7 +180,9 @@ export function billForChangedOrder(order, items, coupon = null, rules = SHOP_RU
   const handlingFee = rupees(order?.handlingFee ?? rules.handlingFee);
   const discount = couponDiscount(order, subtotal, coupon);
   const deliveryFee = baseDeliveryFee + before.night + before.extra;
-  const total = Math.max(0, subtotal + deliveryFee + handlingFee - discount);
+  // The wallet amount stays on the order (it can't grow: the wallet isn't touched).
+  const walletUsed = Math.min(Math.max(0, Math.floor(rupees(order?.walletUsed))), Math.max(0, subtotal + deliveryFee + handlingFee - discount));
+  const total = Math.max(0, subtotal + deliveryFee + handlingFee - discount - walletUsed);
 
   const mrpSavings = (items || []).reduce((sum, item) => {
     const mrp = rupees(item.originalPrice || item.mrp);
@@ -198,6 +200,7 @@ export function billForChangedOrder(order, items, coupon = null, rules = SHOP_RU
     deliveryFee,
     handlingFee,
     discount,
+    walletUsed,
     total,
     savings: mrpSavings + discount + (distanceOnly ? 0 : standardFee - baseDeliveryFee),
   };
@@ -243,6 +246,7 @@ export function buildReplacementOrder(order, items, bill, now = new Date()) {
       : {}),
     handlingFee: bill.handlingFee,
     discount: bill.discount,
+    ...(bill.walletUsed > 0 ? { walletUsed: bill.walletUsed } : {}),
     totalAmount: bill.total,
     total: bill.total,
     finalTotal: bill.total,

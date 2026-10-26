@@ -41,7 +41,13 @@ data class ShopRules(
      */
     val extraChargeOn: Boolean = false,
     val extraChargeAmount: Double = 20.0,
-    val extraChargeLabel: String = ""
+    val extraChargeLabel: String = "",
+    /**
+     * The welcome credit every customer has in their wallet, in whole rupees
+     * (0 ends it), and the most one order may use. See [Wallet].
+     */
+    val walletWelcomeAmount: Int = 50,
+    val walletMaxPerOrder: Int = 50
 ) {
     /** The extra charge on an order placed now, in whole rupees; 0 while it is off. */
     val extraCharge: Double
@@ -93,11 +99,14 @@ data class ShopRules(
                 codAtNight = snapshot.get("codAtNight") as? Boolean ?: d.codAtNight,
                 extraChargeOn = snapshot.get("extraChargeOn") as? Boolean ?: d.extraChargeOn,
                 extraChargeAmount = minOf(EXTRA_CHARGE_MAX, Math.round(amount("extraChargeAmount", d.extraChargeAmount)).toDouble()),
-                extraChargeLabel = cleanExtraLabel(snapshot.get("extraChargeLabel") as? String)
+                extraChargeLabel = cleanExtraLabel(snapshot.get("extraChargeLabel") as? String),
+                walletWelcomeAmount = minOf(WALLET_MAX, amount("walletWelcomeAmount", d.walletWelcomeAmount.toDouble()).toInt()),
+                walletMaxPerOrder = minOf(WALLET_MAX, amount("walletMaxPerOrder", d.walletMaxPerOrder.toDouble()).toInt())
             )
         }
 
         const val EXTRA_CHARGE_MAX = 500.0
+        const val WALLET_MAX = 5000
         const val DEFAULT_EXTRA_CHARGE_LABEL = "Extra delivery charge"
 
         /** The extra charge's name on the bill: what the shop called it, or "Extra delivery charge". */

@@ -6,6 +6,30 @@
 
 ---
 
+## Oct 26, 2026: wallet with a ₹50 welcome credit (web, Android, iOS)
+
+Web VERIFIED (103 tests incl. `tests/wallet.test.mjs`, production build, header chip and welcome sheet in the
+browser). Rules VERIFIED against the Firestore emulator (20 cases:
+`scripts/wallet-rules.emulator-test.mjs`, needs `@firebase/rules-unit-testing`). Android VERIFIED to compile.
+iOS NOT compiled here (no Swift): the GitHub Actions build is the check. Nothing is deployed, committed or pushed.
+
+- **How it works**: no stored credit. Balance = `config/store.walletWelcomeAmount` (default 50, 0 = off) minus
+  `wallets/{uid}.used`, which only exists once something is spent. Every customer, old or new, has it with no write.
+  `walletMaxPerOrder` (default 50) caps one order. Both are in `/xcyop` Shop settings and the iOS admin Shop settings.
+- **Orders** carry `walletUsed` (integer) and a `total` already net of it. The order and `wallets/{uid}.used` go in
+  one batch; `firestore.rules` (`walletOk`) check the amount against the limit, the balance and `getAfter`.
+- **Cancel** by the customer refunds in the same batch (`lastRefundOrder` on the wallet, checked by the rules);
+  the store cancelling (`updateOrderStatus`, iOS `rejectOrder`) refunds via the admin rule. Adding items carries the
+  amount to the replacement, which is written in one batch with the cancel of the original
+  (`walletCarriedOver`); Android and iOS use `writeReplacementTogether` / `replaceOrder` for that.
+- **Deploy order**: `firestore.rules` FIRST (`npm run fb:rules`), then web, then the apps. A wallet order against old
+  rules is refused. Apps built before this don't show the wallet but still order normally.
+- **UI**: `WalletChip` (web `src/components/WalletChip.jsx`, Android `ui/wallet/WalletUi.kt`, iOS
+  `Views/Wallet/WalletViews.swift`) sits left of the profile button in the home header (the owner OK'd this one
+  exception to the top-bar rule). The first open on a device shows the welcome sheet with a count-up and confetti.
+- **Known limits**: the credit is per account, so a new Google/Apple account gets a new ₹50 (same weakness as the
+  free first deliveries); the per-order cap bounds the loss. Orders' `total` isn't checked by the rules (it never was).
+
 ## Oct 17, 2026: Android 1.2.2 (104) for Google Play, fake ratings gone, Northforge credit
 
 Android VERIFIED on the Pixel (release build 1.2.2 installed over the old

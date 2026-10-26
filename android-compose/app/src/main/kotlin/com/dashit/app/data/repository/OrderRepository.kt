@@ -19,6 +19,8 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -240,17 +242,42 @@ class OrderRepository(
         com.dashit.app.data.Push.orderChanged(order.id)
     }
 
-    suspend fun cancelOrder(orderId: String, reason: String = "Customer cancelled") {
+    /**
+     * Cancels the order. If it used the wallet, the wallet is given back in the
+     * same batch (firestore.rules check the refund against the order);
+     * [refundWallet] is off when the order is being replaced and the wallet
+     * amount moves to the replacement instead.
+     */
+    suspend fun cancelOrder(orderId: String, reason: String = "Customer cancelled", refundWallet: Boolean = true) {
         try {
             withTimeout(15_000) {
-                db.collection("orders").document(orderId).update(
-                    mapOf(
-                        "status" to "Cancelled",
-                        "cancelReason" to reason,
-                        "updatedAt" to FieldValue.serverTimestamp(),
-                        "statusHistory" to FieldValue.arrayUnion(mapOf("status" to "Cancelled", "at" to isoNow()))
+                val ref = db.collection("orders").document(orderId)
+                val fields = mapOf(
+                    "status" to "Cancelled",
+                    "cancelReason" to reason,
+                    "updatedAt" to FieldValue.serverTimestamp(),
+                    "statusHistory" to FieldValue.arrayUnion(mapOf("status" to "Cancelled", "at" to isoNow()))
+                )
+                val uid = AuthRepository.uid
+                val walletUsed = if (refundWallet && uid != null) {
+                    runCatching { (ref.get().await().get("walletUsed") as? Number)?.toLong() ?: 0L }.getOrDefault(0L)
+                } else 0L
+                if (walletUsed > 0 && uid != null) {
+                    val batch = db.batch()
+                    batch.update(ref, fields)
+                    batch.update(
+                        db.collection("wallets").document(uid),
+                        mapOf(
+                            "used" to FieldValue.increment(-walletUsed),
+                            "lastRefundOrder" to orderId,
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        )
                     )
-                ).await()
+                    batch.commit().await()
+                    com.dashit.app.data.Wallet.fetchUsed(force = true)
+                } else {
+                    ref.update(fields).await()
+                }
             }
         } catch (e: TimeoutCancellationException) {
             throw OrderError.Network()
@@ -288,6 +315,9 @@ class OrderRepository(
             // the shop's switch says now.
             extraDeliveryFee = order.extraDeliveryFee
         )
+        // The wallet amount stays on the order; the wallet itself isn't touched.
+        val beforeWallet = bill.grandTotal + order.nightDeliveryFee
+        val carriedWallet = minOf(order.walletUsed, kotlin.math.floor(beforeWallet).toInt()).coerceAtLeast(0)
         val replacement = Order(
             id = Order.newCode(),
             userId = customer.id,
@@ -296,7 +326,8 @@ class OrderRepository(
             // The distance charge of the original order is kept: same trip, same address.
             deliveryFee = bill.deliveryFee + order.nightDeliveryFee + order.extraDeliveryFee,
             discount = bill.couponDiscount,
-            grandTotal = bill.grandTotal + order.nightDeliveryFee,
+            grandTotal = beforeWallet - carriedWallet,
+            walletUsed = carriedWallet,
             nightDeliveryFee = order.nightDeliveryFee,
             extraDeliveryFee = order.extraDeliveryFee,
             extraDeliveryLabel = order.extraDeliveryLabel,
@@ -313,23 +344,61 @@ class OrderRepository(
         )
         val distance = DeliveryEta.quote(order.deliveryAddress.latitude, order.deliveryAddress.longitude).distanceKm
 
-        try {
-            writeOrder(replacement, customer, distance)
-        } catch (e: OrderError.Network) {
-            // It may still land later: make sure it can't stand next to the original.
-            scope.launch { runCatching { cancelOrder(replacement.id, "Withdrawn: update did not complete") } }
-            throw e
-        }
-        try {
-            cancelOrder(order.id, "Replaced by ${replacement.id}")
-        } catch (e: Exception) {
-            runCatching { cancelOrder(replacement.id, "Withdrawn: original order already being packed") }
-            throw OrderError.StoreStartedPacking()
+        if (carriedWallet > 0) {
+            // A wallet order and the one it replaces change together or not at all:
+            // firestore.rules only accept the replacement beside that cancel.
+            writeReplacementTogether(replacement, order, customer, distance)
+        } else {
+            try {
+                writeOrder(replacement, customer, distance)
+            } catch (e: OrderError.Network) {
+                // It may still land later: make sure it can't stand next to the original.
+                scope.launch { runCatching { cancelOrder(replacement.id, "Withdrawn: update did not complete", refundWallet = false) } }
+                throw e
+            }
+            try {
+                cancelOrder(order.id, "Replaced by ${replacement.id}", refundWallet = false)
+            } catch (e: Exception) {
+                runCatching { cancelOrder(replacement.id, "Withdrawn: original order already being packed", refundWallet = false) }
+                throw OrderError.StoreStartedPacking()
+            }
         }
         setActiveOrderId(replacement.id)
         // The store hears the order changed (the server says so, not "new order").
         com.dashit.app.data.Push.orderChanged(replacement.id)
         return replacement
+    }
+
+    /** The replacement and the cancel of the original, in one batch. */
+    private suspend fun writeReplacementTogether(
+        replacement: Order,
+        original: Order,
+        customer: UserProfile,
+        distanceKm: Double?
+    ) {
+        val payload = orderPayload(replacement, customer, distanceKm, null)
+        try {
+            withTimeout(15_000) {
+                val batch = db.batch()
+                batch.set(db.collection("orders").document(replacement.id), payload)
+                batch.update(
+                    db.collection("orders").document(original.id),
+                    mapOf(
+                        "status" to "Cancelled",
+                        "cancelReason" to "Replaced by ${replacement.id}",
+                        "updatedAt" to FieldValue.serverTimestamp(),
+                        "statusHistory" to FieldValue.arrayUnion(mapOf("status" to "Cancelled", "at" to isoNow()))
+                    )
+                )
+                batch.commit().await()
+            }
+        } catch (e: FirebaseFirestoreException) {
+            // The rules refuse it once the store has moved the original on.
+            if (e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) throw OrderError.StoreStartedPacking()
+            throw OrderError.Network()
+        } catch (e: Exception) {
+            throw OrderError.Network()
+        }
     }
 
     private suspend fun writeOrder(
@@ -338,6 +407,42 @@ class OrderRepository(
         distanceKm: Double?,
         payment: com.dashit.app.data.OnlinePayment.Receipt? = null
     ) {
+        val payload = orderPayload(order, customer, distanceKm, payment)
+        try {
+            // Without a timeout an offline write would wait for the network forever.
+            withTimeout(15_000) {
+                if (order.walletUsed > 0 && order.replacesOrderId == null) {
+                    // The order and the wallet's new total are one write: firestore.rules
+                    // accept the order only with the matching wallet change.
+                    val batch = db.batch()
+                    batch.set(db.collection("orders").document(order.id), payload)
+                    batch.set(
+                        db.collection("wallets").document(order.userId),
+                        mapOf(
+                            "used" to FieldValue.increment(order.walletUsed.toLong()),
+                            "updatedAt" to FieldValue.serverTimestamp()
+                        ),
+                        SetOptions.merge()
+                    )
+                    batch.commit().await()
+                    com.dashit.app.data.Wallet.fetchUsed(force = true)
+                } else {
+                    db.collection("orders").document(order.id).set(payload).await()
+                }
+            }
+        } catch (e: TimeoutCancellationException) {
+            throw OrderError.Network()
+        } catch (e: Exception) {
+            throw OrderError.Network()
+        }
+    }
+
+    private fun orderPayload(
+        order: Order,
+        customer: UserProfile,
+        distanceKm: Double?,
+        payment: com.dashit.app.data.OnlinePayment.Receipt?
+    ): HashMap<String, Any?> {
         val placedAt = isoNow()
         val dateLabel = SimpleDateFormat("d MMM, h:mm a", Locale.ENGLISH).format(Date(order.createdAt))
         val savings = order.items.sumOf { maxOf(0.0, (it.originalPrice ?: it.price) - it.price) * it.qty } + order.discount
@@ -411,17 +516,9 @@ class OrderRepository(
         order.couponCode?.let { payload["couponCode"] = it }
         order.replacesOrderId?.let { payload["replacesOrderId"] = it }
         order.modifyWindowEndsAt?.let { payload["modifyWindowEndsAt"] = Timestamp(Date(it)) }
-
-        try {
-            // Without a timeout an offline write would wait for the network forever.
-            withTimeout(15_000) {
-                db.collection("orders").document(order.id).set(payload).await()
-            }
-        } catch (e: TimeoutCancellationException) {
-            throw OrderError.Network()
-        } catch (e: Exception) {
-            throw OrderError.Network()
-        }
+        // Whole rupees taken off by the wallet; the rules need an integer.
+        if (order.walletUsed > 0) payload["walletUsed"] = order.walletUsed.toLong()
+        return payload
     }
 
     // MARK: - Parsing
@@ -473,6 +570,7 @@ class OrderRepository(
             couponCode = doc.getString("couponCode"),
             modifyWindowEndsAt = timestampMillis(doc, "modifyWindowEndsAt"),
             replacesOrderId = doc.getString("replacesOrderId"),
+            walletUsed = (doc.get("walletUsed") as? Number)?.toInt() ?: 0,
             rejectionReason = doc.getString("rejectionReason")
                 ?: doc.getString("cancelReason")
                 ?: doc.getString("cancelledReason")

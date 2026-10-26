@@ -11,7 +11,7 @@ struct AdminOrderBillCard: View {
     /// What is left of the total once items, delivery and discount are
     /// counted: the handling charge (orders don't all save it by name).
     private var handlingCharge: Double {
-        max(0, (order.grandTotal - order.subtotal - order.deliveryFee + order.discount).rounded())
+        max(0, (order.grandTotal + Double(order.walletUsed) - order.subtotal - order.deliveryFee + order.discount).rounded())
     }
 
     var body: some View {
@@ -42,6 +42,9 @@ struct AdminOrderBillCard: View {
             }
             if order.discount > 0 {
                 row("Discount" + (order.couponCode.map { " (\($0))" } ?? ""), "-\(CurrencyFormatter.format(order.discount))")
+            }
+            if order.walletUsed > 0 {
+                row("Customer wallet", "-\(CurrencyFormatter.format(Double(order.walletUsed)))")
             }
 
             Divider()

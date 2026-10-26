@@ -122,7 +122,9 @@ data class Order(
     /** Epoch milliseconds; set on replacement orders so the window keeps its deadline. */
     val modifyWindowEndsAt: Long? = null,
     val replacesOrderId: String? = null,
-    val rejectionReason: String? = null
+    val rejectionReason: String? = null,
+    /** Whole rupees of the wallet credit this order used; it is already taken off [grandTotal]. */
+    val walletUsed: Int = 0
 ) {
     /** The delivery fee without the two charges saved inside it. */
     val baseDeliveryFee: Double

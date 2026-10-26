@@ -41,7 +41,12 @@ struct ShopRules: Equatable {
     /// app shows the update sheet (`AppVersion`), and `firestore.rules` refuse
     /// its orders by `minIosVersionCode`, saved beside it.
     var minIosVersion: String = ""
+    /// The welcome credit every customer has in their wallet, in whole rupees
+    /// (0 ends it), and the most one order may use. See `Wallet`.
+    var walletWelcomeAmount: Int = 50
+    var walletMaxPerOrder: Int = 50
 
+    static let walletMax = 5000
     static let extraChargeMax: Double = 500
     static let defaultExtraChargeLabel = "Extra delivery charge"
 
@@ -68,6 +73,8 @@ struct ShopRules: Equatable {
         if let value = amount("extraChargeAmount") { extraChargeAmount = min(Self.extraChargeMax, value.rounded()) }
         if let value = data["extraChargeLabel"] as? String { extraChargeLabel = Self.cleanExtraLabel(value) }
         if let value = data["minIosVersion"] as? String { minIosVersion = Self.cleanVersion(value) }
+        if let value = amount("walletWelcomeAmount") { walletWelcomeAmount = Int(min(Double(Self.walletMax), value.rounded(.down))) }
+        if let value = amount("walletMaxPerOrder") { walletMaxPerOrder = Int(min(Double(Self.walletMax), value.rounded(.down))) }
     }
 
     /// The rules as last heard from `config/store`. `StoreStatusStore` keeps
@@ -162,6 +169,8 @@ struct ShopRules: Equatable {
             "extraChargeAmount": extraChargeAmount,
             "extraChargeLabel": extraChargeLabel,
             "minIosVersion": minIosVersion,
+            "walletWelcomeAmount": walletWelcomeAmount,
+            "walletMaxPerOrder": walletMaxPerOrder,
             // The same as a number, which is what `firestore.rules` compare.
             "minIosVersionCode": AppVersion.code(from: minIosVersion) ?? 0
         ]

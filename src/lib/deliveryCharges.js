@@ -36,11 +36,16 @@ export const SHOP_RULE_DEFAULTS = Object.freeze({
   extraChargeOn: false,
   extraChargeAmount: 20,
   extraChargeLabel: "",
+  /* The welcome credit every customer gets in their wallet (whole rupees; 0 ends
+     the offer), and the most of it one order may use. */
+  walletWelcomeAmount: 50,
+  walletMaxPerOrder: 50,
 });
 
 export const EXTRA_CHARGE_LABEL = "Extra delivery charge";
 export const EXTRA_CHARGE_MAX = 500;
 const EXTRA_LABEL_MAX_LENGTH = 40;
+export const WALLET_MAX = 5000;
 
 // Kept for older imports: the built-in values, not the shop's live settings.
 export const HANDLING_FEE = SHOP_RULE_DEFAULTS.handlingFee;
@@ -69,6 +74,8 @@ export function shopRules(cfg) {
     extraChargeOn: cfg?.extraChargeOn === true,
     extraChargeAmount: Math.min(EXTRA_CHARGE_MAX, Math.round(zeroOrMore(cfg?.extraChargeAmount, d.extraChargeAmount))),
     extraChargeLabel: cleanExtraLabel(cfg?.extraChargeLabel),
+    walletWelcomeAmount: Math.floor(Math.min(WALLET_MAX, zeroOrMore(cfg?.walletWelcomeAmount, d.walletWelcomeAmount))),
+    walletMaxPerOrder: Math.floor(Math.min(WALLET_MAX, zeroOrMore(cfg?.walletMaxPerOrder, d.walletMaxPerOrder))),
   };
 }
 

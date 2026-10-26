@@ -159,6 +159,8 @@ public struct Order: Identifiable, Hashable {
     /// The lines the shop ticked off while packing (item ids), saved on the
     /// order so every staff screen shows them, also after delivery.
     public var packedItems: [String]
+    /// Whole rupees of the wallet credit this order used; it is already taken off `grandTotal`.
+    public var walletUsed: Int
 
     /// "the website", "the iPhone app" or "the Android app"; nil if unknown.
     public var placedFrom: String? {
@@ -203,7 +205,8 @@ public struct Order: Identifiable, Hashable {
         extraDeliveryLabel: String? = nil,
         distanceKm: Double? = nil,
         platform: String? = nil,
-        packedItems: [String] = []
+        packedItems: [String] = [],
+        walletUsed: Int = 0
     ) {
         self.id = id
         self.userId = userId
@@ -233,6 +236,7 @@ public struct Order: Identifiable, Hashable {
         self.distanceKm = distanceKm
         self.platform = platform
         self.packedItems = packedItems
+        self.walletUsed = walletUsed
     }
 
     /// A rider has the order but hasn't collected it from the store yet: it
@@ -302,7 +306,7 @@ extension Order: Decodable {
         case otp, couponCode, modifyWindowEndsAt, replacesOrderId
         case rejectionReason, cancelledReason, rejectReason, cancelReason
         case nightDeliveryFee, extraDeliveryFee, extraDeliveryLabel, distanceKm
-        case platform, packedItems
+        case platform, packedItems, walletUsed
     }
 
     public init(from decoder: Decoder) throws {
@@ -364,7 +368,8 @@ extension Order: Decodable {
             extraDeliveryLabel: c.flexibleString(.extraDeliveryLabel),
             distanceKm: c.flexibleDouble(.distanceKm),
             platform: c.flexibleString(.platform),
-            packedItems: (try? c.decode([String].self, forKey: .packedItems)) ?? []
+            packedItems: (try? c.decode([String].self, forKey: .packedItems)) ?? [],
+            walletUsed: c.flexibleInt(.walletUsed) ?? 0
         )
     }
 }

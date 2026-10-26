@@ -11,6 +11,10 @@ struct StorefrontHomeView: View {
     @StateObject private var vm = StorefrontViewModel()
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var storeStatus = StoreStatusStore.shared
+    @ObservedObject private var wallet = WalletStore.shared
+    @ObservedObject private var auth = AuthService.shared
+    /// The wallet sheet, kept here (not on the header) so scrolling the header away can't close it.
+    @State private var walletSheet: WalletSheetRequest? = nil
     @State private var detailProduct: Product? = nil
     @State private var opensCartAfterDetail = false
     @State private var ageGateProduct: Product? = nil
@@ -178,6 +182,27 @@ struct StorefrontHomeView: View {
                 cart.add(product: product)
             }
         }
+        .sheet(item: $walletSheet) { request in
+            WalletSheet(
+                balance: WalletStore.balance(rules: storeStatus.rules, used: wallet.used),
+                credit: storeStatus.rules.walletWelcomeAmount,
+                maxPerOrder: storeStatus.rules.walletMaxPerOrder,
+                celebrate: request.celebrate,
+                onClose: { walletSheet = nil }
+            )
+        }
+        // The spent amount follows the signed-in shopper.
+        .task(id: auth.firebaseUID) {
+            if auth.firebaseUID == nil { wallet.reset() } else { await wallet.refresh() }
+        }
+        // The first time DASHit opens on this phone, the wallet opens with a welcome.
+        .task(id: storeStatus.rules.walletWelcomeAmount) {
+            guard storeStatus.rules.walletWelcomeAmount > 0, !wallet.welcomeSeen else { return }
+            try? await Task.sleep(for: .milliseconds(1200))
+            guard !Task.isCancelled, !wallet.welcomeSeen, walletSheet == nil else { return }
+            wallet.markWelcomeSeen()
+            walletSheet = WalletSheetRequest(celebrate: true)
+        }
         .sheet(isPresented: $isVoiceSearchOpen) {
             VoiceSearchSheet { phrase in
                 let clean = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -213,19 +238,26 @@ struct StorefrontHomeView: View {
 
                 Spacer(minLength: 12)
 
-                Button {
-                    HapticsManager.shared.light()
-                    onOpenProfile()
-                } label: {
-                    Image(systemName: "person.fill")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.textPrimary)
-                        .frame(width: 42, height: 42)
-                        .background(Color.surfaceRaised, in: Circle())
-                        .overlay(Circle().strokeBorder(Color.hairline, lineWidth: 1))
+                HStack(spacing: 8) {
+                    if storeStatus.rules.walletWelcomeAmount > 0 {
+                        WalletChip(balance: WalletStore.balance(rules: storeStatus.rules, used: wallet.used)) {
+                            walletSheet = WalletSheetRequest(celebrate: false)
+                        }
+                    }
+                    Button {
+                        HapticsManager.shared.light()
+                        onOpenProfile()
+                    } label: {
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                            .frame(width: 42, height: 42)
+                            .background(Color.surfaceRaised, in: Circle())
+                            .overlay(Circle().strokeBorder(Color.hairline, lineWidth: 1))
+                    }
+                    .buttonStyle(PressableButtonStyle(scale: 0.92))
+                    .accessibilityLabel("Account")
                 }
-                .buttonStyle(PressableButtonStyle(scale: 0.92))
-                .accessibilityLabel("Account")
             }
 
             Button {

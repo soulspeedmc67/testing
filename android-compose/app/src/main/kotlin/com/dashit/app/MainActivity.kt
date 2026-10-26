@@ -59,6 +59,13 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
             AuthRepository.user.collect { com.dashit.app.data.Push.register() }
         }
         OrderRepository.shared.init(this)
+        com.dashit.app.data.Wallet.init(this)
+        // The wallet's spent amount follows the signed-in shopper.
+        lifecycleScope.launch {
+            AuthRepository.user.collect { user ->
+                if (user == null) com.dashit.app.data.Wallet.reset() else com.dashit.app.data.Wallet.fetchUsed()
+            }
+        }
         StoreStatus.start()
         com.dashit.app.data.Coupons.start()
         OrderNotifications.createChannel(this)

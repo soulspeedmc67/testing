@@ -30,6 +30,7 @@ import FreeDeliveryProgress from "../components/FreeDeliveryProgress";
 import { calculateDeliveryCharges, deliveryFeeWords, extraChargeFor, extraChargeLabel, shopRules } from "../lib/deliveryCharges";
 import { hapticOrderPlaced, hapticMedium, hapticLight } from "../lib/haptics";
 import { submitOrder } from "../lib/api";
+import { useWalletUsed, walletToUse, fetchWalletUsed } from "../lib/wallet";
 import { newOrderCode } from "../lib/db";
 import { showOrderPlacedNotification } from "../lib/notifications";
 import { useStoreDetails, useStoreConfig, useStoreConfigLive, isCodEnabled, isCodAllowedAtNight } from "../lib/storeStatus";
@@ -343,7 +344,13 @@ export default function CheckoutPage() {
       ? Math.round(subtotal * ((Number(coupon.discount) || 0) / 100))
       : Math.min(subtotal, Number(coupon.discount) || 0)
     : 0;
-  const grandTotal = Math.max(0, subtotal + deliveryFee + nightFee + extraFee + handlingFee - couponDiscount);
+  const beforeWallet = Math.max(0, subtotal + deliveryFee + nightFee + extraFee + handlingFee - couponDiscount);
+  /* The welcome credit in the wallet takes what it can off the bill (up to the
+     shop's per-order limit). It waits for the shop's live settings like the
+     rest of the bill. */
+  const walletSpent = useWalletUsed();
+  const walletApplied = billReady ? walletToUse(rules, walletSpent, beforeWallet) : 0;
+  const grandTotal = Math.max(0, beforeWallet - walletApplied);
   // How far the cart is from the lowest delivery fee.
   const toFreeDelivery = deliveryCharges.isFirstFivePromo ? 0 : Math.max(0, rules.deliveryLowFrom - subtotal);
 
@@ -473,6 +480,15 @@ export default function CheckoutPage() {
       return alert(`Cash on delivery isn't available after ${hourLabel(currentNightHours().start)}. Please pay online to place your order.`);
     }
 
+    // The wallet is read fresh: the bill on screen must use what is really left.
+    if (walletApplied > 0) {
+      const fresh = await fetchWalletUsed({ force: true });
+      if (fresh !== null && fresh !== walletSpent) {
+        window.dispatchEvent(new Event("dashit_wallet_changed"));
+        return alert("Your wallet balance has just changed. Please check the bill and place your order again.");
+      }
+    }
+
     placingRef.current = true;
     setIsProcessing(true);
     hapticOrderPlaced();
@@ -491,6 +507,7 @@ export default function CheckoutPage() {
       ...(extraFee > 0 ? { extraDeliveryFee: extraFee, extraDeliveryLabel: extraLabel } : {}),
       handlingFee,
       discount: couponDiscount,
+      ...(walletApplied > 0 ? { walletUsed: walletApplied } : {}),
       couponCode: coupon?.code || null,
       totalAmount: grandTotal,
       total: grandTotal,
@@ -537,6 +554,7 @@ export default function CheckoutPage() {
         localStorage.removeItem("dashit_cart");
         localStorage.removeItem("dashit_checkout_data");
         window.dispatchEvent(new Event("dashit_cart_updated"));
+        if (payload.walletUsed > 0) window.dispatchEvent(new Event("dashit_wallet_changed"));
       } catch (err) {
         console.error("Order placement error:", err);
         setShowProcessingModal(false);
@@ -948,6 +966,13 @@ export default function CheckoutPage() {
                 <div className="flex justify-between">
                   <dt className="text-slate-600 dark:text-content-secondary">Offer {coupon.code}</dt>
                   <dd className="tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">−{rupees(couponDiscount)}</dd>
+                </div>
+              )}
+
+              {walletApplied > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-slate-600 dark:text-content-secondary">DASHit wallet</dt>
+                  <dd className="tabular-nums text-emerald-700 dark:text-emerald-400 font-semibold">−{rupees(walletApplied)}</dd>
                 </div>
               )}
 

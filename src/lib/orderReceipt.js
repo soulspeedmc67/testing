@@ -111,8 +111,10 @@ export function buildReceiptText(order, { origin = "" } = {}) {
   // The shop's charge for rain, snow or a rush, under the name the bill gave it.
   if (fee.extra > 0) lines.push(`${fee.extraLabel}: ${money(fee.extra)}`);
   // ₹11 on every order; older orders saved without it show what the total implies.
-  const handlingFee = Number(order.handlingFee ?? Math.max(0, total - subtotal - deliveryFee + discount)) || 0;
+  const wallet = Math.max(0, Number(order.walletUsed) || 0);
+  const handlingFee = Number(order.handlingFee ?? Math.max(0, total + wallet - subtotal - deliveryFee + discount)) || 0;
   if (handlingFee > 0) lines.push(`Handling charge: ${money(handlingFee)}`);
+  if (wallet > 0) lines.push(`DASHit wallet: -${money(wallet)}`);
   lines.push(
     isPaid ? `*Total paid: ${money(total)}*` : `*To pay on delivery: ${money(total)}*`
   );

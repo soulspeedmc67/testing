@@ -647,7 +647,8 @@ export default function OrderTrackingPage() {
                 const delivery = Number(order?.deliveryFee) || 0;
                 const fee = deliveryFeeParts(order);
                 const off = Number(order?.discount) || 0;
-                const handling = Number(order?.handlingFee ?? Math.max(0, grandTotal - sub - delivery + off)) || 0;
+                const wallet = Math.max(0, Number(order?.walletUsed) || 0);
+                const handling = Number(order?.handlingFee ?? Math.max(0, grandTotal + wallet - sub - delivery + off)) || 0;
                 const row = (label, value) => (
                   <div className="flex items-center justify-between text-xs text-white/75">
                     <span>{label}</span>
@@ -668,6 +669,7 @@ export default function OrderTrackingPage() {
                     {fee.extra > 0 && row(fee.extraLabel, `₹${fee.extra.toFixed(0)}`)}
                     {handling > 0 && row("Handling charge", `₹${handling.toFixed(0)}`)}
                     {off > 0 && row("Discount", `-₹${off.toFixed(0)}`)}
+                    {wallet > 0 && row("DASHit wallet", `-₹${wallet.toFixed(0)}`)}
                     <div className="border-t border-white/10 pt-1.5">{row("Total", `₹${grandTotal.toFixed(0)}`)}</div>
                   </div>
                 );

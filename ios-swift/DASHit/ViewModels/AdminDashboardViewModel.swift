@@ -919,13 +919,31 @@ public final class AdminDashboardViewModel: ObservableObject {
             recentOrders[idx].status = .cancelled
             recentOrders[idx].rejectionReason = reason
         }
-        db.collection("orders").document(order.id).setData([
+        let fields: [String: Any] = [
             "status": "Cancelled",
             "rejectionReason": reason,
             "cancelledReason": reason,
             "cancelledAt": FieldValue.serverTimestamp(),
             "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveThenNotify("Rejecting the order", orderId: order.id))
+        ]
+        let orderRef = db.collection("orders").document(order.id)
+        // An order that used the customer's wallet gives it back when the store
+        // cancels it, once: not again if it was already cancelled.
+        if order.walletUsed > 0, order.status.stage != .cancelled, !order.userId.isEmpty {
+            let batch = db.batch()
+            batch.setData(fields, forDocument: orderRef, merge: true)
+            batch.setData(
+                [
+                    "used": FieldValue.increment(Int64(-order.walletUsed)),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ],
+                forDocument: db.collection("wallets").document(order.userId),
+                merge: true
+            )
+            batch.commit(completion: saveThenNotify("Rejecting the order", orderId: order.id))
+        } else {
+            orderRef.setData(fields, merge: true, completion: saveThenNotify("Rejecting the order", orderId: order.id))
+        }
     }
 
     public func assignDriver(orderId: String, driver: Driver) {

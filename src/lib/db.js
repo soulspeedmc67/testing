@@ -1376,7 +1376,18 @@ export async function createOrder(orderData, explicitUid = null) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const payload = buildPayload(code);
     try {
-      await setDoc(doc(db, "orders", code), payload);
+      const walletUsed = Number(payload.walletUsed) || 0;
+      if (walletUsed > 0 && uid && uid !== "anonymous") {
+        /* An order that uses the wallet and the wallet's new total are one
+           write: firestore.rules accept the order only with the matching
+           wallet change, so the credit can't be spent twice. */
+        const batch = writeBatch(db);
+        batch.set(doc(db, "orders", code), payload);
+        batch.set(doc(db, "wallets", uid), { used: increment(walletUsed), updatedAt: serverTimestamp() }, { merge: true });
+        await batch.commit();
+      } else {
+        await setDoc(doc(db, "orders", code), payload);
+      }
 
       // Update local mirror stock so user's client-side catalog reflects it immediately
       if (typeof window !== "undefined") {
@@ -2138,7 +2149,28 @@ export async function updateOrderStatus(orderId, status, extraFields = {}) {
     if (status === ORDER_STATUS.DELIVERED && !payload.deliveredAt) {
       payload.deliveredAt = serverTimestamp();
     }
-    await updateDoc(doc(db, "orders", String(orderId)), payload);
+    const orderRef = doc(db, "orders", String(orderId));
+    let refund = null;
+    if (status === ORDER_STATUS.CANCELLED) {
+      /* The store cancelling an order that used the wallet gives the credit
+         back to the customer, once: not again if it was already cancelled. */
+      try {
+        const snap = await getDoc(orderRef);
+        const was = snap.exists() ? snap.data() : null;
+        const amount = Number(was?.walletUsed) || 0;
+        if (was && was.status !== ORDER_STATUS.CANCELLED && amount > 0 && was.userId) {
+          refund = { uid: String(was.userId), amount };
+        }
+      } catch (e) {}
+    }
+    if (refund) {
+      const batch = writeBatch(db);
+      batch.update(orderRef, payload);
+      batch.update(doc(db, "wallets", refund.uid), { used: increment(-refund.amount), updatedAt: serverTimestamp() });
+      await batch.commit();
+    } else {
+      await updateDoc(orderRef, payload);
+    }
     requestOrderPush(orderId);
     return { success: true, firestoreSynced: true };
   } catch (err) {
@@ -2269,15 +2301,31 @@ export async function cancelPlacedOrder(orderId, reason = "Customer cancelled") 
     timer = setTimeout(() => reject(new OrderChangeError("network")), ORDER_CHANGE_TIMEOUT_MS);
   });
   try {
-    await Promise.race([
-      updateDoc(doc(db, "orders", id), {
-        status: ORDER_STATUS.CANCELLED,
-        cancelReason: reason,
-        updatedAt: serverTimestamp(),
-        statusHistory: arrayUnion({ status: ORDER_STATUS.CANCELLED, at: new Date().toISOString() }),
-      }),
-      timeout,
-    ]);
+    const cancelFields = {
+      status: ORDER_STATUS.CANCELLED,
+      cancelReason: reason,
+      updatedAt: serverTimestamp(),
+      statusHistory: arrayUnion({ status: ORDER_STATUS.CANCELLED, at: new Date().toISOString() }),
+    };
+    /* An order that used the wallet gives it back when it is cancelled: both
+       writes go together (firestore.rules check the refund against the order). */
+    const write = (async () => {
+      const uid = getFirebaseAuth()?.currentUser?.uid;
+      let walletUsed = 0;
+      try {
+        const snap = await getDoc(doc(db, "orders", id));
+        walletUsed = snap.exists() ? Number(snap.data().walletUsed) || 0 : 0;
+      } catch (e) {}
+      if (walletUsed > 0 && uid) {
+        const batch = writeBatch(db);
+        batch.update(doc(db, "orders", id), cancelFields);
+        batch.update(doc(db, "wallets", uid), { used: increment(-walletUsed), lastRefundOrder: id, updatedAt: serverTimestamp() });
+        await batch.commit();
+      } else {
+        await updateDoc(doc(db, "orders", id), cancelFields);
+      }
+    })();
+    await Promise.race([write, timeout]);
   } catch (err) {
     if (err instanceof OrderChangeError) throw err;
     console.warn("cancelPlacedOrder:", err?.code || "", err?.message || err);

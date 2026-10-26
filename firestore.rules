@@ -144,6 +144,48 @@ service cloud.firestore {
         && payment.amount >= order.total * 100 - 1;
     }
 
+    /* The wallet: every customer has the shop's welcome credit
+       (config/store walletWelcomeAmount, ₹50 unless changed) minus `used` on
+       wallets/{uid}. An order that uses some of it says so in `walletUsed`, and
+       the wallet's `used` must go up by exactly that in the same batch (checked
+       with getAfter), within the per-order limit and what is left. An order that
+       replaces another one the customer is cancelling (adding items) may carry
+       that order's wallet amount over without touching the wallet. The read of
+       the wallet and the shop's settings only happens for an order that uses
+       the wallet. */
+    function walletPath(uid) {
+      return /databases/$(database)/documents/wallets/$(uid);
+    }
+
+    function walletUsedNow(uid) {
+      return exists(walletPath(uid)) ? get(walletPath(uid)).data.get('used', 0) : 0;
+    }
+
+    function walletFits(order) {
+      let cfg = get(/databases/$(database)/documents/config/store).data;
+      let w = order.walletUsed;
+      return w <= cfg.get('walletMaxPerOrder', 50)
+        && walletUsedNow(request.auth.uid) + w <= cfg.get('walletWelcomeAmount', 50)
+        && getAfter(walletPath(request.auth.uid)).data.used == walletUsedNow(request.auth.uid) + w;
+    }
+
+    function walletCarriedOver(order) {
+      let oldPath = /databases/$(database)/documents/orders/$(order.get('replacesOrderId', ''));
+      return order.get('replacesOrderId', '') is string
+        && order.get('replacesOrderId', '') != ''
+        && get(oldPath).data.userId == request.auth.uid
+        && get(oldPath).data.status == 'Placed'
+        && getAfter(oldPath).data.status == 'Cancelled'
+        && order.walletUsed <= get(oldPath).data.get('walletUsed', 0);
+    }
+
+    function walletOk(order) {
+      return !('walletUsed' in order)
+        || (order.walletUsed is int
+            && order.walletUsed >= 0
+            && (order.walletUsed == 0 || walletCarriedOver(order) || walletFits(order)));
+    }
+
     /* The shop can stop taking orders from old iPhone apps: an installed app
        keeps the fees it was built with, so an old one leaves out a charge added
        since (rain, night distance). config/store holds the oldest version it
@@ -230,6 +272,46 @@ service cloud.firestore {
       }
     }
 
+    // ---- Wallets ------------------------------------------------------------
+    // wallets/{uid}.used is the rupees of the welcome credit a customer has
+    // spent. It only goes up, so the credit can't be topped up from a phone,
+    // except when the order that spent it is cancelled in the same batch (the
+    // customer's own cancel, while it is still 'Placed'), which gives exactly
+    // that order's amount back. Admins can set it, to give back the credit of an
+    // order the store cancels. Nobody deletes it, so deleting a profile doesn't
+    // bring the credit back.
+    match /wallets/{uid} {
+      function walletShape() {
+        return request.resource.data.keys().hasOnly(['used', 'updatedAt', 'lastRefundOrder'])
+          && request.resource.data.used is int
+          && request.resource.data.used >= 0;
+      }
+
+      function refundsCancelledOrder() {
+        let id = request.resource.data.get('lastRefundOrder', '');
+        let path = /databases/$(database)/documents/orders/$(id);
+        return id is string && id != '' && id.size() < 40
+          && get(path).data.userId == uid
+          && get(path).data.status == 'Placed'
+          && getAfter(path).data.status == 'Cancelled'
+          && get(path).data.get('walletUsed', 0) > 0
+          && request.resource.data.used == resource.data.used - get(path).data.walletUsed;
+      }
+
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isAdmin()
+        || (isOwner(uid) && isCustomerLogin() && walletShape()
+            && !('lastRefundOrder' in request.resource.data));
+      allow update: if isAdmin()
+        || (isOwner(uid) && isCustomerLogin() && walletShape()
+            && (
+              (request.resource.data.used >= resource.data.used
+                && request.resource.data.get('lastRefundOrder', '') == resource.data.get('lastRefundOrder', ''))
+              || refundsCancelledOrder()
+            ));
+      allow delete: if false;
+    }
+
     // ---- Orders -----------------------------------------------------------
     // An order carries a name, a phone number, a home address and GPS
     // coordinates. Read access is the customer who placed it, the driver
@@ -262,6 +344,7 @@ service cloud.firestore {
         && request.resource.data.items.size() <= 100
         && totalsAgree(request.resource.data)
         && appIsCurrent(request.resource.data)
+        && walletOk(request.resource.data)
         && (!saysPaidOnline(request.resource.data) || paymentCovers(orderId, request.resource.data));
 
       /* Customers may only cancel, only their own order, only while it is still

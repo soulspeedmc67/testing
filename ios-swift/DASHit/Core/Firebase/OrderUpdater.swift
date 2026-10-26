@@ -67,6 +67,10 @@ enum OrderUpdater {
             extraDeliveryFee: order.extraDeliveryFee
         )
 
+        // The wallet amount stays on the order; the wallet itself isn't touched.
+        let beforeWallet = bill.grandTotal + order.nightDeliveryFee
+        let carriedWallet = max(0, min(order.walletUsed, Int(beforeWallet.rounded(.down))))
+
         let replacement = Order(
             id: Order.newCode(),
             userId: uid,
@@ -75,7 +79,7 @@ enum OrderUpdater {
             // The distance charge of the original order is kept: same trip, same address.
             deliveryFee: bill.deliveryFee + order.nightDeliveryFee + order.extraDeliveryFee,
             discount: bill.couponDiscount,
-            grandTotal: bill.grandTotal + order.nightDeliveryFee,
+            grandTotal: beforeWallet - Double(carriedWallet),
             status: .placed,
             deliveryAddress: order.deliveryAddress,
             paymentMethod: order.paymentMethod,
@@ -88,9 +92,25 @@ enum OrderUpdater {
             replacesOrderId: order.id,
             nightDeliveryFee: order.nightDeliveryFee,
             extraDeliveryFee: order.extraDeliveryFee,
-            extraDeliveryLabel: order.extraDeliveryLabel
+            extraDeliveryLabel: order.extraDeliveryLabel,
+            walletUsed: carriedWallet
         )
         let distance = DeliveryEta.quote(for: order.deliveryAddress.coordinate).distanceKm
+
+        if carriedWallet > 0 {
+            // A wallet order and the one it replaces change together or not at all:
+            // firestore.rules only accept the replacement beside that cancel.
+            do {
+                try await FirestoreService.shared.replaceOrder(replacement, replacing: order, customer: user, distanceKm: distance)
+            } catch let error as NSError where error.domain == "FIRFirestoreErrorDomain" && error.code == 7 {
+                // 7 is PERMISSION_DENIED: the rules refuse it once the store has moved the original on.
+                throw UpdateError.storeStartedPacking
+            } catch {
+                throw UpdateError.network
+            }
+            Push.shared.orderChanged(replacement.id)
+            return replacement
+        }
 
         do {
             try await FirestoreService.shared.createOrder(replacement, customer: user, distanceKm: distance)
@@ -109,7 +129,8 @@ enum OrderUpdater {
         do {
             try await FirestoreService.shared.cancelOrder(
                 orderId: order.id,
-                reason: "Replaced by \(replacement.id): customer added items"
+                reason: "Replaced by \(replacement.id): customer added items",
+                refundWallet: false
             )
         } catch {
             FirestoreService.shared.withdrawOrder(

@@ -100,6 +100,9 @@ struct OrderDetailSheet: View {
                         if order.discount > 0 {
                             billRow("Discount", "-\(CurrencyFormatter.format(order.discount))")
                         }
+                        if order.walletUsed > 0 {
+                            billRow("DASHit wallet", "-\(CurrencyFormatter.format(Double(order.walletUsed)))")
+                        }
                         Rectangle().fill(Color.hairline).frame(height: 1)
                         HStack {
                             Text("Total")
@@ -165,7 +168,7 @@ struct OrderDetailSheet: View {
     }
 
     private var handlingCharge: Double {
-        max(0, (order.grandTotal - order.subtotal - order.deliveryFee + order.discount).rounded())
+        max(0, (order.grandTotal + Double(order.walletUsed) - order.subtotal - order.deliveryFee + order.discount).rounded())
     }
 
     private func billRow(_ label: String, _ value: String) -> some View {

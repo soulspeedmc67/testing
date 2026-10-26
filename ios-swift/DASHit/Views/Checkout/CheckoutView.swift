@@ -6,6 +6,7 @@ struct CheckoutView: View {
     @ObservedObject private var cart = CartViewModel.shared
     @ObservedObject private var auth = AuthService.shared
     @ObservedObject private var storeStatus = StoreStatusStore.shared
+    @ObservedObject private var wallet = WalletStore.shared
     @State private var isAddressSheetOpen = false
     @State private var isAuthModalOpen = false
     /// The list of ways to pay online, opened from "Pay online".
@@ -22,13 +23,20 @@ struct CheckoutView: View {
     /// The address is outside the delivery area: no order.
     private var tooFar: Bool { !vm.deliveryQuote.isDeliverable }
 
+    /// The wallet credit this order uses, and what is left to pay after it.
+    private var walletApplied: Int {
+        _ = wallet.used // re-draws when the wallet changes
+        return vm.walletApplied(for: cart)
+    }
+    private var payTotal: Double { cart.bill.grandTotal - Double(walletApplied) }
+
     private var placeOrderLabel: String {
         if vm.isSubmitting { return vm.progressText }
         if belowMinimum {
             return "Add \(CurrencyFormatter.format(cart.bill.amountNeededForMinOrder)) more to order"
         }
         if tooFar { return "We don't deliver here yet" }
-        let total = CurrencyFormatter.format(cart.bill.grandTotal)
+        let total = CurrencyFormatter.format(payTotal)
         if !vm.paysOnline { return "Place order · \(total) cash" }
         if vm.payOption?.upiApp != nil { return "Pay \(total) with \(vm.payOption?.title ?? "")" }
         return "Pay \(total)"
@@ -139,13 +147,16 @@ struct CheckoutView: View {
                         if bill.couponDiscount > 0 {
                             billRow("Coupon discount", value: "-\(CurrencyFormatter.format(bill.couponDiscount))", accent: true)
                         }
+                        if walletApplied > 0 {
+                            billRow("DASHit wallet", value: "-\(CurrencyFormatter.format(Double(walletApplied)))", accent: true)
+                        }
                         Divider()
                         HStack {
                             Text("Order Total")
                                 .font(.dashitBodyBold)
                                 .foregroundColor(.textPrimary)
                             Spacer()
-                            Text(CurrencyFormatter.format(bill.grandTotal))
+                            Text(CurrencyFormatter.format(payTotal))
                                 .font(.dashitHeadline)
                                 .foregroundColor(.textPrimary)
                         }

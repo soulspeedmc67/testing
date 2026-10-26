@@ -886,6 +886,7 @@ private fun StorefrontHeader(
     val headline = if (isDark) Color.White else DashitColors.TextPrimary
     val kicker = if (isDark) Color(0xFFFDE68A) else Color(0xFFB45309)
     val addressTint = if (isDark) Color(0xFFFFECC4) else DashitColors.TextSecondary
+    val store by com.dashit.app.data.StoreStatus.state.collectAsState()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -929,7 +930,6 @@ private fun StorefrontHeader(
                 val quote = remember(address.latitude, address.longitude) {
                     com.dashit.app.data.DeliveryEta.quote(address.latitude, address.longitude)
                 }
-                val store by com.dashit.app.data.StoreStatus.state.collectAsState()
                 val eta = remember(quote, store) { com.dashit.app.data.StoreStatus.etaMinutes(quote) }
                 Text(
                     text = when {
@@ -974,7 +974,42 @@ private fun StorefrontHeader(
                 }
             }
 
-            // Top Right Profile Avatar Button (Wallet removed)
+            // Top right: the wallet (what is left of the welcome credit), then the profile button.
+            val rules = store.rules
+            val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
+            val walletBalance = com.dashit.app.data.Wallet.balance(rules, walletSpent)
+            var walletOpen by remember { mutableStateOf(false) }
+            var walletWelcome by remember { mutableStateOf(false) }
+            // The first time DASHit opens on this phone, the wallet opens with a welcome.
+            LaunchedEffect(rules.walletWelcomeAmount) {
+                if (rules.walletWelcomeAmount > 0 && !com.dashit.app.data.Wallet.welcomeSeen()) {
+                    kotlinx.coroutines.delay(1200)
+                    if (!com.dashit.app.data.Wallet.welcomeSeen()) {
+                        com.dashit.app.data.Wallet.markWelcomeSeen()
+                        walletWelcome = true
+                        walletOpen = true
+                    }
+                }
+            }
+            if (walletOpen) {
+                com.dashit.app.ui.wallet.WalletSheet(
+                    balance = walletBalance,
+                    maxPerOrder = rules.walletMaxPerOrder,
+                    credit = rules.walletWelcomeAmount,
+                    celebrate = walletWelcome,
+                    onDismiss = {
+                        walletOpen = false
+                        walletWelcome = false
+                    }
+                )
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (rules.walletWelcomeAmount > 0) {
+                com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = {
+                    walletWelcome = false
+                    walletOpen = true
+                })
+            }
             Box(
                 modifier = Modifier
                     .size(42.dp)
@@ -992,6 +1027,7 @@ private fun StorefrontHeader(
                     tint = headline,
                     modifier = Modifier.size(22.dp)
                 )
+            }
             }
         }
     }

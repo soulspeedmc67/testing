@@ -1,4 +1,5 @@
 import Foundation
+import FirebaseAuth
 import FirebaseFirestore
 
 /// Generic Firestore real-time listener and data client
@@ -194,7 +195,7 @@ final class FirestoreService {
     /// order whose status is "Placed", whose createdAt is the server clock and
     /// whose driverId is null; anything else is rejected, so this mirrors
     /// `createOrder` in `src/lib/db.js` field for field.
-    func createOrder(_ order: Order, customer: UserProfile, distanceKm: Double?, payment: PaymentReceipt? = nil) async throws {
+    private func orderPayload(_ order: Order, customer: UserProfile, distanceKm: Double?, payment: PaymentReceipt? = nil) -> [String: Any] {
         let placedAt = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: order.createdAt))
         let dateLabel = Date(timeIntervalSince1970: order.createdAt)
             .formatted(.dateTime.day().month(.abbreviated).hour().minute())
@@ -289,12 +290,19 @@ final class FirestoreService {
             payload["modifyWindowEndsAt"] = Timestamp(date: Date(timeIntervalSince1970: windowEnd))
         }
 
-        let ref = db.collection("orders").document(order.id)
-        let document = payload
-        // Without a timeout an offline write would wait for the network forever.
+        // Whole rupees taken off by the wallet; the rules need an integer.
+        if order.walletUsed > 0 {
+            payload["walletUsed"] = order.walletUsed
+        }
+        return payload
+    }
+
+    /// Runs a write with a 15-second timeout: without one an offline write
+    /// would wait for the network forever.
+    private func commitWithTimeout(_ write: @escaping () async throws -> Void) async throws {
         try await withThrowingTaskGroup(of: Void.self) { group in
             group.addTask {
-                try await ref.setData(document)
+                try await write()
             }
             group.addTask {
                 try await Task.sleep(for: .seconds(15))
@@ -303,6 +311,53 @@ final class FirestoreService {
             _ = try await group.next()
             group.cancelAll()
         }
+    }
+
+    /// Creates the order in the web app's document shape and waits for the
+    /// server to accept it (see `orderPayload`). An order that uses the wallet
+    /// and the wallet's new total are one batch: `firestore.rules` accept the
+    /// order only with the matching wallet change, so the credit can't be
+    /// spent twice.
+    func createOrder(_ order: Order, customer: UserProfile, distanceKm: Double?, payment: PaymentReceipt? = nil) async throws {
+        let document = orderPayload(order, customer: customer, distanceKm: distanceKm, payment: payment)
+        let ref = db.collection("orders").document(order.id)
+        if order.walletUsed > 0 && order.replacesOrderId == nil {
+            let batch = db.batch()
+            batch.setData(document, forDocument: ref)
+            batch.setData(
+                [
+                    "used": FieldValue.increment(Int64(order.walletUsed)),
+                    "updatedAt": FieldValue.serverTimestamp()
+                ],
+                forDocument: db.collection("wallets").document(order.userId),
+                merge: true
+            )
+            try await commitWithTimeout { try await batch.commit() }
+            Task { @MainActor in await WalletStore.shared.refresh(force: true) }
+            return
+        }
+        try await commitWithTimeout { try await ref.setData(document) }
+    }
+
+    /// An order that replaces another one the customer is cancelling (adding
+    /// items), written together with that cancel: `firestore.rules` only accept
+    /// a replacement that carries the original's wallet amount beside it.
+    func replaceOrder(_ replacement: Order, replacing original: Order, customer: UserProfile, distanceKm: Double?) async throws {
+        let document = orderPayload(replacement, customer: customer, distanceKm: distanceKm)
+        let batch = db.batch()
+        batch.setData(document, forDocument: db.collection("orders").document(replacement.id))
+        batch.updateData(
+            [
+                "status": "Cancelled",
+                "cancelReason": "Replaced by \(replacement.id): customer added items",
+                "updatedAt": FieldValue.serverTimestamp(),
+                "statusHistory": FieldValue.arrayUnion([
+                    ["status": "Cancelled", "at": ISO8601DateFormatter().string(from: Date())]
+                ])
+            ],
+            forDocument: db.collection("orders").document(original.id)
+        )
+        try await commitWithTimeout { try await batch.commit() }
     }
 
     func listenOrder(orderId: String, completion: @escaping (Order?) -> Void) -> ListenerRegistration {
@@ -362,17 +417,42 @@ final class FirestoreService {
     }
 
     /// The rules let a customer cancel only a "Placed" order and change only
-    /// status, statusHistory, updatedAt and cancelReason.
-    func cancelOrder(orderId: String, reason: String = "Customer cancelled") async throws {
+    /// status, statusHistory, updatedAt and cancelReason. An order that used the
+    /// wallet gives it back in the same batch (`firestore.rules` check the refund
+    /// against the order); `refundWallet` is off when the amount moves to a
+    /// replacement order instead.
+    func cancelOrder(orderId: String, reason: String = "Customer cancelled", refundWallet: Bool = true) async throws {
         let orderRef = db.collection("orders").document(orderId)
-        try await orderRef.updateData([
+        let fields: [String: Any] = [
             "status": "Cancelled",
             "cancelReason": reason,
             "updatedAt": FieldValue.serverTimestamp(),
             "statusHistory": FieldValue.arrayUnion([
                 ["status": "Cancelled", "at": ISO8601DateFormatter().string(from: Date())]
             ])
-        ])
+        ]
+        var walletUsed = 0
+        if refundWallet, Auth.auth().currentUser != nil,
+           let snapshot = try? await orderRef.getDocument(),
+           let used = snapshot.data()?["walletUsed"] as? NSNumber {
+            walletUsed = used.intValue
+        }
+        if walletUsed > 0, let uid = Auth.auth().currentUser?.uid {
+            let batch = db.batch()
+            batch.updateData(fields, forDocument: orderRef)
+            batch.updateData(
+                [
+                    "used": FieldValue.increment(Int64(-walletUsed)),
+                    "lastRefundOrder": orderId,
+                    "updatedAt": FieldValue.serverTimestamp()
+                ],
+                forDocument: db.collection("wallets").document(uid)
+            )
+            try await batch.commit()
+            Task { @MainActor in await WalletStore.shared.refresh(force: true) }
+        } else {
+            try await orderRef.updateData(fields)
+        }
     }
 
     // MARK: - User Profile

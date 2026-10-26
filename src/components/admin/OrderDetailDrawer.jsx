@@ -931,7 +931,8 @@ export default function OrderDetailDrawer({
               const fee = deliveryFeeParts(order);
               const sub = Number(order?.subtotal) || items.reduce((t, it) => t + (Number(it.price) || 0) * (Number(it.qty || it.quantity) || 1), 0);
               const off = Number(order?.discount ?? order?.couponDiscount) || 0;
-              const handling = Number(order?.handlingFee ?? Math.max(0, Number(totalAmount) - sub - (Number(order?.deliveryFee) || 0) + off)) || 0;
+              const wallet = Math.max(0, Number(order?.walletUsed) || 0);
+              const handling = Number(order?.handlingFee ?? Math.max(0, Number(totalAmount) + wallet - sub - (Number(order?.deliveryFee) || 0) + off)) || 0;
               const rows = [
                 ["Items (" + items.reduce((t, it) => t + (Number(it.qty || it.quantity) || 1), 0) + ")", "₹" + sub],
                 ...(fee.night > 0 && fee.base === 0
@@ -940,6 +941,7 @@ export default function OrderDetailDrawer({
                 ...(fee.extra > 0 ? [[fee.extraLabel, "₹" + fee.extra]] : []),
                 ...(handling > 0 ? [["Handling", "₹" + handling]] : []),
                 ...(off > 0 ? [["Discount" + (order.couponCode ? " (" + order.couponCode + ")" : ""), "−₹" + off]] : []),
+                ...(wallet > 0 ? [["Customer wallet", "−₹" + wallet]] : []),
               ];
               return (
                 <div className={"p-4 rounded-2xl border " + (darkMode ? "bg-[#161822] border-zinc-800" : "bg-white border-slate-200 shadow-xs")}>

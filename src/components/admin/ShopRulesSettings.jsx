@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Banknote, ReceiptText, Check, Loader2 } from "lucide-react";
-import { shopRules, standardDeliveryFee, SHOP_RULE_DEFAULTS } from "../../lib/deliveryCharges";
+import { shopRules, standardDeliveryFee, SHOP_RULE_DEFAULTS, WALLET_MAX } from "../../lib/deliveryCharges";
 import { nightHoursOf, hourLabel } from "../../lib/nightCharge";
 
 const EXAMPLE_ORDERS = [120, 200, 400];
@@ -15,6 +15,8 @@ const FIELDS = [
   "deliveryMidFee",
   "deliveryLowFrom",
   "deliveryLowFee",
+  "walletWelcomeAmount",
+  "walletMaxPerOrder",
 ];
 
 const asText = (rules) => Object.fromEntries(FIELDS.map((key) => [key, String(rules[key])]));
@@ -86,6 +88,12 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
       return "The lowest fee has to start at or above the small-order amount.";
     }
     if (!Number.isInteger(typed.freeDeliveryOrders)) return "Free first orders has to be a whole number.";
+    if (!Number.isInteger(typed.walletWelcomeAmount) || !Number.isInteger(typed.walletMaxPerOrder)) {
+      return "The wallet amounts have to be whole rupees.";
+    }
+    if (typed.walletWelcomeAmount > WALLET_MAX || typed.walletMaxPerOrder > WALLET_MAX) {
+      return `The wallet amounts can't be more than ₹${WALLET_MAX}.`;
+    }
     if (typed.minOrderValue > 5000) return "The minimum order can't be more than ₹5,000.";
     if (typed.deliveryRadiusKm > 50) return "The delivery distance can't be more than 50 km.";
     return "";
@@ -239,6 +247,19 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
             <p className={hint}>
               Put 0 in a fee to make that size free. Put 0 in free first orders to end that offer. At night the charge by
               distance below replaces these fees.
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 space-y-3">
+            <p className={groupTitle}>Wallet</p>
+            <div className="grid grid-cols-2 gap-3">
+              {field("walletWelcomeAmount", "Welcome credit for every customer (₹)")}
+              {field("walletMaxPerOrder", "Most one order can use (₹)")}
+            </div>
+            <p className={hint}>
+              Every customer gets this credit in their wallet once, and it comes off their orders by itself. Put 0 to
+              switch the wallet off. The website and apps follow now; apps installed before this setting existed don't
+              show the wallet.
             </p>
           </div>
 

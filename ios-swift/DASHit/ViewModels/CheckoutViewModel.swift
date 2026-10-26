@@ -44,6 +44,14 @@ final class CheckoutViewModel: ObservableObject {
         DeliveryEta.quote(for: selectedAddress.coordinate)
     }
 
+    /// The wallet credit this order uses: all it can, up to the shop's per-order
+    /// limit, once the shop's settings are live like the rest of the bill.
+    func walletApplied(for cart: CartViewModel) -> Int {
+        let store = StoreStatusStore.shared
+        guard store.isLive else { return 0 }
+        return WalletStore.toUse(rules: store.rules, payable: cart.bill.grandTotal, used: WalletStore.shared.used)
+    }
+
     func reloadSavedAddress() {
         if let saved = LocalStorage.shared.loadAddress() {
             selectedAddress = saved
@@ -142,6 +150,16 @@ final class CheckoutViewModel: ObservableObject {
             return false
         }
 
+        // The wallet is read fresh: the total on screen must use what is really left.
+        let walletSpent = WalletStore.shared.used
+        let walletCredit = walletApplied(for: cart)
+        if walletCredit > 0, let fresh = await WalletStore.shared.refresh(force: true), fresh != walletSpent {
+            orderError = "Your wallet balance has just changed. Check the bill and place your order again."
+            HapticsManager.shared.warning()
+            return false
+        }
+        let totalToPay = cart.bill.grandTotal - Double(walletCredit)
+
         isSubmitting = true
         progressText = paysOnline ? "Opening payment..." : "Placing Order..."
         UserDefaults.standard.set(paymentMethod, forKey: Self.lastPaymentKey)
@@ -153,7 +171,7 @@ final class CheckoutViewModel: ObservableObject {
         var receipt: PaymentReceipt?
         if paysOnline {
             do {
-                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: cart.bill.grandTotal, customer: user, option: payOption) { [weak self] in
+                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: totalToPay, customer: user, option: payOption) { [weak self] in
                     self?.progressText = "Confirming payment..."
                 }
                 progressText = "Placing Order..."
@@ -177,7 +195,7 @@ final class CheckoutViewModel: ObservableObject {
             // fee; the share of each is kept beside it.
             deliveryFee: cart.bill.deliveryFee + cart.bill.nightDeliveryFee + cart.bill.extraDeliveryFee,
             discount: cart.bill.couponDiscount,
-            grandTotal: cart.bill.grandTotal,
+            grandTotal: totalToPay,
             status: .placed,
             deliveryAddress: selectedAddress,
             paymentMethod: receipt == nil ? "Cash on Delivery" : "Paid online",
@@ -188,7 +206,8 @@ final class CheckoutViewModel: ObservableObject {
             nightDeliveryFee: cart.bill.nightDeliveryFee,
             extraDeliveryFee: cart.bill.extraDeliveryFee,
             extraDeliveryLabel: cart.bill.extraDeliveryFee > 0 ? ShopRules.extraChargeTitle(store.rules.extraChargeLabel) : nil,
-            distanceKm: quote.distanceKm
+            distanceKm: quote.distanceKm,
+            walletUsed: walletCredit
         )
 
         do {

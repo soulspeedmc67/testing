@@ -2168,6 +2168,8 @@ struct StoreControlSheetView: View {
     @State private var petrolText = ""
     @State private var mileageText = ""
     @State private var minIosVersionText = ""
+    @State private var walletWelcomeText = ""
+    @State private var walletMaxText = ""
 
     /// What customers read after "The store is closed right now." (same words as
     /// the web console's `CLOSE_REASON_PRESETS`). `ownCloseReasonChoice` opens a box to write another.
@@ -2279,6 +2281,15 @@ struct StoreControlSheetView: View {
                     Text("Extra delivery charge")
                 } footer: {
                     Text(extraChargeNote)
+                }
+
+                Section {
+                    numberRow("Welcome credit for everyone (₹)", text: $walletWelcomeText)
+                    numberRow("Most one order can use (₹)", text: $walletMaxText)
+                } header: {
+                    Text("Wallet")
+                } footer: {
+                    Text("Every customer gets this credit in their wallet once, and it comes off their orders by itself. Put 0 to switch the wallet off. The website and the apps follow as soon as you tap Save; apps installed before this setting existed don't show the wallet.")
                 }
 
                 Section {
@@ -2406,6 +2417,8 @@ struct StoreControlSheetView: View {
         lowFeeText = Self.plain(saved.deliveryLowFee)
         freeOrdersText = String(saved.freeDeliveryOrders)
         minIosVersionText = saved.minIosVersion
+        walletWelcomeText = String(saved.walletWelcomeAmount)
+        walletMaxText = String(saved.walletMaxPerOrder)
         extraOn = saved.extraChargeOn
         extraAmountText = Self.plain(saved.extraChargeAmount)
         if saved.extraChargeLabel.isEmpty {
@@ -2431,6 +2444,8 @@ struct StoreControlSheetView: View {
         if let value = Self.number(lowFromText), (0...100000).contains(value) { edited.deliveryLowFrom = value }
         if let value = Self.number(lowFeeText), (0...1000).contains(value) { edited.deliveryLowFee = value }
         if let value = Self.number(freeOrdersText), (0...1000).contains(value) { edited.freeDeliveryOrders = Int(value) }
+        if let value = Self.number(walletWelcomeText), (0...Double(ShopRules.walletMax)).contains(value), value == value.rounded() { edited.walletWelcomeAmount = Int(value) }
+        if let value = Self.number(walletMaxText), (0...Double(ShopRules.walletMax)).contains(value), value == value.rounded() { edited.walletMaxPerOrder = Int(value) }
         // The lowest fee can't start below the small-order amount.
         if edited.deliveryLowFrom < edited.deliverySmallBelow { edited.deliveryLowFrom = edited.deliverySmallBelow }
         edited.extraChargeOn = extraOn

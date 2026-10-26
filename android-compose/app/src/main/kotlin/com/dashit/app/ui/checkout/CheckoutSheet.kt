@@ -159,7 +159,12 @@ fun CheckoutSheet(
     val belowMinimum = bill.subtotal > 0 && !bill.isMinOrderSatisfied
     // The address is outside the delivery area (ShopRules.deliveryRadiusKm): no order.
     val tooFar = !storeState.rules.delivers(distanceKm)
-    val totalToPay = bill.grandTotal + nightFee
+    // The welcome credit in the wallet takes what it can off the total (up to the
+    // shop's per-order limit), once the shop's settings are live like the rest of the bill.
+    val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
+    val beforeWallet = bill.grandTotal + nightFee
+    val walletApplied = if (storeState.isLive) com.dashit.app.data.Wallet.toUse(storeState.rules, beforeWallet, walletSpent) else 0
+    val totalToPay = beforeWallet - walletApplied
 
     /** Same gates as the web and iOS checkouts, then the real order write. */
     fun placeOrder(customer: UserProfile) {
@@ -228,6 +233,7 @@ fun CheckoutSheet(
             deliveryFee = bill.deliveryFee + nightFee + bill.extraDeliveryFee,
             discount = bill.couponDiscount,
             grandTotal = totalToPay,
+            walletUsed = walletApplied,
             nightDeliveryFee = nightFee,
             extraDeliveryFee = bill.extraDeliveryFee,
             extraDeliveryLabel = if (bill.extraDeliveryFee > 0) ShopRules.extraChargeTitle(store.rules.extraChargeLabel) else null,
@@ -245,6 +251,16 @@ fun CheckoutSheet(
         // Not tied to this sheet: once money is taken, the order is placed
         // even if the sheet or the screen goes away meanwhile.
         OnlinePayment.scope.launch {
+            // The wallet is read fresh: the total on screen must use what is really left.
+            if (walletApplied > 0) {
+                val fresh = com.dashit.app.data.Wallet.fetchUsed(force = true)
+                if (fresh != null && fresh != walletSpent) {
+                    HapticsManager.warning(view)
+                    errorMessage = "Your wallet balance has just changed. Check the total and place your order again."
+                    isSubmitting = false
+                    return@launch
+                }
+            }
             // Paying online: the payment is taken and confirmed first, and only
             // a confirmed payment places the order.
             var receipt: OnlinePayment.Receipt? = null
@@ -425,6 +441,7 @@ fun CheckoutSheet(
                     // 4. Order Total Card
                     OrderTotalCard(
                         total = totalToPay,
+                        walletApplied = walletApplied,
                         nightFee = nightFee,
                         distanceKm = distanceKm,
                         isNight = NightCharge.isNightHours(nowMillis),
@@ -889,6 +906,7 @@ private fun OnlineOptionRow(option: PayOption, selected: Boolean, onClick: () ->
 @Composable
 private fun OrderTotalCard(
     total: Double,
+    walletApplied: Int = 0,
     nightFee: Double = 0.0,
     distanceKm: Double = 0.0,
     isNight: Boolean = true,
@@ -957,6 +975,28 @@ private fun OrderTotalCard(
                 Text(
                     text = "₹${extraFee.toInt()}",
                     color = DashitColors.TextPrimary,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // The welcome credit used on this order.
+        if (walletApplied > 0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "DASHit wallet",
+                    color = DashitColors.TextPrimary,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "−₹$walletApplied",
+                    color = DashitColors.Positive,
                     fontSize = 14.5.sp,
                     fontWeight = FontWeight.Bold
                 )
