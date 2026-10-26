@@ -42,10 +42,10 @@ struct ShopRules: Equatable {
     /// app shows the update sheet (`AppVersion`), and `firestore.rules` refuse
     /// its orders by `minIosVersionCode`, saved beside it.
     var minIosVersion: String = ""
-    /// The welcome credit every customer has in their wallet, in whole rupees
-    /// (0 ends it), and the most one order may use. See `Wallet`.
-    var walletWelcomeAmount: Int = 50
-    var walletMaxPerOrder: Int = 50
+    /// The wallet's welcome credit in whole rupees, and the most one order may use.
+    /// Off by default (0): it only works once the shop sets an amount. See `Wallet`.
+    var walletWelcomeAmount: Int = 0
+    var walletMaxPerOrder: Int = 0
     /// Where the store is now, when the shop has moved it (`storeLat`, `storeLng`,
     /// `storeLabel` on `config/store`, set in the staff console or this admin app):
     /// nil means the built-in hub. Read by `DeliveryEta`, so every distance, time,

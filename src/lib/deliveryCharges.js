@@ -36,10 +36,10 @@ export const SHOP_RULE_DEFAULTS = Object.freeze({
   extraChargeOn: false,
   extraChargeAmount: 20,
   extraChargeLabel: "",
-  /* The welcome credit every customer gets in their wallet (whole rupees; 0 ends
-     the offer), and the most of it one order may use. */
-  walletWelcomeAmount: 50,
-  walletMaxPerOrder: 50,
+  /* The wallet's welcome credit (whole rupees) and the most of it one order may use.
+     OFF by default (0): it only works once the shop sets an amount in Shop settings. */
+  walletWelcomeAmount: 0,
+  walletMaxPerOrder: 0,
 });
 
 export const EXTRA_CHARGE_LABEL = "Extra delivery charge";

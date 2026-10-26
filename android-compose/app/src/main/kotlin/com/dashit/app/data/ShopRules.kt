@@ -43,11 +43,11 @@ data class ShopRules(
     val extraChargeAmount: Double = 20.0,
     val extraChargeLabel: String = "",
     /**
-     * The welcome credit every customer has in their wallet, in whole rupees
-     * (0 ends it), and the most one order may use. See [Wallet].
+     * The wallet's welcome credit in whole rupees, and the most one order may use.
+     * Off by default (0): it only works once the shop sets an amount. See [Wallet].
      */
-    val walletWelcomeAmount: Int = 50,
-    val walletMaxPerOrder: Int = 50
+    val walletWelcomeAmount: Int = 0,
+    val walletMaxPerOrder: Int = 0
 ) {
     /** The extra charge on an order placed now, in whole rupees; 0 while it is off. */
     val extraCharge: Double

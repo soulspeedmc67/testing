@@ -4,12 +4,20 @@ import { walletBalance, walletToUse } from "../src/lib/wallet.js";
 import { shopRules, SHOP_RULE_DEFAULTS } from "../src/lib/deliveryCharges.js";
 import { billForChangedOrder, buildReplacementOrder } from "../src/lib/orderChange.js";
 
-const rules = shopRules({});
+const rules = shopRules({ walletWelcomeAmount: 50, walletMaxPerOrder: 50 });
 
-test("every customer starts with the ₹50 welcome credit", () => {
-  assert.equal(SHOP_RULE_DEFAULTS.walletWelcomeAmount, 50);
-  assert.equal(walletBalance(rules, 0), 50);
-  assert.equal(walletBalance(rules, undefined), 50);
+test("the wallet is off until the shop sets a credit", () => {
+  assert.equal(SHOP_RULE_DEFAULTS.walletWelcomeAmount, 0);
+  assert.equal(SHOP_RULE_DEFAULTS.walletMaxPerOrder, 0);
+  const off = shopRules({});
+  assert.equal(walletBalance(off, 0), 0);
+  assert.equal(walletToUse(off, 0, 500), 0);
+});
+
+test("with a credit set, every customer starts with it", () => {
+  const on = shopRules({ walletWelcomeAmount: 50, walletMaxPerOrder: 50 });
+  assert.equal(walletBalance(on, 0), 50);
+  assert.equal(walletBalance(on, undefined), 50);
 });
 
 test("the balance is the credit minus what was used, never below 0", () => {
