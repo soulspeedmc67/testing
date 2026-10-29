@@ -9,11 +9,15 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.dashit.app.R
 import com.dashit.app.data.model.UserProfile
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.OAuthProvider
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -143,6 +147,12 @@ object AuthRepository {
         return null
     }
 
+    /**
+     * Signs in with Google. The phone's own Google sheet (Credential Manager) comes first. If it
+     * can't run (no Google account on the phone, Play services too old, a certificate Google
+     * doesn't know), Google sign-in opens in the browser instead, which doesn't depend on any of
+     * that. A failure says what went wrong, so it can be fixed.
+     */
     suspend fun signInWithGoogle(context: Context): UserProfile? {
         val activity = context.findActivity() ?: context
         val failed = "Google sign-in didn't complete. Please try again."
@@ -156,31 +166,69 @@ object AuthRepository {
             return null
         } catch (e: GetCredentialException) {
             android.util.Log.e("DashitAuth", "CredentialManager getCredential failed: ${e.type} ${e.message}", e)
-            throw SignInException(failed)
+            // The sheet can't run here (or doesn't know this app's certificate): use the browser.
+            return signInWithGoogleInBrowser(context.findActivity(), e.type.substringAfterLast('.').ifEmpty { "sheet" })
         } catch (e: Exception) {
             android.util.Log.e("DashitAuth", "CredentialManager unexpected error: ${e.message}", e)
-            throw SignInException(failed)
+            return signInWithGoogleInBrowser(context.findActivity(), e.javaClass.simpleName)
         }
         if (credential !is CustomCredential || credential.type != GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             android.util.Log.e("DashitAuth", "Unexpected credential type: ${credential.type}")
-            throw SignInException(failed)
+            return signInWithGoogleInBrowser(context.findActivity(), "credential-type")
         }
         val google = runCatching { GoogleIdTokenCredential.createFrom(credential.data) }
             .onFailure { android.util.Log.e("DashitAuth", "Failed to parse GoogleIdTokenCredential", it) }
-            .getOrNull() ?: throw SignInException(failed)
+            .getOrNull() ?: return signInWithGoogleInBrowser(context.findActivity(), "id-token")
 
         val user = try {
             auth.signInWithCredential(GoogleAuthProvider.getCredential(google.idToken, null)).await().user
+        } catch (e: FirebaseNetworkException) {
+            android.util.Log.e("DashitAuth", "FirebaseAuth signInWithCredential: no network", e)
+            throw SignInException(OFFLINE)
         } catch (e: Exception) {
             android.util.Log.e("DashitAuth", "FirebaseAuth signInWithCredential failed: ${e.message}", e)
-            throw SignInException(OFFLINE)
-        } ?: throw SignInException(OFFLINE)
+            throw SignInException(firebaseFailure(e, failed))
+        } ?: throw SignInException(failed)
+        return finishGoogleSignIn(user.uid, google.displayName, user.email ?: google.id)
+    }
 
+    /**
+     * Google sign-in in the browser (Firebase's own Google page), for phones where the sheet can't
+     * run. Null if the shopper closed it. [why] says what stopped the sheet.
+     */
+    private suspend fun signInWithGoogleInBrowser(activity: Activity?, why: String): UserProfile? {
+        val failed = "Google sign-in didn't complete ($why). Please try again."
+        if (activity == null) throw SignInException(failed)
+        val provider = OAuthProvider.newBuilder("google.com")
+            .setScopes(listOf("email", "profile"))
+            .addCustomParameter("prompt", "select_account")
+            .build()
+        val user = try {
+            // A sign-in the browser finished while the app was away is picked up first.
+            (auth.pendingAuthResult ?: auth.startActivityForSignInWithProvider(activity, provider)).await().user
+        } catch (e: FirebaseNetworkException) {
+            throw SignInException(OFFLINE)
+        } catch (e: Exception) {
+            val text = e.message.orEmpty()
+            if (text.contains("cancel", ignoreCase = true) || text.contains("closed", ignoreCase = true)) return null
+            android.util.Log.e("DashitAuth", "Browser Google sign-in failed: $text", e)
+            throw SignInException(firebaseFailure(e, failed))
+        } ?: throw SignInException(failed)
+        return finishGoogleSignIn(user.uid, user.displayName, user.email)
+    }
+
+    /** Names the problem when Firebase refuses a Google sign-in, so it can be fixed. */
+    private fun firebaseFailure(e: Exception, fallback: String): String {
+        val code = (e as? FirebaseAuthException)?.errorCode?.removePrefix("ERROR_")?.lowercase()?.replace('_', ' ')
+        return if (code.isNullOrEmpty()) fallback else "Google sign-in didn't complete ($code). Please try again."
+    }
+
+    private suspend fun finishGoogleSignIn(uid: String, displayName: String?, email: String?): UserProfile {
         val profile = try {
             ensureUserProfile(
-                uid = user.uid,
-                name = google.displayName?.trim()?.takeIf { it.isNotEmpty() },
-                email = user.email ?: google.id
+                uid = uid,
+                name = displayName?.trim()?.takeIf { it.isNotEmpty() },
+                email = email
             )
         } catch (e: Exception) {
             android.util.Log.e("DashitAuth", "ensureUserProfile failed: ${e.message}", e)

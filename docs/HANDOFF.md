@@ -6,6 +6,23 @@
 
 ---
 
+## Oct 29, 2026 (night): Android 1.2.4 (106): Google sign-in hardened, one-command package with the APK
+
+Android compiles. **The signed APK/AAB are NOT built yet**: the owner's compliance guard blocks that build on 3 critical flags (website emulator host,
+Razorpay for groceries, a Play Billing rule that doesn't apply), and overriding it is the owner's call. To build, run once:
+`APP_STORE_GUARD_OK=1 bash scripts/ship-android.sh` (builds the signed APK + AAB, copies the APK to `DASHit.apk`, builds the website zip and adds `DASHit.apk` to its
+root, so one upload to Hostinger updates the site and the download). Upload `DASHit-release.aab` to Google Play.
+
+- **Google sign-in** (`AuthRepository.signInWithGoogle`): the Google sheet (Credential Manager) still comes first. If it can't run (no Google account, old Play
+  services, a certificate Google doesn't know) it now falls back to Google sign-in in the browser (Firebase's own page), and a failure names its cause
+  ("Google sign-in didn't complete (no credential / 28444 / network...)") instead of a generic line. Registered certificates in `google-services.json`:
+  debug `CA:06:A2:2E`, release `79:5B:A2:8D`, and a third `2D:0D:A7:AF`. A build installed FROM GOOGLE PLAY is re-signed with Play's app signing key: its SHA-1 must be
+  in Firebase (Play Console → Test and release → App integrity → App signing → "App signing key certificate" SHA-1/SHA-256; add both in Firebase project settings → the
+  Android app, then replace `google-services.json`). If sign-in still fails after that, check App Check: if it is ENFORCED for Authentication, builds not installed from
+  Play (the website APK) fail Play Integrity and sign-in is refused; keep it on "monitor".
+- Android already has everything the website and iPhone got this week: wallet (whole bill, off until a credit is set, visible at 0, money-added celebration),
+  delivery-time and order-change-time settings, scheduled sales, plain delivery-charge wording, live store location. The iPhone-only "update required" screen has no Android twin.
+
 ## Oct 29, 2026 (evening): "money added" celebration in the customer apps
 
 When the owner adds money to a customer's wallet, the customer's app opens the wallet with a short celebration ("₹X added to your wallet!", the
