@@ -85,8 +85,11 @@ object DeliveryEta {
         // 1.25× that; the road figure only sets the time.
         val distanceKm = (straightKm * 10).roundToInt() / 10.0
         val roadKm = maxOf(0.4, straightKm * 1.25)
-        val ridingMinutes = roadKm / 18 * 60
-        val total = maxOf(8, (3 + ridingMinutes + 3).roundToInt())
+        // Packing, the rider's speed, the safety buffer and the least time are the shop's own
+        // settings (ShopRules): 3 minutes, 18 km an hour, 3 minutes and 8 minutes unless it changed them.
+        val rules = StoreStatus.state.value.rules
+        val ridingMinutes = roadKm / rules.etaSpeedKmh * 60
+        val total = maxOf(rules.etaMinMinutes.roundToInt(), (rules.etaPackingMinutes + ridingMinutes + rules.etaBufferMinutes).roundToInt())
         // The area is the shop's own setting (ShopRules.deliveryRadiusKm, 8 km unless it changed it).
         return Quote(total, distanceKm, StoreStatus.state.value.rules.delivers(distanceKm))
     }
@@ -140,9 +143,9 @@ object StoreStatus {
             }
     }
 
-    /** In high demand the web promises at least 18 minutes. */
+    /** In high demand the shop promises at least its high-demand minutes (18 unless it changed them). */
     fun etaMinutes(quote: DeliveryEta.Quote): Int? {
         val eta = quote.etaMinutes ?: return null
-        return if (_state.value.highDemand) maxOf(eta, 18) else eta
+        return if (_state.value.highDemand) maxOf(eta, _state.value.rules.highDemandMinutes) else eta
     }
 }

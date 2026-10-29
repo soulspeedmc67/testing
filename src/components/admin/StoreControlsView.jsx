@@ -29,6 +29,7 @@ import ExtraChargeSettings from "./ExtraChargeSettings";
 import RefreshWebsiteCard from "./RefreshWebsiteCard";
 import AppUpdateSettings from "./AppUpdateSettings";
 import WalletOrdersFix from "./WalletOrdersFix";
+import WalletGrantCard from "./WalletGrantCard";
 
 export default function StoreControlsView({
   isStoreOpen = true,
@@ -44,6 +45,7 @@ export default function StoreControlsView({
   onSaveWeatherAlert,
   storeConfig = null,
   onSaveDeliverySettings,
+  showToast,
   onClearAllOrders,
   onResetAllStock,
   onDeleteAllProducts,
@@ -269,6 +271,9 @@ export default function StoreControlsView({
       <AppUpdateSettings storeConfig={storeConfig} onSave={onSaveDeliverySettings} darkMode={darkMode} />
 
       {/* One press makes every open website drop its saved copies and load fresh */}
+      {/* Add money to one customer's wallet */}
+      <WalletGrantCard darkMode={darkMode} showToast={showToast} />
+
       {/* One-time: orders placed while the wallet credit came off the bill */}
       <WalletOrdersFix darkMode={darkMode} />
 

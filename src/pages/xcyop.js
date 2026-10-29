@@ -2177,6 +2177,7 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
 
       {activeTab === "settings" && (
         <StoreControlsView
+          showToast={showToast}
           isStoreOpen={isStoreOpen}
           currentCloseReason={currentCloseReason}
           onToggleStoreClick={handleToggleStoreClick}

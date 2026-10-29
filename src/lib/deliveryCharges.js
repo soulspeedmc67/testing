@@ -40,6 +40,16 @@ export const SHOP_RULE_DEFAULTS = Object.freeze({
      OFF by default (0): it only works once the shop sets an amount in Shop settings. */
   walletWelcomeAmount: 0,
   walletMaxPerOrder: 0,
+  /* How the delivery time is worked out: minutes to pack, the rider's speed, a safety
+     buffer, and the least time ever promised. In high demand the promise is at least
+     `highDemandMinutes`. (Built-in values; the shop changes them in Shop settings.) */
+  etaPackingMinutes: 3,
+  etaSpeedKmh: 18,
+  etaBufferMinutes: 3,
+  etaMinMinutes: 8,
+  highDemandMinutes: 18,
+  /* How many seconds a customer has to cancel or add items after ordering. */
+  orderChangeSeconds: 30,
 });
 
 export const EXTRA_CHARGE_LABEL = "Extra delivery charge";
@@ -76,6 +86,12 @@ export function shopRules(cfg) {
     extraChargeLabel: cleanExtraLabel(cfg?.extraChargeLabel),
     walletWelcomeAmount: Math.floor(Math.min(WALLET_MAX, zeroOrMore(cfg?.walletWelcomeAmount, d.walletWelcomeAmount))),
     walletMaxPerOrder: Math.floor(Math.min(WALLET_MAX, zeroOrMore(cfg?.walletMaxPerOrder, d.walletMaxPerOrder))),
+    etaPackingMinutes: Math.min(60, zeroOrMore(cfg?.etaPackingMinutes, d.etaPackingMinutes)),
+    etaSpeedKmh: Math.min(80, Math.max(5, zeroOrMore(cfg?.etaSpeedKmh, d.etaSpeedKmh))),
+    etaBufferMinutes: Math.min(60, zeroOrMore(cfg?.etaBufferMinutes, d.etaBufferMinutes)),
+    etaMinMinutes: Math.min(120, zeroOrMore(cfg?.etaMinMinutes, d.etaMinMinutes)),
+    highDemandMinutes: Math.min(240, zeroOrMore(cfg?.highDemandMinutes, d.highDemandMinutes)),
+    orderChangeSeconds: Math.floor(Math.min(600, Math.max(10, zeroOrMore(cfg?.orderChangeSeconds, d.orderChangeSeconds)))),
   };
 }
 

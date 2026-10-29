@@ -47,7 +47,19 @@ data class ShopRules(
      * Off by default (0): it only works once the shop sets an amount. See [Wallet].
      */
     val walletWelcomeAmount: Int = 0,
-    val walletMaxPerOrder: Int = 0
+    val walletMaxPerOrder: Int = 0,
+    /**
+     * How the delivery time is worked out: minutes to pack, the rider's speed, a safety
+     * buffer, and the least time ever promised; in high demand the promise is at least
+     * [highDemandMinutes]. [orderChangeSeconds] is how long a customer has to cancel or add
+     * items after ordering. The built-in values are what the app always used.
+     */
+    val etaPackingMinutes: Double = 3.0,
+    val etaSpeedKmh: Double = 18.0,
+    val etaBufferMinutes: Double = 3.0,
+    val etaMinMinutes: Double = 8.0,
+    val highDemandMinutes: Int = 18,
+    val orderChangeSeconds: Int = 30
 ) {
     /** The extra charge on an order placed now, in whole rupees; 0 while it is off. */
     val extraCharge: Double
@@ -101,7 +113,13 @@ data class ShopRules(
                 extraChargeAmount = minOf(EXTRA_CHARGE_MAX, Math.round(amount("extraChargeAmount", d.extraChargeAmount)).toDouble()),
                 extraChargeLabel = cleanExtraLabel(snapshot.get("extraChargeLabel") as? String),
                 walletWelcomeAmount = minOf(WALLET_MAX, amount("walletWelcomeAmount", d.walletWelcomeAmount.toDouble()).toInt()),
-                walletMaxPerOrder = minOf(WALLET_MAX, amount("walletMaxPerOrder", d.walletMaxPerOrder.toDouble()).toInt())
+                walletMaxPerOrder = minOf(WALLET_MAX, amount("walletMaxPerOrder", d.walletMaxPerOrder.toDouble()).toInt()),
+                etaPackingMinutes = minOf(60.0, amount("etaPackingMinutes", d.etaPackingMinutes)),
+                etaSpeedKmh = minOf(80.0, maxOf(5.0, amount("etaSpeedKmh", d.etaSpeedKmh))),
+                etaBufferMinutes = minOf(60.0, amount("etaBufferMinutes", d.etaBufferMinutes)),
+                etaMinMinutes = minOf(120.0, amount("etaMinMinutes", d.etaMinMinutes)),
+                highDemandMinutes = minOf(240.0, amount("highDemandMinutes", d.highDemandMinutes.toDouble())).toInt(),
+                orderChangeSeconds = minOf(600.0, maxOf(10.0, amount("orderChangeSeconds", d.orderChangeSeconds.toDouble()))).toInt()
             )
         }
 

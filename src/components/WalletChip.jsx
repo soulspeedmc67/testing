@@ -118,8 +118,12 @@ export default function WalletChip({ size = "md" }) {
 
               <p className="mt-4 text-[13.5px] text-slate-600 dark:text-content-secondary">
                 {balance > 0
-                  ? `It comes off your bill by itself when you order, up to ₹${rules.walletMaxPerOrder} each time.`
-                  : "You've used your wallet credit. Thanks for ordering with us!"}
+                  ? rules.walletMaxPerOrder > 0
+                    ? `It comes off your bill by itself when you order, up to ₹${rules.walletMaxPerOrder} each time.`
+                    : "It comes off your bill by itself when you order."
+                  : credit > 0
+                  ? "You've used your wallet credit. Thanks for ordering with us!"
+                  : "No credit in your wallet right now. Credit from DASHit will show up here."}
               </p>
 
               <button

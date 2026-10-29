@@ -140,6 +140,37 @@ await check("a refund for someone else's order is refused", async () => {
   await assertFails(batch.commit());
 });
 
+console.log("money an admin adds");
+const asAdmin = () => env.authenticatedContext("admin1", { email: "m4k3ditz@gmail.com", email_verified: true, firebase: { sign_in_provider: "google.com" } }).firestore();
+await check("an admin can add money, with a record of it", async () => {
+  await seed({ walletWelcomeAmount: 0, walletMaxPerOrder: 0 });
+  const db = asAdmin();
+  const batch = writeBatch(db);
+  batch.set(doc(db, "wallets", "g1"), { bonus: increment(100), used: increment(0), updatedAt: serverTimestamp() }, { merge: true });
+  batch.set(doc(db, "wallets", "g1", "grants", "x1"), { amount: 100, note: "welcome", at: serverTimestamp() });
+  await assertSucceeds(batch.commit());
+});
+await check("the customer can spend the added money, with no per-order limit when it is 0", async () => {
+  await assertSucceeds(placeWithWallet(asShopper("g1"), "g1", "I1", 70));
+  await assertSucceeds(placeWithWallet(asShopper("g1"), "g1", "I2", 30));
+  await assertFails(placeWithWallet(asShopper("g1"), "g1", "I3", 1));
+});
+await check("a customer can't add money to their own wallet", async () => {
+  await assertFails(setDoc(doc(asShopper("g2"), "wallets", "g2"), { used: 0, bonus: 500 }));
+  await assertFails(updateDoc(doc(asShopper("g1"), "wallets", "g1"), { bonus: 999 }));
+});
+await check("a customer can't read or write the record of grants", async () => {
+  await assertFails(getDoc(doc(asShopper("g1"), "wallets", "g1", "grants", "x1")));
+  await assertFails(setDoc(doc(asShopper("g1"), "wallets", "g1", "grants", "x2"), { amount: 5 }));
+});
+await check("a limit per order still applies when one is set", async () => {
+  await seed({ walletWelcomeAmount: 0, walletMaxPerOrder: 40 });
+  const db = asAdmin();
+  await setDoc(doc(db, "wallets", "g3"), { bonus: 100, used: 0 });
+  await assertFails(placeWithWallet(asShopper("g3"), "g3", "J1", 60));
+  await assertSucceeds(placeWithWallet(asShopper("g3"), "g3", "J2", 40));
+});
+
 console.log("adding items (replacement order)");
 await seed();
 await placeWithWallet(asShopper("r1"), "r1", "G1", 30);

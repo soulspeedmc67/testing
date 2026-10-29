@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Mic, ChevronDown, Store, Clock, TrendingUp, User, ShoppingBag, MapPin, AlertTriangle, Zap } from "lucide-react";
 import { setDeviceSystemBars } from "../lib/systemBars";
-import { calculateDeliveryEta } from "../lib/deliveryEta";
+import { calculateDeliveryEta, getHighDemandMinutes } from "../lib/deliveryEta";
 import { useTheme } from "../context/ThemeContext";
 import WalletChip from "./WalletChip";
 
@@ -320,13 +320,13 @@ export default function AppHeader({
               </motion.span>
               <div className="flex items-center space-x-2 mt-0.5">
                 <motion.h1
-                  key={isHighDemand ? "18-mins" : `${deliveryEta.etaMinutes}-mins`}
+                  key={isHighDemand ? `${getHighDemandMinutes()}-mins` : `${deliveryEta.etaMinutes}-mins`}
                   initial={{ opacity: 0, y: 3 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                   className="text-[28px] font-black tracking-tight text-slate-900 leading-none dark:text-content"
                 >
-                  {isHighDemand ? "18 minutes" : deliveryEta.displayText}
+                  {isHighDemand ? `${getHighDemandMinutes()} minutes` : deliveryEta.displayText}
                 </motion.h1>
 
                 <AnimatePresence>

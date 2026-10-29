@@ -14,7 +14,14 @@ import { calculateDeliveryCharges, extraChargeLabel, SHOP_RULE_DEFAULTS } from "
 
 /** How long a customer can add items or cancel after placing an order. Same as
  * `Order.modifyWindowSeconds` (iOS) and `MODIFY_WINDOW_MS` (Android). */
-export const ORDER_CHANGE_WINDOW_SECONDS = 30;
+/* A live binding: every screen that imports it sees the shop's own number (Shop settings →
+   order changes) as soon as it arrives. Starts at the built-in 30 seconds. */
+export let ORDER_CHANGE_WINDOW_SECONDS = 30;
+
+export function adoptOrderChangeSeconds(seconds) {
+  const n = Math.floor(Number(seconds));
+  ORDER_CHANGE_WINDOW_SECONDS = Number.isFinite(n) ? Math.min(600, Math.max(10, n)) : 30;
+}
 
 /* What the shopper is told. The first six are the apps' sentences word for word. */
 const MESSAGES = {

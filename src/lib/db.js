@@ -23,6 +23,7 @@ import { getDb, getFirebaseAuth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   ORDER_CHANGE_WINDOW_SECONDS,
+  adoptOrderChangeSeconds,
   OrderChangeError,
   orderChangeDeadlineMs,
   orderChangeSecondsLeft,
@@ -34,7 +35,7 @@ import {
 import { shopRules } from "./deliveryCharges";
 import { noteCacheVersion } from "./cacheRefresh";
 import { adoptNightHours } from "./nightCharge";
-import { adoptDeliveryRadius, adoptStoreLocation } from "./deliveryEta";
+import { adoptDeliveryRadius, adoptStoreLocation, adoptEtaSettings } from "./deliveryEta";
 import { isSaleLive, nextSaleChange } from "./sales";
 import { riderPositionFrom } from "./riderPosition";
 
@@ -3171,6 +3172,11 @@ function broadcastStoreConfig(cfg, live = memoryStoreConfigLive) {
   adoptNightHours(cfg);
   adoptDeliveryRadius(cfg);
   adoptStoreLocation(cfg);
+  {
+    const live = shopRules(cfg);
+    adoptEtaSettings(live);
+    adoptOrderChangeSeconds(live.orderChangeSeconds);
+  }
   storeConfigSubscribers.forEach((cb) => {
     try { cb(cfg, live); } catch (e) {}
   });

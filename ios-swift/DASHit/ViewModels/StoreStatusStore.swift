@@ -54,10 +54,10 @@ final class StoreStatusStore: ObservableObject {
         return isLive
     }
 
-    /// The promise shown in the header: the address's ETA, or the web's fixed
-    /// 18 minutes while the store is flagged as under high demand.
+    /// The promise shown in the header: the address's ETA, or the shop's high-demand
+    /// minutes (18 unless it changed them) while the store is flagged as under high demand.
     func etaMinutes(for quote: DeliveryEta.Quote) -> Int? {
         guard let eta = quote.etaMinutes else { return nil }
-        return highDemand ? max(eta, 18) : eta
+        return highDemand ? max(eta, rules.highDemandMinutes) : eta
     }
 }

@@ -161,11 +161,20 @@ service cloud.firestore {
       return exists(walletPath(uid)) ? get(walletPath(uid)).data.get('used', 0) : 0;
     }
 
+    /* Money an admin has put into this customer's wallet (`bonus`), on top of the
+       welcome credit. Only admins can write it. */
+    function walletBonusNow(uid) {
+      return exists(walletPath(uid)) ? get(walletPath(uid)).data.get('bonus', 0) : 0;
+    }
+
+    /* The per-order limit (`walletMaxPerOrder`; 0 or missing means no limit), and what
+       is left: the welcome credit plus any money an admin added, minus what was spent. */
     function walletFits(order) {
       let cfg = get(/databases/$(database)/documents/config/store).data;
       let w = order.walletUsed;
-      return w <= cfg.get('walletMaxPerOrder', 50)
-        && walletUsedNow(request.auth.uid) + w <= cfg.get('walletWelcomeAmount', 50)
+      let cap = cfg.get('walletMaxPerOrder', 0);
+      return (cap == 0 || w <= cap)
+        && walletUsedNow(request.auth.uid) + w <= cfg.get('walletWelcomeAmount', 50) + walletBonusNow(request.auth.uid)
         && getAfter(walletPath(request.auth.uid)).data.used == walletUsedNow(request.auth.uid) + w;
     }
 
@@ -273,8 +282,8 @@ service cloud.firestore {
     }
 
     // ---- Wallets ------------------------------------------------------------
-    // wallets/{uid}.used is the rupees of the welcome credit a customer has
-    // spent. It only goes up, so the credit can't be topped up from a phone,
+    // wallets/{uid}.used is the rupees of wallet credit a customer has spent;
+    // wallets/{uid}.bonus is money an admin has added for that customer. It only goes up, so the credit can't be topped up from a phone,
     // except when the order that spent it is cancelled in the same batch (the
     // customer's own cancel, while it is still 'Placed'), which gives exactly
     // that order's amount back. Admins can set it, to give back the credit of an
@@ -282,7 +291,7 @@ service cloud.firestore {
     // bring the credit back.
     match /wallets/{uid} {
       function walletShape() {
-        return request.resource.data.keys().hasOnly(['used', 'updatedAt', 'lastRefundOrder'])
+        return request.resource.data.keys().hasOnly(['used', 'updatedAt', 'lastRefundOrder', 'bonus'])
           && request.resource.data.used is int
           && request.resource.data.used >= 0;
       }
@@ -295,21 +304,30 @@ service cloud.firestore {
           && get(path).data.status == 'Placed'
           && getAfter(path).data.status == 'Cancelled'
           && get(path).data.get('walletUsed', 0) > 0
-          && request.resource.data.used == resource.data.used - get(path).data.walletUsed;
+          && request.resource.data.used == resource.data.get('used', 0) - get(path).data.walletUsed;
       }
 
       allow read: if isOwner(uid) || isAdmin();
       allow create: if isAdmin()
         || (isOwner(uid) && isCustomerLogin() && walletShape()
-            && !('lastRefundOrder' in request.resource.data));
+            && !('lastRefundOrder' in request.resource.data)
+            && !('bonus' in request.resource.data));
       allow update: if isAdmin()
         || (isOwner(uid) && isCustomerLogin() && walletShape()
             && (
-              (request.resource.data.used >= resource.data.used
+              (request.resource.data.used >= resource.data.get('used', 0)
                 && request.resource.data.get('lastRefundOrder', '') == resource.data.get('lastRefundOrder', ''))
               || refundsCancelledOrder()
-            ));
+            )
+            // The money an admin adds can't be changed from a phone.
+            && request.resource.data.get('bonus', 0) == resource.data.get('bonus', 0));
       allow delete: if false;
+
+      // What an admin gave, and when: a record that can't be changed or removed.
+      match /grants/{grantId} {
+        allow read, create: if isAdmin();
+        allow update, delete: if false;
+      }
     }
 
     // ---- Orders -----------------------------------------------------------

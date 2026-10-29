@@ -2247,6 +2247,12 @@ struct StoreControlSheetView: View {
     @State private var updateMessageText = ""
     @State private var walletWelcomeText = ""
     @State private var walletMaxText = ""
+    @State private var etaPackingText = ""
+    @State private var etaSpeedText = ""
+    @State private var etaBufferText = ""
+    @State private var etaMinText = ""
+    @State private var highDemandText = ""
+    @State private var orderChangeText = ""
 
     /// What customers read after "The store is closed right now." (same words as
     /// the web console's `CLOSE_REASON_PRESETS`). `ownCloseReasonChoice` opens a box to write another.
@@ -2380,8 +2386,33 @@ struct StoreControlSheetView: View {
                 }
 
                 Section {
+                    numberRow("Minutes to pack an order", text: $etaPackingText)
+                    numberRow("Rider's speed (km an hour)", text: $etaSpeedText)
+                    numberRow("Extra minutes, to be safe", text: $etaBufferText)
+                    numberRow("Never promise less than (minutes)", text: $etaMinText)
+                    numberRow("Promise in high demand (minutes)", text: $highDemandText)
+                } header: {
+                    Text("Delivery time")
+                } footer: {
+                    Text("The time customers are promised is packing + the ride at the rider's speed + the extra minutes, and never less than the least time. In high demand they see the high-demand minutes instead. The website and the apps follow as soon as you tap Save; apps installed before this setting existed keep their old numbers.")
+                }
+
+                Section {
+                    numberRow("Seconds to cancel or add items", text: $orderChangeText)
+                } header: {
+                    Text("Changing an order")
+                } footer: {
+                    Text("After ordering, a customer can cancel or add items for this long, until the shop starts packing. Between 10 and 600 seconds. Apps installed before this setting existed keep 30 seconds.")
+                }
+
+                Section {
                     numberRow("Welcome credit for everyone (₹)", text: $walletWelcomeText)
-                    numberRow("Most one order can use (₹)", text: $walletMaxText)
+                    numberRow("Most one order can use (₹, 0 = no limit)", text: $walletMaxText)
+                    NavigationLink {
+                        AdminWalletView(vm: vm)
+                    } label: {
+                        Label("Add money to a customer's wallet", systemImage: "plus.circle")
+                    }
                 } header: {
                     Text("Wallet")
                 } footer: {
@@ -2520,6 +2551,12 @@ struct StoreControlSheetView: View {
         updateMessageText = saved.updateMessage
         walletWelcomeText = String(saved.walletWelcomeAmount)
         walletMaxText = String(saved.walletMaxPerOrder)
+        etaPackingText = Self.plain(saved.etaPackingMinutes)
+        etaSpeedText = Self.plain(saved.etaSpeedKmh)
+        etaBufferText = Self.plain(saved.etaBufferMinutes)
+        etaMinText = Self.plain(saved.etaMinMinutes)
+        highDemandText = String(saved.highDemandMinutes)
+        orderChangeText = String(saved.orderChangeSeconds)
         extraOn = saved.extraChargeOn
         extraAmountText = Self.plain(saved.extraChargeAmount)
         if saved.extraChargeLabel.isEmpty {
@@ -2547,6 +2584,12 @@ struct StoreControlSheetView: View {
         if let value = Self.number(freeOrdersText), (0...1000).contains(value) { edited.freeDeliveryOrders = Int(value) }
         if let value = Self.number(walletWelcomeText), (0...Double(ShopRules.walletMax)).contains(value), value == value.rounded() { edited.walletWelcomeAmount = Int(value) }
         if let value = Self.number(walletMaxText), (0...Double(ShopRules.walletMax)).contains(value), value == value.rounded() { edited.walletMaxPerOrder = Int(value) }
+        if let value = Self.number(etaPackingText), (0...60).contains(value) { edited.etaPackingMinutes = value }
+        if let value = Self.number(etaSpeedText), (5...80).contains(value) { edited.etaSpeedKmh = value }
+        if let value = Self.number(etaBufferText), (0...60).contains(value) { edited.etaBufferMinutes = value }
+        if let value = Self.number(etaMinText), (0...120).contains(value) { edited.etaMinMinutes = value }
+        if let value = Self.number(highDemandText), (0...240).contains(value), value == value.rounded() { edited.highDemandMinutes = Int(value) }
+        if let value = Self.number(orderChangeText), (10...600).contains(value), value == value.rounded() { edited.orderChangeSeconds = Int(value) }
         // The lowest fee can't start below the small-order amount.
         if edited.deliveryLowFrom < edited.deliverySmallBelow { edited.deliveryLowFrom = edited.deliverySmallBelow }
         edited.extraChargeOn = extraOn

@@ -153,7 +153,8 @@ data class Order(
         get() = Regex("online|upi|card|prepaid", RegexOption.IGNORE_CASE).containsMatchIn(paymentMethod) ||
             paymentStatus.lowercase() in setOf("paid", "completed", "captured")
 
-    val modifyWindowEnd: Long get() = modifyWindowEndsAt ?: (createdAt + MODIFY_WINDOW_MS)
+    // The time to cancel or add items is the shop's setting (ShopRules.orderChangeSeconds, 30 seconds unless it changed it).
+    val modifyWindowEnd: Long get() = modifyWindowEndsAt ?: (createdAt + com.dashit.app.data.StoreStatus.state.value.rules.orderChangeSeconds * 1000L)
 
     /** Seconds left to add items or cancel: only while the store hasn't started. */
     fun modifySecondsRemaining(now: Long = System.currentTimeMillis()): Int {

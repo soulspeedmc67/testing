@@ -95,8 +95,10 @@ struct WalletSheet: View {
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
                 .padding(.top, 20)
 
-                Text(balance > 0
+                Text(balance > 0 && maxPerOrder > 0
                     ? "It comes off your bill by itself when you order, up to ₹\(maxPerOrder) each time."
+                    : balance > 0
+                    ? "It comes off your bill by itself when you order."
                     : credit > 0
                         ? "You've used your wallet credit. Thanks for ordering with us!"
                         : "No credit in your wallet right now. Credit from DASHit will show up here.")

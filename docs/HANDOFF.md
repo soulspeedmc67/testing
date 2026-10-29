@@ -6,6 +6,24 @@
 
 ---
 
+## Oct 29, 2026 (later): add wallet money to a customer, more settings from the admin
+
+Web VERIFIED (123 tests, build, console flows not clicked through yet). Rules VERIFIED in the emulator (25 cases). Android compiles. iOS NOT
+compiled (the Actions build is the check). **Rules are NOT deployed**: run `npx firebase-tools deploy --only firestore:rules --project dashit-1ecba`
+(safe to deploy before or after the apps: it only adds things).
+
+- **Add money to one customer**: `/xcyop` Shop settings → "Add money to a customer's wallet" (`WalletGrantCard.jsx`, `src/lib/walletAdmin.js`) and the
+  iOS admin (Shop settings → Wallet → Add money, `AdminWalletView.swift`). Find by mobile number (with or without +91), email or the start of a name,
+  pick, amount ₹1-5000, note, confirm. It is `bonus` on `wallets/{uid}` (admin-only, rules) plus a permanent record in `wallets/{uid}/grants`. Balance =
+  welcome credit + bonus - used; clients keep `used - bonus` as the "spent" figure (below 0 while added money is unspent). Works with the welcome
+  credit off. Not built: a push to that customer (they see it next time the app reads the wallet: a few minutes, or at the next order/open), removing money.
+- **Per-order limit 0 = no limit** (it used to mean off). Rules default for a missing limit is now 0.
+- **New settings in Shop settings** (web console and iOS admin, saved on `config/store`): delivery time (`etaPackingMinutes` 3, `etaSpeedKmh` 18,
+  `etaBufferMinutes` 3, `etaMinMinutes` 8, `highDemandMinutes` 18) and the time to cancel/add items (`orderChangeSeconds` 30). All three apps read them; older
+  apps keep the old numbers. Built-in values are unchanged, so nothing moves until the owner edits them.
+- Still fixed in code (candidates): the "30 seconds" wording inside some app messages, the 8 km delivery wording, store hours/close reason default, support
+  contact details, home-screen copy.
+
 ## Oct 29, 2026: the wallet takes its credit off the whole bill again
 
 Owner's call: the wallet credit comes off the WHOLE bill (items, delivery, handling), not just the charges. Web, Android and iPhone

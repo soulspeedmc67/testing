@@ -33,9 +33,11 @@ final class WalletStore: ObservableObject {
         }
     }
 
-    /// What is left: the welcome credit minus what has been spent, never below 0.
+    /// What is left: the welcome credit, plus any money an admin added, minus what has been
+    /// spent, never below 0. `used` here is `used - bonus` from the customer's wallet document
+    /// (see `refresh`), so it is below 0 while added money is unspent.
     nonisolated static func balance(rules: ShopRules, used: Int) -> Int {
-        max(0, rules.walletWelcomeAmount - max(0, used))
+        max(0, rules.walletWelcomeAmount - used)
     }
 
     /// How much of the wallet an order of `payable` rupees uses: all it can, up to the
@@ -43,7 +45,9 @@ final class WalletStore: ObservableObject {
     /// the bill below ₹1, so an order is never free.
     nonisolated static func toUse(rules: ShopRules, payable: Double, used: Int) -> Int {
         let whole = Int(max(0, payable).rounded(.down)) - 1
-        return max(0, min(balance(rules: rules, used: used), rules.walletMaxPerOrder, whole))
+        // A per-order limit of 0 means there is none.
+        let cap = rules.walletMaxPerOrder > 0 ? rules.walletMaxPerOrder : Int.max
+        return max(0, min(balance(rules: rules, used: used), cap, whole))
     }
 
     /// The shopper's `used` from the server, or nil when nobody is signed in or
@@ -55,10 +59,13 @@ final class WalletStore: ObservableObject {
         if !force, readUID == uid, Date().timeIntervalSince(readAt) < Self.readAgainAfter { return used }
         do {
             let snapshot = try await Firestore.firestore().collection("wallets").document(uid).getDocument()
-            let value = (snapshot.data()?["used"] as? NSNumber)?.intValue ?? 0
+            // What was spent, less any money an admin added: below 0 while that money is unspent.
+            let spent = (snapshot.data()?["used"] as? NSNumber)?.intValue ?? 0
+            let added = max(0, (snapshot.data()?["bonus"] as? NSNumber)?.intValue ?? 0)
+            let value = spent - added
             readUID = uid
             readAt = Date()
-            used = max(0, value)
+            used = value
             let defaults = UserDefaults.standard
             defaults.set(uid, forKey: Self.usedUIDKey)
             defaults.set(used, forKey: Self.usedKey)

@@ -46,8 +46,11 @@ enum DeliveryEta {
         // figure only sets the time.
         let distanceKm = (straightKm * 10).rounded() / 10
         let roadKm = max(0.4, straightKm * 1.25)
-        let ridingMinutes = roadKm / 18 * 60
-        let total = max(8, Int((3 + ridingMinutes + 3).rounded()))
+        // Packing, the rider's speed, the safety buffer and the least time are the shop's own
+        // settings (ShopRules): 3 minutes, 18 km an hour, 3 minutes and 8 minutes unless it changed them.
+        let rules = ShopRules.current
+        let ridingMinutes = roadKm / rules.etaSpeedKmh * 60
+        let total = max(Int(rules.etaMinMinutes.rounded()), Int((rules.etaPackingMinutes + ridingMinutes + rules.etaBufferMinutes).rounded()))
         // The area is the shop's own setting (ShopRules.deliveryRadiusKm, 8 km unless it changed it).
         return Quote(etaMinutes: total, distanceKm: distanceKm, isDeliverable: ShopRules.current.delivers(distanceKm: distanceKm))
     }

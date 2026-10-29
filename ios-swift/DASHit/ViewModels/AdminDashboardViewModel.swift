@@ -1318,6 +1318,109 @@ public final class AdminDashboardViewModel: ObservableObject {
         )
     }
 
+    // MARK: - Wallet money for one customer
+
+    static let walletGrantMax = 5000
+
+    /// A customer found by mobile number, email or name.
+    struct CustomerHit: Identifiable, Hashable {
+        let id: String // the customer's uid
+        let name: String
+        let mobile: String
+        let email: String
+    }
+
+    /// Customers matching what was typed: a mobile number, an email, or the start of a name. Up to 10.
+    func findCustomers(_ text: String) async -> [CustomerHit] {
+        let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard q.count >= 2 else { return [] }
+        let users = db.collection("users")
+        var found: [String: CustomerHit] = [:]
+        func add(_ snapshot: QuerySnapshot?) {
+            for doc in snapshot?.documents ?? [] {
+                let data = doc.data()
+                found[doc.documentID] = CustomerHit(
+                    id: doc.documentID,
+                    name: ((data["name"] as? String) ?? "").trimmingCharacters(in: .whitespaces),
+                    mobile: ((data["mobile"] as? String) ?? "").trimmingCharacters(in: .whitespaces),
+                    email: ((data["email"] as? String) ?? "").trimmingCharacters(in: .whitespaces)
+                )
+            }
+        }
+        if q.contains("@") {
+            for email in Set([q, q.lowercased()]) {
+                add(try? await users.whereField("email", isEqualTo: email).limit(to: 10).getDocuments())
+            }
+        } else if q.allSatisfy({ $0.isNumber || " +()-".contains($0) }) {
+            let digits = q.filter { $0.isNumber }
+            if digits.count >= 7 {
+                let last10 = String(digits.suffix(10))
+                let variants = Array(Set([digits, last10, "+91" + last10, "91" + last10]))
+                add(try? await users.whereField("mobile", in: variants).limit(to: 10).getDocuments())
+            }
+        } else {
+            // A name: the start of it, as typed and with a capital first letter (names are saved that way).
+            let capital = q.prefix(1).uppercased() + q.dropFirst()
+            for form in Set([q, capital, q.lowercased()]) {
+                add(try? await users
+                    .whereField("name", isGreaterThanOrEqualTo: form)
+                    .whereField("name", isLessThanOrEqualTo: form + "\u{f8ff}")
+                    .limit(to: 10)
+                    .getDocuments())
+            }
+        }
+        return Array(found.values).sorted { $0.name < $1.name }.prefix(10).map { $0 }
+    }
+
+    /// The money admins added and what the customer has spent.
+    func readWallet(uid: String) async -> (bonus: Int, used: Int)? {
+        guard let snapshot = try? await db.collection("wallets").document(uid).getDocument() else { return nil }
+        let data = snapshot.data() ?? [:]
+        return (
+            max(0, (data["bonus"] as? NSNumber)?.intValue ?? 0),
+            max(0, (data["used"] as? NSNumber)?.intValue ?? 0)
+        )
+    }
+
+    /// Adds `amount` rupees to the customer's wallet and records it. Returns a sentence when it fails; nil when done.
+    func giveWalletMoney(to customer: CustomerHit, amount: Int, note: String) async -> String? {
+        guard amount >= 1 else { return "Enter an amount of ₹1 or more." }
+        guard amount <= Self.walletGrantMax else { return "The most you can add at once is ₹\(Self.walletGrantMax)." }
+        guard let admin = Auth.auth().currentUser else { return "Please sign in again." }
+        let batch = db.batch()
+        let wallet = db.collection("wallets").document(customer.id)
+        // `used: increment(0)` makes sure the wallet has a `used`, which the customer's own orders add to.
+        batch.setData(
+            [
+                "bonus": FieldValue.increment(Int64(amount)),
+                "used": FieldValue.increment(Int64(0)),
+                "updatedAt": FieldValue.serverTimestamp()
+            ],
+            forDocument: wallet,
+            merge: true
+        )
+        batch.setData(
+            [
+                "amount": amount,
+                "note": String(note.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120)),
+                "by": admin.uid,
+                "byEmail": admin.email ?? "",
+                "customerName": customer.name,
+                "customerMobile": customer.mobile,
+                "at": FieldValue.serverTimestamp()
+            ],
+            forDocument: wallet.collection("grants").document()
+        )
+        do {
+            try await batch.commit()
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            return nil
+        } catch {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            return "It couldn't be added. Check your connection and that you're signed in as the owner."
+        }
+    }
+
     // MARK: - Where orders are delivered from
 
     /// Moves the store to `coordinate`: every distance, delivery time, delivery

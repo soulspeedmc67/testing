@@ -17,6 +17,12 @@ const FIELDS = [
   "deliveryLowFee",
   "walletWelcomeAmount",
   "walletMaxPerOrder",
+  "etaPackingMinutes",
+  "etaSpeedKmh",
+  "etaBufferMinutes",
+  "etaMinMinutes",
+  "highDemandMinutes",
+  "orderChangeSeconds",
 ];
 
 const asText = (rules) => Object.fromEntries(FIELDS.map((key) => [key, String(rules[key])]));
@@ -93,6 +99,11 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
     }
     if (typed.walletWelcomeAmount > WALLET_MAX || typed.walletMaxPerOrder > WALLET_MAX) {
       return `The wallet amounts can't be more than ₹${WALLET_MAX}.`;
+    }
+    if (typed.etaSpeedKmh < 5 || typed.etaSpeedKmh > 80) return "The rider's speed has to be between 5 and 80 km an hour.";
+    if (typed.orderChangeSeconds < 10 || typed.orderChangeSeconds > 600) return "The time to change an order has to be between 10 and 600 seconds.";
+    if (typed.etaPackingMinutes > 60 || typed.etaBufferMinutes > 60 || typed.etaMinMinutes > 120 || typed.highDemandMinutes > 240) {
+      return "Those delivery times are too long. Packing and the buffer can be up to 60 minutes, the least time up to 120, high demand up to 240.";
     }
     if (typed.minOrderValue > 5000) return "The minimum order can't be more than ₹5,000.";
     if (typed.deliveryRadiusKm > 50) return "The delivery distance can't be more than 50 km.";
@@ -251,10 +262,36 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
           </div>
 
           <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 space-y-3">
+            <p className={groupTitle}>Delivery time</p>
+            <div className="grid grid-cols-2 gap-3">
+              {field("etaPackingMinutes", "Minutes to pack an order")}
+              {field("etaSpeedKmh", "Rider's speed (km an hour)")}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {field("etaBufferMinutes", "Extra minutes, to be safe")}
+              {field("etaMinMinutes", "Never promise less than (minutes)")}
+            </div>
+            <div className="grid grid-cols-2 gap-3">{field("highDemandMinutes", "Promise in high demand (minutes)")}</div>
+            <p className={hint}>
+              The time customers are promised is packing + the ride at the rider&apos;s speed + the extra minutes, and never less than the
+              least time. When you mark the shop as in high demand, customers see the high-demand minutes instead.
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 space-y-3">
+            <p className={groupTitle}>Changing an order</p>
+            <div className="grid grid-cols-2 gap-3">{field("orderChangeSeconds", "Seconds to cancel or add items")}</div>
+            <p className={hint}>
+              After ordering, a customer can cancel or add items for this long, until the shop starts packing. Apps installed before this
+              setting existed keep 30 seconds.
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-slate-200 dark:border-zinc-800 space-y-3">
             <p className={groupTitle}>Wallet</p>
             <div className="grid grid-cols-2 gap-3">
               {field("walletWelcomeAmount", "Welcome credit for every customer (₹)")}
-              {field("walletMaxPerOrder", "Most one order can use (₹)")}
+              {field("walletMaxPerOrder", "Most one order can use (₹, 0 = no limit)")}
             </div>
             <p className={hint}>
               Every customer gets this credit in their wallet once, and it comes off the whole bill of their orders by itself. Put 0 to

@@ -265,7 +265,8 @@ extension Order {
 // MARK: - The 30-second change window
 
 extension Order {
-    static let modifyWindowSeconds: TimeInterval = 30
+    /// How long a customer has to cancel or add items: the shop's setting (`ShopRules.orderChangeSeconds`), 30 seconds unless it changed it.
+    static var modifyWindowSeconds: TimeInterval { TimeInterval(ShopRules.current.orderChangeSeconds) }
 
     /// Paid before delivery, which the store and rider screens read as
     /// "collect nothing at the door". Items can't be added to it: nobody

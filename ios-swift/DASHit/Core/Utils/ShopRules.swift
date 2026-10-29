@@ -67,6 +67,17 @@ struct ShopRules: Equatable {
         return CLLocationCoordinate2D(latitude: lat, longitude: lng)
     }
 
+    /// How the delivery time is worked out: minutes to pack, the rider's speed, a safety buffer,
+    /// and the least time ever promised; in high demand the promise is at least `highDemandMinutes`.
+    /// `orderChangeSeconds` is how long a customer has to cancel or add items after ordering.
+    /// The built-in values are what the app always used.
+    var etaPackingMinutes: Double = 3
+    var etaSpeedKmh: Double = 18
+    var etaBufferMinutes: Double = 3
+    var etaMinMinutes: Double = 8
+    var highDemandMinutes: Int = 18
+    var orderChangeSeconds: Int = 30
+
     static let walletMax = 5000
     static let extraChargeMax: Double = 500
     static let defaultExtraChargeLabel = "Extra delivery charge"
@@ -104,6 +115,12 @@ struct ShopRules: Equatable {
             storeLng = lng
             storeLabel = String(((data["storeLabel"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines).prefix(60))
         }
+        if let value = amount("etaPackingMinutes") { etaPackingMinutes = min(60, value) }
+        if let value = amount("etaSpeedKmh") { etaSpeedKmh = min(80, max(5, value)) }
+        if let value = amount("etaBufferMinutes") { etaBufferMinutes = min(60, value) }
+        if let value = amount("etaMinMinutes") { etaMinMinutes = min(120, value) }
+        if let value = amount("highDemandMinutes") { highDemandMinutes = Int(min(240, value)) }
+        if let value = amount("orderChangeSeconds") { orderChangeSeconds = Int(min(600, max(10, value))) }
         if let value = amount("walletMaxPerOrder") { walletMaxPerOrder = Int(min(Double(Self.walletMax), value.rounded(.down))) }
     }
 
@@ -201,6 +218,12 @@ struct ShopRules: Equatable {
             "minIosVersion": minIosVersion,
             "updateTitle": updateTitle,
             "updateMessage": updateMessage,
+            "etaPackingMinutes": etaPackingMinutes,
+            "etaSpeedKmh": etaSpeedKmh,
+            "etaBufferMinutes": etaBufferMinutes,
+            "etaMinMinutes": etaMinMinutes,
+            "highDemandMinutes": highDemandMinutes,
+            "orderChangeSeconds": orderChangeSeconds,
             "walletWelcomeAmount": walletWelcomeAmount,
             "walletMaxPerOrder": walletMaxPerOrder,
             // The same as a number, which is what `firestore.rules` compare.

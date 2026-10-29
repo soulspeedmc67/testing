@@ -22,9 +22,20 @@ const wholeRupees = (value) => {
   return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
-/** What is left in the wallet: the welcome credit minus what has been spent. */
-export function walletBalance(rules, used) {
-  return Math.max(0, wholeRupees(rules?.walletWelcomeAmount) - wholeRupees(used));
+/* Whole rupees that may be below 0: what a customer has spent, less any money an
+   admin added to their wallet, is below 0 until that money starts to be used. */
+const signedRupees = (value) => {
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) ? n : 0;
+};
+
+/**
+ * What is left in the wallet: the welcome credit, plus any money an admin added,
+ * minus what has been spent. `spent` is `used - bonus` from the customer's wallet
+ * document (see `fetchWalletUsed`), which is why it can be below 0.
+ */
+export function walletBalance(rules, spent) {
+  return Math.max(0, wholeRupees(rules?.walletWelcomeAmount) - signedRupees(spent));
 }
 
 /**
@@ -32,8 +43,10 @@ export function walletBalance(rules, used) {
  * per-order limit, taken off the whole bill (items, delivery and handling).
  * It never takes the bill below ₹1, so an order is never free.
  */
-export function walletToUse(rules, used, payable) {
-  return Math.min(walletBalance(rules, used), wholeRupees(rules?.walletMaxPerOrder), Math.max(0, wholeRupees(payable) - 1));
+export function walletToUse(rules, spent, payable) {
+  // A per-order limit of 0 means there is none.
+  const cap = wholeRupees(rules?.walletMaxPerOrder) || Infinity;
+  return Math.min(walletBalance(rules, spent), cap, Math.max(0, wholeRupees(payable) - 1));
 }
 
 export function walletWelcomeSeen() {
@@ -53,7 +66,7 @@ export function markWalletWelcomeSeen() {
 function cachedUsed(uid) {
   try {
     const saved = JSON.parse(localStorage.getItem(USED_CACHE_KEY) || "null");
-    return saved && saved.uid === uid ? wholeRupees(saved.used) : 0;
+    return saved && saved.uid === uid ? signedRupees(saved.used) : 0;
   } catch (e) {
     return 0;
   }
@@ -80,7 +93,8 @@ export async function fetchWalletUsed({ force = false } = {}) {
     // Pages share one read for a few minutes; placing or cancelling an order forces a new one.
     if (!force && lastRead.uid === user.uid && Date.now() - lastRead.at < READ_AGAIN_AFTER_MS) return lastRead.used;
     const snap = await getDoc(doc(getDb(), "wallets", user.uid));
-    const used = snap.exists() ? wholeRupees(snap.data().used) : 0;
+    // What was spent, less any money an admin added: below 0 while that money is unspent.
+    const used = snap.exists() ? signedRupees(snap.data().used) - wholeRupees(snap.data().bonus) : 0;
     lastRead = { uid: user.uid, at: Date.now(), used };
     try {
       localStorage.setItem(USED_CACHE_KEY, JSON.stringify({ uid: user.uid, used }));

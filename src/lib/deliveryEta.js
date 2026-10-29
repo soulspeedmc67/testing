@@ -97,6 +97,27 @@ export function adoptDeliveryRadius(cfg) {
   deliveryRadiusKm = set && Number.isFinite(n) && n >= 0 ? Math.min(50, n) : MAX_DELIVERY_RADIUS_KM;
 }
 
+/* How the delivery time is worked out. Starts at the built-in values and follows the
+   shop's settings as they arrive (db.js calls adoptEtaSettings): minutes to pack, the
+   rider's speed, a safety buffer, the least time ever promised, and the time promised
+   in high demand. */
+let eta = { packing: 3, speedKmh: 18, buffer: 3, min: 8, highDemand: 18 };
+
+export function adoptEtaSettings(rules) {
+  eta = {
+    packing: Number(rules?.etaPackingMinutes ?? 3),
+    speedKmh: Math.max(5, Number(rules?.etaSpeedKmh ?? 18)),
+    buffer: Number(rules?.etaBufferMinutes ?? 3),
+    min: Number(rules?.etaMinMinutes ?? 8),
+    highDemand: Number(rules?.highDemandMinutes ?? 18),
+  };
+}
+
+/** The minutes promised while the store is in high demand. */
+export function getHighDemandMinutes() {
+  return eta.highDemand;
+}
+
 /** Words for an address outside the area: shown wherever an order is refused for it. */
 export function outsideAreaMessage(distanceKm) {
   return `We deliver within ${deliveryRadiusKm} km of our store. This address is ${Number(distanceKm).toFixed(1)} km away, so we can't deliver there yet.`;
@@ -145,12 +166,12 @@ export function calculateDeliveryEta(targetCoords, hubCoords = DARK_STORE_HUB) {
   const roadDistKm = Math.max(0.4, rawDistKm * 1.25);
   const isDeliverable = deliveryRadiusKm <= 0 || distanceKm <= deliveryRadiusKm;
 
-  // Speed: ~18 km/h -> 1 km takes ~3.33 mins
-  const drivingMinutes = (roadDistKm / 18) * 60;
-  const packingMinutes = 3;
-  const safetyBuffer = 3;
+  // The rider's speed (18 km/h unless the shop changed it): at 18, 1 km takes about 3.3 minutes.
+  const drivingMinutes = (roadDistKm / eta.speedKmh) * 60;
+  const packingMinutes = eta.packing;
+  const safetyBuffer = eta.buffer;
 
-  const totalMinutes = Math.max(8, Math.round(packingMinutes + drivingMinutes + safetyBuffer));
+  const totalMinutes = Math.max(eta.min, Math.round(packingMinutes + drivingMinutes + safetyBuffer));
 
   const distanceFormatted =
     rawDistKm < 1

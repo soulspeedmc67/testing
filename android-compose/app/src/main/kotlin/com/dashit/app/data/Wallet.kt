@@ -47,9 +47,13 @@ object Wallet {
         if (uid != null && prefs?.getString("uid", null) == uid) _used.value = prefs?.getInt("used", 0) ?: 0
     }
 
-    /** What is left: the welcome credit minus what has been spent, never below 0. */
+    /**
+     * What is left: the welcome credit, plus any money an admin added, minus what has
+     * been spent, never below 0. [used] here is `used - bonus` from the customer's wallet
+     * document (see [fetchUsed]), so it is below 0 while added money is unspent.
+     */
     fun balance(rules: ShopRules, used: Int = _used.value): Int =
-        maxOf(0, rules.walletWelcomeAmount - maxOf(0, used))
+        maxOf(0, rules.walletWelcomeAmount - used)
 
     /**
      * How much of the wallet an order of [payable] rupees uses: all it can, up to the
@@ -57,7 +61,8 @@ object Wallet {
      * the bill below ₹1, so an order is never free.
      */
     fun toUse(rules: ShopRules, payable: Double, used: Int = _used.value): Int =
-        minOf(balance(rules, used), rules.walletMaxPerOrder, floor(maxOf(0.0, payable)).toInt() - 1).coerceAtLeast(0)
+        // A per-order limit of 0 means there is none.
+        minOf(balance(rules, used), if (rules.walletMaxPerOrder > 0) rules.walletMaxPerOrder else Int.MAX_VALUE, floor(maxOf(0.0, payable)).toInt() - 1).coerceAtLeast(0)
 
     /**
      * The shopper's `used` from the server, or null when nobody is signed in or
@@ -69,7 +74,10 @@ object Wallet {
         if (!force && readUid == uid && System.currentTimeMillis() - readAt < READ_AGAIN_AFTER_MS) return _used.value
         return try {
             val snap = db.collection("wallets").document(uid).get().await()
-            val value = if (snap.exists()) ((snap.get("used") as? Number)?.toInt() ?: 0) else 0
+            // What was spent, less any money an admin added: below 0 while that money is unspent.
+            val value = if (snap.exists()) {
+                ((snap.get("used") as? Number)?.toInt() ?: 0) - maxOf(0, (snap.get("bonus") as? Number)?.toInt() ?: 0)
+            } else 0
             readUid = uid
             readAt = System.currentTimeMillis()
             _used.value = value

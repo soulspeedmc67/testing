@@ -168,7 +168,8 @@ fun WalletSheet(balance: Int, maxPerOrder: Int, credit: Int, celebrate: Boolean,
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = if (balance > 0) "It comes off your bill by itself when you order, up to ₹$maxPerOrder each time."
+                    text = if (balance > 0 && maxPerOrder > 0) "It comes off your bill by itself when you order, up to ₹$maxPerOrder each time."
+                    else if (balance > 0) "It comes off your bill by itself when you order."
                     else if (credit > 0) "You've used your wallet credit. Thanks for ordering with us!"
                     else "No credit in your wallet right now. Credit from DASHit will show up here.",
                     color = DashitColors.TextSecondary,
