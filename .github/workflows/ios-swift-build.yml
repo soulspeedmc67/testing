@@ -237,6 +237,8 @@ jobs:
 
       - name: Upload Native iOS IPA Artifact
         if: always()
+        # A full artifact store must not stop the TestFlight upload below.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: DASHit-Native-Swift-IPA
@@ -245,6 +247,8 @@ jobs:
 
       - name: Upload Native Admin IPA Artifact
         if: always()
+        # A full artifact store must not stop the TestFlight upload below.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: DASHit-Admin-Swift-IPA
