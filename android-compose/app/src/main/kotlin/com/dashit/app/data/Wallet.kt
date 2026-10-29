@@ -4,6 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.dashit.app.data.auth.AuthRepository
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,8 +41,51 @@ object Wallet {
     val introOpen: StateFlow<Boolean> = _introOpen.asStateFlow()
     fun setIntroOpen(open: Boolean) { _introOpen.value = open }
 
+    private val _credits = MutableSharedFlow<Int>(extraBufferCapacity = 4)
+    /** Rupees the shop has just added to this customer's wallet, each time (and only when money is added). */
+    val credits: SharedFlow<Int> = _credits.asSharedFlow()
+
     private var readUid: String? = null
     private var readAt = 0L
+    private var registration: ListenerRegistration? = null
+    private var watchedUid: String? = null
+
+    /**
+     * One listener on the customer's own wallet document: it keeps the balance current
+     * the moment the shop adds money, and sends the amount on [credits] when `bonus` goes UP
+     * (spending, refunds and cancelled orders don't count). The last bonus seen is kept on
+     * the phone; with none kept, the first look only records it, so an old addition isn't
+     * celebrated again after a reinstall.
+     */
+    fun watch() {
+        val uid = AuthRepository.uid
+        if (uid == null) {
+            stopWatching()
+            return
+        }
+        if (uid == watchedUid && registration != null) return
+        stopWatching()
+        watchedUid = uid
+        registration = db.collection("wallets").document(uid).addSnapshotListener { snap, error ->
+            if (error != null || snap == null) return@addSnapshotListener
+            val bonus = maxOf(0, (snap.get("bonus") as? Number)?.toInt() ?: 0)
+            val spent = ((snap.get("used") as? Number)?.toInt() ?: 0) - bonus
+            val value = if (snap.exists()) spent else 0
+            readUid = uid
+            readAt = System.currentTimeMillis()
+            _used.value = value
+            val key = "bonus_seen_$uid"
+            val seen = if (prefs?.contains(key) == true) prefs?.getInt(key, 0) else null
+            prefs?.edit()?.putString("uid", uid)?.putInt("used", value)?.putInt(key, bonus)?.apply()
+            if (seen != null && bonus > seen) _credits.tryEmit(bonus - seen)
+        }
+    }
+
+    private fun stopWatching() {
+        registration?.remove()
+        registration = null
+        watchedUid = null
+    }
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -90,6 +137,7 @@ object Wallet {
 
     /** Signed out: the wallet goes back to showing the full credit. */
     fun reset() {
+        stopWatching()
         readUid = null
         readAt = 0L
         _used.value = 0

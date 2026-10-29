@@ -4,7 +4,7 @@ import { motion, animate } from "framer-motion";
 import { Wallet } from "lucide-react";
 import DraggableSheet from "./ui/DraggableSheet";
 import { useShopRules } from "../lib/useShopRules";
-import { useWalletUsed, walletBalance, walletWelcomeSeen, markWalletWelcomeSeen } from "../lib/wallet";
+import { useWalletUsed, walletBalance, walletWelcomeSeen, markWalletWelcomeSeen, watchWalletCredit } from "../lib/wallet";
 import { hapticLight, hapticSuccess } from "../lib/haptics";
 
 /* A rupee figure that counts up from 0 once, then stays put. */
@@ -43,10 +43,24 @@ export default function WalletChip({ size = "md" }) {
   const [open, setOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Rupees the shop has just added: opens the wallet with a celebration, every time.
+  const [added, setAdded] = useState(0);
   const balance = walletBalance(rules, used);
   const credit = rules.walletWelcomeAmount;
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(
+    () =>
+      watchWalletCredit((amount) => {
+        setAdded(amount);
+        setCelebrate(true);
+        setOpen(true);
+        hapticSuccess();
+        sprinkle();
+      }),
+    []
+  );
 
   /* First visit: open the welcome. The flag is saved when it opens (not before,
      so a development double-run can't use it up), and a second chip on the page
@@ -67,6 +81,7 @@ export default function WalletChip({ size = "md" }) {
   const close = () => {
     setOpen(false);
     setCelebrate(false);
+    setAdded(0);
   };
 
   const small = size === "sm";
@@ -105,19 +120,19 @@ export default function WalletChip({ size = "md" }) {
               </motion.span>
 
               <h2 className="mt-4 text-[22px] font-extrabold tracking-tight text-[#061838] dark:text-content">
-                {celebrate ? `You got ₹${credit}!` : "Your wallet"}
+                {added > 0 ? `₹${added} added to your wallet!` : celebrate ? `You got ₹${credit}!` : "Your wallet"}
               </h2>
               <p className="mt-1 text-[14px] text-slate-600 dark:text-content-secondary">
-                {celebrate ? "A welcome gift from DASHit, just for you." : "Money you can spend on your orders."}
+                {added > 0 ? "A gift from DASHit. Order now and it comes off your bill." : celebrate ? "A welcome gift from DASHit, just for you." : "Money you can spend on your orders."}
               </p>
 
               <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-200 py-4 dark:bg-surface-muted dark:border-line">
-                <p className="text-[12px] font-bold uppercase tracking-wider text-slate-500 dark:text-content-muted">Balance</p>
-                {open && <CountUp key={String(open)} to={balance} className="block mt-0.5 text-[40px] leading-none font-black text-[#061838] dark:text-content" />}
+                <p className="text-[12px] font-bold uppercase tracking-wider text-slate-500 dark:text-content-muted">{added > 0 ? "Added" : "Balance"}</p>
+                {open && <CountUp key={`${open}-${added}`} to={added > 0 ? added : balance} className="block mt-0.5 text-[40px] leading-none font-black text-[#061838] dark:text-content" />}
               </div>
 
               <p className="mt-4 text-[13.5px] text-slate-600 dark:text-content-secondary">
-                {balance > 0
+                {added > 0 ? `Your wallet now has ₹${balance}.` : balance > 0
                   ? rules.walletMaxPerOrder > 0
                     ? `It comes off your bill by itself when you order, up to ₹${rules.walletMaxPerOrder} each time.`
                     : "It comes off your bill by itself when you order."

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { walletBalance, walletToUse } from "../src/lib/wallet.js";
+import { walletBalance, walletToUse, bonusAdded } from "../src/lib/wallet.js";
 import { shopRules, SHOP_RULE_DEFAULTS } from "../src/lib/deliveryCharges.js";
 import { billForChangedOrder, buildReplacementOrder } from "../src/lib/orderChange.js";
 
@@ -97,4 +97,12 @@ test("a customer's number is looked up however it was saved", async () => {
   if (!mobileVariants) return; // the lookup file needs the browser build of Firebase
   assert.deepEqual(mobileVariants("98765 43210").sort(), ["+919876543210", "9876543210", "919876543210"].sort());
   assert.deepEqual(mobileVariants("12"), []);
+});
+
+test("the celebration is only for money added: bonus going up, nothing else", () => {
+  assert.equal(bonusAdded("0", 50), 50);      // ₹50 added
+  assert.equal(bonusAdded("50", 120), 70);    // ₹70 more
+  assert.equal(bonusAdded("50", 50), 0);      // spending or a refund changes `used`, not `bonus`
+  assert.equal(bonusAdded("120", 50), 0);     // never celebrate a drop
+  assert.equal(bonusAdded(null, 80), 0);      // first look on this device: record it, don't celebrate an old addition
 });

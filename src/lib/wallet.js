@@ -105,6 +105,97 @@ export async function fetchWalletUsed({ force = false } = {}) {
   }
 }
 
+/* ---- Money an admin adds ------------------------------------------------
+   One listener on the customer's own wallet document, shared by the whole page: it keeps
+   the balance current the moment the shop adds money, and tells the screen when `bonus`
+   goes UP (and only then: spending, refunds and cancelled orders don't count) so it can
+   celebrate. The last bonus seen is kept in this browser; with none kept, the first
+   look only records it, so an old addition isn't celebrated again on a new device. */
+const creditListeners = new Set();
+let watchStarting = null;
+let watchAuthUnsub = null;
+let watchDocUnsub = null;
+
+/** The rupees just added, given the bonus last seen (null when never seen) and the bonus now: 0 unless it went up. */
+export function bonusAdded(lastSeen, bonus) {
+  if (lastSeen === null || lastSeen === undefined) return 0;
+  const before = Math.floor(Number(lastSeen));
+  return Number.isFinite(before) && bonus > before ? bonus - before : 0;
+}
+
+function bonusIncrease(uid, bonus) {
+  const key = `dashit_wallet_bonus_seen_${uid}`;
+  try {
+    const raw = localStorage.getItem(key);
+    localStorage.setItem(key, String(bonus));
+    return bonusAdded(raw, bonus);
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function startWalletWatch() {
+  if (watchAuthUnsub || watchStarting) return;
+  watchStarting = (async () => {
+    try {
+      const [{ isFirebaseConfigured, getDb, getFirebaseAuth }, { doc, onSnapshot }, { onAuthStateChanged }] = await Promise.all([
+        import("./firebase"),
+        import("firebase/firestore"),
+        import("firebase/auth"),
+      ]);
+      if (!isFirebaseConfigured) return;
+      const auth = getFirebaseAuth();
+      if (!auth) return;
+      watchAuthUnsub = onAuthStateChanged(auth, (user) => {
+        if (watchDocUnsub) watchDocUnsub();
+        watchDocUnsub = null;
+        if (!user || user.isAnonymous) return;
+        watchDocUnsub = onSnapshot(
+          doc(getDb(), "wallets", user.uid),
+          (snap) => {
+            const data = snap.exists() ? snap.data() : {};
+            const bonus = wholeRupees(data.bonus);
+            const net = signedRupees(data.used) - bonus;
+            lastRead = { uid: user.uid, at: Date.now(), used: net };
+            try {
+              localStorage.setItem(USED_CACHE_KEY, JSON.stringify({ uid: user.uid, used: net }));
+            } catch (e) {}
+            window.dispatchEvent(new Event("dashit_wallet_synced"));
+            const added = bonusIncrease(user.uid, bonus);
+            // Both header buttons on a page listen; only one of them celebrates.
+            if (added > 0) {
+              const [first] = creditListeners;
+              if (first) first(added);
+            }
+          },
+          () => {}
+        );
+      });
+    } catch (e) {
+      // Without it the balance still updates when the app reads the wallet.
+    } finally {
+      watchStarting = null;
+    }
+  })();
+}
+
+function stopWalletWatch() {
+  if (watchDocUnsub) watchDocUnsub();
+  if (watchAuthUnsub) watchAuthUnsub();
+  watchDocUnsub = null;
+  watchAuthUnsub = null;
+}
+
+/** Calls `onCredit(rupees)` each time the shop adds money to this customer's wallet. Returns the stop function. */
+export function watchWalletCredit(onCredit) {
+  creditListeners.add(onCredit);
+  startWalletWatch();
+  return () => {
+    creditListeners.delete(onCredit);
+    if (creditListeners.size === 0) stopWalletWatch();
+  };
+}
+
 /**
  * The customer's `used`, read once (not a listener) and again whenever an
  * order is placed or cancelled. Signed out, or before the read lands, it is
@@ -128,9 +219,15 @@ export function useWalletUsed() {
     load();
     const events = ["dashit_orders_updated", "dashit_user_updated", "dashit_wallet_changed"];
     events.forEach((name) => window.addEventListener(name, load));
+    // The wallet listener (above) keeps the balance current the moment the shop adds money.
+    const synced = () => {
+      if (alive && lastRead.uid) setUsed(lastRead.used);
+    };
+    window.addEventListener("dashit_wallet_synced", synced);
     return () => {
       alive = false;
       events.forEach((name) => window.removeEventListener(name, load));
+      window.removeEventListener("dashit_wallet_synced", synced);
     };
   }, []);
 

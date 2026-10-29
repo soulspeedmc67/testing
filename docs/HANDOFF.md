@@ -6,6 +6,15 @@
 
 ---
 
+## Oct 29, 2026 (evening): "money added" celebration in the customer apps
+
+When the owner adds money to a customer's wallet, the customer's app opens the wallet with a short celebration ("₹X added to your wallet!", the
+figure counts up to the amount added, confetti, new balance), every time and ONLY when `bonus` goes up (spending, refunds, cancels and balance
+changes don't count). One listener on the customer's own `wallets/{uid}` document keeps the balance current the moment money is added (about one
+read per change). The last bonus seen is kept on the device; with none kept (new install) the first look only records it, so an old addition is not
+celebrated again. Web `watchWalletCredit` (`wallet.js`), Android `Wallet.watch()` / `credits`, iPhone `WalletStore.watch()` / `lastCredit`. If the app is
+closed when money is added, the celebration plays the next time it opens. Verified: 124 web tests, Android compiles; iOS NOT compiled.
+
 ## Oct 29, 2026 (later): add wallet money to a customer, more settings from the admin
 
 Web VERIFIED (123 tests, build, console flows not clicked through yet). Rules VERIFIED in the emulator (25 cases). Android compiles. iOS NOT

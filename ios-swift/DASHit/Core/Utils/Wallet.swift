@@ -19,6 +19,17 @@ final class WalletStore: ObservableObject {
     /// The rupees of the credit this shopper has spent: what the phone last read, 0 before that.
     @Published private(set) var used = 0
 
+    /// Money the shop has just added to this customer's wallet: a new value each time (and only
+    /// when money is added), so the home screen can celebrate it.
+    struct Credit: Equatable {
+        let id = UUID()
+        let amount: Int
+    }
+    @Published private(set) var lastCredit: Credit?
+
+    private var listener: ListenerRegistration?
+    private var watchedUID: String?
+
     private var readUID: String?
     private var readAt = Date.distantPast
     private static let readAgainAfter: TimeInterval = 5 * 60
@@ -75,8 +86,52 @@ final class WalletStore: ObservableObject {
         }
     }
 
+    /// One listener on the customer's own wallet document: it keeps the balance current the
+    /// moment the shop adds money, and sets `lastCredit` when `bonus` goes UP (spending, refunds
+    /// and cancelled orders don't count). The last bonus seen is kept on the phone; with none
+    /// kept, the first look only records it, so an old addition isn't celebrated again after a reinstall.
+    func watch() {
+        guard let uid = AuthService.shared.firebaseUID else {
+            stopWatching()
+            return
+        }
+        if uid == watchedUID, listener != nil { return }
+        stopWatching()
+        watchedUID = uid
+        listener = Firestore.firestore().collection("wallets").document(uid).addSnapshotListener { [weak self] snapshot, error in
+            guard error == nil, let snapshot else { return }
+            let data = snapshot.data() ?? [:]
+            let bonus = max(0, (data["bonus"] as? NSNumber)?.intValue ?? 0)
+            let spent = (data["used"] as? NSNumber)?.intValue ?? 0
+            let exists = snapshot.exists
+            Task { @MainActor in self?.apply(uid: uid, exists: exists, spent: spent, bonus: bonus) }
+        }
+    }
+
+    private func apply(uid: String, exists: Bool, spent: Int, bonus: Int) {
+        guard uid == AuthService.shared.firebaseUID else { return }
+        let value = exists ? spent - bonus : 0
+        readUID = uid
+        readAt = Date()
+        used = value
+        let defaults = UserDefaults.standard
+        defaults.set(uid, forKey: Self.usedUIDKey)
+        defaults.set(value, forKey: Self.usedKey)
+        let key = "dashit_wallet_bonus_seen_\(uid)"
+        let seen = defaults.object(forKey: key) as? Int
+        defaults.set(bonus, forKey: key)
+        if let seen, bonus > seen { lastCredit = Credit(amount: bonus - seen) }
+    }
+
+    private func stopWatching() {
+        listener?.remove()
+        listener = nil
+        watchedUID = nil
+    }
+
     /// Signed out: the wallet goes back to showing the full credit.
     func reset() {
+        stopWatching()
         readUID = nil
         readAt = .distantPast
         used = 0

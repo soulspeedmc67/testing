@@ -95,7 +95,7 @@ fun WalletChip(balance: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WalletSheet(balance: Int, maxPerOrder: Int, credit: Int, celebrate: Boolean, onDismiss: () -> Unit) {
+fun WalletSheet(balance: Int, maxPerOrder: Int, credit: Int, celebrate: Boolean, onDismiss: () -> Unit, added: Int = 0) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val iconScale = remember { Animatable(0.6f) }
     var shown by remember { mutableIntStateOf(0) }
@@ -103,15 +103,17 @@ fun WalletSheet(balance: Int, maxPerOrder: Int, credit: Int, celebrate: Boolean,
     LaunchedEffect(balance) {
         iconScale.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMediumLow))
     }
-    LaunchedEffect(balance) {
-        if (balance <= 0) {
+    // With money just added, the figure counts up to what was added; otherwise to the balance.
+    val target = if (added > 0) added else balance
+    LaunchedEffect(target) {
+        if (target <= 0) {
             shown = 0
             return@LaunchedEffect
         }
         val counter = Animatable(0f)
         kotlinx.coroutines.delay(250)
-        counter.animateTo(balance.toFloat(), tween(1100, easing = FastOutSlowInEasing)) { shown = value.toInt() }
-        shown = balance
+        counter.animateTo(target.toFloat(), tween(1100, easing = FastOutSlowInEasing)) { shown = value.toInt() }
+        shown = target
     }
 
     ModalBottomSheet(
@@ -141,14 +143,14 @@ fun WalletSheet(balance: Int, maxPerOrder: Int, credit: Int, celebrate: Boolean,
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = if (celebrate) "You got ₹$credit!" else "Your wallet",
+                    text = if (added > 0) "₹$added added to your wallet!" else if (celebrate) "You got ₹$credit!" else "Your wallet",
                     color = DashitColors.TextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = if (celebrate) "A welcome gift from DASHit, just for you." else "Money you can spend on your orders.",
+                    text = if (added > 0) "A gift from DASHit. Order now and it comes off your bill." else if (celebrate) "A welcome gift from DASHit, just for you." else "Money you can spend on your orders.",
                     color = DashitColors.TextSecondary,
                     fontSize = 14.sp,
                     textAlign = TextAlign.Center
@@ -163,12 +165,13 @@ fun WalletSheet(balance: Int, maxPerOrder: Int, credit: Int, celebrate: Boolean,
                         .padding(vertical = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("BALANCE", color = DashitColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    Text(if (added > 0) "ADDED" else "BALANCE", color = DashitColors.TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                     Text("₹$shown", color = DashitColors.TextPrimary, fontSize = 40.sp, fontWeight = FontWeight.Black)
                 }
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    text = if (balance > 0 && maxPerOrder > 0) "It comes off your bill by itself when you order, up to ₹$maxPerOrder each time."
+                    text = if (added > 0) "Your wallet now has ₹$balance."
+                    else if (balance > 0 && maxPerOrder > 0) "It comes off your bill by itself when you order, up to ₹$maxPerOrder each time."
                     else if (balance > 0) "It comes off your bill by itself when you order."
                     else if (credit > 0) "You've used your wallet credit. Thanks for ordering with us!"
                     else "No credit in your wallet right now. Credit from DASHit will show up here.",

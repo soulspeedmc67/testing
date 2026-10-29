@@ -189,12 +189,21 @@ struct StorefrontHomeView: View {
                 credit: storeStatus.rules.walletWelcomeAmount,
                 maxPerOrder: storeStatus.rules.walletMaxPerOrder,
                 celebrate: request.celebrate,
+                added: request.added,
                 onClose: { walletSheet = nil }
             )
         }
         // The spent amount follows the signed-in shopper.
         .task(id: auth.firebaseUID) {
-            if auth.firebaseUID == nil { wallet.reset() } else { await wallet.refresh() }
+            if auth.firebaseUID == nil { wallet.reset() } else {
+                await wallet.refresh()
+                wallet.watch()
+            }
+        }
+        // The shop just added money to this customer's wallet: open it with a celebration, every time.
+        .onChange(of: wallet.lastCredit) { _, credit in
+            guard let credit else { return }
+            walletSheet = WalletSheetRequest(celebrate: true, added: credit.amount)
         }
         // The first time DASHit opens on this phone, the wallet opens with a welcome.
         .task(id: storeStatus.rules.walletWelcomeAmount) {

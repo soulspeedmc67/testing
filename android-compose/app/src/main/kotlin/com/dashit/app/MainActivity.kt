@@ -63,7 +63,10 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         // The wallet's spent amount follows the signed-in shopper.
         lifecycleScope.launch {
             AuthRepository.user.collect { user ->
-                if (user == null) com.dashit.app.data.Wallet.reset() else com.dashit.app.data.Wallet.fetchUsed()
+                if (user == null) com.dashit.app.data.Wallet.reset() else {
+                    com.dashit.app.data.Wallet.fetchUsed()
+                    com.dashit.app.data.Wallet.watch()
+                }
             }
         }
         StoreStatus.start()

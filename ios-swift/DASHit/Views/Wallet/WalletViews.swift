@@ -4,6 +4,8 @@ import SwiftUI
 struct WalletSheetRequest: Identifiable {
     let id = UUID()
     let celebrate: Bool
+    /// Rupees the shop has just added; 0 for the welcome and for a plain look at the wallet.
+    var added: Int = 0
 }
 
 /// The wallet button in the home header, left of the profile button, showing what is left.
@@ -43,6 +45,8 @@ struct WalletSheet: View {
     let credit: Int
     let maxPerOrder: Int
     let celebrate: Bool
+    /// Rupees the shop has just added: the figure counts up to this, with a short celebration.
+    var added: Int = 0
     var onClose: () -> Void
 
     @State private var iconIn = false
@@ -67,19 +71,21 @@ struct WalletSheet: View {
                     .scaleEffect(iconIn ? 1 : 0.6)
                     .opacity(iconIn ? 1 : 0)
 
-                Text(celebrate ? "You got ₹\(credit)!" : "Your wallet")
+                Text(added > 0 ? "₹\(added) added to your wallet!" : celebrate ? "You got ₹\(credit)!" : "Your wallet")
                     .font(.system(size: 22, weight: .heavy))
                     .foregroundColor(.textPrimary)
                     .padding(.top, 16)
 
-                Text(celebrate ? "A welcome gift from DASHit, just for you." : "Money you can spend on your orders.")
+                Text(added > 0
+                    ? "A gift from DASHit. Order now and it comes off your bill."
+                    : celebrate ? "A welcome gift from DASHit, just for you." : "Money you can spend on your orders.")
                     .font(.system(size: 14))
                     .foregroundColor(.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.top, 4)
 
                 VStack(spacing: 2) {
-                    Text("BALANCE")
+                    Text(added > 0 ? "ADDED" : "BALANCE")
                         .font(.system(size: 12, weight: .bold))
                         .tracking(1)
                         .foregroundColor(.textMuted)
@@ -95,7 +101,9 @@ struct WalletSheet: View {
                 .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.hairline, lineWidth: 1))
                 .padding(.top, 20)
 
-                Text(balance > 0 && maxPerOrder > 0
+                Text(added > 0
+                    ? "Your wallet now has ₹\(balance)."
+                    : balance > 0 && maxPerOrder > 0
                     ? "It comes off your bill by itself when you order, up to ₹\(maxPerOrder) each time."
                     : balance > 0
                     ? "It comes off your bill by itself when you order."
@@ -135,9 +143,11 @@ struct WalletSheet: View {
                 HapticsManager.shared.success()
                 confettiFired = true
             }
-            guard balance > 0 else { return }
+            // With money just added, the figure counts up to what was added; otherwise to the balance.
+            let target = added > 0 ? added : balance
+            guard target > 0 else { return }
             try? await Task.sleep(for: .milliseconds(250))
-            withAnimation(.easeOut(duration: 1.1)) { shown = balance }
+            withAnimation(.easeOut(duration: 1.1)) { shown = target }
         }
     }
 }

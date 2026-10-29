@@ -236,6 +236,15 @@ fun StorefrontScreen(
     val walletSpentNow by com.dashit.app.data.Wallet.used.collectAsState()
     var walletOpen by remember { mutableStateOf(false) }
     var walletWelcome by remember { mutableStateOf(false) }
+    // Rupees the shop has just added: opens the wallet with a celebration, every time.
+    var walletAdded by remember { mutableStateOf(0) }
+    LaunchedEffect(Unit) {
+        com.dashit.app.data.Wallet.credits.collect { amount ->
+            walletAdded = amount
+            walletWelcome = true
+            walletOpen = true
+        }
+    }
     // The first time DASHit opens on this phone, and the first-launch screens are done, the wallet opens with a welcome.
     LaunchedEffect(walletRules.walletWelcomeAmount, welcomeReady) {
         if (welcomeReady && walletRules.walletWelcomeAmount > 0 && !com.dashit.app.data.Wallet.welcomeSeen()) {
@@ -857,9 +866,11 @@ fun StorefrontScreen(
                 maxPerOrder = walletRules.walletMaxPerOrder,
                 credit = walletRules.walletWelcomeAmount,
                 celebrate = walletWelcome,
+                added = walletAdded,
                 onDismiss = {
                     walletOpen = false
                     walletWelcome = false
+                    walletAdded = 0
                 }
             )
         }
