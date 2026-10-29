@@ -1,7 +1,6 @@
 /**
  * The wallet: a welcome credit every customer has, spent on their orders.
  *
- * The credit only covers the delivery and handling charges, never the items.
  * Nothing is stored for the credit itself. The shop sets the amount on
  * `config/store` (`walletWelcomeAmount`, ₹50 unless changed, 0 ends it) and a
  * customer's balance is that amount minus `used` on their `wallets/{uid}`
@@ -30,16 +29,11 @@ export function walletBalance(rules, used) {
 
 /**
  * How much of the wallet this order uses: all it can, up to the shop's
- * per-order limit and never more than `fees`, the order's delivery and handling
- * charges. The wallet never takes anything off the items themselves.
+ * per-order limit, taken off the whole bill (items, delivery and handling).
+ * It never takes the bill below ₹1, so an order is never free.
  */
-export function walletToUse(rules, used, fees) {
-  return Math.min(walletBalance(rules, used), wholeRupees(rules?.walletMaxPerOrder), wholeRupees(fees));
-}
-
-/** The charges the wallet may cover: delivery (with any distance or rush charge) plus handling. */
-export function walletCoverable({ deliveryFee = 0, nightFee = 0, extraFee = 0, handlingFee = 0 } = {}) {
-  return Math.max(0, Number(deliveryFee) || 0) + Math.max(0, Number(nightFee) || 0) + Math.max(0, Number(extraFee) || 0) + Math.max(0, Number(handlingFee) || 0);
+export function walletToUse(rules, used, payable) {
+  return Math.min(walletBalance(rules, used), wholeRupees(rules?.walletMaxPerOrder), Math.max(0, wholeRupees(payable) - 1));
 }
 
 export function walletWelcomeSeen() {

@@ -69,9 +69,8 @@ enum OrderUpdater {
 
         // The wallet amount stays on the order; the wallet itself isn't touched.
         let beforeWallet = bill.grandTotal + order.nightDeliveryFee
-        // Only the delivery and handling charges can be covered, never the items.
-        let newFees = bill.deliveryFee + order.nightDeliveryFee + order.extraDeliveryFee + bill.handlingFee
-        let carriedWallet = max(0, min(order.walletUsed, Int(min(beforeWallet, newFees).rounded(.down))))
+        // It never takes the bill below ₹1.
+        let carriedWallet = max(0, min(order.walletUsed, Int(beforeWallet.rounded(.down)) - 1))
 
         let replacement = Order(
             id: Order.newCode(),

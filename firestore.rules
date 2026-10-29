@@ -179,15 +179,11 @@ service cloud.firestore {
         && order.walletUsed <= get(oldPath).data.get('walletUsed', 0);
     }
 
-    /* The wallet only covers the delivery and handling charges, never the items:
-       what it takes off can't be more than those two charges on the order. */
     function walletOk(order) {
       return !('walletUsed' in order)
         || (order.walletUsed is int
             && order.walletUsed >= 0
-            && (order.walletUsed == 0
-                || (order.walletUsed <= order.get('deliveryFee', 0) + order.get('handlingFee', 0)
-                    && (walletCarriedOver(order) || walletFits(order)))));
+            && (order.walletUsed == 0 || walletCarriedOver(order) || walletFits(order)));
     }
 
     /* The shop can stop taking orders from old iPhone apps: an installed app

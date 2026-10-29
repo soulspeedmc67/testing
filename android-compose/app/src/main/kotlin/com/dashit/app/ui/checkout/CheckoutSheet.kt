@@ -159,13 +159,11 @@ fun CheckoutSheet(
     val belowMinimum = bill.subtotal > 0 && !bill.isMinOrderSatisfied
     // The address is outside the delivery area (ShopRules.deliveryRadiusKm): no order.
     val tooFar = !storeState.rules.delivers(distanceKm)
-    // The welcome credit in the wallet takes what it can off the delivery and handling
-    // charges (up to the shop's per-order limit), never off the items, once the shop's settings are live like the rest of the bill.
+    // The welcome credit in the wallet takes what it can off the whole bill (up to the shop's
+    // per-order limit, never below ₹1), once the shop's settings are live like the rest of the bill.
     val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
     val beforeWallet = bill.grandTotal + nightFee
-    // Only the delivery and handling charges can be covered, never the items.
-    val walletFees = minOf(beforeWallet, bill.deliveryFee + nightFee + bill.extraDeliveryFee + bill.handlingFee)
-    val walletApplied = if (storeState.isLive) com.dashit.app.data.Wallet.toUse(storeState.rules, walletFees, walletSpent) else 0
+    val walletApplied = if (storeState.isLive) com.dashit.app.data.Wallet.toUse(storeState.rules, beforeWallet, walletSpent) else 0
     val totalToPay = beforeWallet - walletApplied
 
     /** Same gates as the web and iOS checkouts, then the real order write. */

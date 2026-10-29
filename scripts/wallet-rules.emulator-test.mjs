@@ -89,11 +89,10 @@ await check("the shop setting 0 turns the wallet off", async () => {
   await assertSucceeds(setDoc(doc(asShopper("u7"), "orders", "D2"), orderBody("u7")));
 });
 
-await check("the wallet can't take more than the delivery and handling charges", async () => {
+await check("the credit may be used against the whole bill, not just the charges", async () => {
   await seed({ walletWelcomeAmount: 100, walletMaxPerOrder: 100 });
-  // 40 + 11 = 51 of charges: 60 would be taking off the items.
-  await assertFails(placeWithWallet(asShopper("f1"), "f1", "H1", 60));
-  await assertSucceeds(placeWithWallet(asShopper("f1"), "f1", "H2", 51));
+  await assertSucceeds(placeWithWallet(asShopper("f1"), "f1", "H1", 60));
+  await assertFails(placeWithWallet(asShopper("f1"), "f1", "H2", 60)); // only 40 left
   await seed();
 });
 

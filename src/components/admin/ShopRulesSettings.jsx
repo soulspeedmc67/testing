@@ -257,7 +257,7 @@ export default function ShopRulesSettings({ storeConfig = null, onSave, darkMode
               {field("walletMaxPerOrder", "Most one order can use (₹)")}
             </div>
             <p className={hint}>
-              Every customer gets this credit in their wallet once. It only covers the delivery and handling charges of an order, never the items. Put 0 to
+              Every customer gets this credit in their wallet once, and it comes off the whole bill of their orders by itself. Put 0 to
               switch the wallet off. The website and apps follow now; apps installed before this setting existed don't
               show the wallet.
             </p>

@@ -2385,7 +2385,7 @@ struct StoreControlSheetView: View {
                 } header: {
                     Text("Wallet")
                 } footer: {
-                    Text("Every customer gets this credit in their wallet once. It only covers the delivery and handling charges of an order, never the items. Put 0 to switch the wallet off. The website and the apps follow as soon as you tap Save; apps installed before this setting existed don't show the wallet.")
+                    Text("Every customer gets this credit in their wallet once, and it comes off the whole bill of their orders by itself. Put 0 to switch the wallet off. The website and the apps follow as soon as you tap Save; apps installed before this setting existed don't show the wallet.")
                 }
 
                 Section {

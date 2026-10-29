@@ -180,9 +180,8 @@ export function billForChangedOrder(order, items, coupon = null, rules = SHOP_RU
   const handlingFee = rupees(order?.handlingFee ?? rules.handlingFee);
   const discount = couponDiscount(order, subtotal, coupon);
   const deliveryFee = baseDeliveryFee + before.night + before.extra;
-  // The wallet amount stays on the order (it can't grow: the wallet isn't touched), and
-  // only covers the delivery and handling charges, never the items.
-  const walletUsed = Math.min(Math.max(0, Math.floor(rupees(order?.walletUsed))), Math.max(0, deliveryFee + handlingFee), Math.max(0, subtotal + deliveryFee + handlingFee - discount));
+  // The wallet amount stays on the order (it can't grow: the wallet isn't touched); it never takes the bill below ₹1.
+  const walletUsed = Math.min(Math.max(0, Math.floor(rupees(order?.walletUsed))), Math.max(0, subtotal + deliveryFee + handlingFee - discount - 1));
   const total = Math.max(0, subtotal + deliveryFee + handlingFee - discount - walletUsed);
 
   const mrpSavings = (items || []).reduce((sum, item) => {

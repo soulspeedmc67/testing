@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { walletBalance, walletToUse, walletCoverable } from "../src/lib/wallet.js";
+import { walletBalance, walletToUse } from "../src/lib/wallet.js";
 import { shopRules, SHOP_RULE_DEFAULTS } from "../src/lib/deliveryCharges.js";
 import { billForChangedOrder, buildReplacementOrder } from "../src/lib/orderChange.js";
 
@@ -34,20 +34,18 @@ test("the shop's settings change the credit and the per-order limit", () => {
   assert.equal(walletBalance(shopRules({ walletWelcomeAmount: 0 }), 0), 0);
 });
 
-test("the wallet only covers the delivery and handling charges, never the items", () => {
-  assert.equal(walletCoverable({ deliveryFee: 40, handlingFee: 11 }), 51);
-  assert.equal(walletCoverable({ deliveryFee: 0, nightFee: 30, extraFee: 20, handlingFee: 11 }), 61);
-  assert.equal(walletCoverable({}), 0);
-  // ₹50 of credit, but only ₹31 of charges: it takes off ₹31, however big the items are.
-  assert.equal(walletToUse(rules, 0, walletCoverable({ deliveryFee: 20, handlingFee: 11 })), 31);
-  // Free delivery: just the handling charge.
-  assert.equal(walletToUse(rules, 0, walletCoverable({ deliveryFee: 0, handlingFee: 11 })), 11);
+test("the wallet takes the credit off the whole bill, items included", () => {
+  // ₹151 bill (₹100 items + ₹40 delivery + ₹11 handling) with ₹50 of credit: ₹50 comes off, ₹101 is paid.
+  assert.equal(walletToUse(rules, 0, 151), 50);
+  // A big basket still gets the full credit.
+  assert.equal(walletToUse(rules, 0, 900), 50);
 });
 
-test("an order uses what it can: the balance, the limit, and never more than the charges", () => {
+test("an order uses what it can: the balance, the limit, and never takes the bill below ₹1", () => {
   assert.equal(walletToUse(rules, 0, 250), 50);
   assert.equal(walletToUse(rules, 35, 250), 15);
-  assert.equal(walletToUse(rules, 0, 30), 30);
+  assert.equal(walletToUse(rules, 0, 30), 29);
+  assert.equal(walletToUse(rules, 0, 1), 0);
   assert.equal(walletToUse(rules, 50, 250), 0);
 });
 
@@ -64,12 +62,11 @@ test("adding items keeps the wallet amount and lowers what is left to pay", () =
   };
   const items = [{ id: "1", price: 100, qty: 2 }];
   const bill = billForChangedOrder(order, items, null, rules);
-  // ₹200 of items now pays ₹35 delivery + ₹11 handling = ₹46 of charges: that is all the wallet can cover.
-  assert.equal(bill.walletUsed, 46);
+  assert.equal(bill.walletUsed, 50);
   const replacement = buildReplacementOrder(order, items, bill);
-  assert.equal(replacement.walletUsed, 46);
+  assert.equal(replacement.walletUsed, 50);
   assert.equal(replacement.replacesOrderId, "DSH-1");
-  assert.equal(bill.total + 46, bill.subtotal + bill.deliveryFee + bill.handlingFee - bill.discount);
+  assert.equal(bill.total + 50, bill.subtotal + bill.deliveryFee + bill.handlingFee - bill.discount);
 });
 
 test("an order that used no wallet carries no wallet field", () => {

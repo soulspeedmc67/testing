@@ -52,12 +52,12 @@ object Wallet {
         maxOf(0, rules.walletWelcomeAmount - maxOf(0, used))
 
     /**
-     * How much of the wallet an order uses: all it can, up to the shop's limit and
-     * never more than [fees], the order's delivery and handling charges. The wallet
-     * never takes anything off the items themselves.
+     * How much of the wallet an order of [payable] rupees uses: all it can, up to the
+     * shop's limit, off the whole bill (items, delivery and handling). It never takes
+     * the bill below ₹1, so an order is never free.
      */
-    fun toUse(rules: ShopRules, fees: Double, used: Int = _used.value): Int =
-        minOf(balance(rules, used), rules.walletMaxPerOrder, floor(maxOf(0.0, fees)).toInt()).coerceAtLeast(0)
+    fun toUse(rules: ShopRules, payable: Double, used: Int = _used.value): Int =
+        minOf(balance(rules, used), rules.walletMaxPerOrder, floor(maxOf(0.0, payable)).toInt() - 1).coerceAtLeast(0)
 
     /**
      * The shopper's `used` from the server, or null when nobody is signed in or

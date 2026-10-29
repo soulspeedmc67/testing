@@ -38,11 +38,11 @@ final class WalletStore: ObservableObject {
         max(0, rules.walletWelcomeAmount - max(0, used))
     }
 
-    /// How much of the wallet an order uses: all it can, up to the shop's limit and
-    /// never more than `fees`, the order's delivery and handling charges. The wallet
-    /// never takes anything off the items themselves.
-    nonisolated static func toUse(rules: ShopRules, fees: Double, used: Int) -> Int {
-        let whole = Int(max(0, fees).rounded(.down))
+    /// How much of the wallet an order of `payable` rupees uses: all it can, up to the
+    /// shop's limit, off the whole bill (items, delivery and handling). It never takes
+    /// the bill below ₹1, so an order is never free.
+    nonisolated static func toUse(rules: ShopRules, payable: Double, used: Int) -> Int {
+        let whole = Int(max(0, payable).rounded(.down)) - 1
         return max(0, min(balance(rules: rules, used: used), rules.walletMaxPerOrder, whole))
     }
 

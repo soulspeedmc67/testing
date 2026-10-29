@@ -6,6 +6,15 @@
 
 ---
 
+## Oct 29, 2026: the wallet takes its credit off the whole bill again
+
+Owner's call: the wallet credit comes off the WHOLE bill (items, delivery, handling), not just the charges. Web, Android and iPhone
+(`walletToUse` / `Wallet.toUse`) take all of the balance up to the per-order limit, and never take the bill below ₹1 (an order is never
+free, so Razorpay never sees ₹0). The add-items carry-over follows the same rule. `firestore.rules` no longer caps the wallet by the
+order's fees; the rules LIVE in Firebase never had that cap, so nothing needs redeploying. Verified: 116 web tests, web build, 20 rules
+cases in the emulator, Android compiles. iOS NOT compiled (the Actions build is the check). The wallet stays off until a credit is set
+in Shop settings. Remember: with the credit on, a ₹151 bill with ₹50 credit costs ₹101.
+
 ## Oct 26, 2026 (later): wallet off by default and always visible, wallet only covers fees, editable update screen
 
 Web VERIFIED (116 tests, build). Android VERIFIED to compile. iOS NOT compiled (Actions build is the check). Rules NOT redeployed.
