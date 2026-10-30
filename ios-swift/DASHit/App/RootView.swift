@@ -65,6 +65,8 @@ struct RootView: View {
         .preferredColorScheme(colorScheme)
         .onAppear {
             activeOrder.refresh()
+            // A payment the app couldn't confirm last time may have gone through.
+            PaymentRecovery.shared.start()
             #if DEBUG
             if let raw = ScreenshotHooks.initialTab, let tab = TabItem(rawValue: raw) {
                 tabSelection.wrappedValue = tab
@@ -100,6 +102,7 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 activeOrder.resume()
+                PaymentRecovery.shared.start()
             }
         }
         .onChange(of: activeOrder.deliveredCelebration?.id) { _, id in

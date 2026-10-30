@@ -326,6 +326,11 @@ struct StorefrontHomeView: View {
                 .padding(.top, 12)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
+
+            if storeStatus.isOpen, let notice = storeStatus.delayNotice {
+                DelayNoticeBanner(notice: notice)
+                    .padding(.top, 12)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 10)

@@ -19,7 +19,7 @@ enum OnlinePaymentError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .cancelled: return "Payment cancelled. Your order wasn't placed."
+        case .cancelled: return "Payment cancelled. If money was taken from your account, your order will be placed automatically within a few minutes."
         case .failed(let message): return message
         case .unavailable: return "Online payment isn't available right now. Choose cash on delivery."
         }
@@ -97,6 +97,7 @@ final class OnlinePayment: NSObject {
         amountRupees: Double,
         customer: UserProfile,
         option: PayOption? = nil,
+        onOrderCreated: @escaping @MainActor (_ razorpayOrderId: String) -> Void = { _ in },
         onConfirming: @escaping @MainActor () -> Void = {}
     ) async throws -> PaymentReceipt {
         guard Self.isAvailable else { throw OnlinePaymentError.unavailable }
@@ -108,6 +109,10 @@ final class OnlinePayment: NSObject {
             // The server starts no payment for an app older than the shop allows.
             "platform": "ios", "app_version_code": AppVersion.code
         ])
+
+        // Before the shopper can pay: from here a payment that goes unconfirmed
+        // can still be found again (`PaymentRecovery`).
+        onOrderCreated(order.order_id)
 
         let outcome = await authorize(order, orderCode: orderCode, customer: customer, option: option)
         release()
@@ -136,17 +141,18 @@ final class OnlinePayment: NSObject {
             if code == 2 || description.localizedCaseInsensitiveContains("cancel") {
                 throw OnlinePaymentError.cancelled
             }
-            throw OnlinePaymentError.failed("The payment didn't go through. Nothing was charged.")
+            throw OnlinePaymentError.failed("The payment didn't go through. If money was taken from your account, your order will be placed automatically within a few minutes.")
         case .paid:
-            throw OnlinePaymentError.failed("This payment couldn't be confirmed, so the order wasn't placed. If money was taken, message us on WhatsApp.")
+            throw OnlinePaymentError.failed("We're still confirming your payment. If money was taken, your order will be placed automatically within a few minutes. Keep the app open.")
         }
     }
 
     /// Asks the server (which asks Razorpay) whether this order was paid. A UPI
-    /// app can confirm a moment after the shopper is back, so it looks twice.
-    private func paidReceipt(_ razorpayOrderId: String) async -> PaymentReceipt? {
-        for attempt in 0..<5 {
-            if attempt > 0 { try? await Task.sleep(for: .seconds(2.5)) }
+    /// app can confirm a good while after the shopper is back, so it looks
+    /// again for about 20 seconds; `PaymentRecovery` carries on after that.
+    func paidReceipt(_ razorpayOrderId: String, attempts: Int = 8) async -> PaymentReceipt? {
+        for attempt in 0..<attempts {
+            if attempt > 0 { try? await Task.sleep(for: .seconds(3)) }
             guard let status: Status = try? await post("payment-status.php", body: ["razorpay_order_id": razorpayOrderId]) else { continue }
             if status.paid, let paymentId = status.razorpay_payment_id, !paymentId.isEmpty {
                 return PaymentReceipt(razorpayOrderId: razorpayOrderId, razorpayPaymentId: paymentId, amountPaidPaise: status.amount_paid)

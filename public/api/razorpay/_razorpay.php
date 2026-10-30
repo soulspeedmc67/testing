@@ -72,11 +72,12 @@ function dashit_record_payment(array $order, string $paymentId): bool
     }
     $account = dashit_firebase_service_account();
     if ($account === null) {
-        // Not set up yet (docs/server-setup.md). Don't hold up a payment
-        // that went through: until firestore.rules ask for this record the
-        // order goes in as before, and once they do it is refused either way.
+        // firestore.rules refuse a paid order without this record, so saying
+        // "confirmed" here would only send the app on to an order that fails.
+        // Say it failed: the apps keep asking, and the payment is picked up
+        // as soon as the service account is in place (docs/server-setup.md).
         error_log("DASHit payments: no service account, so $orderId wasn't recorded in Firestore.");
-        return true;
+        return false;
     }
     return dashit_firestore_set($account, "payments/$orderId", [
         'razorpayOrderId' => $orderId,

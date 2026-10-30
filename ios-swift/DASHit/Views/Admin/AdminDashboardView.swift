@@ -2223,6 +2223,10 @@ struct StoreControlSheetView: View {
     @State private var closeReason: String = StoreControlSheetView.closeReasons[0]
     /// The reason typed in, when "Write my own" is picked.
     @State private var ownCloseReason = ""
+    /// The reason for the "orders may be delayed" notice: a preset's label, or `ownDelayChoice`.
+    @State private var delayChoice = DelayNotice.presets[0].label
+    /// The delay notice in the admin's own words, when "Write my own" is picked.
+    @State private var ownDelayMessage = ""
     @State private var extraOn: Bool = false
     @State private var extraAmountText = ""
     @State private var extraNameChoice = ShopRules.defaultExtraChargeLabel
@@ -2265,6 +2269,28 @@ struct StoreControlSheetView: View {
     ]
     private static let closeReasonTitles = ["Too many orders", "Closed for the night", "Bad weather", "Restocking", "A short break"]
     private static let ownCloseReasonChoice = "Write my own"
+    private static let ownDelayChoice = "Write my own"
+
+    /// The notice the picked reason (or the typed words) makes; nil while "Write my own" is empty.
+    private var chosenDelayNotice: DelayNotice? {
+        if delayChoice == Self.ownDelayChoice {
+            let typed = String(ownDelayMessage.trimmingCharacters(in: .whitespacesAndNewlines).prefix(160))
+            return typed.isEmpty ? nil : DelayNotice(type: "surge", title: DelayNotice.surgeTitle, message: typed)
+        }
+        guard let preset = DelayNotice.presets.first(where: { $0.label == delayChoice }) else { return nil }
+        return DelayNotice(type: preset.type, title: preset.title, message: preset.message)
+    }
+
+    /// Picks the live notice's reason in the list, or puts its words in the "Write my own" box.
+    private func showDelayNotice(_ notice: DelayNotice?) {
+        guard let notice else { return }
+        if let preset = DelayNotice.presets.first(where: { $0.message == notice.message }) {
+            delayChoice = preset.label
+        } else {
+            delayChoice = Self.ownDelayChoice
+            ownDelayMessage = notice.message
+        }
+    }
 
     /// The reason that is saved: the one picked, or what was typed (the first one if the box is empty).
     private var chosenCloseReason: String {
@@ -2305,6 +2331,48 @@ struct StoreControlSheetView: View {
                     Text(isOpen
                         ? "Customers can order now."
                         : "Customers see: “The store is closed right now. \(chosenCloseReason)” Tap Save.")
+                }
+
+                Section {
+                    if let live = vm.delayNotice {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Label("Customers see this now", systemImage: "clock.badge.exclamationmark.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundColor(.orange)
+                            Text(live.message)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    Picker("Why the delay?", selection: $delayChoice) {
+                        ForEach(DelayNotice.presets, id: \.label) { preset in
+                            Text(preset.label).tag(preset.label)
+                        }
+                        Text(Self.ownDelayChoice).tag(Self.ownDelayChoice)
+                    }
+                    if delayChoice == Self.ownDelayChoice {
+                        TextField("What customers will read", text: $ownDelayMessage, axis: .vertical)
+                            .lineLimit(1...4)
+                    }
+                    Button {
+                        if let notice = chosenDelayNotice { vm.setDelayNotice(notice) }
+                    } label: {
+                        Label(vm.delayNotice == nil ? "Tell customers orders may be delayed" : "Update the notice",
+                              systemImage: "megaphone.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                    }
+                    .disabled(chosenDelayNotice == nil)
+                    if vm.delayNotice != nil {
+                        Button(role: .destructive) {
+                            vm.setDelayNotice(nil)
+                        } label: {
+                            Label("Turn the notice off", systemImage: "xmark.circle")
+                        }
+                    }
+                } header: {
+                    Text("Delays")
+                } footer: {
+                    Text("Busy, raining, or short of riders? This shows customers “Orders may be delayed” and your reason on the home screen and at checkout. It works at once, without Save, and stays up until you turn it off.")
                 }
 
                 Section {
@@ -2483,6 +2551,7 @@ struct StoreControlSheetView: View {
                 showCloseReason(vm.storeConfig.closeReason)
                 showShopRules(vm.shopRules)
                 showNightCharge(vm.nightCharge)
+                showDelayNotice(vm.delayNotice)
             }
             .onChange(of: vm.shopRules) { _, saved in
                 showShopRules(saved)

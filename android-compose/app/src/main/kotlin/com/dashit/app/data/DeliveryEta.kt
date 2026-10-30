@@ -95,6 +95,36 @@ object DeliveryEta {
     }
 }
 
+/**
+ * "Orders may be delayed", while the admin has it on: `weatherAlert` on
+ * `config/store`, which the web console already writes and shows. [type] is
+ * "surge", "rain" or "snow". Same as the iPhone app (`DelayNotice.swift`).
+ */
+data class DelayNotice(val type: String, val title: String, val message: String) {
+    companion object {
+        private const val SURGE_MESSAGE =
+            "We're getting a lot of orders right now, so yours may take a little longer. Thank you for waiting."
+
+        /** The notice on `config/store`, when it is switched on; null otherwise. */
+        fun from(snapshot: com.google.firebase.firestore.DocumentSnapshot): DelayNotice? {
+            val alert = snapshot.get("weatherAlert") as? Map<*, *> ?: return null
+            if (alert["active"] != true) return null
+            val type = (alert["type"] as? String) ?: "surge"
+            val title = (alert["title"] as? String)?.trim().orEmpty()
+            val message = (alert["message"] as? String)?.trim().orEmpty()
+            return DelayNotice(
+                type = type,
+                title = title.ifEmpty {
+                    when (type) { "rain" -> "Rain advisory"; "snow" -> "Snow advisory"; else -> "Orders may be delayed" }
+                },
+                message = message.ifEmpty {
+                    if (type == "rain" || type == "snow") "Riders are going carefully. Deliveries may take 10–15 minutes longer." else SURGE_MESSAGE
+                }
+            )
+        }
+    }
+}
+
 /** `config/store`: the admin's open/closed switch, high-demand flag and night charge, readable by everyone. */
 object StoreStatus {
     data class State(
@@ -107,6 +137,8 @@ object StoreStatus {
         val nightChargeMin: Double = NightCharge.DEFAULT_MIN_FEE,
         /** The minimum order, the fees and cash on delivery, as the shop has set them. */
         val rules: ShopRules = ShopRules(),
+        /** "Orders may be delayed" while the admin has it on. */
+        val delayNotice: DelayNotice? = null,
         /**
          * True once these settings have come from the server. Until then they are
          * the copy the phone saved last time, so a charge the shop switched on
@@ -138,6 +170,7 @@ object StoreStatus {
                     nightChargePerKm = snapshot.getDouble("nightChargePerKm")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_PER_KM,
                     nightChargeMin = snapshot.getDouble("nightChargeMin")?.takeIf { it >= 0 } ?: NightCharge.DEFAULT_MIN_FEE,
                     rules = ShopRules.from(snapshot),
+                    delayNotice = DelayNotice.from(snapshot),
                     isLive = !snapshot.metadata.isFromCache
                 )
             }

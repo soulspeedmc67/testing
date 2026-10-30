@@ -142,7 +142,7 @@ final class FirestoreService {
     /// from the last time the app was open, and true once the server has
     /// answered. Metadata changes are included because that is the only sign
     /// when the saved copy turns out to be still right.
-    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool, _ nightCharge: NightCharge.Settings, _ rules: ShopRules, _ isLive: Bool) -> Void) -> ListenerRegistration {
+    func listenStoreConfig(completion: @escaping (_ isOpen: Bool, _ closeReason: String, _ highDemand: Bool, _ nightCharge: NightCharge.Settings, _ rules: ShopRules, _ delayNotice: DelayNotice?, _ isLive: Bool) -> Void) -> ListenerRegistration {
         return db.collection("config").document("store").addSnapshotListener(includeMetadataChanges: true) { snapshot, _ in
             guard let snapshot else { return }
             let data = snapshot.data() ?? [:]
@@ -153,6 +153,8 @@ final class FirestoreService {
                 NightCharge.Settings(data: data),
                 // Minimum order, fees and cash on delivery, as the shop has set them.
                 ShopRules(data: data),
+                // The admin's "orders may be delayed" notice, when it is on.
+                DelayNotice(storeData: data),
                 !snapshot.metadata.isFromCache
             )
         }

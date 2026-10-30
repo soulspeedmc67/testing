@@ -74,6 +74,11 @@ struct CheckoutView: View {
                             .stroke(Color.hairline, lineWidth: 1)
                     )
 
+                    // The admin's "orders may be delayed" notice, so nobody is surprised after paying.
+                    if let notice = storeStatus.delayNotice {
+                        DelayNoticeBanner(notice: notice)
+                    }
+
                     // 2. Delivery Time Guarantee
                     HStack(spacing: 12) {
                         Image(systemName: "bolt.badge.clock.fill")
