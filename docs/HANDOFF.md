@@ -6,6 +6,16 @@
 
 ---
 
+## Nov 3, 2026: 40-second promo video
+
+`marketing/promo-video/dashit-promo.mp4` (1080x1920, 30 fps, H.264 + AAC, for Reels/Stories/Status). Scenes: logo (the splash
+animation), what DASHit is, 3,000+ products, how it works, payments, **₹60 in your wallet**, **free delivery on the first 3 orders**,
+download end card. The film is `index.html` (open it in a browser to preview; every frame is `renderFrame(n)`), music and sound
+accents are synthesized by `music.py` (no samples, nothing to license), and `render.js` steps through the frames into ffmpeg.
+Rebuild: `python3 marketing/promo-video/music.py && node marketing/promo-video/render.js`. The offers are the owner's words for the
+video: the website's "Our promise" section still says first **5** orders free, and the wallet credit in Shop settings must be set to ₹60
+for the app to match.
+
 ## Oct 29, 2026 (night): Android 1.2.4 (106): Google sign-in hardened, one-command package with the APK
 
 Android compiles. **The signed APK/AAB are NOT built yet**: the owner's compliance guard blocks that build on 3 critical flags (website emulator host,
