@@ -32,6 +32,8 @@ struct StorefrontHomeView: View {
     @State private var chrome = HomeChromeState()
     /// Skeletons while one category's list gives way to another's.
     @State private var isSwitchingList = false
+    /// The new list fades in by opacity alone, so nothing in the feed moves while it does.
+    @State private var listFade: Double = 1
     @State private var switchTask: Task<Void, Never>?
 
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: 3)
@@ -45,6 +47,12 @@ struct StorefrontHomeView: View {
     private var address: DeliveryAddress? { addressBook.current }
     /// Kept so the search bar can be scrolled to the top when search opens.
     @State private var scrollProxy: ScrollViewProxy?
+    /// The feed's visible height and the pinned bar's, for the list's minimum height.
+    @State private var viewportHeight: CGFloat = 0
+    @State private var pinnedBarHeight: CGFloat = 0
+
+    /// The least height a category's list (or the special page) takes under the pinned bar.
+    private var listFloor: CGFloat { max(0, viewportHeight - pinnedBarHeight - 24) }
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -93,25 +101,33 @@ struct StorefrontHomeView: View {
                                 )
                                 .padding(.top, 28)
                             }
-                        } else if vm.isSpotlightSelected, let spotlight = vm.spotlight {
-                            // The owner's special tab: the feed turns gold.
-                            SpotlightShowcase(
-                                spotlight: spotlight,
-                                sections: vm.spotlightSections,
-                                onJump: { id in
-                                    withAnimation(.smooth(duration: 0.45)) {
-                                        scrollProxy?.scrollTo(id, anchor: UnitPoint(x: 0.5, y: 0.24))
-                                    }
-                                },
-                                onOpen: { detailProduct = $0 },
-                                onRequestAgeConfirmation: { ageGateProduct = $0 }
-                            )
-                            .id("spotlight")
-                            .transition(.opacity)
                         } else {
-                            resultsGrid
-                                .id("results")
-                                .padding(.top, 16)
+                            // At least a screen tall under the pinned bar: a short
+                            // list replacing a long one used to leave the page too
+                            // short to stay where it was, so it snapped up.
+                            VStack(alignment: .leading, spacing: 0) {
+                                if vm.isSpotlightSelected, let spotlight = vm.spotlight {
+                                    // The owner's special tab: the feed turns gold.
+                                    SpotlightShowcase(
+                                        spotlight: spotlight,
+                                        sections: vm.spotlightSections,
+                                        items: vm.spotlightItems,
+                                        onJump: { id in
+                                            withAnimation(.smooth(duration: 0.45)) {
+                                                scrollProxy?.scrollTo(id, anchor: UnitPoint(x: 0.5, y: 0.24))
+                                            }
+                                        },
+                                        onOpen: { detailProduct = $0 },
+                                        onRequestAgeConfirmation: { ageGateProduct = $0 }
+                                    )
+                                    .id("spotlight")
+                                } else {
+                                    resultsGrid
+                                        .id("results")
+                                        .padding(.top, 16)
+                                }
+                            }
+                            .frame(minHeight: listFloor, alignment: .top)
                         }
 
                         Color.clear
@@ -136,6 +152,11 @@ struct StorefrontHomeView: View {
                 .drivesTabBarVisibility(in: "homeScroll")
             }
             .coordinateSpace(.named("homeScroll"))
+            .onGeometryChange(for: CGFloat.self) { geometry in
+                geometry.size.height
+            } action: { height in
+                viewportHeight = height
+            }
             .scrollDismissesKeyboard(.immediately)
             // Paints the status bar: the header's glow at rest, the page colour
             // once search has pinned, so nothing shows through behind the clock.
@@ -161,16 +182,20 @@ struct StorefrontHomeView: View {
                 #endif
             }
         }
+        // Only the backdrop fades between plain and gold. The animation used to sit
+        // on the whole screen, so the feed's layout animated too on every switch
+        // in or out of the special tab, which made the page jump.
         .background {
-            if vm.isSpotlightSelected {
-                SpotlightBackdrop()
-                    .overlay { SpotlightSparkles().ignoresSafeArea() }
-                    .transition(.opacity)
-            } else {
+            ZStack {
                 Color.surface.ignoresSafeArea()
+                if vm.isSpotlightSelected {
+                    SpotlightBackdrop()
+                        .overlay { SpotlightSparkles().ignoresSafeArea() }
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.45), value: vm.isSpotlightSelected)
         }
-        .animation(.easeInOut(duration: 0.45), value: vm.isSpotlightSelected)
         // The tab was switched off while it was open: back to the whole shop.
         .onChange(of: vm.spotlight == nil) { _, isGone in
             if isGone && vm.selectedCategory == Spotlight.tabId { vm.selectCategory(nil) }
@@ -423,6 +448,11 @@ struct StorefrontHomeView: View {
             )
         }
         .background(PinnedSearchBackdrop(chrome: chrome, gold: vm.isSpotlightSelected))
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.size.height
+        } action: { height in
+            pinnedBarHeight = height
+        }
         // The pinned bar is always laid out, unlike the header, which a lazy
         // stack drops once it is far off screen; so track the bar's own top.
         .onGeometryChange(for: CGFloat.self) { geometry in
@@ -542,7 +572,15 @@ struct StorefrontHomeView: View {
         switchTask = Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(260))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeOut(duration: 0.25)) { isSwitchingList = false }
+            // The swap itself isn't animated (an animated swap moved the cards and
+            // everything under them); only the new cards' opacity is.
+            var swap = Transaction()
+            swap.disablesAnimations = true
+            withTransaction(swap) {
+                listFade = 0
+                isSwitchingList = false
+            }
+            withAnimation(.easeOut(duration: 0.25)) { listFade = 1 }
         }
     }
 
@@ -592,6 +630,7 @@ struct StorefrontHomeView: View {
                         onRequestAgeConfirmation: { ageGateProduct = product }
                     )
                 }
+                .opacity(listFade)
             }
         }
         .padding(.horizontal, 16)

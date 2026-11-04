@@ -12,7 +12,8 @@
  *   tabLabel   string    the tab's word in the strip (≤ 14 letters)
  *   title      string    the big gold heading
  *   subtitle   string    one line under it
- *   sections   [{ id, name, img, items: [{ id, name, img, price, mrp, unit }] }]
+ *   items      [{ id, name, img, price, mrp, unit }]   items on their own, no group needed
+ *   sections   [{ id, name, img, items: [same] }]       optional groups, each a photo tile
  *
  * Every item is a real product (`id` = products/{id}), so stock, price,
  * checkout and the stock count work as for any item. The copy kept on the
@@ -27,6 +28,7 @@ export const SPOTLIGHT_DEFAULTS = Object.freeze({
   tabLabel: "Specials",
   title: "Festive Specials",
   subtitle: "Handpicked for the season",
+  items: [],
   sections: [],
 });
 
@@ -66,27 +68,35 @@ export function itemFromProduct(product) {
   });
 }
 
+/** Items as kept: tidy, each once, at most LIMITS.items. */
+function cleanItems(list) {
+  const seen = new Set();
+  return (Array.isArray(list) ? list : [])
+    .map(cleanItem)
+    .filter((item) => item && !seen.has(item.id) && seen.add(item.id))
+    .slice(0, LIMITS.items);
+}
+
 /** The saved document with every field present and tidy. */
 export function normalizeSpotlight(raw) {
   const src = raw && typeof raw === "object" ? raw : {};
   const sections = (Array.isArray(src.sections) ? src.sections : [])
     .filter((s) => s && s.id)
     .slice(0, LIMITS.sections)
-    .map((s) => {
-      const seen = new Set();
-      const items = (Array.isArray(s.items) ? s.items : [])
-        .map(cleanItem)
-        .filter((item) => item && !seen.has(item.id) && seen.add(item.id))
-        .slice(0, LIMITS.items);
-      return { id: String(s.id), name: text(s.name, LIMITS.sectionName), img: String(s.img || "").trim(), items };
-    });
+    .map((s) => ({ id: String(s.id), name: text(s.name, LIMITS.sectionName), img: String(s.img || "").trim(), items: cleanItems(s.items) }));
   return {
     enabled: src.enabled === true,
     tabLabel: text(src.tabLabel, LIMITS.tabLabel) || SPOTLIGHT_DEFAULTS.tabLabel,
     title: text(src.title, LIMITS.title) || SPOTLIGHT_DEFAULTS.title,
     subtitle: text(src.subtitle, LIMITS.subtitle),
+    items: cleanItems(src.items),
     sections,
   };
+}
+
+/** Is there anything for shoppers to see: an item on its own or in a group. */
+export function hasAnyItem(spot) {
+  return (spot?.items || []).length > 0 || (spot?.sections || []).some((s) => (s.items || []).length > 0);
 }
 
 /** What's wrong before it can be saved, in plain words; empty = fine. */
@@ -94,6 +104,9 @@ export function spotlightProblems(spot) {
   const problems = [];
   if (!text(spot?.tabLabel, LIMITS.tabLabel)) problems.push("Give the tab a name.");
   if (!text(spot?.title, LIMITS.title)) problems.push("Give the page a heading.");
+  for (const item of spot?.items || []) {
+    if (!hasPhoto(item.img)) problems.push(`"${item.name || "An item"}" needs a photo.`);
+  }
   for (const s of spot?.sections || []) {
     const name = text(s.name, LIMITS.sectionName);
     if (!name) problems.push("Every group needs a name.");
@@ -102,7 +115,7 @@ export function spotlightProblems(spot) {
       if (!hasPhoto(item.img)) problems.push(`"${item.name || "An item"}" in "${name}" needs a photo.`);
     }
   }
-  if (spot?.enabled && !(spot.sections || []).some((s) => (s.items || []).length > 0)) {
+  if (spot?.enabled && !hasAnyItem(spot)) {
     problems.push("Add at least one item before switching it on.");
   }
   return [...new Set(problems)];
@@ -160,37 +173,51 @@ export function moveEntry(list, from, to) {
 }
 
 /**
- * What shoppers see: the groups that have items, each item as the shop's live
- * product (price, stock) or, while the product file hasn't caught up, its copy.
- * `null` when the tab is off or has nothing to show.
+ * What shoppers see: the items on their own (`products`) and the groups that
+ * have items (`sections`), each item as the shop's live product (price, stock)
+ * or, while the product file hasn't caught up, its copy. `null` when the tab
+ * is off or has nothing to show. Groups are optional: with none, the page is
+ * the heading and the items.
  */
 export function shopperSpotlight(raw, products = []) {
   const spot = normalizeSpotlight(raw);
   if (!spot.enabled) return null;
   const byId = new Map();
   for (const p of products || []) byId.set(String(p.id || p.barcode), p);
-  const sections = spot.sections
-    .map((s) => ({
-      ...s,
-      products: s.items
-        .map((item) => {
-          const live = byId.get(item.id);
-          if (live) return live;
-          return {
-            id: item.id,
-            barcode: item.id,
-            name: item.name,
-            img: item.img,
-            price: item.price,
-            originalPrice: item.mrp || undefined,
-            unit: item.unit,
-            cat: s.name,
-            inStock: true,
-          };
-        })
-        .filter((p) => p && p.name && p.active !== false),
-    }))
-    .filter((s) => s.products.length > 0);
-  if (sections.length === 0) return null;
-  return { ...spot, sections };
+  const resolve = (items, cat) =>
+    items
+      .map((item) => {
+        const live = byId.get(item.id);
+        if (live) return live;
+        return {
+          id: item.id,
+          barcode: item.id,
+          name: item.name,
+          img: item.img,
+          price: item.price,
+          originalPrice: item.mrp || undefined,
+          unit: item.unit,
+          cat,
+          inStock: true,
+        };
+      })
+      .filter((p) => p && p.name && p.active !== false);
+  const sections = spot.sections.map((s) => ({ ...s, products: resolve(s.items, s.name) })).filter((s) => s.products.length > 0);
+  const loose = resolve(spot.items, spot.tabLabel);
+  if (sections.length === 0 && loose.length === 0) return null;
+  return { ...spot, sections, products: loose };
+}
+
+/**
+ * A ready-made prompt for an AI image tool (ChatGPT, Gemini…) to make a photo
+ * that sits well on the gold tiles: the product on plain white, nothing added.
+ * `kind` is "item" or "group".
+ */
+export function photoPrompt(kind, name = "", unit = "") {
+  const what = text(name, 90) || (kind === "group" ? "this collection" : "this product");
+  if (kind === "group") {
+    return `A product photo of 3 to 4 items that together represent "${what}", arranged as a neat group and photographed together, cut out on a plain pure white background, soft natural shadow underneath, bright even studio lighting, warm festive feel, items filling the lower two thirds of the frame, no text, no logos added, no people, portrait 4:5, high resolution.`;
+  }
+  const size = text(unit, 24);
+  return `A studio product photo of ${what}${size ? ` (${size})` : ""}, the whole product centred and fully in frame, on a plain pure white background, soft natural shadow, bright even lighting, true-to-life colours, no text, no extra logos, no props, no hands, square 1:1, high resolution.`;
 }

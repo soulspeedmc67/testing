@@ -50,6 +50,8 @@ final class CatalogueStore: ObservableObject {
     @Published private(set) var spotlight = Spotlight()
     /// Its groups with live products, worked out when either changes.
     @Published private(set) var spotlightSections: [Spotlight.ShownSection] = []
+    /// Its items on their own (in no group), live from the catalogue.
+    @Published private(set) var spotlightItems: [Product] = []
     private var spotlightListener: ListenerRegistration?
 
     /// The `categories` collection, when the rules let it be read.
@@ -159,11 +161,13 @@ final class CatalogueStore: ObservableObject {
     private func refreshSpotlight() {
         guard spotlight.enabled else {
             if !spotlightSections.isEmpty { spotlightSections = [] }
+            if !spotlightItems.isEmpty { spotlightItems = [] }
             return
         }
         var byId: [String: Product] = [:]
         for product in products { byId[product.id] = product }
         spotlightSections = spotlight.shownSections(products: byId)
+        spotlightItems = spotlight.shownItems(products: byId)
     }
 
     private func apply(_ derived: CatalogueDerived, products newProducts: [Product], remote: [Category]) {
@@ -270,8 +274,9 @@ final class StorefrontViewModel: ObservableObject {
     var isLoading: Bool { store.isLoading }
     var offers: [Offer] { store.offers }
     /// The special tab, or nil when it is off or has nothing to show.
-    var spotlight: Spotlight? { store.spotlightSections.isEmpty ? nil : store.spotlight }
+    var spotlight: Spotlight? { store.spotlightSections.isEmpty && store.spotlightItems.isEmpty ? nil : store.spotlight }
     var spotlightSections: [Spotlight.ShownSection] { store.spotlightSections }
+    var spotlightItems: [Product] { store.spotlightItems }
     var isSpotlightSelected: Bool { selectedCategory == Spotlight.tabId && spotlight != nil }
     var categories: [Category] { store.categories }
     var categoryTiles: [CategoryTile] { store.categoryTiles }

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Copy,
   Sparkles,
   Plus,
   ImagePlus,
@@ -35,7 +36,12 @@ import {
   shopperSpotlight,
   newSectionId,
   moveEntry,
+  hasAnyItem,
+  photoPrompt,
 } from "../../lib/spotlight";
+
+/** The sheets' target for items on their own (not in any group). */
+const LOOSE = "__loose";
 
 /**
  * The console's editor for the spotlight tab (src/lib/spotlight.js): its
@@ -81,8 +87,16 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
     setStatus(null);
     setDraft((prev) => ({ ...prev, sections: fn(prev.sections) }));
   };
-  const setItems = (sectionId, fn) =>
+  const setItems = (sectionId, fn) => {
+    if (sectionId === LOOSE) {
+      setStatus(null);
+      setDraft((prev) => ({ ...prev, items: fn(prev.items || []) }));
+      return;
+    }
     setSections((sections) => sections.map((s) => (s.id === sectionId ? { ...s, items: fn(s.items) } : s)));
+  };
+  const itemsOf = (sectionId) =>
+    sectionId === LOOSE ? draft?.items || [] : draft?.sections.find((s) => s.id === sectionId)?.items || [];
 
   // Leaving the page with unsaved changes asks first.
   useEffect(() => {
@@ -137,8 +151,8 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
   const switchLive = async () => {
     if (!saved || switching) return;
     const next = !saved.enabled;
-    if (next && !saved.sections.some((s) => s.items.length > 0)) {
-      setStatus({ ok: false, text: "Add a group with at least one item and Save it first, then switch the tab on." });
+    if (next && !hasAnyItem(saved)) {
+      setStatus({ ok: false, text: "Add at least one item and Save it first, then switch the tab on." });
       return;
     }
     setSwitching(true);
@@ -181,6 +195,48 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
   const iconBtn = `w-8 h-8 inline-flex items-center justify-center rounded-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
     darkMode ? "text-zinc-400 hover:bg-zinc-800" : "text-slate-500 hover:bg-slate-100"
   }`;
+
+  /** The rows of a list of items (a group's, or the ones on their own). */
+  const itemRows = (sectionId, items) =>
+    items.map((item, ii) => (
+      <li key={item.id} className="flex items-center gap-3 px-3 py-2">
+        <span className="w-10 h-10 rounded-lg bg-white border border-slate-200 overflow-hidden shrink-0">
+          {item.img && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.img} alt="" className="w-full h-full object-contain" />
+          )}
+        </span>
+        <div className="min-w-0 grow">
+          <p className="text-[13px] font-bold text-slate-900 dark:text-white truncate">{item.name}</p>
+          <p className={help}>
+            ₹{item.price}
+            {item.mrp ? <span className="line-through ml-1">₹{item.mrp}</span> : null}
+            {item.unit ? ` · ${item.unit}` : ""}
+          </p>
+        </div>
+        <button type="button" className={iconBtn} aria-label="Move item up" disabled={ii === 0} onClick={() => setItems(sectionId, (list) => moveEntry(list, ii, ii - 1))}>
+          <ChevronUp className="w-4 h-4" />
+        </button>
+        <button type="button" className={iconBtn} aria-label="Move item down" disabled={ii === items.length - 1} onClick={() => setItems(sectionId, (list) => moveEntry(list, ii, ii + 1))}>
+          <ChevronDown className="w-4 h-4" />
+        </button>
+        <button type="button" className={`${iconBtn} hover:!text-rose-600`} aria-label={`Remove ${item.name}`} onClick={() => setItems(sectionId, (list) => list.filter((x) => x.id !== item.id))}>
+          <X className="w-4 h-4" />
+        </button>
+      </li>
+    ));
+
+  /** "New item" and, as its own button, "Add from stock". */
+  const addButtons = (sectionId, count) => (
+    <div className="grid grid-cols-2 gap-2">
+      <button type="button" disabled={count >= LIMITS.items} onClick={() => setItemSheet({ sectionId })} className={smallBtn}>
+        <PackagePlus className="w-4 h-4" /> New item
+      </button>
+      <button type="button" disabled={count >= LIMITS.items} onClick={() => setStockSheet({ sectionId })} className={smallBtn}>
+        <Boxes className="w-4 h-4" /> Add from stock
+      </button>
+    </div>
+  );
 
   if (!draft) {
     return (
@@ -242,16 +298,34 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
         </div>
       </div>
 
-      {/* Groups */}
+      {/* Items on their own: no group needed */}
+      <div className={card}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="font-black text-sm text-slate-900 dark:text-white">Items on their own</h3>
+            <p className={help}>
+              Shown straight under the heading, no group needed. With groups too, they show as “Top picks” after the group tiles.
+            </p>
+          </div>
+          <button type="button" onClick={() => setShowPreview(true)} className={`${smallBtn} shrink-0`}>
+            <Eye className="w-3.5 h-3.5" /> Preview
+          </button>
+        </div>
+        {(draft.items || []).length > 0 && (
+          <ul className={`divide-y rounded-xl border ${darkMode ? "divide-zinc-800 border-zinc-800" : "divide-slate-100 border-slate-200"}`}>
+            {itemRows(LOOSE, draft.items)}
+          </ul>
+        )}
+        {addButtons(LOOSE, (draft.items || []).length)}
+      </div>
+
+      {/* Groups (optional) */}
       <div className="flex items-center justify-between gap-3 px-1">
         <div>
-          <h3 className="font-black text-sm text-slate-900 dark:text-white">Groups</h3>
+          <h3 className="font-black text-sm text-slate-900 dark:text-white">Groups <span className="font-semibold text-slate-400">(optional)</span></h3>
           <p className={help}>Each group is a photo tile on the page, with its items under it. Up to {LIMITS.sections} groups.</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <button type="button" onClick={() => setShowPreview(true)} className={smallBtn}>
-            <Eye className="w-3.5 h-3.5" /> Preview
-          </button>
           <button
             type="button"
             disabled={draft.sections.length >= LIMITS.sections}
@@ -265,8 +339,8 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
 
       {draft.sections.length === 0 && (
         <div className={`${card} text-center py-10`}>
-          <p className="text-sm font-bold text-slate-700 dark:text-zinc-300">No groups yet</p>
-          <p className={`${help} mt-1`}>Start with a group like “Bedsheets & Towels”, then add items to it.</p>
+          <p className="text-sm font-bold text-slate-700 dark:text-zinc-300">No groups</p>
+          <p className={`${help} mt-1`}>That's fine: items on their own show without one. Add a group, like “Bedsheets & Towels”, to show photo tiles too.</p>
         </div>
       )}
 
@@ -313,44 +387,11 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
 
           {s.items.length > 0 && (
             <ul className={`divide-y rounded-xl border ${darkMode ? "divide-zinc-800 border-zinc-800" : "divide-slate-100 border-slate-200"}`}>
-              {s.items.map((item, ii) => (
-                <li key={item.id} className="flex items-center gap-3 px-3 py-2">
-                  <span className="w-10 h-10 rounded-lg bg-white border border-slate-200 overflow-hidden shrink-0">
-                    {item.img && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.img} alt="" className="w-full h-full object-contain" />
-                    )}
-                  </span>
-                  <div className="min-w-0 grow">
-                    <p className="text-[13px] font-bold text-slate-900 dark:text-white truncate">{item.name}</p>
-                    <p className={help}>
-                      ₹{item.price}
-                      {item.mrp ? <span className="line-through ml-1">₹{item.mrp}</span> : null}
-                      {item.unit ? ` · ${item.unit}` : ""}
-                    </p>
-                  </div>
-                  <button type="button" className={iconBtn} aria-label="Move item up" disabled={ii === 0} onClick={() => setItems(s.id, (list) => moveEntry(list, ii, ii - 1))}>
-                    <ChevronUp className="w-4 h-4" />
-                  </button>
-                  <button type="button" className={iconBtn} aria-label="Move item down" disabled={ii === s.items.length - 1} onClick={() => setItems(s.id, (list) => moveEntry(list, ii, ii + 1))}>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                  <button type="button" className={`${iconBtn} hover:!text-rose-600`} aria-label={`Remove ${item.name}`} onClick={() => setItems(s.id, (list) => list.filter((x) => x.id !== item.id))}>
-                    <X className="w-4 h-4" />
-                  </button>
-                </li>
-              ))}
+              {itemRows(s.id, s.items)}
             </ul>
           )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" disabled={s.items.length >= LIMITS.items} onClick={() => setItemSheet({ sectionId: s.id })} className={smallBtn}>
-              <PackagePlus className="w-4 h-4" /> New item
-            </button>
-            <button type="button" disabled={s.items.length >= LIMITS.items} onClick={() => setStockSheet({ sectionId: s.id })} className={smallBtn}>
-              <Boxes className="w-4 h-4" /> Add from stock
-            </button>
-          </div>
+          {addButtons(s.id, s.items.length)}
         </div>
       ))}
 
@@ -406,15 +447,15 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
         onCreated={(product) => {
           setItems(itemSheet.sectionId, (list) => [...list, itemFromProduct(product)]);
           setItemSheet(null);
-          showToast?.(`“${product.name}” is in your stock and in the group. Tap Save to show it.`);
+          showToast?.(`“${product.name}” is in your stock and on the special page. Tap Save to show it.`);
         }}
       />
 
       <StockPickerSheet
         open={Boolean(stockSheet)}
         catalogue={catalogue}
-        taken={new Set(draft.sections.find((s) => s.id === stockSheet?.sectionId)?.items.map((i) => i.id) || [])}
-        room={LIMITS.items - (draft.sections.find((s) => s.id === stockSheet?.sectionId)?.items.length || 0)}
+        taken={new Set(itemsOf(stockSheet?.sectionId).map((i) => i.id))}
+        room={LIMITS.items - itemsOf(stockSheet?.sectionId).length}
         darkMode={darkMode}
         onClose={() => setStockSheet(null)}
         onPick={(products) => {
@@ -433,7 +474,7 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
               {preview ? (
                 <SpotlightShowcase spotlight={preview} onAdd={() => {}} onUpdateQty={() => {}} />
               ) : (
-                <p className="pt-24 text-center text-sm font-bold text-[#6B4A10]">Add a group with an item to see the page.</p>
+                <p className="pt-24 text-center text-sm font-bold text-[#6B4A10]">Add an item to see the page.</p>
               )}
             </div>
           </div>
@@ -444,7 +485,7 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
 }
 
 /** A photo that must be there: upload from this device, or paste a link. */
-function PhotoField({ value, onChange, darkMode, aspect = "aspect-[4/5]", label = "Photo *" }) {
+function PhotoField({ value, onChange, darkMode, aspect = "aspect-[4/5]", label = "Photo *", prompt = "" }) {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -510,6 +551,38 @@ function PhotoField({ value, onChange, darkMode, aspect = "aspect-[4/5]", label 
         />
       )}
       {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
+      {prompt && <PhotoPrompt prompt={prompt} darkMode={darkMode} />}
+    </div>
+  );
+}
+
+/** A ready-made prompt to make the photo with an AI image tool, with a copy button. */
+function PhotoPrompt({ prompt, darkMode }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt);
+    } catch (e) {
+      const box = document.createElement("textarea");
+      box.value = prompt;
+      document.body.appendChild(box);
+      box.select();
+      document.execCommand("copy");
+      box.remove();
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
+  return (
+    <div className={`rounded-xl border p-3 space-y-2 ${darkMode ? "border-zinc-700 bg-[#1A1D26]" : "border-amber-200 bg-amber-50/70"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-black uppercase tracking-wide text-[#8A5A00] dark:text-[#FFD45C]">No photo? Use this prompt</span>
+        <button type="button" onClick={copy} className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[#4A2E00] text-[#FFD45C] cursor-pointer">
+          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />} {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <p className="text-[11.5px] leading-snug text-slate-700 dark:text-zinc-300 select-all">{prompt}</p>
+      <p className="text-[10.5px] text-slate-500 dark:text-zinc-400">Paste it into ChatGPT or Gemini, save the picture, then add it here.</p>
     </div>
   );
 }
@@ -557,7 +630,7 @@ function GroupSheet({ value, onClose, onDone, darkMode }) {
             className={`w-full text-sm font-semibold px-3 py-2.5 rounded-xl border outline-none ${darkMode ? "bg-[#1A1D26] border-zinc-700 text-white" : "bg-slate-50 border-slate-300"}`}
           />
         </div>
-        <PhotoField value={img} onChange={setImg} darkMode={darkMode} label="Photo * (a cut-out on a plain background looks best)" />
+        <PhotoField value={img} onChange={setImg} darkMode={darkMode} label="Photo * (a cut-out on a plain background looks best)" prompt={photoPrompt("group", name)} />
         {tried && problems.length > 0 && <p className="text-xs font-bold text-rose-600">{problems.join(" ")}</p>}
         <button
           type="button"
@@ -615,7 +688,7 @@ function NewItemSheet({ open, onClose, onCreated, categories = [], darkMode }) {
     <AdminSheet open={open} onClose={onClose} labelledBy="spot-sheet-title" darkMode={darkMode}>
       <SheetHeader title="New item" sub="It is added to your stock too, so it can be ordered and counted." onClose={onClose} />
       <div className="overflow-y-auto px-5 py-4 space-y-4">
-        <PhotoField value={form.img} onChange={(img) => set({ img })} aspect="aspect-square" darkMode={darkMode} />
+        <PhotoField value={form.img} onChange={(img) => set({ img })} aspect="aspect-square" darkMode={darkMode} prompt={photoPrompt("item", form.name, form.unit)} />
         <div>
           <label className={label} htmlFor="spot-item-name">Name *</label>
           <input id="spot-item-name" className={input} value={form.name} maxLength={90} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Reed Lavender Oil Diffuser Set" />

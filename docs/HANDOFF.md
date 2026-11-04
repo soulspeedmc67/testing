@@ -6,6 +6,30 @@
 
 ---
 
+## Nov 4, 2026 (evening): groups optional, photo prompts, no jumping on category switch, smoother address menu
+
+Web VERIFIED (133 tests, build, the gold page in a browser with items only and with groups + items, the console editor).
+iOS and Android: every changed file parses (tree-sitter); NOT compiled here. Run the iOS workflow (or the other repo's) to check.
+
+- **Groups are optional**: `config/spotlight` has a top-level `items` list (same shape as a group's items) for items on their own.
+  The page is the heading, then (only with groups) the group tiles and the bunting rule, then the items on their own (a 2-column
+  grid, titled "Top picks" only when there are groups), then each group's row. No groups: no tiles and no dotted line. Editors:
+  website console and iPhone admin have an "Items on their own" list with its own New item / Add from stock; the on/off switch
+  needs at least one item anywhere. Older apps ignore `items` (they show groups only).
+- **Photo prompt**: under the photo of a new item and of a group (website and iPhone admin) there is a ready-made prompt for an AI
+  image tool (plain white background, square for items, 4:5 for groups) with a Copy button (`photoPrompt` in spotlight.js,
+  `Spotlight.photoPrompt` on iOS; same words).
+- **Category switch jumping**:
+  - iPhone: an animation on the whole screen (added with the gold tab) animated the feed's layout on every switch in or out of
+    Specials; now only the backdrop fades. The list under the pinned bar is at least a screen tall, so a short list replacing a long
+    one can't make the page snap. The skeleton-to-list swap is no longer animated (only the new cards' opacity is). The gold tab's
+    shine is drawn from the clock instead of repeat-forever animations.
+  - Android: the skeleton came a frame late (set from an effect), so the new list flashed first; it is now worked out during
+    composition. A floor item keeps short lists from snapping.
+  - Website: switching while scrolled into the list starts the new list under the bar, and the list area is at least a screen tall.
+- **Address menu close** (iPhone, Android): closes on a smooth curve about as long as the opening, as one piece (rows no longer
+  fade out on their own clock), and is removed only when the animation has fully finished.
+
 ## Nov 4, 2026: special gold tab on the home screen; Shop settings Save now confirms
 
 Web VERIFIED (131 tests incl. `tests/spotlight.test.mjs`, production build, the shop's gold tab in a browser in light and dark,

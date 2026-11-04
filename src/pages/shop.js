@@ -172,6 +172,8 @@ export default function ShopPage() {
   // The grid grows as the shopper scrolls: 4,600 cards at once would stall the page.
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const moreRef = useRef(null);
+  const stickyBarRef = useRef(null);
+  const mainRef = useRef(null);
   const isFirstPaint = useRef(true);
   useEffect(() => {
     isFirstPaint.current = false;
@@ -413,7 +415,7 @@ export default function ShopPage() {
       )}
 
       {/* 2. STICKY SEARCH BAR & CATEGORIES SCROLLER */}
-      <div className={`sticky top-0 md:top-[74px] z-40 ${isSpotlight ? "bg-[#FFE27A]/90 dark:bg-[#3D2C00]/90" : "bg-[#FFFDF5]/95 dark:bg-surface/95"} backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-300 ${
+      <div ref={stickyBarRef} className={`sticky top-0 md:top-[74px] z-40 ${isSpotlight ? "bg-[#FFE27A]/90 dark:bg-[#3D2C00]/90" : "bg-[#FFFDF5]/95 dark:bg-surface/95"} backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-300 ${
         isScrolled ? "pt-[env(safe-area-inset-top,0px)]" : ""
       }`}
         style={{
@@ -454,6 +456,14 @@ export default function ShopPage() {
           activeCategory={activeCategory}
           golden={isSpotlight}
           onSelectCategory={(cat) => {
+            /* Scrolled into the list: the new list starts right under the bar,
+               instead of the page snapping when a shorter list replaces a longer one. */
+            const bar = stickyBarRef.current;
+            const main = mainRef.current;
+            if (bar && main) {
+              const listTop = main.getBoundingClientRect().top + window.scrollY - bar.offsetHeight;
+              if (window.scrollY > listTop) window.scrollTo({ top: Math.max(0, listTop), behavior: "auto" });
+            }
             setActiveCategory(cat);
             setPersonalCareSubCat("all");
           }}
@@ -461,7 +471,8 @@ export default function ShopPage() {
       </div>
 
       {/* MAIN BODY CONTENT (Responsive: max-w-md on mobile, expands to max-w-7xl on desktop) */}
-      <main className="relative max-w-md md:max-w-none mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
+      {/* At least a screen tall, so a short list never leaves the page too short to stay where it is. */}
+      <main ref={mainRef} className="relative min-h-[100svh] max-w-md md:max-w-none mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
         {isSpotlight ? (
           <SpotlightShowcase
             spotlight={spotlight}

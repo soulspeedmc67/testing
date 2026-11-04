@@ -26,6 +26,8 @@ struct AdminSpotlightView: View {
     @State private var stockFor: SectionRef? = nil
 
     struct SectionRef: Identifiable { let id: String }
+    /// The sheets' target for items on their own (not in any group).
+    static let looseId = "__loose"
     struct GroupDraft: Identifiable {
         let id = UUID()
         var sectionId: String?
@@ -49,6 +51,7 @@ struct AdminSpotlightView: View {
                 }
             } else {
                 tabSection
+                looseSection
                 ForEach(draft.sections) { section in
                     groupSection(section)
                 }
@@ -60,8 +63,10 @@ struct AdminSpotlightView: View {
                             .font(.system(size: 17, weight: .semibold))
                     }
                     .disabled(draft.sections.count >= Spotlight.maxSections)
+                } header: {
+                    Text("Groups (optional)")
                 } footer: {
-                    Text("Each group is a photo tile on the special page, with its items under it. A group with no items isn't shown. Up to \(Spotlight.maxSections) groups.")
+                    Text("Groups are optional. Each one is a photo tile on the special page, with its items under it. A group with no items isn't shown. Up to \(Spotlight.maxSections) groups.")
                 }
                 if triedSave, !draft.problems.isEmpty {
                     Section {
@@ -131,14 +136,14 @@ struct AdminSpotlightView: View {
         .sheet(item: $newItemFor) { ref in
             SpotlightNewItemSheet(vm: vm) { item in
                 append([item], to: ref.id)
-                show(ok: true, "“\(item.name)” is in your stock and in the group. Tap Save to show it.")
+                show(ok: true, "“\(item.name)” is in your stock and on the special page. Tap Save to show it.")
             }
         }
         .sheet(item: $stockFor) { ref in
             SpotlightStockPicker(
                 products: vm.products,
-                taken: Set(draft.sections.first { $0.id == ref.id }?.items.map(\.id) ?? []),
-                room: Spotlight.maxItems - (draft.sections.first { $0.id == ref.id }?.items.count ?? 0)
+                taken: Set(items(in: ref.id).map(\.id)),
+                room: Spotlight.maxItems - items(in: ref.id).count
             ) { picked in
                 append(picked.map(Spotlight.item(from:)), to: ref.id)
             }
@@ -232,25 +237,7 @@ struct AdminSpotlightView: View {
                 draft.sections[i].items.move(fromOffsets: from, toOffset: to)
             }
 
-            HStack(spacing: 10) {
-                Button {
-                    newItemFor = SectionRef(id: section.id)
-                } label: {
-                    Label("New item", systemImage: "shippingbox")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                Button {
-                    stockFor = SectionRef(id: section.id)
-                } label: {
-                    Label("Add from stock", systemImage: "square.grid.2x2")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-            }
-            .font(.system(size: 15, weight: .semibold))
-            .tint(Color(hex: 0xB26B00))
-            .disabled(section.items.count >= Spotlight.maxItems)
+            addButtons(for: section.id, count: section.items.count)
         } header: {
             Text(section.name.isEmpty ? "Group" : section.name)
         } footer: {
@@ -258,6 +245,63 @@ struct AdminSpotlightView: View {
                 Text("Swipe an item left to take it out of the group (it stays in your stock). Touch and hold to move it.")
             }
         }
+    }
+
+    /// Items on their own: no group needed.
+    private var looseSection: some View {
+        Section {
+            ForEach(draft.items) { item in
+                itemRow(item)
+            }
+            .onDelete { draft.items.remove(atOffsets: $0) }
+            .onMove { draft.items.move(fromOffsets: $0, toOffset: $1) }
+            addButtons(for: Self.looseId, count: draft.items.count)
+        } header: {
+            Text("Items on their own")
+        } footer: {
+            Text("No group needed: these show straight under the heading. With groups too, they show as “Top picks” after the group tiles. Swipe left to take one out (it stays in your stock).")
+        }
+    }
+
+    private func itemRow(_ item: Spotlight.Item) -> some View {
+        HStack(spacing: 12) {
+            photo(item.img, size: CGSize(width: 40, height: 40))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .lineLimit(2)
+                Text(priceLine(item))
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    /// "New item" and, as its own button, "Add from stock".
+    private func addButtons(for sectionId: String, count: Int) -> some View {
+        HStack(spacing: 10) {
+            Button {
+                newItemFor = SectionRef(id: sectionId)
+            } label: {
+                Label("New item", systemImage: "shippingbox")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            Button {
+                stockFor = SectionRef(id: sectionId)
+            } label: {
+                Label("Add from stock", systemImage: "square.grid.2x2")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .font(.system(size: 15, weight: .semibold))
+        .tint(Color(hex: 0xB26B00))
+        .disabled(count >= Spotlight.maxItems)
+    }
+
+    private func items(in sectionId: String) -> [Spotlight.Item] {
+        sectionId == Self.looseId ? draft.items : (draft.sections.first { $0.id == sectionId }?.items ?? [])
     }
 
     private func photo(_ link: String, size: CGSize) -> some View {
@@ -288,6 +332,12 @@ struct AdminSpotlightView: View {
     }
 
     private func append(_ items: [Spotlight.Item], to sectionId: String) {
+        if sectionId == Self.looseId {
+            let have = Set(draft.items.map(\.id))
+            let fresh = items.filter { !have.contains($0.id) }
+            draft.items.append(contentsOf: fresh.prefix(max(0, Spotlight.maxItems - draft.items.count)))
+            return
+        }
         guard let i = draft.sections.firstIndex(where: { $0.id == sectionId }) else { return }
         let have = Set(draft.sections[i].items.map(\.id))
         let fresh = items.filter { !have.contains($0.id) }
@@ -308,9 +358,9 @@ struct AdminSpotlightView: View {
     /// Switches the tab on or off at once: only `enabled` is written, so unsaved edits stay unsaved.
     private func switchLive(_ on: Bool) {
         guard let current = saved, !isSwitching, on != current.enabled else { return }
-        if on && !current.sections.contains(where: { !$0.items.isEmpty }) {
+        if on && !current.hasAnyItem {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
-            show(ok: false, "Add a group with at least one item and Save it first, then switch the tab on.")
+            show(ok: false, "Add at least one item and Save it first, then switch the tab on.")
             return
         }
         isSwitching = true
@@ -389,6 +439,9 @@ private struct RequiredPhotoField: View {
     @ObservedObject var vm: AdminDashboardViewModel
     @Binding var link: String
     var tall = false
+    /// A ready-made prompt for an AI image tool, shown with a Copy button.
+    var prompt: String = ""
+    @State private var copied = false
 
     @State private var picked: PhotosPickerItem? = nil
     @State private var isUploading = false
@@ -459,6 +512,39 @@ private struct RequiredPhotoField: View {
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
             .font(.system(size: 14))
+        if !prompt.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("No photo? Use this prompt")
+                        .font(.system(size: 12, weight: .heavy))
+                        .foregroundColor(Color(hex: 0x8A5A00))
+                    Spacer()
+                    Button {
+                        UIPasteboard.general.string = prompt
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        copied = true
+                        Task {
+                            try? await Task.sleep(for: .seconds(1.8))
+                            copied = false
+                        }
+                    } label: {
+                        Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Color(hex: 0xB26B00))
+                }
+                Text(prompt)
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Paste it into ChatGPT or Gemini, save the picture, then choose it above.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 4)
+        }
     }
 }
 
@@ -483,7 +569,7 @@ private struct SpotlightGroupSheet: View {
                     TextField("e.g. Bedsheets & Towels", text: $name)
                 }
                 Section {
-                    RequiredPhotoField(vm: vm, link: $img, tall: true)
+                    RequiredPhotoField(vm: vm, link: $img, tall: true, prompt: Spotlight.photoPrompt(group: true, name: name))
                 } header: {
                     Text("Photo")
                 } footer: {
@@ -551,7 +637,7 @@ private struct SpotlightNewItemSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    RequiredPhotoField(vm: vm, link: $img)
+                    RequiredPhotoField(vm: vm, link: $img, prompt: Spotlight.photoPrompt(group: false, name: name, unit: unit))
                 } header: {
                     Text("Photo")
                 }

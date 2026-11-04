@@ -181,6 +181,8 @@ export function SpotlightGroupTile({ section, onClick }) {
  */
 export default function SpotlightShowcase({ spotlight, cart = [], onAdd, onUpdateQty, onOpen }) {
   if (!spotlight) return null;
+  const hasGroups = spotlight.sections.length > 0;
+  const loose = spotlight.products || [];
   const qtyOf = (p) => cart.find((i) => String(i.id || i.barcode) === String(p.id || p.barcode))?.qty || 0;
   const jump = (id) => {
     hapticLight();
@@ -212,22 +214,43 @@ export default function SpotlightShowcase({ spotlight, cart = [], onAdd, onUpdat
         </span>
       </motion.section>
 
-      {/* The groups */}
-      <motion.div
-        initial="hidden"
-        animate="show"
-        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
-        className="grid grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-3.5"
-      >
-        {spotlight.sections.map((s) => (
-          <motion.div key={s.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE_OUT } } }}>
-            <SpotlightGroupTile section={s} onClick={() => jump(s.id)} />
+      {/* The groups, when there are any: a photo tile each, then the bunting rule. */}
+      {hasGroups && (
+        <>
+          <motion.div
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+            className="grid grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-3.5"
+          >
+            {spotlight.sections.map((s) => (
+              <motion.div key={s.id} variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: EASE_OUT } } }}>
+                <SpotlightGroupTile section={s} onClick={() => jump(s.id)} />
+              </motion.div>
+            ))}
           </motion.div>
-        ))}
-      </motion.div>
 
-      {/* A bunting rule, as in the reference */}
-      <div className="h-3 -mx-4 sm:mx-0 bg-[radial-gradient(circle,#D4900F_1.6px,transparent_2px)] dark:bg-[radial-gradient(circle,#FFC93C_1.6px,transparent_2px)] bg-[length:14px_12px] opacity-60" aria-hidden="true" />
+          {/* A bunting rule between the groups and the items, as in the reference */}
+          <div className="h-3 -mx-4 sm:mx-0 bg-[radial-gradient(circle,#D4900F_1.6px,transparent_2px)] dark:bg-[radial-gradient(circle,#FFC93C_1.6px,transparent_2px)] bg-[length:14px_12px] opacity-60" aria-hidden="true" />
+        </>
+      )}
+
+      {/* Items on their own, in no group */}
+      {loose.length > 0 && (
+        <section className="space-y-3">
+          {hasGroups && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="w-2 h-2 rotate-45 bg-[#D4900F] dark:bg-[#FFC93C]" aria-hidden="true" />
+              <h2 className={`font-extrabold text-[17px] md:text-xl tracking-tight ${INK}`}>Top picks</h2>
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
+            {loose.map((p) => (
+              <SpotlightItemCard key={p.id} product={p} qty={qtyOf(p)} onAdd={onAdd} onUpdateQty={onUpdateQty} onOpen={onOpen} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Each group's items */}
       {spotlight.sections.map((s) => (

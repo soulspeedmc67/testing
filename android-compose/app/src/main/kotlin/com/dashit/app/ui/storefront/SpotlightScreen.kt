@@ -189,8 +189,16 @@ fun SpotlightTab(label: String, isSelected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Rows of three group tiles the feed shows (for working out where each group's items start). */
-fun spotlightTileRows(sections: List<Spotlight.ShownSection>) = (sections.size + 2) / 3
+/**
+ * Where group `index`'s title is in the home LazyColumn, counting what comes
+ * before it there: the header, the pinned bar, the hero, then (with groups) the
+ * tile rows and the bunting, then (with items on their own) their title and rows.
+ */
+fun spotlightGroupItemIndex(sections: List<Spotlight.ShownSection>, items: List<Product>, index: Int): Int {
+    val tiles = if (sections.isEmpty()) 0 else (sections.size + 2) / 3 + 1
+    val loose = if (items.isEmpty()) 0 else (if (sections.isEmpty()) 0 else 1) + (items.size + 1) / 2
+    return 3 + tiles + loose + index * 2
+}
 
 /**
  * The spotlight page as LazyColumn items: hero, group tiles, a bunting rule,
@@ -199,6 +207,7 @@ fun spotlightTileRows(sections: List<Spotlight.ShownSection>) = (sections.size +
 fun LazyListScope.spotlightFeed(
     spotlight: Spotlight,
     sections: List<Spotlight.ShownSection>,
+    items: List<Product>,
     cartQty: Map<String, Int>,
     onJump: (Int) -> Unit,
     onOpen: (Product) -> Unit,
@@ -206,58 +215,69 @@ fun LazyListScope.spotlightFeed(
     onDecrement: (Product) -> Unit
 ) {
     item(key = "spot_hero") { SpotlightHero(spotlight) }
-    sections.chunked(3).forEachIndexed { row, rowSections ->
-        item(key = "spot_tiles_$row") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                rowSections.forEachIndexed { col, section ->
-                    SpotlightGroupTile(section, Modifier.weight(1f)) { onJump(row * 3 + col) }
+    // Groups are optional: their tiles and the bunting under them show only when there are some.
+    if (sections.isNotEmpty()) {
+        sections.chunked(3).forEachIndexed { row, rowSections ->
+            item(key = "spot_tiles_$row") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    rowSections.forEachIndexed { col, section ->
+                        SpotlightGroupTile(section, Modifier.weight(1f)) { onJump(row * 3 + col) }
+                    }
+                    repeat(3 - rowSections.size) { Spacer(Modifier.weight(1f)) }
                 }
-                repeat(3 - rowSections.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        item(key = "spot_bunting") {
+            val dot = SpotlightColors.Ornament.copy(alpha = 0.6f)
+            Canvas(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp)
+                    .height(10.dp)
+            ) {
+                var x = 7.dp.toPx()
+                while (x < size.width) {
+                    drawCircle(dot, radius = 1.8.dp.toPx(), center = Offset(x, size.height / 2))
+                    x += 14.dp.toPx()
+                }
             }
         }
     }
-    item(key = "spot_bunting") {
-        val dot = SpotlightColors.Ornament.copy(alpha = 0.6f)
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .padding(top = 20.dp)
-                .height(10.dp)
-        ) {
-            var x = 7.dp.toPx()
-            while (x < size.width) {
-                drawCircle(dot, radius = 1.8.dp.toPx(), center = Offset(x, size.height / 2))
-                x += 14.dp.toPx()
+    // Items on their own: two to a row, titled only when there are groups too.
+    if (items.isNotEmpty()) {
+        if (sections.isNotEmpty()) {
+            item(key = "spot_loose_title") { SpotlightHeading("Top picks", null) }
+        }
+        items.chunked(2).forEachIndexed { row, pair ->
+            item(key = "spot_loose_$row") {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = if (row == 0 && sections.isEmpty()) 2.dp else 5.dp, bottom = 5.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    pair.forEach { product ->
+                        SpotlightItemCard(
+                            product = product,
+                            quantity = cartQty[product.id] ?: 0,
+                            modifier = Modifier.weight(1f),
+                            onOpen = { onOpen(product) },
+                            onAdd = { onAdd(product) },
+                            onDecrement = { onDecrement(product) }
+                        )
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
             }
         }
     }
     sections.forEach { section ->
-        item(key = "spot_title_${section.id}") {
-            Row(
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Box(
-                    Modifier
-                        .size(8.dp)
-                        .rotate(45f)
-                        .background(SpotlightColors.Ornament)
-                )
-                Text(section.name, color = SpotlightColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text(
-                    "${section.products.size} item${if (section.products.size == 1) "" else "s"}",
-                    color = SpotlightColors.InkSoft,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
+        item(key = "spot_title_${section.id}") { SpotlightHeading(section.name, section.products.size) }
         item(key = "spot_items_${section.id}") {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
@@ -274,6 +294,31 @@ fun LazyListScope.spotlightFeed(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SpotlightHeading(title: String, count: Int?) {
+    Row(
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            Modifier
+                .size(8.dp)
+                .rotate(45f)
+                .background(SpotlightColors.Ornament)
+        )
+        Text(title, color = SpotlightColors.Ink, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        if (count != null) {
+            Text(
+                "$count item${if (count == 1) "" else "s"}",
+                color = SpotlightColors.InkSoft,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }

@@ -174,6 +174,7 @@ fun StorefrontScreen(
     // The owner's special gold tab (data/Spotlight.kt): null when it is off.
     val spotlight by storefrontVm.spotlight.collectAsState()
     val spotlightSections by storefrontVm.spotlightSections.collectAsState()
+    val spotlightItems by storefrontVm.spotlightItems.collectAsState()
     val isSpotlight = selectedCategory == com.dashit.app.data.Spotlight.TAB_ID && spotlight != null
     // Switched off while it was open: back to the whole shop.
     LaunchedEffect(spotlight == null, selectedCategory) {
@@ -349,21 +350,21 @@ fun StorefrontScreen(
                     // left the new list scrolled past its end: a blank screen.
                     // Item 1 is the pinned search bar, so the list starts right under it.
                     val showingKey = selectedCategory to searchQuery
-                    var shownBefore by remember { mutableStateOf<Pair<String?, String>?>(null) }
                     // Switching shelves shows skeleton cards for a moment, then the
                     // new items fade in, instead of the old grid jumping into the new one.
-                    var isSwitching by remember { mutableStateOf(false) }
+                    // Worked out during composition, so the skeleton is there on the very
+                    // frame of the switch (set from an effect, it came a frame late: the
+                    // new list flashed, then the skeleton, then the list again).
+                    var settledKey by remember { mutableStateOf(showingKey) }
+                    val isSwitching = settledKey != showingKey
                     LaunchedEffect(showingKey) {
-                        if (shownBefore != null && shownBefore != showingKey) {
-                            isSwitching = true
-                            withFrameNanos { }
+                        if (settledKey != showingKey) {
                             // Only when scrolled past the search bar: with the header
                             // in view the list already starts at the top.
                             if (homeList.firstVisibleItemIndex >= 1) homeList.scrollToItem(1)
                             delay(240)
-                            isSwitching = false
+                            settledKey = showingKey
                         }
-                        shownBefore = showingKey
                     }
                     // The search bar only needs room for the status bar once it
                     // sticks to the top; above that the header already has it.
@@ -563,10 +564,10 @@ fun StorefrontScreen(
                     spotlightFeed(
                         spotlight = spot,
                         sections = spotlightSections,
+                        items = spotlightItems,
                         cartQty = cartQty,
                         onJump = { index ->
-                            // header, pinned bar, hero, the rows of tiles, the bunting; then a title and a row per group.
-                            val target = 3 + spotlightTileRows(spotlightSections) + 1 + index * 2
+                            val target = spotlightGroupItemIndex(spotlightSections, spotlightItems, index)
                             scope.launch { homeList.animateScrollToItem(target, -pinnedBarPx) }
                         },
                         onOpen = { detailProduct = it },
@@ -634,6 +635,17 @@ fun StorefrontScreen(
                         }
                     }
                 }
+            }
+            // A short list (a small shelf, the skeleton, a special page with few items)
+            // still leaves room under the pinned bar, so the list never has to snap
+            // back up when it replaces a longer one.
+            val isShortList = when {
+                isBrowsing -> false
+                isSpotlight -> spotlightSections.isEmpty() && spotlightItems.size <= 4
+                else -> isSwitching || filteredProductRows.size < 4
+            }
+            if (isShortList) {
+                item(key = "list_floor") { Spacer(Modifier.fillParentMaxHeight(0.7f)) }
             }
         }
     }

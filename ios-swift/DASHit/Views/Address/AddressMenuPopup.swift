@@ -17,6 +17,9 @@ struct AddressMenuPopup: View {
 
     @ObservedObject private var book = AddressBook.shared
     @State private var isShown = false
+    /// The rows' entrance. Only ever turns on: on close the card fades and
+    /// shrinks as one piece, instead of every row blurring away on its own clock.
+    @State private var rowsIn = false
 
     private static let margin: CGFloat = 16
     private static let maxWidth: CGFloat = 400
@@ -48,6 +51,8 @@ struct AddressMenuPopup: View {
 
                 card(listRoom: listRoom)
                     .frame(width: width)
+                    // One layer, so the card, its rows and its shadow scale and fade together.
+                    .compositingGroup()
                     .scaleEffect(isShown ? 1 : 0.2, anchor: origin)
                     .opacity(isShown ? 1 : 0)
                     .offset(x: Self.margin, y: top)
@@ -61,6 +66,7 @@ struct AddressMenuPopup: View {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
                 isShown = true
             }
+            rowsIn = true
         }
         .task {
             await book.importPastOrders(uid: AuthService.shared.firebaseUID)
@@ -92,7 +98,7 @@ struct AddressMenuPopup: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 6)
-            .staggered(0, isShown: isShown)
+            .staggered(0, isShown: rowsIn)
 
             HStack(spacing: 10) {
                 actionTile(
@@ -111,7 +117,7 @@ struct AddressMenuPopup: View {
                 }
             }
             .padding(.horizontal, 12)
-            .staggered(1, isShown: isShown)
+            .staggered(1, isShown: rowsIn)
 
             Text("SAVED ADDRESSES")
                 .font(.system(size: 11, weight: .heavy))
@@ -120,7 +126,7 @@ struct AddressMenuPopup: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 18)
                 .padding(.bottom, 4)
-                .staggered(2, isShown: isShown)
+                .staggered(2, isShown: rowsIn)
 
             savedList(room: listRoom)
         }
@@ -186,7 +192,7 @@ struct AddressMenuPopup: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .staggered(3, isShown: isShown)
+            .staggered(3, isShown: rowsIn)
         } else if Self.rowHeight * CGFloat(book.saved.count) <= listHeight {
             VStack(spacing: 0) {
                 savedRows
@@ -206,7 +212,7 @@ struct AddressMenuPopup: View {
         // Each address comes into focus in turn, out of a soft blur.
         ForEach(Array(book.saved.enumerated()), id: \.element.id) { index, address in
             savedRow(address)
-                .staggered(3 + min(index, 6), isShown: isShown, blur: 8)
+                .staggered(3 + min(index, 6), isShown: rowsIn, blur: 8)
         }
     }
 
@@ -279,11 +285,16 @@ struct AddressMenuPopup: View {
 
     // MARK: - Dismissal
 
-    /// Shrinks back into the row, then leaves; `then` runs straight away so a
-    /// sheet can rise while the menu folds away.
+    /// Shrinks back into the row as one piece on a smooth curve with no bounce,
+    /// and leaves only once that has fully finished (it used to be cut off at
+    /// the spring's "logical" end, while the rows were still fading on their
+    /// own longer clock). `then` runs straight away so a sheet can rise while
+    /// the menu folds away.
     private func close(then action: (() -> Void)? = nil) {
+        guard isShown else { return }
         action?()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
+        HapticsManager.shared.light()
+        withAnimation(.smooth(duration: 0.36), completionCriteria: .removed) {
             isShown = false
         } completion: {
             onDismiss()

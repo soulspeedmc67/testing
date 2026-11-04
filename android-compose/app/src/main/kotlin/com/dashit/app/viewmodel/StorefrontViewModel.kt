@@ -81,8 +81,13 @@ class StorefrontViewModel(
         if (!spot.enabled) emptyList() else spot.shownSections(prods.associateBy { it.id })
     }.flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-    private val _spotlightShown: StateFlow<com.dashit.app.data.Spotlight?> = combine(_spotlight, spotlightSections) { spot, sections ->
-        if (sections.isEmpty()) null else spot
+    /** Its items on their own (in no group), live from the catalogue. */
+    val spotlightItems: StateFlow<List<Product>> = combine(_spotlight, products) { spot, prods ->
+        if (!spot.enabled) emptyList() else spot.shownItems(prods.associateBy { it.id })
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    private val _spotlightShown: StateFlow<com.dashit.app.data.Spotlight?> = combine(_spotlight, spotlightSections, spotlightItems) { spot, sections, items ->
+        if (sections.isEmpty() && items.isEmpty()) null else spot
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _searchQuery = MutableStateFlow("")

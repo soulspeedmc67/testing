@@ -90,47 +90,61 @@ struct SpotlightSparkles: View {
 struct SpotlightShowcase: View {
     let spotlight: Spotlight
     let sections: [Spotlight.ShownSection]
+    /// Items on their own, in no group.
+    var items: [Product] = []
     var onJump: (String) -> Void = { _ in }
     var onOpen: (Product) -> Void = { _ in }
     var onRequestAgeConfirmation: (Product) -> Void = { _ in }
 
     @State private var appeared = false
     private let tileColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 3)
+    private let itemColumns = Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 2)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             hero
 
-            LazyVGrid(columns: tileColumns, spacing: 12) {
-                ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
-                    SpotlightGroupTile(section: section) { onJump(Self.anchorId(section.id)) }
-                        .opacity(appeared ? 1 : 0)
-                        .offset(y: appeared ? 0 : 12)
-                        .animation(.spring(response: 0.45, dampingFraction: 0.85).delay(Double(index) * 0.04), value: appeared)
+            // Groups are optional: their tiles and the bunting under them show only when there are some.
+            if !sections.isEmpty {
+                LazyVGrid(columns: tileColumns, spacing: 12) {
+                    ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                        SpotlightGroupTile(section: section) { onJump(Self.anchorId(section.id)) }
+                            .opacity(appeared ? 1 : 0)
+                            .offset(y: appeared ? 0 : 12)
+                            .animation(.spring(response: 0.45, dampingFraction: 0.85).delay(Double(index) * 0.04), value: appeared)
+                    }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
 
-            BuntingRule()
-                .padding(.top, 24)
+                BuntingRule()
+                    .padding(.top, 24)
+            }
+
+            // Items on their own: a two-column grid, titled only when groups are there too.
+            if !items.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    if !sections.isEmpty {
+                        sectionHeading("Top picks", count: nil)
+                    }
+                    LazyVGrid(columns: itemColumns, spacing: 10) {
+                        ForEach(items) { product in
+                            SpotlightItemCard(
+                                product: product,
+                                onOpen: { onOpen(product) },
+                                onRequestAgeConfirmation: { onRequestAgeConfirmation(product) }
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.top, sections.isEmpty ? 4 : 26)
+            }
 
             ForEach(sections) { section in
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 8) {
-                        Rectangle()
-                            .fill(SpotlightPalette.ornament)
-                            .frame(width: 8, height: 8)
-                            .rotationEffect(.degrees(45))
-                        Text(section.name)
-                            .font(.system(size: 18, weight: .heavy))
-                            .foregroundColor(SpotlightPalette.ink)
-                        Text("\(section.products.count) item\(section.products.count == 1 ? "" : "s")")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(SpotlightPalette.inkSoft)
-                    }
-                    .padding(.horizontal, 16)
-                    .id(Self.anchorId(section.id))
+                    sectionHeading(section.name, count: section.products.count)
+                        .id(Self.anchorId(section.id))
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         LazyHStack(alignment: .top, spacing: 10) {
@@ -154,6 +168,24 @@ struct SpotlightShowcase: View {
     }
 
     static func anchorId(_ sectionId: String) -> String { "spot-\(sectionId)" }
+
+    private func sectionHeading(_ title: String, count: Int?) -> some View {
+        HStack(spacing: 8) {
+            Rectangle()
+                .fill(SpotlightPalette.ornament)
+                .frame(width: 8, height: 8)
+                .rotationEffect(.degrees(45))
+            Text(title)
+                .font(.system(size: 18, weight: .heavy))
+                .foregroundColor(SpotlightPalette.ink)
+            if let count {
+                Text("\(count) item\(count == 1 ? "" : "s")")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(SpotlightPalette.inkSoft)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
 
     private var hero: some View {
         VStack(spacing: 0) {

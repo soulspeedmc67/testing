@@ -2,6 +2,7 @@ package com.dashit.app.ui.address
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -114,13 +115,18 @@ fun AddressMenuPopup(
         progress.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 260f))
     }
 
-    /** Shrinks back into the row; `then` runs straight away so the next screen can rise as it folds. */
+    /**
+     * Shrinks back into the row as one piece, on a smooth curve about as long as
+     * the opening (it used to snap shut on a stiff spring, with every row fading
+     * out on its own). `then` runs straight away so the next screen can rise as it folds.
+     */
     fun close(then: (() -> Unit)? = null) {
         if (isClosing) return
         isClosing = true
         then?.invoke()
+        HapticsManager.light(view)
         scope.launch {
-            progress.animateTo(0f, spring(dampingRatio = 1f, stiffness = 700f))
+            progress.animateTo(0f, tween(durationMillis = 340, easing = CubicBezierEasing(0.32f, 0f, 0.15f, 1f)))
             onDismiss()
         }
     }
@@ -136,6 +142,8 @@ fun AddressMenuPopup(
             ((it.left + with(density) { 8.dp.toPx() } - with(density) { margin.toPx() }) / with(density) { cardWidth.toPx() }).coerceIn(0f, 1f)
         } ?: 0.1f
         val p = progress.value
+        // The rows only stagger in: while closing they stay put and the card fades as one.
+        val rowP = if (isClosing) 1f else p
 
         Box(
             Modifier
@@ -167,7 +175,7 @@ fun AddressMenuPopup(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 6.dp)
-                    .stagger(0, p),
+                    .stagger(0, rowP),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Deliver to", color = DashitColors.TextPrimary, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
@@ -184,7 +192,7 @@ fun AddressMenuPopup(
             }
 
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp).stagger(1, p),
+                modifier = Modifier.padding(horizontal = 12.dp).stagger(1, rowP),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 ActionTile(Icons.Filled.Search, "Search address", "Type a street or landmark", Modifier.weight(1f)) {
@@ -201,12 +209,12 @@ fun AddressMenuPopup(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.2.sp,
-                modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 4.dp).stagger(2, p)
+                modifier = Modifier.padding(start = 16.dp, top = 18.dp, bottom = 4.dp).stagger(2, rowP)
             )
 
             if (saved.isEmpty()) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).stagger(3, p),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).stagger(3, rowP),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -223,7 +231,7 @@ fun AddressMenuPopup(
                         SavedRow(
                             address = address,
                             isCurrent = current?.let { AddressBook.isCurrent(address) } ?: false,
-                            modifier = Modifier.stagger(3 + minOf(index, 6), p)
+                            modifier = Modifier.stagger(3 + minOf(index, 6), rowP)
                         ) {
                             HapticsManager.success(view)
                             AddressBook.use(address)

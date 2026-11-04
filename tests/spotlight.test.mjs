@@ -9,6 +9,7 @@ import {
   shopperSpotlight,
   itemFromProduct,
   moveEntry,
+  photoPrompt,
 } from "../src/lib/spotlight.js";
 
 const PHOTO = "https://dashit.co.in/uploads/a.jpg";
@@ -81,4 +82,19 @@ test("a shop product is copied onto an item, and lists reorder", () => {
   assert.deepEqual(item, { id: "7", name: "Bottle", img: PHOTO, price: 999, mrp: 2499, unit: "1200 ml" });
   assert.deepEqual(moveEntry(["a", "b", "c"], 0, 2), ["b", "c", "a"]);
   assert.deepEqual(moveEntry(["a", "b"], 0, -1), ["a", "b"]);
+});
+
+test("items can sit on their own, with no group at all", () => {
+  const raw = { enabled: true, items: [{ id: "p9", name: "Brass diya", img: PHOTO, price: 149 }], sections: [] };
+  const spot = shopperSpotlight(raw, []);
+  assert.equal(spot.sections.length, 0);
+  assert.equal(spot.products.length, 1);
+  assert.equal(spot.products[0].name, "Brass diya");
+  assert.deepEqual(spotlightProblems({ ...raw, tabLabel: "Diwali", title: "Diwali" }), []);
+  assert.ok(spotlightProblems({ tabLabel: "A", title: "B", enabled: true, items: [{ id: "x", name: "No photo", img: "", price: 5 }] }).some((p) => p.includes('"No photo" needs a photo')));
+});
+
+test("photo prompts name the item or the group", () => {
+  assert.match(photoPrompt("item", "Lavender diffuser", "1 set"), /Lavender diffuser \(1 set\).*white background/);
+  assert.match(photoPrompt("group", "Bedsheets & Towels"), /"Bedsheets & Towels".*4:5/);
 });

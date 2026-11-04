@@ -124,34 +124,22 @@ private struct SpotlightTab: View {
     let action: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var sweep = false
-    @State private var glow = false
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 5) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(SpotlightPalette.tabFill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.7), lineWidth: 0.8)
-                        )
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(SpotlightPalette.deepInk)
-                    // The light sweeping across.
-                    GeometryReader { geo in
-                        LinearGradient(colors: [.clear, .white.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: geo.size.width * 0.5)
-                            .rotationEffect(.degrees(18))
-                            .offset(x: sweep ? geo.size.width * 1.4 : -geo.size.width * 0.8)
-                    }
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    .allowsHitTesting(false)
+                // Driven by the clock, not by a repeat-forever animation: one of
+                // those, started on appear in a scrolling list, can leak into
+                // layout changes and make the tabs drift or jump.
+                TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { context in
+                    let t = context.date.timeIntervalSinceReferenceDate
+                    // The light crosses in the first 1.6 s of every 2.2 s.
+                    let cycle = t.truncatingRemainder(dividingBy: 2.2) / 1.6
+                    let sweep = reduceMotion ? -1 : min(cycle, 1)
+                    let glow = reduceMotion ? 0.5 : (sin(t * 2 * .pi / 2.6) + 1) / 2
+                    tile(sweep: sweep, glow: glow)
                 }
                 .frame(width: 30, height: 24)
-                .shadow(color: SpotlightPalette.glow.opacity(glow ? 0.75 : 0.35), radius: glow ? 7 : 3, y: 1)
                 .scaleEffect(isSelected ? 1.08 : 1)
 
                 Text(title)
@@ -174,10 +162,29 @@ private struct SpotlightTab: View {
         .buttonStyle(PressableButtonStyle(scale: 0.94))
         .accessibilityLabel("\(title), special collection")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.6).delay(0.4).repeatForever(autoreverses: false)) { sweep = true }
-            withAnimation(.easeInOut(duration: 1.3).repeatForever(autoreverses: true)) { glow = true }
+    }
+
+    /// The gold tile; `sweep` 0…1 is where the light is (below 0: none), `glow` 0…1 the pulse.
+    private func tile(sweep: Double, glow: Double) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        return ZStack {
+            shape
+                .fill(SpotlightPalette.tabFill)
+                .overlay(shape.strokeBorder(Color.white.opacity(0.7), lineWidth: 0.8))
+            Image(systemName: "sparkles")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(SpotlightPalette.deepInk)
+            if sweep >= 0 {
+                GeometryReader { geo in
+                    LinearGradient(colors: [.clear, .white.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: geo.size.width * 0.5)
+                        .rotationEffect(.degrees(18))
+                        .offset(x: -geo.size.width * 0.8 + geo.size.width * 2.2 * sweep)
+                }
+                .allowsHitTesting(false)
+            }
         }
+        .clipShape(shape)
+        .shadow(color: SpotlightPalette.glow.opacity(0.35 + 0.4 * glow), radius: 3 + 4 * glow, y: 1)
     }
 }
