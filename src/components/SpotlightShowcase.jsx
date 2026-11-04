@@ -158,14 +158,16 @@ export function SpotlightGroupTile({ section, onClick }) {
   return (
     <button type="button" onClick={onClick} className={`${TILE} w-full aspect-[4/5] flex flex-col text-center cursor-pointer group active:scale-[0.97] transition-transform`}>
       <span className={`relative z-10 px-2 pt-3 text-[12.5px] sm:text-[14px] font-extrabold leading-tight line-clamp-2 ${INK}`}>{section.name}</span>
-      <span className="relative flex-1 mt-1">
+      {/* The photo sits in a rounded well inset in the tile, so a photo with its
+          own background never shows square corners against the gold. */}
+      <span className="relative flex-1 mx-2 mb-2 mt-1.5 rounded-[16px] overflow-hidden bg-white/90 dark:bg-white/95 shadow-[inset_0_0_0_1px_rgba(242,185,43,0.35)]">
         {section.img && (
           <img
             src={section.img}
             alt=""
             loading="lazy"
             decoding="async"
-            className="absolute inset-x-1.5 bottom-0 w-[calc(100%-12px)] h-full object-contain object-bottom drop-shadow-[0_6px_8px_rgba(90,50,0,0.25)] transition-transform duration-500 group-hover:scale-[1.04]"
+            className="absolute inset-0 w-full h-full object-contain p-1.5 transition-transform duration-500 group-hover:scale-[1.05]"
           />
         )}
       </span>

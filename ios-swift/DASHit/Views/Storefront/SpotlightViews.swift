@@ -218,17 +218,29 @@ struct SpotlightGroupTile: View {
                     .lineLimit(2, reservesSpace: true)
                     .padding(.horizontal, 6)
                     .padding(.top, 12)
-                CachedAsyncImage(url: URL(string: section.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFit()
-                    default:
-                        Color.clear
+                // The photo sits in a rounded well inset in the tile, so a photo
+                // with its own background never shows square corners on the gold.
+                Color.white.opacity(0.92)
+                    .overlay {
+                        CachedAsyncImage(url: URL(string: section.img), transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFit()
+                            default:
+                                Color.clear
+                            }
+                        }
+                        .padding(5)
                     }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding(.horizontal, 6)
-                .shadow(color: Color(hex: 0x5A3200).opacity(0.25), radius: 6, y: 5)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .strokeBorder(SpotlightPalette.tileBorder.opacity(0.35), lineWidth: 1)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
+                    .padding(.top, 2)
             }
             .frame(maxWidth: .infinity)
             .aspectRatio(0.8, contentMode: .fit)

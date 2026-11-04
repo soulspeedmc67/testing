@@ -402,15 +402,27 @@ private fun SpotlightGroupTile(section: Spotlight.ShownSection, modifier: Modifi
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 12.dp)
         )
-        ShimmerImage(
-            model = request,
-            contentDescription = section.name,
-            contentScale = ContentScale.Fit,
+        // The photo sits in a rounded well inset in the tile, so a photo with
+        // its own background never shows square corners on the gold.
+        val well = RoundedCornerShape(16.dp)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(start = 6.dp, end = 6.dp, top = 4.dp)
-        )
+                .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 8.dp)
+                .clip(well)
+                .background(Color.White.copy(alpha = 0.92f))
+                .border(1.dp, SpotlightColors.TileBorder.copy(alpha = 0.35f), well)
+        ) {
+            ShimmerImage(
+                model = request,
+                contentDescription = section.name,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(5.dp)
+            )
+        }
     }
 }
 

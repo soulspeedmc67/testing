@@ -15,6 +15,8 @@ struct AdminSpotlightView: View {
     @State private var draft = Spotlight()
     @State private var listener: ListenerRegistration? = nil
     @State private var isSaving = false
+    /// The on/off switch is being written.
+    @State private var isSwitching = false
     @State private var triedSave = false
     @State private var note: (ok: Bool, text: String)? = nil
     @State private var noteTask: Task<Void, Never>? = nil
@@ -145,18 +147,33 @@ struct AdminSpotlightView: View {
 
     // MARK: - Sections
 
+    @ViewBuilder
     private var tabSection: some View {
         Section {
-            Toggle(isOn: $draft.enabled) {
-                Text("Show to customers")
-                    .font(.system(size: 17, weight: .semibold))
+            // Works at once, any time, without Save.
+            HStack {
+                Toggle(isOn: Binding(get: { saved?.enabled ?? false }, set: { switchLive($0) })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text((saved?.enabled ?? false) ? "On: customers see it" : "Off: customers don't see it")
+                            .font(.system(size: 17, weight: .semibold))
+                        Text("Switches at once. No Save needed.")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .tint(Color(hex: 0xE0A200))
+                .disabled(isSwitching)
+                if isSwitching { ProgressView().padding(.leading, 6) }
             }
-            .tint(Color(hex: 0xE0A200))
+        } header: {
+            Text("Show the special tab")
+        }
+        Section {
             TextField("Tab name, e.g. Diwali", text: $draft.tabLabel)
             TextField("Heading, e.g. Furnishing & Dining", text: $draft.title)
             TextField("Line under the heading (optional)", text: $draft.subtitle)
         } header: {
-            Text("Special tab")
+            Text("Words")
         } footer: {
             Text("A gold tab next to “All” on the home screen of the website and both apps. Tapping it turns the home screen gold and shows your groups and items.")
         }
@@ -285,6 +302,38 @@ struct AdminSpotlightView: View {
             // An untouched page follows a save made elsewhere.
             if saved == nil || draft == saved { draft = fetched }
             saved = fetched
+        }
+    }
+
+    /// Switches the tab on or off at once: only `enabled` is written, so unsaved edits stay unsaved.
+    private func switchLive(_ on: Bool) {
+        guard let current = saved, !isSwitching, on != current.enabled else { return }
+        if on && !current.sections.contains(where: { !$0.items.isEmpty }) {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            show(ok: false, "Add a group with at least one item and Save it first, then switch the tab on.")
+            return
+        }
+        isSwitching = true
+        let ref = Firestore.firestore().collection("config").document("spotlight")
+        Task {
+            let outcome = await vm.awaitWrite("The switch") { done in
+                ref.setData(["enabled": on, "updatedAt": FieldValue.serverTimestamp()], merge: true, completion: done)
+            }
+            isSwitching = false
+            switch outcome {
+            case .saved, .waiting:
+                saved?.enabled = on
+                draft.enabled = on
+                UINotificationFeedbackGenerator().notificationOccurred(outcome == .saved ? .success : .warning)
+                if outcome == .waiting {
+                    show(ok: false, "No answer from the server yet. It switches as soon as the internet is back.")
+                } else {
+                    show(ok: true, on ? "Switched on. Customers see “\(current.tabLabel)” on the home screen now." : "Switched off. Customers don't see the special tab now.")
+                }
+            case .failed(let text):
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+                show(ok: false, text)
+            }
         }
     }
 

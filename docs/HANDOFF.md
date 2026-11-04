@@ -31,6 +31,10 @@ iOS and Android NOT compiled here (no Swift toolchain or Android SDK reachable);
   the changes now.", "Saved on this phone…" (offline), or why it failed. Save is grey ("Saved") while nothing differs from what is saved.
   Website console: the delivery-charge Save buttons now grey out when nothing changed too (the others already did).
 - Fixed on the way: a cache-only "document missing" answer no longer wipes the saved copy of the spotlight on any platform.
+- **Later the same day**: group photos sit in a rounded white well inside the gold tile (square photo corners showed on the gold);
+  the editor's on/off switch now works at once without Save (writes only `enabled`; switching on needs a saved group with an item).
+  TestFlight build started from this branch by hand (`ios-swift-build.yml`, workflow_dispatch). The owner's compliance guard
+  script isn't in the cloud container, so it was NOT run: run it before any App Store submission.
 
 ## Oct 29, 2026 (night): Android 1.2.4 (106): Google sign-in hardened, one-command package with the APK
 

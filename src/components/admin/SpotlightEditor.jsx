@@ -22,7 +22,7 @@ import AdminSheet from "./AdminSheet";
 import { Switch } from "./ShopRulesSettings";
 import SpotlightShowcase, { SPOTLIGHT_PAGE_BG } from "../SpotlightShowcase";
 import { uploadStaffPhoto } from "../../lib/staffUpload";
-import { watchSpotlight, saveSpotlight, createProductStrict } from "../../lib/db";
+import { watchSpotlight, saveSpotlight, setSpotlightEnabled, createProductStrict } from "../../lib/db";
 import { isAgeRestricted } from "../../lib/ageGate";
 import {
   LIMITS,
@@ -49,6 +49,7 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
   const [saved, setSaved] = useState(null); // normalized, as on the server
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [status, setStatus] = useState(null); // { ok, text }
   const [triedSave, setTriedSave] = useState(false);
   const [groupSheet, setGroupSheet] = useState(null); // { id?, name, img }
@@ -131,6 +132,41 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
     }
   };
 
+  /* On or off at once, any time, without Save: only `enabled` is written, so
+     unsaved changes to groups and items stay unsaved. */
+  const switchLive = async () => {
+    if (!saved || switching) return;
+    const next = !saved.enabled;
+    if (next && !saved.sections.some((s) => s.items.length > 0)) {
+      setStatus({ ok: false, text: "Add a group with at least one item and Save it first, then switch the tab on." });
+      return;
+    }
+    setSwitching(true);
+    setStatus(null);
+    try {
+      const answered = await Promise.race([
+        setSpotlightEnabled(next).then(() => true),
+        new Promise((resolve) => setTimeout(() => resolve(false), 15000)),
+      ]);
+      setDraft((d) => ({ ...d, enabled: next }));
+      const text = !answered
+        ? "No answer from the server yet. It will switch when the internet is back."
+        : next
+        ? `Switched on. Customers see “${saved.tabLabel}” on the home screen now.`
+        : "Switched off. Customers don't see the special tab now.";
+      setStatus({ ok: answered, text });
+      showToast?.(text);
+    } catch (e) {
+      const text = /permission|insufficient/i.test(e?.message || "")
+        ? "Not switched. This account isn't allowed to make changes."
+        : "Not switched. Check the internet connection and try again.";
+      setStatus({ ok: false, text });
+      showToast?.(text);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   const preview = useMemo(() => (draft ? shopperSpotlight({ ...draft, enabled: true }, catalogue) : null), [draft, catalogue]);
 
   const card = `rounded-2xl border p-4 sm:p-5 space-y-4 ${darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200 shadow-xs"}`;
@@ -171,7 +207,24 @@ export default function SpotlightEditor({ catalogue = [], categories = [], showT
               </p>
             </div>
           </div>
-          <Switch on={draft.enabled} label="Show the special tab to customers" onChange={() => set({ enabled: !draft.enabled })} />
+        </div>
+        {/* Live switch: works at once, separate from Save. */}
+        <div
+          className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+            saved?.enabled
+              ? "border-[#E0A200]/60 bg-gradient-to-r from-[#FFF4CC] to-[#FFE58A] dark:from-[#3A2B07] dark:to-[#2C2005]"
+              : darkMode
+              ? "border-zinc-800 bg-[#1A1D26]"
+              : "border-slate-200 bg-slate-50"
+          }`}
+        >
+          <div className="min-w-0">
+            <p className={`text-sm font-black ${saved?.enabled ? "text-[#4A2E00] dark:text-[#FFD45C]" : "text-slate-900 dark:text-white"}`}>
+              {saved?.enabled ? "On: customers see the special tab" : "Off: customers don't see it"}
+            </p>
+            <p className={help}>Switches at once, any time. No Save needed, and your other changes stay as they are.</p>
+          </div>
+          <Switch on={Boolean(saved?.enabled)} busy={switching} disabled={switching} label="Show the special tab to customers" onChange={switchLive} />
         </div>
         <div className="grid sm:grid-cols-3 gap-3">
           <div>

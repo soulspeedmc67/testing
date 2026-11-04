@@ -3448,6 +3448,13 @@ export async function saveSpotlight(spotlight) {
   await setDoc(doc(db, "config", "spotlight"), { ...spotlight, updatedAt: serverTimestamp() });
 }
 
+/** Switches the spotlight tab on or off at once, leaving everything else as saved. */
+export async function setSpotlightEnabled(enabled) {
+  const db = getDb();
+  if (!db) throw new Error("Not connected to the shop's database.");
+  await setDoc(doc(db, "config", "spotlight"), { enabled: Boolean(enabled), updatedAt: serverTimestamp() }, { merge: true });
+}
+
 /** Adds a brand-new product (a spotlight item). Unlike upsertProduct, a refused write throws. */
 export async function createProductStrict(product) {
   const db = getDb();
