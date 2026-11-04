@@ -20,6 +20,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     case addProduct = "Add an item"
     case distributors = "Distributors"
     case offers = "Discounts"
+    case spotlight = "Special tab"
     case storeControls = "Shop settings"
     case batchInward = "Add many at once"
     case importCSV = "Import CSV"
@@ -35,7 +36,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     public var group: NavGroup {
         switch self {
         case .home, .orders, .inventory, .riders, .analytics, .notify: return .everyDay
-        case .addProduct, .distributors, .offers, .storeControls, .batchInward, .importCSV: return .more
+        case .addProduct, .distributors, .offers, .spotlight, .storeControls, .batchInward, .importCSV: return .more
         }
     }
 
@@ -51,6 +52,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .notify: return "Send one notification to every customer with the app: offers, new items, shop news."
         case .distributors: return "The people and companies you buy stock from."
         case .offers: return "Coupon codes your customers can use."
+        case .spotlight: return "A gold tab on the home screen with your own groups and items, like a festive collection."
         case .storeControls: return "Open or close the shop, and set the fees and the extra charge for rain or a rush."
         case .batchInward: return "Got a delivery of stock? Add it for many items at once."
         case .importCSV: return "Add or update many items from a file."
@@ -69,6 +71,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .distributors: return "building.2.fill"
         case .storeControls: return "storefront.fill"
         case .offers: return "sparkles"
+        case .spotlight: return "crown.fill"
         case .batchInward: return "arrow.down.to.line.circle.fill"
         case .importCSV: return "doc.text.fill"
         }
@@ -1498,6 +1501,78 @@ public final class AdminDashboardViewModel: ObservableObject {
         })
     }
 
+    // MARK: - Saving with an answer
+
+    /// How a save that the screen waits on ended.
+    enum SaveOutcome: Equatable {
+        /// The server has it: customers see it now.
+        case saved
+        /// No answer in time (usually no internet). Firestore keeps the write and sends it when it can.
+        case waiting
+        /// Refused; the words say why.
+        case failed(String)
+    }
+
+    /// Plain words for a refused save of `what`.
+    nonisolated static func failureText(_ what: String, _ error: Error) -> String {
+        let nsError = error as NSError
+        let denied = nsError.domain == FirestoreErrorDomain
+            && nsError.code == FirestoreErrorCode.Code.permissionDenied.rawValue
+        return denied
+            ? "\(what) wasn't saved. This account isn't allowed to make changes. Sign out and sign in with the owner account."
+            : "\(what) wasn't saved. Check the internet connection and try again."
+    }
+
+    /// Runs a Firestore write and waits for the server's answer, but never longer than `timeout`:
+    /// offline, Firestore holds the write and only answers once it is back online.
+    func awaitWrite(_ what: String, timeout: Double = 15, _ write: (@escaping (Error?) -> Void) -> Void) async -> SaveOutcome {
+        await withCheckedContinuation { (continuation: CheckedContinuation<SaveOutcome, Never>) in
+            // Both answers arrive on the main queue; whichever comes first wins.
+            let once = AnswerOnce()
+            write { error in
+                DispatchQueue.main.async {
+                    guard once.take() else { return }
+                    let outcome: SaveOutcome = error.map { SaveOutcome.failed(AdminDashboardViewModel.failureText(what, $0)) } ?? SaveOutcome.saved
+                    continuation.resume(returning: outcome)
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeout) {
+                guard once.take() else { return }
+                continuation.resume(returning: .waiting)
+            }
+        }
+    }
+
+    /// Everything on the Shop settings page in one write to `config/store`, waiting for the
+    /// server so the page can say it is saved. What is on screen changes only once it is.
+    func saveShopSettings(isOpen: Bool, reason: String, rules: ShopRules, night: NightCharge.Settings) async -> SaveOutcome {
+        var fields = rules.fields
+        fields["isOpen"] = isOpen
+        fields["closeReason"] = reason
+        fields["nightChargeMode"] = night.mode.rawValue
+        fields["nightChargePerKm"] = night.perKm
+        fields["nightChargeMin"] = night.minFee
+        fields["petrolPrice"] = night.petrolPrice
+        fields["bikeMileage"] = night.mileage
+        fields["updatedAt"] = FieldValue.serverTimestamp()
+        let ref = db.collection("config").document("store")
+        let outcome = await awaitWrite("The shop settings") { done in
+            ref.setData(fields, merge: true, completion: done)
+        }
+        switch outcome {
+        case .saved, .waiting:
+            // Waiting: Firestore has it on this phone and sends it when it can, so show it as set.
+            storeConfig.isOpen = isOpen
+            storeConfig.closeReason = reason
+            shopRules = rules
+            nightCharge = night
+            UINotificationFeedbackGenerator().notificationOccurred(outcome == .saved ? .success : .warning)
+        case .failed:
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        }
+        return outcome
+    }
+
     public func addOffer(code: String, title: String, discountPercent: Int, minOrder: Double) {
         let newOffer = Offer(
             id: "off_\(Date().timeIntervalSince1970)",
@@ -1761,3 +1836,17 @@ extension AdminDashboardViewModel {
     }
 }
 #endif
+
+/// True the first time only: lets one of two racing answers resume a continuation.
+final class AnswerOnce {
+    private var taken = false
+    private let lock = NSLock()
+
+    func take() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if taken { return false }
+        taken = true
+        return true
+    }
+}

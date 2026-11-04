@@ -93,6 +93,21 @@ struct StorefrontHomeView: View {
                                 )
                                 .padding(.top, 28)
                             }
+                        } else if vm.isSpotlightSelected, let spotlight = vm.spotlight {
+                            // The owner's special tab: the feed turns gold.
+                            SpotlightShowcase(
+                                spotlight: spotlight,
+                                sections: vm.spotlightSections,
+                                onJump: { id in
+                                    withAnimation(.smooth(duration: 0.45)) {
+                                        scrollProxy?.scrollTo(id, anchor: UnitPoint(x: 0.5, y: 0.24))
+                                    }
+                                },
+                                onOpen: { detailProduct = $0 },
+                                onRequestAgeConfirmation: { ageGateProduct = $0 }
+                            )
+                            .id("spotlight")
+                            .transition(.opacity)
                         } else {
                             resultsGrid
                                 .id("results")
@@ -110,9 +125,9 @@ struct StorefrontHomeView: View {
                     // Pulling past the top drags the feed down; the glow reaches
                     // up behind it so no bare page opens under the status bar.
                     VStack(spacing: 0) {
-                        Color.headerGlow
+                        (vm.isSpotlightSelected ? SpotlightPalette.pageTop : Color.headerGlow)
                             .frame(height: 1000)
-                        HeaderBackdrop()
+                        HeaderBackdrop(gold: vm.isSpotlightSelected)
                             .frame(height: 320)
                     }
                     .offset(y: -1000)
@@ -125,7 +140,7 @@ struct StorefrontHomeView: View {
             // Paints the status bar: the header's glow at rest, the page colour
             // once search has pinned, so nothing shows through behind the clock.
             .safeAreaInset(edge: .top, spacing: 0) {
-                StatusBarBackdrop(chrome: chrome)
+                StatusBarBackdrop(chrome: chrome, gold: vm.isSpotlightSelected)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if !isSearchFocused {
@@ -146,7 +161,20 @@ struct StorefrontHomeView: View {
                 #endif
             }
         }
-        .background(Color.surface.ignoresSafeArea())
+        .background {
+            if vm.isSpotlightSelected {
+                SpotlightBackdrop()
+                    .overlay { SpotlightSparkles().ignoresSafeArea() }
+                    .transition(.opacity)
+            } else {
+                Color.surface.ignoresSafeArea()
+            }
+        }
+        .animation(.easeInOut(duration: 0.45), value: vm.isSpotlightSelected)
+        // The tab was switched off while it was open: back to the whole shop.
+        .onChange(of: vm.spotlight == nil) { _, isGone in
+            if isGone && vm.selectedCategory == Spotlight.tabId { vm.selectCategory(nil) }
+        }
         .overlay {
             // Shown straight away, no transition: simple and steady.
             if isSearchOpen {
@@ -390,10 +418,11 @@ struct StorefrontHomeView: View {
             CategoryTabsView(
                 categories: vm.categories,
                 selectedCategory: vm.selectedCategory,
+                specialLabel: vm.spotlight?.tabLabel,
                 onSelect: { vm.selectCategory($0) }
             )
         }
-        .background(PinnedSearchBackdrop(chrome: chrome))
+        .background(PinnedSearchBackdrop(chrome: chrome, gold: vm.isSpotlightSelected))
         // The pinned bar is always laid out, unlike the header, which a lazy
         // stack drops once it is far off screen; so track the bar's own top.
         .onGeometryChange(for: CGFloat.self) { geometry in
@@ -617,28 +646,36 @@ final class HomeChromeState: ObservableObject {
 /// light mode, a warm amber in dark. Straight top-to-bottom, so it carries on
 /// from the flat colour behind the status bar without a seam.
 private struct HeaderBackdrop: View {
+    /// The spotlight tab is picked: the gold runs on into the gold page behind.
+    var gold = false
+
     var body: some View {
-        LinearGradient(colors: [Color.headerGlow, Color.surface], startPoint: .top, endPoint: .bottom)
+        LinearGradient(
+            colors: gold ? [SpotlightPalette.pageTop, SpotlightPalette.pageTop.opacity(0)] : [Color.headerGlow, Color.surface],
+            startPoint: .top, endPoint: .bottom
+        )
     }
 }
 
 private struct StatusBarBackdrop: View {
     @ObservedObject var chrome: HomeChromeState
+    var gold = false
 
     var body: some View {
         Color.clear
             .frame(height: 0)
-            .background(Color.surface.opacity(chrome.pinProgress))
-            .background(Color.headerGlow)
+            .background((gold ? SpotlightPalette.pageTop : Color.surface).opacity(chrome.pinProgress))
+            .background(gold ? SpotlightPalette.pageTop : Color.headerGlow)
             .animation(.easeOut(duration: 0.15), value: chrome.pinProgress)
     }
 }
 
 private struct PinnedSearchBackdrop: View {
     @ObservedObject var chrome: HomeChromeState
+    var gold = false
 
     var body: some View {
-        Color.surface
+        (gold ? SpotlightPalette.pageTop : Color.surface)
             .opacity(chrome.pinProgress)
             .animation(.easeOut(duration: 0.15), value: chrome.pinProgress)
     }

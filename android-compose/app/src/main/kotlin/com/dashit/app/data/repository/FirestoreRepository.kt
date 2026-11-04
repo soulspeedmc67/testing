@@ -256,6 +256,28 @@ class FirestoreRepository {
 
         awaitClose { listener?.remove() }
     }
+
+    /**
+     * The special gold tab (`config/spotlight`). "Not there" from the offline
+     * cache sends nothing, so a spotlight already shown stays.
+     */
+    fun observeSpotlight(): Flow<com.dashit.app.data.Spotlight> = callbackFlow {
+        val db = firestore
+        if (db == null) {
+            awaitClose { }
+            return@callbackFlow
+        }
+        var listener: ListenerRegistration? = null
+        try {
+            listener = db.collection("config").document("spotlight").addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) return@addSnapshotListener
+                if (!snapshot.exists() && snapshot.metadata.isFromCache) return@addSnapshotListener
+                trySend(com.dashit.app.data.Spotlight.from(snapshot.data ?: emptyMap()))
+            }
+        } catch (_: Exception) {
+        }
+        awaitClose { listener?.remove() }
+    }
 }
 
 /**

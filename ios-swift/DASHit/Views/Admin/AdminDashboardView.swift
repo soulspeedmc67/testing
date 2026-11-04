@@ -320,6 +320,8 @@ public struct AdminDashboardView: View {
                     storeControlsTabContent
                 case .offers:
                     offersTabContent
+                case .spotlight:
+                    AdminSpotlightView(vm: vm)
                 case .batchInward:
                     batchInwardTabContent
                 case .importCSV:
@@ -2253,6 +2255,17 @@ struct StoreControlSheetView: View {
     @State private var etaMinText = ""
     @State private var highDemandText = ""
     @State private var orderChangeText = ""
+    /// Saving now: Save shows a spinner and can't be pressed twice.
+    @State private var isSaving = false
+    /// The answer to the last Save, shown in a banner at the bottom.
+    @State private var saveNote: SaveNote? = nil
+    @State private var saveNoteTask: Task<Void, Never>? = nil
+
+    struct SaveNote: Equatable {
+        enum Kind { case saved, waiting, failed }
+        let kind: Kind
+        let text: String
+    }
 
     /// What customers read after "The store is closed right now." (same words as
     /// the web console's `CLOSE_REASON_PRESETS`). `ownCloseReasonChoice` opens a box to write another.
@@ -2491,19 +2504,119 @@ struct StoreControlSheetView: View {
             .onChange(of: vm.nightCharge) { _, saved in
                 showNightCharge(saved)
             }
+            // Opened or closed from another device (or the saved state arriving late).
+            .onChange(of: vm.storeConfig.isOpen) { _, saved in
+                isOpen = saved
+                showCloseReason(vm.storeConfig.closeReason)
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let saveNote {
+                    saveBanner(saveNote)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 10)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .animation(.spring(response: 0.35, dampingFraction: 0.85), value: saveNote)
+            .onDisappear { saveNoteTask?.cancel() }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        // An open shop has no reason to show.
-                        vm.toggleStore(isOpen: isOpen, reason: isOpen ? "" : chosenCloseReason)
-                        vm.saveShopRules(editedShopRules)
-                        vm.saveNightCharge(editedNightCharge)
-                        if !isEmbedded { dismiss() }
+                    // Grey while nothing differs from what is saved, or while saving.
+                    Button(action: save) {
+                        if isSaving {
+                            HStack(spacing: 6) {
+                                ProgressView()
+                                Text("Saving…")
+                            }
+                        } else {
+                            Text(hasChanges ? "Save" : "Saved")
+                        }
                     }
                     .font(.system(size: 17, weight: .bold))
+                    .disabled(!hasChanges || isSaving)
+                    .accessibilityHint(hasChanges ? "Saves the changes for customers" : "Nothing to save")
                 }
             }
         }
+    }
+
+    // MARK: - Save and its answer
+
+    /// Something on the page differs from what is saved.
+    private var hasChanges: Bool {
+        if isOpen != vm.storeConfig.isOpen { return true }
+        if !isOpen && chosenCloseReason != vm.storeConfig.closeReason { return true }
+        return editedShopRules != vm.shopRules || editedNightCharge != vm.nightCharge
+    }
+
+    /// One write for the whole page, then a banner saying whether it is saved.
+    private func save() {
+        guard hasChanges, !isSaving else { return }
+        isSaving = true
+        saveNoteTask?.cancel()
+        saveNote = nil
+        // An open shop has no reason to show.
+        let reason = isOpen ? "" : chosenCloseReason
+        Task {
+            let outcome = await vm.saveShopSettings(isOpen: isOpen, reason: reason, rules: editedShopRules, night: editedNightCharge)
+            isSaving = false
+            switch outcome {
+            case .saved:
+                showSaveNote(SaveNote(kind: .saved, text: "Saved. Customers see the changes now."))
+                if !isEmbedded {
+                    try? await Task.sleep(for: .milliseconds(900))
+                    dismiss()
+                }
+            case .waiting:
+                showSaveNote(SaveNote(kind: .waiting, text: "Saved on this phone. It reaches customers as soon as the internet is back."))
+            case .failed(let text):
+                showSaveNote(SaveNote(kind: .failed, text: text))
+            }
+        }
+    }
+
+    private func showSaveNote(_ note: SaveNote) {
+        saveNote = note
+        saveNoteTask?.cancel()
+        // A refusal stays until the next Save; good news goes away by itself.
+        guard note.kind != .failed else { return }
+        saveNoteTask = Task {
+            try? await Task.sleep(for: .seconds(note.kind == .saved ? 3 : 6))
+            guard !Task.isCancelled else { return }
+            saveNote = nil
+        }
+    }
+
+    private func saveBanner(_ note: SaveNote) -> some View {
+        let tint: Color = note.kind == .saved ? .green : note.kind == .waiting ? .orange : .red
+        let symbol = note.kind == .saved ? "checkmark.circle.fill" : note.kind == .waiting ? "icloud.and.arrow.up" : "exclamationmark.triangle.fill"
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(tint)
+            Text(note.text)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if note.kind == .failed {
+                Button {
+                    saveNote = nil
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
+                }
+                .accessibilityLabel("Close")
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(tint.opacity(0.35), lineWidth: 1))
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.updatesFrequently)
     }
 
     /// Picks the saved reason in the list, or puts it in the "Write my own" box.

@@ -6,6 +6,32 @@
 
 ---
 
+## Nov 4, 2026: special gold tab on the home screen; Shop settings Save now confirms
+
+Web VERIFIED (131 tests incl. `tests/spotlight.test.mjs`, production build, the shop's gold tab in a browser in light and dark,
+the console editor on a test page: Save grey until a change, photo required, items without a photo can't be picked).
+iOS and Android NOT compiled here (no Swift toolchain or Android SDK reachable); every changed Swift/Kotlin file parses
+(tree-sitter). The Actions builds are the check. Nothing deployed. No rules change (`config/*` is already public-read, admin-write).
+
+- **Special tab** ("spotlight"): one document, `config/spotlight` = `{ enabled, tabLabel, title, subtitle, sections: [{ id, name, img,
+  items: [{ id, name, img, price, mrp, unit }] }] }`. A gold tab with a light sweep sits right after "All" in the category strip; picking
+  it turns the home screen gold (garland of twinkling bulbs, the groups as tall photo tiles in the style of the owner's reference,
+  drifting sparkles) and lists each group's items in the same gold tile style with ADD. Tapping a tile scrolls to its group.
+  Web `src/lib/spotlight.js`, `SpotlightShowcase.jsx`, `CategoryScroller.jsx` (`special`), `shop.js`; iPhone `Models/Spotlight.swift`,
+  `Views/Storefront/SpotlightViews.swift`, `CategoryTabsView.swift`, `StorefrontHomeView.swift`; Android `data/Spotlight.kt`,
+  `ui/storefront/SpotlightScreen.kt`, `StorefrontScreen.kt`. Off, or with no items, there is no tab anywhere.
+- **Every item is a real product**: "New item" (photo, name, price, MRP, pack size, stock, shop category) writes `products/SPOT-…`
+  so stock, checkout and counting work as for any item; "Add from stock" (its own button) picks existing items (tobacco and items
+  without a photo are excluded). The item keeps a copy (name, photo, price) that shows until `catalog.json` has the product (≤ 5 min);
+  after that shoppers see the live price and stock. Removing an item from a group leaves it in stock.
+- **Editing**: website console → Shop → "Special tab" (`SpotlightEditor.jsx`), iPhone admin → More → "Special tab"
+  (`AdminSpotlightView.swift`). Groups and items both need a photo. Nothing reaches customers until Save.
+- **Shop settings Save (iPhone admin) confirms now**: it was three fire-and-forget writes with nothing on screen. Now one write
+  (`saveShopSettings`, waits for the server via `awaitWrite`, 15 s cap), "Saving…" in the button, then a banner: "Saved. Customers see
+  the changes now.", "Saved on this phone…" (offline), or why it failed. Save is grey ("Saved") while nothing differs from what is saved.
+  Website console: the delivery-charge Save buttons now grey out when nothing changed too (the others already did).
+- Fixed on the way: a cache-only "document missing" answer no longer wipes the saved copy of the spotlight on any platform.
+
 ## Oct 29, 2026 (night): Android 1.2.4 (106): Google sign-in hardened, one-command package with the APK
 
 Android compiles. **The signed APK/AAB are NOT built yet**: the owner's compliance guard blocks that build on 3 critical flags (website emulator host,

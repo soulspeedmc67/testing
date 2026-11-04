@@ -34,6 +34,7 @@ import RidersMapPanel from "../components/admin/RidersMapPanel";
 import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
+import SpotlightEditor from "../components/admin/SpotlightEditor";
 import BatchInwardView from "../components/admin/BatchInwardView";
 import CatalogueView from "../components/admin/CatalogueView";
 import OffersView from "../components/admin/OffersView";
@@ -2122,6 +2123,10 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           onToggleOffer={handleToggleOffer}
           darkMode={darkMode}
         />
+      )}
+
+      {activeTab === "spotlight" && (
+        <SpotlightEditor catalogue={catalogue} categories={saleCategories} showToast={showToast} darkMode={darkMode} />
       )}
 
       {activeTab === "csv" && (

@@ -829,3 +829,30 @@ textarea:focus-visible,
 @media (prefers-reduced-motion: reduce) {
   .animate-\[authFloat_5\.2s_ease-in-out_infinite\] { animation: none; }
 }
+
+/* ---- Spotlight tab (src/components/SpotlightShowcase.jsx) ---------------
+   The gold page: twinkling garland bulbs, slow drifting sparkles and a light
+   sweep over the tab in the category strip. All of it stops under Reduce
+   Motion (the rule above shortens every animation to nothing). */
+@keyframes spotTwinkle {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes spotDrift {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  15% { opacity: var(--spot-o, 0.6); }
+  85% { opacity: var(--spot-o, 0.6); }
+  100% { transform: translate3d(var(--spot-dx, 12px), -70px, 0) rotate(90deg); opacity: 0; }
+}
+@keyframes spotSheen {
+  0% { transform: translateX(-130%) skewX(-18deg); }
+  55%, 100% { transform: translateX(230%) skewX(-18deg); }
+}
+@keyframes spotGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.0), 0 4px 14px -4px rgba(214, 140, 0, 0.55); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 199, 44, 0.22), 0 4px 18px -2px rgba(214, 140, 0, 0.7); }
+}
+.spot-twinkle { animation: spotTwinkle 2.4s ease-in-out infinite; }
+.spot-drift { animation: spotDrift var(--spot-t, 9s) linear infinite; animation-delay: var(--spot-d, 0s); }
+.spot-sheen { animation: spotSheen 3.2s ease-in-out infinite; }
+.spot-glow { animation: spotGlow 2.6s ease-in-out infinite; }

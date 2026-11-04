@@ -171,6 +171,14 @@ fun StorefrontScreen(
     val tobaccoProducts by storefrontVm.tobaccoProducts.collectAsState()
     val isBrowsing by storefrontVm.isBrowsing.collectAsState()
     val selectedCategory by storefrontVm.selectedCategory.collectAsState()
+    // The owner's special gold tab (data/Spotlight.kt): null when it is off.
+    val spotlight by storefrontVm.spotlight.collectAsState()
+    val spotlightSections by storefrontVm.spotlightSections.collectAsState()
+    val isSpotlight = selectedCategory == com.dashit.app.data.Spotlight.TAB_ID && spotlight != null
+    // Switched off while it was open: back to the whole shop.
+    LaunchedEffect(spotlight == null, selectedCategory) {
+        if (spotlight == null && selectedCategory == com.dashit.app.data.Spotlight.TAB_ID) storefrontVm.clearFilter()
+    }
     val searchQuery by storefrontVm.searchQuery.collectAsState()
 
     val cartItems by cartVm.items.collectAsState()
@@ -362,6 +370,16 @@ fun StorefrontScreen(
                     val searchPinned by remember { derivedStateOf { homeList.firstVisibleItemIndex > 0 } }
                     val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
                     val searchTopInset by animateDpAsState(if (searchPinned) statusBarTop else 0.dp, label = "search_inset")
+                    // The gold wash and drifting sparkles behind the feed while the special tab is open.
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isSpotlight,
+                        enter = androidx.compose.animation.fadeIn(tween(450)),
+                        exit = androidx.compose.animation.fadeOut(tween(300))
+                    ) {
+                        SpotlightBackdrop(Modifier.fillMaxSize())
+                    }
+                    // Under the pinned search bar and tabs when jumping to a group.
+                    val pinnedBarPx = with(LocalDensity.current) { 132.dp.roundToPx() }
                     LazyColumn(
                         state = homeList,
                         modifier = Modifier.fillMaxSize(),
@@ -392,7 +410,12 @@ fun StorefrontScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(DashitColors.Surface)
+                        .background(
+                            if (isSpotlight) {
+                                // Clear at rest so the gold shows through; gold once pinned.
+                                if (searchPinned) SpotlightColors.PageTop else Color.Transparent
+                            } else DashitColors.Surface
+                        )
                         .padding(top = searchTopInset + 4.dp, bottom = 8.dp)
                 ) {
                     // Search Bar
@@ -410,6 +433,7 @@ fun StorefrontScreen(
                     CategoryTabsRow(
                         categories = categories,
                         selectedCategory = selectedCategory,
+                        specialLabel = spotlight?.tabLabel,
                         onSelectCategory = { storefrontVm.selectCategory(it) }
                     )
                 }
@@ -532,6 +556,23 @@ fun StorefrontScreen(
                             }
                         }
                     }
+                }
+            } else if (isSpotlight) {
+                val spot = spotlight
+                if (spot != null) {
+                    spotlightFeed(
+                        spotlight = spot,
+                        sections = spotlightSections,
+                        cartQty = cartQty,
+                        onJump = { index ->
+                            // header, pinned bar, hero, the rows of tiles, the bunting; then a title and a row per group.
+                            val target = 3 + spotlightTileRows(spotlightSections) + 1 + index * 2
+                            scope.launch { homeList.animateScrollToItem(target, -pinnedBarPx) }
+                        },
+                        onOpen = { detailProduct = it },
+                        onAdd = { cartVm.add(it) },
+                        onDecrement = { cartVm.decrementLatest(it.id) }
+                    )
                 }
             } else {
                 // Filtered 3-Column Product Grid (Matches Screenshot 2)
@@ -1106,6 +1147,7 @@ private fun SearchBarField(
 private fun CategoryTabsRow(
     categories: List<Category>,
     selectedCategory: String?,
+    specialLabel: String? = null,
     onSelectCategory: (String?) -> Unit
 ) {
     val view = LocalView.current
@@ -1121,7 +1163,32 @@ private fun CategoryTabsRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        // The special gold tab sits right after "All".
         itemsIndexed(allTabs, key = { _, cat -> cat.id }) { index, cat ->
+            if (index == 1 && specialLabel != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    SpotlightTab(
+                        label = specialLabel,
+                        isSelected = selectedCategory == com.dashit.app.data.Spotlight.TAB_ID,
+                        onClick = { onSelectCategory(com.dashit.app.data.Spotlight.TAB_ID) }
+                    )
+                    CategoryTab(cat, selectedCategory, onSelectCategory)
+                }
+            } else {
+                CategoryTab(cat, selectedCategory, onSelectCategory)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTab(
+    cat: Category,
+    selectedCategory: String?,
+    onSelectCategory: (String?) -> Unit
+) {
+    val view = LocalView.current
+    run {
             val isSelected = if (cat.id == "all") selectedCategory == null else selectedCategory.equals(cat.name, ignoreCase = true)
             val icon = getCategoryIcon(cat.name)
 
@@ -1166,7 +1233,6 @@ private fun CategoryTabsRow(
                 )
             }
         }
-    }
 }
 
 private fun getCategoryIcon(name: String): ImageVector {

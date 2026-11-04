@@ -25,6 +25,12 @@ import { stagger, fadeUp, fadeUpTight, inViewOnce, EASE_OUT, SPRING_SNAPPY, TAP_
 import { forceUnlockBodyScroll } from "../lib/useBodyScrollLock";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import FloatingDeliveryBanner from "../components/FloatingDeliveryBanner";
+import SpotlightShowcase, { SpotlightSparkles, SPOTLIGHT_PAGE_BG } from "../components/SpotlightShowcase";
+import { watchSpotlight } from "../lib/db";
+import { shopperSpotlight } from "../lib/spotlight";
+
+/** The strip's id for the spotlight tab (never a real category name). */
+const SPOTLIGHT_TAB = "__spotlight";
 
 const PAGE_SIZE = 48;
 
@@ -264,6 +270,16 @@ export default function ShopPage() {
   };
 
   const shopProducts = useMemo(() => browseable(productsList), [productsList]);
+
+  // The owner's special tab (src/lib/spotlight.js); null when it is off.
+  const [spotlightDoc, setSpotlightDoc] = useState(null);
+  useEffect(() => watchSpotlight(setSpotlightDoc), []);
+  const spotlight = useMemo(() => shopperSpotlight(spotlightDoc, shopProducts), [spotlightDoc, shopProducts]);
+  const isSpotlight = activeCategory === SPOTLIGHT_TAB && Boolean(spotlight);
+  // Switched off while someone is on it: back to the whole shop.
+  useEffect(() => {
+    if (activeCategory === SPOTLIGHT_TAB && spotlightDoc && !spotlight) setActiveCategory("All");
+  }, [activeCategory, spotlight, spotlightDoc]);
   const aisles = useMemo(() => buildAisles(shopProducts), [shopProducts]);
   /* The home page leads with a few aisles, not all of them: twenty-five tiles,
      a twenty-five-item strip and a product row for each was a wall of choices.
@@ -276,11 +292,12 @@ export default function ShopPage() {
     if (picked && !shown.includes(picked)) shown.push(picked);
     return [
       { id: "All", label: "All", icon: Flame },
+      ...(spotlight ? [{ id: SPOTLIGHT_TAB, label: spotlight.tabLabel, icon: Sparkles, special: true }] : []),
       { id: "Offers", label: "Offers", icon: Tag, route: "/offers", highlight: true },
       ...shown.map((a) => ({ id: a.cat, label: a.label, icon: a.icon })),
       { id: "More", label: "More", icon: LayoutGrid, route: "/categories" },
     ];
-  }, [aisles, featured, activeCategory]);
+  }, [aisles, featured, activeCategory, spotlight]);
 
   /* The smaller shelves inside the picked aisle ("Drinks" → Soft drinks,
      Juices, Tea & coffee…), biggest first, so nobody scrolls 300 items. */
@@ -356,7 +373,8 @@ export default function ShopPage() {
   }, [filteredProducts.length, visibleCount]);
 
   return (
-    <div className="min-h-screen bg-[#FFFDF5] text-slate-900 font-sans pb-dock dark:bg-surface dark:text-content">
+    <div className={`relative min-h-screen text-slate-900 font-sans pb-dock dark:text-content transition-colors duration-500 ${isSpotlight ? SPOTLIGHT_PAGE_BG : "bg-[#FFFDF5] dark:bg-surface"}`}>
+      {isSpotlight && <SpotlightSparkles />}
       <SEO
         title="Online Grocery Store Anantnag — #1 Fastest Grocery Delivery"
         description="Shop farm milk, curd, Kashmiri lavas bread, snacks, beverages, and pantry staples online with DASHIT. Fastest delivery across Anantnag (PIN: 192101)."
@@ -395,7 +413,7 @@ export default function ShopPage() {
       )}
 
       {/* 2. STICKY SEARCH BAR & CATEGORIES SCROLLER */}
-      <div className={`sticky top-0 md:top-[74px] z-40 bg-[#FFFDF5]/95 dark:bg-surface/95 backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-300 ${
+      <div className={`sticky top-0 md:top-[74px] z-40 ${isSpotlight ? "bg-[#FFE27A]/90 dark:bg-[#3D2C00]/90" : "bg-[#FFFDF5]/95 dark:bg-surface/95"} backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.05)] transition-all duration-300 ${
         isScrolled ? "pt-[env(safe-area-inset-top,0px)]" : ""
       }`}
         style={{
@@ -434,6 +452,7 @@ export default function ShopPage() {
         <CategoryScroller
           categories={aisleStrip}
           activeCategory={activeCategory}
+          golden={isSpotlight}
           onSelectCategory={(cat) => {
             setActiveCategory(cat);
             setPersonalCareSubCat("all");
@@ -442,7 +461,17 @@ export default function ShopPage() {
       </div>
 
       {/* MAIN BODY CONTENT (Responsive: max-w-md on mobile, expands to max-w-7xl on desktop) */}
-      <main className="max-w-md md:max-w-none mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
+      <main className="relative max-w-md md:max-w-none mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-8">
+        {isSpotlight ? (
+          <SpotlightShowcase
+            spotlight={spotlight}
+            cart={cart}
+            onAdd={handleAddToCart}
+            onUpdateQty={handleUpdateQty}
+            onOpen={(p) => setSelectedQuickProduct(p)}
+          />
+        ) : (
+          <>
         {/* A picked category shows straight away with a short fade-in. It used
             to wait for the old list to fade out first, which added half a
             second to every tap. No fade on the very first paint. */}
@@ -740,6 +769,8 @@ export default function ShopPage() {
               )}
             </section>
           </motion.div>
+          </>
+        )}
       </main>
 
       {/* 7. QUICK PRODUCT SHEET (Vaul gesture sheet) */}

@@ -96,6 +96,10 @@ export default function DeliveryChargeSettings({ storeConfig = null, onSave, dar
     save("fuel", { petrolPrice: litre, bikeMileage: kmpl }, `Petrol saved: ₹${litre} a litre, ${kmpl} km a litre.`);
   };
 
+  // Save stays grey until the numbers differ from what is saved.
+  const rateChanged = Number(perKm) !== Number(night.perKm) || Number(minFee) !== Number(night.minFee);
+  const fuelChanged = Number(petrolPrice) !== Number(fuel.petrolPrice) || Number(mileage) !== Number(fuel.mileage);
+
   const chargingNow = isNightChargeOn(storeConfig, now);
   const statusLine = chargingNow
     ? `Charging now: ₹${night.perKm} for each km from the store, at least ₹${night.minFee}.`
@@ -228,7 +232,7 @@ export default function DeliveryChargeSettings({ storeConfig = null, onSave, dar
             <p className="text-[11px] text-slate-500 dark:text-zinc-400 tabular-nums">
               {EXAMPLE_KM.map((km) => `${km} km ₹${nightChargeFor(km, exampleConfig)}`).join(" · ")}
             </p>
-            <button type="submit" disabled={Boolean(saving)} className={saveButton}>
+            <button type="submit" disabled={Boolean(saving) || !rateChanged} className={saveButton}>
               {saving === "rate" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Save rate
             </button>
@@ -262,7 +266,7 @@ export default function DeliveryChargeSettings({ storeConfig = null, onSave, dar
             <p className="text-[11px] text-slate-500 dark:text-zinc-400 tabular-nums">
               About ₹{perKmFuel} a km of road · {EXAMPLE_KM.map((km) => `${km} km away ₹${fuelCostFor(km, storeConfig).cost}`).join(" · ")}
             </p>
-            <button type="submit" disabled={Boolean(saving)} className={saveButton}>
+            <button type="submit" disabled={Boolean(saving) || !fuelChanged} className={saveButton}>
               {saving === "fuel" ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
               Save petrol
             </button>

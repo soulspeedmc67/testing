@@ -46,6 +46,12 @@ final class CatalogueStore: ObservableObject {
     /// Every banner the shop has on, with its dates: `offers` is the ones running now.
     private var scheduledOffers: [Offer] = []
     private var offerTimer: Task<Void, Never>?
+    /// The special gold tab as saved (`config/spotlight`); off until it arrives.
+    @Published private(set) var spotlight = Spotlight()
+    /// Its groups with live products, worked out when either changes.
+    @Published private(set) var spotlightSections: [Spotlight.ShownSection] = []
+    private var spotlightListener: ListenerRegistration?
+
     /// The `categories` collection, when the rules let it be read.
     @Published private var remoteCategories: [Category] = []
 
@@ -149,6 +155,17 @@ final class CatalogueStore: ObservableObject {
         }
     }
 
+    /// The spotlight's groups against the current catalogue (live prices and stock).
+    private func refreshSpotlight() {
+        guard spotlight.enabled else {
+            if !spotlightSections.isEmpty { spotlightSections = [] }
+            return
+        }
+        var byId: [String: Product] = [:]
+        for product in products { byId[product.id] = product }
+        spotlightSections = spotlight.shownSections(products: byId)
+    }
+
     private func apply(_ derived: CatalogueDerived, products newProducts: [Product], remote: [Category]) {
         categories = derived.categories
         categoryTiles = derived.categoryTiles
@@ -173,6 +190,7 @@ final class CatalogueStore: ObservableObject {
             products = newProducts
             isLoading = false
         }
+        refreshSpotlight()
     }
 
     private func startListeners() {
@@ -199,6 +217,12 @@ final class CatalogueStore: ObservableObject {
                 self.latestRemote = fetched
                 self.commit()
             }
+        }
+
+        spotlightListener = FirestoreService.shared.listenSpotlight { [weak self] fetched in
+            guard let self else { return }
+            self.spotlight = fetched
+            self.refreshSpotlight()
         }
 
         // With every banner switched off the list is empty and the app shows
@@ -245,6 +269,10 @@ final class StorefrontViewModel: ObservableObject {
     var products: [Product] { store.products }
     var isLoading: Bool { store.isLoading }
     var offers: [Offer] { store.offers }
+    /// The special tab, or nil when it is off or has nothing to show.
+    var spotlight: Spotlight? { store.spotlightSections.isEmpty ? nil : store.spotlight }
+    var spotlightSections: [Spotlight.ShownSection] { store.spotlightSections }
+    var isSpotlightSelected: Bool { selectedCategory == Spotlight.tabId && spotlight != nil }
     var categories: [Category] { store.categories }
     var categoryTiles: [CategoryTile] { store.categoryTiles }
     /// The busiest categories, shown as collage tiles at the top of the feed.

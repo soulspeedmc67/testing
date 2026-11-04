@@ -16,16 +16,54 @@ export const CATEGORY_STRIP = [
 ];
 
 /** `categories` replaces the fixed strip with the shop's real aisles: [{ id, label, icon }]. */
-export default function CategoryScroller({ activeCategory = "All", onSelectCategory, categories }) {
+export default function CategoryScroller({ activeCategory = "All", onSelectCategory, categories, golden = false }) {
   const router = useRouter();
   const strip = categories && categories.length > 0 ? categories : CATEGORY_STRIP;
 
   return (
-    <div className="w-full bg-[#FFFDF5] pt-2 pb-2 dark:bg-surface-raised">
+    <div className={`w-full pt-2 pb-2 transition-colors duration-500 ${golden ? "bg-transparent" : "bg-[#FFFDF5] dark:bg-surface-raised"}`}>
       <div className="flex items-center space-x-5 overflow-x-auto scrollbar-none px-4 sm:px-6 lg:px-8 max-w-md md:max-w-none mx-auto scroll-smooth pt-1 pb-1">
         {strip.map((cat) => {
           const Icon = cat.icon;
           const isActive = activeCategory === cat.id;
+
+          /* The spotlight tab (src/lib/spotlight.js): a gold tile with a light
+             sweeping across it, so it stands out from the plain aisles. */
+          if (cat.special) {
+            return (
+              <motion.button
+                key={cat.id}
+                whileTap={TAP_FIRM}
+                transition={SPRING_SNAPPY}
+                onClick={(e) => {
+                  hapticLight();
+                  e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                  if (onSelectCategory) onSelectCategory(cat.id);
+                }}
+                aria-pressed={isActive}
+                className="flex flex-col items-center shrink-0 space-y-1 relative pt-0.5 pb-1 focus:outline-none select-none cursor-pointer"
+              >
+                <div
+                  className={`spot-glow relative w-9 h-9 rounded-2xl overflow-hidden flex items-center justify-center bg-gradient-to-br from-[#FFE680] via-[#FFC21A] to-[#E89B00] border border-[#FFF3B0]/80 ${
+                    isActive ? "scale-110 ring-2 ring-[#E0A200]/40" : ""
+                  } transition-transform duration-300`}
+                >
+                  <Icon className="relative z-10 w-4 h-4 stroke-[2.6] text-[#4A2E00]" />
+                  <span className="spot-sheen absolute inset-y-0 left-0 w-1/2 bg-gradient-to-r from-transparent via-white/80 to-transparent" aria-hidden="true" />
+                </div>
+                <span className="text-[10px] tracking-tight whitespace-nowrap font-black bg-gradient-to-r from-[#B26B00] via-[#E39B00] to-[#B26B00] bg-clip-text text-transparent dark:from-[#FFD45C] dark:via-[#FFF0A8] dark:to-[#FFD45C]">
+                  {cat.label}
+                </span>
+                {isActive && (
+                  <motion.span
+                    layoutId="categoryUnderline"
+                    className="absolute -bottom-0.5 w-4 h-1 bg-[#E0A200] rounded-full"
+                    transition={{ type: "spring", stiffness: 260, damping: 24 }}
+                  />
+                )}
+              </motion.button>
+            );
+          }
 
           return (
             <motion.button

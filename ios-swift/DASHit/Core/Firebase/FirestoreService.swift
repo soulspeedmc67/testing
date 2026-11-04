@@ -177,6 +177,16 @@ final class FirestoreService {
             }
     }
 
+    /// The special gold tab (`config/spotlight`). "Not there" from the offline
+    /// cache passes nothing on, so a spotlight already shown stays.
+    func listenSpotlight(completion: @escaping (Spotlight) -> Void) -> ListenerRegistration {
+        return db.collection("config").document("spotlight").addSnapshotListener { snapshot, error in
+            guard let snapshot, error == nil else { return }
+            if !snapshot.exists && snapshot.metadata.isFromCache { return }
+            completion(Spotlight(data: snapshot.data() ?? [:]))
+        }
+    }
+
     /// The banners the shop has switched on. An empty list means none is on.
     /// A read that fails passes nothing on, so the banners on screen stay.
     func listenOffers(completion: @escaping ([Offer]) -> Void) -> ListenerRegistration {

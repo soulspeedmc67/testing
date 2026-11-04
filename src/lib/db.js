@@ -3384,3 +3384,76 @@ export async function fetchOrderStats() {
     ).length,
   };
 }
+
+/* ------------------------------------------------------------ spotlight tab */
+/* The special highlighted tab on the home screen (src/lib/spotlight.js).
+   One listener shared by every screen; the last copy is kept in this browser
+   so the tab shows at once on the next visit. */
+
+const SPOTLIGHT_KEY = "dashit_spotlight_v1";
+let memorySpotlight = null;
+const spotlightSubscribers = new Set();
+let sharedSpotlightUnsub = null;
+
+function readSavedSpotlight() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(localStorage.getItem(SPOTLIGHT_KEY) || "null");
+  } catch (e) {
+    return null;
+  }
+}
+
+/** `callback(doc)` with the raw config/spotlight document ({} when there is none). */
+export function watchSpotlight(callback) {
+  spotlightSubscribers.add(callback);
+  if (!memorySpotlight) memorySpotlight = readSavedSpotlight();
+  if (memorySpotlight) callback(memorySpotlight);
+  const db = getDb();
+  if (!db && !memorySpotlight) callback({});
+  if (db && !sharedSpotlightUnsub) {
+    sharedSpotlightUnsub = onSnapshot(
+      doc(db, "config", "spotlight"),
+      (snap) => {
+        // "Not there" from the offline cache only means it wasn't cached: keep the saved copy.
+        if (!snap.exists() && snap.metadata.fromCache) return;
+        const data = snap.exists() ? snap.data() : {};
+        delete data.updatedAt;
+        memorySpotlight = data;
+        try {
+          localStorage.setItem(SPOTLIGHT_KEY, JSON.stringify(data));
+        } catch (e) {}
+        spotlightSubscribers.forEach((cb) => {
+          try {
+            cb(data);
+          } catch (e) {}
+        });
+      },
+      (err) => console.warn("watchSpotlight snapshot error:", err?.message)
+    );
+  }
+  return () => {
+    spotlightSubscribers.delete(callback);
+    if (spotlightSubscribers.size === 0 && typeof sharedSpotlightUnsub === "function") {
+      sharedSpotlightUnsub();
+      sharedSpotlightUnsub = null;
+    }
+  };
+}
+
+/** Saves the whole spotlight. Throws when it isn't saved, so the console can say so. */
+export async function saveSpotlight(spotlight) {
+  const db = getDb();
+  if (!db) throw new Error("Not connected to the shop's database.");
+  await setDoc(doc(db, "config", "spotlight"), { ...spotlight, updatedAt: serverTimestamp() });
+}
+
+/** Adds a brand-new product (a spotlight item). Unlike upsertProduct, a refused write throws. */
+export async function createProductStrict(product) {
+  const db = getDb();
+  if (!db) throw new Error("Not connected to the shop's database.");
+  const { id, ...data } = product;
+  await setDoc(doc(db, "products", String(id)), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  invalidateProductCache();
+  return String(id);
+}

@@ -72,6 +72,19 @@ class StorefrontViewModel(
     private val _offers = MutableStateFlow<List<Offer>>(emptyList())
     val offers: StateFlow<List<Offer>> = _offers.asStateFlow()
 
+    /** The special gold tab as saved (`config/spotlight`); off until it arrives. */
+    private val _spotlight = MutableStateFlow(com.dashit.app.data.Spotlight())
+    /** The tab, or null when it is off or has nothing to show. */
+    val spotlight: StateFlow<com.dashit.app.data.Spotlight?> get() = _spotlightShown
+    /** Its groups, with each item live from the catalogue (price, stock). */
+    val spotlightSections: StateFlow<List<com.dashit.app.data.Spotlight.ShownSection>> = combine(_spotlight, products) { spot, prods ->
+        if (!spot.enabled) emptyList() else spot.shownSections(prods.associateBy { it.id })
+    }.flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    private val _spotlightShown: StateFlow<com.dashit.app.data.Spotlight?> = combine(_spotlight, spotlightSections) { spot, sections ->
+        if (sections.isEmpty()) null else spot
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -138,6 +151,9 @@ class StorefrontViewModel(
         }
         viewModelScope.launch {
             repository.observeOffers().collect { _offers.value = it }
+        }
+        viewModelScope.launch {
+            repository.observeSpotlight().collect { _spotlight.value = it }
         }
     }
 
