@@ -23,6 +23,14 @@ jobs:
     name: Build Native Swift IPA (macos-15 + Xcode 26)
     if: ${{ !inputs.screenshots_only }}
     runs-on: macos-15
+    # The TestFlight steps' `if` reads these: a step's own env isn't set yet when its condition is decided,
+    # so with the secrets only on the steps both uploads were always skipped.
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      ADMIN_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_ADMIN_PROVISION_PROFILE_BASE64 }}
 
     steps:
       - name: Checkout Repository
@@ -256,8 +264,8 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Native Swift to TestFlight (Internal Testing)
-        # Reads the secrets directly: a step's own `env` isn't reliably there when its `if` is decided.
-        if: inputs.skip_testflight != true && ((secrets.APPLE_ID != '' && secrets.APPLE_APP_SPECIFIC_PASSWORD != '') || (secrets.APP_STORE_CONNECT_KEY_P8 != '' && secrets.APP_STORE_CONNECT_ISSUER_ID != ''))
+        # Decided on the job's env (set above): a step's own env isn't there yet when its `if` is read.
+        if: inputs.skip_testflight != true && ((env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '') || (env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''))
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -304,7 +312,7 @@ jobs:
 
       - name: Upload Admin App to TestFlight
         # Needs the admin profile, and an app for com.dashit.admin in App Store Connect.
-        if: inputs.skip_testflight != true && secrets.IOS_ADMIN_PROVISION_PROFILE_BASE64 != '' && secrets.APP_STORE_CONNECT_KEY_P8 != '' && secrets.APP_STORE_CONNECT_ISSUER_ID != ''
+        if: inputs.skip_testflight != true && env.ADMIN_PROVISION_PROFILE_BASE64 != '' && env.APP_STORE_CONNECT_KEY_P8 != '' && env.APP_STORE_CONNECT_ISSUER_ID != ''
         env:
           ADMIN_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_ADMIN_PROVISION_PROFILE_BASE64 }}
           APP_STORE_CONNECT_KEY_P8: ${{ secrets.APP_STORE_CONNECT_KEY_P8 }}
