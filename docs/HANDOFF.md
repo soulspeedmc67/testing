@@ -33,8 +33,12 @@ iOS and Android NOT compiled here (no Swift toolchain or Android SDK reachable);
 - Fixed on the way: a cache-only "document missing" answer no longer wipes the saved copy of the spotlight on any platform.
 - **Later the same day**: group photos sit in a rounded white well inside the gold tile (square photo corners showed on the gold);
   the editor's on/off switch now works at once without Save (writes only `enabled`; switching on needs a saved group with an item).
-  TestFlight build started from this branch by hand (`ios-swift-build.yml`, workflow_dispatch). The owner's compliance guard
-  script isn't in the cloud container, so it was NOT run: run it before any App Store submission.
+  The owner's compliance guard script isn't in the cloud container, so it was NOT run: run it before any App Store submission.
+- **iOS build VERIFIED to compile**: `ios-swift-build.yml` runs 226 and 228 (workflow_dispatch on this branch) built and signed both
+  apps (build 528 = run 228). **Neither reached TestFlight**: both upload steps were skipped because the run sees no upload
+  credentials (`APP_STORE_CONNECT_KEY_P8` + `APP_STORE_CONNECT_ISSUER_ID`, or `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD`), while
+  `BUILD_CERTIFICATE_BASE64` is there. The secrets are now on the job's env (a step's own env isn't readable in its `if`), so once
+  they are added as repository secrets a re-run uploads. The signed IPAs are artifacts of run 228.
 
 ## Oct 29, 2026 (night): Android 1.2.4 (106): Google sign-in hardened, one-command package with the APK
 
