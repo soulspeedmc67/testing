@@ -6,6 +6,27 @@
 
 ---
 
+## Nov 7, 2026: km each rider has ridden, and the petrol, in the console and the iPhone admin
+
+Web VERIFIED (139 tests incl. `tests/riderDistance.test.mjs`, build, the panel in a browser with sample orders, figures checked by
+hand). iOS: parses (tree-sitter); compiled by the Actions run started with this commit (see below). Nothing deployed; no rules change.
+
+- **Where**: website console → Riders → "Distance & petrol" (`RiderDistanceView.jsx`, under the live deliveries); iPhone admin →
+  Riders → "Distance & petrol" (`AdminRiderDistanceView.swift`). Today / 7 days / this month / all time (website also yesterday):
+  km ridden, petrol litres and ₹, deliveries and trips, per rider, and per rider per day. Website has a CSV download.
+- **How (`src/lib/riderDistance.js`, same rules in Swift)**: riders' phones only ever saved where they are now
+  (`drivers/{uid}/telemetry/live`), never their route, so km come from the delivered orders, which is also why every past order
+  counts. A trip is store → each door in delivery order → store; orders one rider took out within 10 min of each other
+  ("Out for Delivery" in `statusHistory`) are one trip. Store↔door is the order's `distanceKm` (or straight line to its pin);
+  door↔door the straight line between pins; all × 1.25 (road factor). Petrol = km ÷ `bikeMileage` × `petrolPrice` (Shop
+  settings; changing them changes past figures). Orders with no leave time (older ones, or moved on from the iPhone admin before
+  today) are each their own round trip. Orders with neither distance nor pin add no km and are counted as such.
+- **iPhone admin now records times**: its "next step" button writes `statusHistory` and `deliveredAt` like the website and rider
+  app do, so its trips group too.
+- **Not built**: true GPS odometer. That needs the rider app to add up its own GPS points and save them (plus a rules change);
+  the figures above would then be measured, not worked out.
+- Reads every order once each time the screen opens (like Sales & analytics).
+
 ## Nov 4, 2026 (evening): groups optional, photo prompts, no jumping on category switch, smoother address menu
 
 Web VERIFIED (133 tests, build, the gold page in a browser with items only and with groups + items, the console editor).

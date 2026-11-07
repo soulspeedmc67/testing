@@ -34,6 +34,17 @@ struct AdminRidersTab: View {
             ridersMap
 
             Section {
+                NavigationLink {
+                    AdminRiderDistanceView(vm: vm)
+                } label: {
+                    Label("Distance & petrol", systemImage: "road.lanes")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+            } footer: {
+                Text("How far each rider has ridden for deliveries, and the petrol it took, day by day. Every past order counts.")
+            }
+
+            Section {
                 Button {
                     isAddOpen = true
                 } label: {

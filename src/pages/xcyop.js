@@ -35,6 +35,7 @@ import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
 import SpotlightEditor from "../components/admin/SpotlightEditor";
+import RiderDistanceView from "../components/admin/RiderDistanceView";
 import BatchInwardView from "../components/admin/BatchInwardView";
 import CatalogueView from "../components/admin/CatalogueView";
 import OffersView from "../components/admin/OffersView";
@@ -2028,6 +2029,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       {activeTab === "drivers" && <RidersMapPanel orders={orders} darkMode={darkMode} />}
 
       {activeTab === "drivers" && <LiveDeliveriesPanel orders={orders} darkMode={darkMode} />}
+
+      {activeTab === "drivers" && <RiderDistanceView orders={orders} storeConfig={storeConfig} darkMode={darkMode} />}
 
       {activeTab === "drivers" && (
         <DriversView

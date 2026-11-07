@@ -888,10 +888,16 @@ public final class AdminDashboardViewModel: ObservableObject {
             recentOrders[idx].status = OrderStatus(stage: DeliveryStage(status: nextStatus))
         }
 
-        db.collection("orders").document(order.id).setData([
+        // The same record the website and rider app keep: when it went out and when it was
+        // delivered. Riders' distance (AdminRiderDistanceView) groups trips by these times.
+        let now = ISO8601DateFormatter.withMilliseconds.string(from: Date())
+        var fields: [String: Any] = [
             "status": nextStatus,
-            "updatedAt": FieldValue.serverTimestamp()
-        ], merge: true, completion: saveThenNotify("The order update", orderId: order.id))
+            "updatedAt": FieldValue.serverTimestamp(),
+            "statusHistory": FieldValue.arrayUnion([["status": nextStatus, "at": now]])
+        ]
+        if nextStatus == "Delivered" { fields["deliveredAt"] = FieldValue.serverTimestamp() }
+        db.collection("orders").document(order.id).setData(fields, merge: true, completion: saveThenNotify("The order update", orderId: order.id))
     }
 
     /// Saves which lines of an order are ticked off as packed, on the order
@@ -1849,4 +1855,13 @@ final class AnswerOnce {
         taken = true
         return true
     }
+}
+
+extension ISO8601DateFormatter {
+    /// "2026-11-03T06:00:00.000Z", as the website writes `new Date().toISOString()`.
+    static let withMilliseconds: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
 }
