@@ -84,6 +84,17 @@ iOS and Android NOT compiled here (no Swift toolchain or Android SDK reachable);
   credentials (`APP_STORE_CONNECT_KEY_P8` + `APP_STORE_CONNECT_ISSUER_ID`, or `APPLE_ID` + `APPLE_APP_SPECIFIC_PASSWORD`), while
   `BUILD_CERTIFICATE_BASE64` is there. The secrets are now on the job's env (a step's own env isn't readable in its `if`), so once
   they are added as repository secrets a re-run uploads. The signed IPAs are artifacts of run 228.
+## Nov 3, 2026: 20-second promo video (fast cut, offer hook first)
+
+`marketing/promo-video/dashit-promo.mp4` (1080x1920, 30 fps, H.264 + AAC at -14 LUFS, for Reels/Stories/Status). Cut to a 120 BPM
+track, so every scene change lands on a beat (one beat = 15 frames). Frame 0 is already the hook, **Get ₹60 in your wallet**, then
+**FREE delivery on your first 3 orders** (one check per beat), logo slam, "Groceries. Essentials. Delivered in minutes.", product
+montage with a 3,000+ counter, how it works, pay with UPI/cards/cash, both offers again, and "Install now." with a pulsing download
+button. The film is `index.html` (open it in a browser to preview, space pauses; every frame is `renderFrame(n)`), the music and
+sound accents are synthesized by `music.py` (no samples, nothing to license), and `render.js` steps the frames into ffmpeg.
+Rebuild: `python3 marketing/promo-video/music.py && node marketing/promo-video/render.js`. The offers are the owner's words for the
+video: the website's "Our promise" section still says first **5** orders free, and the wallet credit in Shop settings must be set to ₹60
+for the app to match.
 
 ## Oct 29, 2026 (night): Android 1.2.4 (106): Google sign-in hardened, one-command package with the APK
 
