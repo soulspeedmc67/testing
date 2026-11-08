@@ -53,10 +53,7 @@ public struct AdminDashboardView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .safeAreaInset(edge: .top, spacing: 0) { OrderAlarmBanner() }
-        .onChange(of: selectedOrderForDetail?.id) { _, id in
-            if id != nil { orderAlarm.stop() }
-        }
+        .modifier(OrderAlarmChrome(openedOrderId: selectedOrderForDetail?.id))
         .tint(AdminStyle.brand)
         .onChange(of: sidebarSelection) { _, tab in
             if let tab, tab != vm.selectedTab { vm.selectedTab = tab }

@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import SwiftUI
 import UIKit
 
 /// The loud new-order alarm of the admin app: Resources/order_alarm.wav on a
@@ -93,5 +94,20 @@ struct OrderAlarmBanner: View {
             .buttonStyle(.plain)
             .accessibilityLabel("New order. Tap to silence the alarm.")
         }
+    }
+}
+
+/// Adds the bar above the admin screens and silences the alarm once an order is opened.
+/// A modifier of its own because the dashboard's `body` is already near the compiler's limit.
+struct OrderAlarmChrome: ViewModifier {
+    /// The id of the order whose detail is open, if any.
+    let openedOrderId: String?
+
+    func body(content: Content) -> some View {
+        content
+            .safeAreaInset(edge: .top, spacing: 0) { OrderAlarmBanner() }
+            .onChange(of: openedOrderId) { _, id in
+                if id != nil { OrderAlarm.shared.stop() }
+            }
     }
 }
