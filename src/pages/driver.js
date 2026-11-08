@@ -58,6 +58,8 @@ import { useStoreConfig } from "../lib/storeStatus";
 import { requestScreenWakeLock, releaseScreenWakeLock } from "../lib/wakeLock";
 import { orderAddress } from "../lib/orderReceipt";
 import { DRIVER_LANGUAGES, DRIVER_STRINGS } from "../lib/driverTranslations";
+import { startOrderAlarm, stopOrderAlarm } from "../lib/orderAlarm";
+import OrderAlarmBanner from "../components/OrderAlarmBanner";
 
 // Lal Chowk Dark Store Hub default coordinates
 // Where the store is now: the shop can move it (config/store), so it is read when used.
@@ -172,22 +174,18 @@ class SoundAlerts {
       osc.stop(this.ctx.currentTime + duration);
     } catch (e) {}
   }
-  playNewOrderAlert() {
-    this.stopAlarm();
-    this.init();
-    // Play a crisp 2-tone notification chime once (no endless repeating alarm)
-    this.playTone(659.25, 0.18, "sine", 0.3);
-    setTimeout(() => this.playTone(880, 0.25, "sine", 0.35), 150);
-    // Single gentle haptic pulse once
-    if (typeof navigator !== "undefined" && navigator.vibrate) {
-      try { navigator.vibrate([150, 80, 150]); } catch (e) {}
-    }
+  /* The loud new-order alarm (src/lib/orderAlarm.js): rings until the rider
+     taps the red bar or its notification, takes the order, starts the
+     delivery, or a minute passes. Never while an order is out for delivery. */
+  playNewOrderAlert(title = "New order for you", body = "Open DASHit Driver to see it") {
+    startOrderAlarm({ title, body });
   }
   startNewOrderAlarm() {
     // Single-shot alert; never loops indefinitely
     this.playNewOrderAlert();
   }
   stopAlarm() {
+    stopOrderAlarm();
     if (this.repeatingTimer) {
       clearInterval(this.repeatingTimer);
       this.repeatingTimer = null;
@@ -833,6 +831,30 @@ export default function DashItDriverApp() {
     };
   }, [activeOrder?.orderId, activeOrder?.id, isOrderPlacedOrPacked, isOrderOutForDelivery, onDuty, speak, strings.speechNewOrder]);
 
+  // New orders any rider can take: the same loud alarm, once per order, unless
+  // this rider is out delivering. It stops when they are all taken.
+  const seenAvailableRef = useRef(new Set());
+  const ringingForAvailableRef = useRef(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("preview=")) return;
+    const ids = availableOrders.map((o) => String(o.orderId || o.id || "")).filter(Boolean);
+    if (!onDuty) {
+      ids.forEach((id) => seenAvailableRef.current.add(id));
+      return;
+    }
+    const fresh = ids.filter((id) => !seenAvailableRef.current.has(id));
+    fresh.forEach((id) => seenAvailableRef.current.add(id));
+    if (fresh.length > 0 && !isOrderOutForDelivery) {
+      ringingForAvailableRef.current = true;
+      soundAlerts.playNewOrderAlert(fresh.length > 1 ? `${fresh.length} new orders to take` : "New order to take", "Open DASHit Driver and take it");
+      requestScreenWakeLock();
+      speak(strings.speechNewOrder);
+    } else if (ids.length === 0 && ringingForAvailableRef.current) {
+      ringingForAvailableRef.current = false;
+      stopOrderAlarm();
+    }
+  }, [availableOrders, onDuty, isOrderOutForDelivery, speak, strings.speechNewOrder]);
+
   // Reset internal door states on order switch
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("preview=")) {
@@ -1418,6 +1440,7 @@ export default function DashItDriverApp() {
         <Head>
           <title>DASHit Driver — Ready</title>
         </Head>
+        <OrderAlarmBanner />
 
         {/* Header */}
         <div className="flex items-center justify-between pt-2">
@@ -1664,6 +1687,7 @@ export default function DashItDriverApp() {
         <title>DASHit Driver — Delivery</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </Head>
+      <OrderAlarmBanner />
 
       {/* Top bar: on or off duty, language, sign out. Nothing else to read. */}
       <div className="bg-slate-900 px-4 pt-3 pb-3 flex items-center justify-between shrink-0">

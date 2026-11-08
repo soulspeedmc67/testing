@@ -35,6 +35,8 @@ import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
 import SpotlightEditor from "../components/admin/SpotlightEditor";
+import OrderAlarmBanner from "../components/OrderAlarmBanner";
+import { startOrderAlarm, stopOrderAlarm } from "../lib/orderAlarm";
 import RiderDistanceView from "../components/admin/RiderDistanceView";
 import BatchInwardView from "../components/admin/BatchInwardView";
 import CatalogueView from "../components/admin/CatalogueView";
@@ -800,7 +802,9 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
   // 1. Initialise Audio and permissions on user click
   const handleTestChime = async () => {
     unlockAudio();
-    playOrderChime();
+    // A short taste of the new-order alarm.
+    startOrderAlarm({ title: "Test alarm", body: "This is how a new order sounds" });
+    setTimeout(() => stopOrderAlarm(), 4000);
     const permGranted = await requestNotificationPermission();
     showToast(
       permGranted
@@ -1875,6 +1879,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       toastMessage={toastMessage}
       onDismissToast={() => setToastMessage(null)}
     >
+      {/* Red bar while the new-order alarm rings: one tap silences it. */}
+      <OrderAlarmBanner label="New order!" hint="Tap to silence the alarm" />
       <PhotoSearchStatus run={photoRun} onDismiss={() => setPhotoRun(null)} onRetry={retryPhotoSearch} darkMode={darkMode} />
 
       {/* KPI METRICS OVERVIEW STRIP (Inspired by Metis Bootstrap Admin) */}

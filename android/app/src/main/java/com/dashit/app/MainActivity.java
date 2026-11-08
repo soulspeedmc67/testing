@@ -24,6 +24,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import androidx.core.app.NotificationCompat;
 import org.json.JSONObject;
+import android.content.res.AssetFileDescriptor;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 
 public class MainActivity extends BridgeActivity {
     private static final int RC_GOOGLE_SIGN_IN = 9001;
@@ -32,6 +40,16 @@ public class MainActivity extends BridgeActivity {
     private static final String CHANNEL_LIVE_ORDER = "dashit_live_orders";
     private static final String CHANNEL_ALERTS = "dashit_order_alerts";
     private static final int NOTIF_ID_LIVE = 9821;
+    /* The loud new-order alarm (driver and admin apps): its own channel, so the
+       quiet order-update channel above keeps its sound. */
+    private static final String CHANNEL_ORDER_ALARM = "dashit_order_alarm";
+    private static final int NOTIF_ID_ORDER_ALARM = 9822;
+    private static final String EXTRA_STOP_ALARM = "dashit_stop_order_alarm";
+    private static final long ORDER_ALARM_MAX_MS = 60_000;
+    private MediaPlayer orderAlarmPlayer;
+    private int savedAlarmVolume = -1;
+    private final Handler alarmHandler = new Handler(Looper.getMainLooper());
+    private final Runnable alarmTimeout = () -> stopOrderAlarmNative();
     private GoogleSignInClient mGoogleSignInClient;
 
     private void createNotificationChannels() {
@@ -59,6 +77,20 @@ public class MainActivity extends BridgeActivity {
                     alertChannel.setShowBadge(true);
                     alertChannel.enableVibration(true);
                     manager.createNotificationChannel(alertChannel);
+
+                    // Heads-up only: the alarm itself is played below, looping on the alarm stream.
+                    NotificationChannel alarmChannel = new NotificationChannel(
+                        CHANNEL_ORDER_ALARM,
+                        "New order alarm",
+                        NotificationManager.IMPORTANCE_HIGH
+                    );
+                    alarmChannel.setDescription("A loud alarm for each new order, until you tap it");
+                    alarmChannel.setShowBadge(true);
+                    alarmChannel.setSound(null, null);
+                    alarmChannel.enableVibration(false);
+                    alarmChannel.setBypassDnd(true);
+                    alarmChannel.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+                    manager.createNotificationChannel(alarmChannel);
                 }
             } catch (Exception ignored) {}
         }
@@ -421,6 +453,22 @@ public class MainActivity extends BridgeActivity {
                     });
                 }
 
+                /** The loud new-order alarm: loops until stopOrderAlarm(), a tap on its notification, or a minute. */
+                @JavascriptInterface
+                public void startOrderAlarm(final String title, final String body) {
+                    runOnUiThread(() -> startOrderAlarmNative(title, body));
+                }
+
+                @JavascriptInterface
+                public void stopOrderAlarm() {
+                    runOnUiThread(() -> stopOrderAlarmNative());
+                }
+
+                @JavascriptInterface
+                public boolean isOrderAlarmRinging() {
+                    return orderAlarmPlayer != null;
+                }
+
                 @JavascriptInterface
                 public void clearLiveOrderNotification() {
                     runOnUiThread(() -> {
@@ -434,6 +482,130 @@ public class MainActivity extends BridgeActivity {
                 }
             }, "AndroidNotifications");
         }
+    }
+
+    /**
+     * Plays the new-order alarm (res/raw/order_alarm.wav) in a loop on the
+     * alarm stream, which rings even with the media volume down or the phone
+     * on silent, at least 85% loud (the rider's or admin's own alarm volume is
+     * put back when it stops), with a strong repeating vibration and a
+     * heads-up notification. Stops on stopOrderAlarmNative(), a tap on the
+     * notification, or after a minute.
+     */
+    private void startOrderAlarmNative(String title, String body) {
+        stopOrderAlarmNative();
+        try {
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audio != null) {
+                int max = audio.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                int now = audio.getStreamVolume(AudioManager.STREAM_ALARM);
+                int loud = (int) Math.ceil(max * 0.85);
+                if (now < loud) {
+                    try {
+                        audio.setStreamVolume(AudioManager.STREAM_ALARM, loud, 0);
+                        savedAlarmVolume = now;
+                    } catch (SecurityException ignored) {
+                        // Do Not Disturb can refuse it; the alarm still plays at the set volume.
+                    }
+                }
+            }
+            MediaPlayer player = new MediaPlayer();
+            player.setAudioAttributes(new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build());
+            AssetFileDescriptor file = getResources().openRawResourceFd(R.raw.order_alarm);
+            player.setDataSource(file.getFileDescriptor(), file.getStartOffset(), file.getLength());
+            file.close();
+            player.setLooping(true);
+            player.prepare();
+            player.start();
+            orderAlarmPlayer = player;
+        } catch (Exception e) {
+            orderAlarmPlayer = null;
+        }
+
+        try {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                long[] pattern = {0, 700, 250, 700, 250, 700, 900};
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0));
+                } else {
+                    vibrator.vibrate(pattern, 0);
+                }
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            boolean allowed = Build.VERSION.SDK_INT < 33
+                || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (allowed && manager != null) {
+                createNotificationChannels();
+                Intent intent = new Intent(this, MainActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                intent.putExtra(EXTRA_STOP_ALARM, true);
+                PendingIntent open = PendingIntent.getActivity(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ORDER_ALARM)
+                    .setSmallIcon(R.drawable.ic_stat_dashit)
+                    .setColor(0xFFFF5B00)
+                    .setContentTitle(title != null && !title.isEmpty() ? title : "New order")
+                    .setContentText((body != null ? body + " · " : "") + "Tap to silence")
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setCategory(NotificationCompat.CATEGORY_ALARM)
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                    .setOngoing(true)
+                    .setAutoCancel(true)
+                    .setContentIntent(open);
+                manager.notify(NOTIF_ID_ORDER_ALARM, builder.build());
+            }
+        } catch (Exception ignored) {}
+
+        alarmHandler.postDelayed(alarmTimeout, ORDER_ALARM_MAX_MS);
+    }
+
+    private void stopOrderAlarmNative() {
+        alarmHandler.removeCallbacks(alarmTimeout);
+        if (orderAlarmPlayer != null) {
+            try {
+                orderAlarmPlayer.stop();
+            } catch (Exception ignored) {}
+            try {
+                orderAlarmPlayer.release();
+            } catch (Exception ignored) {}
+            orderAlarmPlayer = null;
+        }
+        try {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null) vibrator.cancel();
+        } catch (Exception ignored) {}
+        if (savedAlarmVolume >= 0) {
+            try {
+                AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (audio != null) audio.setStreamVolume(AudioManager.STREAM_ALARM, savedAlarmVolume, 0);
+            } catch (Exception ignored) {}
+            savedAlarmVolume = -1;
+        }
+        try {
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            if (manager != null) manager.cancel(NOTIF_ID_ORDER_ALARM);
+        } catch (Exception ignored) {}
+    }
+
+    /** A tap on the alarm's notification opens the app and silences the alarm. */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent != null && intent.getBooleanExtra(EXTRA_STOP_ALARM, false)) {
+            stopOrderAlarmNative();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        stopOrderAlarmNative();
+        super.onDestroy();
     }
 
     @Override

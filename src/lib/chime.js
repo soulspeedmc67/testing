@@ -1,3 +1,4 @@
+import { startOrderAlarm } from "./orderAlarm";
 /**
  * High-reliability order sound & notification utility for the DASHit Admin Desk.
  * Pure Web Audio API synthesis — 0 external mp3 dependencies, works offline and in WebView.
@@ -93,10 +94,14 @@ export async function requestNotificationPermission() {
 
 /** Sends an immediate OS desktop / phone notification for incoming orders. */
 export async function notifyNewOrder(order) {
-  playOrderChime();
-
   const title = `New Order: #${order.orderId || "DSH"}`;
   const body = `₹${order.totalAmount || 0} · ${order.items?.length || 1} items · ${order.customerName || "Customer"}`;
+  // The loud alarm, until someone taps the red bar (src/lib/orderAlarm.js). In
+  // the Android admin app it rings on the alarm stream with its own notification.
+  startOrderAlarm({ title, body });
+  if (typeof window !== "undefined" && window.AndroidNotifications && typeof window.AndroidNotifications.startOrderAlarm === "function") {
+    return;
+  }
 
   // 1. Browser Web Notifications API
   if (typeof window !== "undefined" && "Notification" in window) {
