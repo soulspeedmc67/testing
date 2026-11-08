@@ -500,17 +500,26 @@ async function writeProductFields(changes) {
   let written = 0;
   for (let i = 0; i < changes.length; i += 400) {
     const batch = writeBatch(db);
-    changes.slice(i, i + 400).forEach(({ id, fields }) => {
+    const part = changes.slice(i, i + 400);
+    part.forEach(({ id, fields }) => {
       batch.set(doc(db, "products", String(id)), { ...fields, updatedAt: serverTimestamp() }, { merge: true });
     });
     await batch.commit();
+    // Saved: the console's product list (catalogueFile, from the website's
+    // file) shows it now instead of when the file catches up, minutes later.
+    if (typeof window !== "undefined") {
+      try {
+        window.dispatchEvent(new CustomEvent("dashit_products_patched", { detail: part }));
+      } catch (e) {}
+    }
     written += Math.min(400, changes.length - i);
   }
   return { success: true, count: written };
 }
 
 /**
- * Saves photos found on Open Food Facts: `[{ id, img, offBarcode, weak, issues }]`.
+ * Saves photos found on the website or Open Food Facts:
+ * `[{ id, img, source?, offBarcode, weak, issues }]` (`source` "website", else Open Food Facts).
  * `imgSource` records where each came from, so a later import skips them.
  */
 export function saveFoundProductPhotos(found = []) {
@@ -519,7 +528,7 @@ export function saveFoundProductPhotos(found = []) {
       id: f.id,
       fields: {
         img: f.img,
-        imgSource: "openfoodfacts",
+        imgSource: f.source === "website" ? "catalog" : "openfoodfacts",
         offBarcode: f.offBarcode || "",
         photoQuality: f.weak ? "weak" : "good",
         photoIssues: f.issues || [],

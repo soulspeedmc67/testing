@@ -21,6 +21,8 @@ const DASHIT_CATALOG_FIELDS = [
     'name', 'title', 'unit', 'weight', 'price', 'originalPrice', 'mrp', 'rating', 'ratingCount',
     'time', 'options', 'badge', 'img', 'image', 'imageUrl', 'cat', 'category', 'variants',
     'ageRestricted', 'minAge', 'inStock', 'stock', 'nutrition',
+    // Read by the staff console's "Check photos" (its product list is this file).
+    'photoSuggestionsSkipped', 'photoRejected', 'rejectedPhoto',
 ];
 
 /** The made-up example distributors (src/lib/db.js); stock tagged with one is the owner's own. */
@@ -131,6 +133,34 @@ function dashit_catalog_newest(array $account): ?int
     return 0;
 }
 
+/** How many product documents Firestore holds (about one read per 1,000), or null if it didn't answer. */
+function dashit_catalog_count(array $account): ?int
+{
+    $endpoint = dashit_firestore_endpoint($account);
+    if ($endpoint === null) return null;
+    [$status, $reply] = dashit_firestore_request('POST', $endpoint[0] . ':runAggregationQuery', $endpoint[1], [
+        'structuredAggregationQuery' => [
+            'structuredQuery' => ['from' => [['collectionId' => 'products']]],
+            'aggregations' => [['alias' => 'n', 'count' => new stdClass()]],
+        ],
+    ]);
+    if ($status !== 200) return null;
+    foreach ($reply as $row) {
+        $n = $row['result']['aggregateFields']['n']['integerValue'] ?? null;
+        if ($n !== null) return (int) $n;
+    }
+    return null;
+}
+
+/** Entries in the file that still stand for a Firestore document (not ones we marked erased). */
+function dashit_catalog_listed(array $file): int
+{
+    return count(array_filter($file['products'], fn ($p) => empty($p['removed'])));
+}
+
+/** How long an erased product's { active: false } stays in the file, so phones that were away still drop it. */
+const DASHIT_REMOVED_KEEP = 60 * 24 * 3600 * 1000;
+
 /** Every product, page by page (a full read: once a night). Null if Firestore didn't answer. */
 function dashit_catalog_everything(array $account): ?array
 {
@@ -151,6 +181,63 @@ function dashit_catalog_everything(array $account): ?array
         $pageToken = (string) ($reply['nextPageToken'] ?? '');
     } while ($pageToken !== '');
     return $out;
+}
+
+/**
+ * Photo memory: the last photo each product name (and barcode) had, kept in
+ * dashit-data beside public_html, so it outlives a cleared stock list and a
+ * replaced website folder. A product uploaded again under a new id gets its
+ * photo back from here (api/catalog/photos.php, src/lib/sitePhotos.js).
+ */
+function dashit_photo_memory_path(): string
+{
+    return dashit_private_dir('dashit-data') . '/photo-memory.json';
+}
+
+function dashit_photo_memory_read(): array
+{
+    $data = @json_decode((string) @file_get_contents(dashit_photo_memory_path()), true);
+    return [
+        'names' => is_array($data['names'] ?? null) ? $data['names'] : [],
+        'barcodes' => is_array($data['barcodes'] ?? null) ? $data['barcodes'] : [],
+    ];
+}
+
+/** A product's photo link worth remembering, or ''. */
+function dashit_photo_of(array $product): string
+{
+    foreach (['img', 'image', 'imageUrl'] as $field) {
+        $value = trim((string) (is_string($product[$field] ?? null) ? $product[$field] : ''));
+        if ($value !== '' && (str_starts_with($value, 'https://') || str_starts_with($value, '/products/'))) return $value;
+    }
+    return '';
+}
+
+/** Notes the photo of every named product in $products. Writes only when something is new. */
+function dashit_photo_memory_note(array $products): void
+{
+    $memory = dashit_photo_memory_read();
+    $changed = false;
+    foreach ($products as $product) {
+        if (!is_array($product) || ($product['active'] ?? true) === false) continue;
+        $img = dashit_photo_of($product);
+        $name = trim((string) ($product['name'] ?? ''));
+        if ($img === '' || $name === '') continue;
+        if (($memory['names'][$name] ?? '') !== $img) {
+            $memory['names'][$name] = $img;
+            $changed = true;
+        }
+        $id = (string) ($product['id'] ?? '');
+        if (preg_match('/^(\d{8}|\d{12,14})$/', $id) && ($memory['barcodes'][$id] ?? '') !== $img) {
+            $memory['barcodes'][$id] = $img;
+            $changed = true;
+        }
+    }
+    if (!$changed) return;
+    $path = dashit_photo_memory_path();
+    @mkdir(dirname($path), 0700, true);
+    $json = json_encode($memory, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json !== false && @file_put_contents("$path.tmp", $json) !== false) @rename("$path.tmp", $path);
 }
 
 /** The current file, decoded, or null. */
@@ -214,6 +301,18 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
     if ($current !== null && (int) ($current['format'] ?? 1) < DASHIT_CATALOG_FORMAT) $forceFull = true;
     $full = $forceFull || $current === null || $nowMs - (int) ($current['fullAt'] ?? 0) > DASHIT_FULL_EVERY;
 
+    // A product erased from Firestore (the console's "delete all products")
+    // leaves no newer `updatedAt` behind, so only a count shows it: fewer
+    // documents than the file lists means read everything and drop the rest.
+    $stored = null;
+    if (!$full) {
+        $stored = dashit_catalog_count($account);
+        if ($stored !== null && $stored < dashit_catalog_listed($current)) {
+            $out("Firestore holds $stored products, the file lists " . dashit_catalog_listed($current) . ': reading everything.');
+            $full = true;
+        }
+    }
+
     if (!$full) {
         $newest = dashit_catalog_newest($account);
         if ($newest === null) {
@@ -246,7 +345,30 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
             return false;
         }
         $fullAt = $nowMs;
-        $out('Full read: ' . count($products) . ' products.');
+        $read = count($products);
+        $out("Full read: $read products.");
+
+        // Every product in the old file that Firestore no longer has goes out
+        // as { active: false }, newer than any version a phone holds, so the
+        // apps already installed drop it through changes.php.
+        $seen = [];
+        $newest = 0;
+        foreach ($products as $p) {
+            $seen[$p['id']] = true;
+            $newest = max($newest, (int) ($p['updatedAt'] ?? 0));
+        }
+        $removedAt = max($newest, (int) ($current['version'] ?? 0)) + 1;
+        $erased = 0;
+        foreach ($current['products'] ?? [] as $old) {
+            if (isset($seen[$old['id']])) continue;
+            if (!empty($old['removed'])) {
+                if ($nowMs - (int) ($old['removedAt'] ?? 0) < DASHIT_REMOVED_KEEP) $products[] = $old;
+                continue;
+            }
+            $products[] = ['id' => $old['id'], 'active' => false, 'removed' => true, 'removedAt' => $nowMs, 'updatedAt' => $removedAt];
+            $erased += 1;
+        }
+        if ($erased > 0) $out("$erased products erased from Firestore, marked off.");
     }
 
     $active = count(array_filter($products, fn ($p) => ($p['active'] ?? true) !== false));
@@ -257,6 +379,9 @@ function dashit_catalog_build(bool $forceFull, callable $out): ?bool
             return false;
         }
     }
+
+    // Before anything is dropped: the photos products had, for when they come back.
+    dashit_photo_memory_note(array_merge($current['products'] ?? [], $products));
 
     $version = 0;
     foreach ($products as $p) $version = max($version, (int) ($p['updatedAt'] ?? 0));

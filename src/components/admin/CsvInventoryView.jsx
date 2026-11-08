@@ -29,6 +29,7 @@ import {
 } from "../../lib/csvInventory";
 import { SELF_DISTRIBUTOR_NAME } from "../../lib/db";
 import { loadCatalog, fillFromCatalog } from "../../lib/productCatalog";
+import { loadSitePhotos, photoFromSite } from "../../lib/sitePhotos";
 import StockSourceSheet from "./StockSourceSheet";
 import { NeedsPhotoSheet } from "./ProductPhotoSheets";
 import { photoGaps } from "../../lib/productPhotoMatch";
@@ -149,10 +150,15 @@ export default function CsvInventoryView({
           (item) => (!item.catFromCsv && item.action === "new") || !item.img
         );
         if (needsCatalog) {
-          loadCatalog()
-            .then((list) =>
-              setPlan((current) => (current === next ? { ...next, items: fillFromCatalog(next.items, list) } : current))
-            )
+          // Photos come from the website first: the photo the same product had
+          // before, then the product list's photos that are on the website.
+          Promise.all([loadCatalog(), loadSitePhotos()])
+            .then(([list, site]) => {
+              const findPhoto = (item) => photoFromSite(site, list, { name: item.name, barcode: item.csvBarcode || item.id });
+              setPlan((current) =>
+                current === next ? { ...next, items: fillFromCatalog(next.items, list, findPhoto) } : current
+              );
+            })
             .catch(() => {});
         }
       } catch (e) {
@@ -307,7 +313,7 @@ export default function CsvInventoryView({
   };
 
   /* In the background after the save: each product without a photo is looked
-     up on Open Food Facts. The page runs it (saving moves to Stock), and its
+     up among the photos on the website (sitePhotos). The page runs it (saving moves to Stock), and its
      progress shows at the top of whichever tab is open. */
   const startPhotoSearch = (items, replace) => {
     // A photo link in the file always wins, even with "Replace photos" ticked.
@@ -319,7 +325,8 @@ export default function CsvInventoryView({
         brand: item.brand,
         unit: item.unit,
         barcode: item.csvBarcode || item.id,
-        current: catalogueById.get(String(item.id)) || null,
+        // A photo the preview already found on the website counts as its photo.
+        current: catalogueById.get(String(item.id)) || (item.img ? { img: item.img } : null),
       }));
     onStartPhotoSearch?.(lookups, replace);
   };
@@ -382,9 +389,9 @@ export default function CsvInventoryView({
             import that file here.
           </p>
           <p className={`text-xs ${subtle}`}>
-            Photos are added by themselves: put each item&apos;s barcode in the <strong>barcode</strong> column
-            and DASHit finds its photo after the stock is saved. A link in the <strong>image</strong> column is
-            used instead when you give one.
+            Photos are added by themselves from the website: a photo in <strong>products/photos</strong> named
+            after the item&apos;s barcode or name (8901262150019.webp, Amul Butter 100g.webp), or the photo the
+            same item had before. A link in the <strong>image</strong> column is used instead when you give one.
           </p>
         </div>
 

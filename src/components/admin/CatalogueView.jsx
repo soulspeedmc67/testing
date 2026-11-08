@@ -17,8 +17,8 @@ import { generateCsvString, triggerCsvDownload, CATALOGUE_CSV_COLUMNS } from "..
 import { photoGaps } from "../../lib/productPhotoMatch";
 import { NeedsPhotoSheet } from "./ProductPhotoSheets";
 import ProductImage from "../ProductImage";
-import { loadCatalog, photoFromCatalog } from "../../lib/productCatalog";
-import { opensAsPhoto } from "../../lib/photoQuality";
+import { loadCatalog } from "../../lib/productCatalog";
+import { loadSitePhotos, photoFromSite, sitePhotoOpens } from "../../lib/sitePhotos";
 import { setManualProductPhotos } from "../../lib/db";
 
 export default function CatalogueView({
@@ -46,15 +46,15 @@ export default function CatalogueView({
     setIsAutoResolving(true);
     setAutoResolveMsg("");
     try {
-      const catalog = await loadCatalog().catch(() => null);
-      if (!catalog) throw new Error("the product list didn't load");
-      // Only the same product's photo (photoFromCatalog), never a lookalike,
-      // and only one that really opens: some catalogue photos aren't on the
-      // website yet.
+      const [catalog, site] = await Promise.all([loadCatalog().catch(() => null), loadSitePhotos()]);
+      if (!catalog && !site) throw new Error("the product list didn't load");
+      // The photo the same product had before, or the same product's photo in
+      // the list (photoFromCatalog), never a lookalike; and only one that
+      // really opens.
       const found = [];
       for (const item of needsPhoto) {
         const prod = item.product;
-        const photo = photoFromCatalog(catalog, prod.name);
+        const photo = photoFromSite(site, catalog, { name: prod.name, barcode: prod.barcode || prod.id });
         if (photo) found.push({ id: String(prod.id || prod.barcode), url: photo.img });
       }
       const updates = [];
@@ -63,7 +63,7 @@ export default function CatalogueView({
         Array.from({ length: 8 }, async () => {
           while (next < found.length) {
             const item = found[next++];
-            if (await opensAsPhoto(item.url)) updates.push({ ...item, weak: false, issues: [] });
+            if (await sitePhotoOpens(item.url)) updates.push({ ...item, weak: false, issues: [] });
           }
         })
       );

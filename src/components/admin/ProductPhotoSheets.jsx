@@ -307,10 +307,10 @@ export function NeedsPhotoSheet({ open, onClose, products = [], onFindAll, onAut
             className="w-full flex items-center justify-center gap-2 text-sm font-bold py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-200 cursor-pointer active:scale-[0.99] transition-transform"
           >
             <Search className="w-4 h-4" />
-            Find photos on Open Food Facts ({missingCount.toLocaleString("en-IN")})
+            Find photos on the website ({missingCount.toLocaleString("en-IN")})
           </button>
           <p className={`mt-1.5 text-[11px] text-center ${subtle}`}>
-            Looks each item up on Open Food Facts by barcode, then by name. Keep this page open; it runs at the top.
+            Your photos in products/photos (named by barcode or item name), then the photo each item had before. Keep this page open; it runs at the top.
           </p>
         </div>
       )}
