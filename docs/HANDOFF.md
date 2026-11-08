@@ -14,7 +14,7 @@
   The APK is a DEBUG build: `dashit-release.jks` is not on this laptop (`android/keystore.properties` points to `../dashit-release.jks`),
   and a debug APK can't install over a release-signed app (uninstall first, or build `assemble{Driver,Admin}Release` where the keystore is).
   Build tip: `compileSdk` 36 built here with the platforms/tools in `~/.android-sdk` (set `sdk.dir` in `android/local.properties`).
-- **iPhone admin (NOT compiled here, no Xcode)**: `Core/Utils/OrderAlarm.swift` loops `Resources/order_alarm.wav` with `AVAudioPlayer`
+- **iPhone admin (compiled by the Actions run 42486158034, both apps built and signed, no TestFlight upload; NOT heard on a phone)**: `Core/Utils/OrderAlarm.swift` loops `Resources/order_alarm.wav` with `AVAudioPlayer`
   on the `.playback` category (rings with the silent switch on; can't raise the phone's volume), plus a warning haptic every 1.5 s.
   Stops on tap of the red "New order — tap to silence" bar (`OrderAlarmBanner`, top inset of `AdminDashboardView`), when an order
   is opened, when the bell is switched off, or after 60 s. `playOrderChime()` now starts it. Shop settings → "New-order alarm" has a
