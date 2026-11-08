@@ -85,6 +85,12 @@ private final class ForegroundPresenter: NSObject, UNUserNotificationCenterDeleg
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([.banner, .list, .sound])
+        // The admin app's own alarm is already ringing for a new order; the push's
+        // siren on top of it would play twice.
+        // UIKit calls this on the main thread.
+        let adminAlarmOn = MainActor.assumeIsolated {
+            Bundle.main.bundleIdentifier == "com.dashit.admin" && OrderAlarm.shared.isRinging
+        }
+        completionHandler(adminAlarmOn ? [.banner, .list] : [.banner, .list, .sound])
     }
 }

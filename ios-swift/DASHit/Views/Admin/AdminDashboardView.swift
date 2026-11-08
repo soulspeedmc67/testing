@@ -7,6 +7,7 @@ public struct AdminDashboardView: View {
 
     // Navigation and Sheet Modals
     @State private var selectedOrderForDetail: Order? = nil
+    @ObservedObject private var orderAlarm = OrderAlarm.shared
     @State private var selectedOrderForDriver: Order? = nil
     @State private var orderToReject: Order? = nil
     @State private var orderToCancel: Order? = nil
@@ -52,6 +53,10 @@ public struct AdminDashboardView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .safeAreaInset(edge: .top, spacing: 0) { OrderAlarmBanner() }
+        .onChange(of: selectedOrderForDetail?.id) { _, id in
+            if id != nil { orderAlarm.stop() }
+        }
         .tint(AdminStyle.brand)
         .onChange(of: sidebarSelection) { _, tab in
             if let tab, tab != vm.selectedTab { vm.selectedTab = tab }
@@ -338,7 +343,7 @@ public struct AdminDashboardView: View {
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button {
                 vm.audioChimeEnabled.toggle()
-                if vm.audioChimeEnabled { vm.playOrderChime() }
+                if vm.audioChimeEnabled { vm.playOrderChime() } else { orderAlarm.stop() }
             } label: {
                 Label(vm.audioChimeEnabled ? "Order sound on" : "Order sound off",
                       systemImage: vm.audioChimeEnabled ? "bell.badge.fill" : "bell.slash.fill")
@@ -2220,6 +2225,7 @@ struct StoreControlSheetView: View {
     /// Shown as the "Shop settings" page rather than a pop-up.
     var isEmbedded: Bool = false
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var orderAlarm = OrderAlarm.shared
 
     @State private var isOpen: Bool = true
     @State private var closeReason: String = StoreControlSheetView.closeReasons[0]
@@ -2540,6 +2546,19 @@ struct StoreControlSheetView: View {
                     Text("iPhone app updates")
                 } footer: {
                     Text(minIosVersionNote + " The title and message above are what the update screen says; leave them empty for the built-in words. Only apps from 1.0.4 on read them.")
+                }
+
+                Section {
+                    Button {
+                        if orderAlarm.isRinging { orderAlarm.stop() } else { orderAlarm.start() }
+                    } label: {
+                        Label(orderAlarm.isRinging ? "Silence the alarm" : "Test the new-order alarm",
+                              systemImage: orderAlarm.isRinging ? "speaker.slash.fill" : "bell.and.waves.left.and.right.fill")
+                    }
+                } header: {
+                    Text("New-order alarm")
+                } footer: {
+                    Text("Rings the same loud siren a new order does, so you can check the volume. It rings even with the silent switch on, at the phone's current volume (turn it up). It stops when you tap the red bar, open the order, or after a minute. When the app is closed, a new order's push plays the same siren once.")
                 }
 
                 Section {

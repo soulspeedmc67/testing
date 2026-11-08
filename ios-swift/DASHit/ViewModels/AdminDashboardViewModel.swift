@@ -387,9 +387,9 @@ public final class AdminDashboardViewModel: ObservableObject {
         }
     }
 
+    /// The loud looping alarm (see `OrderAlarm`); the bar at the top silences it.
     public func playOrderChime() {
-        AudioServicesPlaySystemSound(1007) // iOS SMS/Notification Chime
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        OrderAlarm.shared.start()
     }
 
     // MARK: - Filtered Views

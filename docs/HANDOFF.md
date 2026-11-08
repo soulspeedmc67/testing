@@ -6,6 +6,27 @@
 
 ---
 
+## Nov 8, 2026: loud new-order alarm, Android driver + admin builds, iPhone admin alarm and push siren
+
+- **Android (VERIFIED compiled)**: `assembleDriverDebug` and `assembleAdminDebug` both build (the APK holds `res/raw/order_alarm.wav`).
+  NOT tested on a device: the Pixel (`08201FDD40016N`) wasn't connected to this laptop, so ringing on silent / media volume 0,
+  silencing by the bar and by tapping the notification, and no ringing while delivering are still to check by hand.
+  The APK is a DEBUG build: `dashit-release.jks` is not on this laptop (`android/keystore.properties` points to `../dashit-release.jks`),
+  and a debug APK can't install over a release-signed app (uninstall first, or build `assemble{Driver,Admin}Release` where the keystore is).
+  Build tip: `compileSdk` 36 built here with the platforms/tools in `~/.android-sdk` (set `sdk.dir` in `android/local.properties`).
+- **iPhone admin (NOT compiled here, no Xcode)**: `Core/Utils/OrderAlarm.swift` loops `Resources/order_alarm.wav` with `AVAudioPlayer`
+  on the `.playback` category (rings with the silent switch on; can't raise the phone's volume), plus a warning haptic every 1.5 s.
+  Stops on tap of the red "New order — tap to silence" bar (`OrderAlarmBanner`, top inset of `AdminDashboardView`), when an order
+  is opened, when the bell is switched off, or after 60 s. `playOrderChime()` now starts it. Shop settings → "New-order alarm" has a
+  Test button. In the foreground the push's own sound is dropped while the alarm rings (`ForegroundPresenter`).
+- **Push siren**: `public/api/push/_push.php` sends `sound: order_alarm.wav` to the admin app (`com.dashit.admin`) on "New order"
+  pushes only; customers and other admin pushes keep `default`. **Needs uploading to Hostinger `public_html/api/push/`.** Until it
+  is, the closed iPhone admin app keeps the default sound. The wav is in the admin bundle (XcodeGen `sources: DASHit` copies `Resources/`).
+  Android push still uses channel `order_updates` (unchanged).
+- No critical-alert or time-sensitive entitlements (they change the provisioning profile). No Firebase rules change.
+- **iPhone customer app**: gets the same wav and `OrderAlarm.swift` in its bundle (shared folder) but never starts it.
+- **iPhone rider app**: none exists; riders use the Android/web driver app (`src/pages/driver.js`).
+
 ## Nov 7, 2026: km each rider has ridden, and the petrol, in the console and the iPhone admin
 
 Web VERIFIED (139 tests incl. `tests/riderDistance.test.mjs`, build, the panel in a browser with sample orders, figures checked by

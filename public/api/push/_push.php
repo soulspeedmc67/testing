@@ -99,6 +99,9 @@ function dashit_push_send(array $account, string $token, string $title, string $
     $project = (string) ($account['project_id'] ?? '');
     if ($access === null || $project === '') return 'failed';
     $bundleId = $app === 'admin' ? 'com.dashit.admin' : 'com.dashit.app';
+    // The admin iPhone app ships order_alarm.wav (6 s siren, well under the 30 s
+    // push-sound limit) for "New order" only; every other push keeps the default sound.
+    $apnsSound = ($app === 'admin' && $title === 'New order') ? 'order_alarm.wav' : 'default';
     $message = [
         'token' => $token,
         'notification' => ['title' => $title, 'body' => $text],
@@ -116,7 +119,7 @@ function dashit_push_send(array $account, string $token, string $title, string $
             'payload' => [
                 'aps' => [
                     'alert' => ['title' => $title, 'body' => $text],
-                    'sound' => 'default',
+                    'sound' => $apnsSound,
                     'badge' => 1,
                     'thread-id' => $data['orderId'] ?? 'dashit',
                 ],
