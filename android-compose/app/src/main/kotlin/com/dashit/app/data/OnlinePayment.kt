@@ -71,6 +71,7 @@ object OnlinePayment {
         amountRupees: Double,
         customer: UserProfile,
         option: PayOption? = null,
+        onOrderCreated: (razorpayOrderId: String) -> Unit = {},
         onConfirming: () -> Unit = {}
     ): Receipt {
         val paise = Math.round(amountRupees * 100).toInt()
@@ -80,6 +81,9 @@ object OnlinePayment {
             JSONObject().put("amount", paise).put("receipt", orderCode).put("id_token", AuthRepository.idToken())
         )
         val razorpayOrderId = created.getString("order_id")
+        // Before the shopper can pay: from here a payment that goes unconfirmed
+        // can still be found again (PaymentRecovery).
+        onOrderCreated(razorpayOrderId)
 
         val result = CompletableDeferred<Outcome>()
         pending = result
@@ -164,9 +168,10 @@ object OnlinePayment {
         val cancelled = failed?.code == Checkout.PAYMENT_CANCELED || reason == "payment_cancelled"
         throw PaymentException(
             when {
-                cancelled -> "Payment cancelled. Your order wasn't placed."
-                failed?.code == Checkout.NETWORK_ERROR -> "The payment didn't go through: no connection. Nothing was charged."
-                else -> "The payment didn't go through. Nothing was charged."
+                outcome is Outcome.Paid -> "We're still confirming your payment. If money was taken, your order will be placed automatically within a few minutes. Keep the app open."
+                cancelled -> "Payment cancelled. If money was taken from your account, your order will be placed automatically within a few minutes."
+                failed?.code == Checkout.NETWORK_ERROR -> "The payment didn't go through: no connection. If money was taken, your order will be placed automatically once you're back online."
+                else -> "The payment didn't go through. If money was taken from your account, your order will be placed automatically within a few minutes."
             },
             cancelled
         )
@@ -245,11 +250,12 @@ object OnlinePayment {
 
     /**
      * Asks the server (which asks Razorpay) whether this order was paid. A UPI
-     * app can confirm a moment after it hands back, so it looks twice.
+     * app can confirm a good while after it hands back, so it looks again for
+     * about 20 seconds; PaymentRecovery carries on after that.
      */
-    private suspend fun paidReceipt(razorpayOrderId: String): Receipt? {
-        repeat(5) { attempt ->
-            if (attempt > 0) delay(2500)
+    suspend fun paidReceipt(razorpayOrderId: String, attempts: Int = 8): Receipt? {
+        repeat(attempts) { attempt ->
+            if (attempt > 0) delay(3000)
             val status = runCatching {
                 post("payment-status.php", JSONObject().put("razorpay_order_id", razorpayOrderId))
             }.getOrNull() ?: return@repeat

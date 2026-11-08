@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         }
         OrderRepository.shared.init(this)
         com.dashit.app.data.Wallet.init(this)
+        com.dashit.app.data.PaymentRecovery.init(this)
         // The wallet's spent amount follows the signed-in shopper.
         lifecycleScope.launch {
             AuthRepository.user.collect { user ->
@@ -163,6 +164,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         OrderNotifications.isAppInBackground = false
         // Celebrate a delivery that happened while the app was away.
         OrderRepository.shared.noteDelivery()
+        // A payment the app couldn't confirm last time may have gone through.
+        com.dashit.app.data.PaymentRecovery.start()
     }
 
     override fun onStop() {

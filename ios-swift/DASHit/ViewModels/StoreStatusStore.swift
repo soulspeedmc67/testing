@@ -15,6 +15,8 @@ final class StoreStatusStore: ObservableObject {
     @Published private(set) var nightCharge = NightCharge.Settings()
     /// The minimum order, the fees and cash on delivery, as the shop has set them (`ShopRules`).
     @Published private(set) var rules = ShopRules()
+    /// "Orders may be delayed", while the admin has it on (`DelayNotice`).
+    @Published private(set) var delayNotice: DelayNotice?
     /// True once the settings above have come from the server. Until then they
     /// are the copy the phone saved last time, so a charge the shop switched on
     /// since then is missing: checkout doesn't take an order before this is true.
@@ -26,12 +28,13 @@ final class StoreStatusStore: ObservableObject {
     static let defaultCloseReason = "Night hours — reopening tomorrow at 7:00 AM"
 
     private init() {
-        listener = FirestoreService.shared.listenStoreConfig { [weak self] isOpen, closeReason, highDemand, nightCharge, rules, isLive in
+        listener = FirestoreService.shared.listenStoreConfig { [weak self] isOpen, closeReason, highDemand, nightCharge, rules, delayNotice, isLive in
             guard let self = self else { return }
             withAnimation(.dashitSpring) {
                 self.isOpen = isOpen
                 self.closeReason = closeReason.isEmpty ? Self.defaultCloseReason : closeReason
                 self.highDemand = highDemand
+                self.delayNotice = delayNotice
             }
             self.nightCharge = nightCharge
             if rules != self.rules {

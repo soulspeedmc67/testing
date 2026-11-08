@@ -165,27 +165,9 @@ final class CheckoutViewModel: ObservableObject {
         UserDefaults.standard.set(paymentMethod, forKey: Self.lastPaymentKey)
         defer { isSubmitting = false }
 
-        // Paying online: the payment is taken and confirmed first, and only a
-        // confirmed payment places the order.
         let code = Order.newCode()
-        var receipt: PaymentReceipt?
-        if paysOnline {
-            do {
-                receipt = try await OnlinePayment.shared.pay(orderCode: code, amountRupees: totalToPay, customer: user, option: payOption) { [weak self] in
-                    self?.progressText = "Confirming payment..."
-                }
-                progressText = "Placing Order..."
-            } catch {
-                orderError = (error as? LocalizedError)?.errorDescription ?? "The payment didn't go through."
-                if case OnlinePaymentError.cancelled = error {
-                    HapticsManager.shared.light()
-                } else {
-                    HapticsManager.shared.error()
-                }
-                return false
-            }
-        }
-
+        // Built before the payment so it can be saved with it: a payment the
+        // app can't confirm in time is still turned into this order afterwards.
         let order = Order(
             id: code,
             userId: uid,
@@ -198,8 +180,8 @@ final class CheckoutViewModel: ObservableObject {
             grandTotal: totalToPay,
             status: .placed,
             deliveryAddress: selectedAddress,
-            paymentMethod: receipt == nil ? "Cash on Delivery" : "Paid online",
-            paymentStatus: receipt == nil ? "pending" : "paid",
+            paymentMethod: paysOnline ? "Paid online" : "Cash on Delivery",
+            paymentStatus: paysOnline ? "paid" : "pending",
             etaMinutes: store.etaMinutes(for: quote) ?? 8,
             otp: Order.newDeliveryCode(),
             couponCode: cart.appliedCoupon?.code,
@@ -210,6 +192,41 @@ final class CheckoutViewModel: ObservableObject {
             walletUsed: walletCredit
         )
 
+        // Paying online: the payment is taken and confirmed first, and only a
+        // confirmed payment places the order.
+        var receipt: PaymentReceipt?
+        // This screen places the order itself, through the payment and the
+        // write; the background recovery leaves this order alone until then.
+        PaymentRecovery.shared.hold(code)
+        defer { PaymentRecovery.shared.release(code) }
+        if paysOnline {
+            do {
+                receipt = try await OnlinePayment.shared.pay(
+                    orderCode: code,
+                    amountRupees: totalToPay,
+                    customer: user,
+                    option: payOption,
+                    onOrderCreated: { razorpayOrderId in
+                        PendingPayments.add(PendingPayment(order: order, customer: user, razorpayOrderId: razorpayOrderId))
+                    },
+                    onConfirming: { [weak self] in
+                        self?.progressText = "Confirming payment..."
+                    }
+                )
+                progressText = "Placing Order..."
+            } catch {
+                orderError = (error as? LocalizedError)?.errorDescription ?? "The payment didn't go through."
+                if case OnlinePaymentError.cancelled = error {
+                    HapticsManager.shared.light()
+                } else {
+                    HapticsManager.shared.error()
+                }
+                // The saved payment stays: if money was taken, the recovery places the order.
+                PaymentRecovery.shared.start()
+                return false
+            }
+        }
+
         do {
             do {
                 try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm, payment: receipt)
@@ -218,6 +235,8 @@ final class CheckoutViewModel: ObservableObject {
                 try await Task.sleep(for: .seconds(2))
                 try await FirestoreService.shared.createOrder(order, customer: user, distanceKm: quote.distanceKm, payment: receipt)
             }
+
+            PendingPayments.remove(orderCode: code)
 
             // "Order placed" to the shopper's phones, "New order" to the store.
             Push.shared.orderChanged(order.id)
@@ -240,7 +259,9 @@ final class CheckoutViewModel: ObservableObject {
             print("❌ [Checkout] Order write failed: \(error)")
             #endif
             if let receipt {
-                orderError = "Your payment went through (\(receipt.razorpayPaymentId)), but the order couldn't be saved. Message us on WhatsApp with that payment ID and we'll sort it out."
+                // The saved payment stays, so the recovery keeps trying to place it.
+                PaymentRecovery.shared.start()
+                orderError = "Your payment went through (\(receipt.razorpayPaymentId)), but the order couldn't be saved yet. We'll keep trying and place it automatically. If it doesn't appear in a few minutes, message us on WhatsApp with that payment ID."
             } else {
                 orderError = "We couldn't reach the store to place your order. Check your connection and try again."
             }

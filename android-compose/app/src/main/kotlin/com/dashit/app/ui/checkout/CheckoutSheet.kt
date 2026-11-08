@@ -3,6 +3,8 @@ package com.dashit.app.ui.checkout
 import kotlin.math.ceil
 import androidx.compose.ui.platform.LocalContext
 import com.dashit.app.data.OnlinePayment
+import com.dashit.app.data.PaymentRecovery
+import com.dashit.app.data.PendingPayment
 import com.dashit.app.data.PayOption
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -251,6 +253,10 @@ fun CheckoutSheet(
         // Not tied to this sheet: once money is taken, the order is placed
         // even if the sheet or the screen goes away meanwhile.
         OnlinePayment.scope.launch {
+            // This sheet places the order itself, through the payment and the
+            // write; the background recovery leaves this order alone until then.
+            PaymentRecovery.hold(code)
+            try {
             // The wallet is read fresh: the total on screen must use what is really left.
             if (walletApplied > 0) {
                 val fresh = com.dashit.app.data.Wallet.fetchUsed(force = true)
@@ -268,19 +274,26 @@ fun CheckoutSheet(
                 val activity = context.findActivity()
                 try {
                     if (activity == null) throw OnlinePayment.PaymentException("Online payment isn't available right now. Choose cash on delivery.")
-                    receipt = OnlinePayment.pay(activity, code, order.grandTotal, customer, payOption) {
-                        progressText = "Confirming payment..."
-                    }
+                    receipt = OnlinePayment.pay(
+                        activity, code, order.grandTotal, customer, payOption,
+                        onOrderCreated = { razorpayOrderId ->
+                            PaymentRecovery.add(PendingPayment(razorpayOrderId, customer, order, quote.distanceKm))
+                        },
+                        onConfirming = { progressText = "Confirming payment..." }
+                    )
                     progressText = "Placing order..."
                 } catch (e: OnlinePayment.PaymentException) {
                     if (e.cancelled) HapticsManager.light(view) else HapticsManager.error(view)
                     errorMessage = e.message
                     isSubmitting = false
+                    // The saved payment stays: if money was taken, the recovery places the order.
+                    PaymentRecovery.start()
                     return@launch
                 }
             }
             try {
                 orderRepo.placeOrder(order, customer, quote.distanceKm, receipt)
+                PaymentRecovery.remove(code)
                 cartVm.clear()
                 placedEta = eta
                 orderSuccess = true
@@ -290,12 +303,17 @@ fun CheckoutSheet(
             } catch (e: Exception) {
                 HapticsManager.error(view)
                 errorMessage = if (receipt != null) {
-                    "Your payment went through (${receipt.razorpayPaymentId}), but the order couldn't be saved. Message us on WhatsApp with that payment ID and we'll sort it out."
+                    // The saved payment stays, so the recovery keeps trying to place it.
+                    PaymentRecovery.start()
+                    "Your payment went through (${receipt.razorpayPaymentId}), but the order couldn't be saved yet. We'll keep trying and place it automatically. If it doesn't appear in a few minutes, message us on WhatsApp with that payment ID."
                 } else {
                     e.message ?: "We couldn't reach the store to place your order. Check your connection and try again."
                 }
             } finally {
                 isSubmitting = false
+            }
+            } finally {
+                PaymentRecovery.release(code)
             }
         }
     }
@@ -425,6 +443,8 @@ fun CheckoutSheet(
                     AddressCard(address = address)
 
                     // 2. Delivery Time Guarantee Card
+                    // The admin's "orders may be delayed" notice, so nobody is surprised after paying.
+                    storeState.delayNotice?.let { com.dashit.app.ui.components.DelayNoticeBanner(it) }
                     GuaranteeCard(address)
 
                     // 3. Payment Method Card

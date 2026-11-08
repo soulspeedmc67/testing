@@ -406,6 +406,18 @@ fun StorefrontScreen(
                         )
                     }
 
+                    // The admin's "orders may be delayed" notice, while it is on.
+                    item(key = "delay_notice") {
+                        val storeNow by com.dashit.app.data.StoreStatus.state.collectAsState()
+                        val notice = storeNow.delayNotice
+                        if (storeNow.isOpen && notice != null) {
+                            com.dashit.app.ui.components.DelayNoticeBanner(
+                                notice = notice,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                            )
+                        }
+                    }
+
             // 2. Sticky Pinned Search Bar & Horizontal Category Tabs (Seamless status bar blend)
             stickyHeader(key = "search_and_tabs") {
                 Column(

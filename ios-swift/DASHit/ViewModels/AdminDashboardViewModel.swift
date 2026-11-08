@@ -141,6 +141,8 @@ public final class AdminDashboardViewModel: ObservableObject {
     @Published var nightCharge = NightCharge.Settings()
     /// The minimum order, the fees and cash on delivery on `config/store` (`ShopRules`).
     @Published var shopRules = ShopRules()
+    /// The "orders may be delayed" notice customers see, while it is on.
+    @Published var delayNotice: DelayNotice?
     /// The places the shop has saved to deliver from (`StoreLocation`).
     @Published var storePresets: [StorePreset] = []
     /// When "Refresh the website for everyone" was last tapped on this phone; nil if it wasn't, or it failed.
@@ -331,8 +333,10 @@ public final class AdminDashboardViewModel: ObservableObject {
             let nightCharge = NightCharge.Settings(data: data)
             let shopRules = ShopRules(data: data)
             let presets = StoreLocation.presets(from: data)
+            let notice = DelayNotice(storeData: data)
 
             Task { @MainActor in
+                self.delayNotice = notice
                 self.nightCharge = nightCharge
                 self.shopRules = shopRules
                 // The maps and distances in this app follow where the store is now.
@@ -1288,6 +1292,23 @@ public final class AdminDashboardViewModel: ObservableObject {
     /// A new 4-digit PIN for a rider who forgot theirs.
     public func resetPin(_ driver: Driver, pin: String) async -> String? {
         await riderAction(["action": "reset-pin", "uid": driver.id, "pin": pin])
+    }
+
+    /// Tells customers their order may be delayed (with the words they read),
+    /// or takes the notice down. Every shop app and the website follow at once.
+    func setDelayNotice(_ notice: DelayNotice?) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        let before = delayNotice
+        delayNotice = notice
+        // Turning it off keeps the words, so switching it on again is one tap.
+        let fields = (notice ?? before ?? DelayNotice(type: "surge", title: DelayNotice.surgeTitle, message: DelayNotice.presets[0].message))
+            .fields(active: notice != nil)
+        db.collection("config").document("store").setData([
+            "weatherAlert": fields,
+            "updatedAt": FieldValue.serverTimestamp()
+        ], merge: true, completion: saveResult(notice == nil ? "Taking the delay notice down" : "The delay notice") { [weak self] in
+            self?.delayNotice = before
+        })
     }
 
     public func toggleStore(isOpen: Bool, reason: String) {
