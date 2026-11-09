@@ -1928,13 +1928,19 @@ export default function DashItDriverApp() {
                             {it.name}
                           </p>
                           {unit && <p className="text-[10px] text-slate-400">{unit}</p>}
+                          {Number(it.price) > 0 && (
+                            <p className="text-[10px] text-slate-400 font-mono">₹{it.price} each</p>
+                          )}
                         </div>
                       </div>
 
-                      <div className="shrink-0 pl-2">
+                      <div className="shrink-0 pl-2 flex flex-col items-end gap-1">
                         <span className="font-mono font-black text-xs px-2 py-1 rounded-lg bg-orange-500/20 text-orange-400">
                           {qty}x
                         </span>
+                        {Number(it.price) > 0 && (
+                          <span className="font-mono font-black text-xs text-slate-200">₹{it.price * qty}</span>
+                        )}
                       </div>
                     </div>
                   );
