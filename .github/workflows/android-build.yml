@@ -1,0 +1,69 @@
+name: Build Android driver / admin APK
+
+# Manual only. Builds the Capacitor Android apps (flavors: driver, admin) and attaches the APK
+# to the run as an artifact. Nothing is released or uploaded anywhere.
+#
+# Signing: if the repository secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD are set, the release APK is signed with that key
+# (installs over the existing release app). Otherwise a DEBUG APK is built; it is signed with a
+# throwaway key, so uninstall the old app first and expect to uninstall again for the next build.
+on:
+  workflow_dispatch:
+    inputs:
+      flavor:
+        description: "App to build"
+        type: choice
+        options: [driver, admin, both]
+        default: driver
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: Build the web bundle
+        run: npm run build
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyB6tH6rYJ3fDZ7SBVkTNL3i_lOTXkPYjsg' }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'dashit-1ecba.firebaseapp.com' }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'dashit-1ecba' }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'dashit-1ecba.firebasestorage.app' }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '391742831837' }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID || '1:391742831837:web:a66d0d0920d75b24f4ef34' }}
+          NEXT_PUBLIC_AUTH_MODE: otp
+          NEXT_PUBLIC_OTP_FIXED: "0"
+      - run: npx cap sync android
+      - name: Set up release signing (only when the secrets exist)
+        if: ${{ env.KS_B64 != '' }}
+        run: |
+          echo "$KS_B64" | base64 -d > android/release.jks
+          cat > android/keystore.properties <<PROPS
+          storeFile=../release.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          PROPS
+      - name: Build
+        working-directory: android
+        run: |
+          TYPE=Debug; [ -n "$KS_B64" ] && TYPE=Release
+          case "${{ inputs.flavor }}" in
+            both) ./gradlew assembleDriver$TYPE assembleAdmin$TYPE ;;
+            admin) ./gradlew assembleAdmin$TYPE ;;
+            *) ./gradlew assembleDriver$TYPE ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashit-android-apk
+          path: android/app/build/outputs/apk/**/*.apk
