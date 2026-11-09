@@ -3,10 +3,10 @@ name: Build Android driver / admin APK
 # Manual only. Builds the Capacitor Android apps (flavors: driver, admin) and attaches the APK
 # to the run as an artifact. Nothing is released or uploaded anywhere.
 #
-# Signing: if the repository secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
+# Signing: release build. If the repository secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD,
 # ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD are set, the release APK is signed with that key
-# (installs over the existing release app). Otherwise a DEBUG APK is built; it is signed with a
-# throwaway key, so uninstall the old app first and expect to uninstall again for the next build.
+# (installs over the existing release app). Otherwise a NEW key is generated and shipped in the
+# artifact's newkey/ folder: keep it and add it as those secrets so later builds use the same key.
 on:
   workflow_dispatch:
     inputs:
@@ -44,26 +44,33 @@ jobs:
           NEXT_PUBLIC_AUTH_MODE: otp
           NEXT_PUBLIC_OTP_FIXED: "0"
       - run: npx cap sync android
-      - name: Set up release signing (only when the secrets exist)
-        if: ${{ env.KS_B64 != '' }}
+      - name: Set up release signing (secrets if set, otherwise a brand-new key)
         run: |
-          echo "$KS_B64" | base64 -d > android/release.jks
-          cat > android/keystore.properties <<PROPS
-          storeFile=../release.jks
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          PROPS
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > android/release.jks
+            SP='${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'; KA='${{ secrets.ANDROID_KEY_ALIAS }}'; KP='${{ secrets.ANDROID_KEY_PASSWORD }}'
+          else
+            SP=$(openssl rand -hex 16); KA=dashit; KP=$SP
+            keytool -genkeypair -keystore android/release.jks -storetype PKCS12 -alias "$KA" \
+              -keyalg RSA -keysize 2048 -validity 10000 -storepass "$SP" -keypass "$KP" \
+              -dname "CN=DASHit, O=DASHit, L=Anantnag, C=IN"
+            mkdir -p newkey && cp android/release.jks newkey/dashit-release.jks
+            printf 'storePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SP" "$KA" "$KP" > newkey/key-info.txt
+          fi
+          printf 'storeFile=../release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SP" "$KA" "$KP" > android/keystore.properties
       - name: Build
         working-directory: android
         run: |
-          TYPE=Debug; [ -n "$KS_B64" ] && TYPE=Release
+          # gradle.properties pins a JDK path from the owner's laptop; use the runner's JDK instead.
+          G="./gradlew -Dorg.gradle.java.home=$JAVA_HOME"
           case "${{ inputs.flavor }}" in
-            both) ./gradlew assembleDriver$TYPE assembleAdmin$TYPE ;;
-            admin) ./gradlew assembleAdmin$TYPE ;;
-            *) ./gradlew assembleDriver$TYPE ;;
+            both) $G assembleDriverRelease assembleAdminRelease ;;
+            admin) $G assembleAdminRelease ;;
+            *) $G assembleDriverRelease ;;
           esac
       - uses: actions/upload-artifact@v4
         with:
           name: dashit-android-apk
-          path: android/app/build/outputs/apk/**/*.apk
+          path: |
+            android/app/build/outputs/apk/**/*.apk
+            newkey/
