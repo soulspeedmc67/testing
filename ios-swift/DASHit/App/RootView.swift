@@ -37,6 +37,8 @@ struct RootView: View {
                 }
             }
         }
+        // Snow or rain over the screens (not the tab bar), while the admin's weather advisory is on.
+        .overlay { AmbientWeatherView() }
         // The floating tab bar insets every screen's safe area: content scrolls
         // beneath it and comes to rest above it, and the cart pill stacks on top.
         // The order pill rides on top of the bar, so screens (and the cart

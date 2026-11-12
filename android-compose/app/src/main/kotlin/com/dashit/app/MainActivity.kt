@@ -117,6 +117,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
                 }
                 Box(modifier = Modifier.fillMaxSize()) {
                     StorefrontScreen(storefrontVm = storefrontViewModel)
+                    // Snow or rain over the shop, while the admin's weather advisory is on.
+                    com.dashit.app.ui.components.AmbientWeather()
                     if (showWelcomeAuth) {
                         AuthScreen(isWelcome = true, onClose = {
                             prefs.edit().putBoolean(WELCOME_SEEN_KEY, true).apply()
