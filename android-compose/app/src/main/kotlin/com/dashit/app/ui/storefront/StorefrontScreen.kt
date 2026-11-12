@@ -1017,101 +1017,107 @@ private fun StorefrontHeader(
                     )
                 )
             )
-            .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // Snow or rain inside the header glow, while the admin's weather advisory is on.
+        com.dashit.app.ui.components.AmbientWeather(Modifier.matchParentSize())
+        Box(
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 12.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .weight(1f, fill = false)
-                    .padding(end = 10.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "DASHit in",
-                    color = kicker,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
-
-                Spacer(modifier = Modifier.height(2.dp))
-
-                // From the address, the store's switch and high demand, as on the iPhone app.
-                val quote = remember(address.latitude, address.longitude) {
-                    com.dashit.app.data.DeliveryEta.quote(address.latitude, address.longitude)
-                }
-                val eta = remember(quote, store) { com.dashit.app.data.StoreStatus.etaMinutes(quote) }
-                Text(
-                    text = when {
-                        !store.isOpen -> "Closed now"
-                        eta == null -> "Not here yet"
-                        else -> "$eta minutes"
-                    },
-                    color = headline,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black,
-                    lineHeight = 34.sp
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Location selector opening bottom sheet
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                Column(
                     modifier = Modifier
-                        .onGloballyPositioned { onAddressRowPlaced(it.boundsInWindow()) }
-                        .pressable(scale = 0.96f) {
-                        HapticsManager.light(view)
-                        onOpenAddressPicker()
-                    }
+                        .weight(1f, fill = false)
+                        .padding(end = 10.dp)
                 ) {
                     Text(
-                        text = address.displaySummary,
-                        color = addressTint,
-                        fontSize = 13.sp,
+                        text = "DASHit in",
+                        color = kicker,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        letterSpacing = 0.5.sp
                     )
 
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // From the address, the store's switch and high demand, as on the iPhone app.
+                    val quote = remember(address.latitude, address.longitude) {
+                        com.dashit.app.data.DeliveryEta.quote(address.latitude, address.longitude)
+                    }
+                    val eta = remember(quote, store) { com.dashit.app.data.StoreStatus.etaMinutes(quote) }
+                    Text(
+                        text = when {
+                            !store.isOpen -> "Closed now"
+                            eta == null -> "Not here yet"
+                            else -> "$eta minutes"
+                        },
+                        color = headline,
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 34.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Location selector opening bottom sheet
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .onGloballyPositioned { onAddressRowPlaced(it.boundsInWindow()) }
+                            .pressable(scale = 0.96f) {
+                            HapticsManager.light(view)
+                            onOpenAddressPicker()
+                        }
+                    ) {
+                        Text(
+                            text = address.displaySummary,
+                            color = addressTint,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Change address",
+                            tint = addressTint,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                // Top right: the wallet (what is left of the welcome credit), then the profile button.
+                val rules = store.rules
+                val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
+                val walletBalance = com.dashit.app.data.Wallet.balance(rules, walletSpent)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = onOpenWallet)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(if (isDark) Color(0xFF2C2214) else Color.White.copy(alpha = 0.7f))
+                        .border(1.dp, if (isDark) Color(0xFF5A4420) else Color(0xFFF2C9A4), CircleShape)
+                        .pressable(scale = 0.90f) {
+                            onOpenProfile()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Change address",
-                        tint = addressTint,
-                        modifier = Modifier.size(16.dp)
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Profile",
+                        tint = headline,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
-            }
-
-            // Top right: the wallet (what is left of the welcome credit), then the profile button.
-            val rules = store.rules
-            val walletSpent by com.dashit.app.data.Wallet.used.collectAsState()
-            val walletBalance = com.dashit.app.data.Wallet.balance(rules, walletSpent)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            com.dashit.app.ui.wallet.WalletChip(balance = walletBalance, onClick = onOpenWallet)
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(if (isDark) Color(0xFF2C2214) else Color.White.copy(alpha = 0.7f))
-                    .border(1.dp, if (isDark) Color(0xFF5A4420) else Color(0xFFF2C9A4), CircleShape)
-                    .pressable(scale = 0.90f) {
-                        onOpenProfile()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = headline,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+                }
             }
         }
     }

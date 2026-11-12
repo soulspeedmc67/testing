@@ -146,6 +146,12 @@ struct StorefrontHomeView: View {
                         HeaderBackdrop(gold: vm.isSpotlightSelected)
                             .frame(height: 320)
                     }
+                    // Snow or rain inside the glow (from just above the clock down the
+                    // header), while the admin's weather advisory is on.
+                    .overlay(alignment: .bottom) {
+                        AmbientWeatherView()
+                            .frame(height: 380)
+                    }
                     .offset(y: -1000)
                     .allowsHitTesting(false)
                 }

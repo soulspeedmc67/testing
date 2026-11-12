@@ -2,51 +2,58 @@ import { useEffect, useRef, useState } from "react";
 import { useStoreDetails } from "../lib/storeStatus";
 
 /**
- * A faint snowfall or rain behind the shop while the admin has the weather
- * advisory on (`weatherAlert` on `config/store`, type "snow" or "rain").
- * Nothing new to switch: the same control that shows the "orders may be
- * delayed" banner drives this.
+ * A faint snowfall or rain inside the home header's gradient while the admin
+ * has the weather advisory on (`weatherAlert` on `config/store`, type "snow"
+ * or "rain"). Put it as the first child of a `relative` header: it fills that
+ * box, fades out toward the bottom edge with the gradient, and never takes a
+ * touch.
  *
- * Kept deliberately quiet: a few dozen soft particles, low opacity, no touch
- * handling, paused when the tab is hidden, and skipped for people who ask their
- * device to reduce motion.
+ * Kept deliberately quiet: a handful of soft particles at low opacity, paused
+ * when the tab is hidden, and skipped for people who ask their device to
+ * reduce motion.
  */
 
 const FADE_SECONDS = 1.6;
 
 function particleCount(width, height, kind) {
-  const base = (width * height) / (kind === "snow" ? 16000 : 22000);
-  return Math.max(24, Math.min(kind === "snow" ? 70 : 55, Math.round(base)));
+  const base = (width * height) / (kind === "snow" ? 1500 : 1800);
+  return Math.max(30, Math.min(kind === "snow" ? 110 : 100, Math.round(base)));
 }
 
+/* Depth runs 0 (far: tiny, slow, faint) to 1 (near: bigger, quicker, clearer).
+   Squaring the random number gives plenty of far particles and a few near
+   ones, which is what makes the fall look deep instead of flat. */
 function makeParticle(kind, width, height, anywhere) {
-  const depth = Math.random(); // 0 = far and faint, 1 = near and clearer
+  const depth = Math.pow(Math.random(), 1.5);
   if (kind === "snow") {
     return {
+      depth,
       x: Math.random() * width,
       y: anywhere ? Math.random() * height : -10,
-      r: 0.8 + depth * 2.1,
-      speed: 14 + depth * 26,
-      sway: 6 + Math.random() * 12,
+      r: 0.6 + depth * 2.2,
+      speed: 12 + depth * 34,
+      sway: 3 + Math.random() * 9,
+      swaySpeed: 0.4 + Math.random() * 0.7,
       phase: Math.random() * Math.PI * 2,
-      alpha: 0.22 + depth * 0.4,
+      alpha: 0.3 + depth * 0.45,
     };
   }
   return {
-    x: Math.random() * (width + 80) - 40,
+    depth,
+    x: Math.random() * (width + 60) - 30,
     y: anywhere ? Math.random() * height : -30,
-    len: 9 + depth * 14,
-    speed: 520 + depth * 380,
-    alpha: 0.1 + depth * 0.16,
-    w: 0.6 + depth * 0.5,
+    len: 8 + depth * 18,
+    speed: 380 + depth * 520,
+    alpha: 0.24 + depth * 0.44,
+    w: 0.6 + depth * 0.9,
   };
 }
 
-/** Light backgrounds need a cool grey-blue; white flakes would vanish on them. */
+/** Snow is a white core with a soft cool-grey edge: pure white would vanish on the light peach header. */
 function inkFor(kind) {
   const dark = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-  if (kind === "snow") return dark ? "255,255,255" : "120,146,184";
-  return dark ? "174,198,230" : "96,122,160";
+  if (kind === "snow") return dark ? "255,255,255" : "104,132,178";
+  return dark ? "174,198,230" : "84,108,152";
 }
 
 export default function AmbientWeather() {
@@ -73,12 +80,12 @@ export default function AmbientWeather() {
     if (reduce && reduce.matches) return undefined;
 
     const canvas = canvasRef.current;
+    const box = canvas && canvas.parentElement;
     const ctx = canvas && canvas.getContext("2d");
-    if (!ctx) return undefined;
+    if (!ctx || !box) return undefined;
 
     let width = 0;
     let height = 0;
-    let dpr = 1;
     let particles = [];
     let raf = 0;
     let last = 0;
@@ -87,9 +94,10 @@ export default function AmbientWeather() {
     let inkCheck = 0;
 
     const resize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const rect = box.getBoundingClientRect();
+      width = Math.max(1, Math.round(rect.width));
+      height = Math.max(1, Math.round(rect.height));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -119,33 +127,52 @@ export default function AmbientWeather() {
       const t = now / 1000;
 
       if (kind === "snow") {
+        // A slow, shifting breeze: near flakes lean into it more than far ones.
+        const wind = Math.sin(t * 0.23) * 7 + Math.sin(t * 0.71 + 1.3) * 3;
         for (const p of particles) {
           p.y += p.speed * dt;
-          const x = p.x + Math.sin(t * 0.6 + p.phase) * p.sway;
-          if (p.y > height + 10) Object.assign(p, makeParticle("snow", width, height, false), { x: Math.random() * width });
+          p.x += wind * (0.35 + p.depth) * dt;
+          const x = p.x + Math.sin(t * p.swaySpeed + p.phase) * p.sway;
+          if (p.y > height + 10 || x < -20 || x > width + 20) {
+            Object.assign(p, makeParticle("snow", width, height, false));
+          }
           const a = p.alpha * level;
-          const g = ctx.createRadialGradient(x, p.y, 0, x, p.y, p.r * 2);
-          g.addColorStop(0, `rgba(${ink},${a})`);
+          const reach = p.r * (p.depth > 0.7 ? 2.6 : 2);
+          const g = ctx.createRadialGradient(x, p.y, 0, x, p.y, reach);
+          // Edge first (cool grey-blue, soft), then the white core on top.
+          g.addColorStop(0, `rgba(${ink},${a * 0.62})`);
+          g.addColorStop(0.5, `rgba(${ink},${a * 0.42})`);
           g.addColorStop(1, `rgba(${ink},0)`);
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(x, p.y, p.r * 2, 0, Math.PI * 2);
+          ctx.arc(x, p.y, reach, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `rgba(255,255,255,${Math.min(1, a * 1.25)})`;
+          ctx.beginPath();
+          ctx.arc(x, p.y, p.r * 0.7, 0, Math.PI * 2);
           ctx.fill();
         }
       } else {
-        const slant = 0.2; // a gentle lean, not a storm
+        // The wind eases a little, so the streaks lean slightly differently over time.
+        const slant = 0.2 + Math.sin(t * 0.3) * 0.04;
         ctx.lineCap = "round";
         for (const p of particles) {
           p.y += p.speed * dt;
           p.x += p.speed * slant * dt;
-          if (p.y > height + 30 || p.x > width + 40) {
-            Object.assign(p, makeParticle("rain", width, height, false), { x: Math.random() * (width + 80) - 40 });
+          if (p.y > height + 30 || p.x > width + 30) {
+            Object.assign(p, makeParticle("rain", width, height, false));
           }
-          ctx.strokeStyle = `rgba(${ink},${p.alpha * level})`;
+          // Faint tail, brighter head: reads as motion blur, not a hard line.
+          const tx = p.x - p.len * slant;
+          const ty = p.y - p.len;
+          const g = ctx.createLinearGradient(tx, ty, p.x, p.y);
+          g.addColorStop(0, `rgba(${ink},0)`);
+          g.addColorStop(1, `rgba(${ink},${p.alpha * level})`);
+          ctx.strokeStyle = g;
           ctx.lineWidth = p.w;
           ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x - p.len * slant, p.y - p.len);
+          ctx.moveTo(tx, ty);
+          ctx.lineTo(p.x, p.y);
           ctx.stroke();
         }
       }
@@ -164,22 +191,24 @@ export default function AmbientWeather() {
 
     resize();
     start();
-    window.addEventListener("resize", resize);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
+    if (observer) observer.observe(box);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       stop();
-      window.removeEventListener("resize", resize);
+      if (observer) observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [kind]);
 
   if (!kind) return null;
+  const fade = "linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%)";
   return (
     <canvas
       ref={canvasRef}
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none"
-      style={{ width: "100vw", height: "100vh", zIndex: 40 }}
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ WebkitMaskImage: fade, maskImage: fade }}
     />
   );
 }

@@ -1,3 +1,4 @@
+import AmbientWeather from "./AmbientWeather";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -267,7 +268,8 @@ export default function AppHeader({
       {/* ========================================================================= */}
       {/* MOBILE COMPACT HEADER (< md) — Exactly preserved for mobile devices        */}
       {/* ========================================================================= */}
-      <div className="md:hidden w-full bg-gradient-to-b from-[#FFE8D6] via-[#FFF5EB] to-[#FFFDF5] transition-colors duration-500 dark:from-surface dark:via-surface dark:to-surface">
+      <div className="md:hidden relative w-full bg-gradient-to-b from-[#FFE8D6] via-[#FFF5EB] to-[#FFFDF5] transition-colors duration-500 dark:from-surface dark:via-surface dark:to-surface">
+      <AmbientWeather />
         {/* 0. RESERVED STATUS BAR SPACE */}
         <div
           className={`w-full h-[env(safe-area-inset-top,0px)] shrink-0 pointer-events-none transition-colors duration-300 ${

@@ -30,7 +30,6 @@ import { EASE_OUT } from '../lib/motion';
 const SHOP_ROUTES = ['/shop', '/search', '/categories', '/product', '/checkout', '/offers', '/orders', '/track', '/wishlist', '/account', '/add-address', '/confirm-location', '/login', '/tobacco'];
 const FloatingCartBar = dynamic(() => import('../components/FloatingCartBar'), { ssr: false });
 const BottomNav = dynamic(() => import('../components/BottomNav'), { ssr: false });
-const AmbientWeather = dynamic(() => import('../components/AmbientWeather'), { ssr: false });
 const FlyingBadgeOverlay = dynamic(() => import('../components/FlyingBadgeOverlay'), { ssr: false });
 const DeliveryAreaCheck = dynamic(() => import('../components/DeliveryAreaCheck'), { ssr: false });
 const LiveOrderFloatingTracker = dynamic(() => import('../components/LiveOrderFloatingTracker'), { ssr: false });
@@ -530,9 +529,6 @@ export default function App({ Component, pageProps }) {
             take the page (or the cart bar) down with it. */}
         {!isDriverApp && SHOP_ROUTES.includes(router.pathname) && (
           <>
-            <ErrorBoundary quiet name="ambient weather" resetKey={router.pathname}>
-              <AmbientWeather />
-            </ErrorBoundary>
             {!router.pathname.startsWith('/track') && (
               <ErrorBoundary quiet name="cart bar" resetKey={router.pathname}>
                 <FloatingCartBar />

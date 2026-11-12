@@ -13,26 +13,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import com.dashit.app.core.design.DashitColors
 import com.dashit.app.data.StoreStatus
+import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.min
 import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.sin
 
 /**
- * A faint snowfall or rain over the shop while the admin has the weather
- * advisory on (`weatherAlert` on `config/store`, type "snow" or "rain").
- * Nothing new to switch: the same control that shows "Orders may be delayed"
- * drives this, and the web and iPhone apps follow the same field.
+ * A faint snowfall or rain inside the home header's glow while the admin has
+ * the weather advisory on (`weatherAlert` on `config/store`, type "snow" or
+ * "rain"). Nothing new to switch: the same control that shows "Orders may be
+ * delayed" drives this, and the web and iPhone apps follow the same field.
  *
- * Kept deliberately quiet: a few dozen soft particles at low opacity, never
- * taking a touch, still when the device has animations turned off.
+ * It fills whatever box it is placed in (the header), fades out toward the
+ * bottom with the gradient, never takes a touch, and stays still when the
+ * device has animations turned off.
  */
 private enum class AmbientKind { Snow, Rain }
 
@@ -76,7 +84,19 @@ fun AmbientWeather(modifier: Modifier = Modifier) {
     if (kind == null || animationsOff) return
 
     val dark = DashitColors.isDark
-    Canvas(modifier = modifier.fillMaxSize()) {
+    Canvas(
+        modifier = modifier
+            .fillMaxSize()
+            // Fades out toward the bottom edge, like the gradient behind it.
+            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+            .drawWithContent {
+                drawContent()
+                drawRect(
+                    brush = Brush.verticalGradient(0f to Color.Black, 0.45f to Color.Black, 1f to Color.Transparent),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+    ) {
         val t = seconds.toDouble()
         when (kind) {
             AmbientKind.Snow -> drawSnow(t, level, dark)
@@ -91,56 +111,91 @@ private fun rnd(i: Int, salt: Int): Double {
     return x - floor(x)
 }
 
-private fun count(w: Float, h: Float, perPixels: Float, limit: Int): Int =
-    min(limit, max(24, ((w * h) / perPixels).toInt()))
+/**
+ * 0 far (tiny, slow, faint) to 1 near (bigger, quicker, clearer). Skewed toward
+ * far, so there are plenty of fine specks and a few near ones: that is what
+ * makes the fall look deep instead of flat.
+ */
+private fun depth(i: Int): Double = rnd(i, 1).pow(1.5)
+
+private fun count(w: Float, h: Float, perDp2: Float, limit: Int): Int =
+    min(limit, max(30, ((w * h) / perDp2).toInt()))
 
 private fun DrawScope.drawSnow(t: Double, level: Float, dark: Boolean) {
-    val ink = if (dark) Color.White else Color(0xFF7892B8)
+    val edge = if (dark) Color.White else Color(0xFF6884B2)
     val density = this.density
     val w = size.width.toDouble()
     val h = size.height.toDouble()
     // Sized in dp, so a dense phone screen doesn't get a blizzard of pin-pricks.
-    val n = count(size.width / density, size.height / density, 16000f, 70)
-    val travel = h + 20 * density
+    val n = count(size.width / density, size.height / density, 1500f, 110)
+    val travelY = h + 20 * density
+    val travelX = w + 40 * density
+    // A slow, shifting breeze, worked out as a distance so every flake is
+    // carried the same way, near ones further than far ones.
+    val drift = (-(7 / 0.23) * cos(0.23 * t) - (3 / 0.71) * cos(0.71 * t + 1.3)) * density
     for (i in 0 until n) {
-        val depth = rnd(i, 1)
-        val radius = ((0.8 + depth * 2.1) * density).toFloat()
-        val speed = (14 + depth * 26) * density
-        val sway = (6 + rnd(i, 2) * 12) * density
+        val d = depth(i)
+        val radius = ((0.6 + d * 2.2) * density).toFloat()
+        val speed = (12 + d * 34) * density
+        val sway = (3 + rnd(i, 2) * 9) * density
+        val swaySpeed = 0.4 + rnd(i, 6) * 0.7
         val phase = rnd(i, 3) * Math.PI * 2
-        val alpha = ((0.22 + depth * 0.4) * level).toFloat()
+        val alpha = ((0.3 + d * 0.45) * level).toFloat()
 
-        val y = (rnd(i, 4) * travel + speed * t) % travel - 10 * density
-        val x = rnd(i, 5) * w + sin(t * 0.6 + phase) * sway
+        val y = (rnd(i, 4) * travelY + speed * t) % travelY - 10 * density
+        var x = (rnd(i, 5) * travelX + drift * (0.35 + d) + sin(t * swaySpeed + phase) * sway) % travelX
+        if (x < 0) x += travelX
+        x -= 20 * density
 
-        drawCircle(ink.copy(alpha = alpha * 0.28f), radius * 2f, Offset(x.toFloat(), y.toFloat()))
-        drawCircle(ink.copy(alpha = alpha), radius, Offset(x.toFloat(), y.toFloat()))
+        // A soft cool-grey edge with a white core: pure white would vanish on
+        // the light peach header. At night the header is dark, so white alone.
+        val halo = radius * (if (d > 0.7) 2.6f else 2f)
+        val at = Offset(x.toFloat(), y.toFloat())
+        drawCircle(
+            brush = Brush.radialGradient(
+                0f to edge.copy(alpha = alpha * 0.62f),
+                0.5f to edge.copy(alpha = alpha * 0.42f),
+                1f to edge.copy(alpha = 0f),
+                center = at,
+                radius = halo
+            ),
+            radius = halo,
+            center = at
+        )
+        drawCircle(Color.White.copy(alpha = min(1f, alpha * 1.25f)), radius * 0.7f, at)
     }
 }
 
 private fun DrawScope.drawRain(t: Double, level: Float, dark: Boolean) {
-    val ink = if (dark) Color(0xFFAEC6E6) else Color(0xFF607AA0)
+    val ink = if (dark) Color(0xFFAEC6E6) else Color(0xFF546C98)
     val density = this.density
     val w = size.width.toDouble()
     val h = size.height.toDouble()
-    val n = count(size.width / density, size.height / density, 22000f, 55)
+    val n = count(size.width / density, size.height / density, 1800f, 100)
     val slant = 0.2                               // a gentle lean, not a storm
     val travelY = h + 60 * density
-    val travelX = w + 80 * density
+    val travelX = w + 60 * density
     for (i in 0 until n) {
-        val depth = rnd(i, 11)
-        val length = (9 + depth * 14) * density
-        val speed = (520 + depth * 380) * density
-        val alpha = ((0.1 + depth * 0.16) * level).toFloat()
-        val width = ((0.6 + depth * 0.5) * density).toFloat()
+        val d = depth(i)
+        val length = (8 + d * 18) * density
+        val speed = (380 + d * 520) * density
+        val alpha = ((0.24 + d * 0.44) * level).toFloat()
+        val width = ((0.6 + d * 0.9) * density).toFloat()
 
         val y = (rnd(i, 12) * travelY + speed * t) % travelY - 30 * density
-        val x = (rnd(i, 13) * travelX + speed * slant * t) % travelX - 40 * density
+        val x = (rnd(i, 13) * travelX + speed * slant * t) % travelX - 30 * density
 
+        val head = Offset(x.toFloat(), y.toFloat())
+        val tail = Offset((x - length * slant).toFloat(), (y - length).toFloat())
+        // Faint tail, brighter head: reads as motion blur, not a hard line.
         drawLine(
-            color = ink.copy(alpha = alpha),
-            start = Offset(x.toFloat(), y.toFloat()),
-            end = Offset((x - length * slant).toFloat(), (y - length).toFloat()),
+            brush = Brush.linearGradient(
+                colors = listOf(ink.copy(alpha = 0f), ink.copy(alpha = alpha)),
+                start = tail,
+                end = head
+            ),
+            start = tail,
+            end = head,
             strokeWidth = width,
             cap = StrokeCap.Round
         )
