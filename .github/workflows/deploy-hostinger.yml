@@ -15,6 +15,11 @@ on:
       - ".github/workflows/android-build.yml"
       - ".github/workflows/ios-build.yml"
   workflow_dispatch:
+    inputs:
+      reset_sync_state:
+        description: "Forget what the server is believed to hold and upload everything (use when a deploy fails deleting a file or folder that isn't there)"
+        type: boolean
+        default: false
 
 # A second push while a deploy is running cancels the older one, so the site
 # always ends up matching the newest commit rather than whichever upload
@@ -105,6 +110,20 @@ jobs:
             fi
           fi
           echo "host=$host" >> "$GITHUB_OUTPUT"
+
+      # The upload only sends what changed since a record it keeps on the server.
+      # If the server was changed by hand the record is wrong, and a deploy can
+      # stop on deleting something that is already gone. Removing the record
+      # makes the next upload send everything and delete nothing.
+      - name: Forget the server's sync record (only when asked)
+        if: ${{ inputs.reset_sync_state == true }}
+        env:
+          FTP_USER: ${{ secrets.HOSTINGER_FTP_USERNAME }}
+          FTP_PASS: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
+          FTP_HOST: ${{ steps.ftp.outputs.host }}
+          REMOTE_DIR: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR || '/domains/dashit.co.in/public_html/' }}
+        run: |
+          curl --silent --show-error --ssl-reqd --user "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/" -Q "DELE ${REMOTE_DIR}.ftp-deploy-sync-state.json" -o /dev/null || echo "No sync record to remove (that is fine)."
 
       - name: Upload to Hostinger over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
