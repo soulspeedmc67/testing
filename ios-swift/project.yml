@@ -55,7 +55,7 @@ targets:
       properties:
         CFBundleDisplayName: DASHit
         CFBundleIdentifier: com.dashit.app
-        CFBundleShortVersionString: "1.0.9"
+        CFBundleShortVersionString: "1.0.10"
         CFBundleVersion: "1"
         # Plain midnight while the app starts; SplashView then reveals the logo.
         UILaunchScreen:
@@ -114,7 +114,7 @@ targets:
       path: DASHitWidgets/Info.plist
       properties:
         CFBundleDisplayName: DASHit
-        CFBundleShortVersionString: "1.0.9"
+        CFBundleShortVersionString: "1.0.10"
         CFBundleVersion: "1"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
