@@ -91,9 +91,18 @@ jobs:
           host="${host#*://}"
           host="${host%%/*}"
           host="${host%%:*}"
-          if [ -z "$host" ] || ! getent hosts "$host" > /dev/null; then
-            echo "::warning::The FTP host secret isn't a server name that resolves; using ftp.dashit.co.in. Set the secret to just the host, e.g. ftp.dashit.co.in."
+          # A name can resolve and still not be the FTP server (the website's own
+          # address, for one): the upload then just sits there until it times out
+          # ("Timeout (control socket)"). So the host also has to answer on the
+          # FTP port.
+          answers_ftp() { timeout 10 bash -c "exec 3<>/dev/tcp/$1/21" 2>/dev/null; }
+          if [ -z "$host" ] || ! getent hosts "$host" > /dev/null || ! answers_ftp "$host"; then
+            echo "::warning::The FTP host secret isn't a server that answers FTP; using ftp.dashit.co.in. Set the secret to just the host, e.g. ftp.dashit.co.in."
             host="ftp.dashit.co.in"
+            if ! answers_ftp "$host"; then
+              echo "::error::Neither the FTP host secret nor ftp.dashit.co.in answers on the FTP port from GitHub's runners (the host may block them, or be down)."
+              exit 1
+            fi
           fi
           echo "host=$host" >> "$GITHUB_OUTPUT"
 
