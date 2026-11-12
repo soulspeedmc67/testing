@@ -36,6 +36,10 @@ targets:
         product: FirebaseMessaging
       - package: Razorpay
         product: RazorpayCheckout
+      # Razorpay's lower-level kit: opens the picked UPI app straight from the
+      # checkout (DirectUpiPayment), with Razorpay's own checkout as the fallback.
+      - package: Razorpay
+        product: RazorpayCustomUI
       - sdk: SwiftUI.framework
       - sdk: MapKit.framework
       - sdk: PassKit.framework
