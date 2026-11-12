@@ -165,21 +165,6 @@ final class OnlinePayment: NSObject {
     @MainActor
     private func authorize(_ order: CreatedOrder, orderCode: String, customer: UserProfile, option: PayOption?) async -> Outcome {
         #if canImport(Razorpay)
-        // A UPI app was picked: try opening it straight from DASHit, with no
-        // Razorpay page in between. Nil means that didn't work out (nothing has
-        // been charged or opened), and Razorpay's own checkout below takes over.
-        if let upiApp = option?.upiApp {
-            let direct = DirectUpiPayment()
-            let answer = await direct.pay(
-                keyId: order.key_id, amount: order.amount, currency: order.currency,
-                razorpayOrderId: order.order_id, orderCode: orderCode, customer: customer, upiApp: upiApp
-            )
-            switch answer {
-            case .paid(_, let data)?: return .paid(data)
-            case .failed(let code, let description)?: return .failed(code: code, description: description)
-            case nil: break
-            }
-        }
         return await withCheckedContinuation { continuation in
             self.continuation = continuation
             let checkout = RazorpayCheckout.initWithKey(order.key_id, andDelegateWithData: self)
