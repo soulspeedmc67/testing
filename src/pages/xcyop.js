@@ -63,6 +63,7 @@ import ErrorBoundary from "../components/ErrorBoundary";
 import { isFirebaseConfigured } from "../lib/firebase";
 import { clearSavedCopies, rememberCacheVersion } from "../lib/cacheRefresh";
 import { watchAuth, getStaffRole, signInWithEmail, signInWithGoogle, completeGoogleRedirect, signOut } from "../lib/auth";
+import { getPartnerAccess } from "../lib/partners";
 import { watchShopProducts as watchProducts } from "../lib/catalogueFile";
 import {
   watchAllOrders,
@@ -303,6 +304,11 @@ export default function AdminAccessGate() {
           sessionStorage.setItem("dashit_admin_email", user.email || "");
         }
       } else {
+        // A partner shop's owner belongs in his own portal, not in the shop's console.
+        if (await getPartnerAccess(user.uid)) {
+          window.location.replace("/partner");
+          return;
+        }
         setIsAuthenticated(false);
       }
       setIsRestoring(false);
@@ -329,6 +335,10 @@ export default function AdminAccessGate() {
       if (res.user) {
         const role = await getStaffRole(res.user?.uid);
         if (role !== "admin") {
+          if (await getPartnerAccess(res.user?.uid)) {
+            window.location.replace("/partner");
+            return;
+          }
           const uid = res.user?.uid || "";
           await signOut();
           setLoginError(
@@ -401,6 +411,10 @@ export default function AdminAccessGate() {
 
       const role = await getStaffRole(res.user?.uid);
       if (role !== "admin") {
+        if (await getPartnerAccess(res.user?.uid)) {
+          window.location.replace("/partner");
+          return;
+        }
         // The uid is shown so a real administrator can create
         // staff/<uid> = { role: "admin", active: true } in the Firebase console
         // without having to hunt for it — otherwise the first deploy of these

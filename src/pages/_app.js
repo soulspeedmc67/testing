@@ -156,7 +156,7 @@ function shouldSkipSplash() {
   // The launch animation belongs to the installed apps: a website visitor
   // should see the page, not wait behind a splash.
   if (!isNative()) return true;
-  if (detectIsDriverApp() || ['/xcyop', '/driver'].includes(window.location.pathname)) return true;
+  if (detectIsDriverApp() || ['/xcyop', '/driver', '/partner'].includes(window.location.pathname)) return true;
   try {
     return !!sessionStorage.getItem("dashit_splash_seen");
   } catch (e) {
@@ -212,7 +212,7 @@ export default function App({ Component, pageProps }) {
   // 2. Fallback check for splash in case route changes or internal role
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const isInternalRole = ['/xcyop', '/driver'].includes(router.pathname);
+      const isInternalRole = ['/xcyop', '/driver', '/partner'].includes(router.pathname);
       if (isInternalRole) {
         setShowSplash(false);
         setSplashHolding(false);

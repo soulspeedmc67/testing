@@ -16,8 +16,8 @@ export default function CookieConsentBanner() {
   const [animate, setAnimate] = useState(false);
 
   useEffect(() => {
-    // Never show cookie banner on the mobile app or driver app
-    if (isNative() || router.pathname === "/driver") return;
+    // Never show cookie banner on the mobile app, driver app or partner portal
+    if (isNative() || router.pathname === "/driver" || router.pathname === "/partner") return;
 
     try {
       const consent = localStorage.getItem("dashit_cookie_consent");
