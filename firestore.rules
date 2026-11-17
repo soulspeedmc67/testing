@@ -469,6 +469,106 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // ---- Partners: other shops that run on DASHit ------------------------
+    // A partner is NOT staff. He has no staff/{uid} document, so isStaff(),
+    // isAdmin() and isDriver() are all false for him and every rule above
+    // (products, orders, users, drivers, payments, wallets, distributors...)
+    // stays closed to him. The only way in is this chain, made by the server
+    // (public/api/staff/partner.php) when the owner adds him:
+    //
+    //   partnerUsers/{his uid}  ->  partners/{partnerId}  ->  his own tree
+    //
+    // His own tree is partners/{partnerId}/..., so his stock is isolated by
+    // PATH: there is no query he can write that reaches the shop's products
+    // or another partner's. The owner (isAdmin) reads all of it, for stats.
+    //
+    // What only the owner can change, on partners/{partnerId} itself: whether
+    // he is active, how far he may deliver (maxDeliveryKm), where his shop is,
+    // and the commission. Turning `active` off locks him out at once, because
+    // isPartnerOf() reads it on every request.
+    //
+    // His orders (round 2) will live in partners/{partnerId}/shopOrders, not in
+    // the shop's orders collection, so the shop's riders, order alarm and
+    // analytics never see them. Nothing writes there yet.
+    function partnerUserDoc() {
+      return get(/databases/$(database)/documents/partnerUsers/$(request.auth.uid)).data;
+    }
+
+    function isPartnerOf(partnerId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/partnerUsers/$(request.auth.uid))
+        && partnerUserDoc().partnerId == partnerId
+        && partnerUserDoc().active == true
+        && get(/databases/$(database)/documents/partners/$(partnerId)).data.active == true;
+    }
+
+    // A partner's product, as he may save it: the listed fields only, sane types and sizes.
+    function partnerProductOk(p) {
+      return p.keys().hasOnly([
+          'name', 'category', 'unit', 'price', 'mrp', 'stock', 'lowStockAt',
+          'barcode', 'img', 'active', 'description', 'createdAt', 'updatedAt'
+        ])
+        && p.get('name', null) is string && p.name.size() > 0 && p.name.size() <= 120
+        && p.get('price', null) is number && p.price >= 0 && p.price <= 10000000
+        && p.get('stock', null) is number && p.stock >= 0 && p.stock <= 1000000
+        && (!('mrp' in p) || (p.mrp is number && p.mrp >= 0 && p.mrp <= 10000000))
+        && (!('lowStockAt' in p) || (p.lowStockAt is number && p.lowStockAt >= 0 && p.lowStockAt <= 100000))
+        && (!('category' in p) || (p.category is string && p.category.size() <= 60))
+        && (!('unit' in p) || (p.unit is string && p.unit.size() <= 30))
+        && (!('barcode' in p) || (p.barcode is string && p.barcode.size() <= 40))
+        && (!('description' in p) || (p.description is string && p.description.size() <= 500))
+        && (!('img' in p) || (p.img is string && p.img.size() <= 500 && (p.img == '' || p.img.matches('https://.*'))))
+        && (!('active' in p) || p.active is bool);
+    }
+
+    // A partner's shop details, as he may save them.
+    function partnerSettingsOk(s) {
+      return s.keys().hasOnly([
+          'displayName', 'tagline', 'phone', 'whatsapp', 'address', 'hours', 'isOpen', 'logoUrl', 'updatedAt'
+        ])
+        && (!('displayName' in s) || (s.displayName is string && s.displayName.size() <= 80))
+        && (!('tagline' in s) || (s.tagline is string && s.tagline.size() <= 120))
+        && (!('phone' in s) || (s.phone is string && s.phone.size() <= 20))
+        && (!('whatsapp' in s) || (s.whatsapp is string && s.whatsapp.size() <= 20))
+        && (!('address' in s) || (s.address is string && s.address.size() <= 200))
+        && (!('hours' in s) || (s.hours is string && s.hours.size() <= 80))
+        && (!('isOpen' in s) || s.isOpen is bool)
+        && (!('logoUrl' in s) || (s.logoUrl is string && s.logoUrl.size() <= 500 && (s.logoUrl == '' || s.logoUrl.matches('https://.*'))));
+    }
+
+    // Who is a partner: readable by himself and the owner, written by nobody
+    // here (the server writes it with the service account).
+    match /partnerUsers/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false;
+    }
+
+    match /partners/{partnerId} {
+      // Read by the partner (to see his own area and status) and the owner.
+      allow read: if isAdmin() || isPartnerOf(partnerId);
+      // Everything on this document is the owner's to set; a partner cannot
+      // widen his own area, re-activate himself or change his commission.
+      allow write: if isAdmin();
+
+      match /settings/{docId} {
+        allow read: if isAdmin() || isPartnerOf(partnerId);
+        allow write: if isPartnerOf(partnerId) && partnerSettingsOk(request.resource.data);
+      }
+
+      // His own stock. The owner can read it (stats, stock count) but not edit it.
+      match /products/{productId} {
+        allow read: if isAdmin() || isPartnerOf(partnerId);
+        allow create, update: if isPartnerOf(partnerId) && partnerProductOk(request.resource.data);
+        allow delete: if isPartnerOf(partnerId);
+      }
+
+      // Round 2: orders from customers in his area. Closed to writes until then.
+      match /shopOrders/{orderId} {
+        allow read: if isAdmin() || isPartnerOf(partnerId);
+        allow write: if false;
+      }
+    }
+
     // Anything not matched above is denied.
     match /{document=**} {
       allow read, write: if false;
