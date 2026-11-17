@@ -10,11 +10,14 @@ import FirebaseFirestore
 final class AdminSession: ObservableObject {
     static let shared = AdminSession()
 
-    enum State { case checking, signedOut, notOwner, owner }
+    enum State { case checking, signedOut, notOwner, owner, partner }
 
     @Published private(set) var state: State = .checking
     @Published var errorMessage: String?
     @Published private(set) var isWorking = false
+    /// Set while a partner shop's owner is signed in (state == .partner).
+    @Published private(set) var partnerId: String?
+    @Published private(set) var signedInEmail = ""
 
     private var authHandle: AuthStateDidChangeListenerHandle?
 
@@ -31,10 +34,16 @@ final class AdminSession: ObservableObject {
             return
         }
         state = .checking
+        signedInEmail = user.email ?? ""
+        partnerId = nil
         if await Self.isOwner(user) {
             state = .owner
             // Listeners started before sign-in were refused; start them again.
             AdminDashboardViewModel.shared.restartListeners()
+        } else if let id = await Self.activePartnerId(user) {
+            // Another shop on DASHit: his own screens, never the owner's dashboard.
+            partnerId = id
+            state = .partner
         } else {
             state = .notOwner
         }
@@ -50,6 +59,18 @@ final class AdminSession: ObservableObject {
         }
         let email = user.email?.lowercased() ?? ""
         return email == "m4k3ditz@gmail.com" || email == "soulspeedmc67@gmail.com" || email == "kanyualeem416@gmail.com" || email == "mirmanal.mm@gmail.com"
+    }
+
+    /// partnerUsers/{uid} -> partners/{id}, both active; nil if he is not a partner or has been switched off.
+    private static func activePartnerId(_ user: User) async -> String? {
+        let db = Firestore.firestore()
+        guard let link = try? await db.collection("partnerUsers").document(user.uid).getDocument(),
+              let data = link.data(),
+              (data["active"] as? Bool) != false,
+              let id = data["partnerId"] as? String, !id.isEmpty else { return nil }
+        guard let shop = try? await db.collection("partners").document(id).getDocument(),
+              let shopData = shop.data(), (shopData["active"] as? Bool) != false else { return nil }
+        return id
     }
 
     func signIn(email: String, password: String) async {
@@ -102,6 +123,12 @@ struct DASHitAdminAppView: View {
                     Push.shared.requestPermission()
                     Push.shared.register()
                 }
+        case .partner:
+            if let id = session.partnerId {
+                PartnerPortalView(partnerId: id, email: session.signedInEmail, onSignOut: { session.signOut() })
+            } else {
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         case .signedOut, .notOwner:
             AdminSignInView(session: session)
         }
