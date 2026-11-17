@@ -35,6 +35,7 @@ import NotifyCustomersView from "../components/admin/NotifyCustomersView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
 import SpotlightEditor from "../components/admin/SpotlightEditor";
+import PartnersView from "../components/admin/PartnersView";
 import OrderAlarmBanner from "../components/OrderAlarmBanner";
 import { startOrderAlarm, stopOrderAlarm } from "../lib/orderAlarm";
 import RiderDistanceView from "../components/admin/RiderDistanceView";
@@ -2147,6 +2148,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
           darkMode={darkMode}
         />
       )}
+
+      {activeTab === "partners" && <PartnersView showToast={showToast} darkMode={darkMode} />}
 
       {activeTab === "spotlight" && (
         <SpotlightEditor catalogue={catalogue} categories={saleCategories} showToast={showToast} darkMode={darkMode} />

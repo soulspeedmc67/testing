@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import {
+  Users,
   Package,
   Boxes,
   BarChart3,
@@ -114,6 +115,7 @@ export default function AdminLayout({
         },
         { id: "offers", label: "Discounts", icon: Sparkles },
         { id: "spotlight", label: "Special tab", icon: Crown },
+        { id: "partners", label: "Partners", icon: Users },
         { id: "settings", label: "Shop settings", icon: Store },
       ],
     },
