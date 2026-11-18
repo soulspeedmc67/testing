@@ -148,6 +148,18 @@ object AuthRepository {
     }
 
     /**
+     * The Google sheet came back "cancelled" in this app session. Google reports a sheet that
+     * failed after the shopper picked an account the same way as backing out ("activity is
+     * cancelled by the user"), e.g. when it doesn't know the certificate this copy is signed
+     * with: the Play Store signing key was missing from Firebase (found 18 Nov 2026), and every
+     * Play Store install got a sheet that closed and did nothing. So the next try skips the
+     * sheet and signs in through the browser: that signs in whenever the sheet's failure was
+     * the phone's own, and otherwise names the problem on screen (e.g. "invalid cert hash")
+     * instead of nothing happening.
+     */
+    private var sheetCameBackCancelled = false
+
+    /**
      * Signs in with Google. The phone's own Google sheet (Credential Manager) comes first. If it
      * can't run (no Google account on the phone, Play services too old, a certificate Google
      * doesn't know), Google sign-in opens in the browser instead, which doesn't depend on any of
@@ -156,13 +168,18 @@ object AuthRepository {
     suspend fun signInWithGoogle(context: Context): UserProfile? {
         val activity = context.findActivity() ?: context
         val failed = "Google sign-in didn't complete. Please try again."
+        if (sheetCameBackCancelled) {
+            android.util.Log.i("DashitAuth", "The Google sheet was cancelled before: using the browser")
+            return signInWithGoogleInBrowser(context.findActivity(), "browser")
+        }
         val webClientId = activity.getString(R.string.default_web_client_id)
         val option = GetSignInWithGoogleOption.Builder(webClientId).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
         val credential = try {
             CredentialManager.create(activity).getCredential(activity, request).credential
         } catch (e: GetCredentialCancellationException) {
-            android.util.Log.d("DashitAuth", "User cancelled Google sign-in")
+            android.util.Log.d("DashitAuth", "Google sheet cancelled (${e.message}); the next try uses the browser")
+            sheetCameBackCancelled = true
             return null
         } catch (e: GetCredentialException) {
             android.util.Log.e("DashitAuth", "CredentialManager getCredential failed: ${e.type} ${e.message}", e)
