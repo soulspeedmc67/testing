@@ -6,6 +6,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -110,13 +114,17 @@ fun HomePullDash(state: HomePullState, modifier: Modifier = Modifier) {
     )
     if (state.pull <= 0.5f) return
     val dark = DashitColors.isDark
-    val height = with(LocalDensity.current) { state.pull.toDp() }
+    // The header keeps the status bar's room at its top, so the gap the pull
+    // opens shows below the status bar: centre the mark there, not under the clock.
+    val statusBar = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val height = with(LocalDensity.current) { state.pull.toDp() } + statusBar
     val progress = state.progress
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(if (dark) Color(0xFF8C5D08) else Color(0xFFFFD9B8)),
+            .background(if (dark) Color(0xFF8C5D08) else Color(0xFFFFD9B8))
+            .padding(top = statusBar),
         contentAlignment = Alignment.Center
     ) {
         DashMark(
