@@ -122,8 +122,16 @@ jobs:
           FTP_PASS: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
           FTP_HOST: ${{ steps.ftp.outputs.host }}
           REMOTE_DIR: ${{ secrets.HOSTINGER_FTP_REMOTE_DIR || '/domains/dashit.co.in/public_html/' }}
+        # -k: Hostinger's FTP certificate is not issued for ftp.dashit.co.in, so a
+        # strict check refuses the connection before login. The upload step below
+        # already accepts it (FTP-Deploy-Action's default security is "loose"); this
+        # matches it. The connection is still encrypted.
         run: |
-          curl --silent --show-error --ssl-reqd --user "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/" -Q "DELE ${REMOTE_DIR}.ftp-deploy-sync-state.json" -o /dev/null || echo "No sync record to remove (that is fine)."
+          if curl --silent --show-error -k --ssl-reqd --user "$FTP_USER:$FTP_PASS" "ftp://$FTP_HOST/"                -Q "DELE ${REMOTE_DIR}.ftp-deploy-sync-state.json" -o /dev/null 2> curl.err; then
+            echo "Removed the sync record: this upload sends everything and deletes nothing."
+          else
+            echo "::warning::Could not remove the sync record: $(cat curl.err)"
+          fi
 
       - name: Upload to Hostinger over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
