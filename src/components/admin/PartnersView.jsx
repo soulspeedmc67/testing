@@ -1,18 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Users, Plus, MapPin, RefreshCw, KeyRound, Copy, Power, AlertTriangle, Search } from "lucide-react";
 import AdminSheet from "./AdminSheet";
+import PartnerAreaPicker from "./PartnerAreaPicker";
 import { watchPartners, loadPartnerProducts, updatePartner, partnerApi } from "../../lib/partners";
 import { summarise, stockState, formatINR, timeAgo } from "../../lib/partnerStock";
 
-const EMPTY = { name: "", ownerName: "", phone: "", email: "", city: "", address: "", latLng: "", maxDeliveryKm: "10", commissionPercent: "0" };
-
-/** "34.0836, 74.7973" (pasted from Google Maps) -> [lat, lng], or null. */
-const parseLatLng = (text) => {
-  const m = String(text || "").match(/(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)/);
-  if (!m) return null;
-  const lat = Number(m[1]), lng = Number(m[2]);
-  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 ? [lat, lng] : null;
-};
+const EMPTY = { name: "", ownerName: "", phone: "", email: "", city: "", address: "", pos: null, maxDeliveryKm: 10, commissionPercent: "0" };
 
 /**
  * The owner's side of partner shops: add one (the server makes his login and
@@ -31,6 +24,7 @@ export default function PartnersView({ showToast = () => {}, darkMode = false })
   const [creds, setCreds] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [km, setKm] = useState("");
+  const [area, setArea] = useState(null);
   const [pct, setPct] = useState("");
 
   useEffect(() => watchPartners(setPartners), []);
@@ -50,7 +44,7 @@ export default function PartnersView({ showToast = () => {}, darkMode = false })
   }, [partners]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const open = (partners || []).find((p) => p.id === openId) || null;
-  useEffect(() => { if (open) { setKm(String(open.maxDeliveryKm ?? "")); setPct(String(open.commissionPercent ?? 0)); } }, [openId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setKm(String(open.maxDeliveryKm ?? "")); setPct(String(open.commissionPercent ?? 0)); setArea(Number.isFinite(open.lat) && Number.isFinite(open.lng) ? { lat: open.lat, lng: open.lng } : null); } }, [openId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const card = darkMode ? "bg-[#14161E] border-zinc-800" : "bg-white border-slate-200";
   const subtle = darkMode ? "text-zinc-400" : "text-slate-500";
@@ -63,14 +57,13 @@ export default function PartnersView({ showToast = () => {}, darkMode = false })
   }, [partners, q]);
 
   const create = async () => {
-    const ll = parseLatLng(form.latLng);
-    if (!ll) return setFormError("Paste the shop's location as two numbers, like 34.0836, 74.7973 (on Google Maps, right-click the shop and tap the numbers).");
+    if (!form.pos) return setFormError("Place the pin on the shop first: search for the town, or move the map until the pin is on the shop.");
     setBusy(true);
     setFormError("");
     try {
       const r = await partnerApi("create", {
         name: form.name, ownerName: form.ownerName, phone: form.phone, email: form.email, city: form.city, address: form.address,
-        lat: ll[0], lng: ll[1], maxDeliveryKm: Number(form.maxDeliveryKm), commissionPercent: Number(form.commissionPercent || 0),
+        lat: form.pos.lat, lng: form.pos.lng, maxDeliveryKm: Number(form.maxDeliveryKm), commissionPercent: Number(form.commissionPercent || 0),
       });
       setAdding(false);
       setForm(EMPTY);
@@ -87,8 +80,8 @@ export default function PartnersView({ showToast = () => {}, darkMode = false })
     if (!(d >= 0.5 && d <= 100)) return showToast("The delivery distance must be between 0.5 and 100 km.");
     if (!(c >= 0 && c <= 50)) return showToast("The commission must be between 0 and 50 percent.");
     try {
-      await updatePartner(open.id, { maxDeliveryKm: d, commissionPercent: c });
-      showToast("Saved. His delivery distance is now " + d + " km.");
+      await updatePartner(open.id, { maxDeliveryKm: d, commissionPercent: c, ...(area ? { lat: area.lat, lng: area.lng } : {}) });
+      showToast("Saved. His area is now " + d + " km around the pin.");
     } catch (e) {
       showToast("Could not save that.");
     }
@@ -175,14 +168,18 @@ export default function PartnersView({ showToast = () => {}, darkMode = false })
           <input className={inputCls} placeholder="Login email (optional: we make one if empty)" inputMode="email" value={form.email} onChange={set("email")} />
           <input className={inputCls} placeholder="Town / city" value={form.city} onChange={set("city")} />
           <input className={inputCls} placeholder="Shop address" value={form.address} onChange={set("address")} />
-          <input className={inputCls} placeholder="Shop location: 34.0836, 74.7973" value={form.latLng} onChange={set("latLng")} />
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs font-bold">Delivers up to (km)<input className={`${inputCls} mt-1`} inputMode="decimal" value={form.maxDeliveryKm} onChange={set("maxDeliveryKm")} /></label>
-            <label className="text-xs font-bold">Commission (%)<input className={`${inputCls} mt-1`} inputMode="decimal" value={form.commissionPercent} onChange={set("commissionPercent")} /></label>
-          </div>
+          <div className="text-xs font-black pt-1">Where is the shop, and how far may he deliver?</div>
+          <PartnerAreaPicker
+            pos={form.pos}
+            radiusKm={Number(form.maxDeliveryKm) || 0}
+            onPos={(pos) => setForm((f) => ({ ...f, pos }))}
+            onRadius={(km) => setForm((f) => ({ ...f, maxDeliveryKm: km }))}
+            darkMode={darkMode}
+          />
+          <label className="text-xs font-bold block">Commission (%)<input className={`${inputCls} mt-1`} inputMode="decimal" value={form.commissionPercent} onChange={set("commissionPercent")} /></label>
           <div className="flex gap-2 pt-2">
             <button onClick={() => setAdding(false)} disabled={busy} className="flex-1 min-h-[44px] rounded-xl border text-xs font-bold cursor-pointer">Cancel</button>
-            <button onClick={create} disabled={busy || !form.name || !form.phone} className="flex-1 min-h-[44px] rounded-xl bg-emerald-500 text-white text-xs font-black disabled:opacity-50 cursor-pointer">{busy ? "Creating…" : "Create partner"}</button>
+            <button onClick={create} disabled={busy || !form.name || !form.phone || !form.pos} className="flex-1 min-h-[44px] rounded-xl bg-emerald-500 text-white text-xs font-black disabled:opacity-50 cursor-pointer">{busy ? "Creating…" : "Create partner"}</button>
           </div>
         </div>
       </AdminSheet>
@@ -224,12 +221,9 @@ export default function PartnersView({ showToast = () => {}, darkMode = false })
               </div>
 
               <div className={`rounded-xl border p-3 space-y-2 ${card}`}>
-                <div className="text-xs font-black">How far he may deliver (km)</div>
-                <input type="range" min="1" max="50" step="0.5" value={Math.min(50, Number(km) || 1)} onChange={(e) => setKm(e.target.value)} className="w-full accent-emerald-500" />
-                <div className="grid grid-cols-2 gap-3">
-                  <input className={inputCls} inputMode="decimal" value={km} onChange={(e) => setKm(e.target.value)} aria-label="Delivery distance in km" />
-                  <label className="text-[11px] font-bold">Commission %<input className={`${inputCls} mt-1`} inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} /></label>
-                </div>
+                <div className="text-xs font-black">His shop and delivery area</div>
+                <PartnerAreaPicker pos={area} radiusKm={Number(km) || 0} onPos={setArea} onRadius={(v) => setKm(String(v))} darkMode={darkMode} />
+                <label className="text-[11px] font-bold block">Commission %<input className={`${inputCls} mt-1`} inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} /></label>
                 <button onClick={saveTerms} className="w-full min-h-[44px] rounded-xl bg-emerald-500 text-white text-xs font-black cursor-pointer">Save</button>
                 <p className={`text-[11px] ${subtle}`}>Only you can change this. It applies to his orders when ordering opens for his area.</p>
               </div>
