@@ -10,6 +10,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import kotlin.math.roundToInt
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
@@ -381,9 +384,22 @@ fun StorefrontScreen(
                     }
                     // Under the pinned search bar and tabs when jumping to a group.
                     val pinnedBarPx = with(LocalDensity.current) { 132.dp.roundToPx() }
+                    // Pulling the list down past the top shows the DASHit mark in the gap (HomePullDash).
+                    val pullDensity = LocalDensity.current
+                    val pullView = LocalView.current
+                    val homePull = remember(pullDensity) {
+                        com.dashit.app.ui.components.HomePullState(
+                            thresholdPx = with(pullDensity) { 110.dp.toPx() },
+                            maxPx = with(pullDensity) { 160.dp.toPx() }
+                        ) { HapticsManager.selection(pullView) }
+                    }
+                    com.dashit.app.ui.components.HomePullDash(homePull)
                     LazyColumn(
                         state = homeList,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .nestedScroll(homePull.connection)
+                            .offset { IntOffset(0, homePull.pull.roundToInt()) },
                         contentPadding = PaddingValues(bottom = 140.dp)
                     ) {
                     // 1. Top Header: ETA + Address + Profile

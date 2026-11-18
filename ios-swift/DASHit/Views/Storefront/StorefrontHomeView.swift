@@ -30,6 +30,8 @@ struct StorefrontHomeView: View {
     /// Scroll-driven chrome, held by reference so scrolling redraws only the
     /// backdrops that watch it, never this whole feed.
     @State private var chrome = HomeChromeState()
+    /// How far the feed is pulled down past the top (the pull-down flourish, HomePullDash).
+    @State private var pullState = HomePullState()
     /// Skeletons while one category's list gives way to another's.
     @State private var isSwitchingList = false
     /// The new list fades in by opacity alone, so nothing in the feed moves while it does.
@@ -60,6 +62,16 @@ struct StorefrontHomeView: View {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                     header
                         .id("top")
+                        // Pulling the feed down past the top shows the DASHit mark in the gap above.
+                        .onGeometryChange(for: CGFloat.self) { geometry in
+                            geometry.frame(in: .named("homeScroll")).minY
+                        } action: { minY in
+                            pullState.headerTopChanged(minY)
+                        }
+                        .overlay(alignment: .top) {
+                            HomePullDash(state: pullState)
+                                .alignmentGuide(.top) { $0[.bottom] }
+                        }
 
                     Section {
                         if vm.isBrowsing {
