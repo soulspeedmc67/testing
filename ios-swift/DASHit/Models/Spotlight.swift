@@ -48,7 +48,7 @@ struct Spotlight: Equatable {
     var sections: [Section] = []
 
     static let maxSections = 12
-    static let maxItems = 40
+    static let maxItems = 120
 
     init() {}
 

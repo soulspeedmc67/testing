@@ -69,7 +69,7 @@ data class Spotlight(
             else -> 0.0
         }
 
-        /** A list of items as saved: tidy, each once, at most 40. */
+        /** A list of items as saved: tidy, each once, at most 120 (as iOS and the web). */
         private fun parseItems(value: Any?): List<Item> {
             val seen = HashSet<String>()
             return (value as? List<*>).orEmpty().mapNotNull { rawItem ->
@@ -90,7 +90,7 @@ data class Spotlight(
                         mrp = if (mrp > price) mrp else 0.0,
                         unit = clean(item["unit"], 24) ?: ""
                     )
-                }.take(40)
+                }.take(120)
         }
 
         fun from(data: Map<String, Any?>): Spotlight {

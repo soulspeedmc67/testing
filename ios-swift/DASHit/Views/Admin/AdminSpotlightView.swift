@@ -803,6 +803,21 @@ private struct SpotlightStockPicker: View {
                 .selectionDisabled(!hasPhoto)
                 .opacity(hasPhoto ? 1 : 0.45)
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                // Says what the list can still take, so a full list never looks like a broken picker.
+                let left = room - selection.count
+                if room <= 10 || left <= 0 {
+                    Text(left > 0
+                         ? "Room for \(left) more item\(left == 1 ? "" : "s") here (the list holds \(Spotlight.maxItems)). Remove some to add more."
+                         : "This list is full (\(Spotlight.maxItems) items). Remove some on the special page to add more.")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(left > 0 ? .secondary : .orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(.bar)
+                }
+            }
             .environment(\.editMode, $editMode)
             .tint(Color(hex: 0xB26B00))
             .onChange(of: selection) { old, new in

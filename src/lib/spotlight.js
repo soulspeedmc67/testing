@@ -32,7 +32,7 @@ export const SPOTLIGHT_DEFAULTS = Object.freeze({
   sections: [],
 });
 
-export const LIMITS = Object.freeze({ tabLabel: 14, title: 40, subtitle: 80, sectionName: 32, sections: 12, items: 40 });
+export const LIMITS = Object.freeze({ tabLabel: 14, title: 40, subtitle: 80, sectionName: 32, sections: 12, items: 120 });
 
 const text = (v, max) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 const money = (v) => {
