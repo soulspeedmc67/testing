@@ -36,9 +36,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 26
+      - name: Select the newest Xcode
         run: |
-          for xcode in /Applications/Xcode_26*.app /Applications/Xcode_26.app /Applications/Xcode_16*.app /Applications/Xcode.app; do
+          # Newest first: Apple requires the newest SDK for uploads (iOS 27 SDK from April 2027,
+          # ITMS-90725), and a plain glob lists 26.0.1 before 26.2.
+          for xcode in $(ls -d /Applications/Xcode_27*.app /Applications/Xcode_26*.app 2>/dev/null | grep -viE "beta|_rc|release_candidate" | sort -rV) /Applications/Xcode_16*.app /Applications/Xcode.app; do
             if [ -d "$xcode" ]; then
               echo "Selecting $xcode"
               sudo xcode-select -s "$xcode/Contents/Developer"
@@ -353,9 +355,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode 26
+      - name: Select the newest Xcode
         run: |
-          for xcode in /Applications/Xcode_26*.app /Applications/Xcode_26.app /Applications/Xcode_16*.app /Applications/Xcode.app; do
+          # Newest first: Apple requires the newest SDK for uploads (iOS 27 SDK from April 2027,
+          # ITMS-90725), and a plain glob lists 26.0.1 before 26.2.
+          for xcode in $(ls -d /Applications/Xcode_27*.app /Applications/Xcode_26*.app 2>/dev/null | grep -viE "beta|_rc|release_candidate" | sort -rV) /Applications/Xcode_16*.app /Applications/Xcode.app; do
             if [ -d "$xcode" ]; then
               echo "Selecting $xcode"
               sudo xcode-select -s "$xcode/Contents/Developer"
