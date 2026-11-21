@@ -120,6 +120,9 @@ public final class AdminDashboardViewModel: ObservableObject {
     /// Always starts with "Myself".
     @Published public var distributors: [Distributor] = [Distributor.myself]
     @Published public var recentOrders: [Order] = []
+    /// Set while the live order list can't update (shown on the Orders tab).
+    @Published public var ordersError: String?
+    private var ordersWanted = false
     /// Every order from the last seven days, for the Home page's numbers and charts.
     @Published public var weekOrders: [Order] = []
     /// Every rider account, live: approved, waiting for approval, and turned off.
@@ -201,6 +204,8 @@ public final class AdminDashboardViewModel: ObservableObject {
 
     /// Stops every live listener, e.g. when the owner signs out.
     public func stopListeners() {
+        ordersWanted = false
+        ordersRetry?.cancel()
         productListener?.remove()
         distributorListener?.remove()
         orderListener?.remove()
@@ -263,41 +268,8 @@ public final class AdminDashboardViewModel: ObservableObject {
         // Only orders with a real date: Firestore sorts other types (old
         // orders saved the date as text) above every date, which pushed new
         // orders down the "All" list and out of the newest 50.
-        orderListener = db.collection("orders")
-            .whereField("createdAt", isGreaterThan: Timestamp(seconds: 0, nanoseconds: 0))
-            .order(by: "createdAt", descending: true)
-            .limit(to: 100)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self, let docs = snapshot?.documents, error == nil else { return }
-                let decoder = Firestore.Decoder()
-                let list: [Order] = docs.compactMap { doc in
-                    var data = doc.data()
-                    // The document's own id: every change (pack, assign a rider,
-                    // deliver) is written to orders/{order.id}, and Order prefers
-                    // an orderId field, which must never point somewhere else.
-                    data["id"] = doc.documentID
-                    data["orderId"] = doc.documentID
-                    return try? decoder.decode(Order.self, from: data)
-                }
-
-                Task { @MainActor in
-                    if !self.isFirstOrderFetch && self.audioChimeEnabled {
-                        let newPlaced = list.first { order in
-                            !self.knownOrderIds.contains(order.id) && order.status.stage == .placed
-                        }
-                        if let order = newPlaced {
-                            // The chime only: the "New order" banner comes from the server's push,
-                            // which iOS shows with the app open too (a local one would show twice).
-                            _ = order
-                            self.playOrderChime()
-                        }
-                    }
-                    self.knownOrderIds = Set(list.map { $0.id })
-                    self.isFirstOrderFetch = false
-                    self.recentOrders = list.sorted { $0.createdAt > $1.createdAt }
-                    self.coverWeek(with: self.recentOrders, reachedLimit: docs.count >= 100)
-                }
-            }
+        ordersWanted = true
+        listenToOrders()
 
         // 4. Riders, live: the staff records with role "driver", the same ones the
         // website and the rider app use (drivers/ only holds their GPS).
@@ -485,6 +457,77 @@ public final class AdminDashboardViewModel: ObservableObject {
     public var totalStockValuation: Double { products.reduce(0.0) { $0 + (Double($1.stock ?? 10) * $1.price) } }
     public var lowStockCount: Int { products.filter { ($0.stock ?? 10) < 5 }.count }
     public var activeOrdersCount: Int { recentOrders.filter { !$0.status.stage.isFinished }.count }
+
+    /// The newest 100 orders, live. Started with the other listeners, and again after an
+    /// error or when the app comes back to the front (see reconnectOrders()).
+    private func listenToOrders() {
+        orderListener?.remove()
+        orderListener = db.collection("orders")
+            .whereField("createdAt", isGreaterThan: Timestamp(seconds: 0, nanoseconds: 0))
+            .order(by: "createdAt", descending: true)
+            .limit(to: 100)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+                if let error {
+                    // Firestore stops a listener for good after an error, which used to leave
+                    // the list frozen while the rider app kept updating. Say so, and listen again.
+                    Task { @MainActor in self.ordersListenerFailed(error) }
+                    return
+                }
+                guard let docs = snapshot?.documents else { return }
+                let decoder = Firestore.Decoder()
+                let list: [Order] = docs.compactMap { doc in
+                    var data = doc.data()
+                    // The document's own id: every change (pack, assign a rider,
+                    // deliver) is written to orders/{order.id}, and Order prefers
+                    // an orderId field, which must never point somewhere else.
+                    data["id"] = doc.documentID
+                    data["orderId"] = doc.documentID
+                    return try? decoder.decode(Order.self, from: data)
+                }
+
+                Task { @MainActor in
+                    if !self.isFirstOrderFetch && self.audioChimeEnabled {
+                        let newPlaced = list.first { order in
+                            !self.knownOrderIds.contains(order.id) && order.status.stage == .placed
+                        }
+                        if let order = newPlaced {
+                            // The chime only: the "New order" banner comes from the server's push,
+                            // which iOS shows with the app open too (a local one would show twice).
+                            _ = order
+                            self.playOrderChime()
+                        }
+                    }
+                    self.knownOrderIds = Set(list.map { $0.id })
+                    self.isFirstOrderFetch = false
+                    self.ordersError = nil
+                    self.recentOrders = list.sorted { $0.createdAt > $1.createdAt }
+                    self.coverWeek(with: self.recentOrders, reachedLimit: docs.count >= 100)
+                }
+            }
+    }
+
+    private var ordersRetry: Task<Void, Never>?
+
+    private func ordersListenerFailed(_ error: Error) {
+        print("[Admin] Orders listener stopped: \(error.localizedDescription)")
+        ordersError = "Orders aren't updating (\(error.localizedDescription)). Trying again…"
+        orderListener?.remove()
+        orderListener = nil
+        ordersRetry?.cancel()
+        ordersRetry = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            guard let self, !Task.isCancelled, self.ordersWanted else { return }
+            self.listenToOrders()
+        }
+    }
+
+    /// Listens to orders again from scratch, e.g. when the app comes back to the front,
+    /// so a listener that died while the phone slept can't leave the list frozen.
+    public func reconnectOrders() {
+        guard ordersWanted else { return }
+        listenToOrders()
+    }
 
     // MARK: - Home page numbers
 

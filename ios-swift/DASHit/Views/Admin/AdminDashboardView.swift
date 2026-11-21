@@ -393,6 +393,14 @@ public struct AdminDashboardView: View {
                     .padding(.top, 12)
                 }
 
+                if let problem = vm.ordersError {
+                    Label(problem, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                }
+
                 if vm.filteredOrders.isEmpty {
                     VStack(spacing: 12) {
                         Image(systemName: "shippingbox")

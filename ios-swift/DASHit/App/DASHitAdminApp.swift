@@ -96,6 +96,7 @@ final class AdminSession: ObservableObject {
 
 struct DASHitAdminAppView: View {
     @StateObject private var session = AdminSession.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         #if DEBUG
@@ -119,6 +120,11 @@ struct DASHitAdminAppView: View {
                 .background(Color(uiColor: .systemGroupedBackground))
         case .owner:
             AdminDashboardView(onSignOut: { session.signOut() })
+                // Back from the background: listen to orders afresh, so a listener that
+                // died while the phone slept can't leave new orders missing.
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { AdminDashboardViewModel.shared.reconnectOrders() }
+                }
                 .onAppear {
                     Push.shared.requestPermission()
                     Push.shared.register()
