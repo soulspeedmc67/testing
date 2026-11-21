@@ -20,9 +20,9 @@ on:
 
 jobs:
   build-native-swift-ios:
-    name: Build Native Swift IPA (macos-15 + Xcode 26)
+    name: Build Native Swift IPA (macos-26 + newest Xcode)
     if: ${{ !inputs.screenshots_only }}
-    runs-on: macos-15
+    runs-on: macos-26
     # The TestFlight steps' `if` reads these: a step's own env isn't set yet when its condition is decided,
     # so with the secrets only on the steps both uploads were always skipped.
     env:
@@ -348,7 +348,7 @@ jobs:
   screenshots:
     name: Capture simulator screenshots
     if: ${{ inputs.screenshots_only }}
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
 
     steps:
