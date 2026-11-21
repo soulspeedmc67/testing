@@ -739,20 +739,34 @@ private struct SpotlightNewItemSheet: View {
 // MARK: - Add from stock
 
 /// Items already sold. Tobacco and items without a photo can't be picked.
+///
+/// Several items are picked at once: the list is in iOS's own multi-select mode
+/// (a tick circle on every row), so each tap adds or removes one item and the
+/// ticks stay as you search. It used to be a list of buttons over the live stock,
+/// which only ever let one item be ticked on iPhone. The stock is read once when
+/// the sheet opens, so live stock updates don't redraw the list mid-tap.
 private struct SpotlightStockPicker: View {
-    let products: [Product]
     let taken: Set<String>
     let room: Int
     let onPick: ([Product]) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    @State private var picked: [Product] = []
+    @State private var stock: [Product]
+    @State private var selection = Set<String>()
+    @State private var editMode = EditMode.active
+
+    init(products: [Product], taken: Set<String>, room: Int, onPick: @escaping ([Product]) -> Void) {
+        self.taken = taken
+        self.room = room
+        self.onPick = onPick
+        _stock = State(initialValue: products.filter { !taken.contains($0.id) && !$0.isAgeRestricted })
+    }
 
     private var results: [Product] {
         let words = ProductSearch.normalized(query).split(separator: " ").map(String.init)
         var list: [Product] = []
-        for product in products where !taken.contains(product.id) && !product.isAgeRestricted {
+        for product in stock {
             let hay = ProductSearch.normalized("\(product.name) \(product.cat)")
             if words.allSatisfy({ hay.contains($0) }) { list.append(product) }
             if list.count >= 80 { break }
@@ -760,58 +774,55 @@ private struct SpotlightStockPicker: View {
         return list
     }
 
+    /// The ticked items, in stock order.
+    private var picked: [Product] { stock.filter { selection.contains($0.id) } }
+
     var body: some View {
         NavigationStack {
-            List(results) { product in
+            List(results, selection: $selection) { product in
                 let hasPhoto = Spotlight.isPhoto(product.img)
-                let isOn = picked.contains { $0.id == product.id }
-                Button {
-                    if isOn {
-                        picked.removeAll { $0.id == product.id }
-                    } else if picked.count < room {
-                        picked.append(product)
+                HStack(spacing: 12) {
+                    AsyncImage(url: URL(string: product.img)) { image in
+                        image.resizable().scaledToFit()
+                    } placeholder: {
+                        Color(.secondarySystemBackground)
                     }
-                } label: {
-                    HStack(spacing: 12) {
-                        AsyncImage(url: URL(string: product.img)) { image in
-                            image.resizable().scaledToFit()
-                        } placeholder: {
-                            Color(.secondarySystemBackground)
-                        }
-                        .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(product.name)
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.primary)
-                                .lineLimit(2)
-                            Text("\(CurrencyFormatter.format(product.price)) · \(product.unit)\(hasPhoto ? "" : " · no photo")")
-                                .font(.system(size: 13))
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                            .font(.system(size: 22))
-                            .foregroundColor(isOn ? Color(hex: 0xB26B00) : .secondary)
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(product.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                        Text("\(CurrencyFormatter.format(product.price)) · \(product.unit)\(hasPhoto ? "" : " · no photo")")
+                            .font(.system(size: 13))
+                            .foregroundColor(.secondary)
                     }
                 }
-                .disabled(!hasPhoto)
+                .tag(product.id)
+                .selectionDisabled(!hasPhoto)
                 .opacity(hasPhoto ? 1 : 0.45)
             }
+            .environment(\.editMode, $editMode)
+            .tint(Color(hex: 0xB26B00))
+            .onChange(of: selection) { old, new in
+                // No more than the group has room for: a tick past that is undone.
+                if new.count > room { selection = old }
+            }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search your items")
-            .navigationTitle("Add from stock")
+            .navigationTitle(selection.isEmpty ? "Add from stock" : "\(selection.count) selected")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(picked.isEmpty ? "Add" : "Add \(picked.count)") {
+                    Button(selection.isEmpty ? "Add" : "Add \(selection.count)") {
                         onPick(picked)
                         dismiss()
                     }
                     .font(.system(size: 17, weight: .bold))
-                    .disabled(picked.isEmpty)
+                    .disabled(selection.isEmpty)
                 }
             }
         }
