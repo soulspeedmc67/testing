@@ -45,7 +45,10 @@ jobs:
           KP: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
         run: |
           if [ -z "$KS_B64" ]; then echo "::error::The ANDROID_UPLOAD_* secrets are not set"; exit 1; fi
-          echo "$KS_B64" | base64 -d > android/dashit-release.jks
+          # Secrets set from Windows can carry a trailing CR/LF: strip it.
+          printf '%s' "$KS_B64" | tr -d '\r\n ' | base64 -d > android/dashit-release.jks
+          SP=$(printf '%s' "$SP" | tr -d '\r\n'); KA=$(printf '%s' "$KA" | tr -d '\r\n'); KP=$(printf '%s' "$KP" | tr -d '\r\n')
+          keytool -list -keystore android/dashit-release.jks -storepass "$SP" -alias "$KA" >/dev/null || { echo "::error::The upload key or its password doesn't open"; exit 1; }
           printf 'storeFile=../dashit-release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$SP" "$KA" "$KP" > android/keystore.properties
 
       - name: Build the signed bundle
