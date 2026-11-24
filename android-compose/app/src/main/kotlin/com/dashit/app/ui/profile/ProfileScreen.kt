@@ -24,6 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import com.dashit.app.core.design.ThemePreference
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.LocationOn
@@ -165,6 +168,10 @@ fun ProfileScreen(
 
                 Section("Appearance") {
                     AppearancePicker()
+                }
+
+                Section("Notifications") {
+                    CartRemindersRow()
                 }
 
                 Section("Help") {
@@ -461,6 +468,39 @@ private fun RowDivider() {
             .height(1.dp)
             .background(DashitColors.Hairline)
     )
+}
+
+/** The "Your cart is waiting" reminders (data/CartReminders.kt), on unless turned off here. */
+@Composable
+private fun CartRemindersRow() {
+    val view = LocalView.current
+    val context = LocalContext.current
+    val enabled = com.dashit.app.data.CartReminders.isEnabled
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                HapticsManager.selection(view)
+                com.dashit.app.data.CartReminders.setEnabled(context, !enabled)
+            }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Icon(Icons.Filled.ShoppingCart, contentDescription = null, tint = DashitColors.BrandOrange, modifier = Modifier.size(20.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Cart reminders", color = DashitColors.TextPrimary, fontSize = 14.5.sp, fontWeight = FontWeight.SemiBold)
+            Text("A reminder when you leave items in your cart", color = DashitColors.TextMuted, fontSize = 12.sp)
+        }
+        Switch(
+            checked = enabled,
+            onCheckedChange = {
+                HapticsManager.selection(view)
+                com.dashit.app.data.CartReminders.setEnabled(context, it)
+            },
+            colors = SwitchDefaults.colors(checkedTrackColor = DashitColors.BrandOrange)
+        )
+    }
 }
 
 /** Automatic / Light / Dark, as a segmented control like the iPhone app's. */

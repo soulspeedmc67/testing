@@ -955,6 +955,15 @@ fun StorefrontScreen(
                 }
             )
         }
+        // A cart reminder was tapped (MainActivity): open the cart, once the
+        // "Where should we deliver?" question isn't in front of it.
+        val cartAsked by cartVm.isCartSheetPresented.collectAsState()
+        LaunchedEffect(cartAsked, isLocationAskOpen) {
+            if (cartAsked && !isLocationAskOpen) {
+                cartVm.setCartSheetPresented(false)
+                if (cartItems.isNotEmpty()) isCartSheetOpen = true
+            }
+        }
         if (isLocationAskOpen) {
             DeliveryAreaSheet(
                 title = "Where should we deliver?",

@@ -103,6 +103,11 @@ struct RootView: View {
             if phase == .active {
                 activeOrder.resume()
                 PaymentRecovery.shared.start()
+                // Back in the app: no cart reminder while it's open.
+                CartReminders.appOpened()
+            } else if phase == .background {
+                // Left with something in the cart: remind later, unless it's ordered first.
+                CartReminders.schedule(items: cart.items)
             }
         }
         .onChange(of: activeOrder.deliveredCelebration?.id) { _, id in

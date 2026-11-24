@@ -12,6 +12,7 @@ final class CartViewModel: ObservableObject {
         didSet {
             recalculate()
             LocalStorage.shared.saveCartItems(items)
+            CartReminders.cartChanged(items)
         }
     }
 

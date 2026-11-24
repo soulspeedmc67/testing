@@ -49,6 +49,10 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+        <!-- "Your cart is waiting" (data/CartReminders.kt sets the alarm). -->
+        <receiver
+            android:name=".data.CartReminderReceiver"
+            android:exported="false" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="order_updates" />

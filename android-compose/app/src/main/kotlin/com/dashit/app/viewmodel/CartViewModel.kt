@@ -18,7 +18,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class CartViewModel : ViewModel() {
-    private val _items = MutableStateFlow<List<CartItem>>(emptyList())
+    // The cart left on this phone last time (CartReminders keeps it).
+    private val _items = MutableStateFlow<List<CartItem>>(com.dashit.app.data.CartReminders.loadCart())
     val items: StateFlow<List<CartItem>> = _items.asStateFlow()
 
     private val _coupon = MutableStateFlow<Coupon?>(null)
@@ -184,6 +185,10 @@ class CartViewModel : ViewModel() {
     // bill is worked out again when the shop changes its rules (minimum order,
     // fees) and when the shopper's orders load or change.
     init {
+        // Kept on the phone, so a cart reminder opens onto the same cart.
+        viewModelScope.launch {
+            _items.collect { com.dashit.app.data.CartReminders.saveCart(it) }
+        }
         viewModelScope.launch {
             StoreStatus.state.map { it.rules }.distinctUntilChanged().collect { recalculateBill() }
         }

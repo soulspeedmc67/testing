@@ -93,4 +93,20 @@ private final class ForegroundPresenter: NSObject, UNUserNotificationCenterDeleg
         }
         completionHandler(adminAlarmOn ? [.banner, .list] : [.banner, .list, .sound])
     }
+
+    /// Tapping a cart reminder opens the cart.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        if response.notification.request.identifier.hasPrefix(CartReminders.idPrefix) {
+            MainActor.assumeIsolated {
+                if !CartViewModel.shared.items.isEmpty {
+                    CartViewModel.shared.isCartSheetPresented = true
+                }
+            }
+        }
+        completionHandler()
+    }
 }

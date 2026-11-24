@@ -55,6 +55,8 @@ struct ProfileView: View {
                         }
                     }
 
+                    CartRemindersSetting()
+
                     AppearanceSetting()
 
                     if auth.isAuthenticated {
@@ -286,6 +288,31 @@ struct ProfileView: View {
 
 extension AuthView.Mode: Identifiable {
     var id: Self { self }
+}
+
+/// The "Your cart is waiting" reminders (`CartReminders`), on unless turned off here.
+struct CartRemindersSetting: View {
+    @AppStorage(CartReminders.enabledKey) private var enabled = true
+
+    var body: some View {
+        Toggle(isOn: $enabled) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Cart reminders")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.textPrimary)
+                Text("A reminder when you leave items in your cart")
+                    .font(.system(size: 12.5))
+                    .foregroundColor(.textMuted)
+            }
+        }
+        .tint(.orange)
+        .padding(14)
+        .dashitCard(cornerRadius: 14)
+        .onChange(of: enabled) { _, on in
+            HapticsManager.shared.selection()
+            CartReminders.setEnabled(on)
+        }
+    }
 }
 
 /// Light / Dark / Automatic, stored under the same `dashit_theme` key and

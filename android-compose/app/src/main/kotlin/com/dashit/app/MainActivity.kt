@@ -43,6 +43,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         // Not shown over the lock screen and the screen sleeps as usual: the
         // live tracking map alone keeps it awake (LiveTrackingMapScreen).
         super.onCreate(savedInstanceState)
+        // Before anything opens the cart: it brings back the cart saved last time.
+        com.dashit.app.data.CartReminders.init(this)
 
         // Product photos: saved on the phone after the first download.
         coil.Coil.setImageLoader(com.dashit.app.data.ProductPhotos.imageLoader(this))
@@ -73,6 +75,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         StoreStatus.start()
         com.dashit.app.data.Coupons.start()
         OrderNotifications.createChannel(this)
+        com.dashit.app.data.CartReminders.createChannel(this)
+        openCartIfAsked(intent)
         // Razorpay's checkout, warmed up so it opens at once at "Pay".
         com.dashit.app.data.OnlinePayment.preload(this)
 
@@ -158,8 +162,25 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         com.dashit.app.data.OnlinePayment.onActivityResult(requestCode, resultCode, data)
     }
 
+    /** Tapping a cart reminder opens the cart. */
+    private fun openCartIfAsked(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra(com.dashit.app.data.CartReminders.EXTRA_OPEN_CART, false) != true) return
+        intent.removeExtra(com.dashit.app.data.CartReminders.EXTRA_OPEN_CART)
+        if (com.dashit.app.viewmodel.CartViewModel.shared.items.value.isNotEmpty()) {
+            com.dashit.app.viewmodel.CartViewModel.shared.setCartSheetPresented(true)
+        }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openCartIfAsked(intent)
+    }
+
     override fun onStart() {
         super.onStart()
+        // Back in the app: no cart reminder while it's open.
+        com.dashit.app.data.CartReminders.cancel(this)
         OrderNotifications.isAppInForeground = true
         OrderNotifications.isAppInBackground = false
         // Celebrate a delivery that happened while the app was away.
@@ -171,6 +192,8 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
     override fun onStop() {
         OrderNotifications.isAppInForeground = false
         OrderNotifications.isAppInBackground = true
+        // Left with something in the cart: remind later, unless it's ordered first.
+        com.dashit.app.data.CartReminders.schedule(this)
         super.onStop()
     }
 }
