@@ -17,6 +17,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     case riders = "Riders"
     case analytics = "Sales & analytics"
     case notify = "Notify customers"
+    case cartReminders = "Cart reminders"
     case addProduct = "Add an item"
     case distributors = "Distributors"
     case offers = "Discounts"
@@ -25,9 +26,13 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     case batchInward = "Add many at once"
     case importCSV = "Import CSV"
 
+    /// The side list's headings, in order: running the day, the products,
+    /// reaching customers, and the shop itself.
     public enum NavGroup: String, CaseIterable, Identifiable {
-        case everyDay = "Every day"
-        case more = "More"
+        case today = "Today"
+        case products = "Products & stock"
+        case customers = "Customers & offers"
+        case shop = "Shop"
         public var id: String { rawValue }
     }
 
@@ -35,8 +40,10 @@ public enum AdminTab: String, CaseIterable, Identifiable {
 
     public var group: NavGroup {
         switch self {
-        case .home, .orders, .inventory, .riders, .analytics, .notify: return .everyDay
-        case .addProduct, .distributors, .offers, .spotlight, .storeControls, .batchInward, .importCSV: return .more
+        case .home, .orders, .riders: return .today
+        case .inventory, .addProduct, .batchInward, .importCSV, .distributors: return .products
+        case .notify, .cartReminders, .offers, .spotlight: return .customers
+        case .analytics, .storeControls: return .shop
         }
     }
 
@@ -50,6 +57,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .riders: return "The people who deliver your orders."
         case .analytics: return "Sales and orders delivered, day by day, and everything since the first order."
         case .notify: return "Send one notification to every customer with the app: offers, new items, shop news."
+        case .cartReminders: return "Remind shoppers who left items in their cart to order them."
         case .distributors: return "The people and companies you buy stock from."
         case .offers: return "Coupon codes your customers can use."
         case .spotlight: return "A gold tab on the home screen with your own groups and items, like a festive collection."
@@ -68,6 +76,7 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .riders: return "scooter"
         case .analytics: return "chart.bar.xaxis"
         case .notify: return "megaphone.fill"
+        case .cartReminders: return "cart.fill.badge.questionmark"
         case .distributors: return "building.2.fill"
         case .storeControls: return "storefront.fill"
         case .offers: return "sparkles"

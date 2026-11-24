@@ -7,7 +7,9 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
@@ -69,6 +71,33 @@ object Push {
         }
     }
 
+    private var cartJob: Job? = null
+    @Volatile private var lastCart: Pair<String, Int>? = null
+
+    /**
+     * Tells the server how many items are in this phone's cart (only the
+     * number), a few seconds after it settles, so "Cart reminders" in the admin
+     * app knows who has a cart waiting (push/cart.php). 0 when it's empty or the
+     * shopper has turned cart reminders off. Signed-in shoppers only.
+     */
+    fun cartChanged(count: Int) {
+        cartJob?.cancel()
+        cartJob = scope.launch {
+            delay(4_000)
+            runCatching {
+                val uid = AuthRepository.user.value?.id ?: return@launch
+                val shown = if (CartReminders.isEnabled) count else 0
+                if (lastCart == (uid to shown)) return@launch
+                post("cart.php", JSONObject()
+                    .put("id_token", AuthRepository.idToken())
+                    .put("token", FirebaseMessaging.getInstance().token.await())
+                    .put("platform", "android")
+                    .put("count", shown))
+                lastCart = uid to shown
+            }.onFailure { Log.w(TAG, "Couldn't tell the server about the cart", it) }
+        }
+    }
+
     /** Asks the server to send the push for this order's current status (it sends each once). */
     fun orderChanged(orderId: String) {
         scope.launch {
@@ -104,6 +133,8 @@ class PushService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val note = message.notification ?: return
+        // "Your cart is waiting" while the shopper is already in the app: nothing to show.
+        if (message.data["kind"] == "cart") return
         OrderNotifications.show(
             applicationContext,
             note.title ?: "DASHit",

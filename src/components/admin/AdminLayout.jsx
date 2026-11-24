@@ -62,14 +62,14 @@ export default function AdminLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   /* Labels are the words a shopkeeper uses, not warehouse software jargon.
-     Up front only what the day needs: orders, stock, riders, and a message to
-     every customer. "Shop" is what changes week to week: items, discounts
-     and the shop's settings (prices, fees, hours). The rarely used tools wait
-     under "Tools", folded away until it's opened (or until one of its
+     Grouped by job, the same as the iPhone admin app: today's work, the
+     products and stock, reaching customers (messages, cart reminders,
+     discounts, the special tab), and the shop itself. The rarely used tools
+     wait under "Tools", folded away until it's opened (or until one of its
      screens is the one showing). */
   const navItems = [
     {
-      group: "Every day",
+      group: "Today",
       items: [
         {
           id: "orders",
@@ -78,6 +78,12 @@ export default function AdminLayout({
           badge: activeOrdersCount > 0 ? activeOrdersCount : null,
           badgeColor: "bg-[#FF5B00] text-white",
         },
+        { id: "drivers", label: "Riders", icon: Truck },
+      ],
+    },
+    {
+      group: "Products & stock",
+      items: [
         {
           id: "inventory",
           label: "Stock",
@@ -86,43 +92,14 @@ export default function AdminLayout({
           badgeColor: "bg-amber-500 text-slate-950",
         },
         {
-          id: "drivers",
-          label: "Riders",
-          icon: Truck,
-        },
-        {
-          id: "analytics",
-          label: "Sales & analytics",
-          icon: BarChart3,
-        },
-        {
-          id: "notify",
-          label: "Notify customers",
-          icon: Megaphone,
-        },
-      ],
-    },
-    {
-      group: "Shop",
-      items: [
-        { id: "add-product", label: "Add an item", icon: Camera },
-        {
           id: "catalogue",
           label: "All items",
           icon: Tag,
           badge: catalogueCount > 0 ? `${catalogueCount}` : null,
           badgeColor: "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300",
         },
-        { id: "offers", label: "Discounts", icon: Sparkles },
-        { id: "spotlight", label: "Special tab", icon: Crown },
-        { id: "partners", label: "Partners", icon: Users },
-        { id: "settings", label: "Shop settings", icon: Store },
-      ],
-    },
-    {
-      group: "Tools",
-      collapsible: true,
-      items: [
+        { id: "add-product", label: "Add an item", icon: Camera },
+        { id: "batch-inward", label: "Add many at once", icon: ArrowDownToLine },
         {
           id: "distributors",
           label: "Distributors",
@@ -130,7 +107,28 @@ export default function AdminLayout({
           badge: distributorsCount > 0 ? `${distributorsCount}` : null,
           badgeColor: "bg-blue-500/15 text-blue-500 dark:text-blue-400 font-bold",
         },
-        { id: "batch-inward", label: "Add many at once", icon: ArrowDownToLine },
+      ],
+    },
+    {
+      group: "Customers & offers",
+      items: [
+        { id: "notify", label: "Notify & cart reminders", icon: Megaphone },
+        { id: "offers", label: "Discounts", icon: Sparkles },
+        { id: "spotlight", label: "Special tab", icon: Crown },
+      ],
+    },
+    {
+      group: "Shop",
+      items: [
+        { id: "analytics", label: "Sales & analytics", icon: BarChart3 },
+        { id: "settings", label: "Shop settings", icon: Store },
+        { id: "partners", label: "Partners", icon: Users },
+      ],
+    },
+    {
+      group: "Tools",
+      collapsible: true,
+      items: [
         { id: "importer", label: "Find by barcode", icon: Barcode },
         { id: "catalog-pick", label: "Pick from product list", icon: ListChecks },
         { id: "csv", label: "Import CSV", icon: FileSpreadsheet },

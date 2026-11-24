@@ -13,6 +13,7 @@ final class CartViewModel: ObservableObject {
             recalculate()
             LocalStorage.shared.saveCartItems(items)
             CartReminders.cartChanged(items)
+            Push.shared.cartChanged(items.reduce(0) { $0 + $1.qty })
         }
     }
 

@@ -58,7 +58,11 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         // Signed in or not, the app joins the "Notify customers" topic (register()
         // does that first, then the order part only for a signed-in shopper).
         lifecycleScope.launch {
-            AuthRepository.user.collect { com.dashit.app.data.Push.register() }
+            AuthRepository.user.collect {
+                com.dashit.app.data.Push.register()
+                // A shopper who signs in with a cart: the server hears about it too.
+                com.dashit.app.data.Push.cartChanged(com.dashit.app.viewmodel.CartViewModel.shared.totalQuantity)
+            }
         }
         OrderRepository.shared.init(this)
         com.dashit.app.data.Wallet.init(this)
@@ -164,8 +168,12 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
 
     /** Tapping a cart reminder opens the cart. */
     private fun openCartIfAsked(intent: android.content.Intent?) {
-        if (intent?.getBooleanExtra(com.dashit.app.data.CartReminders.EXTRA_OPEN_CART, false) != true) return
+        // Its own reminder sets the extra; one from the admin app (a push Android
+        // showed itself) carries kind=cart in its data.
+        val fromPush = intent?.getStringExtra("kind") == "cart"
+        if (intent?.getBooleanExtra(com.dashit.app.data.CartReminders.EXTRA_OPEN_CART, false) != true && !fromPush) return
         intent.removeExtra(com.dashit.app.data.CartReminders.EXTRA_OPEN_CART)
+        intent.removeExtra("kind")
         if (com.dashit.app.viewmodel.CartViewModel.shared.items.value.isNotEmpty()) {
             com.dashit.app.viewmodel.CartViewModel.shared.setCartSheetPresented(true)
         }

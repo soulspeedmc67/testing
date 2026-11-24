@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Megaphone, Send, CheckCircle2, AlertTriangle } from "lucide-react";
 import AdminSheet from "./AdminSheet";
+import CartReminderCard from "./CartReminderCard";
 import { getFirebaseAuth } from "../../lib/firebase";
 
 const ENDPOINT = "https://dashit.co.in/api/push/broadcast.php";
@@ -89,6 +90,8 @@ export default function NotifyCustomersView({ darkMode = false, showToast }) {
 
   return (
     <div className="space-y-4 max-w-2xl">
+      <CartReminderCard darkMode={darkMode} showToast={showToast} />
+
       <div className={`rounded-2xl p-5 border space-y-1 ${card}`}>
         <div className="flex items-center space-x-2">
           <Megaphone className="w-5 h-5 text-[#FF5B00]" />

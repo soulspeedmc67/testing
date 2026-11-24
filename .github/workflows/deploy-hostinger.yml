@@ -37,6 +37,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # A PHP typo would take the API down on the live site: stop before uploading instead.
+      - name: Check the PHP files
+        run: find public/api -name '*.php' -print0 | xargs -0 -n1 php -l
+
       - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:

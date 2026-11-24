@@ -105,6 +105,9 @@ enum CartReminders {
     static func setEnabled(_ enabled: Bool) {
         defaults.set(enabled, forKey: enabledKey)
         if !enabled { appOpened() }
+        // Off: the admin app's cart reminder skips this phone too.
+        let items = LocalStorage.shared.loadCartItems()
+        Push.shared.cartChanged(items.reduce(0) { $0 + $1.qty })
     }
 
     /// When the reminder after `sent` may go, or nil if none should.

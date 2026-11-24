@@ -88,6 +88,11 @@ private final class ForegroundPresenter: NSObject, UNUserNotificationCenterDeleg
         // The admin app's own alarm is already ringing for a new order; the push's
         // siren on top of it would play twice.
         // UIKit calls this on the main thread.
+        // "Your cart is waiting" from the admin app while the shopper is already in the app: nothing to show.
+        if response(isCart: notification) {
+            completionHandler([])
+            return
+        }
         let adminAlarmOn = MainActor.assumeIsolated {
             Bundle.main.bundleIdentifier == "com.dashit.admin" && OrderAlarm.shared.isRinging
         }
@@ -100,7 +105,7 @@ private final class ForegroundPresenter: NSObject, UNUserNotificationCenterDeleg
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        if response.notification.request.identifier.hasPrefix(CartReminders.idPrefix) {
+        if self.response(isCart: response.notification) {
             MainActor.assumeIsolated {
                 if !CartViewModel.shared.items.isEmpty {
                     CartViewModel.shared.isCartSheetPresented = true
@@ -108,5 +113,11 @@ private final class ForegroundPresenter: NSObject, UNUserNotificationCenterDeleg
             }
         }
         completionHandler()
+    }
+
+    /// The phone's own cart reminder, or the admin app's (a push with kind "cart").
+    private func response(isCart notification: UNNotification) -> Bool {
+        notification.request.identifier.hasPrefix(CartReminders.idPrefix)
+            || (notification.request.content.userInfo["kind"] as? String) == "cart"
     }
 }

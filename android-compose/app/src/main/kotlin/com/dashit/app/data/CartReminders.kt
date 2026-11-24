@@ -77,6 +77,8 @@ object CartReminders {
         isEnabled = enabled
         prefsOf(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
         if (!enabled) cancel(context)
+        // Off: the admin app's cart reminder skips this phone too.
+        Push.cartChanged(loadCart(context).sumOf { it.qty })
     }
 
     fun createChannel(context: Context) {

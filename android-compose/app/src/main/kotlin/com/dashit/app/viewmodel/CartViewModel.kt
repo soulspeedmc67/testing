@@ -187,7 +187,10 @@ class CartViewModel : ViewModel() {
     init {
         // Kept on the phone, so a cart reminder opens onto the same cart.
         viewModelScope.launch {
-            _items.collect { com.dashit.app.data.CartReminders.saveCart(it) }
+            _items.collect {
+                com.dashit.app.data.CartReminders.saveCart(it)
+                com.dashit.app.data.Push.cartChanged(it.sumOf { item -> item.qty })
+            }
         }
         viewModelScope.launch {
             StoreStatus.state.map { it.rules }.distinctUntilChanged().collect { recalculateBill() }

@@ -28,7 +28,8 @@ if ($app === 'admin') {
 }
 
 // One document per phone (its token), so a phone moving to another account follows it.
-$saved = dashit_firestore_set($account, 'pushTokens/' . hash('sha256', $token), [
+// Merged, not replaced: the cart fields (cart.php) and the last cart reminder stay.
+$saved = dashit_firestore_merge($account, 'pushTokens/' . hash('sha256', $token), [
     'uid' => (string) $claims['sub'],
     'token' => $token,
     'platform' => $platform,

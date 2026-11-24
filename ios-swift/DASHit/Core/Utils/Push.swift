@@ -35,7 +35,15 @@ final class Push: NSObject {
         Messaging.messaging().delegate = self
         application.registerForRemoteNotifications()
         authListener = Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            if user != nil { self?.register() }
+            if user != nil {
+                self?.register()
+                #if !ADMIN_APP_TARGET
+                // A shopper who signs in with a cart: the server hears about it too.
+                Task { @MainActor in
+                    self?.cartChanged(CartViewModel.shared.items.reduce(0) { $0 + $1.qty })
+                }
+                #endif
+            }
         }
         #if ADMIN_APP_TARGET
         // The store wants new-order alerts from the start.
@@ -95,6 +103,32 @@ final class Push: NSObject {
                 UserDefaults.standard.set(true, forKey: "dashit_push_active")
             }
         }
+    }
+
+    private var cartTask: Task<Void, Never>?
+    private var lastCart: String?
+
+    /// Tells the server how many items are in this phone's cart (only the
+    /// number), a few seconds after it settles, so "Cart reminders" in the
+    /// admin app knows who has a cart waiting (push/cart.php). 0 when it's
+    /// empty or the shopper has turned cart reminders off. Signed-in shoppers only.
+    func cartChanged(_ count: Int) {
+        #if !ADMIN_APP_TARGET
+        cartTask?.cancel()
+        cartTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled,
+                  let user = Auth.auth().currentUser, !user.isAnonymous,
+                  let fcm = try? await Messaging.messaging().token(),
+                  let idToken = try? await user.getIDToken() else { return }
+            let shown = CartReminders.isEnabled ? count : 0
+            let key = "\(user.uid)|\(shown)"
+            guard key != lastCart else { return }
+            if await post("cart.php", ["id_token": idToken, "token": fcm, "platform": "ios", "count": shown]) {
+                lastCart = key
+            }
+        }
+        #endif
     }
 
     /// Asks the server to send the push for this order's current status (it sends each once).

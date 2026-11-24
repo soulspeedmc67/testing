@@ -93,7 +93,7 @@ function dashit_push_join_topic(array $account, string $token, string $topic): v
 }
 
 /** Sends one message to one token. Returns 'ok', 'gone' (token no longer valid) or 'failed'. */
-function dashit_push_send(array $account, string $token, string $title, string $text, array $data, string $app = 'customer'): string
+function dashit_push_send(array $account, string $token, string $title, string $text, array $data, string $app = 'customer', string $channel = 'order_updates'): string
 {
     $access = dashit_google_access_token($account);
     $project = (string) ($account['project_id'] ?? '');
@@ -108,7 +108,8 @@ function dashit_push_send(array $account, string $token, string $title, string $
         'data' => array_map('strval', $data),
         'android' => [
             'priority' => 'HIGH',
-            'notification' => ['channel_id' => 'order_updates', 'sound' => 'default', 'tag' => $data['orderId'] ?? 'dashit'],
+            // A cart reminder uses the same tag as the phone's own (CartReminders.kt), so one replaces the other.
+            'notification' => ['channel_id' => $channel, 'sound' => 'default', 'tag' => $data['orderId'] ?? ($channel === 'cart_reminders' ? 'cart_reminders' : 'dashit')],
         ],
         'apns' => [
             'headers' => [
@@ -121,7 +122,7 @@ function dashit_push_send(array $account, string $token, string $title, string $
                     'alert' => ['title' => $title, 'body' => $text],
                     'sound' => $apnsSound,
                     'badge' => 1,
-                    'thread-id' => $data['orderId'] ?? 'dashit',
+                    'thread-id' => $data['orderId'] ?? ($channel === 'cart_reminders' ? 'cart' : 'dashit'),
                 ],
             ],
         ],
