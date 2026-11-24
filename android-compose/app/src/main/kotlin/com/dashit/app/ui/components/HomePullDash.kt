@@ -135,7 +135,7 @@ class HomePullState(
 
 /** The gap above the pulled-down list, in the header's own colour, with the mark in it. */
 @Composable
-fun HomePullDash(state: HomePullState, modifier: Modifier = Modifier) {
+fun HomePullDash(state: HomePullState, modifier: Modifier = Modifier, gap: Color? = null) {
     val snapScale by animateFloatAsState(
         targetValue = if (state.isArmed) 1.08f else 1f,
         animationSpec = spring(dampingRatio = 0.45f, stiffness = 600f),
@@ -154,7 +154,7 @@ fun HomePullDash(state: HomePullState, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .background(if (dark) Color(0xFF8C5D08) else Color(0xFFFFD9B8))
+            .background(gap ?: if (dark) Color(0xFF8C5D08) else Color(0xFFFFD9B8))
             .padding(top = statusBar),
         contentAlignment = Alignment.Center
     ) {

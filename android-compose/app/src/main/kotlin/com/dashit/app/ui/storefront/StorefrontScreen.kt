@@ -393,7 +393,7 @@ fun StorefrontScreen(
                             maxPx = with(pullDensity) { 160.dp.toPx() }
                         ) { HapticsManager.selection(pullView) }
                     }
-                    com.dashit.app.ui.components.HomePullDash(homePull)
+                    com.dashit.app.ui.components.HomePullDash(homePull, gap = if (isSpotlight) SpotlightColors.PageTop else null)
                     LazyColumn(
                         state = homeList,
                         modifier = Modifier
@@ -405,6 +405,9 @@ fun StorefrontScreen(
                     // 1. Top Header: ETA + Address + Profile
                     item(key = "header") {
                         StorefrontHeader(
+                            // On the special tab the gold runs up behind the header
+                            // to the top of the screen, with no edge at the search bar.
+                            isSpotlight = isSpotlight,
                             address = currentAddress,
                             onOpenAddressPicker = {
                                 HapticsManager.light(view)
@@ -1013,6 +1016,7 @@ fun StorefrontScreen(
 
 @Composable
 private fun StorefrontHeader(
+    isSpotlight: Boolean,
     address: DeliveryAddress,
     onOpenAddressPicker: () -> Unit,
     onAddressRowPlaced: (Rect) -> Unit,
@@ -1030,7 +1034,8 @@ private fun StorefrontHeader(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                Brush.verticalGradient(
+                if (isSpotlight) Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
+                else Brush.verticalGradient(
                     colors = if (isDark) listOf(
                         Color(0xFF8C5D08),
                         Color(0xFF4C3004),

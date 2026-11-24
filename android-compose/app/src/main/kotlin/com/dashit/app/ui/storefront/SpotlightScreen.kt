@@ -91,6 +91,10 @@ object SpotlightColors {
         get() = Brush.verticalGradient(
             listOf(pick(0xFFFFF7DA, 0xFF3A2B07), pick(0xFFFFE69A, 0xFF2C2005), pick(0xFFFFCF4D, 0xFF1E1603))
         )
+    /** The item cards: a warm, near-white card on the gold page (deep brown in dark). */
+    val Card get() = pick(0xFFFFFCF2, 0xFF2B2109)
+    val CardBorder get() = pick(0x80EDCB7A, 0x66775C1C)
+    val Price get() = pick(0xFF2A1A00, 0xFFFFE6A0)
     val tabFill = Brush.linearGradient(listOf(Color(0xFFFFE680), Color(0xFFFFC21A), Color(0xFFE89B00)))
 }
 
@@ -325,91 +329,43 @@ private fun SpotlightHeading(title: String, count: Int?) {
 
 @Composable
 private fun SpotlightHero(spotlight: Spotlight) {
-    val motion = rememberInfiniteTransition(label = "spot_garland")
-    val clock by motion.animateFloat(0f, (2 * PI).toFloat(), infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "spot_bulbs")
-    val wire = SpotlightColors.Ornament.copy(alpha = 0.45f)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 20.dp)
+            .padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 18.dp)
     ) {
-        Canvas(
-            Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-        ) {
-            val path = Path().apply {
-                moveTo(0f, size.height * 0.15f)
-                quadraticTo(size.width / 2, size.height * 1.05f, size.width, size.height * 0.15f)
-            }
-            drawPath(path, wire, style = Stroke(width = 1.dp.toPx()))
-            val bulbs = 15
-            for (i in 0 until bulbs) {
-                val f = i / (bulbs - 1f)
-                val x = size.width * (0.04f + f * 0.92f)
-                val y = size.height * (0.15f + 0.9f * 2 * f * (1 - f)) * 0.95f
-                val pulse = ((sin(clock + (i % 5) * 1.2f) + 1) / 2)
-                drawCircle(Color(0xFFFFC828).copy(alpha = 0.18f + 0.32f * pulse), radius = 7.dp.toPx(), center = Offset(x, y))
-                drawCircle(Color(0xFFFFF3B0).copy(alpha = 0.55f + 0.45f * pulse), radius = (3f + 0.8f * pulse) * density, center = Offset(x, y))
-            }
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(horizontal = 16.dp)
-        ) {
-            Ornament()
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.width(22.dp).height(1.dp).background(SpotlightColors.Ornament.copy(alpha = 0.7f)))
             Text(
-                text = spotlight.title,
-                color = SpotlightColors.Title,
-                fontSize = 30.sp,
-                lineHeight = 33.sp,
+                text = "CURATED BY DASHIT",
+                color = SpotlightColors.Ornament,
+                fontSize = 10.5.sp,
                 fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                modifier = Modifier.weight(1f, fill = false)
+                letterSpacing = 2.2.sp
             )
-            Ornament(flip = true)
+            Box(Modifier.width(22.dp).height(1.dp).background(SpotlightColors.Ornament.copy(alpha = 0.7f)))
         }
+        Text(
+            text = spotlight.title,
+            color = SpotlightColors.Title,
+            fontSize = 30.sp,
+            lineHeight = 34.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = (-0.4).sp,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            modifier = Modifier.padding(top = 10.dp)
+        )
         if (spotlight.subtitle.isNotBlank()) {
             Text(
                 text = spotlight.subtitle,
                 color = SpotlightColors.InkSoft,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp, start = 24.dp, end = 24.dp)
-            )
-        }
-        Text(
-            text = "CURATED BY DASHIT",
-            color = SpotlightColors.InkSoft,
-            fontSize = 10.5.sp,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 1.8.sp,
-            modifier = Modifier
-                .padding(top = 14.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = if (DashitColors.isDark) 0.06f else 0.5f))
-                .border(1.dp, SpotlightColors.Ornament.copy(alpha = 0.4f), CircleShape)
-                .padding(horizontal = 14.dp, vertical = 6.dp)
-        )
-    }
-}
-
-@Composable
-private fun Ornament(flip: Boolean = false) {
-    val color = SpotlightColors.Ornament
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        val parts = listOf(4.dp to 0.8f, 8.dp to 1f, 5.dp to 0.7f).let { if (flip) it.reversed() else it }
-        parts.forEachIndexed { index, (size, alpha) ->
-            Box(
-                Modifier
-                    .size(size)
-                    .rotate(45f)
-                    .clip(if ((index == 0 && !flip) || (index == 2 && flip)) CircleShape else RoundedCornerShape(0.dp))
-                    .background(color.copy(alpha = alpha))
+                modifier = Modifier.padding(top = 6.dp)
             )
         }
     }
@@ -426,10 +382,10 @@ private fun SpotlightGroupTile(section: Spotlight.ShownSection, modifier: Modifi
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
             .aspectRatio(0.8f)
-            .shadow(6.dp, shape, ambientColor = Color(0x2EA06400), spotColor = Color(0x2EA06400))
+            .shadow(3.dp, shape, ambientColor = Color(0x24A06400), spotColor = Color(0x24A06400))
             .clip(shape)
-            .background(SpotlightColors.tile)
-            .border(1.dp, SpotlightColors.TileBorder, shape)
+            .background(SpotlightColors.Card)
+            .border(1.dp, SpotlightColors.CardBorder, shape)
             .pressable(scale = 0.96f) {
                 HapticsManager.light(view)
                 onTap()
@@ -471,7 +427,10 @@ private fun SpotlightGroupTile(section: Spotlight.ShownSection, modifier: Modifi
     }
 }
 
-/** One item in the gold tile style: name on top, photo, then price and ADD. */
+/**
+ * One item: the photo first in a white well (with its offer), then the name,
+ * size, price and ADD, on a warm near-white card with a thin gold edge.
+ */
 @Composable
 private fun SpotlightItemCard(
     product: Product,
@@ -482,40 +441,26 @@ private fun SpotlightItemCard(
     onDecrement: () -> Unit
 ) {
     val view = LocalView.current
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(18.dp)
     val context = LocalContext.current
     val request = remember(product.img) { ImageRequest.Builder(context).data(product.img).crossfade(200).build() }
     Column(
         modifier = modifier
-            .shadow(6.dp, shape, ambientColor = Color(0x29A06400), spotColor = Color(0x29A06400))
+            .shadow(3.dp, shape, ambientColor = Color(0x24A06400), spotColor = Color(0x24A06400))
             .clip(shape)
-            .background(SpotlightColors.tile)
-            .border(1.dp, SpotlightColors.TileBorder, shape)
+            .background(SpotlightColors.Card)
+            .border(1.dp, SpotlightColors.CardBorder, shape)
             .pressable(scale = 0.97f) {
                 HapticsManager.selection(view)
                 onOpen()
             }
     ) {
-        Text(
-            text = product.name,
-            color = SpotlightColors.Ink,
-            fontSize = 12.5.sp,
-            lineHeight = 15.sp,
-            fontWeight = FontWeight.ExtraBold,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 10.dp, end = 10.dp, top = 12.dp)
-        )
         Box(
             modifier = Modifier
-                .padding(start = 10.dp, end = 10.dp, top = 6.dp)
+                .padding(start = 8.dp, end = 8.dp, top = 8.dp)
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(13.dp))
                 .background(Color.White)
         ) {
             ShimmerImage(
@@ -524,7 +469,7 @@ private fun SpotlightItemCard(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(6.dp),
+                    .padding(10.dp),
                 letterFallbackFor = product.name
             )
             val discount = product.discountPercent
@@ -534,82 +479,100 @@ private fun SpotlightItemCard(
                     color = Color.White,
                     fontSize = 9.5.sp,
                     fontWeight = FontWeight.Black,
+                    letterSpacing = 0.3.sp,
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .padding(6.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFB3261E))
-                        .padding(horizontal = 7.dp, vertical = 3.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFFC0261C))
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
                 )
             }
         }
-        Row(
-            verticalAlignment = Alignment.Bottom,
+        Text(
+            text = product.name,
+            color = SpotlightColors.Ink,
+            fontSize = 13.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            minLines = 2,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 10.dp)
+                .padding(start = 11.dp, end = 11.dp, top = 9.dp)
+        )
+        Text(
+            text = product.unit,
+            color = SpotlightColors.InkSoft,
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 11.dp, end = 11.dp, top = 2.dp)
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 11.dp, end = 9.dp, top = 8.dp, bottom = 10.dp)
         ) {
             Column(Modifier.weight(1f)) {
-                if (product.unit.isNotBlank()) {
-                    Text(product.unit, color = SpotlightColors.InkSoft, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(product.displayPrice, color = SpotlightColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                    product.displayOriginalPrice?.let {
-                        Text(it, color = SpotlightColors.InkSoft, fontSize = 10.5.sp, textDecoration = TextDecoration.LineThrough, maxLines = 1)
-                    }
+                Text(product.displayPrice, color = SpotlightColors.Price, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                product.displayOriginalPrice?.let {
+                    Text(it, color = SpotlightColors.InkSoft, fontSize = 11.sp, textDecoration = TextDecoration.LineThrough, maxLines = 1)
                 }
             }
             when {
                 !product.isAvailable -> Text(
                     "Sold out",
                     color = SpotlightColors.InkSoft,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color.Black.copy(alpha = 0.08f))
-                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(Color.Black.copy(alpha = 0.06f))
+                        .padding(horizontal = 9.dp, vertical = 8.dp)
                 )
                 quantity == 0 -> Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(width = 56.dp, height = 32.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .size(width = 62.dp, height = 34.dp)
+                        .clip(RoundedCornerShape(9.dp))
                         .background(SpotlightColors.ButtonFill)
                         .pressable(scale = 0.92f) {
                             HapticsManager.light(view)
                             onAdd()
                         }
                 ) {
-                    Text("ADD", color = SpotlightColors.ButtonText, fontSize = 13.sp, fontWeight = FontWeight.Black)
+                    Text("ADD", color = SpotlightColors.ButtonText, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
                 }
                 else -> Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .height(32.dp)
-                        .clip(RoundedCornerShape(10.dp))
+                        .height(34.dp)
+                        .clip(RoundedCornerShape(9.dp))
                         .background(SpotlightColors.ButtonFill)
                 ) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(width = 24.dp, height = 32.dp)
+                            .size(width = 26.dp, height = 34.dp)
                             .pressable(scale = 0.85f) {
                                 HapticsManager.light(view)
                                 onDecrement()
                             }
-                    ) { Text("−", color = SpotlightColors.ButtonText, fontSize = 15.sp, fontWeight = FontWeight.Black) }
+                    ) { Text("−", color = SpotlightColors.ButtonText, fontSize = 16.sp, fontWeight = FontWeight.Black) }
                     Text("$quantity", color = SpotlightColors.ButtonText, fontSize = 13.sp, fontWeight = FontWeight.Black)
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(width = 24.dp, height = 32.dp)
+                            .size(width = 26.dp, height = 34.dp)
                             .pressable(scale = 0.85f) {
                                 HapticsManager.light(view)
                                 onAdd()
                             }
-                    ) { Text("+", color = SpotlightColors.ButtonText, fontSize = 15.sp, fontWeight = FontWeight.Black) }
+                    ) { Text("+", color = SpotlightColors.ButtonText, fontSize = 16.sp, fontWeight = FontWeight.Black) }
                 }
             }
         }
