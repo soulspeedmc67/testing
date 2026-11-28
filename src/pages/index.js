@@ -7,8 +7,8 @@ import { useTheme } from "../context/ThemeContext";
 import { hapticLight } from "../lib/haptics";
 import { motion, AnimatePresence } from "framer-motion";
 import { stagger, fadeUp, inViewOnce, EASE_OUT } from "../lib/motion";
-import { LAUNCH_AT, LAUNCH_LABEL, APK_URL, APP_STORE_URL, isBeforeLaunch } from "../lib/launch";
-import { X, Menu, Sun, Moon, ArrowRight, MapPin, Wallet, Truck, Download, Sparkles } from "lucide-react";
+import { LAUNCH_AT, LAUNCH_LABEL, APP_STORE_URL, PLAY_STORE_URL, isBeforeLaunch } from "../lib/launch";
+import { X, Menu, Sun, Moon, ArrowRight, MapPin, Wallet, Truck, Sparkles } from "lucide-react";
 
 const DELIVERY_STEPS = [
   {
@@ -87,13 +87,15 @@ function AppleMark({ className = "w-5 h-5" }) {
   );
 }
 
-/** The two store listings: the App Store one is a link; Google Play is "coming soon" (not a link yet). */
+/** The two store listings, Google Play and the App Store. */
 function StoreBadges({ onDark = false }) {
   const tone = onDark
     ? "border-white/15 bg-white/[0.06] text-white"
     : "border-slate-300/80 bg-white text-[#061838] dark:border-slate-700 dark:bg-[#12161F] dark:text-white";
   const small = onDark ? "text-slate-400" : "text-slate-500 dark:text-slate-400";
-  const box = `h-[52px] min-w-0 px-3 sm:px-3.5 rounded-xl border flex items-center gap-2.5 sm:gap-3 select-none ${tone}`;
+  const box = `h-[52px] min-w-0 px-3 sm:px-3.5 rounded-xl border flex items-center gap-2.5 sm:gap-3 select-none transition-all active:scale-[0.98] ${tone} ${
+    onDark ? "hover:bg-white/10" : "hover:bg-slate-50 dark:hover:bg-[#181D2A]"
+  }`;
   const words = (line, store) => (
     <span className="leading-tight text-left">
       <span className={`block text-[10.5px] font-medium ${small}`}>{line}</span>
@@ -102,39 +104,27 @@ function StoreBadges({ onDark = false }) {
   );
   return (
     <div className="grid grid-cols-2 gap-2.5 max-w-[360px]">
-      <div role="img" aria-label="Google Play: coming soon" className={box}>
+      <a
+        href={PLAY_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Get DASHit on Google Play"
+        className={box}
+      >
         <GooglePlayMark />
-        {words("Coming soon to", "Google Play")}
-      </div>
+        {words("Get it on", "Google Play")}
+      </a>
       <a
         href={APP_STORE_URL}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Download DASHit on the App Store"
-        className={`${box} transition-all active:scale-[0.98] ${onDark ? "hover:bg-white/10" : "hover:bg-slate-50 dark:hover:bg-[#181D2A]"}`}
+        className={box}
       >
         <AppleMark />
         {words("Download on the", "App Store")}
       </a>
     </div>
-  );
-}
-
-/** The Android app before it is on Google Play: downloadable as an APK button. */
-function ApkButton({ onDark = false }) {
-  return (
-    <a
-      href={APK_URL}
-      download="DASHit.apk"
-      className={`group h-[48px] px-4 rounded-xl border flex items-center justify-center gap-2.5 max-w-[360px] text-[13.5px] font-bold transition-all shadow-xs active:scale-[0.98] ${
-        onDark
-          ? "border-white/20 bg-white/10 hover:bg-white/15 text-white"
-          : "border-slate-300 bg-white hover:bg-slate-50 text-[#061838] dark:border-slate-700 dark:bg-[#12161F] dark:hover:bg-[#181D2A] dark:text-white"
-      }`}
-    >
-      <Download className="w-4 h-4 text-[#FF5B00] shrink-0 transition-transform group-hover:-translate-y-0.5" aria-hidden="true" />
-      <span>Download Android App (APK)</span>
-    </a>
   );
 }
 
@@ -382,7 +372,6 @@ export default function LandingPage() {
 
             <div className="mt-8 space-y-3">
               <StoreBadges />
-              <ApkButton />
             </div>
           </div>
 
@@ -520,7 +509,6 @@ export default function LandingPage() {
                 <ArrowRight className="w-[18px] h-[18px] transition-transform group-hover:translate-x-0.5" />
               </Link>
               <StoreBadges onDark />
-              <ApkButton onDark />
             </div>
           </div>
 

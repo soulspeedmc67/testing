@@ -13,12 +13,8 @@ export function isBeforeLaunch(now = Date.now()) {
   return now < LAUNCH_AT.getTime();
 }
 
-/**
- * The Android app, for people to install before the Google Play listing is
- * live. Hosted on the website itself (public_html/DASHit.apk, shipped in the
- * upload zip, not in git); NEXT_PUBLIC_APK_URL points it elsewhere.
- */
-export const APK_URL = process.env.NEXT_PUBLIC_APK_URL || "/DASHit.apk";
+/** The Android app's page on Google Play (live since version 1.2.8). */
+export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.dashit.app";
 
 /** The iPhone app's page on the App Store (live since version 1.0.1). */
 export const APP_STORE_URL = "https://apps.apple.com/in/app/dashit-fastest-grocery-app/id6815538756";
