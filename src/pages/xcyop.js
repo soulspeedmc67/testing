@@ -32,6 +32,7 @@ import AnalyticsView from "../components/admin/AnalyticsView";
 import LiveDeliveriesPanel from "../components/admin/LiveDeliveriesPanel";
 import RidersMapPanel from "../components/admin/RidersMapPanel";
 import NotifyCustomersView from "../components/admin/NotifyCustomersView";
+import RestockRequestsView from "../components/admin/RestockRequestsView";
 import InventoryView from "../components/admin/InventoryView";
 import AddProductView from "../components/admin/AddProductView";
 import SpotlightEditor from "../components/admin/SpotlightEditor";
@@ -2062,6 +2063,8 @@ function ProfessionalAdminDashboard({ isSandbox = false, currentUid = "" }) {
       )}
 
       {activeTab === "notify" && <NotifyCustomersView darkMode={darkMode} showToast={showToast} />}
+
+      {activeTab === "restock" && <RestockRequestsView darkMode={darkMode} showToast={showToast} onNavigateTab={setActiveTab} />}
 
       {activeTab === "inventory" && (
         <InventoryView

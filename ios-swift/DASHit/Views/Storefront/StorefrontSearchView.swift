@@ -384,6 +384,7 @@ struct StorefrontSearchView: View {
             QuantityStepper(
                 quantity: cart.quantity(for: product.id),
                 isEnabled: product.isAvailable,
+                restockFor: product,
                 onAdd: {
                     if hasVariants {
                         onOpenProduct(product)

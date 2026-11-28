@@ -14,8 +14,10 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     case home = "Home"
     case orders = "Orders"
     case inventory = "Stock"
+    case restock = "Restock requests"
     case riders = "Riders"
     case analytics = "Sales & analytics"
+    case itemsSold = "Items sold"
     case notify = "Notify customers"
     case cartReminders = "Cart reminders"
     case addProduct = "Add an item"
@@ -41,9 +43,9 @@ public enum AdminTab: String, CaseIterable, Identifiable {
     public var group: NavGroup {
         switch self {
         case .home, .orders, .riders: return .today
-        case .inventory, .addProduct, .batchInward, .importCSV, .distributors: return .products
+        case .inventory, .restock, .addProduct, .batchInward, .importCSV, .distributors: return .products
         case .notify, .cartReminders, .offers, .spotlight: return .customers
-        case .analytics, .storeControls: return .shop
+        case .analytics, .itemsSold, .storeControls: return .shop
         }
     }
 
@@ -53,6 +55,8 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .home: return "How the shop is doing today, and what needs doing now."
         case .orders: return "New orders show up here. Pack them, then give them to a rider."
         case .inventory: return "How many of each item you have. Tap − or + to change the number."
+        case .restock: return "Out-of-stock items shoppers asked for with \"Notify me\", most wanted first. Restock them, then tell them it's back."
+        case .itemsSold: return "Every item sold, with pieces, money and when it last sold. Search it, sort it or share it as a file."
         case .addProduct: return "Put a new item in the shop."
         case .riders: return "The people who deliver your orders."
         case .analytics: return "Sales and orders delivered, day by day, and everything since the first order."
@@ -72,6 +76,8 @@ public enum AdminTab: String, CaseIterable, Identifiable {
         case .home: return "house.fill"
         case .orders: return "shippingbox.fill"
         case .inventory: return "square.grid.2x2.fill"
+        case .restock: return "bell.badge.fill"
+        case .itemsSold: return "list.number"
         case .addProduct: return "plus.circle.fill"
         case .riders: return "scooter"
         case .analytics: return "chart.bar.xaxis"

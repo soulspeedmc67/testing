@@ -646,6 +646,7 @@ private fun SearchProductRow(
         QuantityStepper(
             quantity = quantity,
             isEnabled = product.isAvailable,
+            restockFor = product,
             onAdd = onAdd,
             onIncrement = onAdd,
             onDecrement = onDecrement

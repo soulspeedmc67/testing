@@ -524,15 +524,13 @@ private fun SpotlightItemCard(
                 }
             }
             when {
-                !product.isAvailable -> Text(
-                    "Sold out",
-                    color = SpotlightColors.InkSoft,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(Color.Black.copy(alpha = 0.06f))
-                        .padding(horizontal = 9.dp, vertical = 8.dp)
+                !product.isAvailable -> com.dashit.app.ui.components.NotifyMeButton(
+                    productId = product.id,
+                    productName = product.name,
+                    width = 84.dp,
+                    height = 34.dp,
+                    cornerRadius = 9.dp,
+                    fontSize = 11.sp
                 )
                 quantity == 0 -> Box(
                     contentAlignment = Alignment.Center,

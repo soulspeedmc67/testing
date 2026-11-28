@@ -43,6 +43,8 @@ fun QuantityStepper(
     modifier: Modifier = Modifier,
     size: StepperSize = StepperSize.COMPACT,
     isEnabled: Boolean = true,
+    /** When set and the item is sold out, "Notify me" shows instead of "Sold out". */
+    restockFor: com.dashit.app.data.model.Product? = null,
     onAdd: () -> Unit,
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
@@ -61,7 +63,17 @@ fun QuantityStepper(
         },
         label = "stepper_transition"
     ) { hasQuantity ->
-        if (!hasQuantity) {
+        if (!hasQuantity && !isEnabled && restockFor != null) {
+            NotifyMeButton(
+                productId = restockFor.id,
+                productName = restockFor.name,
+                modifier = modifier,
+                width = width,
+                height = height,
+                cornerRadius = cornerRadius,
+                fontSize = if (size == StepperSize.COMPACT) 10.5.sp else 15.sp
+            )
+        } else if (!hasQuantity) {
             // Unselected: Dark surface pill with vibrant orange border and "ADD"
             Box(
                 modifier = modifier

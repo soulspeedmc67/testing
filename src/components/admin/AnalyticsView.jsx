@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Download, TrendingUp, PackageCheck, XCircle, IndianRupee, Users, Trophy, ShoppingBasket } from "lucide-react";
 import { fetchAllOrders } from "../../lib/db";
 import { triggerCsvDownload } from "../../lib/csvExport";
+import SoldItemsCard from "./SoldItemsCard";
 import { summarize, fillDays, rangeKeys, mergeOrders, daysToCsv, istDayKey } from "../../lib/salesAnalytics";
 
 const RANGES = [
@@ -258,7 +259,7 @@ export default function AnalyticsView({ orders: liveOrders = [], darkMode = fals
           ) : (
             <ol className="space-y-2">
               {stats.topProducts.map((p, i) => (
-                <li key={p.name} className="text-xs">
+                <li key={p.key} className="text-xs">
                   <div className="flex justify-between gap-2">
                     <span className={`font-bold truncate ${strong}`}>
                       {i + 1}. {p.name}
@@ -320,6 +321,14 @@ export default function AnalyticsView({ orders: liveOrders = [], darkMode = fals
           </div>
         </div>
       </div>
+
+      {/* Every item sold in the period, not just the top ten */}
+      <SoldItemsCard
+        items={stats.soldItems}
+        rangeId={range}
+        rangeLabel={RANGES.find((r) => r.id === range)?.label || ""}
+        darkMode={darkMode}
+      />
 
       {/* Lifetime, always shown */}
       <div className={card}>

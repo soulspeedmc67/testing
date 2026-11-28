@@ -421,6 +421,7 @@ fun ProductDetailSheet(
                             quantity = quantity,
                             size = StepperSize.REGULAR,
                             isEnabled = product.isAvailable,
+                            restockFor = product,
                             onAdd = { onAdd(product, selectedVariant) },
                             onIncrement = { onIncrement(product, selectedVariant) },
                             onDecrement = { onDecrement(product) }

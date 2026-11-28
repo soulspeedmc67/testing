@@ -22,6 +22,7 @@ struct ProductCardView: View {
                     QuantityStepper(
                         quantity: cart.quantity(for: product.id),
                         isEnabled: product.isAvailable,
+                        restockFor: product,
                         onAdd: handleAdd,
                         onIncrement: handleIncrement,
                         onDecrement: { cart.decrementLatest(productId: product.id) }

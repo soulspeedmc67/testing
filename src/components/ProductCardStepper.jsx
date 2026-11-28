@@ -4,6 +4,7 @@ import { Plus, Minus } from "lucide-react";
 import { triggerFlyToCart } from "./FlyingBadgeOverlay";
 import { hapticMedium, hapticLight, hapticHeavy } from "../lib/haptics";
 import { useAgeGate } from "../context/AgeGateContext";
+import NotifyMeButton from "./NotifyMeButton";
 
 export default function ProductCardStepper({
   product,
@@ -113,20 +114,9 @@ export default function ProductCardStepper({
     }
   };
 
+  // Out of stock: "Notify me" instead of ADD (the shop sees who wants it back).
   if (isOutOfStock) {
-    return (
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className={`relative ${className.includes("h-") ? "" : "h-8"} w-full shrink-0 overflow-hidden rounded-xl select-none ${className}`}
-      >
-        <button
-          disabled
-          className="w-full h-full bg-slate-100 text-slate-400 font-black text-[10px] uppercase rounded-xl flex items-center justify-center cursor-not-allowed border border-slate-200 dark:bg-surface-muted dark:border-line"
-        >
-          Sold Out
-        </button>
-      </div>
-    );
+    return <NotifyMeButton product={product} className={className} />;
   }
 
   return (

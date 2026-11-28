@@ -305,6 +305,10 @@ public struct AdminDashboardView: View {
                     ridersTabContent
                 case .analytics:
                     AdminAnalyticsView()
+                case .itemsSold:
+                    AdminSoldItemsPage()
+                case .restock:
+                    AdminRestockView()
                 case .notify:
                     AdminNotifyView()
                 case .cartReminders:

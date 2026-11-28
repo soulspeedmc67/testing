@@ -82,7 +82,7 @@ export default function QuickProductSheet({
         {isOutOfStock && (
           <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2 flex items-center space-x-2 text-xs text-rose-600 font-bold dark:text-rose-400">
             <Package className="w-4 h-4 shrink-0 text-rose-500" />
-            <span>Sold out for now</span>
+            <span>Sold out for now. Tap Notify me and we'll tell you when it's back.</span>
           </div>
         )}
 

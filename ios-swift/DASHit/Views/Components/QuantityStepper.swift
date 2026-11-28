@@ -11,6 +11,8 @@ struct QuantityStepper: View {
     let quantity: Int
     var size: Size = .compact
     var isEnabled: Bool = true
+    /// When set and the item is sold out, "Notify me" shows instead of "Sold out".
+    var restockFor: Product? = nil
     let onAdd: () -> Void
     let onIncrement: () -> Void
     let onDecrement: () -> Void
@@ -27,7 +29,17 @@ struct QuantityStepper: View {
 
     var body: some View {
         ZStack {
-            if quantity == 0 {
+            if quantity == 0, !isEnabled, let product = restockFor {
+                NotifyMeButton(
+                    productId: product.id,
+                    productName: product.name,
+                    width: width,
+                    height: height,
+                    cornerRadius: size == .compact ? 9 : 14,
+                    fontSize: size == .compact ? 11.5 : 15
+                )
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+            } else if quantity == 0 {
                 Button(action: onAdd) {
                     Text(isEnabled ? "ADD" : "Sold out")
                         .font(labelFont)

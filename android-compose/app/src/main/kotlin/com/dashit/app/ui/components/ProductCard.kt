@@ -123,6 +123,7 @@ fun ProductCard(
                     quantity = quantity,
                     size = StepperSize.COMPACT,
                     isEnabled = product.isAvailable,
+                    restockFor = product,
                     onAdd = onAdd,
                     onIncrement = onIncrement,
                     onDecrement = onDecrement

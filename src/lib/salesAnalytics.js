@@ -153,17 +153,28 @@ export function summarize(orders, { fromKey = null, toKey = null } = {}) {
     const who = customerOf(order);
     if (who) customers.set(who, (customers.get(who) || 0) + 1);
     if (!isDelivered(order)) continue;
+    const seen = new Set();
     for (const item of Array.isArray(order.items) ? order.items : []) {
       const name = String(item?.name || "Item").trim();
+      const unit = String(item?.unit || item?.weight || "").trim();
+      const id = String(item?.id || item?.productId || item?.barcode || "").trim();
+      // One row per product (and pack size): by id when the order has it, by name otherwise.
+      const key = `${id || name.toLowerCase()}|${unit.toLowerCase()}`;
       const qty = itemQty(item);
-      const row = products.get(name) || { name, units: 0, revenue: 0 };
+      const row = products.get(key) || { key, id, name, unit, units: 0, revenue: 0, orders: 0, firstMs: ms, lastMs: ms };
       row.units += qty;
       row.revenue += num(item?.price) * qty;
-      products.set(name, row);
+      if (!seen.has(key)) row.orders += 1;
+      seen.add(key);
+      row.firstMs = Math.min(row.firstMs, ms);
+      row.lastMs = Math.max(row.lastMs, ms);
+      products.set(key, row);
     }
   }
 
   const dayList = [...days.values()].sort((a, b) => (a.key < b.key ? -1 : 1));
+  // Every product in delivered orders, most pieces first (the "Items sold" list).
+  const soldItems = [...products.values()].sort((a, b) => b.units - a.units || b.revenue - a.revenue);
   const best = dayList.reduce((top, d) => (d.sales > (top?.sales || 0) ? d : top), null);
   const finished = totals.delivered + totals.cancelled;
   return {
@@ -175,7 +186,8 @@ export function summarize(orders, { fromKey = null, toKey = null } = {}) {
     days: dayList,
     bestDay: best && best.sales > 0 ? best : null,
     hours,
-    topProducts: [...products.values()].sort((a, b) => b.units - a.units || b.revenue - a.revenue).slice(0, 10),
+    soldItems,
+    topProducts: soldItems.slice(0, 10),
     firstOrderMs: firstMs,
     lastOrderMs: lastMs,
   };
@@ -223,4 +235,25 @@ export function daysToCsv(days) {
   const head = ["Date", "Orders", "Delivered", "Cancelled", "Pending", "Sales (delivered)", "Booked", "Items sold", "Delivery fees", "Discounts", "Online", "Cash"];
   const rows = days.map((d) => [d.key, d.orders, d.delivered, d.cancelled, d.pending, d.sales, d.booked, d.units, d.deliveryFees, d.discounts, d.onlineSales, d.codSales]);
   return [head, ...rows].map((r) => r.join(",")).join("\n");
+}
+
+const csvCell = (v) => {
+  const text = String(v ?? "");
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+/** Every item sold as CSV text ("Items sold" download). */
+export function soldItemsToCsv(items) {
+  const head = ["Item", "Pack", "Pieces sold", "Money (₹)", "Orders", "Average price (₹)", "First sold", "Last sold"];
+  const rows = items.map((p) => [
+    p.name,
+    p.unit,
+    p.units,
+    Math.round(p.revenue),
+    p.orders,
+    p.units ? Math.round((p.revenue / p.units) * 100) / 100 : 0,
+    istDayKey(p.firstMs),
+    istDayKey(p.lastMs),
+  ]);
+  return [head, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
 }

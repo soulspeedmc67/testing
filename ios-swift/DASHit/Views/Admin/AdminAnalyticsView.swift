@@ -13,6 +13,7 @@ struct AdminAnalyticsView: View {
     @StateObject private var model = AdminAnalyticsModel()
     @State private var range: AnalyticsRange = .week
     @State private var showDelivered = false
+    @State private var isSoldItemsOpen = false
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var isWide: Bool { sizeClass == .regular }
@@ -58,6 +59,16 @@ struct AdminAnalyticsView: View {
         .background(AdminStyle.page.ignoresSafeArea())
         .refreshable { await model.load() }
         .task { if model.orders.isEmpty { await model.load() } }
+        .sheet(isPresented: $isSoldItemsOpen) {
+            NavigationStack {
+                AdminSoldItemsView(model: model, initialRange: range)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { isSoldItemsOpen = false }
+                        }
+                    }
+            }
+        }
     }
 
     // MARK: - Pieces
@@ -163,14 +174,26 @@ struct AdminAnalyticsView: View {
 
     private func bestSellers(_ summary: AnalyticsSummary) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Best sellers").font(.system(size: 17, weight: .bold))
+            HStack {
+                Text("Best sellers").font(.system(size: 17, weight: .bold))
+                Spacer()
+                if !summary.soldItems.isEmpty {
+                    Button {
+                        isSoldItemsOpen = true
+                    } label: {
+                        Text("See all \(summary.soldItems.count)")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    .tint(AdminStyle.brand)
+                }
+            }
             if summary.topProducts.isEmpty {
                 Text("Nothing delivered in this period.")
                     .font(.system(size: 14))
                     .foregroundColor(.secondary)
             } else {
                 let top = Double(summary.topProducts.first?.units ?? 1)
-                ForEach(Array(summary.topProducts.enumerated()), id: \.element.name) { index, item in
+                ForEach(Array(summary.topProducts.enumerated()), id: \.element.key) { index, item in
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             Text("\(index + 1). \(item.name)")
@@ -374,10 +397,22 @@ struct AnalyticsDay: Identifiable {
     var sales: Double = 0
 }
 
-struct AnalyticsProduct {
+/// One product (and pack size) in delivered orders: the "Items sold" list.
+struct AnalyticsProduct: Identifiable {
+    var id: String { key }
+    let key: String
+    var productId: String = ""
     let name: String
+    var unit: String = ""
+    var img: String = ""
     var units: Int
     var revenue: Double
+    /// Delivered orders it was in.
+    var orders: Int = 0
+    var firstSold: Date = .distantFuture
+    var lastSold: Date = .distantPast
+
+    var averagePrice: Double { units == 0 ? 0 : revenue / Double(units) }
 }
 
 struct AnalyticsSummary {
@@ -396,6 +431,8 @@ struct AnalyticsSummary {
     var repeatCustomers = 0
     var days: [AnalyticsDay] = []
     var topProducts: [AnalyticsProduct] = []
+    /// Every item sold in the period, most pieces first.
+    var soldItems: [AnalyticsProduct] = []
     var busiestHour: Int?
     var firstDay: Date?
 
@@ -482,12 +519,21 @@ final class AdminAnalyticsModel: ObservableObject {
                 s.deliveryFees += order.deliveryFee
                 s.discounts += order.discount
                 if order.isPaidOnline { s.onlineSales += order.grandTotal } else { s.codSales += order.grandTotal }
+                var seen = Set<String>()
                 for item in order.items {
                     s.units += item.qty
-                    var p = products[item.name] ?? AnalyticsProduct(name: item.name, units: 0, revenue: 0)
+                    // One row per product and pack: by id when the order has it, by name otherwise.
+                    let base = item.productId.isEmpty ? item.name.lowercased() : item.productId
+                    let key = "\(base)|\(item.unit.lowercased())"
+                    var p = products[key] ?? AnalyticsProduct(
+                        key: key, productId: item.productId, name: item.name, unit: item.unit, img: item.img, units: 0, revenue: 0
+                    )
                     p.units += item.qty
                     p.revenue += item.price * Double(item.qty)
-                    products[item.name] = p
+                    if seen.insert(key).inserted { p.orders += 1 }
+                    p.firstSold = min(p.firstSold, placedAt)
+                    p.lastSold = max(p.lastSold, placedAt)
+                    products[key] = p
                 }
             } else {
                 s.pending += 1
@@ -498,11 +544,9 @@ final class AdminAnalyticsModel: ObservableObject {
         s.days = days.values.sorted { $0.date < $1.date }
         s.customers = customers.count
         s.repeatCustomers = customers.values.filter { $0 > 1 }.count
-        s.topProducts = Array(
-            products.values
-                .sorted { $0.units != $1.units ? $0.units > $1.units : $0.revenue > $1.revenue }
-                .prefix(10)
-        )
+        s.soldItems = products.values
+            .sorted { $0.units != $1.units ? $0.units > $1.units : $0.revenue > $1.revenue }
+        s.topProducts = Array(s.soldItems.prefix(10))
         if let peak = hours.max(), peak > 0 { s.busiestHour = hours.firstIndex(of: peak) }
         return s
     }

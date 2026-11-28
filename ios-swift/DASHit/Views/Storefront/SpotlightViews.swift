@@ -382,12 +382,7 @@ struct SpotlightItemCard: View {
     private var addControl: some View {
         let quantity = cart.quantity(for: product.id)
         if !product.isAvailable {
-            Text("Sold out")
-                .font(.system(size: 10.5, weight: .heavy))
-                .foregroundColor(SpotlightPalette.inkSoft)
-                .padding(.horizontal, 8)
-                .frame(height: 32)
-                .background(Color.black.opacity(0.08), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            NotifyMeButton(productId: product.id, productName: product.name, width: 80, height: 32, cornerRadius: 10, fontSize: 11)
         } else if quantity == 0 {
             Button(action: handleAdd) {
                 Text("ADD")

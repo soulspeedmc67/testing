@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity(), com.razorpay.PaymentResultWithDataList
         // Signed-in shopper, their orders and the store's open/closed switch.
         AuthRepository.init(this)
         com.dashit.app.data.Push.init(this)
+        com.dashit.app.data.RestockRequests.init(this)
         // Order notifications by push, for whoever is signed in (again after each sign-in).
         // Signed in or not, the app joins the "Notify customers" topic (register()
         // does that first, then the order part only for a signed-in shopper).

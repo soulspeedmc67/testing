@@ -32,6 +32,7 @@ import {
   Crown,
   LayoutGrid,
   Megaphone,
+  BellRing,
   ChevronDown,
   RotateCcw,
 } from "lucide-react";
@@ -98,6 +99,7 @@ export default function AdminLayout({
           badge: catalogueCount > 0 ? `${catalogueCount}` : null,
           badgeColor: "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300",
         },
+        { id: "restock", label: "Restock requests", icon: BellRing },
         { id: "add-product", label: "Add an item", icon: Camera },
         { id: "batch-inward", label: "Add many at once", icon: ArrowDownToLine },
         {

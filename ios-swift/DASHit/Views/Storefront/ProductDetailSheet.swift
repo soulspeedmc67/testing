@@ -404,7 +404,17 @@ struct ProductDetailSheet: View {
                 Spacer(minLength: 8)
             }
 
-            if quantity == 0 {
+            if quantity == 0 && !product.isAvailable {
+                NotifyMeButton(
+                    productId: product.id,
+                    productName: product.name,
+                    width: 168,
+                    height: 50,
+                    cornerRadius: 14,
+                    fontSize: 15
+                )
+                .transition(.scale(scale: 0.9).combined(with: .opacity))
+            } else if quantity == 0 {
                 Button(action: handleAdd) {
                     Text(product.isAvailable ? "Add to cart" : "Out of stock")
                         .font(.system(size: 16, weight: .bold))
