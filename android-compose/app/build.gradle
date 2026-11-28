@@ -15,7 +15,7 @@ android {
         targetSdk 36
         // Well above the old web-wrapper app (android/, same app ID, up to 6), so
         // this native app always installs over it and never the other way round.
-        versionCode 112
+        versionCode 113
         versionName "1.2.8"
 
         // The sign-in server next to the website (public/api/auth/). A test build
