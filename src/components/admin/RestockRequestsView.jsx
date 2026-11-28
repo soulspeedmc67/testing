@@ -1,18 +1,18 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BellRing, RefreshCw, Send, X, PackageCheck, PackageX } from "lucide-react";
+import { BellRing, RefreshCw, Send, X, PackageCheck, PackageX, PackagePlus, Minus, Plus } from "lucide-react";
 import AdminSheet from "./AdminSheet";
 import { getFirebaseAuth } from "../../lib/firebase";
 
 const ENDPOINT = "https://dashit.co.in/api/restock/list.php";
 
 /** Calls restock/list.php as the signed-in staff member. */
-async function callRestock(action, productId) {
+async function callRestock(action, productId, extra = {}) {
   const user = getFirebaseAuth()?.currentUser;
   if (!user) throw new Error("Please sign in again.");
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id_token: await user.getIdToken(), action, productId }),
+    body: JSON.stringify({ id_token: await user.getIdToken(), action, productId, ...extra }),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || "Something went wrong.");
@@ -32,8 +32,9 @@ const ago = (seconds) => {
 /**
  * "Restock requests": the out-of-stock items shoppers tapped "Notify me" on
  * (website and both apps), most wanted first, so the owner knows what to buy.
- * Once an item has stock again, "Tell them it's back" sends everyone who asked
- * a notification; "Remove" closes the requests without one.
+ * "Restock" adds stock right here (no trip to the Stock page) and puts the
+ * item back on sale; then "Tell them it's back" sends everyone who asked a
+ * notification. "Remove" closes the requests without one.
  * Same screen as the iPhone admin app (AdminRestockView.swift).
  */
 export default function RestockRequestsView({ darkMode = false, showToast, onNavigateTab }) {
@@ -43,6 +44,32 @@ export default function RestockRequestsView({ darkMode = false, showToast, onNav
   const [loading, setLoading] = useState(false);
   const [confirm, setConfirm] = useState(null); // { item, action: "notify" | "dismiss" }
   const [working, setWorking] = useState(false);
+  const [amounts, setAmounts] = useState({}); // productId -> how many to add
+  const [restocking, setRestocking] = useState(null); // productId being saved
+
+  const amountOf = (item) => {
+    const n = Number(amounts[item.productId]);
+    return Number.isFinite(n) && n > 0 ? Math.min(10000, Math.floor(n)) : 0;
+  };
+  const setAmount = (item, value) => setAmounts((prev) => ({ ...prev, [item.productId]: value }));
+
+  const restock = async (item) => {
+    const quantity = amountOf(item);
+    if (!quantity || restocking) return;
+    setRestocking(item.productId);
+    setError("");
+    try {
+      const data = await callRestock("restock", item.productId, { quantity });
+      // Shown at once; the next refresh reads it back from the server.
+      setItems((prev) => (prev || []).map((x) => (x.productId === item.productId ? { ...x, inStock: true, stock: data.stock } : x)));
+      setAmount(item, "");
+      showToast?.(`${item.name}: ${data.stock} in stock now`);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setRestocking(null);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -122,7 +149,7 @@ export default function RestockRequestsView({ darkMode = false, showToast, onNav
       {items && items.length > 0 && (
         <ul className="space-y-2.5">
           {items.map((item) => (
-            <li key={item.productId} className={`rounded-2xl border p-3.5 flex flex-wrap sm:flex-nowrap items-center gap-3 ${card}`}>
+            <li key={item.productId} className={`rounded-2xl border p-3.5 flex flex-wrap lg:flex-nowrap items-center gap-3 ${card}`}>
               <div className="w-14 h-14 rounded-xl bg-white border border-slate-100 overflow-hidden shrink-0 flex items-center justify-center">
                 {item.img ? (
                   <img src={item.img} alt="" className="w-full h-full object-contain" loading="lazy" />
@@ -150,29 +177,62 @@ export default function RestockRequestsView({ darkMode = false, showToast, onNav
                   )}
                 </p>
               </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                {item.inStock ? (
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                {/* Add stock right here */}
+                <div className={`flex items-center h-10 rounded-xl border overflow-hidden ${darkMode ? "border-zinc-800" : "border-slate-200"}`}>
+                  <button
+                    type="button"
+                    onClick={() => setAmount(item, String(Math.max(0, amountOf(item) - 1) || ""))}
+                    aria-label="One less"
+                    className={`w-9 h-full flex items-center justify-center cursor-pointer ${ghost}`}
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    max="10000"
+                    value={amounts[item.productId] ?? ""}
+                    onChange={(e) => setAmount(item, e.target.value.replace(/[^0-9]/g, ""))}
+                    onKeyDown={(e) => e.key === "Enter" && restock(item)}
+                    placeholder="Qty"
+                    aria-label={`How many ${item.name} to add`}
+                    className={`w-14 h-full text-center text-sm font-black bg-transparent outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none ${strong}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setAmount(item, String(amountOf(item) + 1))}
+                    aria-label="One more"
+                    className={`w-9 h-full flex items-center justify-center cursor-pointer ${ghost}`}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => restock(item)}
+                  disabled={!amountOf(item) || restocking === item.productId}
+                  className={`h-10 flex items-center justify-center gap-1.5 px-3.5 rounded-xl text-xs font-black cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    item.inStock ? `border ${ghost}` : "text-white bg-emerald-600 hover:bg-emerald-700"
+                  }`}
+                >
+                  <PackagePlus className="w-3.5 h-3.5" /> {restocking === item.productId ? "Saving…" : "Restock"}
+                </button>
+                {item.inStock && (
                   <button
                     type="button"
                     onClick={() => setConfirm({ item, action: "notify" })}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-black text-white bg-[#FF5B00] hover:bg-[#E04800] cursor-pointer"
+                    className="h-10 flex items-center justify-center gap-1.5 px-3.5 rounded-xl text-xs font-black text-white bg-[#FF5B00] hover:bg-[#E04800] cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" /> Tell them it&apos;s back
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onNavigateTab?.("inventory")}
-                    className={`flex-1 sm:flex-none px-3.5 py-2.5 rounded-xl border text-xs font-black cursor-pointer ${ghost}`}
-                  >
-                    Add stock
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setConfirm({ item, action: "dismiss" })}
                   aria-label={`Remove ${item.name} from the list`}
-                  className={`px-3 py-2.5 rounded-xl border text-xs font-black cursor-pointer ${ghost}`}
+                  className={`h-10 px-3 rounded-xl border text-xs font-black cursor-pointer ${ghost}`}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

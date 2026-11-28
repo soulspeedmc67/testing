@@ -3,9 +3,10 @@ import FirebaseAuth
 
 /// "Restock requests": the out-of-stock items shoppers tapped "Notify me" on
 /// (website and both apps), most wanted first, so the owner knows what to buy
-/// (public/api/restock/list.php). Once an item has stock again, "Tell them
-/// it's back" sends everyone who asked one "Back in stock" notification;
-/// "Remove" closes the requests without one. Same as the web console's
+/// (public/api/restock/list.php). "Restock" adds stock right on the row (no
+/// trip to Stock) and puts the item back on sale; "Tell them it's back" then
+/// sends everyone who asked one "Back in stock" notification. "Remove" closes
+/// the requests without one. Same as the web console's
 /// RestockRequestsView.jsx.
 struct AdminRestockView: View {
     @State private var items: [Wanted]?
@@ -15,6 +16,9 @@ struct AdminRestockView: View {
     @State private var note: String?
     @State private var pending: Pending?
     @State private var isWorking = false
+    /// How many to add, per item, typed on its row.
+    @State private var amounts: [String: Int] = [:]
+    @State private var restockingId: String?
 
     private static let endpoint = URL(string: "https://dashit.co.in/api/restock/list.php")!
 
@@ -27,8 +31,8 @@ struct AdminRestockView: View {
         let count: Int
         let firstAt: Double?
         let lastAt: Double?
-        let inStock: Bool?
-        let stock: Int?
+        var inStock: Bool?
+        var stock: Int?
     }
 
     struct Pending: Identifiable {
@@ -41,6 +45,7 @@ struct AdminRestockView: View {
         let items: [Wanted]?
         let total: Int?
         let sent: Int?
+        let stock: Int?
         let error: String?
     }
 
@@ -145,6 +150,7 @@ struct AdminRestockView: View {
                     }
                 }
             }
+            restockBar(item)
             HStack(spacing: 10) {
                 if item.inStock == true {
                     Button {
@@ -157,7 +163,7 @@ struct AdminRestockView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(AdminStyle.brand)
                 } else {
-                    Text("Add stock under Stock, then tell them.")
+                    Text("Restock it above, then tell them.")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -174,6 +180,80 @@ struct AdminRestockView: View {
             .disabled(isWorking)
         }
         .padding(.vertical, 4)
+    }
+
+    /// − [qty] + and "Restock": adds stock without leaving the list.
+    private func restockBar(_ item: Wanted) -> some View {
+        let amount = amounts[item.productId] ?? 0
+        let isSaving = restockingId == item.productId
+        return HStack(spacing: 10) {
+            HStack(spacing: 0) {
+                Button {
+                    amounts[item.productId] = max(0, amount - 1)
+                } label: {
+                    Image(systemName: "minus").frame(width: 36, height: 36)
+                }
+                .accessibilityLabel("One less")
+                TextField("Qty", value: Binding(
+                    get: { amounts[item.productId] == nil || amount == 0 ? nil : amount },
+                    set: { amounts[item.productId] = min(10_000, max(0, $0 ?? 0)) }
+                ), format: .number)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.center)
+                .font(.system(size: 16, weight: .bold))
+                .monospacedDigit()
+                .frame(width: 54)
+                .accessibilityLabel("How many \(item.name) to add")
+                Button {
+                    amounts[item.productId] = min(10_000, amount + 1)
+                } label: {
+                    Image(systemName: "plus").frame(width: 36, height: 36)
+                }
+                .accessibilityLabel("One more")
+            }
+            .font(.system(size: 14, weight: .bold))
+            .buttonStyle(.borderless)
+            .tint(.primary)
+            .background(Color(uiColor: .tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            Button {
+                Task { await restock(item) }
+            } label: {
+                Group {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Label("Restock", systemImage: "shippingbox.and.arrow.backward.fill")
+                    }
+                }
+                .font(.system(size: 14, weight: .bold))
+                .frame(maxWidth: .infinity, minHeight: 22)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .disabled(amount < 1 || isSaving || isWorking)
+        }
+    }
+
+    private func restock(_ item: Wanted) async {
+        let quantity = amounts[item.productId] ?? 0
+        guard quantity > 0 else { return }
+        restockingId = item.productId
+        defer { restockingId = nil }
+        do {
+            let reply = try await call("restock", productId: item.productId, quantity: quantity)
+            if let index = items?.firstIndex(where: { $0.productId == item.productId }) {
+                items?[index].inStock = true
+                items?[index].stock = reply.stock
+            }
+            amounts[item.productId] = nil
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            note = "\(item.name): \(reply.stock ?? quantity) in stock now"
+            error = nil
+        } catch {
+            note = nil
+            self.error = error.localizedDescription
+        }
     }
 
     private func tag(_ text: String, color: Color) -> some View {
@@ -231,19 +311,20 @@ struct AdminRestockView: View {
         }
     }
 
-    private func call(_ action: String, productId: String? = nil) async throws -> Reply {
+    private func call(_ action: String, productId: String? = nil, quantity: Int? = nil) async throws -> Reply {
         guard let user = Auth.auth().currentUser else {
             throw NSError(domain: "DASHit", code: 401, userInfo: [NSLocalizedDescriptionKey: "Please sign in again."])
         }
         let idToken = try await user.getIDToken()
         var body: [String: Any] = ["id_token": idToken, "action": action]
         if let productId { body["productId"] = productId }
+        if let quantity { body["quantity"] = quantity }
         var request = URLRequest(url: Self.endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await URLSession.shared.data(for: request)
-        let reply = (try? JSONDecoder().decode(Reply.self, from: data)) ?? Reply(items: nil, total: nil, sent: nil, error: nil)
+        let reply = (try? JSONDecoder().decode(Reply.self, from: data)) ?? Reply(items: nil, total: nil, sent: nil, stock: nil, error: nil)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard (200..<300).contains(status) else {
             throw NSError(domain: "DASHit", code: status, userInfo: [NSLocalizedDescriptionKey: reply.error ?? "Something went wrong. Please try again."])

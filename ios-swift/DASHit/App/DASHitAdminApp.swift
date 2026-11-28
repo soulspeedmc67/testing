@@ -97,6 +97,11 @@ final class AdminSession: ObservableObject {
 struct DASHitAdminAppView: View {
     @StateObject private var session = AdminSession.shared
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The opening: the DASHit logo builds itself on midnight (SplashView, the
+    /// same as the shop app), then the admin rises gently into place under it.
+    @State private var isSplashVisible = true
+    @State private var isRevealed = false
 
     var body: some View {
         #if DEBUG
@@ -104,11 +109,32 @@ struct DASHitAdminAppView: View {
             AdminDashboardView(onSignOut: {})
                 .onAppear { AdminDashboardViewModel.shared.loadDemoData() }
         } else {
-            signedInContent
+            opening
         }
         #else
-        signedInContent
+        opening
         #endif
+    }
+
+    private var opening: some View {
+        ZStack {
+            // Built straight away under the splash (which plays in Core Animation,
+            // so this work can't make it stutter), and laid out by the time it clears.
+            signedInContent
+                .scaleEffect(isRevealed || reduceMotion ? 1 : 0.94)
+                .offset(y: isRevealed || reduceMotion ? 0 : 18)
+                .opacity(isRevealed ? 1 : 0)
+            if isSplashVisible {
+                SplashView(
+                    onReveal: {
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.86)) { isRevealed = true }
+                        AppReveal.shared.reveal()
+                    },
+                    onFinish: { isSplashVisible = false }
+                )
+                .zIndex(1)
+            }
+        }
     }
 
     @ViewBuilder
@@ -243,6 +269,8 @@ struct DASHitAdminApp: App {
 
     init() {
         FirebaseManager.shared.configure()
+        // The opening animation covers the first frames; entrances wait for it.
+        AppReveal.shared.coversLaunch = true
         OrderNotifications.showWhileOpen()
         URLCache.shared = URLCache(memoryCapacity: 64 * 1024 * 1024, diskCapacity: 256 * 1024 * 1024)
     }

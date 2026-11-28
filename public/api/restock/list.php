@@ -12,6 +12,10 @@
  *      "Back in stock" to everyone who asked, then closes their requests.
  *      Only once the item really is in stock again, and not at night.
  *
+ * POST { "id_token": "...", "action": "restock", "productId": "abc", "quantity": 12 }
+ *   -> 200 { "stock": 12, "inStock": true }
+ *      Adds that many to the stock and puts the item back on sale (no push).
+ *
  * POST { "id_token": "...", "action": "dismiss", "productId": "abc" }
  *   -> 200 { "closed": 4 }
  *      Closes the requests without telling anyone (an item the shop won't stock).
@@ -84,6 +88,31 @@ $closeAll = function (array $extra) use ($account, $requests): void {
         dashit_firestore_merge($account, "restockRequests/$docId", ['open' => false, 'closedAt' => new DateTimeImmutable()] + $extra);
     }
 };
+
+if ($action === 'restock') {
+    // Adds stock right from the list: stock goes up by `quantity` and the item is
+    // switched back on for shoppers. Nobody is told yet; that's "notify".
+    $quantity = (int) ($body['quantity'] ?? 0);
+    if ($quantity < 1 || $quantity > 10000) {
+        dashit_respond(400, ['error' => 'Enter how many you got, from 1 to 10000.']);
+    }
+    $product = dashit_firestore_get($account, 'products/' . $productId);
+    if (!is_array($product)) {
+        dashit_respond(404, ['error' => "That item isn't in the shop any more."]);
+    }
+    $current = max(0, (int) ($product['stock'] ?? 0));
+    $stock = $current + $quantity;
+    $saved = dashit_firestore_merge($account, 'products/' . $productId, [
+        'stock' => $stock,
+        'inStock' => true,
+        // The shop apps only download items whose updatedAt changed.
+        'updatedAt' => new DateTimeImmutable(),
+    ]);
+    if (!$saved) {
+        dashit_respond(502, ['error' => "Couldn't save the stock. Please try again."]);
+    }
+    dashit_respond(200, ['stock' => $stock, 'inStock' => true]);
+}
 
 if ($action === 'dismiss') {
     $closeAll(['outcome' => 'dismissed']);
