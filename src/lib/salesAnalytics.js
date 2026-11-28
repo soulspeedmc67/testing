@@ -157,7 +157,8 @@ export function summarize(orders, { fromKey = null, toKey = null } = {}) {
     for (const item of Array.isArray(order.items) ? order.items : []) {
       const name = String(item?.name || "Item").trim();
       const unit = String(item?.unit || item?.weight || "").trim();
-      const id = String(item?.id || item?.productId || item?.barcode || "").trim();
+      // The product's id: an app order's own `id` is the cart line, `productId` the product.
+      const id = String(item?.productId || item?.id || item?.barcode || "").trim();
       // One row per product (and pack size): by id when the order has it, by name otherwise.
       const key = `${id || name.toLowerCase()}|${unit.toLowerCase()}`;
       const qty = itemQty(item);

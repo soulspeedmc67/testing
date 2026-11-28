@@ -40,17 +40,21 @@ struct NotifyMeButton: View {
         .buttonStyle(PressableButtonStyle(scale: 0.92))
         .disabled(isBusy)
         .accessibilityLabel(asked ? "You'll be told when \(productName) is back. Double tap to cancel." : "Notify me when \(productName) is back")
-        .overlay(alignment: .top) {
+        // The note sits just above the button, its right edge on the button's,
+        // so on a product card (button at the bottom right) it stays inside the card.
+        .overlay(alignment: .topTrailing) {
             if let note {
                 Text(note)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .frame(maxWidth: 150)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Color.black.opacity(0.82), in: Capsule())
-                    .fixedSize()
-                    .offset(y: -(height / 2 + 22))
+                    .background(Color.black.opacity(0.82), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .alignmentGuide(.top) { $0[.bottom] + 6 }
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     .allowsHitTesting(false)
             }
